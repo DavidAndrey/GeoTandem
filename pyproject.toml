@@ -29,6 +29,9 @@ target-version = "py313"
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
 
+[tool.ruff.lint.per-file-ignores]
+"**/migrations/versions/*.py" = ["E501"]
+
 [tool.ruff.lint.isort]
 known-first-party = ["geotandem", "geotandem_query"]
 
@@ -37,6 +40,7 @@ python_version = "3.14"
 plugins = ["pydantic.mypy"]
 warn_unused_ignores = true
 ignore_missing_imports = true
+exclude = ["/migrations/"]
 
 [[tool.mypy.overrides]]
 module = ["geotandem_query.*", "geotandem.data.*", "geotandem.engine.*"]
