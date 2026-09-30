@@ -20,6 +20,7 @@ dev = [
     "ruff>=0.14",
     "mypy>=1.18",
     "pre-commit>=4",
+    "pytest-asyncio>=1.4.0",
 ]
 
 [tool.ruff]
@@ -49,3 +50,4 @@ strict = true
 [tool.pytest.ini_options]
 testpaths = ["packages/query/tests", "backend/tests"]
 addopts = "-q"
+asyncio_mode = "auto"
