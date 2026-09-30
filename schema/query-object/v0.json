@@ -1,0 +1,1193 @@
+{
+  "$defs": {
+    "Aggregate": {
+      "additionalProperties": false,
+      "description": "Summarise source features per feature of an area layer (F-4.7).\n\nEvery area feature appears in the result, with ``count`` 0 and other\nmetrics null where no source feature relates to it.",
+      "properties": {
+        "by_layer": {
+          "description": "Lower-case layer or attribute name.",
+          "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+          "title": "By Layer",
+          "type": "string"
+        },
+        "predicate": {
+          "default": "within",
+          "description": "Relation 'source <predicate> area'.",
+          "enum": [
+            "within",
+            "intersects"
+          ],
+          "title": "Predicate",
+          "type": "string"
+        },
+        "area_fields": {
+          "description": "Attributes of ``by_layer`` kept in the result.",
+          "items": {
+            "description": "Lower-case layer or attribute name.",
+            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+            "type": "string"
+          },
+          "title": "Area Fields",
+          "type": "array"
+        },
+        "metrics": {
+          "items": {
+            "$ref": "#/$defs/Metric"
+          },
+          "minItems": 1,
+          "title": "Metrics",
+          "type": "array"
+        }
+      },
+      "required": [
+        "by_layer",
+        "metrics"
+      ],
+      "title": "Aggregate",
+      "type": "object"
+    },
+    "And": {
+      "additionalProperties": false,
+      "properties": {
+        "op": {
+          "const": "and",
+          "title": "Op",
+          "type": "string"
+        },
+        "args": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "and": "#/$defs/And",
+                "bbox": "#/$defs/BBox",
+                "between": "#/$defs/Between",
+                "compare": "#/$defs/Compare",
+                "geometry": "#/$defs/GeometryFilter",
+                "in": "#/$defs/InList",
+                "is_null": "#/$defs/IsNull",
+                "near_feature": "#/$defs/NearFeature",
+                "not": "#/$defs/Not",
+                "or": "#/$defs/Or",
+                "text_match": "#/$defs/TextMatch"
+              },
+              "propertyName": "op"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/Compare"
+              },
+              {
+                "$ref": "#/$defs/Between"
+              },
+              {
+                "$ref": "#/$defs/InList"
+              },
+              {
+                "$ref": "#/$defs/TextMatch"
+              },
+              {
+                "$ref": "#/$defs/IsNull"
+              },
+              {
+                "$ref": "#/$defs/BBox"
+              },
+              {
+                "$ref": "#/$defs/GeometryFilter"
+              },
+              {
+                "$ref": "#/$defs/NearFeature"
+              },
+              {
+                "$ref": "#/$defs/And"
+              },
+              {
+                "$ref": "#/$defs/Or"
+              },
+              {
+                "$ref": "#/$defs/Not"
+              }
+            ]
+          },
+          "minItems": 1,
+          "title": "Args",
+          "type": "array"
+        }
+      },
+      "required": [
+        "op",
+        "args"
+      ],
+      "title": "And",
+      "type": "object"
+    },
+    "AttributeJoin": {
+      "additionalProperties": false,
+      "description": "Left join of a layer by key (F-4.6).\n\nJoined fields are addressable by their name, or by ``prefix + name`` when a\nprefix is given; clashes with source attributes are rejected.",
+      "properties": {
+        "layer": {
+          "description": "Lower-case layer or attribute name.",
+          "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+          "title": "Layer",
+          "type": "string"
+        },
+        "left_key": {
+          "description": "Attribute of the source layer.",
+          "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+          "title": "Left Key",
+          "type": "string"
+        },
+        "right_key": {
+          "description": "Attribute of the joined layer.",
+          "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+          "title": "Right Key",
+          "type": "string"
+        },
+        "fields": {
+          "items": {
+            "description": "Lower-case layer or attribute name.",
+            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Fields",
+          "type": "array"
+        },
+        "prefix": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z_][a-z0-9_]{0,30}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prefix"
+        }
+      },
+      "required": [
+        "layer",
+        "left_key",
+        "right_key",
+        "fields"
+      ],
+      "title": "AttributeJoin",
+      "type": "object"
+    },
+    "BBox": {
+      "additionalProperties": false,
+      "description": "Source geometry intersects a WGS84 bounding box, e.g. the map view (F-4.3).",
+      "properties": {
+        "op": {
+          "const": "bbox",
+          "title": "Op",
+          "type": "string"
+        },
+        "bbox": {
+          "description": "[min_lon, min_lat, max_lon, max_lat] in WGS84.",
+          "maxItems": 4,
+          "minItems": 4,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Bbox",
+          "type": "array"
+        }
+      },
+      "required": [
+        "op",
+        "bbox"
+      ],
+      "title": "BBox",
+      "type": "object"
+    },
+    "Between": {
+      "additionalProperties": false,
+      "description": "Inclusive value range (F-4.2).",
+      "properties": {
+        "op": {
+          "const": "between",
+          "title": "Op",
+          "type": "string"
+        },
+        "attr": {
+          "description": "Lower-case layer or attribute name.",
+          "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+          "title": "Attr",
+          "type": "string"
+        },
+        "min": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Min"
+        },
+        "max": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Max"
+        }
+      },
+      "required": [
+        "op",
+        "attr",
+        "min",
+        "max"
+      ],
+      "title": "Between",
+      "type": "object"
+    },
+    "Buffer": {
+      "additionalProperties": false,
+      "description": "Replace each source geometry by its buffer (F-4.5).",
+      "properties": {
+        "distance_m": {
+          "description": "Distance in metres.",
+          "exclusiveMinimum": 0,
+          "title": "Distance M",
+          "type": "number"
+        }
+      },
+      "required": [
+        "distance_m"
+      ],
+      "title": "Buffer",
+      "type": "object"
+    },
+    "Categorized": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "categorized",
+          "title": "Kind",
+          "type": "string"
+        },
+        "attr": {
+          "description": "Lower-case layer or attribute name.",
+          "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+          "title": "Attr",
+          "type": "string"
+        },
+        "colors": {
+          "additionalProperties": {
+            "pattern": "^#[0-9a-fA-F]{6}$",
+            "type": "string"
+          },
+          "description": "Optional fixed colour per category value.",
+          "title": "Colors",
+          "type": "object"
+        }
+      },
+      "required": [
+        "kind",
+        "attr"
+      ],
+      "title": "Categorized",
+      "type": "object"
+    },
+    "Classified": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "classified",
+          "title": "Kind",
+          "type": "string"
+        },
+        "attr": {
+          "description": "Lower-case layer or attribute name.",
+          "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+          "title": "Attr",
+          "type": "string"
+        },
+        "method": {
+          "enum": [
+            "quantile",
+            "equal_interval"
+          ],
+          "title": "Method",
+          "type": "string"
+        },
+        "classes": {
+          "default": 5,
+          "maximum": 9,
+          "minimum": 2,
+          "title": "Classes",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "kind",
+        "attr",
+        "method"
+      ],
+      "title": "Classified",
+      "type": "object"
+    },
+    "Compare": {
+      "additionalProperties": false,
+      "description": "Attribute comparison with a constant (F-4.2).",
+      "properties": {
+        "op": {
+          "const": "compare",
+          "title": "Op",
+          "type": "string"
+        },
+        "attr": {
+          "description": "Lower-case layer or attribute name.",
+          "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+          "title": "Attr",
+          "type": "string"
+        },
+        "cmp": {
+          "enum": [
+            "eq",
+            "ne",
+            "lt",
+            "le",
+            "gt",
+            "ge"
+          ],
+          "title": "Cmp",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            }
+          ],
+          "title": "Value"
+        }
+      },
+      "required": [
+        "op",
+        "attr",
+        "cmp",
+        "value"
+      ],
+      "title": "Compare",
+      "type": "object"
+    },
+    "GeoJSONGeometry": {
+      "additionalProperties": false,
+      "description": "GeoJSON geometry in WGS84. Coordinates are checked when compiled.",
+      "properties": {
+        "type": {
+          "enum": [
+            "Point",
+            "MultiPoint",
+            "LineString",
+            "MultiLineString",
+            "Polygon",
+            "MultiPolygon"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "coordinates": {
+          "items": {},
+          "title": "Coordinates",
+          "type": "array"
+        }
+      },
+      "required": [
+        "type",
+        "coordinates"
+      ],
+      "title": "GeoJSONGeometry",
+      "type": "object"
+    },
+    "GeometryFilter": {
+      "additionalProperties": false,
+      "description": "Source geometry relates to a drawn geometry (F-4.3).",
+      "properties": {
+        "op": {
+          "const": "geometry",
+          "title": "Op",
+          "type": "string"
+        },
+        "geometry": {
+          "$ref": "#/$defs/GeoJSONGeometry"
+        },
+        "predicate": {
+          "default": "intersects",
+          "enum": [
+            "intersects",
+            "within",
+            "contains"
+          ],
+          "title": "Predicate",
+          "type": "string"
+        }
+      },
+      "required": [
+        "op",
+        "geometry"
+      ],
+      "title": "GeometryFilter",
+      "type": "object"
+    },
+    "GraduatedSize": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "graduated_size",
+          "title": "Kind",
+          "type": "string"
+        },
+        "attr": {
+          "description": "Lower-case layer or attribute name.",
+          "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+          "title": "Attr",
+          "type": "string"
+        },
+        "min_size": {
+          "default": 4,
+          "exclusiveMinimum": 0,
+          "title": "Min Size",
+          "type": "number"
+        },
+        "max_size": {
+          "default": 24,
+          "exclusiveMinimum": 0,
+          "title": "Max Size",
+          "type": "number"
+        }
+      },
+      "required": [
+        "kind",
+        "attr"
+      ],
+      "title": "GraduatedSize",
+      "type": "object"
+    },
+    "InList": {
+      "additionalProperties": false,
+      "description": "Value in list (F-4.2).",
+      "properties": {
+        "op": {
+          "const": "in",
+          "title": "Op",
+          "type": "string"
+        },
+        "attr": {
+          "description": "Lower-case layer or attribute name.",
+          "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+          "title": "Attr",
+          "type": "string"
+        },
+        "values": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          },
+          "minItems": 1,
+          "title": "Values",
+          "type": "array"
+        }
+      },
+      "required": [
+        "op",
+        "attr",
+        "values"
+      ],
+      "title": "InList",
+      "type": "object"
+    },
+    "IsNull": {
+      "additionalProperties": false,
+      "description": "Attribute has no value. Combine with ``not`` for 'has a value'.",
+      "properties": {
+        "op": {
+          "const": "is_null",
+          "title": "Op",
+          "type": "string"
+        },
+        "attr": {
+          "description": "Lower-case layer or attribute name.",
+          "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+          "title": "Attr",
+          "type": "string"
+        }
+      },
+      "required": [
+        "op",
+        "attr"
+      ],
+      "title": "IsNull",
+      "type": "object"
+    },
+    "Metric": {
+      "additionalProperties": false,
+      "properties": {
+        "fn": {
+          "enum": [
+            "count",
+            "sum",
+            "avg",
+            "min",
+            "max"
+          ],
+          "title": "Fn",
+          "type": "string"
+        },
+        "attr": {
+          "anyOf": [
+            {
+              "description": "Lower-case layer or attribute name.",
+              "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Source attribute; not used by 'count'.",
+          "title": "Attr"
+        },
+        "as": {
+          "description": "Name of the result attribute.",
+          "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+          "title": "As",
+          "type": "string"
+        }
+      },
+      "required": [
+        "fn",
+        "as"
+      ],
+      "title": "Metric",
+      "type": "object"
+    },
+    "NearFeature": {
+      "additionalProperties": false,
+      "description": "Source geometry lies within a distance of one reference feature (F-4.3).",
+      "properties": {
+        "op": {
+          "const": "near_feature",
+          "title": "Op",
+          "type": "string"
+        },
+        "layer": {
+          "description": "Lower-case layer or attribute name.",
+          "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+          "title": "Layer",
+          "type": "string"
+        },
+        "fid": {
+          "title": "Fid",
+          "type": "integer"
+        },
+        "distance_m": {
+          "default": 0,
+          "description": "Distance in metres.",
+          "minimum": 0,
+          "title": "Distance M",
+          "type": "number"
+        }
+      },
+      "required": [
+        "op",
+        "layer",
+        "fid"
+      ],
+      "title": "NearFeature",
+      "type": "object"
+    },
+    "Not": {
+      "additionalProperties": false,
+      "properties": {
+        "op": {
+          "const": "not",
+          "title": "Op",
+          "type": "string"
+        },
+        "arg": {
+          "discriminator": {
+            "mapping": {
+              "and": "#/$defs/And",
+              "bbox": "#/$defs/BBox",
+              "between": "#/$defs/Between",
+              "compare": "#/$defs/Compare",
+              "geometry": "#/$defs/GeometryFilter",
+              "in": "#/$defs/InList",
+              "is_null": "#/$defs/IsNull",
+              "near_feature": "#/$defs/NearFeature",
+              "not": "#/$defs/Not",
+              "or": "#/$defs/Or",
+              "text_match": "#/$defs/TextMatch"
+            },
+            "propertyName": "op"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Compare"
+            },
+            {
+              "$ref": "#/$defs/Between"
+            },
+            {
+              "$ref": "#/$defs/InList"
+            },
+            {
+              "$ref": "#/$defs/TextMatch"
+            },
+            {
+              "$ref": "#/$defs/IsNull"
+            },
+            {
+              "$ref": "#/$defs/BBox"
+            },
+            {
+              "$ref": "#/$defs/GeometryFilter"
+            },
+            {
+              "$ref": "#/$defs/NearFeature"
+            },
+            {
+              "$ref": "#/$defs/And"
+            },
+            {
+              "$ref": "#/$defs/Or"
+            },
+            {
+              "$ref": "#/$defs/Not"
+            }
+          ],
+          "title": "Arg"
+        }
+      },
+      "required": [
+        "op",
+        "arg"
+      ],
+      "title": "Not",
+      "type": "object"
+    },
+    "Or": {
+      "additionalProperties": false,
+      "properties": {
+        "op": {
+          "const": "or",
+          "title": "Op",
+          "type": "string"
+        },
+        "args": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "and": "#/$defs/And",
+                "bbox": "#/$defs/BBox",
+                "between": "#/$defs/Between",
+                "compare": "#/$defs/Compare",
+                "geometry": "#/$defs/GeometryFilter",
+                "in": "#/$defs/InList",
+                "is_null": "#/$defs/IsNull",
+                "near_feature": "#/$defs/NearFeature",
+                "not": "#/$defs/Not",
+                "or": "#/$defs/Or",
+                "text_match": "#/$defs/TextMatch"
+              },
+              "propertyName": "op"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/Compare"
+              },
+              {
+                "$ref": "#/$defs/Between"
+              },
+              {
+                "$ref": "#/$defs/InList"
+              },
+              {
+                "$ref": "#/$defs/TextMatch"
+              },
+              {
+                "$ref": "#/$defs/IsNull"
+              },
+              {
+                "$ref": "#/$defs/BBox"
+              },
+              {
+                "$ref": "#/$defs/GeometryFilter"
+              },
+              {
+                "$ref": "#/$defs/NearFeature"
+              },
+              {
+                "$ref": "#/$defs/And"
+              },
+              {
+                "$ref": "#/$defs/Or"
+              },
+              {
+                "$ref": "#/$defs/Not"
+              }
+            ]
+          },
+          "minItems": 1,
+          "title": "Args",
+          "type": "array"
+        }
+      },
+      "required": [
+        "op",
+        "args"
+      ],
+      "title": "Or",
+      "type": "object"
+    },
+    "OrderBy": {
+      "additionalProperties": false,
+      "properties": {
+        "attr": {
+          "description": "Lower-case layer or attribute name.",
+          "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+          "title": "Attr",
+          "type": "string"
+        },
+        "dir": {
+          "default": "asc",
+          "enum": [
+            "asc",
+            "desc"
+          ],
+          "title": "Dir",
+          "type": "string"
+        }
+      },
+      "required": [
+        "attr"
+      ],
+      "title": "OrderBy",
+      "type": "object"
+    },
+    "SingleSymbol": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "single",
+          "title": "Kind",
+          "type": "string"
+        },
+        "color": {
+          "default": "#3366cc",
+          "pattern": "^#[0-9a-fA-F]{6}$",
+          "title": "Color",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "SingleSymbol",
+      "type": "object"
+    },
+    "SpatialRelation": {
+      "additionalProperties": false,
+      "description": "Keep source features related to at least one feature of ``layer`` (F-4.4).\n\nThe predicate reads ``source <predicate> layer``: ``within`` keeps source\nfeatures lying inside a feature of ``layer``.",
+      "properties": {
+        "layer": {
+          "description": "Lower-case layer or attribute name.",
+          "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+          "title": "Layer",
+          "type": "string"
+        },
+        "predicate": {
+          "enum": [
+            "intersects",
+            "within",
+            "contains",
+            "dwithin"
+          ],
+          "title": "Predicate",
+          "type": "string"
+        },
+        "distance_m": {
+          "anyOf": [
+            {
+              "description": "Distance in metres.",
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Distance M"
+        },
+        "where": {
+          "anyOf": [
+            {
+              "discriminator": {
+                "mapping": {
+                  "and": "#/$defs/And",
+                  "bbox": "#/$defs/BBox",
+                  "between": "#/$defs/Between",
+                  "compare": "#/$defs/Compare",
+                  "geometry": "#/$defs/GeometryFilter",
+                  "in": "#/$defs/InList",
+                  "is_null": "#/$defs/IsNull",
+                  "near_feature": "#/$defs/NearFeature",
+                  "not": "#/$defs/Not",
+                  "or": "#/$defs/Or",
+                  "text_match": "#/$defs/TextMatch"
+                },
+                "propertyName": "op"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/Compare"
+                },
+                {
+                  "$ref": "#/$defs/Between"
+                },
+                {
+                  "$ref": "#/$defs/InList"
+                },
+                {
+                  "$ref": "#/$defs/TextMatch"
+                },
+                {
+                  "$ref": "#/$defs/IsNull"
+                },
+                {
+                  "$ref": "#/$defs/BBox"
+                },
+                {
+                  "$ref": "#/$defs/GeometryFilter"
+                },
+                {
+                  "$ref": "#/$defs/NearFeature"
+                },
+                {
+                  "$ref": "#/$defs/And"
+                },
+                {
+                  "$ref": "#/$defs/Or"
+                },
+                {
+                  "$ref": "#/$defs/Not"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Filter on the attributes of ``layer``.",
+          "title": "Where"
+        }
+      },
+      "required": [
+        "layer",
+        "predicate"
+      ],
+      "title": "SpatialRelation",
+      "type": "object"
+    },
+    "TextMatch": {
+      "additionalProperties": false,
+      "description": "Text search in a string attribute (F-4.2).",
+      "properties": {
+        "op": {
+          "const": "text_match",
+          "title": "Op",
+          "type": "string"
+        },
+        "attr": {
+          "description": "Lower-case layer or attribute name.",
+          "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+          "title": "Attr",
+          "type": "string"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "mode": {
+          "default": "contains",
+          "enum": [
+            "contains",
+            "starts_with",
+            "ends_with",
+            "equals"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "case_sensitive": {
+          "default": false,
+          "title": "Case Sensitive",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "op",
+        "attr",
+        "text"
+      ],
+      "title": "TextMatch",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Declarative, backend-neutral description of one analysis.",
+  "properties": {
+    "schema_version": {
+      "const": "0",
+      "default": "0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source": {
+      "description": "Lower-case layer or attribute name.",
+      "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+      "title": "Source",
+      "type": "string"
+    },
+    "attribute_join": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AttributeJoin"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "where": {
+      "anyOf": [
+        {
+          "discriminator": {
+            "mapping": {
+              "and": "#/$defs/And",
+              "bbox": "#/$defs/BBox",
+              "between": "#/$defs/Between",
+              "compare": "#/$defs/Compare",
+              "geometry": "#/$defs/GeometryFilter",
+              "in": "#/$defs/InList",
+              "is_null": "#/$defs/IsNull",
+              "near_feature": "#/$defs/NearFeature",
+              "not": "#/$defs/Not",
+              "or": "#/$defs/Or",
+              "text_match": "#/$defs/TextMatch"
+            },
+            "propertyName": "op"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Compare"
+            },
+            {
+              "$ref": "#/$defs/Between"
+            },
+            {
+              "$ref": "#/$defs/InList"
+            },
+            {
+              "$ref": "#/$defs/TextMatch"
+            },
+            {
+              "$ref": "#/$defs/IsNull"
+            },
+            {
+              "$ref": "#/$defs/BBox"
+            },
+            {
+              "$ref": "#/$defs/GeometryFilter"
+            },
+            {
+              "$ref": "#/$defs/NearFeature"
+            },
+            {
+              "$ref": "#/$defs/And"
+            },
+            {
+              "$ref": "#/$defs/Or"
+            },
+            {
+              "$ref": "#/$defs/Not"
+            }
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Where"
+    },
+    "buffer": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Buffer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "spatial_relation": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SpatialRelation"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "aggregate": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Aggregate"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "select": {
+      "anyOf": [
+        {
+          "items": {
+            "description": "Lower-case layer or attribute name.",
+            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Result attributes; all when omitted.",
+      "title": "Select"
+    },
+    "order_by": {
+      "items": {
+        "$ref": "#/$defs/OrderBy"
+      },
+      "title": "Order By",
+      "type": "array"
+    },
+    "limit": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Limit"
+    },
+    "symbology": {
+      "anyOf": [
+        {
+          "discriminator": {
+            "mapping": {
+              "categorized": "#/$defs/Categorized",
+              "classified": "#/$defs/Classified",
+              "graduated_size": "#/$defs/GraduatedSize",
+              "single": "#/$defs/SingleSymbol"
+            },
+            "propertyName": "kind"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/SingleSymbol"
+            },
+            {
+              "$ref": "#/$defs/Categorized"
+            },
+            {
+              "$ref": "#/$defs/Classified"
+            },
+            {
+              "$ref": "#/$defs/GraduatedSize"
+            }
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Symbology"
+    },
+    "output": {
+      "default": "map",
+      "enum": [
+        "map",
+        "table"
+      ],
+      "title": "Output",
+      "type": "string"
+    }
+  },
+  "required": [
+    "source"
+  ],
+  "title": "GeoTandem query object",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://geotandem.local/schema/query-object/v0.json"
+}

@@ -1,0 +1,52 @@
+"""GeoTandem query-object schema (F-10.3)."""
+
+from geotandem_query.canonical import canonical_json, query_hash
+from geotandem_query.models import (
+    Aggregate,
+    And,
+    AttributeJoin,
+    BBox,
+    Between,
+    Buffer,
+    Compare,
+    Condition,
+    GeoJSONGeometry,
+    GeometryFilter,
+    InList,
+    IsNull,
+    Metric,
+    NearFeature,
+    Not,
+    Or,
+    OrderBy,
+    QueryObject,
+    SpatialRelation,
+    TextMatch,
+)
+from geotandem_query.version import SCHEMA_VERSION
+
+__all__ = [
+    "SCHEMA_VERSION",
+    "Aggregate",
+    "And",
+    "AttributeJoin",
+    "BBox",
+    "Between",
+    "Buffer",
+    "Compare",
+    "Condition",
+    "GeoJSONGeometry",
+    "GeometryFilter",
+    "InList",
+    "IsNull",
+    "Metric",
+    "NearFeature",
+    "Not",
+    "Or",
+    "OrderBy",
+    "QueryObject",
+    "SpatialRelation",
+    "TextMatch",
+    "canonical_json",
+    "query_hash",
+]
