@@ -42,6 +42,7 @@ from geotandem.data.interface import (
     NewLayer,
     Op,
     QueryTimeout,
+    SpatialDialect,
 )
 from geotandem.db.orm import Layer, LayerAttribute
 
@@ -136,7 +137,7 @@ class SpatiaLiteBackend:
     def __init__(self, engine: Engine, internal_srid: int) -> None:
         self.engine = engine
         self.internal_srid = internal_srid
-        self.dialect = SpatiaLiteDialect()
+        self.dialect: SpatialDialect = SpatiaLiteDialect()
         self._metadata = MetaData()
 
     # --- layers ----------------------------------------------------------------

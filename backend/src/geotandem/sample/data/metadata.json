@@ -1,0 +1,149 @@
+{
+  "version": "tandemtal-1",
+  "source_crs": 4326,
+  "layers": [
+    {
+      "name": "gemeinden",
+      "title": "Gemeinden",
+      "description": "Politische Gemeinden des Tandemtals.",
+      "kind": "vector",
+      "file": "gemeinden.geojson",
+      "attributes": [
+        {
+          "name": "gem_nr",
+          "data_type": "integer",
+          "label": "Gemeindenummer",
+          "description": "Amtlicher Gemeindeschlüssel, Schlüssel für Sachdaten."
+        },
+        {
+          "name": "name",
+          "data_type": "text",
+          "label": "Gemeindename"
+        },
+        {
+          "name": "flaeche_km2",
+          "data_type": "real",
+          "label": "Fläche",
+          "unit": "km²"
+        }
+      ]
+    },
+    {
+      "name": "gewaesser",
+      "title": "Gewässer",
+      "description": "Fliessgewässer: der Fluss Tand und der Bruggbach.",
+      "kind": "vector",
+      "file": "gewaesser.geojson",
+      "attributes": [
+        {
+          "name": "name",
+          "data_type": "text",
+          "label": "Name"
+        },
+        {
+          "name": "typ",
+          "data_type": "text",
+          "label": "Gewässertyp",
+          "value_domain": {
+            "codes": {
+              "fluss": "Fluss",
+              "bach": "Bach"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "strassen",
+      "title": "Strassen",
+      "description": "Haupt- und Nebenstrassen.",
+      "kind": "vector",
+      "file": "strassen.geojson",
+      "attributes": [
+        {
+          "name": "name",
+          "data_type": "text",
+          "label": "Name"
+        },
+        {
+          "name": "klasse",
+          "data_type": "text",
+          "label": "Strassenklasse",
+          "value_domain": {
+            "codes": {
+              "haupt": "Hauptstrasse",
+              "neben": "Nebenstrasse"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "schulen",
+      "title": "Schulen",
+      "description": "Schulstandorte mit Schulstufe und Anzahl Schülerinnen und Schüler.",
+      "kind": "vector",
+      "file": "schulen.geojson",
+      "attributes": [
+        {
+          "name": "name",
+          "data_type": "text",
+          "label": "Schulname"
+        },
+        {
+          "name": "typ",
+          "data_type": "text",
+          "label": "Schulstufe",
+          "value_domain": {
+            "codes": {
+              "kindergarten": "Kindergarten",
+              "primar": "Primarschule",
+              "sekundar": "Sekundarschule"
+            }
+          }
+        },
+        {
+          "name": "schueler",
+          "data_type": "integer",
+          "label": "Schülerzahl",
+          "unit": "Personen",
+          "value_domain": {
+            "min": 10,
+            "max": 900
+          }
+        }
+      ]
+    },
+    {
+      "name": "bevoelkerung",
+      "title": "Bevölkerung",
+      "description": "Bevölkerungsstatistik je Gemeinde, Stichtag 31.12.2025.",
+      "kind": "table",
+      "file": "bevoelkerung.csv",
+      "attributes": [
+        {
+          "name": "gem_nr",
+          "data_type": "integer",
+          "label": "Gemeindenummer",
+          "description": "Schlüssel auf gemeinden.gem_nr."
+        },
+        {
+          "name": "einwohner",
+          "data_type": "integer",
+          "label": "Einwohner",
+          "unit": "Personen"
+        },
+        {
+          "name": "anteil_u20",
+          "data_type": "real",
+          "label": "Anteil unter 20 Jahren",
+          "unit": "%",
+          "value_domain": {
+            "min": 0,
+            "max": 100
+          }
+        }
+      ]
+    }
+  ]
+}

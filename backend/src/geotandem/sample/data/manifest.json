@@ -1,0 +1,11 @@
+{
+  "version": "tandemtal-1",
+  "files": {
+    "bevoelkerung.csv": "16c7135aa10c57c09e4d88444d729112e5a92d90a96aa680151bbf5adaee26f6",
+    "gemeinden.geojson": "78450f514e9171491672820ad9485c4e33c35601e2b50d3eddc753b62b146b7e",
+    "gewaesser.geojson": "d301bad13952f1e2cb4a84baf9be08ebdff6b239f48cede2dc3cce6fb02ba7fb",
+    "metadata.json": "3c8fb64966dc6bdc6acdeed1a2c4b726b4a6aba2ffd835cff2b7f16928b553e4",
+    "schulen.geojson": "ff440fac86f9465893ad931eabb4cec903dba6a22f28639249d3f4d3af2fb4ea",
+    "strassen.geojson": "793cf1c3fdb788a3bd71840c17603150005b527955d5c572a0edc779411970ce"
+  }
+}
