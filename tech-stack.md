@@ -80,7 +80,7 @@ nennt, worauf gebaut wird; die Sperrdateien aus E1.1 sind massgeblich.
 | react-leaflet | 5.0 | **5** | verlangt React 19 — passt zur Wahl oben |
 | Testing Library (React) | 16.3 | **16** | |
 | Playwright | 1.63 | **1.x** | |
-| TypeScript | 7.0 | offen: 5.9 oder 7.0 | siehe 4.5 |
+| TypeScript | 7.0 | **5.9** | entschieden in E1.1, siehe 4.5 |
 | ESLint | 10.11 | **10** | |
 
 ## 3 Backend
@@ -263,12 +263,13 @@ abgelegt. Von Hand gepflegte Gegenstücke sind ausgeschlossen: Sobald das
 Abfrageobjekt an zwei Stellen beschrieben wird, laufen Klassik-Modus und
 Ausführungsmaschine auseinander, und der Sperrpunkt E1.2 wäre wertlos.
 
-> **Offene Versionsfrage (E1.1):** TypeScript 7 (die Go-Neuimplementierung) ist
-> aktuell, `openapi-typescript` 7.13 nennt als Gegenstück aber weiterhin
-> `typescript: ^5.x`. Da die Typgenerierung hier tragend ist, wird in E1.1
-> geprüft, ob sie unter TypeScript 7 läuft; andernfalls startet das Projekt auf
-> 5.9 und wechselt später. Die Entscheidung betrifft nur das Bauwerkzeug, nicht
-> die Struktur der erzeugten Typen.
+> **Entschieden in E1.1 (2026-09-30): TypeScript 5.9.** Geprüft wurde
+> `openapi-typescript` 7.13 unter TypeScript 7.0.2: Die Generierung bricht ab,
+> weil TypeScript 7 (die Go-Neuimplementierung) keine JavaScript-Compiler-API
+> (`ts.factory`) mehr mitliefert, auf der das Werkzeug aufbaut. Unabhängig davon
+> verlangt `typescript-eslint` 8.71 `typescript < 6.1`. Der Wechsel wird fällig,
+> sobald beide Werkzeuge TypeScript 7 tragen; er betrifft nur das Bauwerkzeug,
+> nicht die Struktur der erzeugten Typen.
 
 ## 5 Tests
 
@@ -356,7 +357,6 @@ zu dem sie spätestens fällig wird.
 | Kartenexport als Bild (F-8.7) | E5.3 | Clientseitig aus dem Browser oder serverseitig gerendert — beides hat spürbare Folgen für den Containerumfang |
 | PostGIS in der Testumgebung (F-10.7) | P.2 | Testcontainers oder Dienstcontainer der Bauumgebung |
 | Transport der MCP-Server-Rolle (F-7.5) | E4.1 | stdio und/oder HTTP; hängt an der Frage aus [vision.md 8.2](vision.md) |
-| TypeScript 5.9 oder 7.0 (4.5) | E1.1 | Hängt allein daran, ob `openapi-typescript` unter TypeScript 7 trägt |
 | Format und Ablage des Prüffallbestands (F-3.13) | E3.1 | Dateiartefakt im Repository, Läufe im Datenkern; siehe [bewertung.md 10](bewertung.md) |
 | Übersetzungsbibliothek (F-10.6) | nach E6 | Nach [etappen.md 10](etappen.md) ausserhalb der sechs Etappen |
 | Umgang mit SpatiaLite-Lücken (F-2.14) | E1.2 | Keine reine Technologiefrage — die Entscheidung steht in den Anforderungen offen und prägt den Dialekt-Adapter |

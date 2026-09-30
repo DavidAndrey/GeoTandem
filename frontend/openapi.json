@@ -1,0 +1,2479 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "GeoTandem",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_api_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/layers": {
+      "get": {
+        "summary": "Layers",
+        "operationId": "layers_api_layers_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LayerInfo"
+                  },
+                  "type": "array",
+                  "title": "Response Layers Api Layers Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/layers/{name}": {
+      "get": {
+        "summary": "Layer",
+        "operationId": "layer_api_layers__name__get",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayerInfo"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Gateway Timeout"
+          }
+        }
+      }
+    },
+    "/api/query": {
+      "post": {
+        "summary": "Query",
+        "description": "Run a query object (F-8.9); the result carries its query and provenance.",
+        "operationId": "query_api_query_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryObject-Input"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueryResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Content Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/query/validate": {
+      "post": {
+        "summary": "Validate",
+        "description": "Check a query against schema and data core without running it (F-5.9).",
+        "operationId": "validate_api_query_validate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryObject-Input"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Validation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Content Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/schema/query-object": {
+      "get": {
+        "summary": "Query Object Schema",
+        "description": "The versioned query-object JSON schema (F-10.3).",
+        "operationId": "query_object_schema_api_schema_query_object_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Query Object Schema Api Schema Query Object Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tools": {
+      "get": {
+        "summary": "Tools",
+        "operationId": "tools_api_tools_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ToolDescription"
+                  },
+                  "type": "array",
+                  "title": "Response Tools Api Tools Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Aggregate": {
+        "properties": {
+          "by_layer": {
+            "type": "string",
+            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+            "title": "By Layer",
+            "description": "Lower-case layer or attribute name."
+          },
+          "predicate": {
+            "type": "string",
+            "enum": [
+              "within",
+              "intersects"
+            ],
+            "title": "Predicate",
+            "description": "Relation 'source <predicate> area'.",
+            "default": "within"
+          },
+          "area_fields": {
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+              "description": "Lower-case layer or attribute name."
+            },
+            "type": "array",
+            "title": "Area Fields",
+            "description": "Attributes of ``by_layer`` kept in the result."
+          },
+          "metrics": {
+            "items": {
+              "$ref": "#/components/schemas/Metric"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Metrics"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "by_layer",
+          "metrics"
+        ],
+        "title": "Aggregate",
+        "description": "Summarise source features per feature of an area layer (F-4.7).\n\nEvery area feature appears in the result, with ``count`` 0 and other\nmetrics null where no source feature relates to it."
+      },
+      "And-Input": {
+        "properties": {
+          "op": {
+            "type": "string",
+            "const": "and",
+            "title": "Op"
+          },
+          "args": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/Compare"
+                },
+                {
+                  "$ref": "#/components/schemas/Between"
+                },
+                {
+                  "$ref": "#/components/schemas/InList"
+                },
+                {
+                  "$ref": "#/components/schemas/TextMatch"
+                },
+                {
+                  "$ref": "#/components/schemas/IsNull"
+                },
+                {
+                  "$ref": "#/components/schemas/BBox"
+                },
+                {
+                  "$ref": "#/components/schemas/GeometryFilter"
+                },
+                {
+                  "$ref": "#/components/schemas/NearFeature"
+                },
+                {
+                  "$ref": "#/components/schemas/And-Input"
+                },
+                {
+                  "$ref": "#/components/schemas/Or-Input"
+                },
+                {
+                  "$ref": "#/components/schemas/Not-Input"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "op",
+                "mapping": {
+                  "and": "#/components/schemas/And-Input",
+                  "bbox": "#/components/schemas/BBox",
+                  "between": "#/components/schemas/Between",
+                  "compare": "#/components/schemas/Compare",
+                  "geometry": "#/components/schemas/GeometryFilter",
+                  "in": "#/components/schemas/InList",
+                  "is_null": "#/components/schemas/IsNull",
+                  "near_feature": "#/components/schemas/NearFeature",
+                  "not": "#/components/schemas/Not-Input",
+                  "or": "#/components/schemas/Or-Input",
+                  "text_match": "#/components/schemas/TextMatch"
+                }
+              }
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Args"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "op",
+          "args"
+        ],
+        "title": "And"
+      },
+      "And-Output": {
+        "properties": {
+          "op": {
+            "type": "string",
+            "const": "and",
+            "title": "Op"
+          },
+          "args": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/Compare"
+                },
+                {
+                  "$ref": "#/components/schemas/Between"
+                },
+                {
+                  "$ref": "#/components/schemas/InList"
+                },
+                {
+                  "$ref": "#/components/schemas/TextMatch"
+                },
+                {
+                  "$ref": "#/components/schemas/IsNull"
+                },
+                {
+                  "$ref": "#/components/schemas/BBox"
+                },
+                {
+                  "$ref": "#/components/schemas/GeometryFilter"
+                },
+                {
+                  "$ref": "#/components/schemas/NearFeature"
+                },
+                {
+                  "$ref": "#/components/schemas/And-Output"
+                },
+                {
+                  "$ref": "#/components/schemas/Or-Output"
+                },
+                {
+                  "$ref": "#/components/schemas/Not-Output"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "op",
+                "mapping": {
+                  "and": "#/components/schemas/And-Output",
+                  "bbox": "#/components/schemas/BBox",
+                  "between": "#/components/schemas/Between",
+                  "compare": "#/components/schemas/Compare",
+                  "geometry": "#/components/schemas/GeometryFilter",
+                  "in": "#/components/schemas/InList",
+                  "is_null": "#/components/schemas/IsNull",
+                  "near_feature": "#/components/schemas/NearFeature",
+                  "not": "#/components/schemas/Not-Output",
+                  "or": "#/components/schemas/Or-Output",
+                  "text_match": "#/components/schemas/TextMatch"
+                }
+              }
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Args"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "op",
+          "args"
+        ],
+        "title": "And"
+      },
+      "AttributeInfo": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "data_type": {
+            "type": "string",
+            "enum": [
+              "integer",
+              "real",
+              "text",
+              "boolean"
+            ],
+            "title": "Data Type"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "value_domain": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Domain"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "data_type",
+          "label",
+          "description",
+          "unit",
+          "value_domain"
+        ],
+        "title": "AttributeInfo"
+      },
+      "AttributeJoin": {
+        "properties": {
+          "layer": {
+            "type": "string",
+            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+            "title": "Layer",
+            "description": "Lower-case layer or attribute name."
+          },
+          "left_key": {
+            "type": "string",
+            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+            "title": "Left Key",
+            "description": "Attribute of the source layer."
+          },
+          "right_key": {
+            "type": "string",
+            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+            "title": "Right Key",
+            "description": "Attribute of the joined layer."
+          },
+          "fields": {
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+              "description": "Lower-case layer or attribute name."
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Fields"
+          },
+          "prefix": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-z_][a-z0-9_]{0,30}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prefix"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "layer",
+          "left_key",
+          "right_key",
+          "fields"
+        ],
+        "title": "AttributeJoin",
+        "description": "Left join of a layer by key (F-4.6).\n\nJoined fields are addressable by their name, or by ``prefix + name`` when a\nprefix is given; clashes with source attributes are rejected."
+      },
+      "BBox": {
+        "properties": {
+          "op": {
+            "type": "string",
+            "const": "bbox",
+            "title": "Op"
+          },
+          "bbox": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 4,
+            "minItems": 4,
+            "title": "Bbox",
+            "description": "[min_lon, min_lat, max_lon, max_lat] in WGS84."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "op",
+          "bbox"
+        ],
+        "title": "BBox",
+        "description": "Source geometry intersects a WGS84 bounding box, e.g. the map view (F-4.3)."
+      },
+      "Between": {
+        "properties": {
+          "op": {
+            "type": "string",
+            "const": "between",
+            "title": "Op"
+          },
+          "attr": {
+            "type": "string",
+            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+            "title": "Attr",
+            "description": "Lower-case layer or attribute name."
+          },
+          "min": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Min"
+          },
+          "max": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Max"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "op",
+          "attr",
+          "min",
+          "max"
+        ],
+        "title": "Between",
+        "description": "Inclusive value range (F-4.2)."
+      },
+      "Buffer": {
+        "properties": {
+          "distance_m": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Distance M",
+            "description": "Distance in metres."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "distance_m"
+        ],
+        "title": "Buffer",
+        "description": "Replace each source geometry by its buffer (F-4.5)."
+      },
+      "Capabilities": {
+        "properties": {
+          "supported": {
+            "items": {
+              "$ref": "#/components/schemas/Op"
+            },
+            "type": "array",
+            "title": "Supported"
+          },
+          "missing": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/Op"
+            },
+            "type": "object",
+            "title": "Missing"
+          }
+        },
+        "type": "object",
+        "required": [
+          "supported",
+          "missing"
+        ],
+        "title": "Capabilities"
+      },
+      "Categorized": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "categorized",
+            "title": "Kind"
+          },
+          "attr": {
+            "type": "string",
+            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+            "title": "Attr",
+            "description": "Lower-case layer or attribute name."
+          },
+          "colors": {
+            "additionalProperties": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$"
+            },
+            "type": "object",
+            "title": "Colors",
+            "description": "Optional fixed colour per category value."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "attr"
+        ],
+        "title": "Categorized"
+      },
+      "Classified": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "classified",
+            "title": "Kind"
+          },
+          "attr": {
+            "type": "string",
+            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+            "title": "Attr",
+            "description": "Lower-case layer or attribute name."
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "quantile",
+              "equal_interval"
+            ],
+            "title": "Method"
+          },
+          "classes": {
+            "type": "integer",
+            "maximum": 9.0,
+            "minimum": 2.0,
+            "title": "Classes",
+            "default": 5
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "attr",
+          "method"
+        ],
+        "title": "Classified"
+      },
+      "Compare": {
+        "properties": {
+          "op": {
+            "type": "string",
+            "const": "compare",
+            "title": "Op"
+          },
+          "attr": {
+            "type": "string",
+            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+            "title": "Attr",
+            "description": "Lower-case layer or attribute name."
+          },
+          "cmp": {
+            "type": "string",
+            "enum": [
+              "eq",
+              "ne",
+              "lt",
+              "le",
+              "gt",
+              "ge"
+            ],
+            "title": "Cmp"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "op",
+          "attr",
+          "cmp",
+          "value"
+        ],
+        "title": "Compare",
+        "description": "Attribute comparison with a constant (F-4.2)."
+      },
+      "ErrorBody": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "details": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Details",
+            "default": {}
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorBody"
+      },
+      "Feature": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "Feature",
+            "title": "Type",
+            "default": "Feature"
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "properties": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Properties"
+          },
+          "geometry": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geometry"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "properties",
+          "geometry"
+        ],
+        "title": "Feature"
+      },
+      "GeoJSONGeometry": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "Point",
+              "MultiPoint",
+              "LineString",
+              "MultiLineString",
+              "Polygon",
+              "MultiPolygon"
+            ],
+            "title": "Type"
+          },
+          "coordinates": {
+            "items": {},
+            "type": "array",
+            "title": "Coordinates"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "coordinates"
+        ],
+        "title": "GeoJSONGeometry",
+        "description": "GeoJSON geometry in WGS84. Coordinates are checked when compiled."
+      },
+      "GeometryFilter": {
+        "properties": {
+          "op": {
+            "type": "string",
+            "const": "geometry",
+            "title": "Op"
+          },
+          "geometry": {
+            "$ref": "#/components/schemas/GeoJSONGeometry"
+          },
+          "predicate": {
+            "type": "string",
+            "enum": [
+              "intersects",
+              "within",
+              "contains"
+            ],
+            "title": "Predicate",
+            "default": "intersects"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "op",
+          "geometry"
+        ],
+        "title": "GeometryFilter",
+        "description": "Source geometry relates to a drawn geometry (F-4.3)."
+      },
+      "GraduatedSize": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "graduated_size",
+            "title": "Kind"
+          },
+          "attr": {
+            "type": "string",
+            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+            "title": "Attr",
+            "description": "Lower-case layer or attribute name."
+          },
+          "min_size": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Min Size",
+            "default": 4
+          },
+          "max_size": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Max Size",
+            "default": 24
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "attr"
+        ],
+        "title": "GraduatedSize"
+      },
+      "Health": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "degraded"
+            ],
+            "title": "Status"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "backend": {
+            "type": "string",
+            "title": "Backend"
+          },
+          "internal_crs": {
+            "type": "integer",
+            "title": "Internal Crs"
+          },
+          "schema_version": {
+            "type": "string",
+            "title": "Schema Version"
+          },
+          "sample_dataset_version": {
+            "type": "string",
+            "title": "Sample Dataset Version"
+          },
+          "capabilities": {
+            "$ref": "#/components/schemas/Capabilities"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "version",
+          "backend",
+          "internal_crs",
+          "schema_version",
+          "sample_dataset_version",
+          "capabilities"
+        ],
+        "title": "Health"
+      },
+      "InList": {
+        "properties": {
+          "op": {
+            "type": "string",
+            "const": "in",
+            "title": "Op"
+          },
+          "attr": {
+            "type": "string",
+            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+            "title": "Attr",
+            "description": "Lower-case layer or attribute name."
+          },
+          "values": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                }
+              ]
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Values"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "op",
+          "attr",
+          "values"
+        ],
+        "title": "InList",
+        "description": "Value in list (F-4.2)."
+      },
+      "IsNull": {
+        "properties": {
+          "op": {
+            "type": "string",
+            "const": "is_null",
+            "title": "Op"
+          },
+          "attr": {
+            "type": "string",
+            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+            "title": "Attr",
+            "description": "Lower-case layer or attribute name."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "op",
+          "attr"
+        ],
+        "title": "IsNull",
+        "description": "Attribute has no value. Combine with ``not`` for 'has a value'."
+      },
+      "LayerInfo": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "vector",
+              "table"
+            ],
+            "title": "Kind"
+          },
+          "geometry_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geometry Type"
+          },
+          "feature_count": {
+            "type": "integer",
+            "title": "Feature Count"
+          },
+          "bbox_wgs84": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bbox Wgs84"
+          },
+          "dataset_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dataset Version"
+          },
+          "attributes": {
+            "items": {
+              "$ref": "#/components/schemas/AttributeInfo"
+            },
+            "type": "array",
+            "title": "Attributes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "title",
+          "description",
+          "kind",
+          "geometry_type",
+          "feature_count",
+          "bbox_wgs84",
+          "dataset_version",
+          "attributes"
+        ],
+        "title": "LayerInfo"
+      },
+      "Metric": {
+        "properties": {
+          "fn": {
+            "type": "string",
+            "enum": [
+              "count",
+              "sum",
+              "avg",
+              "min",
+              "max"
+            ],
+            "title": "Fn"
+          },
+          "attr": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+                "description": "Lower-case layer or attribute name."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attr",
+            "description": "Source attribute; not used by 'count'."
+          },
+          "as": {
+            "type": "string",
+            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+            "title": "As",
+            "description": "Name of the result attribute."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "fn",
+          "as"
+        ],
+        "title": "Metric"
+      },
+      "NearFeature": {
+        "properties": {
+          "op": {
+            "type": "string",
+            "const": "near_feature",
+            "title": "Op"
+          },
+          "layer": {
+            "type": "string",
+            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+            "title": "Layer",
+            "description": "Lower-case layer or attribute name."
+          },
+          "fid": {
+            "type": "integer",
+            "title": "Fid"
+          },
+          "distance_m": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Distance M",
+            "description": "Distance in metres.",
+            "default": 0
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "op",
+          "layer",
+          "fid"
+        ],
+        "title": "NearFeature",
+        "description": "Source geometry lies within a distance of one reference feature (F-4.3)."
+      },
+      "Not-Input": {
+        "properties": {
+          "op": {
+            "type": "string",
+            "const": "not",
+            "title": "Op"
+          },
+          "arg": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Compare"
+              },
+              {
+                "$ref": "#/components/schemas/Between"
+              },
+              {
+                "$ref": "#/components/schemas/InList"
+              },
+              {
+                "$ref": "#/components/schemas/TextMatch"
+              },
+              {
+                "$ref": "#/components/schemas/IsNull"
+              },
+              {
+                "$ref": "#/components/schemas/BBox"
+              },
+              {
+                "$ref": "#/components/schemas/GeometryFilter"
+              },
+              {
+                "$ref": "#/components/schemas/NearFeature"
+              },
+              {
+                "$ref": "#/components/schemas/And-Input"
+              },
+              {
+                "$ref": "#/components/schemas/Or-Input"
+              },
+              {
+                "$ref": "#/components/schemas/Not-Input"
+              }
+            ],
+            "title": "Arg",
+            "discriminator": {
+              "propertyName": "op",
+              "mapping": {
+                "and": "#/components/schemas/And-Input",
+                "bbox": "#/components/schemas/BBox",
+                "between": "#/components/schemas/Between",
+                "compare": "#/components/schemas/Compare",
+                "geometry": "#/components/schemas/GeometryFilter",
+                "in": "#/components/schemas/InList",
+                "is_null": "#/components/schemas/IsNull",
+                "near_feature": "#/components/schemas/NearFeature",
+                "not": "#/components/schemas/Not-Input",
+                "or": "#/components/schemas/Or-Input",
+                "text_match": "#/components/schemas/TextMatch"
+              }
+            }
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "op",
+          "arg"
+        ],
+        "title": "Not"
+      },
+      "Not-Output": {
+        "properties": {
+          "op": {
+            "type": "string",
+            "const": "not",
+            "title": "Op"
+          },
+          "arg": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Compare"
+              },
+              {
+                "$ref": "#/components/schemas/Between"
+              },
+              {
+                "$ref": "#/components/schemas/InList"
+              },
+              {
+                "$ref": "#/components/schemas/TextMatch"
+              },
+              {
+                "$ref": "#/components/schemas/IsNull"
+              },
+              {
+                "$ref": "#/components/schemas/BBox"
+              },
+              {
+                "$ref": "#/components/schemas/GeometryFilter"
+              },
+              {
+                "$ref": "#/components/schemas/NearFeature"
+              },
+              {
+                "$ref": "#/components/schemas/And-Output"
+              },
+              {
+                "$ref": "#/components/schemas/Or-Output"
+              },
+              {
+                "$ref": "#/components/schemas/Not-Output"
+              }
+            ],
+            "title": "Arg",
+            "discriminator": {
+              "propertyName": "op",
+              "mapping": {
+                "and": "#/components/schemas/And-Output",
+                "bbox": "#/components/schemas/BBox",
+                "between": "#/components/schemas/Between",
+                "compare": "#/components/schemas/Compare",
+                "geometry": "#/components/schemas/GeometryFilter",
+                "in": "#/components/schemas/InList",
+                "is_null": "#/components/schemas/IsNull",
+                "near_feature": "#/components/schemas/NearFeature",
+                "not": "#/components/schemas/Not-Output",
+                "or": "#/components/schemas/Or-Output",
+                "text_match": "#/components/schemas/TextMatch"
+              }
+            }
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "op",
+          "arg"
+        ],
+        "title": "Not"
+      },
+      "Op": {
+        "type": "string",
+        "enum": [
+          "attribute_filter",
+          "bbox_filter",
+          "geometry_filter",
+          "near_feature",
+          "attribute_join",
+          "buffer",
+          "spatial_relation",
+          "aggregate"
+        ],
+        "title": "Op",
+        "description": "Registered operations; each needs certain logical dialect functions (F-2.14)."
+      },
+      "Or-Input": {
+        "properties": {
+          "op": {
+            "type": "string",
+            "const": "or",
+            "title": "Op"
+          },
+          "args": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/Compare"
+                },
+                {
+                  "$ref": "#/components/schemas/Between"
+                },
+                {
+                  "$ref": "#/components/schemas/InList"
+                },
+                {
+                  "$ref": "#/components/schemas/TextMatch"
+                },
+                {
+                  "$ref": "#/components/schemas/IsNull"
+                },
+                {
+                  "$ref": "#/components/schemas/BBox"
+                },
+                {
+                  "$ref": "#/components/schemas/GeometryFilter"
+                },
+                {
+                  "$ref": "#/components/schemas/NearFeature"
+                },
+                {
+                  "$ref": "#/components/schemas/And-Input"
+                },
+                {
+                  "$ref": "#/components/schemas/Or-Input"
+                },
+                {
+                  "$ref": "#/components/schemas/Not-Input"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "op",
+                "mapping": {
+                  "and": "#/components/schemas/And-Input",
+                  "bbox": "#/components/schemas/BBox",
+                  "between": "#/components/schemas/Between",
+                  "compare": "#/components/schemas/Compare",
+                  "geometry": "#/components/schemas/GeometryFilter",
+                  "in": "#/components/schemas/InList",
+                  "is_null": "#/components/schemas/IsNull",
+                  "near_feature": "#/components/schemas/NearFeature",
+                  "not": "#/components/schemas/Not-Input",
+                  "or": "#/components/schemas/Or-Input",
+                  "text_match": "#/components/schemas/TextMatch"
+                }
+              }
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Args"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "op",
+          "args"
+        ],
+        "title": "Or"
+      },
+      "Or-Output": {
+        "properties": {
+          "op": {
+            "type": "string",
+            "const": "or",
+            "title": "Op"
+          },
+          "args": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/Compare"
+                },
+                {
+                  "$ref": "#/components/schemas/Between"
+                },
+                {
+                  "$ref": "#/components/schemas/InList"
+                },
+                {
+                  "$ref": "#/components/schemas/TextMatch"
+                },
+                {
+                  "$ref": "#/components/schemas/IsNull"
+                },
+                {
+                  "$ref": "#/components/schemas/BBox"
+                },
+                {
+                  "$ref": "#/components/schemas/GeometryFilter"
+                },
+                {
+                  "$ref": "#/components/schemas/NearFeature"
+                },
+                {
+                  "$ref": "#/components/schemas/And-Output"
+                },
+                {
+                  "$ref": "#/components/schemas/Or-Output"
+                },
+                {
+                  "$ref": "#/components/schemas/Not-Output"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "op",
+                "mapping": {
+                  "and": "#/components/schemas/And-Output",
+                  "bbox": "#/components/schemas/BBox",
+                  "between": "#/components/schemas/Between",
+                  "compare": "#/components/schemas/Compare",
+                  "geometry": "#/components/schemas/GeometryFilter",
+                  "in": "#/components/schemas/InList",
+                  "is_null": "#/components/schemas/IsNull",
+                  "near_feature": "#/components/schemas/NearFeature",
+                  "not": "#/components/schemas/Not-Output",
+                  "or": "#/components/schemas/Or-Output",
+                  "text_match": "#/components/schemas/TextMatch"
+                }
+              }
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Args"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "op",
+          "args"
+        ],
+        "title": "Or"
+      },
+      "OrderBy": {
+        "properties": {
+          "attr": {
+            "type": "string",
+            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+            "title": "Attr",
+            "description": "Lower-case layer or attribute name."
+          },
+          "dir": {
+            "type": "string",
+            "enum": [
+              "asc",
+              "desc"
+            ],
+            "title": "Dir",
+            "default": "asc"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "attr"
+        ],
+        "title": "OrderBy"
+      },
+      "QueryObject-Input": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "0",
+            "title": "Schema Version",
+            "default": "0"
+          },
+          "source": {
+            "type": "string",
+            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+            "title": "Source",
+            "description": "Lower-case layer or attribute name."
+          },
+          "attribute_join": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AttributeJoin"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "where": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/Compare"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Between"
+                  },
+                  {
+                    "$ref": "#/components/schemas/InList"
+                  },
+                  {
+                    "$ref": "#/components/schemas/TextMatch"
+                  },
+                  {
+                    "$ref": "#/components/schemas/IsNull"
+                  },
+                  {
+                    "$ref": "#/components/schemas/BBox"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GeometryFilter"
+                  },
+                  {
+                    "$ref": "#/components/schemas/NearFeature"
+                  },
+                  {
+                    "$ref": "#/components/schemas/And-Input"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Or-Input"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Not-Input"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "op",
+                  "mapping": {
+                    "and": "#/components/schemas/And-Input",
+                    "bbox": "#/components/schemas/BBox",
+                    "between": "#/components/schemas/Between",
+                    "compare": "#/components/schemas/Compare",
+                    "geometry": "#/components/schemas/GeometryFilter",
+                    "in": "#/components/schemas/InList",
+                    "is_null": "#/components/schemas/IsNull",
+                    "near_feature": "#/components/schemas/NearFeature",
+                    "not": "#/components/schemas/Not-Input",
+                    "or": "#/components/schemas/Or-Input",
+                    "text_match": "#/components/schemas/TextMatch"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Where"
+          },
+          "buffer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Buffer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "spatial_relation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SpatialRelation-Input"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "aggregate": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Aggregate"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "select": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+                  "description": "Lower-case layer or attribute name."
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Select",
+            "description": "Result attributes; all when omitted."
+          },
+          "order_by": {
+            "items": {
+              "$ref": "#/components/schemas/OrderBy"
+            },
+            "type": "array",
+            "title": "Order By"
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit"
+          },
+          "symbology": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/SingleSymbol"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Categorized"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Classified"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GraduatedSize"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "kind",
+                  "mapping": {
+                    "categorized": "#/components/schemas/Categorized",
+                    "classified": "#/components/schemas/Classified",
+                    "graduated_size": "#/components/schemas/GraduatedSize",
+                    "single": "#/components/schemas/SingleSymbol"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Symbology"
+          },
+          "output": {
+            "type": "string",
+            "enum": [
+              "map",
+              "table"
+            ],
+            "title": "Output",
+            "default": "map"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source"
+        ],
+        "title": "GeoTandem query object",
+        "description": "Declarative, backend-neutral description of one analysis."
+      },
+      "QueryObject-Output": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "0",
+            "title": "Schema Version",
+            "default": "0"
+          },
+          "source": {
+            "type": "string",
+            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+            "title": "Source",
+            "description": "Lower-case layer or attribute name."
+          },
+          "attribute_join": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AttributeJoin"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "where": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/Compare"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Between"
+                  },
+                  {
+                    "$ref": "#/components/schemas/InList"
+                  },
+                  {
+                    "$ref": "#/components/schemas/TextMatch"
+                  },
+                  {
+                    "$ref": "#/components/schemas/IsNull"
+                  },
+                  {
+                    "$ref": "#/components/schemas/BBox"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GeometryFilter"
+                  },
+                  {
+                    "$ref": "#/components/schemas/NearFeature"
+                  },
+                  {
+                    "$ref": "#/components/schemas/And-Output"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Or-Output"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Not-Output"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "op",
+                  "mapping": {
+                    "and": "#/components/schemas/And-Output",
+                    "bbox": "#/components/schemas/BBox",
+                    "between": "#/components/schemas/Between",
+                    "compare": "#/components/schemas/Compare",
+                    "geometry": "#/components/schemas/GeometryFilter",
+                    "in": "#/components/schemas/InList",
+                    "is_null": "#/components/schemas/IsNull",
+                    "near_feature": "#/components/schemas/NearFeature",
+                    "not": "#/components/schemas/Not-Output",
+                    "or": "#/components/schemas/Or-Output",
+                    "text_match": "#/components/schemas/TextMatch"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Where"
+          },
+          "buffer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Buffer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "spatial_relation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SpatialRelation-Output"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "aggregate": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Aggregate"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "select": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+                  "description": "Lower-case layer or attribute name."
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Select",
+            "description": "Result attributes; all when omitted."
+          },
+          "order_by": {
+            "items": {
+              "$ref": "#/components/schemas/OrderBy"
+            },
+            "type": "array",
+            "title": "Order By"
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit"
+          },
+          "symbology": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/SingleSymbol"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Categorized"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Classified"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GraduatedSize"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "kind",
+                  "mapping": {
+                    "categorized": "#/components/schemas/Categorized",
+                    "classified": "#/components/schemas/Classified",
+                    "graduated_size": "#/components/schemas/GraduatedSize",
+                    "single": "#/components/schemas/SingleSymbol"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Symbology"
+          },
+          "output": {
+            "type": "string",
+            "enum": [
+              "map",
+              "table"
+            ],
+            "title": "Output",
+            "default": "map"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source"
+        ],
+        "title": "GeoTandem query object",
+        "description": "Declarative, backend-neutral description of one analysis."
+      },
+      "QueryResult": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "FeatureCollection",
+            "title": "Type",
+            "default": "FeatureCollection"
+          },
+          "features": {
+            "items": {
+              "$ref": "#/components/schemas/Feature"
+            },
+            "type": "array",
+            "title": "Features"
+          },
+          "query": {
+            "$ref": "#/components/schemas/QueryObject-Output"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ResultMeta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "features",
+          "query",
+          "meta"
+        ],
+        "title": "QueryResult",
+        "description": "A GeoJSON FeatureCollection plus the query and its provenance."
+      },
+      "ResultMeta": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "title": "Schema Version"
+          },
+          "query_hash": {
+            "type": "string",
+            "title": "Query Hash",
+            "description": "sha256 of the canonical query object."
+          },
+          "data_versions": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Data Versions",
+            "description": "Dataset version of every layer the query touched."
+          },
+          "backend": {
+            "type": "string",
+            "title": "Backend"
+          },
+          "feature_count": {
+            "type": "integer",
+            "title": "Feature Count"
+          },
+          "elapsed_ms": {
+            "type": "number",
+            "title": "Elapsed Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "schema_version",
+          "query_hash",
+          "data_versions",
+          "backend",
+          "feature_count",
+          "elapsed_ms"
+        ],
+        "title": "ResultMeta"
+      },
+      "SingleSymbol": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "single",
+            "title": "Kind"
+          },
+          "color": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$",
+            "title": "Color",
+            "default": "#3366cc"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "title": "SingleSymbol"
+      },
+      "SpatialRelation-Input": {
+        "properties": {
+          "layer": {
+            "type": "string",
+            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+            "title": "Layer",
+            "description": "Lower-case layer or attribute name."
+          },
+          "predicate": {
+            "type": "string",
+            "enum": [
+              "intersects",
+              "within",
+              "contains",
+              "dwithin"
+            ],
+            "title": "Predicate"
+          },
+          "distance_m": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0,
+                "description": "Distance in metres."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distance M"
+          },
+          "where": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/Compare"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Between"
+                  },
+                  {
+                    "$ref": "#/components/schemas/InList"
+                  },
+                  {
+                    "$ref": "#/components/schemas/TextMatch"
+                  },
+                  {
+                    "$ref": "#/components/schemas/IsNull"
+                  },
+                  {
+                    "$ref": "#/components/schemas/BBox"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GeometryFilter"
+                  },
+                  {
+                    "$ref": "#/components/schemas/NearFeature"
+                  },
+                  {
+                    "$ref": "#/components/schemas/And-Input"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Or-Input"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Not-Input"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "op",
+                  "mapping": {
+                    "and": "#/components/schemas/And-Input",
+                    "bbox": "#/components/schemas/BBox",
+                    "between": "#/components/schemas/Between",
+                    "compare": "#/components/schemas/Compare",
+                    "geometry": "#/components/schemas/GeometryFilter",
+                    "in": "#/components/schemas/InList",
+                    "is_null": "#/components/schemas/IsNull",
+                    "near_feature": "#/components/schemas/NearFeature",
+                    "not": "#/components/schemas/Not-Input",
+                    "or": "#/components/schemas/Or-Input",
+                    "text_match": "#/components/schemas/TextMatch"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Where",
+            "description": "Filter on the attributes of ``layer``."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "layer",
+          "predicate"
+        ],
+        "title": "SpatialRelation",
+        "description": "Keep source features related to at least one feature of ``layer`` (F-4.4).\n\nThe predicate reads ``source <predicate> layer``: ``within`` keeps source\nfeatures lying inside a feature of ``layer``."
+      },
+      "SpatialRelation-Output": {
+        "properties": {
+          "layer": {
+            "type": "string",
+            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+            "title": "Layer",
+            "description": "Lower-case layer or attribute name."
+          },
+          "predicate": {
+            "type": "string",
+            "enum": [
+              "intersects",
+              "within",
+              "contains",
+              "dwithin"
+            ],
+            "title": "Predicate"
+          },
+          "distance_m": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0,
+                "description": "Distance in metres."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distance M"
+          },
+          "where": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/Compare"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Between"
+                  },
+                  {
+                    "$ref": "#/components/schemas/InList"
+                  },
+                  {
+                    "$ref": "#/components/schemas/TextMatch"
+                  },
+                  {
+                    "$ref": "#/components/schemas/IsNull"
+                  },
+                  {
+                    "$ref": "#/components/schemas/BBox"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GeometryFilter"
+                  },
+                  {
+                    "$ref": "#/components/schemas/NearFeature"
+                  },
+                  {
+                    "$ref": "#/components/schemas/And-Output"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Or-Output"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Not-Output"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "op",
+                  "mapping": {
+                    "and": "#/components/schemas/And-Output",
+                    "bbox": "#/components/schemas/BBox",
+                    "between": "#/components/schemas/Between",
+                    "compare": "#/components/schemas/Compare",
+                    "geometry": "#/components/schemas/GeometryFilter",
+                    "in": "#/components/schemas/InList",
+                    "is_null": "#/components/schemas/IsNull",
+                    "near_feature": "#/components/schemas/NearFeature",
+                    "not": "#/components/schemas/Not-Output",
+                    "or": "#/components/schemas/Or-Output",
+                    "text_match": "#/components/schemas/TextMatch"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Where",
+            "description": "Filter on the attributes of ``layer``."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "layer",
+          "predicate"
+        ],
+        "title": "SpatialRelation",
+        "description": "Keep source features related to at least one feature of ``layer`` (F-4.4).\n\nThe predicate reads ``source <predicate> layer``: ``within`` keeps source\nfeatures lying inside a feature of ``layer``."
+      },
+      "TextMatch": {
+        "properties": {
+          "op": {
+            "type": "string",
+            "const": "text_match",
+            "title": "Op"
+          },
+          "attr": {
+            "type": "string",
+            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+            "title": "Attr",
+            "description": "Lower-case layer or attribute name."
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Text"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "contains",
+              "starts_with",
+              "ends_with",
+              "equals"
+            ],
+            "title": "Mode",
+            "default": "contains"
+          },
+          "case_sensitive": {
+            "type": "boolean",
+            "title": "Case Sensitive",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "op",
+          "attr",
+          "text"
+        ],
+        "title": "TextMatch",
+        "description": "Text search in a string attribute (F-4.2)."
+      },
+      "ToolDescription": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "effect": {
+            "type": "string",
+            "enum": [
+              "read",
+              "state"
+            ],
+            "title": "Effect"
+          },
+          "input_schema": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Input Schema"
+          },
+          "output_schema": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Output Schema"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "description",
+          "effect",
+          "input_schema",
+          "output_schema"
+        ],
+        "title": "ToolDescription"
+      },
+      "Validation": {
+        "properties": {
+          "valid": {
+            "type": "boolean",
+            "const": true,
+            "title": "Valid",
+            "default": true
+          },
+          "layers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Layers"
+          },
+          "operations": {
+            "items": {
+              "$ref": "#/components/schemas/Op"
+            },
+            "type": "array",
+            "title": "Operations"
+          }
+        },
+        "type": "object",
+        "required": [
+          "layers",
+          "operations"
+        ],
+        "title": "Validation"
+      }
+    }
+  }
+}

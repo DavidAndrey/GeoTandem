@@ -65,3 +65,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     if frontend is not None and Path(frontend, "index.html").exists():
         app.mount("/", SinglePageApp(directory=frontend, html=True), name="frontend")
     return app
+
+
+def openapi_document() -> str:
+    """OpenAPI description as committed in ``frontend/openapi.json`` (tech-stack 4.5)."""
+    import json
+
+    return json.dumps(create_app(Settings()).openapi(), indent=2, ensure_ascii=False) + "\n"

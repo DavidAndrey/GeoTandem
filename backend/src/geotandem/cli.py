@@ -44,11 +44,9 @@ def _serve(args: argparse.Namespace) -> None:
 
 
 def _openapi_export(_: argparse.Namespace) -> None:
-    import json
+    from geotandem.app import openapi_document
 
-    from geotandem.app import create_app
-
-    print(json.dumps(create_app().openapi(), indent=2, ensure_ascii=False))
+    print(openapi_document(), end="")
 
 
 def _migrate(_: argparse.Namespace) -> None:

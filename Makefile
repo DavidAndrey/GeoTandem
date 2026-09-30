@@ -15,7 +15,7 @@ lint:
 
 test:
 	uv run pytest
-	cd frontend && npm test
+	cd frontend && npm test && npm run check:api
 
 # Regenerate every derived artefact from its single source.
 gen:

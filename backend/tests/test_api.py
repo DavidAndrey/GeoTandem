@@ -7,7 +7,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-from geotandem.app import create_app
+from geotandem.app import create_app, openapi_document
 from geotandem.config import Settings
 
 GOLDEN = Path(__file__).parent / "golden"
@@ -101,3 +101,12 @@ async def test_frontend_served_with_client_routing(client: httpx.AsyncClient) ->
         assert response.status_code == 200
         assert "<title>GeoTandem</title>" in response.text
     assert (await client.get("/api/unknown")).status_code == 404
+
+
+def test_committed_openapi_matches_app() -> None:
+    """Frontend types are generated from this file; it must not drift.
+
+    Regenerate with ``make gen``.
+    """
+    committed = Path(__file__).parents[2] / "frontend" / "openapi.json"
+    assert committed.read_text(encoding="utf-8") == openapi_document()
