@@ -1,8 +1,10 @@
-.PHONY: install dev test lint gen check-gen docker e2e
+.PHONY: install dev test lint gen docker docker-run e2e
 
 install:
+	uv python install 3.14
 	uv sync
 	cd frontend && npm ci
+	cd e2e && npm ci && npx playwright install chromium
 
 dev:
 	GEOTANDEM_DATA_DIR=./data GEOTANDEM_LOAD_SAMPLE_DATA=true uv run geotandem serve --reload
@@ -29,3 +31,6 @@ docker:
 
 e2e:
 	cd e2e && npx playwright test
+
+docker-run:
+	docker run --rm -p 8000:8000 -v geotandem-data:/data geotandem
