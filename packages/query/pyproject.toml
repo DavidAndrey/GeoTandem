@@ -1,0 +1,13 @@
+[project]
+name = "geotandem-query"
+version = "0.1.0"
+description = "GeoTandem query-object schema (F-10.3) — depends only on pydantic"
+requires-python = ">=3.13"
+dependencies = ["pydantic>=2.13,<3"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/geotandem_query"]

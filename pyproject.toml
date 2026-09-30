@@ -1,0 +1,44 @@
+[project]
+name = "geotandem-workspace"
+version = "0.1.0"
+requires-python = ">=3.13"
+description = "GeoTandem workspace root (dev tooling only)"
+
+[tool.uv.workspace]
+members = ["packages/query", "backend"]
+
+[tool.uv.sources]
+geotandem-query = { workspace = true }
+geotandem = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "geotandem",
+    "geotandem-query",
+    "pytest>=9,<10",
+    "httpx>=0.28",
+    "ruff>=0.14",
+    "mypy>=1.18",
+    "pre-commit>=4",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.14"
+plugins = ["pydantic.mypy"]
+warn_unused_ignores = true
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["geotandem_query.*", "geotandem.data.*", "geotandem.engine.*"]
+strict = true
+
+[tool.pytest.ini_options]
+testpaths = ["packages/query/tests", "backend/tests"]
+addopts = "-q"
