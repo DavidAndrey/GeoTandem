@@ -1,0 +1,45 @@
+{
+  "query_hash": "8135384fe7d4ba75ce837cc8b1000cd9112d117ed6d488a0887ccc89df1f8712",
+  "features": [
+    {
+      "id": 12,
+      "properties": {
+        "name": "Sonnhalden",
+        "einwohner": 9645,
+        "anteil_u20": 23.6
+      }
+    },
+    {
+      "id": 8,
+      "properties": {
+        "name": "Moosegg",
+        "einwohner": 8482,
+        "anteil_u20": 18.2
+      }
+    },
+    {
+      "id": 2,
+      "properties": {
+        "name": "Eggberg",
+        "einwohner": 7659,
+        "anteil_u20": 17.8
+      }
+    },
+    {
+      "id": 9,
+      "properties": {
+        "name": "Nidfeld",
+        "einwohner": 7121,
+        "anteil_u20": 18.8
+      }
+    },
+    {
+      "id": 1,
+      "properties": {
+        "name": "Brunnwil",
+        "einwohner": 6699,
+        "anteil_u20": 15.1
+      }
+    }
+  ]
+}

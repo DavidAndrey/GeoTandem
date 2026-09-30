@@ -1,0 +1,19 @@
+{
+  "source": "schulen",
+  "spatial_relation": {
+    "layer": "gewaesser",
+    "predicate": "dwithin",
+    "distance_m": 500,
+    "where": {
+      "op": "compare",
+      "attr": "name",
+      "cmp": "eq",
+      "value": "Tand"
+    }
+  },
+  "select": [
+    "name",
+    "typ",
+    "schueler"
+  ]
+}

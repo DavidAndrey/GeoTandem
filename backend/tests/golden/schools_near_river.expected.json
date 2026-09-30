@@ -1,0 +1,149 @@
+{
+  "query_hash": "8e667db3fc240e776a88e81bd3bd811735d5623c5583b600725c9c0d87b675ed",
+  "features": [
+    {
+      "id": 10,
+      "properties": {
+        "name": "Schule 010",
+        "typ": "sekundar",
+        "schueler": 672
+      }
+    },
+    {
+      "id": 11,
+      "properties": {
+        "name": "Schule 011",
+        "typ": "sekundar",
+        "schueler": 764
+      }
+    },
+    {
+      "id": 19,
+      "properties": {
+        "name": "Schule 019",
+        "typ": "kindergarten",
+        "schueler": 33
+      }
+    },
+    {
+      "id": 21,
+      "properties": {
+        "name": "Schule 021",
+        "typ": "sekundar",
+        "schueler": 574
+      }
+    },
+    {
+      "id": 22,
+      "properties": {
+        "name": "Schule 022",
+        "typ": "primar",
+        "schueler": 136
+      }
+    },
+    {
+      "id": 25,
+      "properties": {
+        "name": "Schule 025",
+        "typ": "primar",
+        "schueler": 110
+      }
+    },
+    {
+      "id": 40,
+      "properties": {
+        "name": "Schule 040",
+        "typ": "kindergarten",
+        "schueler": 34
+      }
+    },
+    {
+      "id": 54,
+      "properties": {
+        "name": "Schule 054",
+        "typ": "primar",
+        "schueler": 261
+      }
+    },
+    {
+      "id": 56,
+      "properties": {
+        "name": "Schule 056",
+        "typ": "kindergarten",
+        "schueler": 23
+      }
+    },
+    {
+      "id": 60,
+      "properties": {
+        "name": "Schule 060",
+        "typ": "sekundar",
+        "schueler": 806
+      }
+    },
+    {
+      "id": 79,
+      "properties": {
+        "name": "Schule 079",
+        "typ": "primar",
+        "schueler": 396
+      }
+    },
+    {
+      "id": 84,
+      "properties": {
+        "name": "Schule 084",
+        "typ": "primar",
+        "schueler": 209
+      }
+    },
+    {
+      "id": 97,
+      "properties": {
+        "name": "Schule 097",
+        "typ": "kindergarten",
+        "schueler": 28
+      }
+    },
+    {
+      "id": 103,
+      "properties": {
+        "name": "Schule 103",
+        "typ": "primar",
+        "schueler": 292
+      }
+    },
+    {
+      "id": 110,
+      "properties": {
+        "name": "Schule 110",
+        "typ": "primar",
+        "schueler": 243
+      }
+    },
+    {
+      "id": 112,
+      "properties": {
+        "name": "Schule 112",
+        "typ": "sekundar",
+        "schueler": 800
+      }
+    },
+    {
+      "id": 115,
+      "properties": {
+        "name": "Schule 115",
+        "typ": "primar",
+        "schueler": 105
+      }
+    },
+    {
+      "id": 120,
+      "properties": {
+        "name": "Schule 120",
+        "typ": "kindergarten",
+        "schueler": 34
+      }
+    }
+  ]
+}

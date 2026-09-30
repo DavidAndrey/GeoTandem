@@ -1,0 +1,13 @@
+{
+  "query_hash": "c12c3c7a4509f6fba8577dc21294c2e112fbae8022697bcd30f0e311f6c12cad",
+  "features": [
+    {
+      "id": 48,
+      "properties": {
+        "name": "Schule 048",
+        "typ": "sekundar",
+        "schueler": 619
+      }
+    }
+  ]
+}

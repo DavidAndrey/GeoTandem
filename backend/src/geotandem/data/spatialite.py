@@ -13,11 +13,13 @@ from pyproj import Transformer
 from shapely.geometry import MultiLineString, MultiPoint, MultiPolygon
 from shapely.geometry.base import BaseGeometry
 from sqlalchemy import (
+    Alias,
     Boolean,
     Column,
     ColumnElement,
     Engine,
     Float,
+    FromClause,
     Integer,
     MetaData,
     Select,
@@ -43,6 +45,7 @@ from geotandem.data.interface import (
     Op,
     QueryTimeout,
     SpatialDialect,
+    TextMode,
 )
 from geotandem.db.orm import Layer, LayerAttribute
 
@@ -117,14 +120,39 @@ class SpatiaLiteDialect:
     ) -> ColumnElement[Any]:
         return func.BuildMbr(min_x, min_y, max_x, max_y, srid)
 
+    def text_match(
+        self, column: Any, text: str, mode: TextMode, case_sensitive: bool
+    ) -> ColumnElement[bool]:
+        # SQLite's LIKE ignores ASCII case, so case-sensitive matching uses GLOB.
+        # Known gap: SQLite's lower() folds ASCII only (e.g. not "Ü"); see F-2.14.
+        if mode == "equals":
+            if case_sensitive:
+                return column == text  # type: ignore[no-any-return]
+            return func.lower(column) == text.lower()
+        if case_sensitive:
+            escaped = "".join(f"[{ch}]" if ch in "*?[" else ch for ch in text)
+            pattern = {
+                "contains": f"*{escaped}*",
+                "starts_with": f"{escaped}*",
+                "ends_with": f"*{escaped}",
+            }[mode]
+            return column.op("GLOB")(pattern)  # type: ignore[no-any-return]
+        lowered = func.lower(column)
+        if mode == "contains":
+            return lowered.contains(text.lower(), autoescape=True)
+        if mode == "starts_with":
+            return lowered.startswith(text.lower(), autoescape=True)
+        return lowered.endswith(text.lower(), autoescape=True)
+
     def index_candidates(
-        self, table: Table, search: Any, expand_m: float = 0
+        self, table: FromClause, search: Any, expand_m: float = 0
     ) -> ColumnElement[bool] | None:
         # SpatiaLite never uses the R-tree implicitly; query the SpatialIndex
         # virtual table. ``fid`` is the rowid alias.
+        base = table.element if isinstance(table, Alias) else table
         frame = func.ST_Expand(search, expand_m) if expand_m else search
         candidates = select(_SPATIAL_INDEX.c.rowid).where(
-            _SPATIAL_INDEX.c.f_table_name == table.name,
+            _SPATIAL_INDEX.c.f_table_name == getattr(base, "name", None),
             _SPATIAL_INDEX.c.f_geometry_column == GEOM,
             _SPATIAL_INDEX.c.search_frame == frame,
         )

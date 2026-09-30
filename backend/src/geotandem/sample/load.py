@@ -15,6 +15,7 @@ from typing import Any
 from shapely.geometry import shape
 from shapely.geometry.base import BaseGeometry
 
+from geotandem.catalog import get_layer
 from geotandem.data import AttributeSpec, DataBackend, NewLayer
 from geotandem.geo import reprojector
 from geotandem.sample import DATA_DIR
@@ -87,10 +88,5 @@ def load_sample(backend: DataBackend, directory: Path = DATA_DIR) -> list[str]:
 
 
 def _version_of(backend: DataBackend, name: str) -> str | None:
-    from sqlalchemy import select
-    from sqlalchemy.orm import Session
-
-    from geotandem.db.orm import Layer
-
-    with Session(backend.engine) as session:
-        return session.scalar(select(Layer.dataset_version).where(Layer.name == name))
+    info = get_layer(backend.engine, name)
+    return info.dataset_version if info else None

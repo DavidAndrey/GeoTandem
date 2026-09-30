@@ -1,0 +1,30 @@
+{
+  "source": "gemeinden",
+  "attribute_join": {
+    "layer": "bevoelkerung",
+    "left_key": "gem_nr",
+    "right_key": "gem_nr",
+    "fields": [
+      "einwohner",
+      "anteil_u20"
+    ]
+  },
+  "where": {
+    "op": "compare",
+    "attr": "einwohner",
+    "cmp": "ge",
+    "value": 6000
+  },
+  "select": [
+    "name",
+    "einwohner",
+    "anteil_u20"
+  ],
+  "order_by": [
+    {
+      "attr": "einwohner",
+      "dir": "desc"
+    }
+  ],
+  "output": "table"
+}

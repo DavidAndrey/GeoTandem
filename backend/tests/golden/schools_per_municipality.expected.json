@@ -1,0 +1,125 @@
+{
+  "query_hash": "f9a2ee3df525efac2e01e2ae8ab6af3712a5ef781c7f4540c8cbde4034ce46e8",
+  "features": [
+    {
+      "id": 9,
+      "properties": {
+        "gem_nr": 109,
+        "name": "Nidfeld",
+        "anzahl": 11,
+        "schueler_total": 3552,
+        "schueler_mittel": 322.909091
+      }
+    },
+    {
+      "id": 2,
+      "properties": {
+        "gem_nr": 102,
+        "name": "Eggberg",
+        "anzahl": 8,
+        "schueler_total": 2808,
+        "schueler_mittel": 351.0
+      }
+    },
+    {
+      "id": 4,
+      "properties": {
+        "gem_nr": 104,
+        "name": "Grundmatt",
+        "anzahl": 8,
+        "schueler_total": 2855,
+        "schueler_mittel": 356.875
+      }
+    },
+    {
+      "id": 6,
+      "properties": {
+        "gem_nr": 106,
+        "name": "Kellenberg",
+        "anzahl": 8,
+        "schueler_total": 3859,
+        "schueler_mittel": 482.375
+      }
+    },
+    {
+      "id": 11,
+      "properties": {
+        "gem_nr": 111,
+        "name": "Rütiwil",
+        "anzahl": 8,
+        "schueler_total": 3526,
+        "schueler_mittel": 440.75
+      }
+    },
+    {
+      "id": 3,
+      "properties": {
+        "gem_nr": 103,
+        "name": "Farnach",
+        "anzahl": 7,
+        "schueler_total": 1435,
+        "schueler_mittel": 205.0
+      }
+    },
+    {
+      "id": 7,
+      "properties": {
+        "gem_nr": 107,
+        "name": "Lindwil",
+        "anzahl": 7,
+        "schueler_total": 2811,
+        "schueler_mittel": 401.571429
+      }
+    },
+    {
+      "id": 8,
+      "properties": {
+        "gem_nr": 108,
+        "name": "Moosegg",
+        "anzahl": 7,
+        "schueler_total": 2090,
+        "schueler_mittel": 298.571429
+      }
+    },
+    {
+      "id": 12,
+      "properties": {
+        "gem_nr": 112,
+        "name": "Sonnhalden",
+        "anzahl": 7,
+        "schueler_total": 2492,
+        "schueler_mittel": 356.0
+      }
+    },
+    {
+      "id": 5,
+      "properties": {
+        "gem_nr": 105,
+        "name": "Hohwil",
+        "anzahl": 6,
+        "schueler_total": 2610,
+        "schueler_mittel": 435.0
+      }
+    },
+    {
+      "id": 10,
+      "properties": {
+        "gem_nr": 110,
+        "name": "Oberried",
+        "anzahl": 4,
+        "schueler_total": 1189,
+        "schueler_mittel": 297.25
+      }
+    },
+    {
+      "id": 1,
+      "properties": {
+        "gem_nr": 101,
+        "name": "Brunnwil",
+        "anzahl": 3,
+        "schueler_total": 806,
+        "schueler_mittel": 268.666667
+      }
+    }
+  ]
+}

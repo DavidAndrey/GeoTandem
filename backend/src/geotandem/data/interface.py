@@ -13,10 +13,11 @@ from enum import StrEnum
 from typing import Any, Literal, Protocol
 
 from shapely.geometry.base import BaseGeometry
-from sqlalchemy import ColumnElement, Engine, Select, Table
+from sqlalchemy import ColumnElement, Engine, FromClause, Select, Table
 
 AttributeType = Literal["integer", "real", "text", "boolean"]
 LayerKind = Literal["vector", "table"]
+TextMode = Literal["contains", "starts_with", "ends_with", "equals"]
 
 
 class Op(StrEnum):
@@ -101,10 +102,16 @@ class SpatialDialect(Protocol):
         self, min_x: float, min_y: float, max_x: float, max_y: float, srid: int
     ) -> ColumnElement[Any]: ...
 
+    def text_match(
+        self, column: Any, text: str, mode: TextMode, case_sensitive: bool
+    ) -> ColumnElement[bool]:
+        """Text search with identical semantics on every backend (F-2.14)."""
+        ...
+
     def index_candidates(
-        self, table: Table, search: Any, expand_m: float = 0
+        self, table: FromClause, search: Any, expand_m: float = 0
     ) -> ColumnElement[bool] | None:
-        """Optional spatial-index prefilter on ``table`` for features near ``search``.
+        """Optional spatial-index prefilter on ``table`` (or an alias of it).
 
         Returns ``None`` where the backend's planner uses the index by itself.
         """

@@ -1,0 +1,30 @@
+{
+  "source": "schulen",
+  "where": {
+    "op": "and",
+    "args": [
+      {
+        "op": "compare",
+        "attr": "typ",
+        "cmp": "eq",
+        "value": "sekundar"
+      },
+      {
+        "op": "near_feature",
+        "layer": "strassen",
+        "fid": 1,
+        "distance_m": 1000
+      }
+    ]
+  },
+  "spatial_relation": {
+    "layer": "gemeinden",
+    "predicate": "within",
+    "where": {
+      "op": "text_match",
+      "attr": "name",
+      "text": "egg",
+      "mode": "starts_with"
+    }
+  }
+}

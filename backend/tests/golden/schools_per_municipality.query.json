@@ -1,0 +1,46 @@
+{
+  "source": "schulen",
+  "where": {
+    "op": "in",
+    "attr": "typ",
+    "values": [
+      "primar",
+      "sekundar"
+    ]
+  },
+  "aggregate": {
+    "by_layer": "gemeinden",
+    "area_fields": [
+      "gem_nr",
+      "name"
+    ],
+    "metrics": [
+      {
+        "fn": "count",
+        "as": "anzahl"
+      },
+      {
+        "fn": "sum",
+        "attr": "schueler",
+        "as": "schueler_total"
+      },
+      {
+        "fn": "avg",
+        "attr": "schueler",
+        "as": "schueler_mittel"
+      }
+    ]
+  },
+  "order_by": [
+    {
+      "attr": "anzahl",
+      "dir": "desc"
+    }
+  ],
+  "symbology": {
+    "kind": "classified",
+    "attr": "anzahl",
+    "method": "quantile",
+    "classes": 4
+  }
+}
