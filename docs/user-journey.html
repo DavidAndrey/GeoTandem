@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GeoTandem User Journey</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column (~760px) of proposals; each proposal = short pitch + a drafted visual, diagrams scroll inside their own frame on phones */
+:root {
+  --paper: #f3f5f1;          /* map paper, slight green bias */
+  --sheet: #fbfcfa;
+  --ink: #1d2a2b;
+  --ink-soft: #536264;
+  --rule: #d5ddd6;
+  --human: #b8621b;          /* ochre: what the person does */
+  --human-wash: #f6e6d6;
+  --model: #2a6f97;          /* lake blue: what the model does */
+  --model-wash: #dcebf3;
+  --system: #4f7a4a;         /* forest: what the application executes */
+  --system-wash: #e1ecdd;
+  --gate: #a23b3b;
+  --gate-wash: #f5dede;
+  --font-display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --font-body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #151c1d; --sheet: #1c2526; --ink: #e4ebe6; --ink-soft: #9aaba7; --rule: #314041;
+    --human: #e3954f; --human-wash: #3a2a1c; --model: #6fb3dc; --model-wash: #18303f;
+    --system: #8dbf86; --system-wash: #1f3320; --gate: #e07a7a; --gate-wash: #3d2222;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #151c1d; --sheet: #1c2526; --ink: #e4ebe6; --ink-soft: #9aaba7; --rule: #314041;
+  --human: #e3954f; --human-wash: #3a2a1c; --model: #6fb3dc; --model-wash: #18303f;
+  --system: #8dbf86; --system-wash: #1f3320; --gate: #e07a7a; --gate-wash: #3d2222;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--paper); color: var(--ink);
+  font: 400 17px/1.55 var(--font-body);
+  padding: 0 20px;
+}
+.wrap { max-width: 800px; margin: 0 auto; padding-block: 48px 80px; display: flex; flex-direction: column; gap: 64px; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 700; line-height: 1.15; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(2rem, 5vw, 2.9rem); letter-spacing: -0.01em; }
+h2 { font-size: 1.6rem; }
+h3 { font-size: 1.1rem; font-weight: 500; }
+p { margin: 0; max-width: 65ch; }
+.eyebrow { font: 600 0.75rem/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+.lede { font-size: 1.15rem; color: var(--ink-soft); }
+header { display: flex; flex-direction: column; gap: 16px; }
+section { display: flex; flex-direction: column; gap: 18px; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 0.9rem; color: var(--ink-soft); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.dot { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+.dot.h { background: var(--human); } .dot.m { background: var(--model); } .dot.s { background: var(--system); } .dot.g { background: var(--gate); }
+
+.frame { background: var(--sheet); border: 1px solid var(--rule); border-radius: 10px; padding: 20px; overflow-x: auto; }
+.frame svg { display: block; min-width: 640px; width: 100%; height: auto; }
+svg text { font-family: var(--font-body); fill: var(--ink); }
+svg .lbl { font-size: 14px; }
+svg .sm { font-size: 12px; fill: var(--ink-soft); }
+svg .mono { font-family: var(--font-mono); font-size: 11.5px; }
+svg .ttl { font-family: var(--font-display); font-weight: 700; font-size: 15px; }
+svg .box { fill: var(--sheet); stroke: var(--rule); stroke-width: 1.5; }
+svg .bh { fill: var(--human-wash); stroke: var(--human); stroke-width: 1.5; }
+svg .bm { fill: var(--model-wash); stroke: var(--model); stroke-width: 1.5; }
+svg .bs { fill: var(--system-wash); stroke: var(--system); stroke-width: 1.5; }
+svg .core { fill: var(--sheet); stroke: var(--ink); stroke-width: 2; }
+svg .arr { stroke: var(--ink-soft); stroke-width: 1.6; fill: none; }
+svg .arr-h { stroke: var(--human); stroke-width: 1.6; fill: none; stroke-dasharray: 5 4; }
+svg .head { fill: var(--ink-soft); }
+svg .head-h { fill: var(--human); }
+svg .ring { fill: none; stroke: var(--rule); stroke-width: 1.5; stroke-dasharray: 3 5; }
+
+/* pitch */
+.pitch { background: var(--sheet); border: 1px solid var(--rule); border-radius: 10px; padding: 24px; display: grid; gap: 16px; }
+.pitch blockquote { margin: 0; font: 500 1.35rem/1.35 var(--font-display); text-wrap: balance; }
+.pitch .three { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; }
+.pitch .three div { display: flex; flex-direction: column; gap: 4px; font-size: 0.95rem; }
+.pitch .three b { font-family: var(--font-display); font-weight: 500; font-size: 1rem; }
+
+/* journey */
+.persona { display: flex; gap: 14px; align-items: flex-start; }
+.avatar { flex: none; width: 44px; height: 44px; border-radius: 50%; background: var(--human-wash); border: 2px solid var(--human); display: grid; place-items: center; font: 700 1rem var(--font-display); color: var(--human); }
+.persona p { font-size: 0.98rem; }
+.question { font-style: italic; }
+.dial { display: flex; flex-direction: column; gap: 8px; }
+.dial-row { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
+.dial-row button {
+  font: 600 0.92rem var(--font-body); color: var(--ink-soft); background: var(--sheet);
+  border: 0; border-left: 1px solid var(--rule); padding: 10px 6px; cursor: pointer;
+}
+.dial-row button:first-child { border-left: 0; }
+.dial-row button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.dial-row button:focus-visible { outline: 2px solid var(--model); outline-offset: -3px; }
+.dial-ends { display: flex; justify-content: space-between; font-size: 0.82rem; color: var(--ink-soft); }
+.dial-note { font-size: 0.92rem; color: var(--ink-soft); min-height: 2.8em; }
+ol.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+ol.steps li { display: grid; grid-template-columns: 34px minmax(0,1fr) auto; gap: 12px; align-items: start; padding: 12px 0; border-top: 1px solid var(--rule); }
+ol.steps li:last-child { border-bottom: 1px solid var(--rule); }
+.n { font: 600 0.85rem/1.6 var(--font-mono); color: var(--ink-soft); }
+.st h3 { margin-bottom: 2px; }
+.st p { font-size: 0.95rem; color: var(--ink-soft); }
+.chip { font: 600 0.72rem/1 var(--font-mono); letter-spacing: 0.05em; text-transform: uppercase; padding: 6px 8px; border-radius: 5px; white-space: nowrap; border: 1px solid; }
+.chip.h { color: var(--human); background: var(--human-wash); border-color: var(--human); }
+.chip.m { color: var(--model); background: var(--model-wash); border-color: var(--model); }
+.chip.s { color: var(--system); background: var(--system-wash); border-color: var(--system); }
+.chip.g { color: var(--gate); background: var(--gate-wash); border-color: var(--gate); }
+.chip.x { color: var(--ink-soft); background: transparent; border-color: var(--rule); text-decoration: line-through; }
+li.skipped .st { opacity: 0.5; }
+.note { font-size: 0.95rem; background: var(--sheet); border: 1px solid var(--rule); border-radius: 8px; padding: 12px 14px; }
+.caveat { font-size: 0.88rem; color: var(--ink-soft); }
+
+/* goals */
+.goals { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; }
+.goal { background: var(--sheet); border: 1px solid var(--rule); border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+.goal ul { margin: 0; padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; font-size: 0.93rem; }
+.goal li { display: grid; grid-template-columns: 26px minmax(0,1fr); }
+.goal li span { font: 600 0.78rem/1.6 var(--font-mono); color: var(--ink-soft); }
+
+.road { display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap: 0; position: relative; }
+.stage { padding: 14px 10px 0; border-top: 3px solid var(--ink); position: relative; display: flex; flex-direction: column; gap: 4px; }
+.stage::before { content: ""; position: absolute; top: -8px; left: 10px; width: 13px; height: 13px; border-radius: 50%; background: var(--paper); border: 3px solid var(--ink); }
+.stage b { font: 600 0.8rem var(--font-mono); color: var(--ink-soft); }
+.stage span { font-size: 0.92rem; line-height: 1.3; }
+.stage.now { border-top-color: var(--human); }
+.stage.now::before { border-color: var(--human); background: var(--human); }
+.track { margin-top: 14px; font-size: 0.9rem; color: var(--ink-soft); border: 1px dashed var(--rule); border-radius: 8px; padding: 8px 12px; }
+
+/* not */
+.notlist { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px 24px; margin: 0; padding: 0; list-style: none; }
+.notlist li { display: grid; grid-template-columns: 22px minmax(0,1fr); font-size: 0.95rem; }
+.notlist li::before { content: "×"; color: var(--gate); font-weight: 700; }
+
+/* packaging */
+table { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
+.tbl { overflow-x: auto; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font: 600 0.75rem var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); }
+
+hr { border: 0; border-top: 1px solid var(--rule); margin: 0; }
+
+@media (max-width: 720px) {
+  .pitch .three, .goals { grid-template-columns: minmax(0,1fr); }
+  .notlist { grid-template-columns: minmax(0,1fr); }
+  .road { grid-template-columns: repeat(2, minmax(0,1fr)); row-gap: 22px; }
+  ol.steps li { grid-template-columns: 28px minmax(0,1fr); }
+  ol.steps .chip { grid-column: 2; justify-self: start; }
+  .dial-row button { font-size: 0.8rem; padding: 10px 2px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  ol.steps li { transition: opacity .2s; }
+  .chip { transition: background-color .2s, color .2s; }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<header>
+  <span class="eyebrow">Einstieg · zur Vision v0.4</span>
+  <h1>GeoTandem User Journey</h1>
+  <p class="lede">vision.md erklärt das Warum und das Wie für Leute, die bauen. Wer neu dazukommt, braucht zuerst ein Bild: Wer benutzt das, was passiert auf dem Bildschirm, und wo greift der Mensch ein. Diese Seite zeigt es an einer Beispielfrage und in einigen Bildern.</p>
+  <div class="legend" aria-label="Farblegende">
+    <span><i class="dot h"></i>Mensch handelt</span>
+    <span><i class="dot m"></i>Modell schlägt vor</span>
+    <span><i class="dot s"></i>Anwendung führt aus</span>
+    <span><i class="dot g"></i>Freigabe nötig</span>
+  </div>
+</header>
+
+<!-- 1 PITCH -->
+<section id="pitch">
+  <span class="eyebrow">Die Idee in einem Satz</span>
+  <h2>Mensch und Modell fahren Tandem</h2>
+  <div class="pitch">
+    <blockquote>Man stellt eine räumliche Frage in normaler Sprache. Das Modell schlägt eine Abfrage vor. Der Mensch entscheidet, wie genau er sie vorher sehen will.</blockquote>
+    <div class="three">
+      <div><b>Für wen</b>Fachleute in Verwaltung und Fachstellen, die keine GIS-Spezialisten sind.</div>
+      <div><b>Was neu ist</b>Wie viel das Modell ohne Rückfrage tun darf, ist einstellbar.</div>
+      <div><b>Was bleibt</b>Jedes Ergebnis lässt sich als lesbare Abfrage nachprüfen und ohne Modell wiederholen.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 2 JOURNEY -->
+<section id="journey">
+  <span class="eyebrow">User Journey</span>
+  <h2>Eine Frage, von Anfang bis Ende</h2>
+  <div class="persona">
+    <div class="avatar" aria-hidden="true">P</div>
+    <p>Petra arbeitet im Schulamt der Beispielregion Tandemtal und hat kein GIS-Training. Ihre Frage: <span class="question">„Welche Schulen liegen im 500-Meter-Umkreis von Hauptverkehrsstrassen in Gebieten mit hohem Kinderanteil?"</span></p>
+  </div>
+
+  <div class="dial">
+    <div class="dial-row" role="group" aria-label="HITL-Stufe wählen" id="dial">
+      <button type="button" id="lvl-0" data-level="0">Assistenz</button>
+      <button type="button" id="lvl-1" data-level="1" aria-pressed="true">Review</button>
+      <button type="button" id="lvl-2" data-level="2">Auto mit Undo</button>
+      <button type="button" id="lvl-3" data-level="3">Autonom</button>
+    </div>
+    <div class="dial-ends"><span>Mensch lenkt</span><span>Modell lenkt</span></div>
+    <p class="dial-note" id="dial-note"></p>
+  </div>
+
+  <ol class="steps" id="steps"></ol>
+  <p class="caveat">Die vier Stufen sind Option A aus Abschnitt 8.1 der Vision. Der Schnitt ist noch offen; der Regler zeigt nur das Prinzip.</p>
+  <p class="note">Die wählbaren Optionen im Werkzeug sind auch für Usability-Tests gedacht: Modus A oder B, Direktabfrage oder Werkzeugkette und die einzelnen Kontrollstufen. Dieselbe Frage lässt sich so mit verschiedenen Einstellungen durchspielen, und Tests zeigen, welche Variante Anwenderinnen und Anwender verstehen und ihr vertrauen.</p>
+</section>
+
+<!-- 3 MODES -->
+<section id="modes">
+  <span class="eyebrow">Die zwei Modi</span>
+  <h2>Zwei Eingänge, ein gemeinsamer Zustand</h2>
+  <div class="frame">
+    <svg viewBox="0 0 760 330" role="img" aria-labelledby="modes-t">
+      <title id="modes-t">Klassik-Modus und LLM-Modus erzeugen dasselbe Abfrageobjekt, das die Anwendung ausführt</title>
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="head"/></marker>
+        <marker id="ahh" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="head-h"/></marker>
+      </defs>
+      <!-- Mode A -->
+      <rect x="10" y="20" width="200" height="110" rx="8" class="bh"/>
+      <text x="26" y="48" class="ttl">Modus A · Klassik</text>
+      <text x="26" y="74" class="lbl">Layer wählen</text>
+      <text x="26" y="96" class="lbl">Filter setzen</text>
+      <text x="26" y="118" class="lbl">Darstellung gestalten</text>
+      <!-- Mode B -->
+      <rect x="10" y="190" width="200" height="120" rx="8" class="bm"/>
+      <text x="26" y="218" class="ttl">Modus B · LLM-Support</text>
+      <text x="26" y="244" class="lbl">Frage als Text</text>
+      <text x="26" y="268" class="sm">Direktabfrage oder</text>
+      <text x="26" y="286" class="sm">Werkzeugkette</text>
+      <!-- core -->
+      <rect x="270" y="80" width="220" height="170" rx="10" class="core"/>
+      <text x="286" y="108" class="ttl">Abfrageobjekt</text>
+      <text x="286" y="128" class="sm">die gemeinsame Beschreibung</text>
+      <text x="286" y="156" class="mono">layer: schulen</text>
+      <text x="286" y="174" class="mono">near: strassen.haupt</text>
+      <text x="286" y="192" class="mono">  within: 500 m</text>
+      <text x="286" y="210" class="mono">where: kinderanteil hoch</text>
+      <text x="286" y="232" class="sm">lesbar · prüfbar · wiederholbar</text>
+      <!-- arrows in -->
+      <path d="M210,75 C245,75 245,120 268,120" class="arr" marker-end="url(#ah)"/>
+      <path d="M210,250 C245,250 245,210 268,210" class="arr" marker-end="url(#ah)"/>
+      <!-- back arrow: model result lands in classic controls -->
+      <path d="M330,80 C330,30 260,20 214,40" class="arr-h" marker-end="url(#ahh)"/>
+      <text x="250" y="22" class="sm">landet in denselben Bedienelementen</text>
+      <!-- engine -->
+      <rect x="540" y="125" width="80" height="80" rx="8" class="bs"/>
+      <text x="580" y="160" class="lbl" text-anchor="middle">Anwendung</text>
+      <text x="580" y="178" class="lbl" text-anchor="middle">führt aus</text>
+      <path d="M490,165 L536,165" class="arr" marker-end="url(#ah)"/>
+      <!-- outputs -->
+      <path d="M620,145 C640,145 640,70 660,70" class="arr" marker-end="url(#ah)"/>
+      <path d="M620,165 L660,165" class="arr" marker-end="url(#ah)"/>
+      <path d="M620,185 C640,185 640,260 660,260" class="arr" marker-end="url(#ah)"/>
+      <rect x="664" y="50" width="86" height="40" rx="6" class="box"/><text x="707" y="75" class="lbl" text-anchor="middle">Karte</text>
+      <rect x="664" y="145" width="86" height="40" rx="6" class="box"/><text x="707" y="170" class="lbl" text-anchor="middle">Tabelle</text>
+      <rect x="664" y="240" width="86" height="40" rx="6" class="box"/><text x="707" y="265" class="lbl" text-anchor="middle">Diagramm</text>
+    </svg>
+  </div>
+  <p>Das Modell ersetzt die Oberfläche nicht, es füllt sie aus. Was das Modell vorschlägt, kann man danach von Hand weiterbearbeiten, und eine von Hand gebaute Analyse kann Ausgangspunkt für eine Frage sein.</p>
+</section>
+
+<!-- 4 GLOBAL ELEMENTS -->
+<section id="elements">
+  <span class="eyebrow">Die Gesamtlandkarte</span>
+  <h2>Wer, was und wohin</h2>
+  <div class="frame">
+    <svg viewBox="0 0 760 420" role="img" aria-labelledby="map-t">
+      <title id="map-t">Übersicht: Rollen, Bausteine im Kern und Anbindungen nach aussen</title>
+      <defs>
+        <marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="head"/></marker>
+      </defs>
+      <!-- Roles column -->
+      <text x="10" y="24" class="sm">WER</text>
+      <rect x="10" y="38" width="170" height="74" rx="8" class="bh"/>
+      <text x="24" y="62" class="ttl">Administrator</text>
+      <text x="24" y="82" class="sm">lädt Daten, wählt Modelle,</text>
+      <text x="24" y="98" class="sm">legt Stufen und Regeln fest</text>
+      <rect x="10" y="130" width="170" height="74" rx="8" class="bh"/>
+      <text x="24" y="154" class="ttl">Anwenderin</text>
+      <text x="24" y="174" class="sm">fragt, prüft, gibt frei,</text>
+      <text x="24" y="190" class="sm">exportiert</text>
+      <rect x="10" y="222" width="170" height="74" rx="8" class="bm"/>
+      <text x="24" y="246" class="ttl">Fremder KI-Agent</text>
+      <text x="24" y="266" class="sm">z. B. Claude Desktop,</text>
+      <text x="24" y="282" class="sm">gleiche Regeln wie oben</text>
+
+      <!-- Core -->
+      <text x="230" y="24" class="sm">GEOTANDEM</text>
+      <rect x="230" y="38" width="330" height="330" rx="12" class="core"/>
+      <rect x="250" y="56" width="290" height="50" rx="7" class="box"/>
+      <text x="264" y="78" class="ttl">Oberfläche</text>
+      <text x="264" y="96" class="sm">Karte, Klassik-Bedienung, Fragefeld</text>
+      <rect x="250" y="118" width="290" height="50" rx="7" class="bh"/>
+      <text x="264" y="140" class="ttl">Kontrollstufe (HITL)</text>
+      <text x="264" y="158" class="sm">wie viel das Modell ohne Rückfrage darf</text>
+      <rect x="250" y="180" width="140" height="62" rx="7" class="bm"/>
+      <text x="264" y="204" class="ttl">Modell</text>
+      <text x="264" y="222" class="sm">lokal, Cloud optional</text>
+      <rect x="400" y="180" width="140" height="62" rx="7" class="bs"/>
+      <text x="414" y="204" class="ttl">Werkzeuge</text>
+      <text x="414" y="222" class="sm">Puffer, Filter, Join …</text>
+      <rect x="250" y="254" width="290" height="44" rx="7" class="bs"/>
+      <text x="264" y="281" class="ttl">Ausführung</text>
+      <text x="360" y="281" class="sm">macht aus Abfragen Ergebnisse</text>
+      <rect x="250" y="310" width="290" height="44" rx="7" class="box"/>
+      <text x="264" y="337" class="ttl">Layer</text>
+      <text x="320" y="337" class="sm">Schulen, Strassen, Gemeinden …</text>
+
+      <!-- role arrows -->
+      <path d="M180,75 L228,75" class="arr" marker-end="url(#ah2)"/>
+      <path d="M180,167 L228,140" class="arr" marker-end="url(#ah2)"/>
+      <path d="M180,259 L228,220" class="arr" marker-end="url(#ah2)"/>
+      <text x="186" y="252" class="sm">MCP</text>
+
+      <!-- Outward -->
+      <text x="600" y="24" class="sm">NACH AUSSEN</text>
+      <rect x="600" y="38" width="150" height="100" rx="8" class="box"/>
+      <text x="614" y="62" class="ttl">Als Werkzeugkiste</text>
+      <text x="614" y="82" class="sm">andere KI-Clients nutzen</text>
+      <text x="614" y="98" class="sm">GeoTandems Werkzeuge</text>
+      <text x="614" y="122" class="mono">MCP-Server</text>
+      <rect x="600" y="160" width="150" height="100" rx="8" class="box"/>
+      <text x="614" y="184" class="ttl">Fremde Dienste</text>
+      <text x="614" y="204" class="sm">Geocoding, Statistik,</text>
+      <text x="614" y="220" class="sm">Fachdaten einbinden</text>
+      <text x="614" y="244" class="mono">MCP-Client</text>
+      <path d="M560,210 L598,210" class="arr" marker-end="url(#ah2)"/>
+      <path d="M598,88 L562,88" class="arr" marker-end="url(#ah2)"/>
+      <rect x="600" y="282" width="150" height="86" rx="8" class="box"/>
+      <text x="614" y="306" class="ttl">Datenhaltung</text>
+      <text x="614" y="326" class="sm">SpatiaLite zum Start,</text>
+      <text x="614" y="342" class="sm">PostGIS im Betrieb</text>
+      <path d="M598,332 L562,332" class="arr" marker-end="url(#ah2)"/>
+
+      <text x="10" y="402" class="sm">Daten bleiben im Haus: Betrieb mit lokalem Modell ist der Normalfall.</text>
+    </svg>
+  </div>
+</section>
+
+<!-- 5 GOALS + ROADMAP -->
+<section id="goals">
+  <span class="eyebrow">Ziele und Weg</span>
+  <h2>Woran wir merken, dass es klappt</h2>
+  <div class="goals">
+    <div class="goal">
+      <h3>Zugänglich</h3>
+      <ul>
+        <li><span>1</span>Jemand ohne GIS-Wissen beantwortet eine mehrschichtige Frage per Text.</li>
+        <li><span>4</span>Man sieht an einem Beispiel, wie eine Prüfung einen Modellfehler abfängt.</li>
+        <li><span>3</span>Dieselbe Frage lässt sich auf beiden Wegen stellen und vergleichen.</li>
+      </ul>
+    </div>
+    <div class="goal">
+      <h3>Nachvollziehbar</h3>
+      <ul>
+        <li><span>2</span>Was das Modell gemacht hat, lässt sich von Hand nachbauen.</li>
+        <li><span>9</span>Bevor ein Modell freigegeben wird, ist gemessen, wie gut es ist.</li>
+        <li><span>6</span>Auch ein fremder KI-Agent arbeitet unter denselben Regeln.</li>
+      </ul>
+    </div>
+    <div class="goal">
+      <h3>Unabhängig</h3>
+      <ul>
+        <li><span>5</span>Alles läuft lokal mit einem selbst gehosteten Modell.</li>
+        <li><span>7</span>Die Datenbank lässt sich wechseln, ohne Code anzupassen.</li>
+        <li><span>8</span>Das Modell lässt sich mit vertretbarem Aufwand austauschen.</li>
+      </ul>
+    </div>
+  </div>
+  <p class="caveat">Die Ziffern verweisen auf die Erfolgskriterien in Abschnitt 9 der Vision.</p>
+
+  <h3>Der Weg in sechs Etappen</h3>
+  <div class="road" aria-label="Etappen E1 bis E6">
+    <div class="stage now"><b>E1</b><span>GIS-Anwendung ohne Modell</span></div>
+    <div class="stage"><b>E2</b><span>Lokales Modell und Kontrollstufen</span></div>
+    <div class="stage"><b>E3</b><span>Modelle messen und vergleichen</span></div>
+    <div class="stage"><b>E4</b><span>Werkzeuge für fremde Agenten</span></div>
+    <div class="stage"><b>E5</b><span>Diagramme, Kennzahlen, Export</span></div>
+    <div class="stage"><b>E6</b><span>Fremde Dienste einbinden</span></div>
+  </div>
+  <p class="track">Daneben läuft der Umstieg von SpatiaLite auf PostgreSQL/PostGIS.</p>
+</section>
+
+<!-- 6 NOT -->
+<section id="not">
+  <span class="eyebrow">Abgrenzung</span>
+  <h2>Was GeoTandem nicht ist</h2>
+  <ul class="notlist">
+    <li>Kein Ersatz für QGIS oder ArcGIS</li>
+    <li>Kein Werkzeug, um Geodaten zu bearbeiten</li>
+    <li>Kein fertiges Produkt für den Betrieb</li>
+    <li>Kein eigenes Modelltraining</li>
+    <li>Kein allgemeiner Chatbot</li>
+    <li>Kein Modell, das selbst Karten zeichnet</li>
+  </ul>
+</section>
+
+<hr>
+
+<!-- PACKAGING -->
+<section id="form">
+  <span class="eyebrow">Zwei Fassungen</span>
+  <h2>Dieselbe Journey, zweimal</h2>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Datei</th><th>Gut für</th><th>Besonderheit</th></tr></thead>
+      <tbody>
+        <tr><td><code>docs/user-journey.html</code></td><td>Vorstellen und Ausprobieren, auch für Leute ohne Repo-Zugang.</td><td>Diese Seite. Der Stufenregler zeigt, welche Schritte sich je Kontrollstufe ändern.</td></tr>
+        <tr><td><code>docs/user-journey.md</code></td><td>Alle, die das Repository öffnen.</td><td>Mermaid-Diagramme, die GitHub direkt anzeigt. Der Regler ist dort eine Tabelle mit einer Spalte pro Stufe.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="caveat">Beide Fassungen haben denselben Inhalt. Wer eine ändert, zieht die andere im selben Commit nach.</p>
+</section>
+
+</div>
+
+<script>
+(function () {
+  const levels = [
+    { name: "Assistenz", note: "Das Modell erklärt und schlägt vor. Petra setzt Layer und Filter selbst in der Klassik-Bedienung." },
+    { name: "Review", note: "Das Modell baut die Abfrage. Bevor sie läuft, sieht Petra sie und gibt sie frei oder korrigiert sie." },
+    { name: "Auto mit Undo", note: "Die Abfrage läuft sofort. Was sich geändert hat, wird als Unterschied angezeigt und lässt sich zurücknehmen." },
+    { name: "Autonom", note: "Das Modell arbeitet auch mehrere Schritte selbständig ab. Petra bestätigt nur das Endergebnis." }
+  ];
+  // per step: [actor, title, text] for each level 0..3; actor: h/m/s/g/x
+  const steps = [
+    { all: ["h", "Mensch", "Frage stellen", "Petra tippt ihre Frage in normaler Sprache ins Fragefeld."] },
+    { all: ["h", "Mensch", "Weg wählen", "Direktabfrage für eine klar umrissene Frage, Werkzeugkette für eine offene. Petra entscheidet pro Frage."] },
+    { by: [
+      ["m", "Modell", "Vorschlag erklären", "Das Modell beschreibt, welche Layer und Filter passen würden, und warum."],
+      ["m", "Modell", "Abfrage entwerfen", "Das Modell übersetzt die Frage in eine lesbare Abfrage: Schulen, nahe Hauptstrassen, 500 m, hoher Kinderanteil."],
+      ["m", "Modell", "Abfrage entwerfen", "Das Modell übersetzt die Frage in eine lesbare Abfrage."],
+      ["m", "Modell", "Schritte planen", "Das Modell zerlegt die Aufgabe bei Bedarf in mehrere Werkzeugaufrufe."]
+    ]},
+    { by: [
+      ["h", "Mensch", "Selbst umsetzen", "Petra klickt die Vorschläge selbst in der Klassik-Bedienung zusammen."],
+      ["g", "Freigabe", "Prüfen und freigeben", "Petra sieht die Abfrage vor der Ausführung. Ein falscher Layer fällt hier auf, bevor er auf der Karte überzeugend aussieht."],
+      ["x", "Entfällt", "Prüfen vor Ausführung", "Keine Rückfrage vorab."],
+      ["x", "Entfällt", "Prüfen vor Ausführung", "Keine Rückfrage vorab, auch nicht zwischen den Schritten."]
+    ]},
+    { all: ["s", "Anwendung", "Ausführen", "Die Anwendung führt die Abfrage aus. Das Modell fasst die Daten nie selbst an."] },
+    { by: [
+      ["h", "Mensch", "Ergebnis ansehen", "Karte, Tabelle oder Diagramm erscheinen."],
+      ["h", "Mensch", "Ergebnis ansehen", "Karte, Tabelle oder Diagramm erscheinen."],
+      ["g", "Kontrolle", "Änderung prüfen", "Petra sieht, was sich auf der Karte verändert hat, und kann es mit einem Klick zurücknehmen."],
+      ["g", "Freigabe", "Endergebnis bestätigen", "Petra prüft das Ergebnis und die Liste der ausgeführten Schritte und bestätigt."]
+    ]},
+    { all: ["h", "Mensch", "Weiterarbeiten", "Petra verfeinert von Hand in der Klassik-Bedienung, speichert die Sitzung und exportiert das Ergebnis."] }
+  ];
+
+  const list = document.getElementById("steps");
+  const note = document.getElementById("dial-note");
+  const buttons = document.querySelectorAll("#dial button");
+
+  function render(level) {
+    buttons.forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.level === level)));
+    note.textContent = levels[level].note;
+    list.innerHTML = "";
+    steps.forEach((s, i) => {
+      const [actor, who, title, text] = s.all || s.by[level];
+      const li = document.createElement("li");
+      if (actor === "x") li.className = "skipped";
+      li.innerHTML = '<span class="n">' + String(i + 1).padStart(2, "0") + '</span>' +
+        '<div class="st"><h3></h3><p></p></div>' +
+        '<span class="chip ' + actor + '"></span>';
+      li.querySelector("h3").textContent = title;
+      li.querySelector("p").textContent = text;
+      li.querySelector(".chip").textContent = who;
+      list.appendChild(li);
+    });
+    try { localStorage.setItem("gt-level", String(level)); } catch (e) {}
+  }
+  buttons.forEach(b => b.addEventListener("click", () => render(+b.dataset.level)));
+  let start = 1;
+  try { const v = localStorage.getItem("gt-level"); if (v !== null && levels[+v]) start = +v; } catch (e) {}
+  render(start);
+})();
+</script>
+</body>
+</html>
