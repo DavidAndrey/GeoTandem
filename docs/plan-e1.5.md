@@ -1,6 +1,6 @@
 # Plan E1.5 — Karte und Klassik-Bedienung
 
-> Stand: 2026-10-03 · **Entwurf** · Bezug: [etappen.md 3](../etappen.md),
+> Stand: 2026-10-03 · **S1 and D2 decided** · Bezug: [etappen.md 3](../etappen.md),
 > [anforderungen.md 4, 8](../anforderungen.md), [design/e1/README.md](../design/e1/README.md)
 > (screens B1–B13), [plan-e1.3-e1.4.md](plan-e1.3-e1.4.md)
 >
@@ -42,16 +42,17 @@ change.
 | S2 | Filtering on aggregated metrics ("Gemeinden mit > 5 Schulen", i.e. HAVING) | **Not in E1.5.** v0/v1 filter before aggregating. An aggregation can be shown as a derived layer (B6) but not be the result layer of a metric condition. Reported as a gap. |
 
 The engine change for S1 is small: `spatial_relation` already compiles to an
-EXISTS subquery, and the new condition reuses it inside `condition()`. Still,
-this changes the lock point of E1.2 (etappen 2: "liegen danach fest"), so it
-needs your yes, not mine.
+EXISTS subquery, and the new condition reuses it inside `condition()`.
+
+**S1 decided 2026-10-03: schema v1 as recommended.** It changes the lock point
+of E1.2 deliberately and additively; etappen.md notes it in WP25.
 
 ## 2 Other decisions
 
 | # | Question | Recommendation | Why |
 |---|---|---|---|
 | D1 | Analysis state in the frontend (tech-stack 9, due now) | **Zustand**: one store holding the analysis state; translation to query objects in pure functions | Candidate named in tech-stack 4.4; small and plain to test |
-| D2 | Background map (F-4.9) vs. working offline (F-9.1) | Tile URL from the configuration (`GEOTANDEM_BASEMAP_URL`, also offered in the UI), **empty by default**: plain background, with the catalog layers as context. Document OSM as opt-in, with its attribution | A default internet tile server would break F-9.1 silently |
+| D2 | Background map (F-4.9) vs. working offline (F-9.1) | **Decided 2026-10-03:** presets in `GEOTANDEM_BASEMAP`: `none`, `swisstopo-grau`, `osm` or an own URL template, with attribution. `make dev` uses `swisstopo-grau`; the container defaults to `none`. An active online background is marked on the map (analogous to F-9.4). A local tile file (PMTiles, protomaps-leaflet) can follow later as a further preset, e.g. on the production path (P.4) | Development needs a real map for context; a plain installation must not call outside on its own. Tandemtal lies on real coordinates (Emmental), so a muted grey map is the default for development |
 | D3 | Drawing for F-4.3 | **Leaflet-Geoman (free, MIT)** for rectangle and polygon; nothing else drawn | Maintained, covers exactly the need; leaflet-draw is unmaintained |
 | D4 | Hit counts per condition (B2 "Trefferzahl je Bedingung allein", B1 "7 von 39") | New endpoint `POST /api/query/count` taking a list of query objects and returning counts. Same compiler, same `LayerView`, no geometries | N full queries would ship all geometries just to count them |
 | D5 | Fetching layers for display | Layers with `feature_count ≤ GEOTANDEM_MAX_FEATURES` are fetched once, whole; larger ones by the current view (`bbox` condition), debounced on move, with a hint when even that is too large | Keeps the server-side limit (F-9.6) without a tile server |
@@ -81,9 +82,10 @@ needs your yes, not mine.
 
 ### WP21 — Map foundation and analysis state (frontend)
 
-- Leaflet 1.9 + react-leaflet 5, Zustand, Leaflet-Geoman; offline-safe
-  defaults (D2). `GET /api/config/map` (basemap URL, attribution, initial
-  extent from the visible layers).
+- Leaflet 1.9 + react-leaflet 5, Zustand, Leaflet-Geoman. Background map per
+  D2: setting `GEOTANDEM_BASEMAP`, `GET /api/config/map` (tile URL,
+  attribution, whether it is external, initial extent from the visible
+  layers), hint on the map while an external background is active.
 - Store `analysis`: displayed layers (catalog or derived, order, visibility,
   opacity, symbology), result layer, condition tree (editor model with ids
   for groups and rows), restriction (view / drawn shape), derived recipes,
@@ -146,7 +148,8 @@ needs your yes, not mine.
   with a hand-written reference (`backend/tests/golden/`). Buffer, join and
   aggregation each once. A user sees only released layers in B11.
 - Docs: CONTEXT.md (Ergebnis-Layer, abgeleiteter Layer, Bedingung,
-  Einschränkung), README (map configuration, offline note), tech-stack 9
+  Einschränkung), README (`GEOTANDEM_BASEMAP`, presets, attribution, what an
+  online background sends to whom), tech-stack 9
   (Zustand and Geoman decided), etappen (schema v1 noted in E1.2).
 
 ## 4 Order
@@ -167,5 +170,6 @@ WP23 share only the store from WP21 and can run in parallel.
   histogram (D9).
 - Map search, measuring, own location (D8).
 - Catalog-wide default style, tab "Darstellung" in D3 (D6).
+- Offline background map from a local tile file (D2, possible later preset).
 - Distance and "liegt in" columns in the attribute table (`@distanz:…` in
   the session example) belong to E1.6.
