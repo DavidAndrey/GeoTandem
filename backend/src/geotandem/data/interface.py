@@ -15,7 +15,7 @@ from typing import Any, Literal, Protocol
 from shapely.geometry.base import BaseGeometry
 from sqlalchemy import ColumnElement, Engine, FromClause, Select, Table
 
-AttributeType = Literal["integer", "real", "text", "boolean"]
+AttributeType = Literal["integer", "real", "text", "boolean", "date"]
 LayerKind = Literal["vector", "table"]
 TextMode = Literal["contains", "starts_with", "ends_with", "equals"]
 

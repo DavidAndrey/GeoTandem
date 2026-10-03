@@ -43,8 +43,16 @@ export function attributeCondition(row: AttributeRow): Condition | null {
         condition = { op: 'compare', attr, cmp: operator, value: row.value }
       break
     case 'between':
-      // Either order: the query object normalises "zwischen 500 und 100" to 100–500.
-      if (row.min !== null && row.max !== null)
+      if (typeof row.min === 'string' && typeof row.max === 'string') {
+        // Dates: "≥ and ≤" with ISO text, so the schema needs no date range (plan E1.8, G3).
+        const [from, to] = row.min <= row.max ? [row.min, row.max] : [row.max, row.min]
+        if (from && to)
+          condition = and(
+            { op: 'compare', attr, cmp: 'ge', value: from },
+            { op: 'compare', attr, cmp: 'le', value: to },
+          )
+      } else if (typeof row.min === 'number' && typeof row.max === 'number')
+        // Either order: the query object normalises "zwischen 500 und 100" to 100–500.
         condition = { op: 'between', attr, min: row.min, max: row.max }
       break
     case 'contains':

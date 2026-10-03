@@ -216,6 +216,7 @@ const TYPE_LABELS: Record<AttributeInfo['data_type'], string> = {
   real: 'Zahl',
   text: 'Text',
   boolean: 'Ja/Nein',
+  date: 'Datum',
 }
 
 export function AttributeRows({ layer, attribute }: { layer: string; attribute: AttributeInfo }) {

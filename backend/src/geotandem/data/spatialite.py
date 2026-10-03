@@ -19,6 +19,7 @@ from sqlalchemy import (
     Column,
     ColumnElement,
     Connection,
+    Date,
     Engine,
     Float,
     FromClause,
@@ -64,6 +65,8 @@ _SQL_TYPES: Mapping[AttributeType, type[TypeEngine[Any]]] = {
     "real": Float,
     "text": Text,
     "boolean": Boolean,
+    # ISO text in SQLite, a native date in PostGIS: the same order and equality (F-2.14).
+    "date": Date,
 }
 
 _SPATIAL_INDEX = sa_table(

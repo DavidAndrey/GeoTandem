@@ -21,6 +21,8 @@ export interface TableColumn {
   label: string
   unit: string | null
   numeric: boolean
+  /** Shown as dd.mm.yyyy (plan E1.8, WP40). */
+  date?: boolean
   /** "berechnet" (distance) or "aus Raumfilter" (value of a related feature). */
   computed: ExplainColumn['kind'] | null
 }
@@ -105,6 +107,7 @@ export function availableColumns(
       label: a.label || a.name,
       unit: a.unit ?? null,
       numeric: a.data_type === 'integer' || a.data_type === 'real',
+      date: a.data_type === 'date',
       computed: null,
     }))
   const others = keys

@@ -56,8 +56,9 @@ export interface AttributeRow {
   attr: string
   operator: AttributeOperator
   value: Scalar | null
-  min: number | null
-  max: number | null
+  /** Numbers, or ISO dates "YYYY-MM-DD" for a date field (plan E1.8, G3). */
+  min: number | string | null
+  max: number | string | null
   values: Scalar[]
 }
 

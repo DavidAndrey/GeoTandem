@@ -22,7 +22,7 @@ import { useLayers } from '../api/queries'
 import { ErrorNotice } from '../components/ui'
 import { useMapView } from '../map/view'
 import { ResultSelect } from '../workplace/ResultSelect'
-import { ATTRIBUTE_OPERATORS, needsDistance, operatorsFor, SPATIAL_OPERATORS } from './describe'
+import { operatorLabel, needsDistance, operatorsFor, SPATIAL_OPERATORS } from './describe'
 import { catalogFields, fieldsOf, type Field } from './fields'
 import { useCounts } from './useCounts'
 
@@ -267,6 +267,9 @@ export function AttributeEditor({
   const operators = operatorsFor(field?.type)
   const listId = `codes-${row.id}`
   const numeric = field?.type === 'integer' || field?.type === 'real'
+  // A date input yields ISO text "YYYY-MM-DD", what the query object expects (plan E1.8, G3).
+  const dated = field?.type === 'date'
+  const bound = (text: string) => (text === '' ? null : dated ? text : Number(text))
   return (
     <>
       <select
@@ -301,7 +304,7 @@ export function AttributeEditor({
       >
         {operators.map((op) => (
           <option key={op} value={op}>
-            {ATTRIBUTE_OPERATORS[op]}
+            {operatorLabel(op, field?.type)}
           </option>
         ))}
       </select>
@@ -315,19 +318,19 @@ export function AttributeEditor({
       {row.operator === 'between' && (
         <>
           <input
-            className="input w-20"
-            type="number"
+            className={`input ${dated ? 'w-36' : 'w-20'}`}
+            type={dated ? 'date' : 'number'}
             aria-label="von"
             value={row.min ?? ''}
-            onChange={(e) => change({ min: e.target.value === '' ? null : Number(e.target.value) })}
+            onChange={(e) => change({ min: bound(e.target.value) })}
           />
           –
           <input
-            className="input w-20"
-            type="number"
+            className={`input ${dated ? 'w-36' : 'w-20'}`}
+            type={dated ? 'date' : 'number'}
             aria-label="bis"
             value={row.max ?? ''}
-            onChange={(e) => change({ max: e.target.value === '' ? null : Number(e.target.value) })}
+            onChange={(e) => change({ max: bound(e.target.value) })}
           />
         </>
       )}
@@ -350,8 +353,8 @@ export function AttributeEditor({
           </select>
         ) : (
           <input
-            className={`input ${numeric ? 'w-24' : 'w-32'}`}
-            type={numeric ? 'number' : 'text'}
+            className={`input ${numeric ? 'w-24' : dated ? 'w-36' : 'w-32'}`}
+            type={numeric ? 'number' : dated ? 'date' : 'text'}
             aria-label="Wert"
             list={field?.codes ? listId : undefined}
             value={row.value === null ? '' : String(row.value)}

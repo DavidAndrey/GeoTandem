@@ -26,9 +26,30 @@ export const ATTRIBUTE_OPERATORS: Record<AttributeOperator, string> = {
   in: 'ist eins von',
 }
 
+/** Dates read as dates: "am", "vor", "ab" (plan E1.8, WP40). */
+const DATE_OPERATORS: Partial<Record<AttributeOperator, string>> = {
+  eq: 'am',
+  ne: 'nicht am',
+  lt: 'vor',
+  le: 'bis',
+  gt: 'nach',
+  ge: 'ab',
+}
+
+export const operatorLabel = (op: AttributeOperator, type: FieldType | undefined) =>
+  (type === 'date' ? DATE_OPERATORS[op] : undefined) ?? ATTRIBUTE_OPERATORS[op]
+
+/** "2024-03-01" → "01.03.2024". */
+export function formatDate(iso: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso)
+  return match ? `${match[3]}.${match[2]}.${match[1]}` : iso
+}
+
 /** Operators by field type (design B2: "die Operatoren richten sich nach dem Feldtyp"). */
 export function operatorsFor(type: FieldType | undefined): AttributeOperator[] {
   switch (type) {
+    case 'date':
+      return ['eq', 'ne', 'lt', 'le', 'gt', 'ge', 'between', 'is_empty']
     case 'integer':
     case 'real':
       return ['eq', 'ne', 'lt', 'le', 'gt', 'ge', 'between', 'in', 'is_empty']
@@ -64,18 +85,24 @@ export function formatDistance(meters: number | null): string {
     : `${meters.toLocaleString('de-CH')} m`
 }
 
-type Labels = { field: (name: string) => string; layer: (name: string) => string }
+type Labels = {
+  field: (name: string) => string
+  layer: (name: string) => string
+  /** The field's type, where known: dates read and show as dates. */
+  type?: (name: string) => FieldType | undefined
+}
 
 export function describeAttribute(row: AttributeRow, labels: Labels): string {
   const field = row.attr ? labels.field(row.attr) : '…'
-  const op = ATTRIBUTE_OPERATORS[row.operator]
+  const type = row.attr ? labels.type?.(row.attr) : undefined
+  const op = operatorLabel(row.operator, type)
+  const show = (v: unknown) =>
+    type === 'date' && typeof v === 'string' ? formatDate(v) : formatScalar(v)
   let value = ''
-  if (row.operator === 'between')
-    value = `${formatScalar(row.min ?? '…')} – ${formatScalar(row.max ?? '…')}`
-  else if (row.operator === 'in')
-    value = row.values.length ? row.values.map(formatScalar).join(', ') : '…'
+  if (row.operator === 'between') value = `${show(row.min ?? '…')} – ${show(row.max ?? '…')}`
+  else if (row.operator === 'in') value = row.values.length ? row.values.map(show).join(', ') : '…'
   else if (row.operator !== 'is_empty')
-    value = row.value === null || row.value === '' ? '…' : formatScalar(row.value)
+    value = row.value === null || row.value === '' ? '…' : show(row.value)
   return `${row.not ? 'nicht ' : ''}${field} ${op}${value ? ` ${value}` : ''}`
 }
 

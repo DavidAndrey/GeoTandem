@@ -4066,7 +4066,8 @@
               "integer",
               "real",
               "text",
-              "boolean"
+              "boolean",
+              "date"
             ],
             "title": "Data Type"
           },
@@ -4689,7 +4690,8 @@
               "integer",
               "real",
               "text",
-              "boolean"
+              "boolean",
+              "date"
             ],
             "title": "Data Type"
           },

@@ -463,7 +463,7 @@ function cell(value: unknown, column: TableColumn): string {
   // Distances to whole metres: centimetres would pretend a precision the data lacks.
   if (column.computed === 'distance' && typeof value === 'number')
     return formatValue(Math.round(value), column.unit)
-  return formatValue(value, column.unit)
+  return formatValue(value, column.unit, column.date ? 'date' : undefined)
 }
 
 /** "Spalten ▾" (design B8): show, hide and order; computed columns are marked. */

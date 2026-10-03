@@ -876,7 +876,7 @@ export interface components {
        * Data Type
        * @enum {string}
        */
-      data_type: 'integer' | 'real' | 'text' | 'boolean'
+      data_type: 'integer' | 'real' | 'text' | 'boolean' | 'date'
       /** Label */
       label: string
       /** Description */
@@ -1122,7 +1122,7 @@ export interface components {
        * Data Type
        * @enum {string}
        */
-      data_type: 'integer' | 'real' | 'text' | 'boolean'
+      data_type: 'integer' | 'real' | 'text' | 'boolean' | 'date'
       /** Null Count */
       null_count: number
       /** Distinct Count */

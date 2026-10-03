@@ -31,14 +31,16 @@ export function QueryPanel() {
   const counts = useCounts(analysis)
   const result = resultLayer(analysis)
   const fields = fieldsOf(result ?? undefined, catalog.data)
+  const typeOf = (list: typeof fields) => (name: string) => list.find((f) => f.name === name)?.type
   const labels = {
     field: labelOf(fields),
     layer: (name: string) => catalog.data?.find((l) => l.name === name)?.title ?? name,
+    type: typeOf(fields),
   }
-  const filterLabels = (layer: string) => ({
-    ...labels,
-    field: labelOf(catalogFields(layer, catalog.data)),
-  })
+  const filterLabels = (layer: string) => {
+    const related = catalogFields(layer, catalog.data)
+    return { ...labels, field: labelOf(related), type: typeOf(related) }
+  }
   const restriction = analysis.restriction
 
   return (

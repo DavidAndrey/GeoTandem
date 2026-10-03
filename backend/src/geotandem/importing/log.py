@@ -105,10 +105,10 @@ def finish(
         run.read_count = read_count
         run.imported_count = imported_count
         run.rejected_count = len(rejected) if rejected_count is None else rejected_count
-        run.rejected_sample = [r.model_dump() for r in rejected[:REJECTED_SAMPLE_LIMIT]]
-        run.warnings = [m.model_dump() for m in warnings or []]
-        run.errors = [m.model_dump() for m in errors or []]
-        run.steps = [s.model_dump() for s in steps or []]
+        run.rejected_sample = [r.model_dump(mode="json") for r in rejected[:REJECTED_SAMPLE_LIMIT]]
+        run.warnings = [m.model_dump(mode="json") for m in warnings or []]
+        run.errors = [m.model_dump(mode="json") for m in errors or []]
+        run.steps = [s.model_dump(mode="json") for s in steps or []]
         if layer_name is not None:
             run.layer_name = layer_name
         if decisions is not None:

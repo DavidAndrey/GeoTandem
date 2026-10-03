@@ -20,6 +20,7 @@ const schulen = layer({
       value_domain: { codes: { primar: 'primar', sekundar: 'sekundar' } },
     }),
     attribute({ name: 'schueler', data_type: 'integer', label: 'Schülerzahl' }),
+    attribute({ name: 'gegruendet', data_type: 'date', label: 'Gegründet' }),
   ],
 })
 const strassen = layer({
@@ -137,4 +138,37 @@ test('switching the result layer asks when attribute conditions drop out (B13)',
   await userEvent.click(within(dialog).getByRole('button', { name: 'Wechseln' }))
   expect(useAnalysis.getState().result).toBe('kitas')
   expect(useAnalysis.getState().tree.children).toEqual([])
+})
+
+test('a date condition reads as a date and is sent as ISO text (plan E1.8, WP40)', async () => {
+  backend()
+  renderAt('/', <App />)
+  await userEvent.click(await screen.findByRole('button', { name: '+ Bedingung' }))
+  const editor = await screen.findByRole('region', { name: 'Abfrage-Editor' })
+  const row = within(editor).getByRole('group', { name: 'Bedingung Attribut' })
+  await userEvent.selectOptions(within(row).getByLabelText('Feld'), 'Gegründet')
+  const operators = within(within(row).getByLabelText('Operator'))
+    .getAllByRole('option')
+    .map((o) => o.textContent)
+  expect(operators).toEqual(['am', 'nicht am', 'vor', 'bis', 'nach', 'ab', 'zwischen', 'ist leer'])
+
+  await userEvent.selectOptions(within(row).getByLabelText('Operator'), 'zwischen')
+  expect(within(row).getByLabelText('von')).toHaveAttribute('type', 'date')
+  // Typed in either order, as with numbers.
+  await userEvent.type(within(row).getByLabelText('von'), '2020-12-31')
+  await userEvent.type(within(row).getByLabelText('bis'), '2010-01-01')
+  await userEvent.click(within(editor).getByRole('button', { name: 'Übernehmen' }))
+
+  const query = resultQuery(currentAnalysis(useAnalysis.getState()))
+  assertValidQuery(query)
+  expect(query?.where).toEqual({
+    op: 'and',
+    args: [
+      { op: 'compare', attr: 'gegruendet', cmp: 'ge', value: '2010-01-01' },
+      { op: 'compare', attr: 'gegruendet', cmp: 'le', value: '2020-12-31' },
+    ],
+  })
+  expect(screen.getByLabelText('Bedingungen (Übersicht)')).toHaveTextContent(
+    'Gegründet zwischen 31.12.2020 – 01.01.2010',
+  )
 })

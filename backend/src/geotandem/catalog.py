@@ -13,7 +13,7 @@ from geotandem.db.orm import Layer, LayerAttribute
 
 class AttributeInfo(BaseModel):
     name: str
-    data_type: Literal["integer", "real", "text", "boolean"]
+    data_type: Literal["integer", "real", "text", "boolean", "date"]
     label: str
     description: str
     unit: str | None

@@ -11,6 +11,7 @@ import json
 import operator
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
+from datetime import date
 from typing import Any
 
 import shapely
@@ -167,11 +168,11 @@ class Compiler:
             case m.Compare():
                 self.use(Op.ATTRIBUTE_FILTER)
                 col = scope.attr(c.attr)
-                _check_values(scope, c.attr, col, [c.value])
+                [value] = _check_values(scope, c.attr, col, [c.value])
                 if c.cmp in _ORDERING and _python_type(col) is str:
                     # "before / after" in text follows the text rules, not bytes (F-2.14).
-                    return _COMPARE[c.cmp](d.text_order(col), c.value)
-                return _COMPARE[c.cmp](col, c.value)
+                    return _COMPARE[c.cmp](d.text_order(col), value)
+                return _COMPARE[c.cmp](col, value)
             case m.Between():
                 self.use(Op.ATTRIBUTE_FILTER)
                 col = scope.attr(c.attr)
@@ -180,8 +181,7 @@ class Compiler:
             case m.InList():
                 self.use(Op.ATTRIBUTE_FILTER)
                 col = scope.attr(c.attr)
-                _check_values(scope, c.attr, col, c.values)
-                return col.in_(c.values)
+                return col.in_(_check_values(scope, c.attr, col, c.values))
             case m.TextMatch():
                 self.use(Op.ATTRIBUTE_FILTER)
                 col = scope.attr(c.attr)
@@ -460,20 +460,39 @@ def _check_numeric(scope: Scope, name: str, col: ColumnElement[Any]) -> None:
         )
 
 
-def _check_values(scope: Scope, name: str, col: ColumnElement[Any], values: list[Any]) -> None:
+def _check_values(scope: Scope, name: str, col: ColumnElement[Any], values: list[Any]) -> list[Any]:
+    """The values as the column holds them; a date is given as ISO text (plan E1.8, G3)."""
     expected = _python_type(col)
     if expected is None:
-        return
+        return values
+    checked = []
     for value in values:
-        numeric = isinstance(value, int | float) and not isinstance(value, bool)
-        ok = numeric if expected in (int, float) else isinstance(value, expected)
+        if expected is date:
+            parsed = _iso_date(value)
+            ok = parsed is not None
+            checked.append(parsed)
+        else:
+            numeric = isinstance(value, int | float) and not isinstance(value, bool)
+            ok = numeric if expected in (int, float) else isinstance(value, expected)
+            checked.append(value)
         if not ok:
+            hint = " as ISO text, e.g. '2024-03-01'" if expected is date else ""
             raise QueryError(
-                f"Attribute '{name}' of '{scope.layer}' holds {expected.__name__} values; "
+                f"Attribute '{name}' of '{scope.layer}' holds {expected.__name__} values{hint}; "
                 f"got {value!r}.",
                 attribute=name,
                 expected=expected.__name__,
             )
+    return checked
+
+
+def _iso_date(value: Any) -> date | None:
+    if not isinstance(value, str) or len(value) != 10:
+        return None
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        return None
 
 
 def compile_query(

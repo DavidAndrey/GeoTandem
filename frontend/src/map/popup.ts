@@ -2,9 +2,15 @@
 // Built from DOM nodes with textContent: values come from imported files and
 // must never be interpreted as HTML.
 import type { LayerInfo } from '../api/client'
+import { formatDate } from '../editor/describe'
 
-export function formatValue(value: unknown, unit: string | null | undefined): string {
+export function formatValue(
+  value: unknown,
+  unit: string | null | undefined,
+  type?: string,
+): string {
   if (value === null || value === undefined || value === '') return '–'
+  if (type === 'date' && typeof value === 'string') return formatDate(value)
   const text =
     typeof value === 'number'
       ? value.toLocaleString('de-CH', { maximumFractionDigits: 2 })
@@ -46,7 +52,7 @@ export function popupContent(
     term.className = 'text-muted'
     term.textContent = meta?.label || name
     const value = document.createElement('dd')
-    value.textContent = formatValue(properties[name], meta?.unit)
+    value.textContent = formatValue(properties[name], meta?.unit, meta?.data_type)
     list.append(term, value)
   }
   root.append(list)

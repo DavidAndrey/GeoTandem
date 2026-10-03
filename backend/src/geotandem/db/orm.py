@@ -13,7 +13,7 @@ from sqlalchemy import JSON, ForeignKey, String, UniqueConstraint, func, true
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 LayerKind = Literal["vector", "table"]
-AttributeType = Literal["integer", "real", "text", "boolean"]
+AttributeType = Literal["integer", "real", "text", "boolean", "date"]
 
 
 class Base(DeclarativeBase):

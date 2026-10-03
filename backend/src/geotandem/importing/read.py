@@ -25,7 +25,7 @@ from pyproj.exceptions import CRSError
 from shapely.geometry.base import BaseGeometry
 
 from geotandem.data.interface import AttributeType
-from geotandem.importing.values import infer
+from geotandem.importing.values import as_date, infer
 
 Format = Literal["geojson", "shapefile", "gpkg", "csv", "xlsx"]
 
@@ -205,7 +205,13 @@ def _ogr_column(
     """Type from the OGR field definition: numpy turns integers with nulls into floats."""
     if ogr_type in _OGR_DATES:
         texts = np.datetime_as_string(data) if data.dtype.kind == "M" else data.astype(str)
-        return "text", [None if t == "NaT" else str(t) for t in texts], True
+        values = [None if t == "NaT" else str(t) for t in texts]
+        dates = [None if v is None else as_date(v.replace("/", "-")[:10]) for v in values]
+        if ogr_type == "OFTDate" and all(
+            d is not None for d, v in zip(dates, values, strict=True) if v
+        ):
+            return "date", dates, False
+        return "text", values, True
     if subtype == "OFSTBoolean":
         return "boolean", [None if _null(v) else bool(v) for v in data], False
     data_type = _OGR_TYPES.get(ogr_type)
@@ -274,7 +280,7 @@ def _table(
             notes.append(
                 Message(
                     code="stored_as_text",
-                    message=f"Column '{name}' contains dates; they are stored as text.",
+                    message=f"Column '{name}' contains times of day; they are stored as text.",
                     column=name,
                 )
             )

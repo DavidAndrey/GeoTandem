@@ -186,13 +186,14 @@ def test_xlsx_key_proposal_and_dates(files: dict[str, Path]) -> None:
     assert [(c.name, c.data_type) for c in p.columns] == [
         ("gem_nr", "integer"),
         ("arbeitsplaetze", "integer"),
-        ("stichtag", "text"),
+        ("stichtag", "date"),
     ]
     assert [(k.column, k.layer, k.attribute, k.matched, k.total) for k in p.keys] == [
         ("Gem-Nr", "gemeinden", "gem_nr", 74, 76)
     ]
-    assert [w.code for w in p.warnings] == ["stored_as_text"]
-    assert p.sample_rows[0]["stichtag"] == "2025-01-01T00:00:00"
+    # Excel keeps dates as datetimes at midnight: they are dates (plan E1.8, G3).
+    assert p.warnings == []
+    assert str(p.sample_rows[0]["stichtag"]) == "2025-01-01"
     assert p.xy is None
 
 

@@ -18,6 +18,8 @@ _REAL_DOT = re.compile(r"^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$")
 _REAL_COMMA = re.compile(r"^[+-]?\d+(,\d+)?$")
 _ZERO_PADDED = re.compile(r"^[+-]?0\d+$")
 _BOOLEAN = {"true": True, "false": False}
+_DATE_ISO = re.compile(r"^(\d{4})-(\d{2})-(\d{2})$")
+_DATE_CH = re.compile(r"^(\d{1,2})\.(\d{1,2})\.(\d{4})$")
 _INT64 = 2**63
 
 
@@ -46,8 +48,31 @@ def _is_number(value: Any) -> bool:
     return isinstance(value, int | float) and not isinstance(value, bool)
 
 
+def as_date(value: Any) -> date | None:
+    """A calendar date, or ``None`` if ``value`` is none (plan E1.8, G3, G4).
+
+    Dates, datetimes at midnight (Excel stores dates that way), ISO text
+    "2024-03-01" and Swiss "1.3.2024". A time of day is not a date.
+    """
+    if isinstance(value, datetime):
+        return value.date() if value.time() == time(0) and value.tzinfo is None else None
+    if isinstance(value, date):
+        return value
+    if isinstance(value, str):
+        iso = _DATE_ISO.match(value)
+        swiss = _DATE_CH.match(value)
+        try:
+            if iso:
+                return date(int(iso[1]), int(iso[2]), int(iso[3]))
+            if swiss:
+                return date(int(swiss[3]), int(swiss[2]), int(swiss[1]))
+        except ValueError:  # e.g. 31.02.2024
+            return None
+    return None
+
+
 def infer(values: Sequence[Any]) -> tuple[AttributeType, list[Any], bool]:
-    """Column type, the values converted to it, and whether dates became text."""
+    """Column type, the values converted to it, and whether times of day became text."""
     cells = [v.strip() if isinstance(v, str) else v for v in values]
     present = [v for v in cells if not _blank(v)]
 
@@ -56,6 +81,8 @@ def infer(values: Sequence[Any]) -> tuple[AttributeType, list[Any], bool]:
 
     if not present:
         return "text", [None] * len(cells), False
+    if all(as_date(v) is not None for v in present):
+        return "date", convert(as_date), False
     if any(isinstance(v, datetime | date | time) for v in present):
         return "text", convert(_as_text), True
     if all(isinstance(v, bool) or (isinstance(v, str) and v.lower() in _BOOLEAN) for v in present):
