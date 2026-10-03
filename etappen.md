@@ -57,6 +57,11 @@ Ziel: eine vollständig benutzbare GIS-Anwendung ohne jede LLM-Beteiligung.
 > die Klassik-Bedienung braucht sie mit UND/ODER/NICHT kombinierbar. Schema v1
 > ergänzt die Bedingung `related` — rein additiv, jedes v0-Dokument gilt
 > unverändert ([docs/plan-e1.5.md](docs/plan-e1.5.md), S1).
+>
+> **Erneut ergänzt in E1.6 (2026-10-03):** Die Attributtabelle zeigt, *warum*
+> ein Objekt Treffer ist — Distanz zur Strasse, Wert des Gebiets. Schema v2
+> ergänzt dafür berechnete Spalten (`columns`), wieder rein additiv: jedes v0-
+> und v1-Dokument gilt mit demselben Ergebnis ([docs/plan-e1.6.md](docs/plan-e1.6.md), S4).
 
 **Vorführung E1:** Eine mehrschichtige räumliche Fragestellung wird vollständig
 von Hand beantwortet, als Sitzung gespeichert und reproduziert — ohne

@@ -383,7 +383,7 @@ function Grid({
                       ) : (
                         <ArrowUp size={13} aria-hidden />
                       ))}
-                    {key && sort.length > 1 && <sup>{at + 1}</sup>}
+                    {key && sort.length > 1 && <sup aria-hidden>{at + 1}</sup>}
                   </button>
                 </th>
               )

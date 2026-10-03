@@ -1,6 +1,6 @@
 # Plan E1.6 — Attributtabelle
 
-> Stand: 2026-10-03 · **entschieden 2026-10-03** · Bezug: [etappen.md 3](../etappen.md),
+> Stand: 2026-10-03 · **umgesetzt (WP26–WP30)** · Bezug: [etappen.md 3](../etappen.md),
 > [anforderungen.md 8](../anforderungen.md) (F-8.2), [design/e1/README.md](../design/e1/README.md)
 > (screens B8, B9, B3 "Tabelle öffnen"), [plan-e1.5.md](plan-e1.5.md)
 >
@@ -140,4 +140,28 @@ stores from WP27.
 ## 5 Reported gaps (not built)
 
 - "Auswahl als Filter" (D6).
-- Export (F-8.6, E5).
+- Export (F-8.6, E5); the button is shown disabled, "ab E5".
+- Tabs for table layers without geometry (D7): the layer picker (B11) does
+  not add them to the analysis, so they have no tab. Their fields are
+  readable through a join (derived layer), which has one.
+- Columns are reordered with ↑/↓ buttons in the menu, not by dragging (B8
+  shows drag handles): keyboard-accessible and enough for a handful of
+  columns.
+
+## 6 Found on the way
+
+- **Columns after `aggregate` (WP26).** The draft forbade them, which would
+  have been a rule coupling two fields behind the schema's back (S3).
+  Instead they are evaluated on the result geometry, which after an
+  aggregation is the area: well defined, no coupling.
+- **Computed columns stay off the analysis' query object (WP26).** They are
+  added only to the result layer's display query (map and table), so the
+  query hash of the analysis, its counts and the E1.5 reference fixture do
+  not change when columns do.
+- **The sort marker of the second key (WP30).** A visible "2" in the header
+  became part of the column's accessible name; it is hidden from assistive
+  technology, which reads `aria-sort` instead.
+- **Bugs caught by tests:** an unstable selector (a fresh `[]` per call) in
+  the selection store re-rendered forever, the same trap as in E1.5; the
+  collapsed dock's button had the toolbar button's name; two acceptance
+  tests running in parallel raced on importing the area layer.

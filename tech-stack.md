@@ -371,6 +371,7 @@ zu dem sie spätestens fällig wird.
 |---|---|---|
 | ~~Bibliothek für Analysezustand (4.4)~~ | — | Entschieden: TanStack Query für den Serverzustand (E1.3), Zustand für den Analysezustand (E1.5) |
 | ~~Komponentenbasis für Bedienelemente (4.3)~~ | — | Entschieden in E1.3: Radix UI (`radix-ui`), dazu Lucide-Icons; Schriften gebündelt über `@fontsource` statt Google Fonts (F-9.1) |
+| ~~Tabellenbibliothek (F-8.2)~~ | — | Entschieden in E1.6: keine. Die Attributtabelle ist eigener Code mit Fensterung (nur sichtbare Zeilen im DOM); Sortieren, Spaltenwahl und Auswahl sind wenige, getestete reine Funktionen ([docs/plan-e1.6.md](docs/plan-e1.6.md), D4) |
 | Diagrammbibliothek (F-8.3) | E5.1 | Auswahl erst, wenn die Kennzahlen feststehen; Leichtgewichtigkeit vor Funktionsumfang |
 | Kartenexport als Bild (F-8.7) | E5.3 | Clientseitig aus dem Browser oder serverseitig gerendert — beides hat spürbare Folgen für den Containerumfang |
 | PostGIS in der Testumgebung (F-10.7) | P.2 | Testcontainers oder Dienstcontainer der Bauumgebung |

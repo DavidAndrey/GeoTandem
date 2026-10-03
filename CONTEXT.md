@@ -15,7 +15,8 @@ Beschreibung einer Analyse: Quell-Layer, Filter, räumliche und attributbezogene
 Verknüpfung, Puffer, Aggregation, Symbolisierung, Ausgabeart. Das Schema ist ein
 versioniertes Artefakt (`schema/query-object/v<N>.json`, F-10.3) und der
 einzige Vertrag zwischen Oberfläche, Modell und Ausführungsmaschine. v1 (E1.5)
-ergänzt v0 um die Bedingung `related`; ein v0-Dokument gilt unverändert als v1.
+ergänzt v0 um die Bedingung `related`, v2 (E1.6) um **berechnete Spalten**
+(`columns`); ein älteres Dokument gilt unverändert als v2.
 
 **Analysezustand** (`Analysis`, Frontend) — Was im Arbeitsplatz gebaut ist:
 angezeigte Layer, **Ergebnis-Layer**, **Bedingungen**, **Einschränkung**. Er
@@ -36,6 +37,23 @@ Fläche (`geometry`), mit den Bedingungen UND-verknüpft.
 **Abgeleiteter Layer** — Ergebnis einer Operation (Puffer, Join, Aggregation)
 als Rezept, also als Abfrageobjekt; beim Anzeigen neu berechnet, nie als
 Geometrie gespeichert. Bedingungen beziehen sich nur auf Katalog-Layer.
+
+**Attributtabelle** — Die Treffer als Zeilen, angedockt unter der Karte
+(F-8.2, Entwurf B8): ein Reiter je angezeigtem Layer, Ergebnis-Layer zuerst;
+Treffer oder alle Objekte, sortierbar, Spalten wähl- und ordnenbar. Sie liest
+dieselben Abfragen wie die Karte und ist reine Anzeige: Sortierung und
+Spaltenwahl gehören zum Analysezustand (mit der Sitzung gespeichert), ändern
+aber das Abfrageobjekt der Analyse nicht.
+
+**Berechnete Spalte** (`columns`, ab Schema v2) — Ein Attribut, das die
+Ausführungsmaschine je Ergebnisobjekt aus einem anderen Layer berechnet: die
+Distanz zum nächsten Objekt (`distance_to`, „berechnet") oder ein Attribut des
+Objekts, in dem es liegt (`value_of`, „aus Raumfilter"). Die Oberfläche leitet
+sie aus den Raumbedingungen ab; sie zeigen, *warum* ein Objekt Treffer ist.
+
+**Auswahl** — Die in Tabelle oder Karte angeklickten Objekte eines Layers;
+auf der Karte Umriss und Ring, nie eine eigene Farbe (Entwurf B9). Nicht Teil
+des Analysezustands und nicht gespeichert.
 
 **Ausführungsmaschine** (`engine`) — Übersetzt ein Abfrageobjekt über die
 Datenzugriffsschicht in eine Abfrage und führt sie unter serverseitigen
