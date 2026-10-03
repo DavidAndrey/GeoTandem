@@ -52,6 +52,12 @@ Ziel: eine vollständig benutzbare GIS-Anwendung ohne jede LLM-Beteiligung.
 | **E1.6** | Attributtabelle mit Sortierung, Spaltenwahl und wechselseitiger Hervorhebung zur Karte | F-8.2 | Treffer lassen sich lesen und nicht nur zählen |
 | **E1.7** | Analysezustand als benannte Sitzung speichern und wiederherstellen | F-4.10, F-8.9 | Eine gespeicherte Sitzung liefert nach Neustart dasselbe Ergebnis |
 
+> **Sperrpunkt nachgeschärft in E1.5 (2026-10-03):** Das Abfrageobjekt-Schema
+> v0 liess Raumbeziehungen nur einmal und ausserhalb des Bedingungsbaums zu;
+> die Klassik-Bedienung braucht sie mit UND/ODER/NICHT kombinierbar. Schema v1
+> ergänzt die Bedingung `related` — rein additiv, jedes v0-Dokument gilt
+> unverändert ([docs/plan-e1.5.md](docs/plan-e1.5.md), S1).
+
 **Vorführung E1:** Eine mehrschichtige räumliche Fragestellung wird vollständig
 von Hand beantwortet, als Sitzung gespeichert und reproduziert — ohne
 konfigurierte LLM-Anbindung (F-4.11).

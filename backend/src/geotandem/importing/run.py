@@ -203,7 +203,10 @@ def run_import(
             warnings=source.notes if source else [],
             steps=steps,
         )
-    warnings = [*preview.warnings, *warnings]
+    # The preview's hint about a missing geo-reference only helps the wizard
+    # before deciding; here the decision has been made and checked (_plan).
+    hints = {"no_geo_reference_found"}
+    warnings = [*(w for w in preview.warnings if w.code not in hints), *warnings]
     return log.finish(
         backend.engine,
         run_id,

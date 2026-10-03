@@ -1,6 +1,6 @@
 # Plan E1.5 — Karte und Klassik-Bedienung
 
-> Stand: 2026-10-03 · **S1 and D2 decided** · Bezug: [etappen.md 3](../etappen.md),
+> Stand: 2026-10-03 · **umgesetzt (WP20–WP25)** · Bezug: [etappen.md 3](../etappen.md),
 > [anforderungen.md 4, 8](../anforderungen.md), [design/e1/README.md](../design/e1/README.md)
 > (screens B1–B13), [plan-e1.3-e1.4.md](plan-e1.3-e1.4.md)
 >
@@ -143,11 +143,13 @@ of E1.2 deliberately and additively; etappen.md notes it in WP25.
 
 ### WP25 — Acceptance E1.5 and docs
 
-- Playwright: the reference question (D10) built by hand. **Every request
-  the UI sends to `/api/query` and `/api/query/count` is intercepted and
-  validated against `v1.json`**, and the final query object is compared
-  with a hand-written reference (`backend/tests/golden/`). Buffer, join and
-  aggregation each once. A user sees only released layers in B11.
+- `e2e/tests/acceptance-e1.5.spec.ts`: the reference question (D10) built by
+  hand, with X = 16 % (7 of 120 schools). **Every request the UI sends to
+  `/api/query` and `/api/query/count` is intercepted and validated against
+  `v1.json`, and none is rejected by the server**; the interface sends
+  exactly the hand-written reference (`e2e/fixtures/reference-question.json`)
+  and shows the engine's count for it. Buffer, join and aggregation are
+  covered by `operations.spec.ts`, visibility in B11 by `access.spec.ts`.
 - Docs: CONTEXT.md (Ergebnis-Layer, abgeleiteter Layer, Bedingung,
   Einschränkung), README (`GEOTANDEM_BASEMAP`, presets, attribution, what an
   online background sends to whom), tech-stack 9
@@ -174,3 +176,24 @@ WP23 share only the store from WP21 and can run in parallel.
 - Offline background map from a local tile file (D2, possible later preset).
 - Distance and "liegt in" columns in the attribute table (`@distanz:…` in
   the session example) belong to E1.6.
+
+## 6 Found on the way
+
+- **react-leaflet's license (WP21).** Hippocratic License 2.1, not an
+  open-source license; the map uses plain Leaflet with a thin own layer
+  (tech-stack 4.2).
+- **JSON Schema is not the whole contract (WP21).** Pydantic's cross-field
+  rules (dwithin needs a distance, min ≤ max) are not in `v1.json`; the
+  acceptance therefore also asserts that the server rejects nothing.
+- **`output: "table"` is a render hint (WP22).** The hit query still carries
+  geometries; within the result limit, so left as is.
+- **Swiss number format (WP22).** de-CH writes 1'234.5, not 1.234,5; tests
+  and labels follow it.
+- **Bugs caught by tests:** an unstable store selector re-rendered forever;
+  the layer picker made the last instead of the first chosen layer the
+  result; changing the result layer inside the editor dropped the draft;
+  operation dialogs took their defaults before the catalog had loaded; the
+  map did not notice the editor column narrowing it; an import with a
+  decided area key was logged with a wizard-only warning (E1.3).
+- **Drawing order follows the panel (WP24):** catalog layers above derived
+  ones, as in design B1.

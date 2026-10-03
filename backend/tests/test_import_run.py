@@ -26,6 +26,7 @@ from geotandem.importing.run import (
     key_candidates,
     run_import,
 )
+from geotandem.sample import DATA_DIR
 from geotandem.sample.load import load_sample
 from geotandem_query import QueryObject
 
@@ -350,3 +351,15 @@ def test_key_candidates_are_unique_and_not_key_join_copies(
     # A key-join layer is no key target, not even with its unique columns:
     # a re-import of the same table must still be keyed to gemeinden.
     assert not any(layer == "kennzahlen" for layer, _ in candidates)
+
+
+def test_decided_key_import_is_clean(sample_backend: DataBackend) -> None:
+    """The preview's "no geo-reference found" is a wizard hint, not an import warning."""
+    path = DATA_DIR / "bevoelkerung.csv"
+    run = run_import(
+        path,
+        path.name,
+        ImportDecisions(geo=KeyReference(column="gem_nr", layer="gemeinden", attribute="gem_nr")),
+        sample_backend,
+    )
+    assert (run.status, run.imported_count, run.warnings) == ("ok", 12, [])

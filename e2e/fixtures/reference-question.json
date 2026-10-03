@@ -1,0 +1,24 @@
+{
+  "schema_version": "1",
+  "source": "schulen",
+  "output": "map",
+  "where": {
+    "op": "and",
+    "args": [
+      { "op": "in", "attr": "typ", "values": ["primar"] },
+      {
+        "op": "related",
+        "layer": "strassen",
+        "predicate": "dwithin",
+        "distance_m": 500,
+        "where": { "op": "compare", "attr": "klasse", "cmp": "eq", "value": "haupt" }
+      },
+      {
+        "op": "related",
+        "layer": "gemeinden_bevoelkerung",
+        "predicate": "within",
+        "where": { "op": "compare", "attr": "anteil_u20", "cmp": "gt", "value": 16 }
+      }
+    ]
+  }
+}

@@ -14,10 +14,28 @@ im Layer-Register (`layer`) eingetragen, mit Attribut-Metadaten
 Beschreibung einer Analyse: Quell-Layer, Filter, räumliche und attributbezogene
 Verknüpfung, Puffer, Aggregation, Symbolisierung, Ausgabeart. Das Schema ist ein
 versioniertes Artefakt (`schema/query-object/v<N>.json`, F-10.3) und der
-einzige Vertrag zwischen Oberfläche, Modell und Ausführungsmaschine.
+einzige Vertrag zwischen Oberfläche, Modell und Ausführungsmaschine. v1 (E1.5)
+ergänzt v0 um die Bedingung `related`; ein v0-Dokument gilt unverändert als v1.
 
-**Analysezustand** — Das Abfrageobjekt, das gerade die Karte bestimmt. Es ist
-*dasselbe Objekt* für Modus A und Modus B; die Oberfläche ist sein Editor.
+**Analysezustand** (`Analysis`, Frontend) — Was im Arbeitsplatz gebaut ist:
+angezeigte Layer, **Ergebnis-Layer**, **Bedingungen**, **Einschränkung**. Er
+wird ausschliesslich über Abfrageobjekte ausgeführt (`analysis/query.ts`); er
+ist *derselbe Zustand* für Modus A und Modus B, die Oberfläche ist sein Editor.
+
+**Ergebnis-Layer** — Der eine Layer je Sitzung, nach dem gefragt wird; andere
+Layer wirken nur als Bedingung (Entwurf B1). Treffer werden auf der Karte
+hervorgehoben, übrige Objekte gedämpft.
+
+**Bedingung** — Ein Knoten im UND/ODER-Baum der Abfrage: Attribut (Vergleich,
+Bereich, Text, Liste, leer), Raum (Beziehung zu einem anderen Layer, im
+Abfrageobjekt `related`, ab Schema v1) oder Bezugsobjekt (`near_feature`).
+
+**Einschränkung** — „Nur in": Kartenausschnitt (`bbox`) oder gezeichnete
+Fläche (`geometry`), mit den Bedingungen UND-verknüpft.
+
+**Abgeleiteter Layer** — Ergebnis einer Operation (Puffer, Join, Aggregation)
+als Rezept, also als Abfrageobjekt; beim Anzeigen neu berechnet, nie als
+Geometrie gespeichert. Bedingungen beziehen sich nur auf Katalog-Layer.
 
 **Ausführungsmaschine** (`engine`) — Übersetzt ein Abfrageobjekt über die
 Datenzugriffsschicht in eine Abfrage und führt sie unter serverseitigen
