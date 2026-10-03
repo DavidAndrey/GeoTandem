@@ -42,7 +42,8 @@ export function attributeCondition(row: AttributeRow): Condition | null {
         condition = { op: 'compare', attr, cmp: operator, value: row.value }
       break
     case 'between':
-      if (row.min !== null && row.max !== null && row.min <= row.max)
+      // Either order: the query object normalises "zwischen 500 und 100" to 100–500.
+      if (row.min !== null && row.max !== null)
         condition = { op: 'between', attr, min: row.min, max: row.max }
       break
     case 'contains':
@@ -81,22 +82,31 @@ export function rowCondition(row: Row): Condition | null {
       if (!row.layer) return null
       const distance = row.distance_m
       const where = row.filter ? attributeCondition(row.filter) : null
-      const related = (predicate: 'within' | 'intersects' | 'contains' | 'dwithin'): Condition => ({
+      const extra = where ? { where } : {}
+      // Two variants (schema v1): only "dwithin" carries a distance, and it must.
+      const related = (predicate: 'within' | 'intersects' | 'contains'): Condition => ({
         op: 'related',
         layer: row.layer,
         predicate,
-        ...(predicate === 'dwithin' ? { distance_m: distance ?? 0 } : {}),
-        ...(where ? { where } : {}),
+        ...extra,
+      })
+      const near = (meters: number): Condition => ({
+        op: 'related',
+        layer: row.layer,
+        predicate: 'dwithin',
+        distance_m: meters,
+        ...extra,
       })
       const needsDistance = row.operator === 'near' || row.operator === 'far'
       if (needsDistance && (distance === null || distance <= 0)) return null
+      const meters = distance ?? 0
       const condition: Condition = {
         in: related('within'),
         outside: { op: 'not', arg: related('within') } as Condition,
         intersects: related('intersects'),
         contains: related('contains'),
-        near: related('dwithin'),
-        far: { op: 'not', arg: related('dwithin') } as Condition,
+        near: near(meters),
+        far: { op: 'not', arg: near(meters) } as Condition,
       }[row.operator]
       return negate(condition, row.not)
     }

@@ -182,9 +182,10 @@ WP23 share only the store from WP21 and can run in parallel.
 - **react-leaflet's license (WP21).** Hippocratic License 2.1, not an
   open-source license; the map uses plain Leaflet with a thin own layer
   (tech-stack 4.2).
-- **JSON Schema is not the whole contract (WP21).** Pydantic's cross-field
-  rules (dwithin needs a distance, min ≤ max) are not in `v1.json`; the
-  acceptance therefore also asserts that the server rejects nothing.
+- **JSON Schema was not the whole contract (WP21) — resolved (S3).** Four
+  rules lived only in pydantic validators, invisible to every other user of
+  the schema, and a change to them would not have triggered a version bump.
+  See S3 below.
 - **`output: "table"` is a render hint (WP22).** The hit query still carries
   geometries; within the result limit, so left as is.
 - **Swiss number format (WP22).** de-CH writes 1'234.5, not 1.234,5; tests
@@ -197,3 +198,30 @@ WP23 share only the store from WP21 and can run in parallel.
   decided area key was logged with a wizard-only warning (E1.3).
 - **Drawing order follows the panel (WP24):** catalog layers above derived
   ones, as in design B1.
+
+## 7 S3 — The schema is the whole intrinsic contract (decided 2026-10-03)
+
+Option A of the discussion after WP25, applied to v1 before it reached `main`:
+
+- Rules that coupled fields became **variants told apart by a constant**:
+  relations by `predicate` (`TopologicalRelation` without distance,
+  `DistanceRelation` with a required one; `related` adds `op`), metrics by
+  `fn` (`CountMetric` without `attr`, `ValueMetric` with one). Pydantic cannot
+  nest the `predicate` union inside the recursive `op` union, so the
+  condition union uses a callable discriminator with tags; the exported
+  schema still lists every variant with its constants.
+- **Order is normalised, not enforced**: `between` and `bbox` accept their
+  bounds in either order and store them sorted, so both orders hash alike.
+- `packages/query/tests/test_contract.py` asserts that the exported schema and
+  the models give the same verdict for a corpus of valid and invalid
+  documents. The one deliberate difference: the server reads v0 documents.
+- What a static schema cannot know — whether a layer or attribute exists, its
+  type, who may see it — stays with the data core (`/api/query/validate`).
+
+Consequences: identical results; the canonical form of aggregations and of
+relations without distance no longer carries `"attr": null` /
+`"distance_m": null`, so those query hashes changed (only on this branch, nothing
+stored them yet). In the editor a reversed range ("zwischen 500 und 100") now
+works instead of being silently left out. The frontend types became
+discriminated unions; the compiler caught the one builder that relied on an
+optional distance.

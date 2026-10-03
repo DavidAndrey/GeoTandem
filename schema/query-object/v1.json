@@ -32,7 +32,24 @@
         },
         "metrics": {
           "items": {
-            "$ref": "#/$defs/Metric"
+            "discriminator": {
+              "mapping": {
+                "avg": "#/$defs/ValueMetric",
+                "count": "#/$defs/CountMetric",
+                "max": "#/$defs/ValueMetric",
+                "min": "#/$defs/ValueMetric",
+                "sum": "#/$defs/ValueMetric"
+              },
+              "propertyName": "fn"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/CountMetric"
+              },
+              {
+                "$ref": "#/$defs/ValueMetric"
+              }
+            ]
           },
           "minItems": 1,
           "title": "Metrics",
@@ -56,23 +73,6 @@
         },
         "args": {
           "items": {
-            "discriminator": {
-              "mapping": {
-                "and": "#/$defs/And",
-                "bbox": "#/$defs/BBox",
-                "between": "#/$defs/Between",
-                "compare": "#/$defs/Compare",
-                "geometry": "#/$defs/GeometryFilter",
-                "in": "#/$defs/InList",
-                "is_null": "#/$defs/IsNull",
-                "near_feature": "#/$defs/NearFeature",
-                "not": "#/$defs/Not",
-                "or": "#/$defs/Or",
-                "related": "#/$defs/Related",
-                "text_match": "#/$defs/TextMatch"
-              },
-              "propertyName": "op"
-            },
             "oneOf": [
               {
                 "$ref": "#/$defs/Compare"
@@ -99,7 +99,10 @@
                 "$ref": "#/$defs/NearFeature"
               },
               {
-                "$ref": "#/$defs/Related"
+                "$ref": "#/$defs/RelatedTopological"
+              },
+              {
+                "$ref": "#/$defs/RelatedByDistance"
               },
               {
                 "$ref": "#/$defs/And"
@@ -189,7 +192,7 @@
           "type": "string"
         },
         "bbox": {
-          "description": "[min_lon, min_lat, max_lon, max_lat] in WGS84.",
+          "description": "Two opposite corners [lon, lat, lon, lat] in WGS84; stored as [min_lon, min_lat, max_lon, max_lat].",
           "maxItems": 4,
           "minItems": 4,
           "prefixItems": [
@@ -219,7 +222,7 @@
     },
     "Between": {
       "additionalProperties": false,
-      "description": "Inclusive value range (F-4.2).",
+      "description": "Inclusive value range (F-4.2). The bounds may come in either order.",
       "properties": {
         "op": {
           "const": "between",
@@ -404,6 +407,112 @@
       "title": "Compare",
       "type": "object"
     },
+    "CountMetric": {
+      "additionalProperties": false,
+      "description": "Number of source features per area.",
+      "properties": {
+        "as": {
+          "description": "Name of the result attribute.",
+          "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+          "title": "As",
+          "type": "string"
+        },
+        "fn": {
+          "const": "count",
+          "title": "Fn",
+          "type": "string"
+        }
+      },
+      "required": [
+        "as",
+        "fn"
+      ],
+      "title": "CountMetric",
+      "type": "object"
+    },
+    "DistanceRelation": {
+      "additionalProperties": false,
+      "description": "Source within ``distance_m`` of a feature of ``layer``.",
+      "properties": {
+        "layer": {
+          "description": "Lower-case layer or attribute name.",
+          "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+          "title": "Layer",
+          "type": "string"
+        },
+        "predicate": {
+          "const": "dwithin",
+          "title": "Predicate",
+          "type": "string"
+        },
+        "distance_m": {
+          "description": "Distance in metres.",
+          "exclusiveMinimum": 0,
+          "title": "Distance M",
+          "type": "number"
+        },
+        "where": {
+          "anyOf": [
+            {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/Compare"
+                },
+                {
+                  "$ref": "#/$defs/Between"
+                },
+                {
+                  "$ref": "#/$defs/InList"
+                },
+                {
+                  "$ref": "#/$defs/TextMatch"
+                },
+                {
+                  "$ref": "#/$defs/IsNull"
+                },
+                {
+                  "$ref": "#/$defs/BBox"
+                },
+                {
+                  "$ref": "#/$defs/GeometryFilter"
+                },
+                {
+                  "$ref": "#/$defs/NearFeature"
+                },
+                {
+                  "$ref": "#/$defs/RelatedTopological"
+                },
+                {
+                  "$ref": "#/$defs/RelatedByDistance"
+                },
+                {
+                  "$ref": "#/$defs/And"
+                },
+                {
+                  "$ref": "#/$defs/Or"
+                },
+                {
+                  "$ref": "#/$defs/Not"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Filter on the attributes of ``layer``.",
+          "title": "Where"
+        }
+      },
+      "required": [
+        "layer",
+        "predicate",
+        "distance_m"
+      ],
+      "title": "DistanceRelation",
+      "type": "object"
+    },
     "GeoJSONGeometry": {
       "additionalProperties": false,
       "description": "GeoJSON geometry in WGS84. Coordinates are checked when compiled.",
@@ -565,49 +674,6 @@
       "title": "IsNull",
       "type": "object"
     },
-    "Metric": {
-      "additionalProperties": false,
-      "properties": {
-        "fn": {
-          "enum": [
-            "count",
-            "sum",
-            "avg",
-            "min",
-            "max"
-          ],
-          "title": "Fn",
-          "type": "string"
-        },
-        "attr": {
-          "anyOf": [
-            {
-              "description": "Lower-case layer or attribute name.",
-              "pattern": "^[a-z_][a-z0-9_]{0,62}$",
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Source attribute; not used by 'count'.",
-          "title": "Attr"
-        },
-        "as": {
-          "description": "Name of the result attribute.",
-          "pattern": "^[a-z_][a-z0-9_]{0,62}$",
-          "title": "As",
-          "type": "string"
-        }
-      },
-      "required": [
-        "fn",
-        "as"
-      ],
-      "title": "Metric",
-      "type": "object"
-    },
     "NearFeature": {
       "additionalProperties": false,
       "description": "Source geometry lies within a distance of one reference feature (F-4.3).",
@@ -652,23 +718,6 @@
           "type": "string"
         },
         "arg": {
-          "discriminator": {
-            "mapping": {
-              "and": "#/$defs/And",
-              "bbox": "#/$defs/BBox",
-              "between": "#/$defs/Between",
-              "compare": "#/$defs/Compare",
-              "geometry": "#/$defs/GeometryFilter",
-              "in": "#/$defs/InList",
-              "is_null": "#/$defs/IsNull",
-              "near_feature": "#/$defs/NearFeature",
-              "not": "#/$defs/Not",
-              "or": "#/$defs/Or",
-              "related": "#/$defs/Related",
-              "text_match": "#/$defs/TextMatch"
-            },
-            "propertyName": "op"
-          },
           "oneOf": [
             {
               "$ref": "#/$defs/Compare"
@@ -695,7 +744,10 @@
               "$ref": "#/$defs/NearFeature"
             },
             {
-              "$ref": "#/$defs/Related"
+              "$ref": "#/$defs/RelatedTopological"
+            },
+            {
+              "$ref": "#/$defs/RelatedByDistance"
             },
             {
               "$ref": "#/$defs/And"
@@ -727,23 +779,6 @@
         },
         "args": {
           "items": {
-            "discriminator": {
-              "mapping": {
-                "and": "#/$defs/And",
-                "bbox": "#/$defs/BBox",
-                "between": "#/$defs/Between",
-                "compare": "#/$defs/Compare",
-                "geometry": "#/$defs/GeometryFilter",
-                "in": "#/$defs/InList",
-                "is_null": "#/$defs/IsNull",
-                "near_feature": "#/$defs/NearFeature",
-                "not": "#/$defs/Not",
-                "or": "#/$defs/Or",
-                "related": "#/$defs/Related",
-                "text_match": "#/$defs/TextMatch"
-              },
-              "propertyName": "op"
-            },
             "oneOf": [
               {
                 "$ref": "#/$defs/Compare"
@@ -770,7 +805,10 @@
                 "$ref": "#/$defs/NearFeature"
               },
               {
-                "$ref": "#/$defs/Related"
+                "$ref": "#/$defs/RelatedTopological"
+              },
+              {
+                "$ref": "#/$defs/RelatedByDistance"
               },
               {
                 "$ref": "#/$defs/And"
@@ -820,9 +858,8 @@
       "title": "OrderBy",
       "type": "object"
     },
-    "Related": {
+    "RelatedByDistance": {
       "additionalProperties": false,
-      "description": "Source feature relates to at least one feature of ``layer`` (F-4.4), as a condition.\n\nSince v1. Unlike the top-level ``spatial_relation`` it combines with\n``and``, ``or`` and ``not``: \"outside\" is ``not`` + ``within``, \"farther\nthan\" is ``not`` + ``dwithin``. It sees the source geometry before any\n``buffer``. The predicate reads ``source <predicate> layer``.",
       "properties": {
         "layer": {
           "description": "Lower-case layer or attribute name.",
@@ -831,49 +868,19 @@
           "type": "string"
         },
         "predicate": {
-          "enum": [
-            "intersects",
-            "within",
-            "contains",
-            "dwithin"
-          ],
+          "const": "dwithin",
           "title": "Predicate",
           "type": "string"
         },
         "distance_m": {
-          "anyOf": [
-            {
-              "description": "Distance in metres.",
-              "exclusiveMinimum": 0,
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Distance M"
+          "description": "Distance in metres.",
+          "exclusiveMinimum": 0,
+          "title": "Distance M",
+          "type": "number"
         },
         "where": {
           "anyOf": [
             {
-              "discriminator": {
-                "mapping": {
-                  "and": "#/$defs/And",
-                  "bbox": "#/$defs/BBox",
-                  "between": "#/$defs/Between",
-                  "compare": "#/$defs/Compare",
-                  "geometry": "#/$defs/GeometryFilter",
-                  "in": "#/$defs/InList",
-                  "is_null": "#/$defs/IsNull",
-                  "near_feature": "#/$defs/NearFeature",
-                  "not": "#/$defs/Not",
-                  "or": "#/$defs/Or",
-                  "related": "#/$defs/Related",
-                  "text_match": "#/$defs/TextMatch"
-                },
-                "propertyName": "op"
-              },
               "oneOf": [
                 {
                   "$ref": "#/$defs/Compare"
@@ -900,7 +907,96 @@
                   "$ref": "#/$defs/NearFeature"
                 },
                 {
-                  "$ref": "#/$defs/Related"
+                  "$ref": "#/$defs/RelatedTopological"
+                },
+                {
+                  "$ref": "#/$defs/RelatedByDistance"
+                },
+                {
+                  "$ref": "#/$defs/And"
+                },
+                {
+                  "$ref": "#/$defs/Or"
+                },
+                {
+                  "$ref": "#/$defs/Not"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Filter on the attributes of ``layer``.",
+          "title": "Where"
+        },
+        "op": {
+          "const": "related",
+          "title": "Op",
+          "type": "string"
+        }
+      },
+      "required": [
+        "layer",
+        "predicate",
+        "distance_m",
+        "op"
+      ],
+      "title": "RelatedByDistance",
+      "type": "object"
+    },
+    "RelatedTopological": {
+      "additionalProperties": false,
+      "properties": {
+        "layer": {
+          "description": "Lower-case layer or attribute name.",
+          "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+          "title": "Layer",
+          "type": "string"
+        },
+        "predicate": {
+          "enum": [
+            "intersects",
+            "within",
+            "contains"
+          ],
+          "title": "Predicate",
+          "type": "string"
+        },
+        "where": {
+          "anyOf": [
+            {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/Compare"
+                },
+                {
+                  "$ref": "#/$defs/Between"
+                },
+                {
+                  "$ref": "#/$defs/InList"
+                },
+                {
+                  "$ref": "#/$defs/TextMatch"
+                },
+                {
+                  "$ref": "#/$defs/IsNull"
+                },
+                {
+                  "$ref": "#/$defs/BBox"
+                },
+                {
+                  "$ref": "#/$defs/GeometryFilter"
+                },
+                {
+                  "$ref": "#/$defs/NearFeature"
+                },
+                {
+                  "$ref": "#/$defs/RelatedTopological"
+                },
+                {
+                  "$ref": "#/$defs/RelatedByDistance"
                 },
                 {
                   "$ref": "#/$defs/And"
@@ -932,7 +1028,7 @@
         "predicate",
         "op"
       ],
-      "title": "Related",
+      "title": "RelatedTopological",
       "type": "object"
     },
     "SingleSymbol": {
@@ -954,115 +1050,6 @@
         "kind"
       ],
       "title": "SingleSymbol",
-      "type": "object"
-    },
-    "SpatialRelation": {
-      "additionalProperties": false,
-      "description": "Keep source features related to at least one feature of ``layer`` (F-4.4).\n\nThe predicate reads ``source <predicate> layer``: ``within`` keeps source\nfeatures lying inside a feature of ``layer``. Applied after ``buffer``;\nfor relations combined with other conditions use ``related`` in ``where``.",
-      "properties": {
-        "layer": {
-          "description": "Lower-case layer or attribute name.",
-          "pattern": "^[a-z_][a-z0-9_]{0,62}$",
-          "title": "Layer",
-          "type": "string"
-        },
-        "predicate": {
-          "enum": [
-            "intersects",
-            "within",
-            "contains",
-            "dwithin"
-          ],
-          "title": "Predicate",
-          "type": "string"
-        },
-        "distance_m": {
-          "anyOf": [
-            {
-              "description": "Distance in metres.",
-              "exclusiveMinimum": 0,
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Distance M"
-        },
-        "where": {
-          "anyOf": [
-            {
-              "discriminator": {
-                "mapping": {
-                  "and": "#/$defs/And",
-                  "bbox": "#/$defs/BBox",
-                  "between": "#/$defs/Between",
-                  "compare": "#/$defs/Compare",
-                  "geometry": "#/$defs/GeometryFilter",
-                  "in": "#/$defs/InList",
-                  "is_null": "#/$defs/IsNull",
-                  "near_feature": "#/$defs/NearFeature",
-                  "not": "#/$defs/Not",
-                  "or": "#/$defs/Or",
-                  "related": "#/$defs/Related",
-                  "text_match": "#/$defs/TextMatch"
-                },
-                "propertyName": "op"
-              },
-              "oneOf": [
-                {
-                  "$ref": "#/$defs/Compare"
-                },
-                {
-                  "$ref": "#/$defs/Between"
-                },
-                {
-                  "$ref": "#/$defs/InList"
-                },
-                {
-                  "$ref": "#/$defs/TextMatch"
-                },
-                {
-                  "$ref": "#/$defs/IsNull"
-                },
-                {
-                  "$ref": "#/$defs/BBox"
-                },
-                {
-                  "$ref": "#/$defs/GeometryFilter"
-                },
-                {
-                  "$ref": "#/$defs/NearFeature"
-                },
-                {
-                  "$ref": "#/$defs/Related"
-                },
-                {
-                  "$ref": "#/$defs/And"
-                },
-                {
-                  "$ref": "#/$defs/Or"
-                },
-                {
-                  "$ref": "#/$defs/Not"
-                }
-              ]
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Filter on the attributes of ``layer``.",
-          "title": "Where"
-        }
-      },
-      "required": [
-        "layer",
-        "predicate"
-      ],
-      "title": "SpatialRelation",
       "type": "object"
     },
     "TextMatch": {
@@ -1109,6 +1096,121 @@
       ],
       "title": "TextMatch",
       "type": "object"
+    },
+    "TopologicalRelation": {
+      "additionalProperties": false,
+      "description": "Relation without distance: ``source <predicate> layer``.",
+      "properties": {
+        "layer": {
+          "description": "Lower-case layer or attribute name.",
+          "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+          "title": "Layer",
+          "type": "string"
+        },
+        "predicate": {
+          "enum": [
+            "intersects",
+            "within",
+            "contains"
+          ],
+          "title": "Predicate",
+          "type": "string"
+        },
+        "where": {
+          "anyOf": [
+            {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/Compare"
+                },
+                {
+                  "$ref": "#/$defs/Between"
+                },
+                {
+                  "$ref": "#/$defs/InList"
+                },
+                {
+                  "$ref": "#/$defs/TextMatch"
+                },
+                {
+                  "$ref": "#/$defs/IsNull"
+                },
+                {
+                  "$ref": "#/$defs/BBox"
+                },
+                {
+                  "$ref": "#/$defs/GeometryFilter"
+                },
+                {
+                  "$ref": "#/$defs/NearFeature"
+                },
+                {
+                  "$ref": "#/$defs/RelatedTopological"
+                },
+                {
+                  "$ref": "#/$defs/RelatedByDistance"
+                },
+                {
+                  "$ref": "#/$defs/And"
+                },
+                {
+                  "$ref": "#/$defs/Or"
+                },
+                {
+                  "$ref": "#/$defs/Not"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Filter on the attributes of ``layer``.",
+          "title": "Where"
+        }
+      },
+      "required": [
+        "layer",
+        "predicate"
+      ],
+      "title": "TopologicalRelation",
+      "type": "object"
+    },
+    "ValueMetric": {
+      "additionalProperties": false,
+      "description": "Sum, mean, minimum or maximum of a numeric source attribute per area.",
+      "properties": {
+        "as": {
+          "description": "Name of the result attribute.",
+          "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+          "title": "As",
+          "type": "string"
+        },
+        "fn": {
+          "enum": [
+            "sum",
+            "avg",
+            "min",
+            "max"
+          ],
+          "title": "Fn",
+          "type": "string"
+        },
+        "attr": {
+          "description": "Source attribute.",
+          "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+          "title": "Attr",
+          "type": "string"
+        }
+      },
+      "required": [
+        "as",
+        "fn",
+        "attr"
+      ],
+      "title": "ValueMetric",
+      "type": "object"
     }
   },
   "additionalProperties": false,
@@ -1140,23 +1242,6 @@
     "where": {
       "anyOf": [
         {
-          "discriminator": {
-            "mapping": {
-              "and": "#/$defs/And",
-              "bbox": "#/$defs/BBox",
-              "between": "#/$defs/Between",
-              "compare": "#/$defs/Compare",
-              "geometry": "#/$defs/GeometryFilter",
-              "in": "#/$defs/InList",
-              "is_null": "#/$defs/IsNull",
-              "near_feature": "#/$defs/NearFeature",
-              "not": "#/$defs/Not",
-              "or": "#/$defs/Or",
-              "related": "#/$defs/Related",
-              "text_match": "#/$defs/TextMatch"
-            },
-            "propertyName": "op"
-          },
           "oneOf": [
             {
               "$ref": "#/$defs/Compare"
@@ -1183,7 +1268,10 @@
               "$ref": "#/$defs/NearFeature"
             },
             {
-              "$ref": "#/$defs/Related"
+              "$ref": "#/$defs/RelatedTopological"
+            },
+            {
+              "$ref": "#/$defs/RelatedByDistance"
             },
             {
               "$ref": "#/$defs/And"
@@ -1217,13 +1305,30 @@
     "spatial_relation": {
       "anyOf": [
         {
-          "$ref": "#/$defs/SpatialRelation"
+          "discriminator": {
+            "mapping": {
+              "contains": "#/$defs/TopologicalRelation",
+              "dwithin": "#/$defs/DistanceRelation",
+              "intersects": "#/$defs/TopologicalRelation",
+              "within": "#/$defs/TopologicalRelation"
+            },
+            "propertyName": "predicate"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/TopologicalRelation"
+            },
+            {
+              "$ref": "#/$defs/DistanceRelation"
+            }
+          ]
         },
         {
           "type": "null"
         }
       ],
-      "default": null
+      "default": null,
+      "title": "Spatial Relation"
     },
     "aggregate": {
       "anyOf": [

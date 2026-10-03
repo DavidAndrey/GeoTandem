@@ -2526,7 +2526,24 @@
           },
           "metrics": {
             "items": {
-              "$ref": "#/components/schemas/Metric"
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/CountMetric"
+                },
+                {
+                  "$ref": "#/components/schemas/ValueMetric"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "fn",
+                "mapping": {
+                  "avg": "#/components/schemas/ValueMetric",
+                  "count": "#/components/schemas/CountMetric",
+                  "max": "#/components/schemas/ValueMetric",
+                  "min": "#/components/schemas/ValueMetric",
+                  "sum": "#/components/schemas/ValueMetric"
+                }
+              }
             },
             "type": "array",
             "minItems": 1,
@@ -2577,7 +2594,10 @@
                   "$ref": "#/components/schemas/NearFeature"
                 },
                 {
-                  "$ref": "#/components/schemas/Related-Input"
+                  "$ref": "#/components/schemas/RelatedTopological-Input"
+                },
+                {
+                  "$ref": "#/components/schemas/RelatedByDistance-Input"
                 },
                 {
                   "$ref": "#/components/schemas/And-Input"
@@ -2588,24 +2608,7 @@
                 {
                   "$ref": "#/components/schemas/Not-Input"
                 }
-              ],
-              "discriminator": {
-                "propertyName": "op",
-                "mapping": {
-                  "and": "#/components/schemas/And-Input",
-                  "bbox": "#/components/schemas/BBox",
-                  "between": "#/components/schemas/Between",
-                  "compare": "#/components/schemas/Compare",
-                  "geometry": "#/components/schemas/GeometryFilter",
-                  "in": "#/components/schemas/InList",
-                  "is_null": "#/components/schemas/IsNull",
-                  "near_feature": "#/components/schemas/NearFeature",
-                  "not": "#/components/schemas/Not-Input",
-                  "or": "#/components/schemas/Or-Input",
-                  "related": "#/components/schemas/Related-Input",
-                  "text_match": "#/components/schemas/TextMatch"
-                }
-              }
+              ]
             },
             "type": "array",
             "minItems": 1,
@@ -2655,7 +2658,10 @@
                   "$ref": "#/components/schemas/NearFeature"
                 },
                 {
-                  "$ref": "#/components/schemas/Related-Output"
+                  "$ref": "#/components/schemas/RelatedTopological-Output"
+                },
+                {
+                  "$ref": "#/components/schemas/RelatedByDistance-Output"
                 },
                 {
                   "$ref": "#/components/schemas/And-Output"
@@ -2666,24 +2672,7 @@
                 {
                   "$ref": "#/components/schemas/Not-Output"
                 }
-              ],
-              "discriminator": {
-                "propertyName": "op",
-                "mapping": {
-                  "and": "#/components/schemas/And-Output",
-                  "bbox": "#/components/schemas/BBox",
-                  "between": "#/components/schemas/Between",
-                  "compare": "#/components/schemas/Compare",
-                  "geometry": "#/components/schemas/GeometryFilter",
-                  "in": "#/components/schemas/InList",
-                  "is_null": "#/components/schemas/IsNull",
-                  "near_feature": "#/components/schemas/NearFeature",
-                  "not": "#/components/schemas/Not-Output",
-                  "or": "#/components/schemas/Or-Output",
-                  "related": "#/components/schemas/Related-Output",
-                  "text_match": "#/components/schemas/TextMatch"
-                }
-              }
+              ]
             },
             "type": "array",
             "minItems": 1,
@@ -2998,7 +2987,7 @@
             "maxItems": 4,
             "minItems": 4,
             "title": "Bbox",
-            "description": "[min_lon, min_lat, max_lon, max_lat] in WGS84."
+            "description": "Two opposite corners [lon, lat, lon, lat] in WGS84; stored as [min_lon, min_lat, max_lon, max_lat]."
           }
         },
         "additionalProperties": false,
@@ -3083,7 +3072,7 @@
           "max"
         ],
         "title": "Between",
-        "description": "Inclusive value range (F-4.2)."
+        "description": "Inclusive value range (F-4.2). The bounds may come in either order."
       },
       "Body_upload_api_admin_imports_post": {
         "properties": {
@@ -3327,6 +3316,29 @@
         "title": "Compare",
         "description": "Attribute comparison with a constant (F-4.2)."
       },
+      "CountMetric": {
+        "properties": {
+          "as": {
+            "type": "string",
+            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+            "title": "As",
+            "description": "Name of the result attribute."
+          },
+          "fn": {
+            "type": "string",
+            "const": "count",
+            "title": "Fn"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "as",
+          "fn"
+        ],
+        "title": "CountMetric",
+        "description": "Number of source features per area."
+      },
       "CountRequest": {
         "properties": {
           "queries": {
@@ -3378,6 +3390,170 @@
           "password"
         ],
         "title": "Credentials"
+      },
+      "DistanceRelation-Input": {
+        "properties": {
+          "layer": {
+            "type": "string",
+            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+            "title": "Layer",
+            "description": "Lower-case layer or attribute name."
+          },
+          "predicate": {
+            "type": "string",
+            "const": "dwithin",
+            "title": "Predicate"
+          },
+          "distance_m": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Distance M",
+            "description": "Distance in metres."
+          },
+          "where": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/Compare"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Between"
+                  },
+                  {
+                    "$ref": "#/components/schemas/InList"
+                  },
+                  {
+                    "$ref": "#/components/schemas/TextMatch"
+                  },
+                  {
+                    "$ref": "#/components/schemas/IsNull"
+                  },
+                  {
+                    "$ref": "#/components/schemas/BBox"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GeometryFilter"
+                  },
+                  {
+                    "$ref": "#/components/schemas/NearFeature"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RelatedTopological-Input"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RelatedByDistance-Input"
+                  },
+                  {
+                    "$ref": "#/components/schemas/And-Input"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Or-Input"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Not-Input"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Where",
+            "description": "Filter on the attributes of ``layer``."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "layer",
+          "predicate",
+          "distance_m"
+        ],
+        "title": "DistanceRelation",
+        "description": "Source within ``distance_m`` of a feature of ``layer``."
+      },
+      "DistanceRelation-Output": {
+        "properties": {
+          "layer": {
+            "type": "string",
+            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+            "title": "Layer",
+            "description": "Lower-case layer or attribute name."
+          },
+          "predicate": {
+            "type": "string",
+            "const": "dwithin",
+            "title": "Predicate"
+          },
+          "distance_m": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Distance M",
+            "description": "Distance in metres."
+          },
+          "where": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/Compare"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Between"
+                  },
+                  {
+                    "$ref": "#/components/schemas/InList"
+                  },
+                  {
+                    "$ref": "#/components/schemas/TextMatch"
+                  },
+                  {
+                    "$ref": "#/components/schemas/IsNull"
+                  },
+                  {
+                    "$ref": "#/components/schemas/BBox"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GeometryFilter"
+                  },
+                  {
+                    "$ref": "#/components/schemas/NearFeature"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RelatedTopological-Output"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RelatedByDistance-Output"
+                  },
+                  {
+                    "$ref": "#/components/schemas/And-Output"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Or-Output"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Not-Output"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Where",
+            "description": "Filter on the attributes of ``layer``."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "layer",
+          "predicate",
+          "distance_m"
+        ],
+        "title": "DistanceRelation",
+        "description": "Source within ``distance_m`` of a feature of ``layer``."
       },
       "ErrorBody": {
         "properties": {
@@ -4447,48 +4623,6 @@
         "title": "Message",
         "description": "A finding about the source; ``code`` is stable, ``message`` explains it."
       },
-      "Metric": {
-        "properties": {
-          "fn": {
-            "type": "string",
-            "enum": [
-              "count",
-              "sum",
-              "avg",
-              "min",
-              "max"
-            ],
-            "title": "Fn"
-          },
-          "attr": {
-            "anyOf": [
-              {
-                "type": "string",
-                "pattern": "^[a-z_][a-z0-9_]{0,62}$",
-                "description": "Lower-case layer or attribute name."
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Attr",
-            "description": "Source attribute; not used by 'count'."
-          },
-          "as": {
-            "type": "string",
-            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
-            "title": "As",
-            "description": "Name of the result attribute."
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "fn",
-          "as"
-        ],
-        "title": "Metric"
-      },
       "NearFeature": {
         "properties": {
           "op": {
@@ -4585,7 +4719,10 @@
                 "$ref": "#/components/schemas/NearFeature"
               },
               {
-                "$ref": "#/components/schemas/Related-Input"
+                "$ref": "#/components/schemas/RelatedTopological-Input"
+              },
+              {
+                "$ref": "#/components/schemas/RelatedByDistance-Input"
               },
               {
                 "$ref": "#/components/schemas/And-Input"
@@ -4597,24 +4734,7 @@
                 "$ref": "#/components/schemas/Not-Input"
               }
             ],
-            "title": "Arg",
-            "discriminator": {
-              "propertyName": "op",
-              "mapping": {
-                "and": "#/components/schemas/And-Input",
-                "bbox": "#/components/schemas/BBox",
-                "between": "#/components/schemas/Between",
-                "compare": "#/components/schemas/Compare",
-                "geometry": "#/components/schemas/GeometryFilter",
-                "in": "#/components/schemas/InList",
-                "is_null": "#/components/schemas/IsNull",
-                "near_feature": "#/components/schemas/NearFeature",
-                "not": "#/components/schemas/Not-Input",
-                "or": "#/components/schemas/Or-Input",
-                "related": "#/components/schemas/Related-Input",
-                "text_match": "#/components/schemas/TextMatch"
-              }
-            }
+            "title": "Arg"
           }
         },
         "additionalProperties": false,
@@ -4659,7 +4779,10 @@
                 "$ref": "#/components/schemas/NearFeature"
               },
               {
-                "$ref": "#/components/schemas/Related-Output"
+                "$ref": "#/components/schemas/RelatedTopological-Output"
+              },
+              {
+                "$ref": "#/components/schemas/RelatedByDistance-Output"
               },
               {
                 "$ref": "#/components/schemas/And-Output"
@@ -4671,24 +4794,7 @@
                 "$ref": "#/components/schemas/Not-Output"
               }
             ],
-            "title": "Arg",
-            "discriminator": {
-              "propertyName": "op",
-              "mapping": {
-                "and": "#/components/schemas/And-Output",
-                "bbox": "#/components/schemas/BBox",
-                "between": "#/components/schemas/Between",
-                "compare": "#/components/schemas/Compare",
-                "geometry": "#/components/schemas/GeometryFilter",
-                "in": "#/components/schemas/InList",
-                "is_null": "#/components/schemas/IsNull",
-                "near_feature": "#/components/schemas/NearFeature",
-                "not": "#/components/schemas/Not-Output",
-                "or": "#/components/schemas/Or-Output",
-                "related": "#/components/schemas/Related-Output",
-                "text_match": "#/components/schemas/TextMatch"
-              }
-            }
+            "title": "Arg"
           }
         },
         "additionalProperties": false,
@@ -4749,7 +4855,10 @@
                   "$ref": "#/components/schemas/NearFeature"
                 },
                 {
-                  "$ref": "#/components/schemas/Related-Input"
+                  "$ref": "#/components/schemas/RelatedTopological-Input"
+                },
+                {
+                  "$ref": "#/components/schemas/RelatedByDistance-Input"
                 },
                 {
                   "$ref": "#/components/schemas/And-Input"
@@ -4760,24 +4869,7 @@
                 {
                   "$ref": "#/components/schemas/Not-Input"
                 }
-              ],
-              "discriminator": {
-                "propertyName": "op",
-                "mapping": {
-                  "and": "#/components/schemas/And-Input",
-                  "bbox": "#/components/schemas/BBox",
-                  "between": "#/components/schemas/Between",
-                  "compare": "#/components/schemas/Compare",
-                  "geometry": "#/components/schemas/GeometryFilter",
-                  "in": "#/components/schemas/InList",
-                  "is_null": "#/components/schemas/IsNull",
-                  "near_feature": "#/components/schemas/NearFeature",
-                  "not": "#/components/schemas/Not-Input",
-                  "or": "#/components/schemas/Or-Input",
-                  "related": "#/components/schemas/Related-Input",
-                  "text_match": "#/components/schemas/TextMatch"
-                }
-              }
+              ]
             },
             "type": "array",
             "minItems": 1,
@@ -4827,7 +4919,10 @@
                   "$ref": "#/components/schemas/NearFeature"
                 },
                 {
-                  "$ref": "#/components/schemas/Related-Output"
+                  "$ref": "#/components/schemas/RelatedTopological-Output"
+                },
+                {
+                  "$ref": "#/components/schemas/RelatedByDistance-Output"
                 },
                 {
                   "$ref": "#/components/schemas/And-Output"
@@ -4838,24 +4933,7 @@
                 {
                   "$ref": "#/components/schemas/Not-Output"
                 }
-              ],
-              "discriminator": {
-                "propertyName": "op",
-                "mapping": {
-                  "and": "#/components/schemas/And-Output",
-                  "bbox": "#/components/schemas/BBox",
-                  "between": "#/components/schemas/Between",
-                  "compare": "#/components/schemas/Compare",
-                  "geometry": "#/components/schemas/GeometryFilter",
-                  "in": "#/components/schemas/InList",
-                  "is_null": "#/components/schemas/IsNull",
-                  "near_feature": "#/components/schemas/NearFeature",
-                  "not": "#/components/schemas/Not-Output",
-                  "or": "#/components/schemas/Or-Output",
-                  "related": "#/components/schemas/Related-Output",
-                  "text_match": "#/components/schemas/TextMatch"
-                }
-              }
+              ]
             },
             "type": "array",
             "minItems": 1,
@@ -5136,7 +5214,10 @@
                     "$ref": "#/components/schemas/NearFeature"
                   },
                   {
-                    "$ref": "#/components/schemas/Related-Input"
+                    "$ref": "#/components/schemas/RelatedTopological-Input"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RelatedByDistance-Input"
                   },
                   {
                     "$ref": "#/components/schemas/And-Input"
@@ -5147,24 +5228,7 @@
                   {
                     "$ref": "#/components/schemas/Not-Input"
                   }
-                ],
-                "discriminator": {
-                  "propertyName": "op",
-                  "mapping": {
-                    "and": "#/components/schemas/And-Input",
-                    "bbox": "#/components/schemas/BBox",
-                    "between": "#/components/schemas/Between",
-                    "compare": "#/components/schemas/Compare",
-                    "geometry": "#/components/schemas/GeometryFilter",
-                    "in": "#/components/schemas/InList",
-                    "is_null": "#/components/schemas/IsNull",
-                    "near_feature": "#/components/schemas/NearFeature",
-                    "not": "#/components/schemas/Not-Input",
-                    "or": "#/components/schemas/Or-Input",
-                    "related": "#/components/schemas/Related-Input",
-                    "text_match": "#/components/schemas/TextMatch"
-                  }
-                }
+                ]
               },
               {
                 "type": "null"
@@ -5185,12 +5249,29 @@
           "spatial_relation": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/SpatialRelation-Input"
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/TopologicalRelation-Input"
+                  },
+                  {
+                    "$ref": "#/components/schemas/DistanceRelation-Input"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "predicate",
+                  "mapping": {
+                    "contains": "#/components/schemas/TopologicalRelation-Input",
+                    "dwithin": "#/components/schemas/DistanceRelation-Input",
+                    "intersects": "#/components/schemas/TopologicalRelation-Input",
+                    "within": "#/components/schemas/TopologicalRelation-Input"
+                  }
+                }
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "title": "Spatial Relation"
           },
           "aggregate": {
             "anyOf": [
@@ -5342,7 +5423,10 @@
                     "$ref": "#/components/schemas/NearFeature"
                   },
                   {
-                    "$ref": "#/components/schemas/Related-Output"
+                    "$ref": "#/components/schemas/RelatedTopological-Output"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RelatedByDistance-Output"
                   },
                   {
                     "$ref": "#/components/schemas/And-Output"
@@ -5353,24 +5437,7 @@
                   {
                     "$ref": "#/components/schemas/Not-Output"
                   }
-                ],
-                "discriminator": {
-                  "propertyName": "op",
-                  "mapping": {
-                    "and": "#/components/schemas/And-Output",
-                    "bbox": "#/components/schemas/BBox",
-                    "between": "#/components/schemas/Between",
-                    "compare": "#/components/schemas/Compare",
-                    "geometry": "#/components/schemas/GeometryFilter",
-                    "in": "#/components/schemas/InList",
-                    "is_null": "#/components/schemas/IsNull",
-                    "near_feature": "#/components/schemas/NearFeature",
-                    "not": "#/components/schemas/Not-Output",
-                    "or": "#/components/schemas/Or-Output",
-                    "related": "#/components/schemas/Related-Output",
-                    "text_match": "#/components/schemas/TextMatch"
-                  }
-                }
+                ]
               },
               {
                 "type": "null"
@@ -5391,12 +5458,29 @@
           "spatial_relation": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/SpatialRelation-Output"
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/TopologicalRelation-Output"
+                  },
+                  {
+                    "$ref": "#/components/schemas/DistanceRelation-Output"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "predicate",
+                  "mapping": {
+                    "contains": "#/components/schemas/TopologicalRelation-Output",
+                    "dwithin": "#/components/schemas/DistanceRelation-Output",
+                    "intersects": "#/components/schemas/TopologicalRelation-Output",
+                    "within": "#/components/schemas/TopologicalRelation-Output"
+                  }
+                }
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "title": "Spatial Relation"
           },
           "aggregate": {
             "anyOf": [
@@ -5590,7 +5674,7 @@
         ],
         "title": "RejectedRow"
       },
-      "Related-Input": {
+      "RelatedByDistance-Input": {
         "properties": {
           "layer": {
             "type": "string",
@@ -5600,26 +5684,14 @@
           },
           "predicate": {
             "type": "string",
-            "enum": [
-              "intersects",
-              "within",
-              "contains",
-              "dwithin"
-            ],
+            "const": "dwithin",
             "title": "Predicate"
           },
           "distance_m": {
-            "anyOf": [
-              {
-                "type": "number",
-                "exclusiveMinimum": 0.0,
-                "description": "Distance in metres."
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Distance M"
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Distance M",
+            "description": "Distance in metres."
           },
           "where": {
             "anyOf": [
@@ -5650,7 +5722,10 @@
                     "$ref": "#/components/schemas/NearFeature"
                   },
                   {
-                    "$ref": "#/components/schemas/Related-Input"
+                    "$ref": "#/components/schemas/RelatedTopological-Input"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RelatedByDistance-Input"
                   },
                   {
                     "$ref": "#/components/schemas/And-Input"
@@ -5661,24 +5736,7 @@
                   {
                     "$ref": "#/components/schemas/Not-Input"
                   }
-                ],
-                "discriminator": {
-                  "propertyName": "op",
-                  "mapping": {
-                    "and": "#/components/schemas/And-Input",
-                    "bbox": "#/components/schemas/BBox",
-                    "between": "#/components/schemas/Between",
-                    "compare": "#/components/schemas/Compare",
-                    "geometry": "#/components/schemas/GeometryFilter",
-                    "in": "#/components/schemas/InList",
-                    "is_null": "#/components/schemas/IsNull",
-                    "near_feature": "#/components/schemas/NearFeature",
-                    "not": "#/components/schemas/Not-Input",
-                    "or": "#/components/schemas/Or-Input",
-                    "related": "#/components/schemas/Related-Input",
-                    "text_match": "#/components/schemas/TextMatch"
-                  }
-                }
+                ]
               },
               {
                 "type": "null"
@@ -5698,12 +5756,12 @@
         "required": [
           "layer",
           "predicate",
+          "distance_m",
           "op"
         ],
-        "title": "Related",
-        "description": "Source feature relates to at least one feature of ``layer`` (F-4.4), as a condition.\n\nSince v1. Unlike the top-level ``spatial_relation`` it combines with\n``and``, ``or`` and ``not``: \"outside\" is ``not`` + ``within``, \"farther\nthan\" is ``not`` + ``dwithin``. It sees the source geometry before any\n``buffer``. The predicate reads ``source <predicate> layer``."
+        "title": "RelatedByDistance"
       },
-      "Related-Output": {
+      "RelatedByDistance-Output": {
         "properties": {
           "layer": {
             "type": "string",
@@ -5713,26 +5771,14 @@
           },
           "predicate": {
             "type": "string",
-            "enum": [
-              "intersects",
-              "within",
-              "contains",
-              "dwithin"
-            ],
+            "const": "dwithin",
             "title": "Predicate"
           },
           "distance_m": {
-            "anyOf": [
-              {
-                "type": "number",
-                "exclusiveMinimum": 0.0,
-                "description": "Distance in metres."
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Distance M"
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Distance M",
+            "description": "Distance in metres."
           },
           "where": {
             "anyOf": [
@@ -5763,7 +5809,10 @@
                     "$ref": "#/components/schemas/NearFeature"
                   },
                   {
-                    "$ref": "#/components/schemas/Related-Output"
+                    "$ref": "#/components/schemas/RelatedTopological-Output"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RelatedByDistance-Output"
                   },
                   {
                     "$ref": "#/components/schemas/And-Output"
@@ -5774,24 +5823,92 @@
                   {
                     "$ref": "#/components/schemas/Not-Output"
                   }
-                ],
-                "discriminator": {
-                  "propertyName": "op",
-                  "mapping": {
-                    "and": "#/components/schemas/And-Output",
-                    "bbox": "#/components/schemas/BBox",
-                    "between": "#/components/schemas/Between",
-                    "compare": "#/components/schemas/Compare",
-                    "geometry": "#/components/schemas/GeometryFilter",
-                    "in": "#/components/schemas/InList",
-                    "is_null": "#/components/schemas/IsNull",
-                    "near_feature": "#/components/schemas/NearFeature",
-                    "not": "#/components/schemas/Not-Output",
-                    "or": "#/components/schemas/Or-Output",
-                    "related": "#/components/schemas/Related-Output",
-                    "text_match": "#/components/schemas/TextMatch"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Where",
+            "description": "Filter on the attributes of ``layer``."
+          },
+          "op": {
+            "type": "string",
+            "const": "related",
+            "title": "Op"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "layer",
+          "predicate",
+          "distance_m",
+          "op"
+        ],
+        "title": "RelatedByDistance"
+      },
+      "RelatedTopological-Input": {
+        "properties": {
+          "layer": {
+            "type": "string",
+            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+            "title": "Layer",
+            "description": "Lower-case layer or attribute name."
+          },
+          "predicate": {
+            "type": "string",
+            "enum": [
+              "intersects",
+              "within",
+              "contains"
+            ],
+            "title": "Predicate"
+          },
+          "where": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/Compare"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Between"
+                  },
+                  {
+                    "$ref": "#/components/schemas/InList"
+                  },
+                  {
+                    "$ref": "#/components/schemas/TextMatch"
+                  },
+                  {
+                    "$ref": "#/components/schemas/IsNull"
+                  },
+                  {
+                    "$ref": "#/components/schemas/BBox"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GeometryFilter"
+                  },
+                  {
+                    "$ref": "#/components/schemas/NearFeature"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RelatedTopological-Input"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RelatedByDistance-Input"
+                  },
+                  {
+                    "$ref": "#/components/schemas/And-Input"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Or-Input"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Not-Input"
                   }
-                }
+                ]
               },
               {
                 "type": "null"
@@ -5813,8 +5930,91 @@
           "predicate",
           "op"
         ],
-        "title": "Related",
-        "description": "Source feature relates to at least one feature of ``layer`` (F-4.4), as a condition.\n\nSince v1. Unlike the top-level ``spatial_relation`` it combines with\n``and``, ``or`` and ``not``: \"outside\" is ``not`` + ``within``, \"farther\nthan\" is ``not`` + ``dwithin``. It sees the source geometry before any\n``buffer``. The predicate reads ``source <predicate> layer``."
+        "title": "RelatedTopological"
+      },
+      "RelatedTopological-Output": {
+        "properties": {
+          "layer": {
+            "type": "string",
+            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+            "title": "Layer",
+            "description": "Lower-case layer or attribute name."
+          },
+          "predicate": {
+            "type": "string",
+            "enum": [
+              "intersects",
+              "within",
+              "contains"
+            ],
+            "title": "Predicate"
+          },
+          "where": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/Compare"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Between"
+                  },
+                  {
+                    "$ref": "#/components/schemas/InList"
+                  },
+                  {
+                    "$ref": "#/components/schemas/TextMatch"
+                  },
+                  {
+                    "$ref": "#/components/schemas/IsNull"
+                  },
+                  {
+                    "$ref": "#/components/schemas/BBox"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GeometryFilter"
+                  },
+                  {
+                    "$ref": "#/components/schemas/NearFeature"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RelatedTopological-Output"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RelatedByDistance-Output"
+                  },
+                  {
+                    "$ref": "#/components/schemas/And-Output"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Or-Output"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Not-Output"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Where",
+            "description": "Filter on the attributes of ``layer``."
+          },
+          "op": {
+            "type": "string",
+            "const": "related",
+            "title": "Op"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "layer",
+          "predicate",
+          "op"
+        ],
+        "title": "RelatedTopological"
       },
       "ResultMeta": {
         "properties": {
@@ -5932,220 +6132,6 @@
           "kind"
         ],
         "title": "SingleSymbol"
-      },
-      "SpatialRelation-Input": {
-        "properties": {
-          "layer": {
-            "type": "string",
-            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
-            "title": "Layer",
-            "description": "Lower-case layer or attribute name."
-          },
-          "predicate": {
-            "type": "string",
-            "enum": [
-              "intersects",
-              "within",
-              "contains",
-              "dwithin"
-            ],
-            "title": "Predicate"
-          },
-          "distance_m": {
-            "anyOf": [
-              {
-                "type": "number",
-                "exclusiveMinimum": 0.0,
-                "description": "Distance in metres."
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Distance M"
-          },
-          "where": {
-            "anyOf": [
-              {
-                "oneOf": [
-                  {
-                    "$ref": "#/components/schemas/Compare"
-                  },
-                  {
-                    "$ref": "#/components/schemas/Between"
-                  },
-                  {
-                    "$ref": "#/components/schemas/InList"
-                  },
-                  {
-                    "$ref": "#/components/schemas/TextMatch"
-                  },
-                  {
-                    "$ref": "#/components/schemas/IsNull"
-                  },
-                  {
-                    "$ref": "#/components/schemas/BBox"
-                  },
-                  {
-                    "$ref": "#/components/schemas/GeometryFilter"
-                  },
-                  {
-                    "$ref": "#/components/schemas/NearFeature"
-                  },
-                  {
-                    "$ref": "#/components/schemas/Related-Input"
-                  },
-                  {
-                    "$ref": "#/components/schemas/And-Input"
-                  },
-                  {
-                    "$ref": "#/components/schemas/Or-Input"
-                  },
-                  {
-                    "$ref": "#/components/schemas/Not-Input"
-                  }
-                ],
-                "discriminator": {
-                  "propertyName": "op",
-                  "mapping": {
-                    "and": "#/components/schemas/And-Input",
-                    "bbox": "#/components/schemas/BBox",
-                    "between": "#/components/schemas/Between",
-                    "compare": "#/components/schemas/Compare",
-                    "geometry": "#/components/schemas/GeometryFilter",
-                    "in": "#/components/schemas/InList",
-                    "is_null": "#/components/schemas/IsNull",
-                    "near_feature": "#/components/schemas/NearFeature",
-                    "not": "#/components/schemas/Not-Input",
-                    "or": "#/components/schemas/Or-Input",
-                    "related": "#/components/schemas/Related-Input",
-                    "text_match": "#/components/schemas/TextMatch"
-                  }
-                }
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Where",
-            "description": "Filter on the attributes of ``layer``."
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "layer",
-          "predicate"
-        ],
-        "title": "SpatialRelation",
-        "description": "Keep source features related to at least one feature of ``layer`` (F-4.4).\n\nThe predicate reads ``source <predicate> layer``: ``within`` keeps source\nfeatures lying inside a feature of ``layer``. Applied after ``buffer``;\nfor relations combined with other conditions use ``related`` in ``where``."
-      },
-      "SpatialRelation-Output": {
-        "properties": {
-          "layer": {
-            "type": "string",
-            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
-            "title": "Layer",
-            "description": "Lower-case layer or attribute name."
-          },
-          "predicate": {
-            "type": "string",
-            "enum": [
-              "intersects",
-              "within",
-              "contains",
-              "dwithin"
-            ],
-            "title": "Predicate"
-          },
-          "distance_m": {
-            "anyOf": [
-              {
-                "type": "number",
-                "exclusiveMinimum": 0.0,
-                "description": "Distance in metres."
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Distance M"
-          },
-          "where": {
-            "anyOf": [
-              {
-                "oneOf": [
-                  {
-                    "$ref": "#/components/schemas/Compare"
-                  },
-                  {
-                    "$ref": "#/components/schemas/Between"
-                  },
-                  {
-                    "$ref": "#/components/schemas/InList"
-                  },
-                  {
-                    "$ref": "#/components/schemas/TextMatch"
-                  },
-                  {
-                    "$ref": "#/components/schemas/IsNull"
-                  },
-                  {
-                    "$ref": "#/components/schemas/BBox"
-                  },
-                  {
-                    "$ref": "#/components/schemas/GeometryFilter"
-                  },
-                  {
-                    "$ref": "#/components/schemas/NearFeature"
-                  },
-                  {
-                    "$ref": "#/components/schemas/Related-Output"
-                  },
-                  {
-                    "$ref": "#/components/schemas/And-Output"
-                  },
-                  {
-                    "$ref": "#/components/schemas/Or-Output"
-                  },
-                  {
-                    "$ref": "#/components/schemas/Not-Output"
-                  }
-                ],
-                "discriminator": {
-                  "propertyName": "op",
-                  "mapping": {
-                    "and": "#/components/schemas/And-Output",
-                    "bbox": "#/components/schemas/BBox",
-                    "between": "#/components/schemas/Between",
-                    "compare": "#/components/schemas/Compare",
-                    "geometry": "#/components/schemas/GeometryFilter",
-                    "in": "#/components/schemas/InList",
-                    "is_null": "#/components/schemas/IsNull",
-                    "near_feature": "#/components/schemas/NearFeature",
-                    "not": "#/components/schemas/Not-Output",
-                    "or": "#/components/schemas/Or-Output",
-                    "related": "#/components/schemas/Related-Output",
-                    "text_match": "#/components/schemas/TextMatch"
-                  }
-                }
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Where",
-            "description": "Filter on the attributes of ``layer``."
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "layer",
-          "predicate"
-        ],
-        "title": "SpatialRelation",
-        "description": "Keep source features related to at least one feature of ``layer`` (F-4.4).\n\nThe predicate reads ``source <predicate> layer``: ``within`` keeps source\nfeatures lying inside a feature of ``layer``. Applied after ``buffer``;\nfor relations combined with other conditions use ``related`` in ``where``."
       },
       "StartPassword": {
         "properties": {
@@ -6266,6 +6252,164 @@
           "output_schema"
         ],
         "title": "ToolDescription"
+      },
+      "TopologicalRelation-Input": {
+        "properties": {
+          "layer": {
+            "type": "string",
+            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+            "title": "Layer",
+            "description": "Lower-case layer or attribute name."
+          },
+          "predicate": {
+            "type": "string",
+            "enum": [
+              "intersects",
+              "within",
+              "contains"
+            ],
+            "title": "Predicate"
+          },
+          "where": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/Compare"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Between"
+                  },
+                  {
+                    "$ref": "#/components/schemas/InList"
+                  },
+                  {
+                    "$ref": "#/components/schemas/TextMatch"
+                  },
+                  {
+                    "$ref": "#/components/schemas/IsNull"
+                  },
+                  {
+                    "$ref": "#/components/schemas/BBox"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GeometryFilter"
+                  },
+                  {
+                    "$ref": "#/components/schemas/NearFeature"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RelatedTopological-Input"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RelatedByDistance-Input"
+                  },
+                  {
+                    "$ref": "#/components/schemas/And-Input"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Or-Input"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Not-Input"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Where",
+            "description": "Filter on the attributes of ``layer``."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "layer",
+          "predicate"
+        ],
+        "title": "TopologicalRelation",
+        "description": "Relation without distance: ``source <predicate> layer``."
+      },
+      "TopologicalRelation-Output": {
+        "properties": {
+          "layer": {
+            "type": "string",
+            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+            "title": "Layer",
+            "description": "Lower-case layer or attribute name."
+          },
+          "predicate": {
+            "type": "string",
+            "enum": [
+              "intersects",
+              "within",
+              "contains"
+            ],
+            "title": "Predicate"
+          },
+          "where": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/Compare"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Between"
+                  },
+                  {
+                    "$ref": "#/components/schemas/InList"
+                  },
+                  {
+                    "$ref": "#/components/schemas/TextMatch"
+                  },
+                  {
+                    "$ref": "#/components/schemas/IsNull"
+                  },
+                  {
+                    "$ref": "#/components/schemas/BBox"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GeometryFilter"
+                  },
+                  {
+                    "$ref": "#/components/schemas/NearFeature"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RelatedTopological-Output"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RelatedByDistance-Output"
+                  },
+                  {
+                    "$ref": "#/components/schemas/And-Output"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Or-Output"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Not-Output"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Where",
+            "description": "Filter on the attributes of ``layer``."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "layer",
+          "predicate"
+        ],
+        "title": "TopologicalRelation",
+        "description": "Relation without distance: ``source <predicate> layer``."
       },
       "Upload": {
         "properties": {
@@ -6396,6 +6540,41 @@
         "type": "object",
         "title": "ValueDomain",
         "description": "A range for numbers or a code list (code → meaning), F-2.8."
+      },
+      "ValueMetric": {
+        "properties": {
+          "as": {
+            "type": "string",
+            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+            "title": "As",
+            "description": "Name of the result attribute."
+          },
+          "fn": {
+            "type": "string",
+            "enum": [
+              "sum",
+              "avg",
+              "min",
+              "max"
+            ],
+            "title": "Fn"
+          },
+          "attr": {
+            "type": "string",
+            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+            "title": "Attr",
+            "description": "Source attribute."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "as",
+          "fn",
+          "attr"
+        ],
+        "title": "ValueMetric",
+        "description": "Sum, mean, minimum or maximum of a numeric source attribute per area."
       },
       "VisibilityChange": {
         "properties": {

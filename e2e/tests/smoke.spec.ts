@@ -27,7 +27,7 @@ test('a hand-written query object gives the pinned result', async ({ request }) 
   const query = golden('schools_near_river.query.json')
   const expected = golden('schools_near_river.expected.json')
   const response = await request.post('/api/query', { data: query })
-  expect(response.ok()).toBeTruthy()
+  expect(response.ok(), `${response.status()} ${await response.text()}`).toBeTruthy()
   const body = await response.json()
   expect(body.meta.query_hash).toBe(expected.query_hash)
   expect(body.features.map((f: { id: number }) => f.id)).toEqual(

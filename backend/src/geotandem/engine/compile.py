@@ -209,7 +209,7 @@ class Compiler:
                         ref.columns[FID] == c.fid, d.distance(geom, ref_geom) <= c.distance_m
                     )
                 )
-            case m.Related():
+            case m.RelatedTopological() | m.RelatedByDistance():
                 # The same semi-join as the top-level relation, so NOT and OR apply
                 # to it like to any other condition (schema v1).
                 return self.spatial_relation(c, scope.require_geom("related"))
@@ -243,23 +243,23 @@ class Compiler:
             )
 
     def spatial_relation(
-        self, rel: m.SpatialRelation | m.Related, geom: Any
+        self, rel: m.TopologicalRelation | m.DistanceRelation, geom: Any
     ) -> ColumnElement[bool]:
         self.use(Op.SPATIAL_RELATION)
         d = self.dialect
         other = self.scope(rel.layer)
         other_geom = other.require_geom("spatial_relation")
-        match rel.predicate:
-            case "intersects":
-                cond = d.intersects(geom, other_geom)
-            case "within":
-                cond = d.within(geom, other_geom)
-            case "contains":
-                cond = d.contains(geom, other_geom)
-            case "dwithin":
-                assert rel.distance_m is not None
-                cond = d.dwithin(geom, other_geom, rel.distance_m)
-        conds = [self.indexed(other, geom, cond, rel.distance_m or 0)]
+        distance = 0.0
+        if isinstance(rel, m.DistanceRelation):
+            distance = rel.distance_m
+            cond = d.dwithin(geom, other_geom, distance)
+        elif rel.predicate == "intersects":
+            cond = d.intersects(geom, other_geom)
+        elif rel.predicate == "within":
+            cond = d.within(geom, other_geom)
+        else:
+            cond = d.contains(geom, other_geom)
+        conds = [self.indexed(other, geom, cond, distance)]
         if rel.where is not None:
             conds.append(self.condition(rel.where, other))
         return exists(select(literal(1)).where(*conds))
@@ -302,7 +302,7 @@ class Compiler:
         max_features: int,
     ) -> Compiled:
         self.use(Op.AGGREGATE)
-        inputs = sorted({metric.attr for metric in agg.metrics if metric.attr})
+        inputs = sorted({m_.attr for m_ in agg.metrics if isinstance(m_, m.ValueMetric)})
         for name in inputs:
             _check_numeric(src, name, src.attr(name))
         features = (
@@ -328,10 +328,9 @@ class Compiler:
                     f"Metric name '{metric.as_}' clashes with another result attribute.",
                     attribute=metric.as_,
                 )
-            if metric.fn == "count":
+            if isinstance(metric, m.CountMetric):
                 namespace[metric.as_] = func.count(features.c[FID])
             else:
-                assert metric.attr is not None
                 namespace[metric.as_] = getattr(func, metric.fn)(features.c[metric.attr])
 
         columns = [*_output_columns(q.select, namespace), self.geojson(area_geom)]

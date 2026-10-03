@@ -20,13 +20,20 @@ Geometries in queries are GeoJSON in WGS84 (EPSG:4326); distances are metres.
 
 Version history: v0 (E1.2); v1 (E1.5) adds the condition ``related``. v1 is a
 superset: a v0 document is read as v1 with the same meaning and result.
+
+The JSON schema is the whole intrinsic contract: no rule couples fields
+behind its back. Where one field depends on another, the model is split into
+variants told apart by a constant (``predicate``, ``fn``); where an order
+matters (``between``, ``bbox``), it is normalised, not enforced. What the
+schema cannot know — whether a layer or attribute exists, its type, who may
+see it — is checked against the data core (``/api/query/validate``).
 """
 
 from __future__ import annotations
 
 from typing import Annotated, Any, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Discriminator, Field, Tag, model_validator
 
 from geotandem_query.version import SCHEMA_VERSION
 
@@ -59,7 +66,7 @@ class Compare(_Model):
 
 
 class Between(_Model):
-    """Inclusive value range (F-4.2)."""
+    """Inclusive value range (F-4.2). The bounds may come in either order."""
 
     op: Literal["between"]
     attr: Identifier
@@ -68,8 +75,10 @@ class Between(_Model):
 
     @model_validator(mode="after")
     def _ordered(self) -> Self:
+        # Normalise, never reject: "between 10 and 5" means 5 to 10. The schema
+        # then is the whole contract, and both orders hash alike (canonical form).
         if self.min > self.max:
-            raise ValueError("'min' must not be greater than 'max'")
+            self.min, self.max = self.max, self.min
         return self
 
 
@@ -103,14 +112,15 @@ class BBox(_Model):
 
     op: Literal["bbox"]
     bbox: tuple[float, float, float, float] = Field(
-        description="[min_lon, min_lat, max_lon, max_lat] in WGS84."
+        description="Two opposite corners [lon, lat, lon, lat] in WGS84; stored as "
+        "[min_lon, min_lat, max_lon, max_lat]."
     )
 
     @model_validator(mode="after")
     def _ordered(self) -> Self:
-        min_x, min_y, max_x, max_y = self.bbox
-        if min_x > max_x or min_y > max_y:
-            raise ValueError("bbox must be [min_lon, min_lat, max_lon, max_lat]")
+        # Normalise, never reject (see Between).
+        x1, y1, x2, y2 = self.bbox
+        self.bbox = (min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2))
         return self
 
 
@@ -138,33 +148,43 @@ class NearFeature(_Model):
     distance_m: Annotated[float, Field(ge=0, description="Distance in metres.")] = 0
 
 
-class _Relation(_Model):
-    """Relation of each source feature to the features of another layer."""
+class TopologicalRelation(_Model):
+    """Relation without distance: ``source <predicate> layer``."""
 
     layer: Identifier
-    predicate: Literal["intersects", "within", "contains", "dwithin"]
-    distance_m: Distance | None = None
+    predicate: Literal["intersects", "within", "contains"]
     where: Condition | None = Field(
         default=None, description="Filter on the attributes of ``layer``."
     )
 
-    @model_validator(mode="after")
-    def _distance(self) -> Self:
-        if (self.predicate == "dwithin") != (self.distance_m is not None):
-            raise ValueError("'distance_m' is required for 'dwithin' and only allowed there")
-        return self
+
+class DistanceRelation(_Model):
+    """Source within ``distance_m`` of a feature of ``layer``."""
+
+    layer: Identifier
+    predicate: Literal["dwithin"]
+    distance_m: Distance
+    where: Condition | None = Field(
+        default=None, description="Filter on the attributes of ``layer``."
+    )
 
 
-class Related(_Relation):
-    """Source feature relates to at least one feature of ``layer`` (F-4.4), as a condition.
-
-    Since v1. Unlike the top-level ``spatial_relation`` it combines with
-    ``and``, ``or`` and ``not``: "outside" is ``not`` + ``within``, "farther
-    than" is ``not`` + ``dwithin``. It sees the source geometry before any
-    ``buffer``. The predicate reads ``source <predicate> layer``.
-    """
-
+class RelatedTopological(TopologicalRelation):
     op: Literal["related"]
+
+
+class RelatedByDistance(DistanceRelation):
+    op: Literal["related"]
+
+
+Related = RelatedTopological | RelatedByDistance
+"""Source feature relates to at least one feature of ``layer`` (F-4.4), as a condition.
+
+Since v1. Unlike the top-level ``spatial_relation`` it combines with ``and``,
+``or`` and ``not``: "outside" is ``not`` + ``within``, "farther than" is
+``not`` + ``dwithin``. It sees the source geometry before any ``buffer``.
+Two variants: only ``dwithin`` carries a distance.
+"""
 
 
 class And(_Model):
@@ -182,20 +202,37 @@ class Not(_Model):
     arg: Condition
 
 
+def _condition_tag(value: Any) -> str | None:
+    """``op``, and for ``related`` also ``predicate``: picks exactly one variant.
+
+    A callable discriminator because pydantic cannot nest the ``predicate``
+    union inside this recursive ``op`` union.
+    """
+
+    def get(key: str) -> Any:
+        return value.get(key) if isinstance(value, dict) else getattr(value, key, None)
+
+    op = get("op")
+    if op == "related":
+        return "related_dwithin" if get("predicate") == "dwithin" else "related"
+    return op if isinstance(op, str) else None
+
+
 Condition = Annotated[
-    Compare
-    | Between
-    | InList
-    | TextMatch
-    | IsNull
-    | BBox
-    | GeometryFilter
-    | NearFeature
-    | Related
-    | And
-    | Or
-    | Not,
-    Field(discriminator="op"),
+    Annotated[Compare, Tag("compare")]
+    | Annotated[Between, Tag("between")]
+    | Annotated[InList, Tag("in")]
+    | Annotated[TextMatch, Tag("text_match")]
+    | Annotated[IsNull, Tag("is_null")]
+    | Annotated[BBox, Tag("bbox")]
+    | Annotated[GeometryFilter, Tag("geometry")]
+    | Annotated[NearFeature, Tag("near_feature")]
+    | Annotated[RelatedTopological, Tag("related")]
+    | Annotated[RelatedByDistance, Tag("related_dwithin")]
+    | Annotated[And, Tag("and")]
+    | Annotated[Or, Tag("or")]
+    | Annotated[Not, Tag("not")],
+    Discriminator(_condition_tag),
 ]
 
 
@@ -222,31 +259,37 @@ class Buffer(_Model):
     distance_m: Distance
 
 
-class SpatialRelation(_Relation):
-    """Keep source features related to at least one feature of ``layer`` (F-4.4).
+SpatialRelation = Annotated[
+    TopologicalRelation | DistanceRelation, Field(discriminator="predicate")
+]
+"""Keep source features related to at least one feature of ``layer`` (F-4.4).
 
-    The predicate reads ``source <predicate> layer``: ``within`` keeps source
-    features lying inside a feature of ``layer``. Applied after ``buffer``;
-    for relations combined with other conditions use ``related`` in ``where``.
-    """
+The predicate reads ``source <predicate> layer``: ``within`` keeps source
+features lying inside a feature of ``layer``. Applied after ``buffer``; for
+relations combined with other conditions use ``related`` in ``where``.
+"""
 
 
-class Metric(_Model):
-    fn: Literal["count", "sum", "avg", "min", "max"]
-    attr: Identifier | None = Field(
-        default=None, description="Source attribute; not used by 'count'."
-    )
+class _Metric(_Model):
     as_: Identifier = Field(alias="as", description="Name of the result attribute.")
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True, serialize_by_alias=True)
 
-    @model_validator(mode="after")
-    def _attr(self) -> Self:
-        if self.fn == "count" and self.attr is not None:
-            raise ValueError("'count' takes no 'attr'")
-        if self.fn != "count" and self.attr is None:
-            raise ValueError(f"'{self.fn}' requires 'attr'")
-        return self
+
+class CountMetric(_Metric):
+    """Number of source features per area."""
+
+    fn: Literal["count"]
+
+
+class ValueMetric(_Metric):
+    """Sum, mean, minimum or maximum of a numeric source attribute per area."""
+
+    fn: Literal["sum", "avg", "min", "max"]
+    attr: Identifier = Field(description="Source attribute.")
+
+
+Metric = Annotated[CountMetric | ValueMetric, Field(discriminator="fn")]
 
 
 class Aggregate(_Model):
@@ -341,6 +384,8 @@ class QueryObject(_Model):
 And.model_rebuild()
 Or.model_rebuild()
 Not.model_rebuild()
-Related.model_rebuild()
-SpatialRelation.model_rebuild()
+TopologicalRelation.model_rebuild()
+DistanceRelation.model_rebuild()
+RelatedTopological.model_rebuild()
+RelatedByDistance.model_rebuild()
 QueryObject.model_rebuild()

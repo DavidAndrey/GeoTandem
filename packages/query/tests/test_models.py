@@ -66,8 +66,6 @@ def test_full_query_validates() -> None:
         {"source": "x; drop table layer"},
         {"where": {"op": "compare", "attr": "a", "cmp": "like", "value": 1}},
         {"where": {"op": "and", "args": []}},
-        {"where": {"op": "between", "attr": "a", "min": 5, "max": 1}},
-        {"where": {"op": "bbox", "bbox": [8, 46, 7, 47]}},
         {"spatial_relation": {"layer": "fluss", "predicate": "dwithin"}},
         {"spatial_relation": {"layer": "fluss", "predicate": "within", "distance_m": 5}},
         {"buffer": {"distance_m": 0}},
@@ -144,3 +142,25 @@ def test_related_combines_with_and_or_not() -> None:
     }
     query = q(where=reference)
     assert canonical_json(query).count('"op":"related"') == 2
+
+
+# --- no hidden rules: order is normalised, not enforced -----------------------
+
+
+def test_reversed_range_and_bbox_are_normalised() -> None:
+    reversed_ = q(where={"op": "between", "attr": "a", "min": 9, "max": 2})
+    ordered = q(where={"op": "between", "attr": "a", "min": 2, "max": 9})
+    assert (reversed_.where.min, reversed_.where.max) == (2, 9)  # type: ignore[union-attr]
+    assert query_hash(reversed_) == query_hash(ordered)
+    corners = q(where={"op": "bbox", "bbox": [8, 47, 7, 46]})
+    assert corners.where.bbox == (7, 46, 8, 47)  # type: ignore[union-attr]
+
+
+def test_variants_carry_only_their_fields() -> None:
+    query = q(
+        where={"op": "related", "layer": "g", "predicate": "within"},
+        aggregate={"by_layer": "g", "metrics": [{"fn": "count", "as": "n"}]},
+    )
+    dumped = query.model_dump(mode="json", by_alias=True, exclude_none=False)
+    assert "distance_m" not in dumped["where"]
+    assert "attr" not in dumped["aggregate"]["metrics"][0]

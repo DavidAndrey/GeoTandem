@@ -10,6 +10,8 @@ from geotandem_query.models import (
     Buffer,
     Compare,
     Condition,
+    CountMetric,
+    DistanceRelation,
     GeoJSONGeometry,
     GeometryFilter,
     InList,
@@ -21,8 +23,12 @@ from geotandem_query.models import (
     OrderBy,
     QueryObject,
     Related,
+    RelatedByDistance,
+    RelatedTopological,
     SpatialRelation,
     TextMatch,
+    TopologicalRelation,
+    ValueMetric,
 )
 from geotandem_query.version import SCHEMA_VERSION
 
@@ -36,6 +42,8 @@ __all__ = [
     "Buffer",
     "Compare",
     "Condition",
+    "CountMetric",
+    "DistanceRelation",
     "GeoJSONGeometry",
     "GeometryFilter",
     "InList",
@@ -47,8 +55,12 @@ __all__ = [
     "OrderBy",
     "QueryObject",
     "Related",
+    "RelatedByDistance",
+    "RelatedTopological",
     "SpatialRelation",
     "TextMatch",
+    "TopologicalRelation",
+    "ValueMetric",
     "canonical_json",
     "query_hash",
 ]

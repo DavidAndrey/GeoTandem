@@ -639,13 +639,13 @@ export interface components {
        */
       area_fields?: string[]
       /** Metrics */
-      metrics: components['schemas']['Metric'][]
+      metrics: (components['schemas']['CountMetric'] | components['schemas']['ValueMetric'])[]
     }
     /** And */
     'And-Input': {
       /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
+       * Op
+       * @constant
        */
       op: 'and'
       /** Args */
@@ -658,7 +658,8 @@ export interface components {
         | components['schemas']['BBox']
         | components['schemas']['GeometryFilter']
         | components['schemas']['NearFeature']
-        | components['schemas']['Related-Input']
+        | components['schemas']['RelatedTopological-Input']
+        | components['schemas']['RelatedByDistance-Input']
         | components['schemas']['And-Input']
         | components['schemas']['Or-Input']
         | components['schemas']['Not-Input']
@@ -667,8 +668,8 @@ export interface components {
     /** And */
     'And-Output': {
       /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
+       * Op
+       * @constant
        */
       op: 'and'
       /** Args */
@@ -681,7 +682,8 @@ export interface components {
         | components['schemas']['BBox']
         | components['schemas']['GeometryFilter']
         | components['schemas']['NearFeature']
-        | components['schemas']['Related-Output']
+        | components['schemas']['RelatedTopological-Output']
+        | components['schemas']['RelatedByDistance-Output']
         | components['schemas']['And-Output']
         | components['schemas']['Or-Output']
         | components['schemas']['Not-Output']
@@ -778,13 +780,13 @@ export interface components {
      */
     BBox: {
       /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
+       * Op
+       * @constant
        */
       op: 'bbox'
       /**
        * Bbox
-       * @description [min_lon, min_lat, max_lon, max_lat] in WGS84.
+       * @description Two opposite corners [lon, lat, lon, lat] in WGS84; stored as [min_lon, min_lat, max_lon, max_lat].
        */
       bbox: [number, number, number, number]
     }
@@ -801,12 +803,12 @@ export interface components {
     }
     /**
      * Between
-     * @description Inclusive value range (F-4.2).
+     * @description Inclusive value range (F-4.2). The bounds may come in either order.
      */
     Between: {
       /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
+       * Op
+       * @constant
        */
       op: 'between'
       /**
@@ -915,8 +917,8 @@ export interface components {
      */
     Compare: {
       /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
+       * Op
+       * @constant
        */
       op: 'compare'
       /**
@@ -931,6 +933,22 @@ export interface components {
       cmp: 'eq' | 'ne' | 'lt' | 'le' | 'gt' | 'ge'
       /** Value */
       value: string | number | boolean
+    }
+    /**
+     * CountMetric
+     * @description Number of source features per area.
+     */
+    CountMetric: {
+      /**
+       * As
+       * @description Name of the result attribute.
+       */
+      as: string
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      fn: 'count'
     }
     /** CountRequest */
     CountRequest: {
@@ -948,6 +966,90 @@ export interface components {
       username: string
       /** Password */
       password: string
+    }
+    /**
+     * DistanceRelation
+     * @description Source within ``distance_m`` of a feature of ``layer``.
+     */
+    'DistanceRelation-Input': {
+      /**
+       * Layer
+       * @description Lower-case layer or attribute name.
+       */
+      layer: string
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      predicate: 'dwithin'
+      /**
+       * Distance M
+       * @description Distance in metres.
+       */
+      distance_m: number
+      /**
+       * Where
+       * @description Filter on the attributes of ``layer``.
+       */
+      where?:
+        | (
+            | components['schemas']['Compare']
+            | components['schemas']['Between']
+            | components['schemas']['InList']
+            | components['schemas']['TextMatch']
+            | components['schemas']['IsNull']
+            | components['schemas']['BBox']
+            | components['schemas']['GeometryFilter']
+            | components['schemas']['NearFeature']
+            | components['schemas']['RelatedTopological-Input']
+            | components['schemas']['RelatedByDistance-Input']
+            | components['schemas']['And-Input']
+            | components['schemas']['Or-Input']
+            | components['schemas']['Not-Input']
+          )
+        | null
+    }
+    /**
+     * DistanceRelation
+     * @description Source within ``distance_m`` of a feature of ``layer``.
+     */
+    'DistanceRelation-Output': {
+      /**
+       * Layer
+       * @description Lower-case layer or attribute name.
+       */
+      layer: string
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      predicate: 'dwithin'
+      /**
+       * Distance M
+       * @description Distance in metres.
+       */
+      distance_m: number
+      /**
+       * Where
+       * @description Filter on the attributes of ``layer``.
+       */
+      where?:
+        | (
+            | components['schemas']['Compare']
+            | components['schemas']['Between']
+            | components['schemas']['InList']
+            | components['schemas']['TextMatch']
+            | components['schemas']['IsNull']
+            | components['schemas']['BBox']
+            | components['schemas']['GeometryFilter']
+            | components['schemas']['NearFeature']
+            | components['schemas']['RelatedTopological-Output']
+            | components['schemas']['RelatedByDistance-Output']
+            | components['schemas']['And-Output']
+            | components['schemas']['Or-Output']
+            | components['schemas']['Not-Output']
+          )
+        | null
     }
     /** ErrorBody */
     ErrorBody: {
@@ -1031,8 +1133,8 @@ export interface components {
      */
     GeometryFilter: {
       /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
+       * Op
+       * @constant
        */
       op: 'geometry'
       geometry: components['schemas']['GeoJSONGeometry']
@@ -1226,8 +1328,8 @@ export interface components {
      */
     InList: {
       /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
+       * Op
+       * @constant
        */
       op: 'in'
       /**
@@ -1244,8 +1346,8 @@ export interface components {
      */
     IsNull: {
       /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
+       * Op
+       * @constant
        */
       op: 'is_null'
       /**
@@ -1373,32 +1475,14 @@ export interface components {
       /** Count */
       count?: number | null
     }
-    /** Metric */
-    Metric: {
-      /**
-       * Fn
-       * @enum {string}
-       */
-      fn: 'count' | 'sum' | 'avg' | 'min' | 'max'
-      /**
-       * Attr
-       * @description Source attribute; not used by 'count'.
-       */
-      attr?: string | null
-      /**
-       * As
-       * @description Name of the result attribute.
-       */
-      as: string
-    }
     /**
      * NearFeature
      * @description Source geometry lies within a distance of one reference feature (F-4.3).
      */
     NearFeature: {
       /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
+       * Op
+       * @constant
        */
       op: 'near_feature'
       /**
@@ -1434,8 +1518,8 @@ export interface components {
     /** Not */
     'Not-Input': {
       /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
+       * Op
+       * @constant
        */
       op: 'not'
       /** Arg */
@@ -1448,7 +1532,8 @@ export interface components {
         | components['schemas']['BBox']
         | components['schemas']['GeometryFilter']
         | components['schemas']['NearFeature']
-        | components['schemas']['Related-Input']
+        | components['schemas']['RelatedTopological-Input']
+        | components['schemas']['RelatedByDistance-Input']
         | components['schemas']['And-Input']
         | components['schemas']['Or-Input']
         | components['schemas']['Not-Input']
@@ -1456,8 +1541,8 @@ export interface components {
     /** Not */
     'Not-Output': {
       /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
+       * Op
+       * @constant
        */
       op: 'not'
       /** Arg */
@@ -1470,7 +1555,8 @@ export interface components {
         | components['schemas']['BBox']
         | components['schemas']['GeometryFilter']
         | components['schemas']['NearFeature']
-        | components['schemas']['Related-Output']
+        | components['schemas']['RelatedTopological-Output']
+        | components['schemas']['RelatedByDistance-Output']
         | components['schemas']['And-Output']
         | components['schemas']['Or-Output']
         | components['schemas']['Not-Output']
@@ -1492,8 +1578,8 @@ export interface components {
     /** Or */
     'Or-Input': {
       /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
+       * Op
+       * @constant
        */
       op: 'or'
       /** Args */
@@ -1506,7 +1592,8 @@ export interface components {
         | components['schemas']['BBox']
         | components['schemas']['GeometryFilter']
         | components['schemas']['NearFeature']
-        | components['schemas']['Related-Input']
+        | components['schemas']['RelatedTopological-Input']
+        | components['schemas']['RelatedByDistance-Input']
         | components['schemas']['And-Input']
         | components['schemas']['Or-Input']
         | components['schemas']['Not-Input']
@@ -1515,8 +1602,8 @@ export interface components {
     /** Or */
     'Or-Output': {
       /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
+       * Op
+       * @constant
        */
       op: 'or'
       /** Args */
@@ -1529,7 +1616,8 @@ export interface components {
         | components['schemas']['BBox']
         | components['schemas']['GeometryFilter']
         | components['schemas']['NearFeature']
-        | components['schemas']['Related-Output']
+        | components['schemas']['RelatedTopological-Output']
+        | components['schemas']['RelatedByDistance-Output']
         | components['schemas']['And-Output']
         | components['schemas']['Or-Output']
         | components['schemas']['Not-Output']
@@ -1626,14 +1714,21 @@ export interface components {
             | components['schemas']['BBox']
             | components['schemas']['GeometryFilter']
             | components['schemas']['NearFeature']
-            | components['schemas']['Related-Input']
+            | components['schemas']['RelatedTopological-Input']
+            | components['schemas']['RelatedByDistance-Input']
             | components['schemas']['And-Input']
             | components['schemas']['Or-Input']
             | components['schemas']['Not-Input']
           )
         | null
       buffer?: components['schemas']['Buffer'] | null
-      spatial_relation?: components['schemas']['SpatialRelation-Input'] | null
+      /** Spatial Relation */
+      spatial_relation?:
+        | (
+            | components['schemas']['TopologicalRelation-Input']
+            | components['schemas']['DistanceRelation-Input']
+          )
+        | null
       aggregate?: components['schemas']['Aggregate'] | null
       /**
        * Select
@@ -1688,14 +1783,21 @@ export interface components {
             | components['schemas']['BBox']
             | components['schemas']['GeometryFilter']
             | components['schemas']['NearFeature']
-            | components['schemas']['Related-Output']
+            | components['schemas']['RelatedTopological-Output']
+            | components['schemas']['RelatedByDistance-Output']
             | components['schemas']['And-Output']
             | components['schemas']['Or-Output']
             | components['schemas']['Not-Output']
           )
         | null
       buffer?: components['schemas']['Buffer'] | null
-      spatial_relation?: components['schemas']['SpatialRelation-Output'] | null
+      /** Spatial Relation */
+      spatial_relation?:
+        | (
+            | components['schemas']['TopologicalRelation-Output']
+            | components['schemas']['DistanceRelation-Output']
+          )
+        | null
       aggregate?: components['schemas']['Aggregate'] | null
       /**
        * Select
@@ -1761,16 +1863,8 @@ export interface components {
         [key: string]: unknown
       }
     }
-    /**
-     * Related
-     * @description Source feature relates to at least one feature of ``layer`` (F-4.4), as a condition.
-     *
-     *     Since v1. Unlike the top-level ``spatial_relation`` it combines with
-     *     ``and``, ``or`` and ``not``: "outside" is ``not`` + ``within``, "farther
-     *     than" is ``not`` + ``dwithin``. It sees the source geometry before any
-     *     ``buffer``. The predicate reads ``source <predicate> layer``.
-     */
-    'Related-Input': {
+    /** RelatedByDistance */
+    'RelatedByDistance-Input': {
       /**
        * Layer
        * @description Lower-case layer or attribute name.
@@ -1778,11 +1872,14 @@ export interface components {
       layer: string
       /**
        * Predicate
-       * @enum {string}
+       * @constant
        */
-      predicate: 'intersects' | 'within' | 'contains' | 'dwithin'
-      /** Distance M */
-      distance_m?: number | null
+      predicate: 'dwithin'
+      /**
+       * Distance M
+       * @description Distance in metres.
+       */
+      distance_m: number
       /**
        * Where
        * @description Filter on the attributes of ``layer``.
@@ -1797,28 +1894,21 @@ export interface components {
             | components['schemas']['BBox']
             | components['schemas']['GeometryFilter']
             | components['schemas']['NearFeature']
-            | components['schemas']['Related-Input']
+            | components['schemas']['RelatedTopological-Input']
+            | components['schemas']['RelatedByDistance-Input']
             | components['schemas']['And-Input']
             | components['schemas']['Or-Input']
             | components['schemas']['Not-Input']
           )
         | null
       /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
+       * Op
+       * @constant
        */
       op: 'related'
     }
-    /**
-     * Related
-     * @description Source feature relates to at least one feature of ``layer`` (F-4.4), as a condition.
-     *
-     *     Since v1. Unlike the top-level ``spatial_relation`` it combines with
-     *     ``and``, ``or`` and ``not``: "outside" is ``not`` + ``within``, "farther
-     *     than" is ``not`` + ``dwithin``. It sees the source geometry before any
-     *     ``buffer``. The predicate reads ``source <predicate> layer``.
-     */
-    'Related-Output': {
+    /** RelatedByDistance */
+    'RelatedByDistance-Output': {
       /**
        * Layer
        * @description Lower-case layer or attribute name.
@@ -1826,11 +1916,14 @@ export interface components {
       layer: string
       /**
        * Predicate
-       * @enum {string}
+       * @constant
        */
-      predicate: 'intersects' | 'within' | 'contains' | 'dwithin'
-      /** Distance M */
-      distance_m?: number | null
+      predicate: 'dwithin'
+      /**
+       * Distance M
+       * @description Distance in metres.
+       */
+      distance_m: number
       /**
        * Where
        * @description Filter on the attributes of ``layer``.
@@ -1845,15 +1938,94 @@ export interface components {
             | components['schemas']['BBox']
             | components['schemas']['GeometryFilter']
             | components['schemas']['NearFeature']
-            | components['schemas']['Related-Output']
+            | components['schemas']['RelatedTopological-Output']
+            | components['schemas']['RelatedByDistance-Output']
             | components['schemas']['And-Output']
             | components['schemas']['Or-Output']
             | components['schemas']['Not-Output']
           )
         | null
       /**
-       * @description discriminator enum property added by openapi-typescript
+       * Op
+       * @constant
+       */
+      op: 'related'
+    }
+    /** RelatedTopological */
+    'RelatedTopological-Input': {
+      /**
+       * Layer
+       * @description Lower-case layer or attribute name.
+       */
+      layer: string
+      /**
+       * Predicate
        * @enum {string}
+       */
+      predicate: 'intersects' | 'within' | 'contains'
+      /**
+       * Where
+       * @description Filter on the attributes of ``layer``.
+       */
+      where?:
+        | (
+            | components['schemas']['Compare']
+            | components['schemas']['Between']
+            | components['schemas']['InList']
+            | components['schemas']['TextMatch']
+            | components['schemas']['IsNull']
+            | components['schemas']['BBox']
+            | components['schemas']['GeometryFilter']
+            | components['schemas']['NearFeature']
+            | components['schemas']['RelatedTopological-Input']
+            | components['schemas']['RelatedByDistance-Input']
+            | components['schemas']['And-Input']
+            | components['schemas']['Or-Input']
+            | components['schemas']['Not-Input']
+          )
+        | null
+      /**
+       * Op
+       * @constant
+       */
+      op: 'related'
+    }
+    /** RelatedTopological */
+    'RelatedTopological-Output': {
+      /**
+       * Layer
+       * @description Lower-case layer or attribute name.
+       */
+      layer: string
+      /**
+       * Predicate
+       * @enum {string}
+       */
+      predicate: 'intersects' | 'within' | 'contains'
+      /**
+       * Where
+       * @description Filter on the attributes of ``layer``.
+       */
+      where?:
+        | (
+            | components['schemas']['Compare']
+            | components['schemas']['Between']
+            | components['schemas']['InList']
+            | components['schemas']['TextMatch']
+            | components['schemas']['IsNull']
+            | components['schemas']['BBox']
+            | components['schemas']['GeometryFilter']
+            | components['schemas']['NearFeature']
+            | components['schemas']['RelatedTopological-Output']
+            | components['schemas']['RelatedByDistance-Output']
+            | components['schemas']['And-Output']
+            | components['schemas']['Or-Output']
+            | components['schemas']['Not-Output']
+          )
+        | null
+      /**
+       * Op
+       * @constant
        */
       op: 'related'
     }
@@ -1918,90 +2090,6 @@ export interface components {
       color: string
     }
     /**
-     * SpatialRelation
-     * @description Keep source features related to at least one feature of ``layer`` (F-4.4).
-     *
-     *     The predicate reads ``source <predicate> layer``: ``within`` keeps source
-     *     features lying inside a feature of ``layer``. Applied after ``buffer``;
-     *     for relations combined with other conditions use ``related`` in ``where``.
-     */
-    'SpatialRelation-Input': {
-      /**
-       * Layer
-       * @description Lower-case layer or attribute name.
-       */
-      layer: string
-      /**
-       * Predicate
-       * @enum {string}
-       */
-      predicate: 'intersects' | 'within' | 'contains' | 'dwithin'
-      /** Distance M */
-      distance_m?: number | null
-      /**
-       * Where
-       * @description Filter on the attributes of ``layer``.
-       */
-      where?:
-        | (
-            | components['schemas']['Compare']
-            | components['schemas']['Between']
-            | components['schemas']['InList']
-            | components['schemas']['TextMatch']
-            | components['schemas']['IsNull']
-            | components['schemas']['BBox']
-            | components['schemas']['GeometryFilter']
-            | components['schemas']['NearFeature']
-            | components['schemas']['Related-Input']
-            | components['schemas']['And-Input']
-            | components['schemas']['Or-Input']
-            | components['schemas']['Not-Input']
-          )
-        | null
-    }
-    /**
-     * SpatialRelation
-     * @description Keep source features related to at least one feature of ``layer`` (F-4.4).
-     *
-     *     The predicate reads ``source <predicate> layer``: ``within`` keeps source
-     *     features lying inside a feature of ``layer``. Applied after ``buffer``;
-     *     for relations combined with other conditions use ``related`` in ``where``.
-     */
-    'SpatialRelation-Output': {
-      /**
-       * Layer
-       * @description Lower-case layer or attribute name.
-       */
-      layer: string
-      /**
-       * Predicate
-       * @enum {string}
-       */
-      predicate: 'intersects' | 'within' | 'contains' | 'dwithin'
-      /** Distance M */
-      distance_m?: number | null
-      /**
-       * Where
-       * @description Filter on the attributes of ``layer``.
-       */
-      where?:
-        | (
-            | components['schemas']['Compare']
-            | components['schemas']['Between']
-            | components['schemas']['InList']
-            | components['schemas']['TextMatch']
-            | components['schemas']['IsNull']
-            | components['schemas']['BBox']
-            | components['schemas']['GeometryFilter']
-            | components['schemas']['NearFeature']
-            | components['schemas']['Related-Output']
-            | components['schemas']['And-Output']
-            | components['schemas']['Or-Output']
-            | components['schemas']['Not-Output']
-          )
-        | null
-    }
-    /**
      * StartPassword
      * @description Shown once to the administrator; the user must change it at first sign-in.
      */
@@ -2023,8 +2111,8 @@ export interface components {
      */
     TextMatch: {
       /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
+       * Op
+       * @constant
        */
       op: 'text_match'
       /**
@@ -2065,6 +2153,80 @@ export interface components {
       output_schema: {
         [key: string]: unknown
       }
+    }
+    /**
+     * TopologicalRelation
+     * @description Relation without distance: ``source <predicate> layer``.
+     */
+    'TopologicalRelation-Input': {
+      /**
+       * Layer
+       * @description Lower-case layer or attribute name.
+       */
+      layer: string
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      predicate: 'contains' | 'intersects' | 'within'
+      /**
+       * Where
+       * @description Filter on the attributes of ``layer``.
+       */
+      where?:
+        | (
+            | components['schemas']['Compare']
+            | components['schemas']['Between']
+            | components['schemas']['InList']
+            | components['schemas']['TextMatch']
+            | components['schemas']['IsNull']
+            | components['schemas']['BBox']
+            | components['schemas']['GeometryFilter']
+            | components['schemas']['NearFeature']
+            | components['schemas']['RelatedTopological-Input']
+            | components['schemas']['RelatedByDistance-Input']
+            | components['schemas']['And-Input']
+            | components['schemas']['Or-Input']
+            | components['schemas']['Not-Input']
+          )
+        | null
+    }
+    /**
+     * TopologicalRelation
+     * @description Relation without distance: ``source <predicate> layer``.
+     */
+    'TopologicalRelation-Output': {
+      /**
+       * Layer
+       * @description Lower-case layer or attribute name.
+       */
+      layer: string
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      predicate: 'contains' | 'intersects' | 'within'
+      /**
+       * Where
+       * @description Filter on the attributes of ``layer``.
+       */
+      where?:
+        | (
+            | components['schemas']['Compare']
+            | components['schemas']['Between']
+            | components['schemas']['InList']
+            | components['schemas']['TextMatch']
+            | components['schemas']['IsNull']
+            | components['schemas']['BBox']
+            | components['schemas']['GeometryFilter']
+            | components['schemas']['NearFeature']
+            | components['schemas']['RelatedTopological-Output']
+            | components['schemas']['RelatedByDistance-Output']
+            | components['schemas']['And-Output']
+            | components['schemas']['Or-Output']
+            | components['schemas']['Not-Output']
+          )
+        | null
     }
     /** Upload */
     Upload: {
@@ -2111,6 +2273,27 @@ export interface components {
       codes?: {
         [key: string]: string
       } | null
+    }
+    /**
+     * ValueMetric
+     * @description Sum, mean, minimum or maximum of a numeric source attribute per area.
+     */
+    ValueMetric: {
+      /**
+       * As
+       * @description Name of the result attribute.
+       */
+      as: string
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      fn: 'avg' | 'max' | 'min' | 'sum'
+      /**
+       * Attr
+       * @description Source attribute.
+       */
+      attr: string
     }
     /** VisibilityChange */
     VisibilityChange: {

@@ -142,7 +142,6 @@ test('incomplete rows are left out, never sent half-made', () => {
     children: [
       attribute({ id: 'empty-list' }),
       attribute({ id: 'no-value', operator: 'gt' }),
-      attribute({ id: 'bad-range', operator: 'between', min: 5, max: 1 }),
       { ...emptyTree('g'), children: [] },
     ],
   }
@@ -324,17 +323,26 @@ test('every random analysis yields only valid query objects', () => {
 
 test('the schema check itself rejects invalid queries', () => {
   expect(() => assertValidQuery({ schema_version: '1', source: 'Schulen' })).toThrow()
+  // Since option A the schema is the whole contract: a distance relation
+  // without distance is rejected here, not only by the server.
   expect(() =>
     assertValidQuery({
       schema_version: '1',
       source: 'schulen',
       where: { op: 'related', layer: 'strassen', predicate: 'dwithin' },
     }),
-  ).not.toThrow()
-  // ... because JSON Schema cannot express pydantic's cross-field rules ("dwithin
-  // needs distance_m", min <= max). The server checks those; the Playwright
-  // acceptance asserts it rejects none of the queries the interface sends.
+  ).toThrow()
   expect(() =>
     assertValidQuery({ schema_version: '1', source: 'schulen', where: { op: 'touches' } }),
   ).toThrow()
+})
+
+test('a reversed range is sent as typed; the query object normalises it', () => {
+  const tree: Group = {
+    ...emptyTree(),
+    children: [attribute({ operator: 'between', attr: 'schueler', min: 500, max: 100 })],
+  }
+  const query = resultQuery(analysis(tree))
+  assertValidQuery(query)
+  expect(query?.where).toEqual({ op: 'between', attr: 'schueler', min: 500, max: 100 })
 })
