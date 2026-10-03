@@ -1,4 +1,5 @@
-.PHONY: install dev test lint gen docker docker-run e2e gate
+.PHONY: install dev test lint gen docker docker-run e2e gate \
+        instance instance-stop instance-logs instance-reset
 
 install:
 	uv python install 3.14
@@ -38,3 +39,29 @@ docker-run:
 # lint + test + image + first start, Playwright and restart against the container.
 gate:
 	scripts/gate.sh
+
+# A personal instance for manual testing, kept apart from agents and other apps:
+# built from a committed ref (never the working tree others may be editing), its
+# own image tag, container and volume, bound to localhost only. Data survives
+# rebuilds; `make instance-reset` drops it.
+INSTANCE_REF     ?= HEAD
+INSTANCE_PORT    ?= 8060
+INSTANCE_BASEMAP ?= swisstopo-grau
+INSTANCE         := geotandem-instance
+
+instance:
+	git archive --format=tar $(INSTANCE_REF) | docker build -t geotandem:instance -
+	docker rm -f $(INSTANCE) >/dev/null 2>&1 || true
+	docker run -d --name $(INSTANCE) --restart unless-stopped \
+		-p 127.0.0.1:$(INSTANCE_PORT):8000 -v $(INSTANCE)-data:/data \
+		-e GEOTANDEM_BASEMAP=$(INSTANCE_BASEMAP) geotandem:instance >/dev/null
+	@echo "$(INSTANCE) ($$(git rev-parse --short $(INSTANCE_REF))) on http://127.0.0.1:$(INSTANCE_PORT)"
+
+instance-stop:
+	docker rm -f $(INSTANCE)
+
+instance-logs:
+	docker logs -f $(INSTANCE)
+
+instance-reset: instance-stop
+	docker volume rm $(INSTANCE)-data
