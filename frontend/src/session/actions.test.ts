@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { resultQuery } from '../analysis/query'
 import { currentAnalysis, useAnalysis } from '../analysis/store'
 import { newAttributeRow } from '../analysis/tree'
+import { useMapView } from '../map/view'
 import { fakeApi } from '../test/render'
 import { assertValidQuery } from '../test/schema'
 import { NameTaken, newSession, openSession, saveSession, saveSessionAs } from './actions'
@@ -127,6 +128,11 @@ test('opening loads the state, fits it to today and checks it (design C4, C8)', 
   await openSession(detail({ state }), new Set(['schulen']))
   const loaded = useAnalysis.getState()
   expect(loaded.layers.map((l) => l.id)).toEqual(['schulen'])
+  // The saved map view comes back (plan D3).
+  expect(useMapView.getState().featureRequest).toMatchObject({
+    bbox: [7.3, 46.9, 7.5, 47],
+    mode: 'view',
+  })
   expect(loaded.dirty).toBe(false)
   const sent = calls[0]?.body as { rebuilt: unknown; has_result: boolean }
   expect(sent.rebuilt).toEqual(resultQuery(currentAnalysis(loaded)))

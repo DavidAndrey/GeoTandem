@@ -176,6 +176,9 @@ test('after sign-in the workplace lands in the last session and checks it (desig
   expect(useAnalysis.getState().layers.map((l) => l.id)).toEqual(['schulen'])
   await waitFor(() => expect(calls.some((c) => c.key === 'POST /api/sessions/s1/check')).toBe(true))
   expect(status()).toHaveTextContent(/^gespeichert/)
+  expect(await screen.findByRole('status', { name: 'Ergebnisprüfung' })).toHaveTextContent(
+    'Wiederhergestellt · 10 Treffer, identisch mit dem Speicherstand',
+  )
 })
 
 test('the list opens, renames and flags new data (design C3)', async () => {

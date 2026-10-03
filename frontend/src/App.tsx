@@ -17,6 +17,7 @@ import { SetupPage } from './auth/SetupPage'
 import { UserMenu } from './auth/UserMenu'
 import { useAnalysis } from './analysis/store'
 import { SessionMenu } from './session/SessionMenu'
+import { OpenNotice } from './session/OpenNotice'
 import { SessionDialogs } from './session/SessionDialogs'
 import { isUnsaved, saveOrAsk } from './session/ui'
 import { useSessionRoute } from './session/useSessionRoute'
@@ -67,6 +68,7 @@ function Shell() {
         </nav>
         <div className="ml-auto">{me.data && <UserMenu account={me.data} />}</div>
       </header>
+      {workplace && <OpenNotice />}
       <main className="flex-1 overflow-auto p-5">
         <Outlet />
       </main>
