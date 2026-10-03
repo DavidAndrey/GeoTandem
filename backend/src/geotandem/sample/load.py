@@ -18,6 +18,7 @@ from shapely.geometry.base import BaseGeometry
 from geotandem.catalog import get_layer
 from geotandem.data import AttributeSpec, DataBackend, NewLayer
 from geotandem.geo import reprojector
+from geotandem.importing import log as import_log
 from geotandem.sample import DATA_DIR
 
 log = logging.getLogger(__name__)
@@ -69,7 +70,16 @@ def load_sample(backend: DataBackend, directory: Path = DATA_DIR) -> list[str]:
             if _version_of(backend, name) == version:
                 continue
             backend.drop_layer(name)
-        backend.create_layer(
+        run_id = import_log.start(
+            backend.engine,
+            source_name=layer["file"],
+            source_format=Path(layer["file"]).suffix.lstrip("."),
+            mode="create",
+            layer_name=name,
+            actor=None,
+            decisions={"source": SOURCE, "dataset_version": version},
+        )
+        count = backend.create_layer(
             NewLayer(
                 name=name,
                 title=layer["title"],
@@ -80,6 +90,9 @@ def load_sample(backend: DataBackend, directory: Path = DATA_DIR) -> list[str]:
                 source=SOURCE,
                 dataset_version=version,
             )
+        )
+        import_log.finish(
+            backend.engine, run_id, status="ok", read_count=count, imported_count=count
         )
         loaded.append(name)
     if loaded:

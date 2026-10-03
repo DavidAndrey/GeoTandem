@@ -17,6 +17,7 @@ from geotandem.api.state import AppState
 from geotandem.config import Settings, get_settings
 from geotandem.data.spatialite import SpatiaLiteBackend
 from geotandem.db.bootstrap import bootstrap
+from geotandem.importing import log as import_log
 from geotandem.sample.load import load_sample
 from geotandem.tools import default_registry
 
@@ -32,6 +33,8 @@ def start(settings: Settings) -> AppState:
         log.warning(
             "backend %s cannot perform '%s': missing %s", backend.name, op, ", ".join(functions)
         )
+    if stale := import_log.fail_stale(engine):
+        log.warning("%d imports were interrupted by the last shutdown", stale)
     if settings.load_sample_data:
         load_sample(backend)
     return AppState(settings, backend, unsupported, default_registry())
