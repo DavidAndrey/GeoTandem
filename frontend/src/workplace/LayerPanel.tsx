@@ -12,6 +12,7 @@ import { useLayers, useMe } from '../api/queries'
 import { ConfirmDialog, Menu, MenuItem } from '../components/ui'
 import { layerColor } from '../map/style'
 import { useMapView } from '../map/view'
+import { OperationDialog, type Operation } from '../operations/OperationDialog'
 import { AddLayers } from './AddLayers'
 import { geometryKind, layerTitle } from './layerInfo'
 import { Swatch } from './Swatch'
@@ -87,6 +88,8 @@ function LayerRow({ layer, catalog }: { layer: DisplayLayer; catalog: LayerInfo[
   const zoomTo = useMapView((v) => v.zoomTo)
   const [open, setOpen] = useState(false)
   const [removing, setRemoving] = useState(false)
+  const [operation, setOperation] = useState<Operation | null>(null)
+  const kind = geometryKind(layer, catalog)
   const title = layerTitle(layer, catalog)
   const index = s.layers.findIndex((l) => l.id === layer.id)
   const isResult = s.result === layer.id
@@ -106,7 +109,7 @@ function LayerRow({ layer, catalog }: { layer: DisplayLayer; catalog: LayerInfo[
         >
           {layer.visible ? <Eye size={14} /> : <EyeOff size={14} className="text-muted" />}
         </button>
-        <Swatch kind={geometryKind(layer, catalog)} color={layerColor(layer)} />
+        <Swatch kind={kind} color={layerColor(layer)} />
         <button
           type="button"
           className={`flex flex-1 items-center gap-1 text-left ${layer.visible ? '' : 'text-muted'}`}
@@ -132,7 +135,7 @@ function LayerRow({ layer, catalog }: { layer: DisplayLayer; catalog: LayerInfo[
               onChange={(e) => s.setOpacity(layer.id, Number(e.target.value) / 100)}
               className="accent-[var(--color-accent)] flex-1"
             />
-            <span className="w-8 text-right">{Math.round(layer.opacity * 100)} %</span>
+            <span className="w-10 shrink-0 text-right">{Math.round(layer.opacity * 100)} %</span>
           </label>
           <div className="flex items-center gap-1">
             <button type="button" className="btn text-xs" onClick={() => zoomTo(layer.id)}>
@@ -143,6 +146,14 @@ function LayerRow({ layer, catalog }: { layer: DisplayLayer; catalog: LayerInfo[
               {!isResult && canBeResult(layer) && (
                 <MenuItem onSelect={() => s.setResult(layer.id)}>Als Ergebnis-Layer</MenuItem>
               )}
+              {kind !== 'table' && layer.source.kind === 'catalog' && (
+                <>
+                  <MenuItem onSelect={() => setOperation('buffer')}>Puffer …</MenuItem>
+                  <MenuItem onSelect={() => setOperation('join')}>Join …</MenuItem>
+                  <MenuItem onSelect={() => setOperation('aggregate')}>Aggregieren …</MenuItem>
+                </>
+              )}
+              <MenuItem onSelect={() => setOperation('symbology')}>Darstellung …</MenuItem>
               {index > 0 && (
                 <MenuItem onSelect={() => s.moveLayer(layer.id, index - 1)}>Nach oben</MenuItem>
               )}
@@ -160,11 +171,14 @@ function LayerRow({ layer, catalog }: { layer: DisplayLayer; catalog: LayerInfo[
                   isResult || usedInConditions ? setRemoving(true) : s.removeLayer(layer.id)
                 }
               >
-                Aus Analyse entfernen
+                {layer.source.kind === 'derived' ? 'Löschen' : 'Aus Analyse entfernen'}
               </MenuItem>
             </Menu>
           </div>
         </div>
+      )}
+      {operation && (
+        <OperationDialog layer={layer} operation={operation} onClose={() => setOperation(null)} />
       )}
       {removing && (
         <ConfirmDialog

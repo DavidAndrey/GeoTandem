@@ -34,3 +34,11 @@ export function geometryKind(
   if (type.includes('LineString')) return 'line'
   return 'area'
 }
+
+/** The order the panel shows, top first: catalog layers, then derived ones (design B1). */
+export function panelOrder<T extends { source: { kind: string } }>(layers: T[]): T[] {
+  return [
+    ...layers.filter((l) => l.source.kind === 'catalog'),
+    ...layers.filter((l) => l.source.kind === 'derived'),
+  ]
+}

@@ -9,6 +9,7 @@ import { api, type LayerInfo, type QueryResult } from '../api/client'
 import { shownBounds, useLeafletMap } from './leaflet'
 import { featureName, popupContent } from './popup'
 import { featureStyle, layerColor, type HitState } from './style'
+import { symbolizer, useLegend } from './symbolize'
 import { roundBbox, useMapView } from './view'
 
 export function DataLayer({
@@ -36,6 +37,7 @@ export function DataLayer({
   onPick?: (rowId: string, fid: number, label: string) => void
 }) {
   const map = useLeafletMap()
+  const setLegend = useLegend((s) => s.set)
   const bbox = useMapView((s) => s.bbox)
   const viewed = largerThanLimit && bbox ? roundBbox(bbox) : null
   const effective: QueryObject = viewed
@@ -57,16 +59,26 @@ export function DataLayer({
     const pane = `layer-${layer.id}`
     const element = map.getPane(pane) ?? map.createPane(pane)
     element.style.zIndex = String(400 + order)
-    const color = layerColor(layer)
+    const features = result.data.features
+    const symbols = symbolizer(
+      layer.symbology,
+      (attr) => features.map((f) => f.properties[attr]),
+      layerColor(layer),
+    )
+    setLegend(layer.id, symbols.legend)
+    const symbolized = layer.symbology !== null && layer.symbology.kind !== 'single'
     const stateOf = (id: number): HitState => (hits ? (hits.has(id) ? 'hit' : 'miss') : 'plain')
+    const styleOf = (f: GeoJSON.Feature | undefined) => {
+      const symbol = symbols.of((f?.properties ?? {}) as Record<string, unknown>)
+      return featureStyle(symbol.color, layer.opacity, stateOf(Number(f?.id)), {
+        radius: layer.symbology?.kind === 'graduated_size' ? symbol.radius : undefined,
+        symbolized,
+      })
+    }
     const geojson = L.geoJSON(drawable(result.data.features), {
       pane,
-      style: (f) => featureStyle(color, layer.opacity, stateOf(Number(f?.id))),
-      pointToLayer: (f, latlng) =>
-        L.circleMarker(latlng, {
-          pane,
-          ...featureStyle(color, layer.opacity, stateOf(Number(f.id))),
-        }),
+      style: styleOf,
+      pointToLayer: (f, latlng) => L.circleMarker(latlng, { pane, ...styleOf(f) }),
       onEachFeature: (f, shape) => {
         shape.on('click', (event: L.LeafletMouseEvent) => {
           const properties = (f.properties ?? {}) as Record<string, unknown>
@@ -88,7 +100,7 @@ export function DataLayer({
     return () => {
       geojson.remove()
     }
-  }, [map, layer, order, result.data, hits, title, info, onPick])
+  }, [map, layer, order, result.data, hits, title, info, onPick, setLegend])
 
   return null
 }

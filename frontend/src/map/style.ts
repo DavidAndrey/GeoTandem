@@ -20,16 +20,24 @@ export function layerColor(layer: DisplayLayer): string {
 
 export type HitState = 'hit' | 'miss' | 'plain'
 
-/** Hits in the accent, non-hits at 35 % opacity (design B9). */
-export function featureStyle(color: string, opacity: number, state: HitState) {
-  const stroke = state === 'hit' ? ACCENT : color
+/**
+ * Hits in the accent, non-hits at 35 % opacity (design B9). With a symbology
+ * the hits keep their symbol colour, so classes stay readable.
+ */
+export function featureStyle(
+  color: string,
+  opacity: number,
+  state: HitState,
+  options: { radius?: number; symbolized?: boolean } = {},
+) {
+  const stroke = state === 'hit' && !options.symbolized ? ACCENT : color
   const factor = state === 'miss' ? 0.35 : 1
   return {
-    color: stroke,
+    color: options.symbolized ? '#605d5d' : stroke,
     weight: state === 'hit' ? 2.5 : 1.5,
     opacity: opacity * factor,
     fillColor: stroke,
-    fillOpacity: opacity * factor * 0.35,
-    radius: state === 'hit' ? 6 : 5,
+    fillOpacity: opacity * factor * (options.symbolized ? 0.6 : 0.35),
+    radius: options.radius ?? (state === 'hit' ? 6 : 5),
   }
 }

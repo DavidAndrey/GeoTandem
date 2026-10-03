@@ -15,8 +15,9 @@ import { RestrictionLayer } from '../map/Restriction'
 import { fitBbox, shownBounds, useLeafletMap } from '../map/leaflet'
 import { MapView } from '../map/MapView'
 import { ACCENT, layerColor } from '../map/style'
+import { useLegend } from '../map/symbolize'
 import { useMapView } from '../map/view'
-import { catalogInfo, geometryKind, layerTitle } from './layerInfo'
+import { catalogInfo, geometryKind, layerTitle, panelOrder } from './layerInfo'
 import { LayerPanel } from './LayerPanel'
 import { QueryPanel } from './QueryPanel'
 import { Swatch } from './Swatch'
@@ -79,7 +80,7 @@ function MapLayers() {
     enabled: Boolean(shown && where),
   })
   const hitIds = where && hits.data ? new Set(hits.data.features.map((f) => f.id)) : null
-  const visible = analysis.layers.filter((l) => l.visible)
+  const visible = panelOrder(analysis.layers).filter((l) => l.visible)
   const maxFeatures = config.data?.max_features ?? Infinity
   const onPick = useCallback(
     (rowId: string, fid: number, label: string) => {
@@ -108,7 +109,8 @@ function MapLayers() {
           )
         }
       >
-        {analysis.layers.map((layer, index) => {
+        {/* Drawn in the order the panel shows (top first), not the store's. */}
+        {panelOrder(analysis.layers).map((layer, index) => {
           const info = catalogInfo(layer, catalog.data)
           return (
             <DataLayer
@@ -171,6 +173,7 @@ function Legend({
   hits: boolean
   result: string | null
 }) {
+  const entries = useLegend((s) => s.entries)
   return (
     <section aria-label="Legende">
       <p className="label-caps mb-1">Legende</p>
@@ -189,9 +192,34 @@ function Legend({
                 </div>
               </li>
             )
+          const classes = entries[layer.id] ?? []
           return (
-            <li key={layer.id} className="flex items-center gap-1.5">
-              <Swatch kind={kind} color={layerColor(layer)} /> {title}
+            <li key={layer.id}>
+              <div className="flex items-center gap-1.5">
+                {classes.length === 0 && <Swatch kind={kind} color={layerColor(layer)} />} {title}
+              </div>
+              {classes.length > 0 && (
+                <ul className="ml-3">
+                  {classes.map((entry) => (
+                    <li key={entry.label} className="flex items-center gap-1.5">
+                      {entry.radius ? (
+                        <span
+                          aria-hidden
+                          className="inline-block rounded-full border border-neutral-600"
+                          style={{
+                            width: entry.radius * 2,
+                            height: entry.radius * 2,
+                            background: entry.color,
+                          }}
+                        />
+                      ) : (
+                        <Swatch kind={kind} color={entry.color} />
+                      )}
+                      {entry.label}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </li>
           )
         })}
