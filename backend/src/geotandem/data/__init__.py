@@ -3,6 +3,7 @@
 from geotandem.data.interface import (
     AttributeSpec,
     DataBackend,
+    LayerExists,
     Limits,
     NewLayer,
     Op,
@@ -13,6 +14,7 @@ from geotandem.data.interface import (
 __all__ = [
     "AttributeSpec",
     "DataBackend",
+    "LayerExists",
     "Limits",
     "NewLayer",
     "Op",

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+import threading
 import time
 from collections.abc import Mapping, Sequence
 from typing import Any
@@ -41,6 +42,7 @@ from geotandem.data.interface import (
     OP_REQUIREMENTS,
     AttributeSpec,
     AttributeType,
+    LayerExists,
     Limits,
     NewLayer,
     Op,
@@ -169,7 +171,12 @@ class SpatiaLiteBackend:
         self.engine = engine
         self.internal_srid = internal_srid
         self.dialect: SpatialDialect = SpatiaLiteDialect()
+        # Table definitions of registered layers, shared by all request threads.
+        # Only ``layer_table`` adds to it and ``_forget`` removes, both under the
+        # lock; a layer being created or replaced is defined on its own MetaData
+        # until committed, so a failed or concurrent write never touches it.
         self._metadata = MetaData()
+        self._lock = threading.Lock()
 
     # --- layers ----------------------------------------------------------------
 
@@ -178,20 +185,27 @@ class SpatiaLiteBackend:
             return list(session.scalars(select(Layer.name).order_by(Layer.name)))
 
     def layer_table(self, name: str) -> Table:
-        table_name = TABLE_PREFIX + name
-        if table_name in self._metadata.tables:
-            return self._metadata.tables[table_name]
-        with Session(self.engine) as session:
-            layer = session.scalar(select(Layer).where(Layer.name == name))
-            if layer is None:
-                raise KeyError(name)
-            specs = [
-                AttributeSpec(name=a.name, data_type=a.data_type)  # type: ignore[arg-type]
-                for a in layer.attributes
-            ]
-            return self._table(name, specs, layer.geometry_type)
+        with self._lock:
+            cached = self._metadata.tables.get(TABLE_PREFIX + name)
+            if cached is not None:
+                return cached
+            with Session(self.engine) as session:
+                layer = session.scalar(select(Layer).where(Layer.name == name))
+                if layer is None:
+                    raise KeyError(name)
+                specs = [
+                    AttributeSpec(name=a.name, data_type=a.data_type)  # type: ignore[arg-type]
+                    for a in layer.attributes
+                ]
+                return self._table(name, specs, layer.geometry_type, self._metadata)
 
-    def _table(self, name: str, attrs: list[AttributeSpec], geometry_type: str | None) -> Table:
+    def _table(
+        self,
+        name: str,
+        attrs: list[AttributeSpec],
+        geometry_type: str | None,
+        metadata: MetaData,
+    ) -> Table:
         columns: list[Column[Any]] = [Column(FID, Integer, primary_key=True)]
         columns += [Column(a.name, _SQL_TYPES[a.data_type]) for a in attrs]
         if geometry_type is not None:
@@ -205,52 +219,48 @@ class SpatiaLiteBackend:
                     ),
                 )
             )
-        return Table(TABLE_PREFIX + name, self._metadata, *columns)
+        return Table(TABLE_PREFIX + name, metadata, *columns)
 
     def create_layer(self, layer: NewLayer) -> int:
         rows, geometry_type = _prepare(layer)
-        table = self._table(layer.name, list(layer.attributes), geometry_type)
-        try:
-            with Session(self.engine) as session, session.begin():
-                conn = session.connection()
-                table.create(conn)
-                self._insert(conn, table, layer, rows, geometry_type)
-                session.add(
-                    Layer(
-                        name=layer.name,
-                        title=layer.title,
-                        description=layer.description,
-                        kind=layer.kind,
-                        for_model=layer.for_model,
-                        attributes=[_attribute(a, i) for i, a in enumerate(layer.attributes)],
-                        **self._content(layer, rows, geometry_type),
-                    )
+        table = self._table(layer.name, list(layer.attributes), geometry_type, MetaData())
+        with Session(self.engine) as session, session.begin():
+            # BEGIN IMMEDIATE (db.spatialite): no other writer between check and create.
+            if session.scalar(select(Layer.id).where(Layer.name == layer.name)) is not None:
+                raise LayerExists(layer.name)
+            conn = session.connection()
+            table.create(conn)
+            self._insert(conn, table, layer, rows, geometry_type)
+            session.add(
+                Layer(
+                    name=layer.name,
+                    title=layer.title,
+                    description=layer.description,
+                    kind=layer.kind,
+                    for_model=layer.for_model,
+                    attributes=[_attribute(a, i) for i, a in enumerate(layer.attributes)],
+                    **self._content(layer, rows, geometry_type),
                 )
-        except Exception:
-            self._forget(layer.name)
-            raise
+            )
         return len(rows)
 
     def replace_layer(self, name: str, layer: NewLayer) -> int:
         old = self.layer_table(name)
         rows, geometry_type = _prepare(layer)
-        try:
-            with Session(self.engine) as session, session.begin():
-                conn = session.connection()
-                old.drop(conn)
-                self._metadata.remove(old)
-                table = self._table(name, list(layer.attributes), geometry_type)
-                table.create(conn)
-                self._insert(conn, table, layer, rows, geometry_type)
-                entry = session.scalar(select(Layer).where(Layer.name == name))
-                assert entry is not None
-                entry.kind = layer.kind
-                for key, value in self._content(layer, rows, geometry_type).items():
-                    setattr(entry, key, value)
-                _merge_attributes(session, entry, layer.attributes)
-        except Exception:
-            self._forget(name)
-            raise
+        table = self._table(name, list(layer.attributes), geometry_type, MetaData())
+        with Session(self.engine) as session, session.begin():
+            conn = session.connection()
+            old.drop(conn)
+            table.create(conn)
+            self._insert(conn, table, layer, rows, geometry_type)
+            entry = session.scalar(select(Layer).where(Layer.name == name))
+            assert entry is not None
+            entry.kind = layer.kind
+            for key, value in self._content(layer, rows, geometry_type).items():
+                setattr(entry, key, value)
+            _merge_attributes(session, entry, layer.attributes)
+        # Committed: the next access reads the new columns from the registry.
+        self._forget(name)
         return len(rows)
 
     def _insert(
@@ -297,9 +307,10 @@ class SpatiaLiteBackend:
 
     def _forget(self, name: str) -> None:
         """Drop a cached table definition so the next access reloads it from the registry."""
-        table = self._metadata.tables.get(TABLE_PREFIX + name)
-        if table is not None:
-            self._metadata.remove(table)
+        with self._lock:
+            table = self._metadata.tables.get(TABLE_PREFIX + name)
+            if table is not None:
+                self._metadata.remove(table)
 
     def drop_layer(self, name: str) -> None:
         table = self.layer_table(name)

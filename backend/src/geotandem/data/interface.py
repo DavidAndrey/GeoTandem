@@ -85,6 +85,14 @@ class Limits:
     timeout_s: float
 
 
+class LayerExists(Exception):
+    """``create_layer`` found the name taken, e.g. by an import committed meanwhile."""
+
+    def __init__(self, name: str) -> None:
+        super().__init__(f"A layer '{name}' already exists.")
+        self.name = name
+
+
 class QueryTimeout(Exception):
     """The query ran longer than ``Limits.timeout_s``."""
 
@@ -137,7 +145,11 @@ class DataBackend(Protocol):
     def layer_names(self) -> list[str]: ...
 
     def create_layer(self, layer: NewLayer) -> int:
-        """Create table, spatial index and registry entry; return the feature count."""
+        """Create table, spatial index and registry entry; return the feature count.
+
+        Raises ``LayerExists`` if the name is taken, also when another create
+        committed it after the caller last looked.
+        """
         ...
 
     def replace_layer(self, name: str, layer: NewLayer) -> int:

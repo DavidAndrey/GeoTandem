@@ -1,11 +1,22 @@
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
+
 import pytest
 from shapely.affinity import translate
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
-from sqlalchemy import func, insert, select
+from sqlalchemy import Table, func, insert, select
 from sqlalchemy.orm import Session
 
 from geotandem.catalog import get_layer
-from geotandem.data import AttributeSpec, DataBackend, Limits, NewLayer, QueryTimeout
+from geotandem.data import (
+    AttributeSpec,
+    DataBackend,
+    LayerExists,
+    Limits,
+    NewLayer,
+    QueryTimeout,
+)
+from geotandem.data.spatialite import SpatiaLiteBackend
 from geotandem.db.orm import Layer
 from geotandem.engine import run_query
 from geotandem_query import QueryObject
@@ -256,3 +267,49 @@ def test_vector_rows_without_geometry_are_stored_with_null(backend: DataBackend)
     table = backend.layer_table("gaps")
     rows = backend.execute(select(table.c.n).where(table.c.geom.is_(None)), LIMITS)
     assert [r["n"] for r in rows] == [2]
+
+
+def test_creating_a_taken_name_is_refused_and_keeps_the_layer(backend: DataBackend) -> None:
+    points(backend)
+    table = backend.layer_table("pts")  # cached, as after any query
+    with pytest.raises(LayerExists):
+        points(backend, n=3)
+    assert backend.layer_table("pts") is table
+    assert len(backend.execute(select(table.c.fid), LIMITS)) == 10
+
+
+def test_parallel_creates_of_one_name_leave_one_layer(backend: DataBackend) -> None:
+    """Two imports committing the same name at once (the second used to answer 500)."""
+    start = Barrier(4)
+
+    def create(n: int) -> int:
+        start.wait()
+        points(backend, n=n)
+        return n
+
+    outcomes: list[int | str] = []
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        for future in [pool.submit(create, n) for n in (1, 2, 3, 4)]:
+            try:
+                outcomes.append(future.result())
+            except LayerExists:
+                outcomes.append("exists")
+    winners = [o for o in outcomes if o != "exists"]
+    assert len(winners) == 1
+    table = backend.layer_table("pts")
+    assert len(backend.execute(select(table.c.fid), LIMITS)) == winners[0]
+
+
+def test_parallel_first_access_defines_the_table_once(backend: DataBackend) -> None:
+    points(backend)
+    for _ in range(20):
+        fresh = SpatiaLiteBackend(backend.engine, backend.internal_srid)  # nothing cached
+        start = Barrier(8)
+
+        def load(_: int, fresh: SpatiaLiteBackend = fresh, start: Barrier = start) -> Table:
+            start.wait()
+            return fresh.layer_table("pts")
+
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            tables = list(pool.map(load, range(8)))
+        assert all(t is tables[0] for t in tables)

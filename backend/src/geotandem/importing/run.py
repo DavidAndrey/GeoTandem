@@ -33,7 +33,7 @@ from shapely.geometry.base import BaseGeometry
 from sqlalchemy import select
 
 from geotandem.catalog import list_layers
-from geotandem.data import AttributeSpec, DataBackend, NewLayer
+from geotandem.data import AttributeSpec, DataBackend, LayerExists, NewLayer
 from geotandem.geo import common_geometry_type, reprojector
 from geotandem.importing import log
 from geotandem.importing.log import ImportRunInfo, RejectedRow, Step
@@ -192,7 +192,10 @@ def run_import(
             if decisions.replace:
                 count = backend.replace_layer(decisions.replace, new_layer)
             else:
-                count = backend.create_layer(new_layer)
+                try:
+                    count = backend.create_layer(new_layer)
+                except LayerExists as exc:  # another import took the name since _plan
+                    raise ImportBlocked("layer_exists", str(exc)) from exc
     except SourceError as exc:
         return log.finish(
             backend.engine,

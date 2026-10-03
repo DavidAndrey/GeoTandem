@@ -37,10 +37,8 @@ export async function ensureAreaLayer(request: APIRequestContext) {
     },
   })
   // Another worker may have imported it in the meantime: then that one counts.
-  // A simultaneous create can still answer 500 rather than a clean refusal, so
-  // wait for the other worker's layer instead of asking once.
-  if (!run.ok() || (await run.json()).status !== 'ok')
-    await expect.poll(async () => (await request.get(`/api/layers/${AREAS}`)).ok()).toBe(true)
+  if ((await run.json()).status !== 'ok')
+    expect((await request.get(`/api/layers/${AREAS}`)).ok()).toBe(true)
 }
 
 /** Every query the page sends to the engine, and every answer it gets. */

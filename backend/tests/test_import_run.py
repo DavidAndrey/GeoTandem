@@ -201,6 +201,19 @@ def test_blocking_decisions(
     assert sample_backend.layer_names() == before
 
 
+def test_import_losing_the_race_for_a_name_fails_cleanly(
+    backend: DataBackend, files: dict[str, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The name was free when checked, then another import committed it first."""
+    first = imported(backend, files, "schulen.geojson")
+    monkeypatch.setattr(backend, "layer_names", lambda: [])
+    second = imported(backend, files, "schulen.geojson")
+    monkeypatch.undo()
+    assert first.status == "ok"
+    assert (second.status, [e.code for e in second.errors]) == ("failed", ["layer_exists"])
+    assert len(features(backend, "schulen")) == 137
+
+
 def test_key_target_must_be_a_geometry_layer(
     sample_backend: DataBackend, files: dict[str, Path]
 ) -> None:
