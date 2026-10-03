@@ -203,6 +203,85 @@
         }
       }
     },
+    "/api/query/count": {
+      "post": {
+        "summary": "Count",
+        "description": "Count the features of several queries at once, e.g. one per condition (design B2).\n\nNothing but numbers leaves the server. A rejected query names its position\nin ``details.index``.",
+        "operationId": "count_api_query_count_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CountRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Counts"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Content Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/query/validate": {
       "post": {
         "summary": "Validate",
@@ -2480,6 +2559,9 @@
                   "$ref": "#/components/schemas/NearFeature"
                 },
                 {
+                  "$ref": "#/components/schemas/Related-Input"
+                },
+                {
                   "$ref": "#/components/schemas/And-Input"
                 },
                 {
@@ -2502,6 +2584,7 @@
                   "near_feature": "#/components/schemas/NearFeature",
                   "not": "#/components/schemas/Not-Input",
                   "or": "#/components/schemas/Or-Input",
+                  "related": "#/components/schemas/Related-Input",
                   "text_match": "#/components/schemas/TextMatch"
                 }
               }
@@ -2554,6 +2637,9 @@
                   "$ref": "#/components/schemas/NearFeature"
                 },
                 {
+                  "$ref": "#/components/schemas/Related-Output"
+                },
+                {
                   "$ref": "#/components/schemas/And-Output"
                 },
                 {
@@ -2576,6 +2662,7 @@
                   "near_feature": "#/components/schemas/NearFeature",
                   "not": "#/components/schemas/Not-Output",
                   "or": "#/components/schemas/Or-Output",
+                  "related": "#/components/schemas/Related-Output",
                   "text_match": "#/components/schemas/TextMatch"
                 }
               }
@@ -3193,6 +3280,40 @@
         ],
         "title": "Compare",
         "description": "Attribute comparison with a constant (F-4.2)."
+      },
+      "CountRequest": {
+        "properties": {
+          "queries": {
+            "items": {
+              "$ref": "#/components/schemas/QueryObject-Input"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Queries"
+          }
+        },
+        "type": "object",
+        "required": [
+          "queries"
+        ],
+        "title": "CountRequest"
+      },
+      "Counts": {
+        "properties": {
+          "counts": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Counts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "counts"
+        ],
+        "title": "Counts"
       },
       "Credentials": {
         "properties": {
@@ -4379,6 +4500,9 @@
                 "$ref": "#/components/schemas/NearFeature"
               },
               {
+                "$ref": "#/components/schemas/Related-Input"
+              },
+              {
                 "$ref": "#/components/schemas/And-Input"
               },
               {
@@ -4402,6 +4526,7 @@
                 "near_feature": "#/components/schemas/NearFeature",
                 "not": "#/components/schemas/Not-Input",
                 "or": "#/components/schemas/Or-Input",
+                "related": "#/components/schemas/Related-Input",
                 "text_match": "#/components/schemas/TextMatch"
               }
             }
@@ -4449,6 +4574,9 @@
                 "$ref": "#/components/schemas/NearFeature"
               },
               {
+                "$ref": "#/components/schemas/Related-Output"
+              },
+              {
                 "$ref": "#/components/schemas/And-Output"
               },
               {
@@ -4472,6 +4600,7 @@
                 "near_feature": "#/components/schemas/NearFeature",
                 "not": "#/components/schemas/Not-Output",
                 "or": "#/components/schemas/Or-Output",
+                "related": "#/components/schemas/Related-Output",
                 "text_match": "#/components/schemas/TextMatch"
               }
             }
@@ -4535,6 +4664,9 @@
                   "$ref": "#/components/schemas/NearFeature"
                 },
                 {
+                  "$ref": "#/components/schemas/Related-Input"
+                },
+                {
                   "$ref": "#/components/schemas/And-Input"
                 },
                 {
@@ -4557,6 +4689,7 @@
                   "near_feature": "#/components/schemas/NearFeature",
                   "not": "#/components/schemas/Not-Input",
                   "or": "#/components/schemas/Or-Input",
+                  "related": "#/components/schemas/Related-Input",
                   "text_match": "#/components/schemas/TextMatch"
                 }
               }
@@ -4609,6 +4742,9 @@
                   "$ref": "#/components/schemas/NearFeature"
                 },
                 {
+                  "$ref": "#/components/schemas/Related-Output"
+                },
+                {
                   "$ref": "#/components/schemas/And-Output"
                 },
                 {
@@ -4631,6 +4767,7 @@
                   "near_feature": "#/components/schemas/NearFeature",
                   "not": "#/components/schemas/Not-Output",
                   "or": "#/components/schemas/Or-Output",
+                  "related": "#/components/schemas/Related-Output",
                   "text_match": "#/components/schemas/TextMatch"
                 }
               }
@@ -4865,9 +5002,9 @@
         "properties": {
           "schema_version": {
             "type": "string",
-            "const": "0",
+            "const": "1",
             "title": "Schema Version",
-            "default": "0"
+            "default": "1"
           },
           "source": {
             "type": "string",
@@ -4914,6 +5051,9 @@
                     "$ref": "#/components/schemas/NearFeature"
                   },
                   {
+                    "$ref": "#/components/schemas/Related-Input"
+                  },
+                  {
                     "$ref": "#/components/schemas/And-Input"
                   },
                   {
@@ -4936,6 +5076,7 @@
                     "near_feature": "#/components/schemas/NearFeature",
                     "not": "#/components/schemas/Not-Input",
                     "or": "#/components/schemas/Or-Input",
+                    "related": "#/components/schemas/Related-Input",
                     "text_match": "#/components/schemas/TextMatch"
                   }
                 }
@@ -5067,9 +5208,9 @@
         "properties": {
           "schema_version": {
             "type": "string",
-            "const": "0",
+            "const": "1",
             "title": "Schema Version",
-            "default": "0"
+            "default": "1"
           },
           "source": {
             "type": "string",
@@ -5116,6 +5257,9 @@
                     "$ref": "#/components/schemas/NearFeature"
                   },
                   {
+                    "$ref": "#/components/schemas/Related-Output"
+                  },
+                  {
                     "$ref": "#/components/schemas/And-Output"
                   },
                   {
@@ -5138,6 +5282,7 @@
                     "near_feature": "#/components/schemas/NearFeature",
                     "not": "#/components/schemas/Not-Output",
                     "or": "#/components/schemas/Or-Output",
+                    "related": "#/components/schemas/Related-Output",
                     "text_match": "#/components/schemas/TextMatch"
                   }
                 }
@@ -5360,6 +5505,232 @@
         ],
         "title": "RejectedRow"
       },
+      "Related-Input": {
+        "properties": {
+          "layer": {
+            "type": "string",
+            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+            "title": "Layer",
+            "description": "Lower-case layer or attribute name."
+          },
+          "predicate": {
+            "type": "string",
+            "enum": [
+              "intersects",
+              "within",
+              "contains",
+              "dwithin"
+            ],
+            "title": "Predicate"
+          },
+          "distance_m": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0,
+                "description": "Distance in metres."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distance M"
+          },
+          "where": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/Compare"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Between"
+                  },
+                  {
+                    "$ref": "#/components/schemas/InList"
+                  },
+                  {
+                    "$ref": "#/components/schemas/TextMatch"
+                  },
+                  {
+                    "$ref": "#/components/schemas/IsNull"
+                  },
+                  {
+                    "$ref": "#/components/schemas/BBox"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GeometryFilter"
+                  },
+                  {
+                    "$ref": "#/components/schemas/NearFeature"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Related-Input"
+                  },
+                  {
+                    "$ref": "#/components/schemas/And-Input"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Or-Input"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Not-Input"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "op",
+                  "mapping": {
+                    "and": "#/components/schemas/And-Input",
+                    "bbox": "#/components/schemas/BBox",
+                    "between": "#/components/schemas/Between",
+                    "compare": "#/components/schemas/Compare",
+                    "geometry": "#/components/schemas/GeometryFilter",
+                    "in": "#/components/schemas/InList",
+                    "is_null": "#/components/schemas/IsNull",
+                    "near_feature": "#/components/schemas/NearFeature",
+                    "not": "#/components/schemas/Not-Input",
+                    "or": "#/components/schemas/Or-Input",
+                    "related": "#/components/schemas/Related-Input",
+                    "text_match": "#/components/schemas/TextMatch"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Where",
+            "description": "Filter on the attributes of ``layer``."
+          },
+          "op": {
+            "type": "string",
+            "const": "related",
+            "title": "Op"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "layer",
+          "predicate",
+          "op"
+        ],
+        "title": "Related",
+        "description": "Source feature relates to at least one feature of ``layer`` (F-4.4), as a condition.\n\nSince v1. Unlike the top-level ``spatial_relation`` it combines with\n``and``, ``or`` and ``not``: \"outside\" is ``not`` + ``within``, \"farther\nthan\" is ``not`` + ``dwithin``. It sees the source geometry before any\n``buffer``. The predicate reads ``source <predicate> layer``."
+      },
+      "Related-Output": {
+        "properties": {
+          "layer": {
+            "type": "string",
+            "pattern": "^[a-z_][a-z0-9_]{0,62}$",
+            "title": "Layer",
+            "description": "Lower-case layer or attribute name."
+          },
+          "predicate": {
+            "type": "string",
+            "enum": [
+              "intersects",
+              "within",
+              "contains",
+              "dwithin"
+            ],
+            "title": "Predicate"
+          },
+          "distance_m": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0,
+                "description": "Distance in metres."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distance M"
+          },
+          "where": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/Compare"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Between"
+                  },
+                  {
+                    "$ref": "#/components/schemas/InList"
+                  },
+                  {
+                    "$ref": "#/components/schemas/TextMatch"
+                  },
+                  {
+                    "$ref": "#/components/schemas/IsNull"
+                  },
+                  {
+                    "$ref": "#/components/schemas/BBox"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GeometryFilter"
+                  },
+                  {
+                    "$ref": "#/components/schemas/NearFeature"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Related-Output"
+                  },
+                  {
+                    "$ref": "#/components/schemas/And-Output"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Or-Output"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Not-Output"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "op",
+                  "mapping": {
+                    "and": "#/components/schemas/And-Output",
+                    "bbox": "#/components/schemas/BBox",
+                    "between": "#/components/schemas/Between",
+                    "compare": "#/components/schemas/Compare",
+                    "geometry": "#/components/schemas/GeometryFilter",
+                    "in": "#/components/schemas/InList",
+                    "is_null": "#/components/schemas/IsNull",
+                    "near_feature": "#/components/schemas/NearFeature",
+                    "not": "#/components/schemas/Not-Output",
+                    "or": "#/components/schemas/Or-Output",
+                    "related": "#/components/schemas/Related-Output",
+                    "text_match": "#/components/schemas/TextMatch"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Where",
+            "description": "Filter on the attributes of ``layer``."
+          },
+          "op": {
+            "type": "string",
+            "const": "related",
+            "title": "Op"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "layer",
+          "predicate",
+          "op"
+        ],
+        "title": "Related",
+        "description": "Source feature relates to at least one feature of ``layer`` (F-4.4), as a condition.\n\nSince v1. Unlike the top-level ``spatial_relation`` it combines with\n``and``, ``or`` and ``not``: \"outside\" is ``not`` + ``within``, \"farther\nthan\" is ``not`` + ``dwithin``. It sees the source geometry before any\n``buffer``. The predicate reads ``source <predicate> layer``."
+      },
       "ResultMeta": {
         "properties": {
           "schema_version": {
@@ -5537,6 +5908,9 @@
                     "$ref": "#/components/schemas/NearFeature"
                   },
                   {
+                    "$ref": "#/components/schemas/Related-Input"
+                  },
+                  {
                     "$ref": "#/components/schemas/And-Input"
                   },
                   {
@@ -5559,6 +5933,7 @@
                     "near_feature": "#/components/schemas/NearFeature",
                     "not": "#/components/schemas/Not-Input",
                     "or": "#/components/schemas/Or-Input",
+                    "related": "#/components/schemas/Related-Input",
                     "text_match": "#/components/schemas/TextMatch"
                   }
                 }
@@ -5578,7 +5953,7 @@
           "predicate"
         ],
         "title": "SpatialRelation",
-        "description": "Keep source features related to at least one feature of ``layer`` (F-4.4).\n\nThe predicate reads ``source <predicate> layer``: ``within`` keeps source\nfeatures lying inside a feature of ``layer``."
+        "description": "Keep source features related to at least one feature of ``layer`` (F-4.4).\n\nThe predicate reads ``source <predicate> layer``: ``within`` keeps source\nfeatures lying inside a feature of ``layer``. Applied after ``buffer``;\nfor relations combined with other conditions use ``related`` in ``where``."
       },
       "SpatialRelation-Output": {
         "properties": {
@@ -5640,6 +6015,9 @@
                     "$ref": "#/components/schemas/NearFeature"
                   },
                   {
+                    "$ref": "#/components/schemas/Related-Output"
+                  },
+                  {
                     "$ref": "#/components/schemas/And-Output"
                   },
                   {
@@ -5662,6 +6040,7 @@
                     "near_feature": "#/components/schemas/NearFeature",
                     "not": "#/components/schemas/Not-Output",
                     "or": "#/components/schemas/Or-Output",
+                    "related": "#/components/schemas/Related-Output",
                     "text_match": "#/components/schemas/TextMatch"
                   }
                 }
@@ -5681,7 +6060,7 @@
           "predicate"
         ],
         "title": "SpatialRelation",
-        "description": "Keep source features related to at least one feature of ``layer`` (F-4.4).\n\nThe predicate reads ``source <predicate> layer``: ``within`` keeps source\nfeatures lying inside a feature of ``layer``."
+        "description": "Keep source features related to at least one feature of ``layer`` (F-4.4).\n\nThe predicate reads ``source <predicate> layer``: ``within`` keeps source\nfeatures lying inside a feature of ``layer``. Applied after ``buffer``;\nfor relations combined with other conditions use ``related`` in ``where``."
       },
       "StartPassword": {
         "properties": {

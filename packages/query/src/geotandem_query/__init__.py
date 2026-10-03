@@ -20,6 +20,7 @@ from geotandem_query.models import (
     Or,
     OrderBy,
     QueryObject,
+    Related,
     SpatialRelation,
     TextMatch,
 )
@@ -45,6 +46,7 @@ __all__ = [
     "Or",
     "OrderBy",
     "QueryObject",
+    "Related",
     "SpatialRelation",
     "TextMatch",
     "canonical_json",

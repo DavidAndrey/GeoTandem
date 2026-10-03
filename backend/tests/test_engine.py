@@ -15,7 +15,8 @@ from shapely.geometry import mapping, shape
 from shapely.geometry.base import BaseGeometry
 
 from geotandem.data import DataBackend, Limits
-from geotandem.engine import QueryError, QueryResult, run_query
+from geotandem.data.view import LayerView
+from geotandem.engine import QueryError, QueryResult, count_query, run_query
 from geotandem.geo import WGS84, reprojector
 from geotandem.sample import DATA_DIR
 from geotandem_query import QueryObject, query_hash
@@ -279,3 +280,141 @@ def test_timeout(sample: DataBackend) -> None:
     with pytest.raises(QueryError) as info:
         run(sample, {"source": "schulen", "buffer": {"distance_m": 50}}, Limits(1000, 1e-9))
     assert info.value.code == "query_timeout"
+
+
+# --- related (schema v1) -------------------------------------------------------
+
+
+def test_related_conditions_combine_like_the_reference_question(sample: DataBackend) -> None:
+    """Two relations in one AND, one of them negated: not expressible in v0."""
+    main_roads = [g for _, g, p in oracle("strassen") if p["klasse"] == "haupt"]
+    gemeinde_101 = next(g for _, g, p in oracle("gemeinden") if p["gem_nr"] == 101)
+    expected = [
+        fid
+        for fid, g, p in oracle("schulen")
+        if p["typ"] == "primar"
+        and any(g.distance(r) <= 500 for r in main_roads)
+        and not g.within(gemeinde_101)
+    ]
+    result = run(
+        sample,
+        {
+            "source": "schulen",
+            "where": {
+                "op": "and",
+                "args": [
+                    {"op": "in", "attr": "typ", "values": ["primar"]},
+                    {
+                        "op": "related",
+                        "layer": "strassen",
+                        "predicate": "dwithin",
+                        "distance_m": 500,
+                        "where": {"op": "compare", "attr": "klasse", "cmp": "eq", "value": "haupt"},
+                    },
+                    {
+                        "op": "not",
+                        "arg": {
+                            "op": "related",
+                            "layer": "gemeinden",
+                            "predicate": "within",
+                            "where": {"op": "compare", "attr": "gem_nr", "cmp": "eq", "value": 101},
+                        },
+                    },
+                ],
+            },
+        },
+    )
+    assert ids(result) == expected
+    assert len(expected) > 0
+
+
+def test_related_under_or(sample: DataBackend) -> None:
+    tand = next(g for _, g, p in oracle("gewaesser") if p["name"] == "Tand")
+    expected = [
+        fid for fid, g, p in oracle("schulen") if p["schueler"] > 700 or g.distance(tand) <= 300
+    ]
+    result = run(
+        sample,
+        {
+            "source": "schulen",
+            "where": {
+                "op": "or",
+                "args": [
+                    {"op": "compare", "attr": "schueler", "cmp": "gt", "value": 700},
+                    {
+                        "op": "related",
+                        "layer": "gewaesser",
+                        "predicate": "dwithin",
+                        "distance_m": 300,
+                        "where": {"op": "compare", "attr": "name", "cmp": "eq", "value": "Tand"},
+                    },
+                ],
+            },
+        },
+    )
+    assert ids(result) == expected
+
+
+def test_related_sees_the_geometry_before_buffer(sample: DataBackend) -> None:
+    """``related`` filters in ``where``, before ``buffer``; ``spatial_relation`` after it."""
+    roads = [g for _, g, _ in oracle("strassen")]
+    schools = oracle("schulen")
+    near_50 = [fid for fid, g, _ in schools if any(g.distance(r) <= 50 for r in roads)]
+    near_250 = [fid for fid, g, _ in schools if any(g.distance(r) <= 250 for r in roads)]
+    relation = {"layer": "strassen", "predicate": "dwithin", "distance_m": 50}
+    condition = {"op": "related", **relation}
+    as_condition = run(
+        sample, {"source": "schulen", "buffer": {"distance_m": 200}, "where": condition}
+    )
+    after_buffer = run(
+        sample, {"source": "schulen", "buffer": {"distance_m": 200}, "spatial_relation": relation}
+    )
+    assert ids(as_condition) == near_50
+    assert ids(after_buffer) == near_250
+    assert len(near_50) < len(near_250)
+
+
+def test_related_to_a_hidden_layer_is_an_unknown_layer(sample: DataBackend) -> None:
+    view = LayerView(sample, {"schulen"})
+    with pytest.raises(QueryError) as info:
+        run(
+            view,
+            {
+                "source": "schulen",
+                "where": {
+                    "op": "not",
+                    "arg": {"op": "related", "layer": "gemeinden", "predicate": "within"},
+                },
+            },
+        )
+    assert info.value.code == "unknown_layer"
+    assert info.value.details["available"] == ["schulen"]
+
+
+# --- counting (B1 "7 von 39", B2 hits per condition) ---------------------------
+
+
+COUNTED = [
+    *[json.loads(p.read_text("utf-8")) for p in sorted(GOLDEN.glob("*.query.json"))],
+    {"source": "schulen"},
+    {"source": "schulen", "limit": 7},
+    {"source": "bevoelkerung"},
+    {
+        "source": "schulen",
+        "where": {
+            "op": "not",
+            "arg": {"op": "related", "layer": "gemeinden", "predicate": "within"},
+        },
+    },
+]
+
+
+@pytest.mark.parametrize("query", COUNTED)
+def test_count_equals_the_number_of_features(sample: DataBackend, query: dict[str, Any]) -> None:
+    expected = len(run(sample, query).features)
+    assert count_query(QueryObject.model_validate(query), sample, LIMITS) == expected
+
+
+def test_count_is_not_capped_by_the_result_size_limit(sample: DataBackend) -> None:
+    small = Limits(max_features=10, timeout_s=10)
+    assert count_query(QueryObject(source="schulen"), sample, small) == 120

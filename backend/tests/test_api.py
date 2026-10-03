@@ -15,7 +15,7 @@ async def test_health(client: httpx.AsyncClient) -> None:
     body = (await client.get("/api/health")).json()
     assert body["status"] == "ok"
     assert body["backend"] == "spatialite"
-    assert body["schema_version"] == "0"
+    assert body["schema_version"] == "1"
     assert body["sample_dataset_version"] == "tandemtal-1"
     assert body["capabilities"]["missing"] == {}
 
@@ -73,7 +73,7 @@ async def test_rejections_share_one_body(
 
 async def test_schema_and_tools(client: httpx.AsyncClient) -> None:
     schema = (await client.get("/api/schema/query-object")).json()
-    assert schema["$id"].endswith("/query-object/v0.json")
+    assert schema["$id"].endswith("/query-object/v1.json")
     tools = (await client.get("/api/tools")).json()
     assert [t["name"] for t in tools] == ["list_layers", "describe_layer", "run_query"]
 
@@ -93,3 +93,25 @@ def test_committed_openapi_matches_app() -> None:
     """
     committed = Path(__file__).parents[2] / "frontend" / "openapi.json"
     assert committed.read_text(encoding="utf-8") == openapi_document()
+
+
+async def test_count_several_queries(client: httpx.AsyncClient) -> None:
+    schools = {"source": "schulen"}
+    primar = {"source": "schulen", "where": {"op": "in", "attr": "typ", "values": ["primar"]}}
+    response = await client.post("/api/query/count", json={"queries": [schools, primar]})
+    counts = response.json()["counts"]
+    # 120 schools exceed max_features=100 for /api/query, but counting ships no features.
+    assert counts[0] == 120 and 0 < counts[1] < 120
+
+
+async def test_count_names_the_rejected_query(client: httpx.AsyncClient) -> None:
+    response = await client.post(
+        "/api/query/count", json={"queries": [{"source": "schulen"}, {"source": "spitaeler"}]}
+    )
+    assert (response.status_code, response.json()["code"]) == (400, "unknown_layer")
+    assert response.json()["details"]["index"] == 1
+
+
+async def test_count_request_size_is_limited(client: httpx.AsyncClient) -> None:
+    too_many = {"queries": [{"source": "schulen"}] * 51}
+    assert (await client.post("/api/query/count", json=too_many)).status_code == 422

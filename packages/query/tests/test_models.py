@@ -10,7 +10,7 @@ def q(**kwargs: object) -> QueryObject:
 
 def test_minimal_query_gets_defaults() -> None:
     query = q()
-    assert query.schema_version == "0"
+    assert query.schema_version == "1"
     assert query.output == "map"
     assert query.order_by == []
 
@@ -73,7 +73,10 @@ def test_full_query_validates() -> None:
         {"buffer": {"distance_m": 0}},
         {"aggregate": {"by_layer": "g", "metrics": [{"fn": "sum", "as": "s"}]}},
         {"aggregate": {"by_layer": "g", "metrics": [{"fn": "count", "attr": "a", "as": "n"}]}},
-        {"schema_version": "1"},
+        {"schema_version": "2"},
+        {"where": {"op": "related", "layer": "g", "predicate": "dwithin"}},
+        {"where": {"op": "related", "layer": "g", "predicate": "within", "distance_m": 5}},
+        {"where": {"op": "related", "layer": "G", "predicate": "within"}},
         {"symbology": {"kind": "classified", "attr": "a", "method": "quantile", "classes": 20}},
     ],
 )
@@ -110,3 +113,34 @@ def test_metric_alias_round_trips() -> None:
     dumped = query.model_dump(mode="json", by_alias=True)
     assert dumped["aggregate"]["metrics"][0]["as"] == "n"
     assert QueryObject.model_validate(dumped) == query
+
+
+# --- v1 (E1.5) -----------------------------------------------------------------
+
+
+def test_v0_document_is_read_as_v1_with_the_same_hash() -> None:
+    v0 = q(schema_version="0", where={"op": "compare", "attr": "a", "cmp": "eq", "value": 1})
+    v1 = q(where={"op": "compare", "attr": "a", "cmp": "eq", "value": 1})
+    assert v0.schema_version == "1"
+    assert query_hash(v0) == query_hash(v1)
+
+
+def test_related_combines_with_and_or_not() -> None:
+    reference = {
+        "op": "and",
+        "args": [
+            {"op": "in", "attr": "typ", "values": ["primar"]},
+            {"op": "related", "layer": "strassen", "predicate": "dwithin", "distance_m": 500},
+            {
+                "op": "not",
+                "arg": {
+                    "op": "related",
+                    "layer": "gemeinden",
+                    "predicate": "within",
+                    "where": {"op": "compare", "attr": "gem_nr", "cmp": "eq", "value": 101},
+                },
+            },
+        ],
+    }
+    query = q(where=reference)
+    assert canonical_json(query).count('"op":"related"') == 2

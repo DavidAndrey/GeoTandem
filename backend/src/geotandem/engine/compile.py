@@ -209,6 +209,10 @@ class Compiler:
                         ref.columns[FID] == c.fid, d.distance(geom, ref_geom) <= c.distance_m
                     )
                 )
+            case m.Related():
+                # The same semi-join as the top-level relation, so NOT and OR apply
+                # to it like to any other condition (schema v1).
+                return self.spatial_relation(c, scope.require_geom("related"))
         raise AssertionError(f"unhandled condition {c!r}")  # pragma: no cover
 
     # --- operations ------------------------------------------------------------
@@ -238,7 +242,9 @@ class Compiler:
                 .scalar_subquery()
             )
 
-    def spatial_relation(self, rel: m.SpatialRelation, geom: Any) -> ColumnElement[bool]:
+    def spatial_relation(
+        self, rel: m.SpatialRelation | m.Related, geom: Any
+    ) -> ColumnElement[bool]:
         self.use(Op.SPATIAL_RELATION)
         d = self.dialect
         other = self.scope(rel.layer)

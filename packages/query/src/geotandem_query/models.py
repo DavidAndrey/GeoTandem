@@ -5,16 +5,21 @@ Evaluation order is fixed and independent of field order in the document:
 1. ``source``          — the layer the result features come from
 2. ``attribute_join``  — left join of a table layer by key; its fields become
                          addressable like source attributes
-3. ``where``           — filter on source (and joined) attributes and geometry
+3. ``where``           — filter on source (and joined) attributes and geometry,
+                         and on relations to other layers (``related``, v1)
 4. ``buffer``          — replace each source geometry by its buffer
 5. ``spatial_relation``— keep only features related to some feature of
-                         another layer (semi-join, no duplicates)
+                         another layer (semi-join, no duplicates); unlike
+                         ``related`` it sees the buffered geometry
 6. ``aggregate``       — summarise the remaining features per feature of an
                          area layer; the result features become those areas
 7. ``select`` / ``order_by`` / ``limit``
 
 ``symbology`` and ``output`` are render hints: validated, never executed.
 Geometries in queries are GeoJSON in WGS84 (EPSG:4326); distances are metres.
+
+Version history: v0 (E1.2); v1 (E1.5) adds the condition ``related``. v1 is a
+superset: a v0 document is read as v1 with the same meaning and result.
 """
 
 from __future__ import annotations
@@ -133,6 +138,35 @@ class NearFeature(_Model):
     distance_m: Annotated[float, Field(ge=0, description="Distance in metres.")] = 0
 
 
+class _Relation(_Model):
+    """Relation of each source feature to the features of another layer."""
+
+    layer: Identifier
+    predicate: Literal["intersects", "within", "contains", "dwithin"]
+    distance_m: Distance | None = None
+    where: Condition | None = Field(
+        default=None, description="Filter on the attributes of ``layer``."
+    )
+
+    @model_validator(mode="after")
+    def _distance(self) -> Self:
+        if (self.predicate == "dwithin") != (self.distance_m is not None):
+            raise ValueError("'distance_m' is required for 'dwithin' and only allowed there")
+        return self
+
+
+class Related(_Relation):
+    """Source feature relates to at least one feature of ``layer`` (F-4.4), as a condition.
+
+    Since v1. Unlike the top-level ``spatial_relation`` it combines with
+    ``and``, ``or`` and ``not``: "outside" is ``not`` + ``within``, "farther
+    than" is ``not`` + ``dwithin``. It sees the source geometry before any
+    ``buffer``. The predicate reads ``source <predicate> layer``.
+    """
+
+    op: Literal["related"]
+
+
 class And(_Model):
     op: Literal["and"]
     args: Annotated[list[Condition], Field(min_length=1)]
@@ -157,6 +191,7 @@ Condition = Annotated[
     | BBox
     | GeometryFilter
     | NearFeature
+    | Related
     | And
     | Or
     | Not,
@@ -187,25 +222,13 @@ class Buffer(_Model):
     distance_m: Distance
 
 
-class SpatialRelation(_Model):
+class SpatialRelation(_Relation):
     """Keep source features related to at least one feature of ``layer`` (F-4.4).
 
     The predicate reads ``source <predicate> layer``: ``within`` keeps source
-    features lying inside a feature of ``layer``.
+    features lying inside a feature of ``layer``. Applied after ``buffer``;
+    for relations combined with other conditions use ``related`` in ``where``.
     """
-
-    layer: Identifier
-    predicate: Literal["intersects", "within", "contains", "dwithin"]
-    distance_m: Distance | None = None
-    where: Condition | None = Field(
-        default=None, description="Filter on the attributes of ``layer``."
-    )
-
-    @model_validator(mode="after")
-    def _distance(self) -> Self:
-        if (self.predicate == "dwithin") != (self.distance_m is not None):
-            raise ValueError("'distance_m' is required for 'dwithin' and only allowed there")
-        return self
 
 
 class Metric(_Model):
@@ -291,7 +314,7 @@ class QueryObject(_Model):
 
     model_config = ConfigDict(extra="forbid", title="GeoTandem query object")
 
-    schema_version: Literal["0"] = SCHEMA_VERSION
+    schema_version: Literal["1"] = SCHEMA_VERSION
     source: Identifier
     attribute_join: AttributeJoin | None = None
     where: Condition | None = None
@@ -306,9 +329,18 @@ class QueryObject(_Model):
     symbology: Symbology | None = None
     output: Literal["map", "table"] = "map"
 
+    @model_validator(mode="before")
+    @classmethod
+    def _upgrade(cls, data: Any) -> Any:
+        """Read a v0 document as v1: v1 only adds, so the version is all that changes."""
+        if isinstance(data, dict) and data.get("schema_version") == "0":
+            return {**data, "schema_version": SCHEMA_VERSION}
+        return data
+
 
 And.model_rebuild()
 Or.model_rebuild()
 Not.model_rebuild()
+Related.model_rebuild()
 SpatialRelation.model_rebuild()
 QueryObject.model_rebuild()

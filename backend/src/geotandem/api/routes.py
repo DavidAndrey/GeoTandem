@@ -3,7 +3,7 @@
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from geotandem import __version__
 from geotandem.api.auth import CurrentAccount
@@ -12,7 +12,7 @@ from geotandem.api.state import AppState, get_state
 from geotandem.auth.visibility import view_for
 from geotandem.catalog import LayerInfo, get_layer, list_layers
 from geotandem.data import DataBackend, Op
-from geotandem.engine import QueryResult, run_query, validate_query
+from geotandem.engine import QueryError, QueryResult, count_query, run_query, validate_query
 from geotandem.engine.errors import UnknownLayer
 from geotandem.sample.load import dataset_version
 from geotandem.tools import ToolDescription
@@ -93,6 +93,35 @@ def layer(name: str, backend: Visible) -> LayerInfo:
 def query(body: QueryObject, state: State, backend: Visible) -> QueryResult:
     """Run a query object (F-8.9); the result carries its query and provenance."""
     return run_query(body, backend, state.limits, state.unsupported)
+
+
+MAX_COUNT_QUERIES = 50
+
+
+class CountRequest(BaseModel):
+    queries: list[QueryObject] = Field(min_length=1, max_length=MAX_COUNT_QUERIES)
+
+
+class Counts(BaseModel):
+    counts: list[int]
+    """In the order of ``queries``."""
+
+
+@router.post("/query/count", responses=ERRORS)
+def count(body: CountRequest, state: State, backend: Visible) -> Counts:
+    """Count the features of several queries at once, e.g. one per condition (design B2).
+
+    Nothing but numbers leaves the server. A rejected query names its position
+    in ``details.index``.
+    """
+    counts = []
+    for index, query in enumerate(body.queries):
+        try:
+            counts.append(count_query(query, backend, state.limits, state.unsupported))
+        except QueryError as exc:
+            exc.details["index"] = index
+            raise
+    return Counts(counts=counts)
 
 
 @router.post("/query/validate", responses=ERRORS)

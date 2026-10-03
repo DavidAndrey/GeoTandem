@@ -6,4 +6,4 @@ export the new version next to the old one under ``schema/query-object/``.
 
 from typing import Final
 
-SCHEMA_VERSION: Final = "0"
+SCHEMA_VERSION: Final = "1"

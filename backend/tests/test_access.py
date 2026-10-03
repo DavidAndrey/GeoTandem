@@ -20,6 +20,7 @@ READ_ROUTES = [
     ("GET", "/api/layers/schulen", None),
     ("POST", "/api/query", {"source": "schulen", "output": "table", "limit": 1}),
     ("POST", "/api/query/validate", {"source": "schulen"}),
+    ("POST", "/api/query/count", {"queries": [{"source": "schulen"}]}),
     ("GET", "/api/tools", None),
 ]
 ADMIN_ROUTES = [
@@ -144,8 +145,12 @@ async def test_hidden_layer_cannot_be_used_as_a_condition(
     assert (await client.post("/api/query", json=query)).status_code == 200  # admin
     await hide(client, hidden)
     await sign_in_as(client, "m.keller")
-    for path in ("/api/query", "/api/query/validate"):
-        response = await client.post(path, json=query)
+    for path, body in (
+        ("/api/query", query),
+        ("/api/query/validate", query),
+        ("/api/query/count", {"queries": [query]}),
+    ):
+        response = await client.post(path, json=body)
         assert (response.status_code, response.json()["code"]) == (400, "unknown_layer")
         assert response.json()["details"]["layer"] == hidden
 

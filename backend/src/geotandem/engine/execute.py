@@ -5,6 +5,8 @@ import time
 from collections.abc import Iterable
 from typing import Any
 
+from sqlalchemy import func, literal, select
+
 from geotandem.catalog import get_layer
 from geotandem.data import DataBackend, Limits, Op, QueryTimeout
 from geotandem.engine.compile import FID, GEOJSON, Compiled, compile_query
@@ -54,6 +56,30 @@ def run_query(
             elapsed_ms=round((time.perf_counter() - started) * 1000, 1),
         ),
     )
+
+
+COUNT_CAP = 10**9
+"""Counting needs no result-size cap: no features leave the server."""
+
+
+def count_query(
+    query: QueryObject, backend: DataBackend, limits: Limits, unsupported: Iterable[Op] = ()
+) -> int:
+    """How many features ``query`` returns, without building them (B1 "7 von 39").
+
+    Same compiler and the same view as ``run_query``; only the select list is
+    replaced, so no geometry is serialised. Runs under the same time limit.
+    """
+    compiled = compile_query(query, backend, COUNT_CAP, unsupported)
+    rows = compiled.stmt.with_only_columns(literal(1)).order_by(None).subquery()
+    try:
+        result = backend.execute(select(func.count()).select_from(rows), limits)
+    except QueryTimeout:
+        raise QueryTimedOut(
+            f"The query took longer than {limits.timeout_s:g} s and was stopped.",
+            timeout_s=limits.timeout_s,
+        ) from None
+    return int(next(iter(result[0].values())))
 
 
 def _feature(row: dict[str, Any]) -> Feature:

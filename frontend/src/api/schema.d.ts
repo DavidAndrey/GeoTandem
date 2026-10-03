@@ -75,6 +75,29 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/query/count': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Count
+     * @description Count the features of several queries at once, e.g. one per condition (design B2).
+     *
+     *     Nothing but numbers leaves the server. A rejected query names its position
+     *     in ``details.index``.
+     */
+    post: operations['count_api_query_count_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/query/validate': {
     parameters: {
       query?: never
@@ -618,6 +641,7 @@ export interface components {
         | components['schemas']['BBox']
         | components['schemas']['GeometryFilter']
         | components['schemas']['NearFeature']
+        | components['schemas']['Related-Input']
         | components['schemas']['And-Input']
         | components['schemas']['Or-Input']
         | components['schemas']['Not-Input']
@@ -640,6 +664,7 @@ export interface components {
         | components['schemas']['BBox']
         | components['schemas']['GeometryFilter']
         | components['schemas']['NearFeature']
+        | components['schemas']['Related-Output']
         | components['schemas']['And-Output']
         | components['schemas']['Or-Output']
         | components['schemas']['Not-Output']
@@ -878,6 +903,16 @@ export interface components {
       cmp: 'eq' | 'ne' | 'lt' | 'le' | 'gt' | 'ge'
       /** Value */
       value: string | number | boolean
+    }
+    /** CountRequest */
+    CountRequest: {
+      /** Queries */
+      queries: components['schemas']['QueryObject-Input'][]
+    }
+    /** Counts */
+    Counts: {
+      /** Counts */
+      counts: number[]
     }
     /** Credentials */
     Credentials: {
@@ -1377,6 +1412,7 @@ export interface components {
         | components['schemas']['BBox']
         | components['schemas']['GeometryFilter']
         | components['schemas']['NearFeature']
+        | components['schemas']['Related-Input']
         | components['schemas']['And-Input']
         | components['schemas']['Or-Input']
         | components['schemas']['Not-Input']
@@ -1398,6 +1434,7 @@ export interface components {
         | components['schemas']['BBox']
         | components['schemas']['GeometryFilter']
         | components['schemas']['NearFeature']
+        | components['schemas']['Related-Output']
         | components['schemas']['And-Output']
         | components['schemas']['Or-Output']
         | components['schemas']['Not-Output']
@@ -1433,6 +1470,7 @@ export interface components {
         | components['schemas']['BBox']
         | components['schemas']['GeometryFilter']
         | components['schemas']['NearFeature']
+        | components['schemas']['Related-Input']
         | components['schemas']['And-Input']
         | components['schemas']['Or-Input']
         | components['schemas']['Not-Input']
@@ -1455,6 +1493,7 @@ export interface components {
         | components['schemas']['BBox']
         | components['schemas']['GeometryFilter']
         | components['schemas']['NearFeature']
+        | components['schemas']['Related-Output']
         | components['schemas']['And-Output']
         | components['schemas']['Or-Output']
         | components['schemas']['Not-Output']
@@ -1530,10 +1569,10 @@ export interface components {
     'QueryObject-Input': {
       /**
        * Schema Version
-       * @default 0
+       * @default 1
        * @constant
        */
-      schema_version: '0'
+      schema_version: '1'
       /**
        * Source
        * @description Lower-case layer or attribute name.
@@ -1551,6 +1590,7 @@ export interface components {
             | components['schemas']['BBox']
             | components['schemas']['GeometryFilter']
             | components['schemas']['NearFeature']
+            | components['schemas']['Related-Input']
             | components['schemas']['And-Input']
             | components['schemas']['Or-Input']
             | components['schemas']['Not-Input']
@@ -1591,10 +1631,10 @@ export interface components {
     'QueryObject-Output': {
       /**
        * Schema Version
-       * @default 0
+       * @default 1
        * @constant
        */
-      schema_version: '0'
+      schema_version: '1'
       /**
        * Source
        * @description Lower-case layer or attribute name.
@@ -1612,6 +1652,7 @@ export interface components {
             | components['schemas']['BBox']
             | components['schemas']['GeometryFilter']
             | components['schemas']['NearFeature']
+            | components['schemas']['Related-Output']
             | components['schemas']['And-Output']
             | components['schemas']['Or-Output']
             | components['schemas']['Not-Output']
@@ -1684,6 +1725,102 @@ export interface components {
         [key: string]: unknown
       }
     }
+    /**
+     * Related
+     * @description Source feature relates to at least one feature of ``layer`` (F-4.4), as a condition.
+     *
+     *     Since v1. Unlike the top-level ``spatial_relation`` it combines with
+     *     ``and``, ``or`` and ``not``: "outside" is ``not`` + ``within``, "farther
+     *     than" is ``not`` + ``dwithin``. It sees the source geometry before any
+     *     ``buffer``. The predicate reads ``source <predicate> layer``.
+     */
+    'Related-Input': {
+      /**
+       * Layer
+       * @description Lower-case layer or attribute name.
+       */
+      layer: string
+      /**
+       * Predicate
+       * @enum {string}
+       */
+      predicate: 'intersects' | 'within' | 'contains' | 'dwithin'
+      /** Distance M */
+      distance_m?: number | null
+      /**
+       * Where
+       * @description Filter on the attributes of ``layer``.
+       */
+      where?:
+        | (
+            | components['schemas']['Compare']
+            | components['schemas']['Between']
+            | components['schemas']['InList']
+            | components['schemas']['TextMatch']
+            | components['schemas']['IsNull']
+            | components['schemas']['BBox']
+            | components['schemas']['GeometryFilter']
+            | components['schemas']['NearFeature']
+            | components['schemas']['Related-Input']
+            | components['schemas']['And-Input']
+            | components['schemas']['Or-Input']
+            | components['schemas']['Not-Input']
+          )
+        | null
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      op: 'related'
+    }
+    /**
+     * Related
+     * @description Source feature relates to at least one feature of ``layer`` (F-4.4), as a condition.
+     *
+     *     Since v1. Unlike the top-level ``spatial_relation`` it combines with
+     *     ``and``, ``or`` and ``not``: "outside" is ``not`` + ``within``, "farther
+     *     than" is ``not`` + ``dwithin``. It sees the source geometry before any
+     *     ``buffer``. The predicate reads ``source <predicate> layer``.
+     */
+    'Related-Output': {
+      /**
+       * Layer
+       * @description Lower-case layer or attribute name.
+       */
+      layer: string
+      /**
+       * Predicate
+       * @enum {string}
+       */
+      predicate: 'intersects' | 'within' | 'contains' | 'dwithin'
+      /** Distance M */
+      distance_m?: number | null
+      /**
+       * Where
+       * @description Filter on the attributes of ``layer``.
+       */
+      where?:
+        | (
+            | components['schemas']['Compare']
+            | components['schemas']['Between']
+            | components['schemas']['InList']
+            | components['schemas']['TextMatch']
+            | components['schemas']['IsNull']
+            | components['schemas']['BBox']
+            | components['schemas']['GeometryFilter']
+            | components['schemas']['NearFeature']
+            | components['schemas']['Related-Output']
+            | components['schemas']['And-Output']
+            | components['schemas']['Or-Output']
+            | components['schemas']['Not-Output']
+          )
+        | null
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      op: 'related'
+    }
     /** ResultMeta */
     ResultMeta: {
       /** Schema Version */
@@ -1749,7 +1886,8 @@ export interface components {
      * @description Keep source features related to at least one feature of ``layer`` (F-4.4).
      *
      *     The predicate reads ``source <predicate> layer``: ``within`` keeps source
-     *     features lying inside a feature of ``layer``.
+     *     features lying inside a feature of ``layer``. Applied after ``buffer``;
+     *     for relations combined with other conditions use ``related`` in ``where``.
      */
     'SpatialRelation-Input': {
       /**
@@ -1778,6 +1916,7 @@ export interface components {
             | components['schemas']['BBox']
             | components['schemas']['GeometryFilter']
             | components['schemas']['NearFeature']
+            | components['schemas']['Related-Input']
             | components['schemas']['And-Input']
             | components['schemas']['Or-Input']
             | components['schemas']['Not-Input']
@@ -1789,7 +1928,8 @@ export interface components {
      * @description Keep source features related to at least one feature of ``layer`` (F-4.4).
      *
      *     The predicate reads ``source <predicate> layer``: ``within`` keeps source
-     *     features lying inside a feature of ``layer``.
+     *     features lying inside a feature of ``layer``. Applied after ``buffer``;
+     *     for relations combined with other conditions use ``related`` in ``where``.
      */
     'SpatialRelation-Output': {
       /**
@@ -1818,6 +1958,7 @@ export interface components {
             | components['schemas']['BBox']
             | components['schemas']['GeometryFilter']
             | components['schemas']['NearFeature']
+            | components['schemas']['Related-Output']
             | components['schemas']['And-Output']
             | components['schemas']['Or-Output']
             | components['schemas']['Not-Output']
@@ -2117,6 +2258,75 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['QueryResult']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Content Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Gateway Timeout */
+      504: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  count_api_query_count_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CountRequest']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['Counts']
         }
       }
       /** @description Bad Request */
