@@ -4,8 +4,8 @@ import { buildReferenceQuestion, ensureAreaLayer, reference, validate, watchQuer
 // Acceptance E1.5 (etappen.md): every action in the interface produces a valid
 // query object as defined in E1.2 — the interface is its editor, not a second
 // way around the machinery. Shown on the reference question (plan E1.5, D10):
-// Primarschulen ≤ 500 m von einer Hauptstrasse, in Gemeinden mit Anteil
-// unter 20 Jahren > 16 %.
+// Primarschulen ≤ 500 m von einer Kantonsstrasse Kategorie B, in Gemeinden mit
+// Steueranlage > 1.6.
 
 test('the reference question, answered by hand', async ({ page, request }) => {
   await ensureAreaLayer(request)
@@ -17,7 +17,7 @@ test('the reference question, answered by hand', async ({ page, request }) => {
     data: { queries: [reference, { schema_version: '2', source: 'schulen' }] },
   })
   const [hits, total] = (await expected.json()).counts
-  expect(hits).toBe(7)
+  expect(hits).toBe(10)
   // ... is what the interface shows,
   await expect(page.getByLabel('Trefferzahl')).toHaveText(`${hits} von ${total}`)
   // ... because the interface built exactly that query object,

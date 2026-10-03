@@ -1,11 +1,64 @@
 {
-  "version": "tandemtal-1",
+  "version": "bern-mittelland-2026-10-03",
   "source_crs": 4326,
+  "attribution": "Amt für Geoinformation des Kantons Bern (AGI)",
+  "license": "opendata.swiss terms_open",
+  "sources": [
+    {
+      "code": "GENGRZ5",
+      "title": "Politische Grenzen generalisiert",
+      "url": "https://www.agi.dij.be.ch/de/start/geoportal/geodaten/detail.html?type=geoproduct&code=GENGRZ5",
+      "download": "https://geofiles.be.ch/geoportal/pub/download/GENGRZ5/gengrz5.gpkg.zip",
+      "sha256": "804148f3bd1240ede737a69504f0d8a698821bd8c9fa8dfda69a4f8e44e3ce7d"
+    },
+    {
+      "code": "GNBE",
+      "title": "Gewässernetz des Kantons Bern",
+      "url": "https://www.agi.dij.be.ch/de/start/geoportal/geodaten/detail.html?type=geoproduct&code=GNBE",
+      "download": "https://geofiles.be.ch/geoportal/pub/download/GNBE/gnbe.gpkg.zip",
+      "sha256": "7463d62bda396c6b191f004b23457b5e62f4c396a643597b965e9fee91d41339"
+    },
+    {
+      "code": "UESN",
+      "title": "Übergeordnetes Strassennetz des Kantons Bern",
+      "url": "https://www.agi.dij.be.ch/de/start/geoportal/geodaten/detail.html?type=geoproduct&code=UESN",
+      "download": "https://geofiles.be.ch/geoportal/pub/download/UESN/uesn.gpkg.zip",
+      "sha256": "11b1aaced17dd326c5f7d52f792fdc844f0d7491a6c530dd5ad1db65b6a04673"
+    },
+    {
+      "code": "OEVSCHUL",
+      "title": "Volksschulen",
+      "url": "https://www.agi.dij.be.ch/de/start/geoportal/geodaten/detail.html?type=geoproduct&code=OEVSCHUL",
+      "download": "https://geofiles.be.ch/geoportal/pub/download/OEVSCHUL/oevschul.gpkg.zip",
+      "sha256": "f6b8e857165266b6528841059666220d8dd89bea22f42f5f1f95cb9df5eed531"
+    },
+    {
+      "code": "OEVTP",
+      "title": "Öffentlicher Verkehr",
+      "url": "https://www.agi.dij.be.ch/de/start/geoportal/geodaten/detail.html?type=geoproduct&code=OEVTP",
+      "download": "https://geofiles.be.ch/geoportal/pub/download/OEVTP/oevtp.gpkg.zip",
+      "sha256": "98aa0bb338aab2ba847d19221d20b85a21954aad3b2ffaab913fb9a1dab852f7"
+    },
+    {
+      "code": "ADMGDE",
+      "title": "Gemeindedaten",
+      "url": "https://www.agi.dij.be.ch/de/start/geoportal/geodaten/detail.html?type=geoproduct&code=ADMGDE",
+      "download": "https://geofiles.be.ch/geoportal/pub/download/ADMGDE/admgde.gpkg.zip",
+      "sha256": "a476982036e8d81e6b6b286a9fb1db00b871ec9ce214b915783a8a52cbdb9835"
+    },
+    {
+      "code": "STEUERN",
+      "title": "Steueranlagen pro Gemeinde",
+      "url": "https://www.agi.dij.be.ch/de/start/geoportal/geodaten/detail.html?type=geoproduct&code=STEUERN",
+      "download": "https://geofiles.be.ch/geoportal/pub/download/STEUERN/steuern.gpkg.zip",
+      "sha256": "09602c6136dee86cdb2be6cb586ddf4ef5b43c03f3e1e65a2285d7c259184f50"
+    }
+  ],
   "layers": [
     {
       "name": "gemeinden",
       "title": "Gemeinden",
-      "description": "Politische Gemeinden des Tandemtals.",
+      "description": "Politische Gemeinden des Verwaltungskreises Bern-Mittelland (AGI: Politische Grenzen generalisiert).",
       "kind": "vector",
       "file": "gemeinden.geojson",
       "attributes": [
@@ -13,7 +66,7 @@
           "name": "gem_nr",
           "data_type": "integer",
           "label": "Gemeindenummer",
-          "description": "Amtlicher Gemeindeschlüssel, Schlüssel für Sachdaten."
+          "description": "BFS-Gemeindenummer, Schlüssel für Sachdaten."
         },
         {
           "name": "name",
@@ -31,7 +84,7 @@
     {
       "name": "gewaesser",
       "title": "Gewässer",
-      "description": "Fliessgewässer: der Fluss Tand und der Bruggbach.",
+      "description": "Fliessgewässer: alle Hauptgewässer und Nebengewässer ab 5 km Länge, je zusammenhängender Abschnitt, bis 1 km über die Kreisgrenze (AGI: Gewässernetz des Kantons Bern).",
       "kind": "vector",
       "file": "gewaesser.geojson",
       "attributes": [
@@ -43,27 +96,38 @@
         {
           "name": "typ",
           "data_type": "text",
-          "label": "Gewässertyp",
+          "label": "Gewässerklasse",
           "value_domain": {
             "codes": {
-              "fluss": "Fluss",
-              "bach": "Bach"
+              "haupt": "Hauptgewässer",
+              "neben": "Nebengewässer"
             }
           }
+        },
+        {
+          "name": "laenge_km",
+          "data_type": "real",
+          "label": "Länge im Gebiet",
+          "unit": "km"
         }
       ]
     },
     {
       "name": "strassen",
       "title": "Strassen",
-      "description": "Haupt- und Nebenstrassen.",
+      "description": "Übergeordnetes Strassennetz, je Strassenachse, bis 1 km über die Kreisgrenze (AGI: Übergeordnetes Strassennetz des Kantons Bern).",
       "kind": "vector",
       "file": "strassen.geojson",
       "attributes": [
         {
           "name": "name",
           "data_type": "text",
-          "label": "Name"
+          "label": "Achsname"
+        },
+        {
+          "name": "nummer",
+          "data_type": "text",
+          "label": "Achsnummer"
         },
         {
           "name": "klasse",
@@ -71,8 +135,11 @@
           "label": "Strassenklasse",
           "value_domain": {
             "codes": {
-              "haupt": "Hauptstrasse",
-              "neben": "Nebenstrasse"
+              "nationalstrasse": "Nationalstrasse",
+              "kantonsstrasse_a": "Kantonsstrasse Kategorie A",
+              "kantonsstrasse_b": "Kantonsstrasse Kategorie B",
+              "kantonsstrasse_c": "Kantonsstrasse Kategorie C",
+              "gemeindestrasse": "Wichtige Gemeindestrasse"
             }
           }
         }
@@ -81,7 +148,7 @@
     {
       "name": "schulen",
       "title": "Schulen",
-      "description": "Schulstandorte mit Schulstufe und Anzahl Schülerinnen und Schüler.",
+      "description": "Öffentliche Volksschulen mit angebotenen Stufen (AGI: Volksschulen).",
       "kind": "vector",
       "file": "schulen.geojson",
       "attributes": [
@@ -91,35 +158,123 @@
           "label": "Schulname"
         },
         {
+          "name": "gem_nr",
+          "data_type": "integer",
+          "label": "Gemeindenummer",
+          "description": "Schulgemeinde; Schlüssel auf gemeinden.gem_nr."
+        },
+        {
           "name": "typ",
           "data_type": "text",
-          "label": "Schulstufe",
+          "label": "Höchste Schulstufe",
           "value_domain": {
             "codes": {
               "kindergarten": "Kindergarten",
-              "primar": "Primarschule",
-              "sekundar": "Sekundarschule"
+              "primar": "Primarstufe",
+              "sekundar": "Sekundarstufe I",
+              "spezial": "Nur besondere Förderung"
             }
           }
         },
         {
-          "name": "schueler",
-          "data_type": "integer",
-          "label": "Schülerzahl",
-          "unit": "Personen",
+          "name": "kindergarten",
+          "data_type": "boolean",
+          "label": "Mit Kindergarten"
+        },
+        {
+          "name": "primarstufe",
+          "data_type": "boolean",
+          "label": "Mit Primarstufe"
+        },
+        {
+          "name": "sekundarstufe",
+          "data_type": "boolean",
+          "label": "Mit Sekundarstufe I"
+        },
+        {
+          "name": "sprache",
+          "data_type": "text",
+          "label": "Unterrichtssprache",
           "value_domain": {
-            "min": 10,
-            "max": 900
+            "codes": {
+              "de": "Deutsch",
+              "fr": "Französisch"
+            }
+          }
+        },
+        {
+          "name": "standorte",
+          "data_type": "integer",
+          "label": "Anzahl Schulhäuser",
+          "value_domain": {
+            "min": 0,
+            "max": 50
           }
         }
       ]
     },
     {
-      "name": "bevoelkerung",
-      "title": "Bevölkerung",
-      "description": "Bevölkerungsstatistik je Gemeinde, Stichtag 31.12.2025.",
+      "name": "haltestellen",
+      "title": "Haltestellen",
+      "description": "Haltestellen des öffentlichen Verkehrs ohne Nachtlinien, mit Kategorie nach kantonalem Richtplan und Einzugsgebiet (AGI: Öffentlicher Verkehr).",
+      "kind": "vector",
+      "file": "haltestellen.geojson",
+      "attributes": [
+        {
+          "name": "name",
+          "data_type": "text",
+          "label": "Haltestelle"
+        },
+        {
+          "name": "verkehrsmittel",
+          "data_type": "text",
+          "label": "Verkehrsmittel",
+          "value_domain": {
+            "codes": {
+              "bahn": "Bahn",
+              "tram": "Tram",
+              "bus": "Bus",
+              "seilbahn": "Seilbahn",
+              "schiff": "Schiff"
+            }
+          }
+        },
+        {
+          "name": "kategorie",
+          "data_type": "text",
+          "label": "Haltestellenkategorie",
+          "description": "I (beste) bis VI, leer wenn ohne Kategorie; Grundlage der ÖV-Erschliessungsgüteklasse.",
+          "value_domain": {
+            "codes": {
+              "I": "I",
+              "II": "II",
+              "III": "III",
+              "IV": "IV",
+              "V": "V",
+              "VI": "VI"
+            }
+          }
+        },
+        {
+          "name": "einwohner",
+          "data_type": "integer",
+          "label": "Einwohner im Einzugsgebiet",
+          "unit": "Personen"
+        },
+        {
+          "name": "arbeitsplaetze",
+          "data_type": "integer",
+          "label": "Arbeitsplätze im Einzugsgebiet",
+          "unit": "Stellen"
+        }
+      ]
+    },
+    {
+      "name": "gemeindedaten",
+      "title": "Gemeindedaten",
+      "description": "Einwohnerzahl und Steuern je Gemeinde (AGI: Gemeindedaten, Steueranlagen pro Gemeinde).",
       "kind": "table",
-      "file": "bevoelkerung.csv",
+      "file": "gemeindedaten.csv",
       "attributes": [
         {
           "name": "gem_nr",
@@ -134,14 +289,21 @@
           "unit": "Personen"
         },
         {
-          "name": "anteil_u20",
+          "name": "steueranlage",
           "data_type": "real",
-          "label": "Anteil unter 20 Jahren",
-          "unit": "%",
-          "value_domain": {
-            "min": 0,
-            "max": 100
-          }
+          "label": "Steueranlage",
+          "description": "Vielfaches der einfachen Steuer."
+        },
+        {
+          "name": "steuerpflichtige",
+          "data_type": "integer",
+          "label": "Steuerpflichtige",
+          "unit": "Personen"
+        },
+        {
+          "name": "steuerjahr",
+          "data_type": "integer",
+          "label": "Steuerjahr"
         }
       ]
     }

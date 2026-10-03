@@ -134,9 +134,9 @@ async def test_hidden_layer_looks_like_an_unknown_one(client: httpx.AsyncClient)
     ("golden_query", "hidden"),
     [
         ("schools_near_river", "gewaesser"),  # spatial relation
-        ("large_municipalities", "bevoelkerung"),  # attribute join
+        ("large_municipalities", "gemeindedaten"),  # attribute join
         ("schools_per_municipality", "schulen"),  # aggregation
-        ("secondary_schools_in_eggberg_near_main_road", "strassen"),  # condition only
+        ("secondary_schools_in_moosseedorf_near_motorway", "strassen"),  # condition only
     ],
 )
 async def test_hidden_layer_cannot_be_used_as_a_condition(

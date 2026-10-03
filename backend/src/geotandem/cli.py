@@ -19,10 +19,13 @@ def _schema_export(args: argparse.Namespace) -> None:
     print(write(args.dir))
 
 
-def _sample_generate(_: argparse.Namespace) -> None:
-    from geotandem.sample.generate import generate
+def _sample_update(args: argparse.Namespace) -> None:
+    from geotandem.sample.build import build, default_cache, fetch
 
-    print(generate()["version"])
+    cache = args.cache or default_cache()
+    if not args.offline:
+        fetch(cache)
+    print(build(cache)["version"])
 
 
 def _sample_load(_: argparse.Namespace) -> None:
@@ -128,9 +131,14 @@ def main(argv: list[str] | None = None) -> None:
     export.set_defaults(func=_schema_export)
 
     sample = commands.add_parser("sample").add_subparsers(required=True)
-    sample.add_parser("generate", help="regenerate the sample files").set_defaults(
-        func=_sample_generate
+    update = sample.add_parser(
+        "update", help="download the sources (AGI Kanton Bern) and rebuild the sample files"
     )
+    update.add_argument(
+        "--offline", action="store_true", help="rebuild from the cached download, no network"
+    )
+    update.add_argument("--cache", type=Path, help="download cache (default ~/.cache/geotandem)")
+    update.set_defaults(func=_sample_update)
     sample.add_parser("load", help="load the sample dataset").set_defaults(func=_sample_load)
 
     user = commands.add_parser("user", help="manage accounts (E1.4)").add_subparsers(required=True)

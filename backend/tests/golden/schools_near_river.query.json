@@ -8,12 +8,12 @@
       "op": "compare",
       "attr": "name",
       "cmp": "eq",
-      "value": "Tand"
+      "value": "Aare"
     }
   },
   "select": [
     "name",
     "typ",
-    "schueler"
+    "standorte"
   ]
 }

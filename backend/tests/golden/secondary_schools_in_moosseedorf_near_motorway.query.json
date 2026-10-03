@@ -23,7 +23,7 @@
     "where": {
       "op": "text_match",
       "attr": "name",
-      "text": "egg",
+      "text": "moos",
       "mode": "starts_with"
     }
   }

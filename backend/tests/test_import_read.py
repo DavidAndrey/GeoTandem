@@ -80,15 +80,15 @@ def test_infer(cells: list[object], data_type: str, values: list[object]) -> Non
 
 def test_geojson(files: dict[str, Path]) -> None:
     p = preview(files["schulen.geojson"])
-    assert (p.format, p.record_count, p.geometry_type, p.crs) == ("geojson", 120, "Point", 4326)
+    assert (p.format, p.record_count, p.geometry_type, p.crs) == ("geojson", 137, "Point", 4326)
     assert [(c.name, c.data_type) for c in p.columns] == [
         ("name", "text"),
         ("typ", "text"),
-        ("schueler", "integer"),
+        ("standorte", "integer"),
     ]
     typ = p.columns[1]
     assert typ.value_domain == {
-        "codes": {"kindergarten": "kindergarten", "primar": "primar", "sekundar": "sekundar"}
+        "codes": {c: c for c in ("kindergarten", "primar", "sekundar", "spezial")}
     }
     assert p.columns[2].value_domain is not None and set(p.columns[2].value_domain) == {
         "min",
@@ -101,7 +101,7 @@ def test_geojson(files: dict[str, Path]) -> None:
 
 def test_shapefile_zip_with_prj(files: dict[str, Path]) -> None:
     p = preview(files["gemeinden.zip"])
-    assert (p.format, p.record_count, p.crs) == ("shapefile", 12, LV95)
+    assert (p.format, p.record_count, p.crs) == ("shapefile", 74, LV95)
     assert p.geometry_type in ("Polygon", "MultiPolygon")
     assert p.bbox_wgs84 is not None and 7 < p.bbox_wgs84[0] < 8
     assert p.errors == []
@@ -116,9 +116,9 @@ def test_shapefile_without_prj_needs_a_crs(files: dict[str, Path]) -> None:
 def test_geopackage_layers(files: dict[str, Path]) -> None:
     p = preview(files["netz.gpkg"])
     assert p.sublayers == ["strassen", "gewaesser"]
-    assert (p.options.sublayer, p.record_count, p.title) == ("strassen", 3, "strassen")
+    assert (p.options.sublayer, p.record_count, p.title) == ("strassen", 179, "strassen")
     p = preview(files["netz.gpkg"], ReadOptions(sublayer="gewaesser"))
-    assert (p.record_count, p.layer_name) == (2, "gewaesser")
+    assert (p.record_count, p.layer_name) == (66, "gewaesser")
     with pytest.raises(SourceError) as info:
         preview(files["netz.gpkg"], ReadOptions(sublayer="bahn"))
     assert info.value.code == "unknown_sublayer"
@@ -189,7 +189,7 @@ def test_xlsx_key_proposal_and_dates(files: dict[str, Path]) -> None:
         ("stichtag", "text"),
     ]
     assert [(k.column, k.layer, k.attribute, k.matched, k.total) for k in p.keys] == [
-        ("Gem-Nr", "gemeinden", "gem_nr", 12, 14)
+        ("Gem-Nr", "gemeinden", "gem_nr", 74, 76)
     ]
     assert [w.code for w in p.warnings] == ["stored_as_text"]
     assert p.sample_rows[0]["stichtag"] == "2025-01-01T00:00:00"

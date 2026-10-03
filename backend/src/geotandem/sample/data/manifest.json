@@ -1,11 +1,12 @@
 {
-  "version": "tandemtal-1",
+  "version": "bern-mittelland-2026-10-03",
   "files": {
-    "bevoelkerung.csv": "16c7135aa10c57c09e4d88444d729112e5a92d90a96aa680151bbf5adaee26f6",
-    "gemeinden.geojson": "78450f514e9171491672820ad9485c4e33c35601e2b50d3eddc753b62b146b7e",
-    "gewaesser.geojson": "d301bad13952f1e2cb4a84baf9be08ebdff6b239f48cede2dc3cce6fb02ba7fb",
-    "metadata.json": "3c8fb64966dc6bdc6acdeed1a2c4b726b4a6aba2ffd835cff2b7f16928b553e4",
-    "schulen.geojson": "ff440fac86f9465893ad931eabb4cec903dba6a22f28639249d3f4d3af2fb4ea",
-    "strassen.geojson": "793cf1c3fdb788a3bd71840c17603150005b527955d5c572a0edc779411970ce"
+    "gemeindedaten.csv": "80c8b5ffda755e556d29dcb1f17183826b48719f3b78d1cd4ec3c539623fe276",
+    "gemeinden.geojson": "187a2ff8999842c39761bd59028bbd84baef9e7d28580b7755e177220d90ecfd",
+    "gewaesser.geojson": "6a23638be50679474c957a1db8242a72268282b481520ecb05ff597e29624c47",
+    "haltestellen.geojson": "40759a3c6f76b112bf6d0f93d47438ff0202080503f23d2ac2d0268cf11f696c",
+    "metadata.json": "1fb645528be2155b7deb9a90f732fe8973d77c83c77bae0c823bd21799379e5a",
+    "schulen.geojson": "4ba073bc78464d9bab251b98858264b5b0ef925fc7ac8984eba9e6c87faeca3b",
+    "strassen.geojson": "7dec6a835832cb19be91f558c82ef555df9acc8f3205e723106e2fe4aaf88b67"
   }
 }

@@ -27,11 +27,11 @@ def test_list_and_describe_layers(context: ToolContext) -> None:
     layers = registry.get("list_layers").call(context, {})
     assert isinstance(layers, LayerList)
     assert [layer.name for layer in layers.layers] == [
-        "bevoelkerung", "gemeinden", "gewaesser", "schulen", "strassen",
+        "gemeindedaten", "gemeinden", "gewaesser", "haltestellen", "schulen", "strassen",
     ]  # fmt: skip
     info = registry.get("describe_layer").call(context, {"layer": "schulen"})
     assert isinstance(info, LayerInfo)
-    assert info.attributes[2].label == "Schülerzahl"
+    assert info.attributes[-1].label == "Anzahl Schulhäuser"
 
 
 def test_run_query_tool_uses_the_engine(context: ToolContext) -> None:

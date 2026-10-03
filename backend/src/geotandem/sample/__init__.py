@@ -1,4 +1,4 @@
-"""The sample dataset "Tandemtal" (F-10.5)."""
+"""The sample dataset "Bern-Mittelland" (F-10.5): real open data, committed for offline use."""
 
 from pathlib import Path
 

@@ -21,13 +21,13 @@
       },
       {
         "fn": "sum",
-        "attr": "schueler",
-        "as": "schueler_total"
+        "attr": "standorte",
+        "as": "standorte_total"
       },
       {
         "fn": "avg",
-        "attr": "schueler",
-        "as": "schueler_mittel"
+        "attr": "standorte",
+        "as": "standorte_mittel"
       }
     ]
   },

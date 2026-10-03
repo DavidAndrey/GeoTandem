@@ -15,7 +15,7 @@ test('the hits of the reference question can be read, not just counted', async (
   await ensureAreaLayer(request)
   const { sent, failures } = watchQueries(page)
   await buildReferenceQuestion(page)
-  await expect(page.getByLabel('Trefferzahl')).toHaveText('7 von 120')
+  await expect(page.getByLabel('Trefferzahl')).toHaveText('10 von 137')
 
   // B3 "Tabelle öffnen" on the result layer.
   const panel = page.getByRole('region', { name: 'Layer' })
@@ -26,19 +26,24 @@ test('the hits of the reference question can be read, not just counted', async (
   const table = dock.getByRole('table', { name: 'Attribute von Schulen' })
   const rows = table.locator('tbody tr[data-fid]')
 
-  // The seven hits, with the columns that explain them.
-  await expect(dock.getByRole('button', { name: 'Treffer (7)' })).toHaveAttribute(
+  // The ten hits, with the columns that explain them.
+  await expect(dock.getByRole('button', { name: 'Treffer (10)' })).toHaveAttribute(
     'aria-pressed',
     'true',
   )
-  await expect(rows).toHaveCount(7)
+  await expect(rows).toHaveCount(10)
   expect(await headers(table)).toEqual([
     '',
     'Schulname',
-    'Schulstufe',
-    'Schülerzahl',
+    'Gemeindenummer',
+    'Höchste Schulstufe',
+    'Mit Kindergarten',
+    'Mit Primarstufe',
+    'Mit Sekundarstufe I',
+    'Unterrichtssprache',
+    'Anzahl Schulhäuser',
     'Distanz Strassen',
-    'Anteil unter 20 Jahren (Bevölkerung je Gemeinde)',
+    'Steueranlage (Steuern je Gemeinde)',
     'Zoomen',
   ])
 
@@ -61,27 +66,27 @@ test('the hits of the reference question can be read, not just counted', async (
   for (const row of await rows.all()) {
     const fid = Number(await row.getAttribute('data-fid'))
     const value = distance.get(fid)
-    expect(value).toBeLessThanOrEqual(500) // the condition: ≤ 500 m to a main road
+    expect(value).toBeLessThanOrEqual(500) // the condition: ≤ 500 m to a cantonal road B
     await expect(row.getByRole('cell').nth(column)).toHaveText(`${Math.round(value ?? NaN)} m`)
   }
 
-  // Sorted by pupils ↓, then (Shift) by name.
-  const pupils = table.getByRole('columnheader', { name: /Schülerzahl/ })
-  await pupils.getByRole('button').click()
+  // Sorted by school buildings ↓, then (Shift) by name.
+  const buildings = table.getByRole('columnheader', { name: /Anzahl Schulhäuser/ })
+  await buildings.getByRole('button').click()
   await table
     .getByRole('columnheader', { name: /Schulname/ })
     .getByRole('button')
     .click({ modifiers: ['Shift'] })
-  await expect(pupils).toHaveAttribute('aria-sort', 'descending')
-  const counts = (await rows.locator('td:nth-child(4)').allTextContents()).map((t) => parseInt(t))
+  await expect(buildings).toHaveAttribute('aria-sort', 'descending')
+  const counts = (await rows.locator('td:nth-child(9)').allTextContents()).map((t) => parseInt(t))
   expect(counts).toEqual([...counts].sort((a, b) => b - a))
 
   // Columns: one hidden, the distance moved first.
   await dock.getByRole('button', { name: /Spalten/ }).click()
   const menu = page.getByRole('dialog', { name: 'Spalten' })
   await expect(menu.getByText('berechnet')).toBeVisible()
-  await menu.getByRole('checkbox', { name: 'Schulstufe' }).uncheck()
-  for (let i = 0; i < 3; i++)
+  await menu.getByRole('checkbox', { name: 'Höchste Schulstufe' }).uncheck()
+  for (let i = 0; i < 8; i++)
     await menu.getByRole('button', { name: 'Distanz Strassen nach oben' }).click()
   await page.keyboard.press('Escape')
   // "2": Schulname is the second sort key.

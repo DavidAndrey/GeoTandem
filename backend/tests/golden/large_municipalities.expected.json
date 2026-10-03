@@ -1,44 +1,116 @@
 {
-  "query_hash": "aec6ec4182a4d2f1e1f8ce6cb3c11bb31dc9ad3ee97b175cae989477c61b5603",
+  "query_hash": "fe8a14cbbc0f8977e5a475e0afdfa696ffd0f81b133bbb08ece5e802c91f5bcd",
   "features": [
-    {
-      "id": 12,
-      "properties": {
-        "name": "Sonnhalden",
-        "einwohner": 9645,
-        "anteil_u20": 23.6
-      }
-    },
-    {
-      "id": 8,
-      "properties": {
-        "name": "Moosegg",
-        "einwohner": 8482,
-        "anteil_u20": 18.2
-      }
-    },
     {
       "id": 2,
       "properties": {
-        "name": "Eggberg",
-        "einwohner": 7659,
-        "anteil_u20": 17.8
+        "name": "Bern",
+        "einwohner": 135577,
+        "steueranlage": 1.54
       }
     },
     {
-      "id": 9,
+      "id": 6,
       "properties": {
-        "name": "Nidfeld",
-        "einwohner": 7121,
-        "anteil_u20": 18.8
+        "name": "Köniz",
+        "einwohner": 42601,
+        "steueranlage": 1.58
       }
     },
     {
-      "id": 1,
+      "id": 14,
       "properties": {
-        "name": "Brunnwil",
-        "einwohner": 6699,
-        "anteil_u20": 15.1
+        "name": "Ostermundigen",
+        "einwohner": 17798,
+        "steueranlage": 1.69
+      }
+    },
+    {
+      "id": 7,
+      "properties": {
+        "name": "Muri bei Bern",
+        "einwohner": 13094,
+        "steueranlage": 1.14
+      }
+    },
+    {
+      "id": 39,
+      "properties": {
+        "name": "Münsingen",
+        "einwohner": 13045,
+        "steueranlage": 1.58
+      }
+    },
+    {
+      "id": 63,
+      "properties": {
+        "name": "Belp",
+        "einwohner": 11583,
+        "steueranlage": 1.4
+      }
+    },
+    {
+      "id": 13,
+      "properties": {
+        "name": "Ittigen",
+        "einwohner": 11426,
+        "steueranlage": 1.23
+      }
+    },
+    {
+      "id": 12,
+      "properties": {
+        "name": "Zollikofen",
+        "einwohner": 11348,
+        "steueranlage": 1.4
+      }
+    },
+    {
+      "id": 46,
+      "properties": {
+        "name": "Worb",
+        "einwohner": 11077,
+        "steueranlage": 1.7
+      }
+    },
+    {
+      "id": 22,
+      "properties": {
+        "name": "Münchenbuchsee",
+        "einwohner": 10556,
+        "steueranlage": 1.64
+      }
+    },
+    {
+      "id": 11,
+      "properties": {
+        "name": "Wohlen bei Bern",
+        "einwohner": 9215,
+        "steueranlage": 1.54
+      }
+    },
+    {
+      "id": 62,
+      "properties": {
+        "name": "Schwarzenburg",
+        "einwohner": 6474,
+        "steueranlage": 1.86
+      }
+    },
+    {
+      "id": 23,
+      "properties": {
+        "name": "Urtenen-Schönbühl",
+        "einwohner": 6446,
+        "steueranlage": 1.5
+      }
+    },
+    {
+      "id": 3,
+      "properties": {
+        "name": "Bolligen",
+        "einwohner": 6288,
+        "steueranlage": 1.6
       }
     }
   ]

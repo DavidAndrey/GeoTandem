@@ -1,148 +1,68 @@
 {
-  "query_hash": "6864c8d6d0c970c9e29676e9c29f8ce7b1fe9a6b95d7d116217302d95f092ddf",
+  "query_hash": "da32f3e382b793b8fc018f74a31ec53742524846ccdb194844c465c6967d200d",
   "features": [
     {
-      "id": 10,
+      "id": 13,
       "properties": {
-        "name": "Schule 010",
+        "name": "Schulen Bremgarten",
         "typ": "sekundar",
-        "schueler": 672
+        "standorte": 6
       }
     },
     {
-      "id": 11,
+      "id": 35,
       "properties": {
-        "name": "Schule 011",
+        "name": "Primarschule Ittigen/Worblaufen",
+        "typ": "primar",
+        "standorte": 9
+      }
+    },
+    {
+      "id": 43,
+      "properties": {
+        "name": "Primarstufe Zollikofen",
+        "typ": "primar",
+        "standorte": 8
+      }
+    },
+    {
+      "id": 66,
+      "properties": {
+        "name": "Bern Kirchenfeld",
+        "typ": "primar",
+        "standorte": 4
+      }
+    },
+    {
+      "id": 75,
+      "properties": {
+        "name": "Bern Lorraine/Wylergut",
         "typ": "sekundar",
-        "schueler": 764
+        "standorte": 3
       }
     },
     {
-      "id": 19,
+      "id": 113,
       "properties": {
-        "name": "Schule 019",
-        "typ": "kindergarten",
-        "schueler": 33
+        "name": "Schule Wabern Dorf-Wandermatte",
+        "typ": "primar",
+        "standorte": 5
       }
     },
     {
-      "id": 21,
+      "id": 128,
       "properties": {
-        "name": "Schule 021",
+        "name": "Bern Rossfeld-Enge",
         "typ": "sekundar",
-        "schueler": 574
+        "standorte": 3
       }
     },
     {
-      "id": 22,
+      "id": 132,
       "properties": {
-        "name": "Schule 022",
-        "typ": "primar",
-        "schueler": 136
-      }
-    },
-    {
-      "id": 25,
-      "properties": {
-        "name": "Schule 025",
-        "typ": "primar",
-        "schueler": 110
-      }
-    },
-    {
-      "id": 40,
-      "properties": {
-        "name": "Schule 040",
-        "typ": "kindergarten",
-        "schueler": 34
-      }
-    },
-    {
-      "id": 54,
-      "properties": {
-        "name": "Schule 054",
-        "typ": "primar",
-        "schueler": 261
-      }
-    },
-    {
-      "id": 56,
-      "properties": {
-        "name": "Schule 056",
-        "typ": "kindergarten",
-        "schueler": 23
-      }
-    },
-    {
-      "id": 60,
-      "properties": {
-        "name": "Schule 060",
+        "name": "Schule Wabern Morillon",
         "typ": "sekundar",
-        "schueler": 806
-      }
-    },
-    {
-      "id": 79,
-      "properties": {
-        "name": "Schule 079",
-        "typ": "primar",
-        "schueler": 396
-      }
-    },
-    {
-      "id": 84,
-      "properties": {
-        "name": "Schule 084",
-        "typ": "primar",
-        "schueler": 209
-      }
-    },
-    {
-      "id": 97,
-      "properties": {
-        "name": "Schule 097",
-        "typ": "kindergarten",
-        "schueler": 28
-      }
-    },
-    {
-      "id": 103,
-      "properties": {
-        "name": "Schule 103",
-        "typ": "primar",
-        "schueler": 292
-      }
-    },
-    {
-      "id": 110,
-      "properties": {
-        "name": "Schule 110",
-        "typ": "primar",
-        "schueler": 243
-      }
-    },
-    {
-      "id": 112,
-      "properties": {
-        "name": "Schule 112",
-        "typ": "sekundar",
-        "schueler": 800
-      }
-    },
-    {
-      "id": 115,
-      "properties": {
-        "name": "Schule 115",
-        "typ": "primar",
-        "schueler": 105
-      }
-    },
-    {
-      "id": 120,
-      "properties": {
-        "name": "Schule 120",
-        "typ": "kindergarten",
-        "schueler": 34
+        "standorte": 1
       }
     }
   ]

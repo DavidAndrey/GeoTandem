@@ -1,0 +1,18 @@
+{
+  "query_hash": "c90c85a5dcc1c879e3fc9f7a7fe0cc2720ea3aa4704ea8f4d625a374ef015dd0",
+  "features": [
+    {
+      "id": 99,
+      "properties": {
+        "name": "Schule Moosseedorf",
+        "gem_nr": 544,
+        "typ": "sekundar",
+        "kindergarten": true,
+        "primarstufe": true,
+        "sekundarstufe": true,
+        "sprache": "de",
+        "standorte": 3
+      }
+    }
+  ]
+}

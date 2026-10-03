@@ -3,26 +3,26 @@ import Ajv2020 from 'ajv/dist/2020.js'
 import { readFileSync } from 'node:fs'
 
 // The reference question of E1 (plan E1.5, D10), built by hand in the
-// interface: Primarschulen ≤ 500 m von einer Hauptstrasse, in Gemeinden mit
-// Anteil unter 20 Jahren > 16 %. Shared by the acceptance tests of E1.5 and E1.6.
+// interface: Primarschulen ≤ 500 m von einer Kantonsstrasse Kategorie B, in
+// Gemeinden mit Steueranlage > 1.6. Shared by the acceptance tests of E1.5 and E1.6.
 
 const read = (path: string) => JSON.parse(readFileSync(new URL(path, import.meta.url), 'utf-8'))
 export const reference = read('../fixtures/reference-question.json')
 export const validate = new Ajv2020({ strict: false }).compile(
   read('../../schema/query-object/v2.json'),
 )
-const AREAS = 'gemeinden_bevoelkerung'
+const AREAS = 'gemeinden_steuern'
 
-/** The share of under-20s lives in a table; E1.3 imports it keyed onto the municipalities. */
+/** The tax rate lives in a table; E1.3 imports it keyed onto the municipalities. */
 export async function ensureAreaLayer(request: APIRequestContext) {
   if ((await request.get(`/api/layers/${AREAS}`)).ok()) return
   const upload = await request.post('/api/admin/imports', {
     multipart: {
       file: {
-        name: 'bevoelkerung.csv',
+        name: 'gemeindedaten.csv',
         mimeType: 'text/csv',
         buffer: readFileSync(
-          new URL('../../backend/src/geotandem/sample/data/bevoelkerung.csv', import.meta.url),
+          new URL('../../backend/src/geotandem/sample/data/gemeindedaten.csv', import.meta.url),
         ),
       },
     },
@@ -31,14 +31,16 @@ export async function ensureAreaLayer(request: APIRequestContext) {
   const run = await request.post(`/api/admin/imports/${import_id}/commit`, {
     data: {
       layer_name: AREAS,
-      title: 'Bevölkerung je Gemeinde',
+      title: 'Steuern je Gemeinde',
       geo: { mode: 'key', column: 'gem_nr', layer: 'gemeinden', attribute: 'gem_nr' },
-      fields: [{ source_name: 'anteil_u20', label: 'Anteil unter 20 Jahren', unit: '%' }],
+      fields: [{ source_name: 'steueranlage', label: 'Steueranlage' }],
     },
   })
   // Another worker may have imported it in the meantime: then that one counts.
-  if ((await run.json()).status !== 'ok')
-    expect((await request.get(`/api/layers/${AREAS}`)).ok()).toBe(true)
+  // A simultaneous create can still answer 500 rather than a clean refusal, so
+  // wait for the other worker's layer instead of asking once.
+  if (!run.ok() || (await run.json()).status !== 'ok')
+    await expect.poll(async () => (await request.get(`/api/layers/${AREAS}`)).ok()).toBe(true)
 }
 
 /** Every query the page sends to the engine, and every answer it gets. */
@@ -61,15 +63,15 @@ export async function buildReferenceQuestion(page: Page) {
   await page.goto('/')
   await page.getByRole('button', { name: 'Layer', exact: true }).click()
   const picker = page.getByRole('dialog', { name: 'Layer hinzufügen' })
-  for (const name of [/^Schulen/, /^Strassen/, /^Bevölkerung je Gemeinde/])
+  for (const name of [/^Schulen/, /^Strassen/, /^Steuern je Gemeinde/])
     await picker.getByRole('checkbox', { name }).first().check()
   await picker.getByRole('button', { name: 'Hinzufügen' }).click()
-  await expect(page.getByLabel('Trefferzahl')).toHaveText('120 von 120')
+  await expect(page.getByLabel('Trefferzahl')).toHaveText('137 von 137')
 
   await page.getByRole('button', { name: '+ Bedingung' }).click()
   const editor = page.getByRole('region', { name: 'Abfrage-Editor' })
   const kind = editor.getByRole('group', { name: 'Bedingung Attribut' })
-  await kind.getByLabel('Feld').selectOption({ label: 'Schulstufe' })
+  await kind.getByLabel('Feld').selectOption({ label: 'Höchste Schulstufe' })
   await kind.getByLabel('Operator').selectOption({ label: 'ist eins von' })
   await kind.getByLabel('Wert hinzufügen').fill('primar')
   await kind.getByLabel('Wert hinzufügen').press('Enter')
@@ -85,14 +87,14 @@ export async function buildReferenceQuestion(page: Page) {
   await road.getByLabel('Bezugslayer').selectOption({ label: 'Strassen' })
   await road.getByRole('button', { name: '+ Filter' }).click()
   await road.getByLabel('Feld').selectOption({ label: 'Strassenklasse' })
-  await road.getByLabel('Wert').fill('haupt')
+  await road.getByLabel('Wert').fill('kantonsstrasse_b')
 
   const area = await addSpatial()
   await area.getByLabel('Beziehung').selectOption({ label: 'liegt in' })
-  await area.getByLabel('Bezugslayer').selectOption({ label: 'Bevölkerung je Gemeinde' })
+  await area.getByLabel('Bezugslayer').selectOption({ label: 'Steuern je Gemeinde' })
   await area.getByRole('button', { name: '+ Filter' }).click()
-  await area.getByLabel('Feld').selectOption({ label: 'Anteil unter 20 Jahren' })
+  await area.getByLabel('Feld').selectOption({ label: 'Steueranlage' })
   await area.getByLabel('Operator').selectOption({ label: '>' })
-  await area.getByLabel('Wert').fill('16')
+  await area.getByLabel('Wert').fill('1.6')
   await editor.getByRole('button', { name: 'Übernehmen' }).click()
 }

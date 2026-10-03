@@ -10,7 +10,7 @@ test('table and map highlight each other', async ({ page }) => {
   await picker.getByRole('checkbox', { name: /^Schulen/ }).check()
   await picker.getByRole('checkbox', { name: /^Strassen/ }).check()
   await picker.getByRole('button', { name: 'Hinzufügen' }).click()
-  await expect(page.getByLabel('Trefferzahl')).toHaveText('120 von 120')
+  await expect(page.getByLabel('Trefferzahl')).toHaveText('137 von 137')
 
   await page.getByRole('button', { name: 'Attributtabelle', exact: true }).click()
   const dock = page.getByRole('region', { name: 'Attributtabelle' })

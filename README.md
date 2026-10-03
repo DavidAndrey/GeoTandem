@@ -18,7 +18,7 @@ docker run -p 8000:8000 -v geotandem-data:/data geotandem
 ```
 
 Beim ersten Start entsteht `/data/geotandem.sqlite`, das Schema wird migriert
-und der Beispieldatensatz „Tandemtal" geladen. Danach: <http://localhost:8000>.
+und der Beispieldatensatz „Bern-Mittelland" geladen. Danach: <http://localhost:8000>.
 
 **Erstes Konto.** Solange kein Konto existiert, führt die Anwendung auf die
 Ersteinrichtung: Das erste Konto wird Administrator und legt weitere an
@@ -58,6 +58,29 @@ make e2e       # Playwright gegen eine laufende Instanz (E2E_BASE_URL;
                # auf einer schon eingerichteten Instanz E2E_ADMIN_USER/_PASSWORD)
 make gate      # alles zusammen, so wie es ausgeliefert wird (siehe unten)
 ```
+
+### Beispieldatensatz
+
+Echte offene Daten des Kantons Bern für den Verwaltungskreis Bern-Mittelland
+(74 Gemeinden): Gemeinden, Gewässer, Strassen, Volksschulen, ÖV-Haltestellen
+und eine Tabelle Gemeindedaten (Einwohner, Steueranlage). Quelle: Amt für
+Geoinformation des Kantons Bern (AGI), über opendata.swiss, Nutzungsbedingung
+„terms_open". Die aufbereiteten Dateien liegen im Repository
+(`backend/src/geotandem/sample/data`) und im Image; eine Instanz braucht dafür
+kein Netz.
+
+Aktualisiert wird nur auf Anfrage:
+
+```sh
+make sample-update   # lädt die Quellen (~100 MB) und baut die Dateien neu
+uv run geotandem sample update --offline   # baut neu aus dem Download-Cache
+```
+
+Die Quellen landen in `~/.cache/geotandem/sample-sources`, nicht im
+Repository. Die Fassung ist das Downloaddatum (`bern-mittelland-JJJJ-MM-TT`),
+`metadata.json` hält jede Quelle mit SHA-256 fest. Eine neue Fassung ändert
+Testergebnisse: danach `GEOTANDEM_UPDATE_GOLDEN=1 uv run pytest -k golden` und
+die festen Zahlen in Tests und Playwright prüfen.
 
 `make gate` ist die Abnahme jedes Arbeitspakets: `lint` und `test`, dann das
 Container-Image, dessen erster Start auf einem leeren Datenträger, Playwright

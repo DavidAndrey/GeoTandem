@@ -1,124 +1,744 @@
 {
-  "query_hash": "902c33b2314cdc970cef291fa4fd95e45abf5cfa8d716f82f228b29cbeafebc0",
+  "query_hash": "052364261e9b473c152a9f6907d562defdf22604ee8defde8c7426c836a17b23",
   "features": [
-    {
-      "id": 9,
-      "properties": {
-        "gem_nr": 109,
-        "name": "Nidfeld",
-        "anzahl": 11,
-        "schueler_total": 3552,
-        "schueler_mittel": 322.909091
-      }
-    },
     {
       "id": 2,
       "properties": {
-        "gem_nr": 102,
-        "name": "Eggberg",
-        "anzahl": 8,
-        "schueler_total": 2808,
-        "schueler_mittel": 351.0
-      }
-    },
-    {
-      "id": 4,
-      "properties": {
-        "gem_nr": 104,
-        "name": "Grundmatt",
-        "anzahl": 8,
-        "schueler_total": 2855,
-        "schueler_mittel": 356.875
+        "gem_nr": 351,
+        "name": "Bern",
+        "anzahl": 24,
+        "standorte_total": 97,
+        "standorte_mittel": 4.041667
       }
     },
     {
       "id": 6,
       "properties": {
-        "gem_nr": 106,
-        "name": "Kellenberg",
-        "anzahl": 8,
-        "schueler_total": 3859,
-        "schueler_mittel": 482.375
+        "gem_nr": 355,
+        "name": "Köniz",
+        "anzahl": 10,
+        "standorte_total": 29,
+        "standorte_mittel": 2.9
       }
     },
     {
       "id": 11,
       "properties": {
-        "gem_nr": 111,
-        "name": "Rütiwil",
-        "anzahl": 8,
-        "schueler_total": 3526,
-        "schueler_mittel": 440.75
+        "gem_nr": 360,
+        "name": "Wohlen bei Bern",
+        "anzahl": 6,
+        "standorte_total": 8,
+        "standorte_mittel": 1.333333
       }
     },
     {
-      "id": 3,
+      "id": 63,
       "properties": {
-        "gem_nr": 103,
-        "name": "Farnach",
-        "anzahl": 7,
-        "schueler_total": 1435,
-        "schueler_mittel": 205.0
+        "gem_nr": 861,
+        "name": "Belp",
+        "anzahl": 6,
+        "standorte_total": 14,
+        "standorte_mittel": 2.333333
+      }
+    },
+    {
+      "id": 14,
+      "properties": {
+        "gem_nr": 363,
+        "name": "Ostermundigen",
+        "anzahl": 4,
+        "standorte_total": 17,
+        "standorte_mittel": 4.25
       }
     },
     {
       "id": 7,
       "properties": {
-        "gem_nr": 107,
-        "name": "Lindwil",
-        "anzahl": 7,
-        "schueler_total": 2811,
-        "schueler_mittel": 401.571429
-      }
-    },
-    {
-      "id": 8,
-      "properties": {
-        "gem_nr": 108,
-        "name": "Moosegg",
-        "anzahl": 7,
-        "schueler_total": 2090,
-        "schueler_mittel": 298.571429
-      }
-    },
-    {
-      "id": 12,
-      "properties": {
-        "gem_nr": 112,
-        "name": "Sonnhalden",
-        "anzahl": 7,
-        "schueler_total": 2492,
-        "schueler_mittel": 356.0
-      }
-    },
-    {
-      "id": 5,
-      "properties": {
-        "gem_nr": 105,
-        "name": "Hohwil",
-        "anzahl": 6,
-        "schueler_total": 2610,
-        "schueler_mittel": 435.0
+        "gem_nr": 356,
+        "name": "Muri bei Bern",
+        "anzahl": 3,
+        "standorte_total": 6,
+        "standorte_mittel": 2.0
       }
     },
     {
       "id": 10,
       "properties": {
-        "gem_nr": 110,
-        "name": "Oberried",
-        "anzahl": 4,
-        "schueler_total": 1189,
-        "schueler_mittel": 297.25
+        "gem_nr": 359,
+        "name": "Vechigen",
+        "anzahl": 3,
+        "standorte_total": 6,
+        "standorte_mittel": 2.0
+      }
+    },
+    {
+      "id": 46,
+      "properties": {
+        "gem_nr": 627,
+        "name": "Worb",
+        "anzahl": 3,
+        "standorte_total": 14,
+        "standorte_mittel": 4.666667
+      }
+    },
+    {
+      "id": 58,
+      "properties": {
+        "gem_nr": 670,
+        "name": "Neuenegg",
+        "anzahl": 3,
+        "standorte_total": 5,
+        "standorte_mittel": 1.666667
+      }
+    },
+    {
+      "id": 3,
+      "properties": {
+        "gem_nr": 352,
+        "name": "Bolligen",
+        "anzahl": 2,
+        "standorte_total": 10,
+        "standorte_mittel": 5.0
+      }
+    },
+    {
+      "id": 12,
+      "properties": {
+        "gem_nr": 361,
+        "name": "Zollikofen",
+        "anzahl": 2,
+        "standorte_total": 9,
+        "standorte_mittel": 4.5
+      }
+    },
+    {
+      "id": 13,
+      "properties": {
+        "gem_nr": 362,
+        "name": "Ittigen",
+        "anzahl": 2,
+        "standorte_total": 10,
+        "standorte_mittel": 5.0
+      }
+    },
+    {
+      "id": 39,
+      "properties": {
+        "gem_nr": 616,
+        "name": "Münsingen",
+        "anzahl": 2,
+        "standorte_total": 15,
+        "standorte_mittel": 7.5
+      }
+    },
+    {
+      "id": 50,
+      "properties": {
+        "gem_nr": 632,
+        "name": "Wichtrach",
+        "anzahl": 2,
+        "standorte_total": 6,
+        "standorte_mittel": 3.0
+      }
+    },
+    {
+      "id": 62,
+      "properties": {
+        "gem_nr": 855,
+        "name": "Schwarzenburg",
+        "anzahl": 2,
+        "standorte_total": 5,
+        "standorte_mittel": 2.5
       }
     },
     {
       "id": 1,
       "properties": {
-        "gem_nr": 101,
-        "name": "Brunnwil",
-        "anzahl": 3,
-        "schueler_total": 806,
-        "schueler_mittel": 268.666667
+        "gem_nr": 307,
+        "name": "Meikirch",
+        "anzahl": 1,
+        "standorte_total": 3,
+        "standorte_mittel": 3.0
+      }
+    },
+    {
+      "id": 4,
+      "properties": {
+        "gem_nr": 353,
+        "name": "Bremgarten bei Bern",
+        "anzahl": 1,
+        "standorte_total": 6,
+        "standorte_mittel": 6.0
+      }
+    },
+    {
+      "id": 5,
+      "properties": {
+        "gem_nr": 354,
+        "name": "Kirchlindach",
+        "anzahl": 1,
+        "standorte_total": 4,
+        "standorte_mittel": 4.0
+      }
+    },
+    {
+      "id": 8,
+      "properties": {
+        "gem_nr": 357,
+        "name": "Oberbalm",
+        "anzahl": 1,
+        "standorte_total": 1,
+        "standorte_mittel": 1.0
+      }
+    },
+    {
+      "id": 9,
+      "properties": {
+        "gem_nr": 358,
+        "name": "Stettlen",
+        "anzahl": 1,
+        "standorte_total": 7,
+        "standorte_mittel": 7.0
+      }
+    },
+    {
+      "id": 17,
+      "properties": {
+        "gem_nr": 538,
+        "name": "Fraubrunnen",
+        "anzahl": 1,
+        "standorte_total": 9,
+        "standorte_mittel": 9.0
+      }
+    },
+    {
+      "id": 18,
+      "properties": {
+        "gem_nr": 540,
+        "name": "Jegenstorf",
+        "anzahl": 1,
+        "standorte_total": 5,
+        "standorte_mittel": 5.0
+      }
+    },
+    {
+      "id": 19,
+      "properties": {
+        "gem_nr": 541,
+        "name": "Iffwil",
+        "anzahl": 1,
+        "standorte_total": 1,
+        "standorte_mittel": 1.0
+      }
+    },
+    {
+      "id": 21,
+      "properties": {
+        "gem_nr": 544,
+        "name": "Moosseedorf",
+        "anzahl": 1,
+        "standorte_total": 3,
+        "standorte_mittel": 3.0
+      }
+    },
+    {
+      "id": 22,
+      "properties": {
+        "gem_nr": 546,
+        "name": "Münchenbuchsee",
+        "anzahl": 1,
+        "standorte_total": 11,
+        "standorte_mittel": 11.0
+      }
+    },
+    {
+      "id": 23,
+      "properties": {
+        "gem_nr": 551,
+        "name": "Urtenen-Schönbühl",
+        "anzahl": 1,
+        "standorte_total": 7,
+        "standorte_mittel": 7.0
+      }
+    },
+    {
+      "id": 25,
+      "properties": {
+        "gem_nr": 557,
+        "name": "Zuzwil (BE)",
+        "anzahl": 1,
+        "standorte_total": 1,
+        "standorte_mittel": 1.0
+      }
+    },
+    {
+      "id": 26,
+      "properties": {
+        "gem_nr": 602,
+        "name": "Arni (BE)",
+        "anzahl": 1,
+        "standorte_total": 3,
+        "standorte_mittel": 3.0
+      }
+    },
+    {
+      "id": 27,
+      "properties": {
+        "gem_nr": 603,
+        "name": "Biglen",
+        "anzahl": 1,
+        "standorte_total": 2,
+        "standorte_mittel": 2.0
+      }
+    },
+    {
+      "id": 28,
+      "properties": {
+        "gem_nr": 605,
+        "name": "Bowil",
+        "anzahl": 1,
+        "standorte_total": 1,
+        "standorte_mittel": 1.0
+      }
+    },
+    {
+      "id": 29,
+      "properties": {
+        "gem_nr": 606,
+        "name": "Brenzikofen",
+        "anzahl": 1,
+        "standorte_total": 1,
+        "standorte_mittel": 1.0
+      }
+    },
+    {
+      "id": 30,
+      "properties": {
+        "gem_nr": 607,
+        "name": "Freimettigen",
+        "anzahl": 1,
+        "standorte_total": 2,
+        "standorte_mittel": 2.0
+      }
+    },
+    {
+      "id": 31,
+      "properties": {
+        "gem_nr": 608,
+        "name": "Grosshöchstetten",
+        "anzahl": 1,
+        "standorte_total": 5,
+        "standorte_mittel": 5.0
+      }
+    },
+    {
+      "id": 32,
+      "properties": {
+        "gem_nr": 609,
+        "name": "Häutligen",
+        "anzahl": 1,
+        "standorte_total": 1,
+        "standorte_mittel": 1.0
+      }
+    },
+    {
+      "id": 33,
+      "properties": {
+        "gem_nr": 610,
+        "name": "Herbligen",
+        "anzahl": 1,
+        "standorte_total": 1,
+        "standorte_mittel": 1.0
+      }
+    },
+    {
+      "id": 34,
+      "properties": {
+        "gem_nr": 611,
+        "name": "Kiesen",
+        "anzahl": 1,
+        "standorte_total": 3,
+        "standorte_mittel": 3.0
+      }
+    },
+    {
+      "id": 35,
+      "properties": {
+        "gem_nr": 612,
+        "name": "Konolfingen",
+        "anzahl": 1,
+        "standorte_total": 2,
+        "standorte_mittel": 2.0
+      }
+    },
+    {
+      "id": 37,
+      "properties": {
+        "gem_nr": 614,
+        "name": "Linden",
+        "anzahl": 1,
+        "standorte_total": 2,
+        "standorte_mittel": 2.0
+      }
+    },
+    {
+      "id": 38,
+      "properties": {
+        "gem_nr": 615,
+        "name": "Mirchel",
+        "anzahl": 1,
+        "standorte_total": 1,
+        "standorte_mittel": 1.0
+      }
+    },
+    {
+      "id": 40,
+      "properties": {
+        "gem_nr": 617,
+        "name": "Niederhünigen",
+        "anzahl": 1,
+        "standorte_total": 1,
+        "standorte_mittel": 1.0
+      }
+    },
+    {
+      "id": 41,
+      "properties": {
+        "gem_nr": 619,
+        "name": "Oberdiessbach",
+        "anzahl": 1,
+        "standorte_total": 3,
+        "standorte_mittel": 3.0
+      }
+    },
+    {
+      "id": 42,
+      "properties": {
+        "gem_nr": 620,
+        "name": "Oberthal",
+        "anzahl": 1,
+        "standorte_total": 1,
+        "standorte_mittel": 1.0
+      }
+    },
+    {
+      "id": 43,
+      "properties": {
+        "gem_nr": 622,
+        "name": "Oppligen",
+        "anzahl": 1,
+        "standorte_total": 1,
+        "standorte_mittel": 1.0
+      }
+    },
+    {
+      "id": 44,
+      "properties": {
+        "gem_nr": 623,
+        "name": "Rubigen",
+        "anzahl": 1,
+        "standorte_total": 1,
+        "standorte_mittel": 1.0
+      }
+    },
+    {
+      "id": 45,
+      "properties": {
+        "gem_nr": 626,
+        "name": "Walkringen",
+        "anzahl": 1,
+        "standorte_total": 2,
+        "standorte_mittel": 2.0
+      }
+    },
+    {
+      "id": 47,
+      "properties": {
+        "gem_nr": 628,
+        "name": "Zäziwil",
+        "anzahl": 1,
+        "standorte_total": 2,
+        "standorte_mittel": 2.0
+      }
+    },
+    {
+      "id": 49,
+      "properties": {
+        "gem_nr": 630,
+        "name": "Allmendingen",
+        "anzahl": 1,
+        "standorte_total": 1,
+        "standorte_mittel": 1.0
+      }
+    },
+    {
+      "id": 51,
+      "properties": {
+        "gem_nr": 662,
+        "name": "Ferenbalm",
+        "anzahl": 1,
+        "standorte_total": 1,
+        "standorte_mittel": 1.0
+      }
+    },
+    {
+      "id": 52,
+      "properties": {
+        "gem_nr": 663,
+        "name": "Frauenkappelen",
+        "anzahl": 1,
+        "standorte_total": 1,
+        "standorte_mittel": 1.0
+      }
+    },
+    {
+      "id": 54,
+      "properties": {
+        "gem_nr": 666,
+        "name": "Kriechenwil",
+        "anzahl": 1,
+        "standorte_total": 1,
+        "standorte_mittel": 1.0
+      }
+    },
+    {
+      "id": 55,
+      "properties": {
+        "gem_nr": 667,
+        "name": "Laupen",
+        "anzahl": 1,
+        "standorte_total": 5,
+        "standorte_mittel": 5.0
+      }
+    },
+    {
+      "id": 56,
+      "properties": {
+        "gem_nr": 668,
+        "name": "Mühleberg",
+        "anzahl": 1,
+        "standorte_total": 1,
+        "standorte_mittel": 1.0
+      }
+    },
+    {
+      "id": 57,
+      "properties": {
+        "gem_nr": 669,
+        "name": "Münchenwiler",
+        "anzahl": 1,
+        "standorte_total": 1,
+        "standorte_mittel": 1.0
+      }
+    },
+    {
+      "id": 59,
+      "properties": {
+        "gem_nr": 671,
+        "name": "Wileroltigen",
+        "anzahl": 1,
+        "standorte_total": 2,
+        "standorte_mittel": 2.0
+      }
+    },
+    {
+      "id": 60,
+      "properties": {
+        "gem_nr": 852,
+        "name": "Guggisberg",
+        "anzahl": 1,
+        "standorte_total": 2,
+        "standorte_mittel": 2.0
+      }
+    },
+    {
+      "id": 61,
+      "properties": {
+        "gem_nr": 853,
+        "name": "Rüschegg",
+        "anzahl": 1,
+        "standorte_total": 1,
+        "standorte_mittel": 1.0
+      }
+    },
+    {
+      "id": 64,
+      "properties": {
+        "gem_nr": 866,
+        "name": "Gerzensee",
+        "anzahl": 1,
+        "standorte_total": 2,
+        "standorte_mittel": 2.0
+      }
+    },
+    {
+      "id": 66,
+      "properties": {
+        "gem_nr": 869,
+        "name": "Kaufdorf",
+        "anzahl": 1,
+        "standorte_total": 1,
+        "standorte_mittel": 1.0
+      }
+    },
+    {
+      "id": 67,
+      "properties": {
+        "gem_nr": 870,
+        "name": "Kehrsatz",
+        "anzahl": 1,
+        "standorte_total": 5,
+        "standorte_mittel": 5.0
+      }
+    },
+    {
+      "id": 69,
+      "properties": {
+        "gem_nr": 877,
+        "name": "Niedermuhlern",
+        "anzahl": 1,
+        "standorte_total": 1,
+        "standorte_mittel": 1.0
+      }
+    },
+    {
+      "id": 70,
+      "properties": {
+        "gem_nr": 879,
+        "name": "Riggisberg",
+        "anzahl": 1,
+        "standorte_total": 3,
+        "standorte_mittel": 3.0
+      }
+    },
+    {
+      "id": 71,
+      "properties": {
+        "gem_nr": 880,
+        "name": "Rüeggisberg",
+        "anzahl": 1,
+        "standorte_total": 1,
+        "standorte_mittel": 1.0
+      }
+    },
+    {
+      "id": 72,
+      "properties": {
+        "gem_nr": 884,
+        "name": "Toffen",
+        "anzahl": 1,
+        "standorte_total": 3,
+        "standorte_mittel": 3.0
+      }
+    },
+    {
+      "id": 73,
+      "properties": {
+        "gem_nr": 888,
+        "name": "Wald (BE)",
+        "anzahl": 1,
+        "standorte_total": 1,
+        "standorte_mittel": 1.0
+      }
+    },
+    {
+      "id": 74,
+      "properties": {
+        "gem_nr": 889,
+        "name": "Thurnen",
+        "anzahl": 1,
+        "standorte_total": 2,
+        "standorte_mittel": 2.0
+      }
+    },
+    {
+      "id": 15,
+      "properties": {
+        "gem_nr": 403,
+        "name": "Bäriswil",
+        "anzahl": 0,
+        "standorte_total": null,
+        "standorte_mittel": null
+      }
+    },
+    {
+      "id": 16,
+      "properties": {
+        "gem_nr": 535,
+        "name": "Deisswil bei Münchenbuchsee",
+        "anzahl": 0,
+        "standorte_total": null,
+        "standorte_mittel": null
+      }
+    },
+    {
+      "id": 20,
+      "properties": {
+        "gem_nr": 543,
+        "name": "Mattstetten",
+        "anzahl": 0,
+        "standorte_total": null,
+        "standorte_mittel": null
+      }
+    },
+    {
+      "id": 24,
+      "properties": {
+        "gem_nr": 553,
+        "name": "Wiggiswil",
+        "anzahl": 0,
+        "standorte_total": null,
+        "standorte_mittel": null
+      }
+    },
+    {
+      "id": 36,
+      "properties": {
+        "gem_nr": 613,
+        "name": "Landiswil",
+        "anzahl": 0,
+        "standorte_total": null,
+        "standorte_mittel": null
+      }
+    },
+    {
+      "id": 48,
+      "properties": {
+        "gem_nr": 629,
+        "name": "Oberhünigen",
+        "anzahl": 0,
+        "standorte_total": null,
+        "standorte_mittel": null
+      }
+    },
+    {
+      "id": 53,
+      "properties": {
+        "gem_nr": 665,
+        "name": "Gurbrü",
+        "anzahl": 0,
+        "standorte_total": null,
+        "standorte_mittel": null
+      }
+    },
+    {
+      "id": 65,
+      "properties": {
+        "gem_nr": 868,
+        "name": "Jaberg",
+        "anzahl": 0,
+        "standorte_total": null,
+        "standorte_mittel": null
+      }
+    },
+    {
+      "id": 68,
+      "properties": {
+        "gem_nr": 872,
+        "name": "Kirchdorf (BE)",
+        "anzahl": 0,
+        "standorte_total": null,
+        "standorte_mittel": null
       }
     }
   ]

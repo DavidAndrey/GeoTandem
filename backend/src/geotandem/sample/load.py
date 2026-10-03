@@ -16,14 +16,15 @@ from shapely.geometry import shape
 from shapely.geometry.base import BaseGeometry
 
 from geotandem.auth import visibility
-from geotandem.catalog import get_layer
+from geotandem.catalog import get_layer, list_layers
 from geotandem.data import AttributeSpec, DataBackend, NewLayer
 from geotandem.geo import reprojector
 from geotandem.importing import log as import_log
 from geotandem.sample import DATA_DIR
 
 log = logging.getLogger(__name__)
-SOURCE = "sample:tandemtal"
+SOURCE = "sample:bern-mittelland"
+SAMPLE_PREFIX = "sample:"
 
 
 class SampleDataError(RuntimeError):
@@ -59,10 +60,19 @@ def _rows(
 
 
 def load_sample(backend: DataBackend, directory: Path = DATA_DIR) -> list[str]:
-    """Create missing sample layers; replace those from an older dataset version."""
+    """Create missing sample layers; replace those from an older dataset version.
+
+    Layers of an earlier sample dataset that the current one no longer has
+    (e.g. Tandemtal's ``bevoelkerung``) are removed.
+    """
     manifest = read_manifest(directory)
     metadata = json.loads((directory / "metadata.json").read_text("utf-8"))
     version = manifest["version"]
+    current = {layer["name"] for layer in metadata["layers"]}
+    for info in list_layers(backend.engine):
+        if info.source.startswith(SAMPLE_PREFIX) and info.name not in current:
+            backend.drop_layer(info.name)
+            log.info("sample dataset %s: removed obsolete layer %s", version, info.name)
     existing = set(backend.layer_names())
     loaded = []
     for layer in metadata["layers"]:

@@ -1,4 +1,4 @@
-.PHONY: install dev test lint gen docker docker-run e2e gate \
+.PHONY: install dev test lint gen sample-update docker docker-run e2e gate \
         instance instance-stop instance-logs instance-reset
 
 install:
@@ -25,7 +25,11 @@ gen:
 	uv run geotandem schema export
 	uv run geotandem openapi export > frontend/openapi.json
 	cd frontend && npm run gen:api
-	uv run geotandem sample generate
+
+# Only on request: downloads the sources of the sample dataset (network, ~100 MB)
+# and rebuilds the committed files. Re-pin the golden results afterwards.
+sample-update:
+	uv run geotandem sample update
 
 docker:
 	docker build -t geotandem .

@@ -7,6 +7,7 @@ import httpx
 import pytest
 
 from geotandem.app import openapi_document
+from geotandem.sample.load import dataset_version
 
 GOLDEN = Path(__file__).parent / "golden"
 
@@ -16,13 +17,13 @@ async def test_health(client: httpx.AsyncClient) -> None:
     assert body["status"] == "ok"
     assert body["backend"] == "spatialite"
     assert body["schema_version"] == "2"
-    assert body["sample_dataset_version"] == "tandemtal-1"
+    assert body["sample_dataset_version"] == dataset_version()
     assert body["capabilities"]["missing"] == {}
 
 
 async def test_layers(client: httpx.AsyncClient) -> None:
     layers = (await client.get("/api/layers")).json()
-    assert [layer["name"] for layer in layers][:2] == ["bevoelkerung", "gemeinden"]
+    assert [layer["name"] for layer in layers][:2] == ["gemeindedaten", "gemeinden"]
     schulen = (await client.get("/api/layers/schulen")).json()
     assert schulen["geometry_type"] == "Point"
     missing = await client.get("/api/layers/nope")
@@ -57,7 +58,7 @@ async def test_validate(client: httpx.AsyncClient) -> None:
     [
         ({"source": "schulen", "sql": "DROP TABLE layer"}, 422, "schema_violation"),
         ({"source": "spitaeler"}, 400, "unknown_layer"),
-        ({"source": "schulen"}, 413, "result_too_large"),  # 120 > max_features=100
+        ({"source": "schulen"}, 413, "result_too_large"),  # 137 > max_features=100
     ],
 )
 async def test_rejections_share_one_body(
@@ -100,8 +101,8 @@ async def test_count_several_queries(client: httpx.AsyncClient) -> None:
     primar = {"source": "schulen", "where": {"op": "in", "attr": "typ", "values": ["primar"]}}
     response = await client.post("/api/query/count", json={"queries": [schools, primar]})
     counts = response.json()["counts"]
-    # 120 schools exceed max_features=100 for /api/query, but counting ships no features.
-    assert counts[0] == 120 and 0 < counts[1] < 120
+    # 137 schools exceed max_features=100 for /api/query, but counting ships no features.
+    assert counts[0] == 137 and 0 < counts[1] < 137
 
 
 async def test_count_names_the_rejected_query(client: httpx.AsyncClient) -> None:

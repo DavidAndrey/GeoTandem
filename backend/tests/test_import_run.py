@@ -66,8 +66,8 @@ def test_vector_file_wgs84_round_trip(backend: DataBackend, files: dict[str, Pat
 
     assert (run.status, run.read_count, run.imported_count, run.rejected_count) == (
         "ok",
-        120,
-        120,
+        137,
+        137,
         0,
     )
     assert (run.layer_name, run.mode, run.actor) == ("schulen_neu", "create", "admin")
@@ -79,7 +79,7 @@ def test_vector_file_wgs84_round_trip(backend: DataBackend, files: dict[str, Pat
     assert [(a.name, a.label) for a in info.attributes] == [
         ("name", "name"),
         ("typ", "typ"),
-        ("schueler", "schueler"),
+        ("standorte", "standorte"),
     ]
     # WGS84 → internal CRS → WGS84 stays within about 1 cm (1e-7 degrees).
     source = sample_features("schulen")
@@ -89,7 +89,7 @@ def test_vector_file_wgs84_round_trip(backend: DataBackend, files: dict[str, Pat
 
 def test_shapefile_lv95(backend: DataBackend, files: dict[str, Path]) -> None:
     run = imported(backend, files, "gemeinden.zip", title="Gemeinden (Shapefile)")
-    assert run.status == "ok" and run.imported_count == 12
+    assert run.status == "ok" and run.imported_count == 74
     assert has_rtree(backend, "gemeinden")
     info = get_layer(backend.engine, "gemeinden")
     assert info is not None and info.title == "Gemeinden (Shapefile)"
@@ -135,11 +135,11 @@ def test_table_with_area_key(sample_backend: DataBackend, files: dict[str, Path]
         "kennzahlen.xlsx",
         geo=KeyReference(column="Gem-Nr", layer="gemeinden", attribute="gem_nr"),
     )
-    assert (run.status, run.imported_count, run.rejected_count) == ("warning", 12, 2)
+    assert (run.status, run.imported_count, run.rejected_count) == ("warning", 74, 2)
     assert {r.reason for r in run.rejected_sample} == {"key_not_found"}
     assert has_rtree(backend, "kennzahlen")
     info = get_layer(backend.engine, "kennzahlen")
-    assert info is not None and info.geometry_type == "Polygon"
+    assert info is not None and info.geometry_type == "MultiPolygon"  # a few have exclaves
     key = next(a for a in info.attributes if a.name == "gem_nr")
     assert key.data_type == "integer"
     with Session(backend.engine) as session:
@@ -157,11 +157,11 @@ def test_table_with_area_key(sample_backend: DataBackend, files: dict[str, Path]
     query = QueryObject.model_validate(
         {
             "source": "kennzahlen",
-            "where": {"op": "compare", "attr": "arbeitsplaetze", "cmp": "ge", "value": 1100},
+            "where": {"op": "compare", "attr": "arbeitsplaetze", "cmp": "ge", "value": 8800},
             "output": "table",
         }
     )
-    assert len(run_query(query, backend, LIMITS).features) == 3  # gem_nr 110 to 112
+    assert len(run_query(query, backend, LIMITS).features) == 4  # gem_nr 880 to 889
 
 
 # --- decisions and failures ---------------------------------------------------
@@ -208,7 +208,7 @@ def test_key_target_must_be_a_geometry_layer(
         sample_backend,
         files,
         "kennzahlen.xlsx",
-        geo=KeyReference(column="Gem-Nr", layer="bevoelkerung", attribute="gem_nr"),
+        geo=KeyReference(column="Gem-Nr", layer="gemeindedaten", attribute="gem_nr"),
     )
     assert [e.code for e in run.errors] == ["invalid_key_target"]
 
@@ -219,7 +219,7 @@ def test_excluded_fields_are_not_imported(backend: DataBackend, files: dict[str,
         files,
         "schulen.geojson",
         fields=[
-            FieldDecision(source_name="schueler", include=False),
+            FieldDecision(source_name="standorte", include=False),
             FieldDecision(source_name="typ", name="schulart", label="Schulart", for_model=False),
         ],
     )
@@ -355,11 +355,11 @@ def test_key_candidates_are_unique_and_not_key_join_copies(
 
 def test_decided_key_import_is_clean(sample_backend: DataBackend) -> None:
     """The preview's "no geo-reference found" is a wizard hint, not an import warning."""
-    path = DATA_DIR / "bevoelkerung.csv"
+    path = DATA_DIR / "gemeindedaten.csv"
     run = run_import(
         path,
         path.name,
         ImportDecisions(geo=KeyReference(column="gem_nr", layer="gemeinden", attribute="gem_nr")),
         sample_backend,
     )
-    assert (run.status, run.imported_count, run.warnings) == ("ok", 12, [])
+    assert (run.status, run.imported_count, run.warnings) == ("ok", 74, [])

@@ -17,7 +17,7 @@ einstellen.
 
 ## 2 Petras Frage
 
-Petra arbeitet im Schulamt der Beispielregion Tandemtal und hat kein
+Petra arbeitet im Schulamt der Beispielregion Bern-Mittelland und hat kein
 GIS-Training. Ihre Frage:
 
 > *„Welche Schulen liegen im 500-Meter-Umkreis von Hauptverkehrsstrassen in

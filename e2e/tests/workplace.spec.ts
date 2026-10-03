@@ -11,16 +11,16 @@ test('layers from the picker appear on the map with popups', async ({ page }) =>
   await picker.getByRole('checkbox', { name: /^Gemeinden/ }).check()
   await picker.getByRole('button', { name: 'Hinzufügen' }).click()
 
-  await expect(page.getByLabel('Trefferzahl')).toHaveText('120 von 120')
+  await expect(page.getByLabel('Trefferzahl')).toHaveText('137 von 137')
   const map = page.getByRole('region', { name: 'Karte' })
-  // 120 school markers plus 12 municipalities.
-  await expect(map.locator('path.leaflet-interactive')).toHaveCount(132)
+  // 137 school markers plus 74 municipalities.
+  await expect(map.locator('path.leaflet-interactive')).toHaveCount(211)
 
   await map.locator('.leaflet-pane[class*="layer-schulen"] path.leaflet-interactive').first().click({ force: true })
   await expect(page.locator('.leaflet-popup')).toContainText('Schulen')
 
   await page.getByRole('button', { name: 'Gemeinden ausblenden' }).click()
-  await expect(map.locator('path.leaflet-interactive')).toHaveCount(120)
+  await expect(map.locator('path.leaflet-interactive')).toHaveCount(137)
 
   const legend = page.getByRole('region', { name: 'Legende' })
   await expect(legend).toContainText('Schulen')

@@ -1,4 +1,4 @@
-"""Import test files, derived from the Tandemtal sample so results are checkable.
+"""Import test files, derived from the sample dataset so results are checkable.
 
 Generated at test time rather than committed: GeoPackage and Excel files
 embed timestamps and would never be byte-stable.
@@ -16,7 +16,7 @@ import numpy as np
 import openpyxl
 import pyogrio.raw
 import shapely
-from shapely.geometry import shape
+from shapely.geometry import MultiLineString, MultiPoint, MultiPolygon, shape
 
 from geotandem.geo import WGS84, reprojector
 from geotandem.sample import DATA_DIR
@@ -58,6 +58,9 @@ def _raw_write(
     append: bool,
 ) -> None:
     names = list(features[0]["properties"])
+    if len({g.geom_type for g in geometries}) > 1:  # one geometry type per file layer
+        multi = {"Point": MultiPoint, "LineString": MultiLineString, "Polygon": MultiPolygon}
+        geometries = [multi[g.geom_type]([g]) if g.geom_type in multi else g for g in geometries]
     pyogrio.raw.write(
         path,
         geometry=shapely.to_wkb(geometries),
@@ -77,9 +80,16 @@ def make_files(directory: Path) -> dict[str, Path]:
     directory.mkdir(parents=True)
     files: dict[str, Path] = {}
 
-    # GeoJSON, WGS84: the sample file itself.
+    # GeoJSON, WGS84: the sample schools with a text, a code and a number attribute.
+    schools = [
+        {**f, "properties": {k: f["properties"][k] for k in ("name", "typ", "standorte")}}
+        for f in sample_features("schulen")
+    ]
     files["schulen.geojson"] = directory / "schulen.geojson"
-    files["schulen.geojson"].write_bytes((DATA_DIR / "schulen.geojson").read_bytes())
+    files["schulen.geojson"].write_text(
+        json.dumps({"type": "FeatureCollection", "features": schools}, ensure_ascii=False),
+        encoding="utf-8",
+    )
 
     # Shapefile in LV95, zipped, with and without .prj.
     shp_dir = directory / "shp"

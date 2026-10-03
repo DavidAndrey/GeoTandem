@@ -93,7 +93,7 @@ export function SetupPage() {
               checked={loadSample}
               onChange={(e) => setLoadSample(e.target.checked)}
             />
-            Beispieldatensatz „Tandemtal" laden
+            Beispieldatensatz „Bern-Mittelland" laden
           </label>
         )}
         <ErrorNotice error={setup.error} />

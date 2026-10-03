@@ -110,7 +110,9 @@ Ein **Geobezug** ist die Herkunft der Geometrie: aus der Datei, aus
 Koordinatenspalten (X/Y) oder über einen **Gebietsschlüssel** auf einen
 vorhandenen Layer (F-2.3).
 
-**Beispieldatensatz** — Die synthetische Region „Tandemtal", erzeugt durch
-`geotandem sample generate` (fester Seed) und im Repository abgelegt (F-10.5).
+**Beispieldatensatz** — Der Verwaltungskreis Bern-Mittelland aus offenen
+Daten des Kantons Bern (AGI, opendata.swiss), aufbereitet durch
+`geotandem sample update` und im Repository abgelegt (F-10.5); aktualisiert
+wird nur auf Anfrage. Er löst die synthetische Region „Tandemtal" ab.
 Er ist das Fundament aller Tests und Bewertungsläufe; seine Fassung steht in
 `manifest.json`.

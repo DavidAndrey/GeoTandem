@@ -22,7 +22,7 @@ const reference = {
         layer: 'strassen',
         predicate: 'dwithin',
         distance_m: 500,
-        where: { op: 'compare', attr: 'klasse', cmp: 'eq', value: 'haupt' },
+        where: { op: 'compare', attr: 'klasse', cmp: 'eq', value: 'kantonsstrasse_b' },
       },
     ],
   },
@@ -31,12 +31,12 @@ const reference = {
 test('conditions built by hand count like the hand-written query', async ({ page }) => {
   await page.goto('/')
   await addLayers(page, [/^Schulen/, /^Strassen/, /^Gemeinden/])
-  await expect(page.getByLabel('Trefferzahl')).toHaveText('120 von 120')
+  await expect(page.getByLabel('Trefferzahl')).toHaveText('137 von 137')
 
   await page.getByRole('button', { name: '+ Bedingung' }).click()
   const editor = page.getByRole('region', { name: 'Abfrage-Editor' })
   const row = editor.getByRole('group', { name: 'Bedingung Attribut' })
-  await row.getByLabel('Feld').selectOption({ label: 'Schulstufe' })
+  await row.getByLabel('Feld').selectOption({ label: 'Höchste Schulstufe' })
   await row.getByLabel('Operator').selectOption({ label: 'ist eins von' })
   await row.getByLabel('Wert hinzufügen').fill('primar')
   await row.getByLabel('Wert hinzufügen').press('Enter')
@@ -49,7 +49,7 @@ test('conditions built by hand count like the hand-written query', async ({ page
   await spatial.getByLabel('Bezugslayer').selectOption({ label: 'Strassen' })
   await spatial.getByRole('button', { name: '+ Filter' }).click()
   await spatial.getByLabel('Feld').selectOption({ label: 'Strassenklasse' })
-  await spatial.getByLabel('Wert').fill('haupt')
+  await spatial.getByLabel('Wert').fill('kantonsstrasse_b')
   await editor.getByRole('button', { name: 'Übernehmen' }).click()
 
   const expected = await page.request.post('/api/query/count', {

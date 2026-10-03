@@ -11,13 +11,13 @@
         "layer": "strassen",
         "predicate": "dwithin",
         "distance_m": 500,
-        "where": { "op": "compare", "attr": "klasse", "cmp": "eq", "value": "haupt" }
+        "where": { "op": "compare", "attr": "klasse", "cmp": "eq", "value": "kantonsstrasse_b" }
       },
       {
         "op": "related",
-        "layer": "gemeinden_bevoelkerung",
+        "layer": "gemeinden_steuern",
         "predicate": "within",
-        "where": { "op": "compare", "attr": "anteil_u20", "cmp": "gt", "value": 16 }
+        "where": { "op": "compare", "attr": "steueranlage", "cmp": "gt", "value": 1.6 }
       }
     ]
   }

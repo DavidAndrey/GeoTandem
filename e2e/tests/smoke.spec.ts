@@ -15,7 +15,7 @@ test('the application starts and reports a ready data core', async ({ page }) =>
   const status = page.getByRole('region', { name: 'Systemstatus' })
   await expect(status).toContainText('Bereit')
   await expect(status).toContainText('spatialite')
-  await expect(status).toContainText('tandemtal-1')
+  await expect(status).toContainText('bern-mittelland-')
 })
 
 test('client-side routes are served by the same process', async ({ page }) => {

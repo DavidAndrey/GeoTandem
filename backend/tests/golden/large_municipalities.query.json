@@ -1,12 +1,12 @@
 {
   "source": "gemeinden",
   "attribute_join": {
-    "layer": "bevoelkerung",
+    "layer": "gemeindedaten",
     "left_key": "gem_nr",
     "right_key": "gem_nr",
     "fields": [
       "einwohner",
-      "anteil_u20"
+      "steueranlage"
     ]
   },
   "where": {
@@ -18,7 +18,7 @@
   "select": [
     "name",
     "einwohner",
-    "anteil_u20"
+    "steueranlage"
   ],
   "order_by": [
     {

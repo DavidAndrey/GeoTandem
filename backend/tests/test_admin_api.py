@@ -81,7 +81,7 @@ async def test_repreview_with_other_options(
     preview = (
         await client.post(f"/api/admin/imports/{import_id}/preview", json={"sublayer": "gewaesser"})
     ).json()
-    assert (preview["options"]["sublayer"], preview["record_count"]) == ("gewaesser", 2)
+    assert (preview["options"]["sublayer"], preview["record_count"]) == ("gewaesser", 66)
     wrong = await client.post(f"/api/admin/imports/{import_id}/preview", json={"sublayer": "bahn"})
     assert wrong.status_code == 400
     assert wrong.json()["details"]["reason"] == "unknown_sublayer"
@@ -132,7 +132,7 @@ async def test_catalog_shows_last_import(client: httpx.AsyncClient) -> None:
     layers = (await client.get("/api/admin/layers")).json()
     schulen = next(layer for layer in layers if layer["name"] == "schulen")
     assert schulen["last_import"]["status"] == "ok"
-    assert schulen["source"] == "sample:tandemtal"
+    assert schulen["source"] == "sample:bern-mittelland"
 
 
 async def test_rename_and_curate(client: httpx.AsyncClient) -> None:
@@ -141,11 +141,11 @@ async def test_rename_and_curate(client: httpx.AsyncClient) -> None:
     )
     assert (layer.json()["name"], layer.json()["title"]) == ("schulen", "Schulhäuser")
     attribute = await client.patch(
-        "/api/admin/layers/schulen/attributes/schueler",
-        json={"label": "Schülerzahl", "unit": "Personen", "value_domain": {"min": 0, "max": 2000}},
+        "/api/admin/layers/schulen/attributes/standorte",
+        json={"label": "Schulhäuser", "unit": "Gebäude", "value_domain": {"min": 0, "max": 2000}},
     )
     assert attribute.json()["value_domain"] == {"min": 0, "max": 2000}
-    assert attribute.json()["unit"] == "Personen"
+    assert attribute.json()["unit"] == "Gebäude"
     # Queries keep working: the identifier did not change.
     result = await client.post(
         "/api/query", json={"source": "schulen", "output": "table", "limit": 1}
@@ -161,7 +161,7 @@ async def test_rename_and_curate(client: httpx.AsyncClient) -> None:
     ],
 )
 async def test_invalid_value_domain(client: httpx.AsyncClient, body: dict[str, Any]) -> None:
-    response = await client.patch("/api/admin/layers/schulen/attributes/schueler", json=body)
+    response = await client.patch("/api/admin/layers/schulen/attributes/standorte", json=body)
     assert (response.status_code, response.json()["code"]) == (422, "schema_violation")
 
 
@@ -175,7 +175,7 @@ async def test_profile_follows_for_model(client: httpx.AsyncClient) -> None:
     profile = (await client.get("/api/admin/layers/gewaesser/profile")).json()
     assert profile["name"] == "gewaesser"
     typ = next(a for a in profile["attributes"] if a["name"] == "typ")
-    assert typ["codes"] == {"fluss": "Fluss", "bach": "Bach"}
+    assert typ["codes"] == {"haupt": "Hauptgewässer", "neben": "Nebengewässer"}
     await client.patch("/api/admin/layers/gewaesser/attributes/typ", json={"for_model": False})
     profile = (await client.get("/api/admin/layers/gewaesser/profile")).json()
     assert "typ" not in [a["name"] for a in profile["attributes"]]
