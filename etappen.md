@@ -188,8 +188,8 @@ Nicht Teil der sechs Etappen, sinnvoll erst danach:
 Diese Punkte stehen in den Etappen bereits eingeplant, sind aber nicht
 entschieden:
 
-1. **Benutzerverwaltung in E1.4** beschränkt sich auf lokale Konten mit den zwei
-   Rollen — keine Gruppen, kein SSO.
+1. ~~**Benutzerverwaltung in E1.4** beschränkt sich auf lokale Konten mit den zwei
+   Rollen — keine Gruppen, kein SSO.~~ So gebaut (2026-10-03).
 2. **E2.0 setzt den HITL-Schnitt fest**, statt ihn offenzuhalten; der
    Demonstrator prüft die Setzung anschliessend, statt sie zu umgehen.
 3. **E6 setzt E2 voraus, nicht E4.** Die Client-Rolle wirkt im LLM-Modus; sie

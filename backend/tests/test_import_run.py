@@ -335,7 +335,7 @@ def test_invalid_geometry_is_repaired_missing_one_rejected(
         )
 
 
-def test_key_candidates_are_unique_and_not_references(
+def test_key_candidates_are_unique_and_not_key_join_copies(
     sample_backend: DataBackend, files: dict[str, Path]
 ) -> None:
     imported(
@@ -347,5 +347,6 @@ def test_key_candidates_are_unique_and_not_references(
     candidates = key_candidates(sample_backend)
     assert ("gemeinden", "gem_nr") in candidates
     assert ("schulen", "typ") not in candidates  # repeats: not a key
-    assert ("kennzahlen", "gem_nr") not in candidates  # a reference to gemeinden.gem_nr
-    assert ("kennzahlen", "stichtag") not in candidates
+    # A key-join layer is no key target, not even with its unique columns:
+    # a re-import of the same table must still be keyed to gemeinden.
+    assert not any(layer == "kennzahlen" for layer, _ in candidates)

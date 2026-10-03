@@ -54,6 +54,25 @@ Bauabschnitt.
 Schnitt der Stufen wird in E2.0 festgelegt.
 
 **Sitzung** — Ein benannt gespeicherter Analysezustand (F-4.10), ab E1.7.
+Nicht zu verwechseln mit der **Anmeldung** (`auth_session`), der serverseitigen
+Login-Sitzung eines Kontos.
+
+**Konto** (`app_user`) — Ein lokales Benutzerkonto mit genau einer **Rolle**
+(`role`): Administrator (`admin`) oder Anwender (`user`), F-3.12. Ein neues
+oder zurückgesetztes Konto trägt ein **Startpasswort**, das bei der ersten
+Anmeldung zu ändern ist.
+
+**Sichtbarkeit** (`layer_visibility`) — Welche Layer eine Rolle sieht (F-2.7).
+Administratoren sehen alle; für Anwender ist ein Layer erst nach **Freigabe**
+sichtbar. Durchgesetzt über die **Layer-Ansicht** (`LayerView`): die
+Datenzugriffsschicht, beschränkt auf die sichtbaren Layer — ein verborgener
+Layer verhält sich wie ein nicht vorhandener.
+
+**Importvorgang** (`import_run`) — Ein Importversuch mit Quelle, Entscheidungen,
+Ergebnis und Fehlern (F-2.10), ob erfolgreich, fehlgeschlagen oder abgebrochen.
+Ein **Geobezug** ist die Herkunft der Geometrie: aus der Datei, aus
+Koordinatenspalten (X/Y) oder über einen **Gebietsschlüssel** auf einen
+vorhandenen Layer (F-2.3).
 
 **Beispieldatensatz** — Die synthetische Region „Tandemtal", erzeugt durch
 `geotandem sample generate` (fester Seed) und im Repository abgelegt (F-10.5).

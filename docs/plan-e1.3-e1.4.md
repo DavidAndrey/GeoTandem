@@ -1,6 +1,6 @@
 # Plan E1.3 / E1.4 — Import, Layer-Verwaltung, Anmeldung, Rollen
 
-> Stand: 2026-10-03 · Bezug: [etappen.md 3](../etappen.md),
+> Stand: 2026-10-03 · **umgesetzt (WP11–WP19)** · Bezug: [etappen.md 3](../etappen.md),
 > [anforderungen.md 2, 3](../anforderungen.md), [design/e1/README.md](../design/e1/README.md)
 >
 > Continues the work packages WP1–WP10 (E1.1/E1.2). Each WP is one commit,
@@ -209,7 +209,8 @@ Layer". This must hold in the backend, not only in the UI. New dependency:
 - Playwright: admin creates account `m.keller` (role user) → that user logs
   in, changes the start password, sees the sample layers but not the layer
   imported in E1.3 → admin releases it in D10 → the user sees it. Also checked
-  at API level: `POST /api/query` on the unreleased layer as user → 404.
+  at API level: `POST /api/query` on the unreleased layer as user → 400
+  `unknown_layer`, exactly as for a layer that does not exist.
 - Adapt the existing smoke tests to log in (fixture for the storage state).
 - README (first admin, CLI, new variables), CONTEXT.md (Rolle, Konto,
   Sichtbarkeit, Importvorgang), tech-stack 9 (D8 decided), etappen.md 11.1
@@ -229,8 +230,33 @@ and WP18 share the admin frame, so WP15 comes first.
 
 ## 5 Reported gaps (not built)
 
+- Configurable default for new layers, "sofort sichtbar / erst nach Freigabe"
+  (design D10): fixed to "erst nach Freigabe" (plan D6), not in F-2.7.
+- A user-facing layer list beyond the placeholder on the start page: the
+  layer panel arrives with the map (E1.5, design B1/B11).
+
 - Layer versions with restore/retention and archiving (design D3/D4/D5).
 - Synonyms and display names for layers and attributes (design D3).
 - CSV export of the import log, duplicating layers (design D7, D2).
 - Retention periods for logs and rejected rows (design open point 7).
 - Date type in `AttributeType` (D9).
+
+## 6 Found on the way
+
+- **SQLite transactions (WP11, WP19).** pysqlite issued no BEGIN before DDL,
+  so layer creation and migrations were not atomic; SQLAlchemy now begins
+  transactions itself. Doing so with deferred transactions then made
+  concurrent requests fail with "database is locked" (two read-then-write
+  transactions deadlock on the lock upgrade). Transactions now begin
+  IMMEDIATE, analysis queries DEFERRED, the file runs in WAL mode, writers
+  wait up to 30 s. `backend/tests/test_concurrency.py` reproduces the failure.
+- **pandas dropped (WP12).** Own type inference keeps area keys with leading
+  zeros as text and reads decimal commas (tech-stack 3.4).
+- **Fonts bundled (WP15).** The design system loads Google Fonts, which
+  breaks F-9.1; `@fontsource` packages ship them with the build.
+- **Key proposals (WP15, WP19).** Only unique attributes count, and layers
+  made by a key join are no key targets, so a re-import of the same table is
+  keyed to the original layer, not to its previous import.
+- **Gate runs Playwright twice (WP19).** The second pass runs after the
+  restart, on the data of the first: two of the problems above only showed
+  against an instance that already had data.

@@ -8,7 +8,7 @@ import { FILES_DIR } from '../global-setup'
 // The catalog test checks the layers the import tests created.
 test.describe.configure({ mode: 'serial' })
 
-const run = Date.now().toString(36)
+const run = `imp${Date.now().toString(36)}`
 
 async function startImport(page: Page, file: string, title: string) {
   await page.goto('/admin/daten/import')

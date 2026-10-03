@@ -113,16 +113,18 @@ def key_candidates(backend: DataBackend) -> dict[tuple[str, str], set[str]]:
     """Attributes of vector layers that can serve as area key, with their values.
 
     A key identifies one feature, so only attributes with unique values count.
-    Attributes that are themselves references (a key-join import) are skipped:
-    the layer they point to is the one to join to, not its copy.
+    Layers made by a key join are skipped altogether: their geometry is a copy
+    of the layer they reference, which is the one to join to. Otherwise a
+    re-import would be keyed to the previous import of the same table, whose
+    unique columns all match themselves.
     """
     candidates: dict[tuple[str, str], set[str]] = {}
     for info in list_layers(backend.engine):
-        if info.kind != "vector":
+        if info.kind != "vector" or any(a.references for a in info.attributes):
             continue
         table = backend.layer_table(info.name)
         for attribute in info.attributes:
-            if attribute.data_type not in ("integer", "text") or attribute.references:
+            if attribute.data_type not in ("integer", "text"):
                 continue
             with backend.engine.connect() as conn:
                 values = [v for v in conn.scalars(select(table.c[attribute.name])) if v is not None]

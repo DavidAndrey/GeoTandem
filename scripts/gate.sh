@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # The gate every work package finishes with: static checks and tests, then the
 # container as it ships — first start on an empty volume (F-2.12), Playwright
-# against it, and a restart on the same volume (F-2.17, no second sample load).
+# against it, a restart on the same volume (F-2.17, no second sample load), and
+# Playwright once more on the data the first pass left behind.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -59,5 +60,9 @@ if docker logs --since "$since" "$name" 2>&1 | grep -q "sample dataset"; then
   echo "sample dataset was loaded again after restart" >&2
   exit 1
 fi
+
+step "playwright again, on the data of the first pass"
+port=$(docker port "$name" 8000/tcp | head -n1 | sed 's/.*://')  # new port after restart
+(cd e2e && E2E_BASE_URL="http://127.0.0.1:$port" npx playwright test --reporter=line)
 
 step "gate passed"
