@@ -49,6 +49,7 @@ from geotandem.data.interface import (
     TextMode,
 )
 from geotandem.db.orm import Layer, LayerAttribute
+from geotandem.db.spatialite import READ_ONLY
 from geotandem.geo import common_geometry_type
 
 TABLE_PREFIX = "lyr_"
@@ -327,7 +328,7 @@ class SpatiaLiteBackend:
 
     def execute(self, stmt: Select[Any], limits: Limits) -> list[dict[str, Any]]:
         deadline = time.monotonic() + limits.timeout_s
-        with self.engine.connect() as conn:
+        with self.engine.connect().execution_options(**{READ_ONLY: True}) as conn:
             raw = conn.connection.driver_connection
             assert isinstance(raw, sqlite3.Connection)
             # Read-only at the connection level: no analysis may write (F-9.5).
