@@ -171,7 +171,7 @@ WP23 share only the store from WP21 and can run in parallel.
 - Conditions that reference a derived layer (D7).
 - Dissolving overlapping buffers, the predicate "berührt", the range
   histogram (D9).
-- Map search, measuring, own location (D8).
+- ~~Map search, measuring~~, own location (D8). Search and measuring built in E1.8 ([plan-e1.8.md](plan-e1.8.md)); own location not planned.
 - Catalog-wide default style, tab "Darstellung" in D3 (D6).
 - Offline background map from a local tile file (D2, possible later preset).
 - Distance and "liegt in" columns in the attribute table (`@distanz:…` in

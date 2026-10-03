@@ -63,6 +63,15 @@ Grundbuchstaben („Ägerten" bei A), Puffer haben überall 30 Segmente je
 Viertelkreis, Join-Schlüssel müssen gleichartig sein. Akzente zählen weiterhin
 („Munsingen" findet „Münsingen" nicht).
 
+**Kartensuche** — Sucht in den Namen der Objekte aller Layer, die das Konto
+sieht, über die Ausführungsmaschine wie jede Abfrage (ohne Rücksicht auf
+Groß-/Kleinschreibung, nur lokal). Ein Treffer wird angezoomt; auf einem
+angezeigten Layer ist er ausgewählt, sonst markiert. Nicht gespeichert.
+
+**Messen** — Strecke oder Fläche, auf der Karte geklickt, geodätisch auf dem
+Ellipsoid (WGS84) gerechnet. Ein Werkzeug der Ansicht wie Zoomen: keine Abfrage,
+nichts gespeichert.
+
 **Ausführungsmaschine** (`engine`) — Übersetzt ein Abfrageobjekt über die
 Datenzugriffsschicht in eine Abfrage und führt sie unter serverseitigen
 Grenzwerten aus (F-9.6). Das einzige, was Abfragen ausführt.

@@ -141,12 +141,8 @@ stores from WP27.
 
 - "Auswahl als Filter" (D6).
 - Export (F-8.6, E5); the button is shown disabled, "ab E5".
-- Tabs for table layers without geometry (D7): the layer picker (B11) does
-  not add them to the analysis, so they have no tab. Their fields are
-  readable through a join (derived layer), which has one.
-- Columns are reordered with ↑/↓ buttons in the menu, not by dragging (B8
-  shows drag handles): keyboard-accessible and enough for a handful of
-  columns.
+- ~~Tabs for table layers without geometry (D7)~~ and ~~reordering columns
+  by dragging (B8)~~. Built in E1.8 ([plan-e1.8.md](plan-e1.8.md)).
 
 ## 6 Found on the way
 

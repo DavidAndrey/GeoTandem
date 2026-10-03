@@ -230,16 +230,16 @@ and WP18 share the admin frame, so WP15 comes first.
 
 ## 5 Reported gaps (not built)
 
-- Configurable default for new layers, "sofort sichtbar / erst nach Freigabe"
-  (design D10): fixed to "erst nach Freigabe" (plan D6), not in F-2.7.
+- ~~Configurable default for new layers, "sofort sichtbar / erst nach Freigabe"
+  (design D10)~~. Built in E1.8 ([plan-e1.8.md](plan-e1.8.md)).
 - A user-facing layer list beyond the placeholder on the start page: the
   layer panel arrives with the map (E1.5, design B1/B11).
 
 - Layer versions with restore/retention and archiving (design D3/D4/D5).
 - Synonyms and display names for layers and attributes (design D3).
-- CSV export of the import log, duplicating layers (design D7, D2).
+- CSV export of the import log (design D7); ~~duplicating layers (design D2)~~. Built in E1.8 ([plan-e1.8.md](plan-e1.8.md)).
 - Retention periods for logs and rejected rows (design open point 7).
-- Date type in `AttributeType` (D9).
+- ~~Date type in `AttributeType` (D9)~~. Built in E1.8 ([plan-e1.8.md](plan-e1.8.md)).
 
 ## 6 Found on the way
 

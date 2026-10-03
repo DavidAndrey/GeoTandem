@@ -1,6 +1,6 @@
 # Plan E1.8 — Gleiche Ergebnisse auf jedem Backend, offene Lücken
 
-> Stand: 2026-10-03 · **entschieden 2026-10-03** · Bezug:
+> Stand: 2026-10-03 · **umgesetzt (WP39–WP45)** · Bezug:
 > [anforderungen.md](../anforderungen.md) (F-2.14, F-10.7), [tech-stack.md 9](../tech-stack.md),
 > the "Reported gaps" of [plan-e1.3-e1.4.md](plan-e1.3-e1.4.md), [plan-e1.5.md](plan-e1.5.md),
 > [plan-e1.6.md](plan-e1.6.md), [plan-e1.7.md](plan-e1.7.md), [plan-e1.7b.md](plan-e1.7b.md)
@@ -150,3 +150,27 @@ WP39 ── WP40 ── WP41 ── WP42 ── WP43 ── WP44 ── WP45
 ```
 
 WP39 first (decided); WP43 builds on its case-insensitive search.
+
+## 6 Found on the way
+
+- **SpatiaLite's buffer default, measured (WP39).** 30 segments per quarter
+  circle (121 vertices); PostGIS defaults to 8 (33). Kept at 30 and passed
+  explicitly, so no result changed.
+- **SQLite joined text "101" with the number 101 (WP39).** Measured; the
+  engine now refuses keys of different kinds, and the Join dialog only
+  offers matching ones.
+- **"ß" and "ss" in the sort order (WP39).** The first draft sorted "Straße"
+  before "Strasse" because the case level compared strings of different
+  length; the case flags now follow the folded text, so the exact
+  characters decide, as with ICU.
+- **Excel dates were datetimes at midnight (WP40).** They are dates now; an
+  existing test expected text and was updated. Rejected rows with dates
+  could not be logged (JSON); the log stores its entries in JSON form.
+- **A table among the first chosen layers became the result layer
+  (WP42).** Table layers now carry a flag and are never the result.
+- **Measuring needs the ellipsoid (WP44).** Leaflet's distance is spherical
+  (about 0.3 % off at 47° N); GeographicLib is Karney's reference and
+  matches PROJ to a fraction of a millimetre. The end-to-end test compares
+  a measured line with the scale bar — once the first view has settled.
+- **Enter before the search results (WP43).** Enter takes the first hit
+  once there is one; pressing it earlier does nothing.
