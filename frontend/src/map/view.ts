@@ -11,6 +11,15 @@ interface MapViewStore {
   /** A request from outside the map, e.g. "Auf Layer zoomen" in the panel. */
   zoomRequest: { layer: string; at: number } | null
   zoomTo: (layer: string) => void
+  /** Picking a reference feature on the map (F-4.3): the next click on ``layer`` is it. */
+  pick: { layer: string; rowId: string } | null
+  setPick: (pick: { layer: string; rowId: string } | null) => void
+  /** Drawing the restriction "Nur in: Fläche" (F-4.3). */
+  drawing: 'rectangle' | 'polygon' | null
+  setDrawing: (drawing: 'rectangle' | 'polygon' | null) => void
+  /** The editor row whose hits the map shows (design B2 "Aktive Bedingung"). */
+  activeRow: string | null
+  setActiveRow: (id: string | null) => void
 }
 
 export const useMapView = create<MapViewStore>()((set) => ({
@@ -18,6 +27,12 @@ export const useMapView = create<MapViewStore>()((set) => ({
   setBbox: (bbox) => set({ bbox }),
   zoomRequest: null,
   zoomTo: (layer) => set({ zoomRequest: { layer, at: Date.now() } }),
+  pick: null,
+  setPick: (pick) => set({ pick }),
+  drawing: null,
+  setDrawing: (drawing) => set({ drawing }),
+  activeRow: null,
+  setActiveRow: (activeRow) => set({ activeRow }),
 }))
 
 /** Rounded so small pans do not refetch everything. */

@@ -117,11 +117,12 @@ export const useAnalysis = create<AnalysisStore>()((set, get) => ({
     })),
 
   setResult: (id) => {
-    const { layers, tree, result } = get()
+    const { layers, tree, draft, result } = get()
     const layer = layers.find((l) => l.id === id)
     if (!layer || !canBeResult(layer) || id === result) return { dropped: [] }
-    const { tree: kept, dropped } = T.withoutAttributeRows(tree)
-    set({ result: id, tree: kept, draft: null, dirty: true })
+    // While the editor is open the change belongs to the draft, like any other edit.
+    const { tree: kept, dropped } = T.withoutAttributeRows(draft ?? tree)
+    set(draft ? { result: id, draft: kept, dirty: true } : { result: id, tree: kept, dirty: true })
     return { dropped }
   },
 

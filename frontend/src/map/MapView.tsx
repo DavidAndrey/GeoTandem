@@ -27,8 +27,12 @@ export function MapView({ children, legend }: { children?: ReactNode; legend?: R
     }
     created.on('moveend', report)
     report()
+    // The container changes size when the editor column opens (design B2).
+    const resized = new ResizeObserver(() => created.invalidateSize())
+    resized.observe(container.current)
     setMap(created)
     return () => {
+      resized.disconnect()
       created.remove()
       setMap(null)
     }

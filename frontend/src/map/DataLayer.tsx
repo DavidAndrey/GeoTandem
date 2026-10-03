@@ -7,7 +7,7 @@ import type { DisplayLayer, QueryObject } from '../analysis/model'
 import { and } from '../analysis/query'
 import { api, type LayerInfo, type QueryResult } from '../api/client'
 import { shownBounds, useLeafletMap } from './leaflet'
-import { popupContent } from './popup'
+import { featureName, popupContent } from './popup'
 import { featureStyle, layerColor, type HitState } from './style'
 import { roundBbox, useMapView } from './view'
 
@@ -20,6 +20,7 @@ export function DataLayer({
   hits,
   largerThanLimit,
   onState,
+  onPick,
 }: {
   layer: DisplayLayer
   query: QueryObject
@@ -32,6 +33,7 @@ export function DataLayer({
   /** Too large to fetch whole: fetched by the current view (plan D5). */
   largerThanLimit: boolean
   onState?: (state: { error: unknown; count: number | null }) => void
+  onPick?: (rowId: string, fid: number, label: string) => void
 }) {
   const map = useLeafletMap()
   const bbox = useMapView((s) => s.bbox)
@@ -66,9 +68,19 @@ export function DataLayer({
           ...featureStyle(color, layer.opacity, stateOf(Number(f.id))),
         }),
       onEachFeature: (f, shape) => {
-        shape.bindPopup(() =>
-          popupContent(title, (f.properties ?? {}) as Record<string, unknown>, info),
-        )
+        shape.on('click', (event: L.LeafletMouseEvent) => {
+          const properties = (f.properties ?? {}) as Record<string, unknown>
+          // While a reference feature is being picked (F-4.3), the click picks it.
+          const pick = useMapView.getState().pick
+          if (pick && layer.source.kind === 'catalog' && pick.layer === layer.source.layer) {
+            onPick?.(pick.rowId, Number(f.id), featureName(properties, info) ?? '')
+            return
+          }
+          L.popup()
+            .setLatLng(event.latlng)
+            .setContent(popupContent(title, properties, info))
+            .openOn(map)
+        })
       },
     }).addTo(map)
     const bounds = geojson.getBounds()
@@ -76,7 +88,7 @@ export function DataLayer({
     return () => {
       geojson.remove()
     }
-  }, [map, layer, order, result.data, hits, title, info])
+  }, [map, layer, order, result.data, hits, title, info, onPick])
 
   return null
 }

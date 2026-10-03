@@ -67,3 +67,13 @@ test('loading a saved analysis is not a change', () => {
   expect(store().dirty).toBe(false)
   expect(store().layers).toHaveLength(1)
 })
+
+test('changing the result layer inside the editor keeps the other draft edits', () => {
+  store().addLayer('schulen')
+  store().addLayer('kitas')
+  store().edit()
+  store().addNode('root', { ...newSpatialRow('strassen'), operator: 'near', distance_m: 500 })
+  store().setResult('kitas')
+  expect(store().draft?.children).toHaveLength(1)
+  expect(store().tree.children).toHaveLength(0) // nothing applied yet
+})
