@@ -174,6 +174,29 @@ class AnalysisSession(Base):
     opened_at: Mapped[datetime | None]
 
 
+class SavedQuery(Base):
+    """A named query — result layer, conditions, restriction — reusable across
+    sessions and shareable read-only with every account (design C6, plan E1.7b).
+    """
+
+    __tablename__ = "saved_query"
+    __table_args__ = (UniqueConstraint("owner_id", "name"),)
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    owner_id: Mapped[int] = mapped_column(ForeignKey("app_user.id", ondelete="CASCADE"))
+    name: Mapped[str] = mapped_column(String(120))
+    shared: Mapped[bool] = mapped_column(default=False)
+    state_version: Mapped[int]
+    state: Mapped[dict[str, Any]] = mapped_column(JSON)
+    query: Mapped[dict[str, Any]] = mapped_column(JSON)
+    layers: Mapped[list[str]] = mapped_column(JSON)
+    """Every catalog layer the query uses; a shared query shows only to who sees them all."""
+    created_at: Mapped[datetime] = mapped_column(server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.current_timestamp())
+
+    owner: Mapped[User] = relationship()
+
+
 class AppMeta(Base):
     """Instance-wide facts fixed at first start, e.g. the internal CRS."""
 

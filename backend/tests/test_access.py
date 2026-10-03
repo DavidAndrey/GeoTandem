@@ -24,6 +24,7 @@ READ_ROUTES = [
     ("GET", "/api/tools", None),
     ("GET", "/api/config/map", None),
     ("GET", "/api/sessions", None),
+    ("GET", "/api/queries", None),
 ]
 ADMIN_ROUTES = [
     ("GET", "/api/admin/layers", None),
