@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 import time
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from geoalchemy2 import Geometry
@@ -17,6 +17,7 @@ from sqlalchemy import (
     Boolean,
     Column,
     ColumnElement,
+    Connection,
     Engine,
     Float,
     FromClause,
@@ -205,60 +206,98 @@ class SpatiaLiteBackend:
         return Table(TABLE_PREFIX + name, self._metadata, *columns)
 
     def create_layer(self, layer: NewLayer) -> int:
-        rows = list(layer.rows)
-        geometry_type = _geometry_type(rows) if layer.kind == "vector" else None
-        if geometry_type and geometry_type.startswith("Multi"):
-            rows = [(_to_multi(g), attrs) for g, attrs in rows]
-        names = {a.name for a in layer.attributes}
-        if {FID, GEOM} & names:
-            raise ValueError(f"attribute names '{FID}' and '{GEOM}' are reserved")
-
+        rows, geometry_type = _prepare(layer)
         table = self._table(layer.name, list(layer.attributes), geometry_type)
-        with Session(self.engine) as session, session.begin():
-            conn = session.connection()
-            table.create(conn)
-            if rows:
-                conn.execute(
-                    table.insert(),
-                    [
-                        {
-                            **{a.name: attrs.get(a.name) for a in layer.attributes},
-                            **(
-                                {GEOM: from_shape(geom, srid=self.internal_srid)}
-                                if geometry_type
-                                else {}
-                            ),
-                        }
-                        for geom, attrs in rows
-                    ],
+        try:
+            with Session(self.engine) as session, session.begin():
+                conn = session.connection()
+                table.create(conn)
+                self._insert(conn, table, layer, rows, geometry_type)
+                session.add(
+                    Layer(
+                        name=layer.name,
+                        title=layer.title,
+                        description=layer.description,
+                        kind=layer.kind,
+                        for_model=layer.for_model,
+                        attributes=[_attribute(a, i) for i, a in enumerate(layer.attributes)],
+                        **self._content(layer, rows, geometry_type),
+                    )
                 )
-            session.add(
-                Layer(
-                    name=layer.name,
-                    title=layer.title,
-                    description=layer.description,
-                    kind=layer.kind,
-                    geometry_type=geometry_type,
-                    srid=self.internal_srid if geometry_type else None,
-                    feature_count=len(rows),
-                    bbox_wgs84=self._bbox_wgs84(rows) if geometry_type else None,
-                    source=layer.source,
-                    dataset_version=layer.dataset_version,
-                    attributes=[
-                        LayerAttribute(
-                            name=a.name,
-                            position=i,
-                            data_type=a.data_type,
-                            label=a.label,
-                            description=a.description,
-                            unit=a.unit,
-                            value_domain=a.value_domain,
-                        )
-                        for i, a in enumerate(layer.attributes)
-                    ],
-                )
-            )
+        except Exception:
+            self._forget(layer.name)
+            raise
         return len(rows)
+
+    def replace_layer(self, name: str, layer: NewLayer) -> int:
+        old = self.layer_table(name)
+        rows, geometry_type = _prepare(layer)
+        try:
+            with Session(self.engine) as session, session.begin():
+                conn = session.connection()
+                old.drop(conn)
+                self._metadata.remove(old)
+                table = self._table(name, list(layer.attributes), geometry_type)
+                table.create(conn)
+                self._insert(conn, table, layer, rows, geometry_type)
+                entry = session.scalar(select(Layer).where(Layer.name == name))
+                assert entry is not None
+                entry.kind = layer.kind
+                for key, value in self._content(layer, rows, geometry_type).items():
+                    setattr(entry, key, value)
+                _merge_attributes(session, entry, layer.attributes)
+        except Exception:
+            self._forget(name)
+            raise
+        return len(rows)
+
+    def _insert(
+        self,
+        conn: Connection,
+        table: Table,
+        layer: NewLayer,
+        rows: list[tuple[BaseGeometry | None, Mapping[str, Any]]],
+        geometry_type: str | None,
+    ) -> None:
+        if not rows:
+            return
+        conn.execute(
+            table.insert(),
+            [
+                {
+                    **{a.name: attrs.get(a.name) for a in layer.attributes},
+                    # Every row carries the same keys, as executemany requires.
+                    **(
+                        {GEOM: None if geom is None else from_shape(geom, srid=self.internal_srid)}
+                        if geometry_type
+                        else {}
+                    ),
+                }
+                for geom, attrs in rows
+            ],
+        )
+
+    def _content(
+        self,
+        layer: NewLayer,
+        rows: list[tuple[BaseGeometry | None, Mapping[str, Any]]],
+        geometry_type: str | None,
+    ) -> dict[str, Any]:
+        """Registry fields that follow the data, as opposed to curated ones."""
+        return {
+            "geometry_type": geometry_type,
+            "srid": self.internal_srid if geometry_type else None,
+            "feature_count": len(rows),
+            "bbox_wgs84": self._bbox_wgs84(rows) if geometry_type else None,
+            "source": layer.source,
+            "dataset_version": layer.dataset_version,
+        }
+
+    def _forget(self, name: str) -> None:
+        """Drop a cached table definition so the next access reloads it from the registry."""
+        table = self._metadata.tables.get(TABLE_PREFIX + name)
+        if table is not None:
+            self._metadata.remove(table)
 
     def drop_layer(self, name: str) -> None:
         table = self.layer_table(name)
@@ -266,9 +305,11 @@ class SpatiaLiteBackend:
             table.drop(session.connection())
             layer = session.scalar(select(Layer).where(Layer.name == name))
             session.delete(layer)
-        self._metadata.remove(table)
+        self._forget(name)
 
-    def _bbox_wgs84(self, rows: list[tuple[BaseGeometry | None, Any]]) -> list[float] | None:
+    def _bbox_wgs84(
+        self, rows: list[tuple[BaseGeometry | None, Mapping[str, Any]]]
+    ) -> list[float] | None:
         bounds = [g.bounds for g, _ in rows if g is not None and not g.is_empty]
         if not bounds:
             return None
@@ -320,7 +361,65 @@ class SpatiaLiteBackend:
         return missing
 
 
-def _geometry_type(rows: list[tuple[BaseGeometry | None, Any]]) -> str:
+def _prepare(
+    layer: NewLayer,
+) -> tuple[list[tuple[BaseGeometry | None, Mapping[str, Any]]], str | None]:
+    """Materialise the rows and settle the geometry type (promoting to Multi* if needed)."""
+    names = {a.name for a in layer.attributes}
+    if {FID, GEOM} & names:
+        raise ValueError(f"attribute names '{FID}' and '{GEOM}' are reserved")
+    rows = list(layer.rows)
+    if layer.kind != "vector":
+        return rows, None
+    geometry_type = layer.geometry_type or _geometry_type(rows)
+    if geometry_type.startswith("Multi"):
+        rows = [(_to_multi(g), attrs) for g, attrs in rows]
+    if geometry_type != "Geometry":
+        wrong = {g.geom_type for g, _ in rows if g is not None} - {geometry_type}
+        if wrong:
+            raise ValueError(
+                f"layer '{layer.name}' is declared {geometry_type} but contains "
+                + ", ".join(sorted(wrong))
+            )
+    return rows, geometry_type
+
+
+def _attribute(spec: AttributeSpec, position: int) -> LayerAttribute:
+    return LayerAttribute(
+        name=spec.name,
+        position=position,
+        data_type=spec.data_type,
+        label=spec.label,
+        description=spec.description,
+        unit=spec.unit,
+        value_domain=spec.value_domain,
+        for_model=spec.for_model,
+        references=spec.references,
+    )
+
+
+def _merge_attributes(session: Session, entry: Layer, specs: Sequence[AttributeSpec]) -> None:
+    """Keep curated metadata of attributes that survive a replace; add and drop the rest.
+
+    Existing rows are updated in place: deleting and re-inserting the same
+    ``(layer_id, name)`` in one flush would trip the unique constraint.
+    """
+    existing = {a.name: a for a in entry.attributes}
+    wanted = {s.name for s in specs}
+    for name, attribute in existing.items():
+        if name not in wanted:
+            entry.attributes.remove(attribute)
+    session.flush()
+    for position, spec in enumerate(specs):
+        kept = existing.get(spec.name)
+        if kept is None:
+            entry.attributes.append(_attribute(spec, position))
+        else:
+            kept.position = position
+            kept.data_type = spec.data_type
+
+
+def _geometry_type(rows: list[tuple[BaseGeometry | None, Mapping[str, Any]]]) -> str:
     kinds: set[str] = {str(g.geom_type) for g, _ in rows if g is not None}
     if not kinds:
         return "Geometry"

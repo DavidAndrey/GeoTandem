@@ -2,6 +2,7 @@ import pytest
 from sqlalchemy import inspect, text
 
 from geotandem.config import Settings
+from geotandem.db import migrate
 from geotandem.db.bootstrap import ConfigurationError, bootstrap
 
 
@@ -16,7 +17,7 @@ def test_first_start_creates_spatialite_file_and_schema(settings: Settings) -> N
     assert {"layer", "layer_attribute", "app_meta", "alembic_version"} <= tables
     with engine.connect() as conn:
         assert conn.scalar(text("SELECT CheckSpatialMetaData()")) > 0
-        assert conn.scalar(text("SELECT version_num FROM alembic_version")) == "0001"
+        assert conn.scalar(text("SELECT version_num FROM alembic_version")) == migrate.head()
         # The EPSG table is loaded, so reprojection works.
         x = conn.scalar(text("SELECT ST_X(ST_Transform(MakePoint(7.44, 46.95, 4326), 2056))"))
         assert 2_600_000 < x < 2_601_000

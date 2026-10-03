@@ -36,7 +36,14 @@ make dev       # Backend auf :8000 mit ./data, lädt Beispieldaten
 cd frontend && npm run dev   # Frontend auf :5173, leitet /api an :8000 weiter
 make lint test # ruff, mypy, pytest, ESLint, Vitest, Drift-Prüfungen
 make e2e       # Playwright gegen eine laufende Instanz (E2E_BASE_URL)
+make gate      # alles zusammen, so wie es ausgeliefert wird (siehe unten)
 ```
+
+`make gate` ist die Abnahme jedes Arbeitspakets: `lint` und `test`, dann das
+Container-Image, dessen erster Start auf einem leeren Datenträger, Playwright
+gegen diesen Container und ein Neustart auf demselben Datenträger (Daten
+bleiben, kein zweites Laden des Beispieldatensatzes). Container und Datenträger
+sind Wegwerfobjekte und werden auch bei einem Fehler entfernt. Braucht Docker.
 
 Abgeleitete Artefakte werden nie von Hand bearbeitet, sondern mit `make gen`
 aus ihrer einzigen Quelle erzeugt; Tests schlagen fehl, wenn sie abweichen:

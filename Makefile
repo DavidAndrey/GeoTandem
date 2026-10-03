@@ -1,4 +1,4 @@
-.PHONY: install dev test lint gen docker docker-run e2e
+.PHONY: install dev test lint gen docker docker-run e2e gate
 
 install:
 	uv python install 3.14
@@ -34,3 +34,7 @@ e2e:
 
 docker-run:
 	docker run --rm -p 8000:8000 -v geotandem-data:/data geotandem
+
+# lint + test + image + first start, Playwright and restart against the container.
+gate:
+	scripts/gate.sh

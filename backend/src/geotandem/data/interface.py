@@ -55,6 +55,9 @@ class AttributeSpec:
     description: str = ""
     unit: str | None = None
     value_domain: dict[str, Any] | None = None
+    for_model: bool = True
+    references: str | None = None
+    """``layer.attribute`` this attribute is a key to (F-2.9)."""
 
 
 @dataclass(frozen=True)
@@ -69,6 +72,9 @@ class NewLayer:
     description: str = ""
     source: str = ""
     dataset_version: str | None = None
+    geometry_type: str | None = None
+    """Declared geometry type; derived from the rows if ``None`` (vector layers only)."""
+    for_model: bool = True
 
 
 @dataclass(frozen=True)
@@ -132,6 +138,16 @@ class DataBackend(Protocol):
 
     def create_layer(self, layer: NewLayer) -> int:
         """Create table, spatial index and registry entry; return the feature count."""
+        ...
+
+    def replace_layer(self, name: str, layer: NewLayer) -> int:
+        """Replace the content of an existing layer in one transaction (F-2.7).
+
+        Keeps the registry entry (id, title, description, ``for_model``,
+        visibility) and the curated metadata of attributes whose name is
+        unchanged; takes geometry, rows, source and ``dataset_version`` from
+        ``layer``. ``layer.name`` is ignored. Returns the feature count.
+        """
         ...
 
     def drop_layer(self, name: str) -> None: ...

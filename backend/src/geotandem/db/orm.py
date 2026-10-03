@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
 
-from sqlalchemy import JSON, ForeignKey, String, UniqueConstraint, func
+from sqlalchemy import JSON, ForeignKey, String, UniqueConstraint, func, true
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 LayerKind = Literal["vector", "table"]
@@ -34,7 +34,12 @@ class Layer(Base):
     bbox_wgs84: Mapped[list[float] | None] = mapped_column(JSON)
     source: Mapped[str] = mapped_column(default="")
     dataset_version: Mapped[str | None] = mapped_column(String(64))
+    for_model: Mapped[bool] = mapped_column(server_default=true())
+    """Offered to the model as context (F-2.9, F-9.3); takes effect from E2.2."""
     created_at: Mapped[datetime] = mapped_column(server_default=func.current_timestamp())
+    updated_at: Mapped[datetime | None] = mapped_column(
+        default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
 
     attributes: Mapped[list[LayerAttribute]] = relationship(
         back_populates="layer",
@@ -58,8 +63,42 @@ class LayerAttribute(Base):
     description: Mapped[str] = mapped_column(default="")
     unit: Mapped[str | None]
     value_domain: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    for_model: Mapped[bool] = mapped_column(server_default=true())
+    references: Mapped[str | None] = mapped_column(String(127))
+    """``layer.attribute`` this attribute is a key to, e.g. from a key-join import (F-2.9)."""
 
     layer: Mapped[Layer] = relationship(back_populates="attributes")
+
+
+ImportStatus = Literal["running", "ok", "warning", "failed", "aborted"]
+
+
+class ImportRun(Base):
+    """One import attempt, successful or not (F-2.10)."""
+
+    __tablename__ = "import_run"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    started_at: Mapped[datetime] = mapped_column(
+        server_default=func.current_timestamp(), index=True
+    )
+    finished_at: Mapped[datetime | None]
+    actor: Mapped[str | None] = mapped_column(String(63))
+    """Username at the time of the import; kept as text so the log outlives the account."""
+    source_name: Mapped[str]
+    source_format: Mapped[str] = mapped_column(String(16))
+    layer_name: Mapped[str | None] = mapped_column(String(63))
+    mode: Mapped[str] = mapped_column(String(16))
+    status: Mapped[str] = mapped_column(String(16))
+    read_count: Mapped[int] = mapped_column(default=0)
+    imported_count: Mapped[int] = mapped_column(default=0)
+    rejected_count: Mapped[int] = mapped_column(default=0)
+    decisions: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    warnings: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
+    errors: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
+    steps: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
+    rejected_sample: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
+    """Rejected rows with their reason, capped at 1000 (design D8)."""
 
 
 class AppMeta(Base):

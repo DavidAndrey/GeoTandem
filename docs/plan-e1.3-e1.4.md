@@ -50,7 +50,7 @@ a staging dir under `data_dir`.
 - Alembic `0002`: `layer` gets `for_model`, `updated_at`. `layer_attribute`
   gets `for_model` and `references` (`layer.attribute`, set by the key join,
   F-2.9 "Beziehungen"). New table `import_run`: id, started/finished, actor
-  (nullable until WP16), source file name and format, target layer, mode
+  (username as text, no FK), source file name and format, target layer, mode
   (`create`/`replace`), status (`ok`/`warning`/`failed`/`aborted`), counts
   (read/imported/rejected), decisions JSON (CRS, geometry mode, key, renamed
   fields), warnings/errors JSON, steps with duration, and a sample of rejected
@@ -162,7 +162,8 @@ Layer". This must hold in the backend, not only in the UI. New dependency:
 - Alembic `0003`: `app_user` (username unique, display name, argon2 hash,
   role `admin`/`user`, status `active`/`locked`, `must_change_password`,
   timestamps), `auth_session` (sha256 of the token, user, created/expires/
-  last seen), `layer_visibility` (layer_id, role). `import_run.actor` → FK.
+  last seen), `layer_visibility` (layer_id, role). `import_run.actor` stays
+  the username as text (set in WP11), so the log outlives a deleted account.
 - Server-side session: random token in an HttpOnly, SameSite=Strict cookie
   (`Secure` configurable); sliding expiry `GEOTANDEM_SESSION_HOURS` (default 12).
 - Routes `/api/auth`: `GET setup` (account exists?), `POST setup` (only while
