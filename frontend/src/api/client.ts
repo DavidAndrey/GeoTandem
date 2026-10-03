@@ -177,6 +177,14 @@ export const api = {
       request<undefined>(`/api/admin/users/${enc(username)}`, { method: 'DELETE' }),
 
     visibility: () => request<VisibilityRow[]>('/api/admin/visibility'),
+    visibilityDefault: () => request<Schemas['VisibilityDefault']>('/api/admin/visibility/default'),
+    setVisibilityDefault: (visible: boolean) =>
+      request<Schemas['VisibilityDefault']>(
+        '/api/admin/visibility/default',
+        json('PUT', { new_layers_visible: visible }),
+      ),
+    duplicateLayer: (name: string, body: { name?: string; title?: string }) =>
+      request<LayerInfo>(`/api/admin/layers/${enc(name)}/duplicate`, json('POST', body)),
     setVisibility: (layer: string, visible: boolean) =>
       request<VisibilityRow[]>(
         '/api/admin/visibility',

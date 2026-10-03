@@ -47,3 +47,6 @@ class LayerView:
 
     def drop_layer(self, name: str) -> None:
         raise PermissionError("a layer view is read-only")
+
+    def duplicate_layer(self, name: str, new_name: str, title: str) -> int:
+        raise PermissionError("a layer view is read-only")

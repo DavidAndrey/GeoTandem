@@ -1,8 +1,9 @@
 """Which layers a role may see (F-2.7, design D10).
 
 Administrators see every layer. For the role ``user`` a layer is visible
-once it is released; new imports start unreleased (plan D6), the sample
-dataset is released when it is loaded.
+once it is released. New imports start unreleased (plan D6) unless the
+administrator set new layers to be visible at once (design D10, plan E1.8);
+the sample dataset is released when it is loaded.
 """
 
 from __future__ import annotations
@@ -16,7 +17,10 @@ from sqlalchemy.orm import Session
 from geotandem.auth.accounts import Account
 from geotandem.data import DataBackend
 from geotandem.data.view import LayerView
-from geotandem.db.orm import Layer, LayerVisibility, Role
+from geotandem.db.orm import AppMeta, Layer, LayerVisibility, Role
+
+NEW_LAYERS_VISIBLE = "new_layers_visible"
+"""Instance setting: new layers released for users at once (design D10)."""
 
 RELEASABLE: tuple[Role, ...] = ("user",)
 """Roles whose visibility is configured; ``admin`` always sees everything."""
@@ -85,3 +89,33 @@ def set_visible(engine: Engine, layer: str, role: Role, visible: bool) -> bool:
 def release(engine: Engine, layers: Iterable[str], role: Role = "user") -> None:
     for layer in layers:
         set_visible(engine, layer, role, True)
+
+
+def new_layers_visible(engine: Engine) -> bool:
+    """Whether a new layer is released at once; by default it waits for release (plan D6)."""
+    with Session(engine) as session:
+        value = session.scalar(select(AppMeta.value).where(AppMeta.key == NEW_LAYERS_VISIBLE))
+        return value == "true"
+
+
+def set_new_layers_visible(engine: Engine, visible: bool) -> None:
+    with Session(engine) as session, session.begin():
+        entry = session.get(AppMeta, NEW_LAYERS_VISIBLE)
+        if entry is None:
+            session.add(AppMeta(key=NEW_LAYERS_VISIBLE, value=str(visible).lower()))
+        else:
+            entry.value = str(visible).lower()
+
+
+def apply_default(engine: Engine, layer: str) -> None:
+    """For a layer just created: release it if the instance says so."""
+    if new_layers_visible(engine):
+        release(engine, [layer])
+
+
+def copy_visibility(engine: Engine, source: str, target: str) -> None:
+    """A duplicate is seen by whoever saw the original."""
+    for row in matrix(engine):
+        if row.layer == source:
+            for role in RELEASABLE:
+                set_visible(engine, target, role, row.roles.get(role, False))

@@ -747,6 +747,119 @@
         }
       }
     },
+    "/api/admin/layers/{name}/duplicate": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Duplicate Layer",
+        "description": "A copy of a layer: data, metadata and visibility (design D2), logged like an import.",
+        "operationId": "duplicate_layer_api_admin_layers__name__duplicate_post",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Duplicate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayerInfo"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        }
+      }
+    },
     "/api/admin/layers/{name}/profile": {
       "get": {
         "tags": [
@@ -1923,6 +2036,66 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/visibility/default": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Visibility Default",
+        "operationId": "visibility_default_api_admin_visibility_default_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VisibilityDefault"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Set Visibility Default",
+        "operationId": "set_visibility_default_api_admin_visibility_default_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VisibilityDefault"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VisibilityDefault"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -5214,6 +5387,34 @@
         "title": "DistanceRelation",
         "description": "Source within ``distance_m`` of a feature of ``layer``."
       },
+      "Duplicate": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "type": "object",
+        "title": "Duplicate"
+      },
       "ErrorBody": {
         "properties": {
           "code": {
@@ -5674,7 +5875,8 @@
             "type": "string",
             "enum": [
               "create",
-              "replace"
+              "replace",
+              "duplicate"
             ],
             "title": "Mode"
           },
@@ -5814,7 +6016,8 @@
             "type": "string",
             "enum": [
               "create",
-              "replace"
+              "replace",
+              "duplicate"
             ],
             "title": "Mode"
           },
@@ -9045,6 +9248,19 @@
           "visible"
         ],
         "title": "VisibilityChange"
+      },
+      "VisibilityDefault": {
+        "properties": {
+          "new_layers_visible": {
+            "type": "boolean",
+            "title": "New Layers Visible"
+          }
+        },
+        "type": "object",
+        "required": [
+          "new_layers_visible"
+        ],
+        "title": "VisibilityDefault"
       },
       "VisibilityRow": {
         "properties": {

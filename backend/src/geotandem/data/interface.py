@@ -168,6 +168,14 @@ class DataBackend(Protocol):
 
     def drop_layer(self, name: str) -> None: ...
 
+    def duplicate_layer(self, name: str, new_name: str, title: str) -> int:
+        """Copy rows, geometry and attribute metadata of ``name`` (design D2).
+
+        The copy is a layer of its own: same content, its own name and title.
+        Raises ``LayerExists`` if ``new_name`` is taken. Returns the feature count.
+        """
+        ...
+
     def execute(self, stmt: Select[Any], limits: Limits) -> list[dict[str, Any]]:
         """Run a read-only statement under the given limits."""
         ...

@@ -11,6 +11,7 @@ from typing import Any
 from geoalchemy2 import Geometry
 from geoalchemy2.shape import from_shape
 from pyproj import Transformer
+from shapely import wkb
 from shapely.geometry import MultiLineString, MultiPoint, MultiPolygon
 from shapely.geometry.base import BaseGeometry
 from sqlalchemy import (
@@ -254,6 +255,55 @@ class SpatiaLiteBackend:
                 )
             )
         return len(rows)
+
+    def duplicate_layer(self, name: str, new_name: str, title: str) -> int:
+        source = self.layer_table(name)
+        with Session(self.engine) as session:
+            entry = session.scalar(select(Layer).where(Layer.name == name))
+            if entry is None:
+                raise KeyError(name)
+            specs = [
+                AttributeSpec(
+                    name=a.name,
+                    data_type=a.data_type,  # type: ignore[arg-type]
+                    label=a.label,
+                    description=a.description,
+                    unit=a.unit,
+                    value_domain=a.value_domain,
+                    for_model=a.for_model,
+                    references=a.references,
+                )
+                for a in entry.attributes
+            ]
+            meta = (entry.kind, entry.description, entry.geometry_type, entry.dataset_version)
+            for_model = entry.for_model
+            geom = source.c.get(GEOM)
+            columns: list[ColumnElement[Any]] = [source.c[s.name] for s in specs]
+            if geom is not None:
+                columns.append(func.ST_AsBinary(geom).label(GEOM))
+            stored = session.execute(select(*columns).order_by(source.c[FID])).mappings().all()
+        kind, description, geometry_type, version = meta
+        rows = [
+            (
+                wkb.loads(bytes(r[GEOM])) if geom is not None and r[GEOM] is not None else None,
+                {s.name: r[s.name] for s in specs},
+            )
+            for r in stored
+        ]
+        return self.create_layer(
+            NewLayer(
+                name=new_name,
+                title=title,
+                kind=kind,  # type: ignore[arg-type]
+                attributes=specs,
+                rows=rows,
+                description=description,
+                source=f"Kopie von {name}",
+                dataset_version=version,
+                geometry_type=geometry_type,
+                for_model=for_model,
+            )
+        )
 
     def replace_layer(self, name: str, layer: NewLayer) -> int:
         old = self.layer_table(name)

@@ -236,6 +236,26 @@ export interface paths {
     patch: operations['patch_attribute_api_admin_layers__name__attributes__attribute__patch']
     trace?: never
   }
+  '/api/admin/layers/{name}/duplicate': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Duplicate Layer
+     * @description A copy of a layer: data, metadata and visibility (design D2), logged like an import.
+     */
+    post: operations['duplicate_layer_api_admin_layers__name__duplicate_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/admin/layers/{name}/profile': {
     parameters: {
       query?: never
@@ -443,6 +463,24 @@ export interface paths {
     get: operations['visibility_matrix_api_admin_visibility_get']
     /** Set Visibility */
     put: operations['set_visibility_api_admin_visibility_put']
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/admin/visibility/default': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Visibility Default */
+    get: operations['visibility_default_api_admin_visibility_default_get']
+    /** Set Visibility Default */
+    put: operations['set_visibility_default_api_admin_visibility_default_put']
     post?: never
     delete?: never
     options?: never
@@ -1370,6 +1408,13 @@ export interface components {
           )
         | null
     }
+    /** Duplicate */
+    Duplicate: {
+      /** Name */
+      name?: string | null
+      /** Title */
+      title?: string | null
+    }
     /** ErrorBody */
     ErrorBody: {
       /** Code */
@@ -1580,7 +1625,7 @@ export interface components {
        * Mode
        * @enum {string}
        */
-      mode: 'create' | 'replace'
+      mode: 'create' | 'replace' | 'duplicate'
       /**
        * Status
        * @enum {string}
@@ -1628,7 +1673,7 @@ export interface components {
        * Mode
        * @enum {string}
        */
-      mode: 'create' | 'replace'
+      mode: 'create' | 'replace' | 'duplicate'
       /**
        * Status
        * @enum {string}
@@ -2983,6 +3028,11 @@ export interface components {
       /** Visible */
       visible: boolean
     }
+    /** VisibilityDefault */
+    VisibilityDefault: {
+      /** New Layers Visible */
+      new_layers_visible: boolean
+    }
     /** VisibilityRow */
     VisibilityRow: {
       /** Layer */
@@ -3630,6 +3680,95 @@ export interface operations {
       }
       /** @description Not Found */
       404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Content Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  duplicate_layer_api_admin_layers__name__duplicate_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        name: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['Duplicate']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['LayerInfo']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
         headers: {
           [name: string]: unknown
         }
@@ -4578,6 +4717,59 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  visibility_default_api_admin_visibility_default_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['VisibilityDefault']
+        }
+      }
+    }
+  }
+  set_visibility_default_api_admin_visibility_default_put: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['VisibilityDefault']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['VisibilityDefault']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
         }
       }
     }

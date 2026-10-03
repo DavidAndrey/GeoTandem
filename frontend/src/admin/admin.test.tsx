@@ -176,3 +176,48 @@ test('the visibility matrix releases a layer for users', async () => {
     visible: true,
   })
 })
+
+test('new layers follow the visibility setting (design D10)', async () => {
+  const calls = fakeApi({
+    ...signedIn(),
+    'GET /api/admin/visibility': [],
+    'GET /api/admin/visibility/default': { new_layers_visible: false },
+    'PUT /api/admin/visibility/default': (init) => JSON.parse(String(init?.body)),
+  })
+  renderAt('/admin/sichtbarkeit', <App />)
+  const later = await screen.findByRole('radio', { name: 'erst nach Freigabe' })
+  expect(later).toBeChecked()
+  await userEvent.click(screen.getByRole('radio', { name: 'sofort sichtbar' }))
+  expect(await screen.findByRole('radio', { name: 'sofort sichtbar' })).toBeChecked()
+  expect(calls.find((c) => c.key === 'PUT /api/admin/visibility/default')?.body).toEqual({
+    new_layers_visible: true,
+  })
+})
+
+test('a layer is duplicated from the catalog and opened (design D2)', async () => {
+  const calls = fakeApi({
+    ...signedIn(),
+    'GET /api/admin/layers': [gemeinden],
+    'POST /api/admin/layers/gemeinden/duplicate': layer({
+      name: 'gemeinden_kopie',
+      title: 'Gemeinden (Kopie)',
+    }),
+    'GET /api/layers/gemeinden_kopie': layer({
+      name: 'gemeinden_kopie',
+      title: 'Gemeinden (Kopie)',
+    }),
+    'GET /api/admin/layers/gemeinden_kopie/profile': () => null,
+  })
+  renderAt('/admin/daten', <App />)
+  const table = await screen.findByRole('table')
+  await userEvent.click(within(table).getByRole('button', { name: 'Aktionen für Gemeinden' }))
+  await userEvent.click(await screen.findByRole('menuitem', { name: 'Duplizieren' }))
+  const dialog = await screen.findByRole('dialog', { name: '„Gemeinden" duplizieren' })
+  expect(within(dialog).getByLabelText('Titel')).toHaveValue('Gemeinden (Kopie)')
+  await userEvent.click(within(dialog).getByRole('button', { name: 'Duplizieren' }))
+  expect(calls.find((c) => c.key === 'POST /api/admin/layers/gemeinden/duplicate')?.body).toEqual({
+    title: 'Gemeinden (Kopie)',
+  })
+  // The copy opens on its layer page.
+  expect(await screen.findByDisplayValue('Gemeinden (Kopie)')).toBeInTheDocument()
+})

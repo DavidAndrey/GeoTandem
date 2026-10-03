@@ -6,6 +6,7 @@ user writes for themselves — their password, their sessions (E1.7) — lives
 with the user's own routes.
 """
 
+import re
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, File, Query, Response, UploadFile
@@ -30,8 +31,9 @@ from geotandem.catalog import (
     update_attribute,
     update_layer,
 )
+from geotandem.data import LayerExists
 from geotandem.db.orm import Role
-from geotandem.importing import Preview, ReadOptions, SourceError
+from geotandem.importing import Message, Preview, ReadOptions, SourceError
 from geotandem.importing import log as import_log
 from geotandem.importing.log import ImportRunInfo, ImportRunSummary, ImportStatus
 from geotandem.importing.run import ImportDecisions, abort, preview_file, run_import
@@ -117,6 +119,58 @@ def delete_layer(name: str, state: State) -> Response:
     return Response(status_code=204)
 
 
+IDENTIFIER = re.compile(r"^[a-z_][a-z0-9_]{0,62}$")
+"""A layer name as the data core stores it (importing.names)."""
+
+
+class Duplicate(BaseModel):
+    name: str | None = None
+    """Identifier of the copy; "<name>_kopie" (numbered if taken) when empty."""
+    title: str | None = None
+    """Defaults to "<title> (Kopie)"."""
+
+
+class LayerNameTaken(Problem):
+    status = 409
+    code = "layer_exists"
+
+
+@router.post("/layers/{name}/duplicate", status_code=201, responses={**ERRORS, 409: ERRORS[400]})
+def duplicate_layer(name: str, body: Duplicate, state: State, user: Actor) -> LayerInfo:
+    """A copy of a layer: data, metadata and visibility (design D2), logged like an import."""
+    source = _layer(state, name)
+    engine = state.backend.engine
+    taken = set(state.backend.layer_names())
+    target = body.name or next(
+        n
+        for n in (f"{name[:57]}_kopie", *(f"{name[:55]}_kopie{i}" for i in range(2, 100)))
+        if n not in taken
+    )
+    if not IDENTIFIER.match(target):
+        raise Problem(f"'{target}' is not a valid layer name.", name=target)
+    run_id = import_log.start(
+        engine,
+        source_name=name,
+        source_format="layer",
+        mode="duplicate",
+        layer_name=target,
+        actor=user,
+    )
+    try:
+        count = state.backend.duplicate_layer(name, target, body.title or f"{source.title} (Kopie)")
+    except LayerExists:
+        import_log.finish(
+            engine,
+            run_id,
+            status="failed",
+            errors=[Message(code="layer_exists", message=f"Layer '{target}' exists already.")],
+        )
+        raise LayerNameTaken(f"Layer '{target}' exists already.", layer=target) from None
+    visibility.copy_visibility(engine, name, target)
+    import_log.finish(engine, run_id, status="ok", read_count=count, imported_count=count)
+    return _layer(state, target)
+
+
 @router.get("/layers/{name}/profile", responses=ERRORS)
 def layer_profile(name: str, state: State) -> LayerProfile | None:
     """The layer profile as the model will see it (F-2.9); ``null`` if not for the model."""
@@ -187,6 +241,9 @@ def commit(import_id: str, body: ImportDecisions, state: State, user: Actor) -> 
     run = run_import(path, path.name, body, state.backend, actor=user)
     if run.status in ("ok", "warning"):
         state.staging.delete(import_id)
+        if body.replace is None and run.layer_name:
+            # A replaced layer keeps its visibility; a new one follows the setting (D10).
+            visibility.apply_default(state.backend.engine, run.layer_name)
     return run
 
 
@@ -289,6 +346,22 @@ class VisibilityChange(BaseModel):
 def visibility_matrix(state: State) -> list[VisibilityRow]:
     """Layer by role; administrators always see every layer. New imports start hidden."""
     return visibility.matrix(state.backend.engine)
+
+
+class VisibilityDefault(BaseModel):
+    new_layers_visible: bool
+    """New layers released for users at once; otherwise they wait for release (D10)."""
+
+
+@router.get("/visibility/default")
+def visibility_default(state: State) -> VisibilityDefault:
+    return VisibilityDefault(new_layers_visible=visibility.new_layers_visible(state.backend.engine))
+
+
+@router.put("/visibility/default")
+def set_visibility_default(body: VisibilityDefault, state: State) -> VisibilityDefault:
+    visibility.set_new_layers_visible(state.backend.engine, body.new_layers_visible)
+    return body
 
 
 @router.put("/visibility", responses=ERRORS)

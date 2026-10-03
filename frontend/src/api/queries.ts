@@ -23,6 +23,7 @@ export const keys = {
   setup: ['auth', 'setup'] as const,
   users: ['admin', 'users'] as const,
   visibility: ['admin', 'visibility'] as const,
+  visibilityDefault: ['admin', 'visibility', 'default'] as const,
 }
 
 /** The signed-in account, or ``null`` when nobody is signed in. */
@@ -147,4 +148,31 @@ export function useUpdateAttribute(layer: string) {
 export function useDeleteLayer() {
   const invalidate = useInvalidateLayers()
   return useMutation({ mutationFn: api.admin.deleteLayer, onSuccess: invalidate })
+}
+
+/** New layers visible for users at once, or after release (design D10). */
+export const useVisibilityDefault = () =>
+  useQuery({ queryKey: keys.visibilityDefault, queryFn: api.admin.visibilityDefault })
+
+export function useSetVisibilityDefault() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: api.admin.setVisibilityDefault,
+    onSuccess: (data) => client.setQueryData(keys.visibilityDefault, data),
+  })
+}
+
+/** A copy of a layer (design D2); the catalog and the visibility list show it at once. */
+export function useDuplicateLayer() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: ({ layer, name, title }: { layer: string; name?: string; title?: string }) =>
+      api.admin.duplicateLayer(layer, { name, title }),
+    onSuccess: () =>
+      Promise.all([
+        client.invalidateQueries({ queryKey: keys.layers }),
+        client.invalidateQueries({ queryKey: keys.visibility }),
+        client.invalidateQueries({ queryKey: ['layer', 'list'] }),
+      ]),
+  })
 }

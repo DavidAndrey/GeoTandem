@@ -18,7 +18,7 @@ from geotandem.importing.read import Message
 
 REJECTED_SAMPLE_LIMIT = 1000
 
-ImportMode = Literal["create", "replace"]
+ImportMode = Literal["create", "replace", "duplicate"]
 ImportStatus = Literal["running", "ok", "warning", "failed", "aborted"]
 
 

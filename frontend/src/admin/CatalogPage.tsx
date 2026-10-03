@@ -6,6 +6,7 @@ import type { AdminLayerInfo } from '../api/client'
 import { useAdminLayers } from '../api/queries'
 import { Dots, ErrorNotice, Loading, Menu, MenuItem, StatusBadge } from '../components/ui'
 import { DeleteLayerDialog } from './DeleteLayerDialog'
+import { DuplicateLayerDialog } from './DuplicateLayerDialog'
 import { completeness, formatDate, layerType, sourceLabel } from './format'
 
 type Filter = 'all' | 'incomplete'
@@ -16,6 +17,7 @@ export function CatalogPage() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const [deleting, setDeleting] = useState<AdminLayerInfo>()
+  const [duplicating, setDuplicating] = useState<AdminLayerInfo>()
 
   const needle = search.trim().toLowerCase()
   const shown = (layers.data ?? []).filter(
@@ -107,6 +109,7 @@ export function CatalogPage() {
                     <MenuItem onSelect={() => navigate(`/admin/daten/import?ziel=${layer.name}`)}>
                       Aktualisieren
                     </MenuItem>
+                    <MenuItem onSelect={() => setDuplicating(layer)}>Duplizieren</MenuItem>
                     <MenuItem danger onSelect={() => setDeleting(layer)}>
                       Löschen
                     </MenuItem>
@@ -125,6 +128,15 @@ export function CatalogPage() {
         </table>
       )}
       {deleting && <DeleteLayerDialog layer={deleting} onClose={() => setDeleting(undefined)} />}
+      {duplicating && (
+        <DuplicateLayerDialog
+          layer={duplicating}
+          onClose={(copy) => {
+            setDuplicating(undefined)
+            if (copy) navigate(`/admin/daten/${copy}`)
+          }}
+        />
+      )}
     </section>
   )
 }
