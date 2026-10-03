@@ -10,6 +10,7 @@ from geotandem.api.auth import CurrentAccount
 from geotandem.api.errors import ErrorBody
 from geotandem.api.state import AppState, get_state
 from geotandem.auth.visibility import view_for
+from geotandem.basemap import Basemap, resolve
 from geotandem.catalog import LayerInfo, get_layer, list_layers
 from geotandem.data import DataBackend, Op
 from geotandem.engine import QueryError, QueryResult, count_query, run_query, validate_query
@@ -129,6 +130,30 @@ def validate(body: QueryObject, state: State, backend: Visible) -> Validation:
     """Check a query against schema and data core without running it (F-5.9)."""
     compiled = validate_query(body, backend, state.limits, state.unsupported)
     return Validation(layers=compiled.layers, operations=sorted(compiled.ops))
+
+
+class MapConfig(BaseModel):
+    basemap: Basemap | None
+    """``None``: no background map (the default, F-9.1)."""
+    extent_wgs84: list[float] | None
+    """Bounding box of the layers this account may see, for the initial view."""
+    max_features: int
+    """Result-size limit (F-9.6): larger layers are fetched by the current view (plan D5)."""
+
+
+@router.get("/config/map")
+def map_config(state: State, backend: Visible) -> MapConfig:
+    boxes = [
+        layer.bbox_wgs84
+        for layer in list_layers(backend.engine, only=backend.layer_names())
+        if layer.bbox_wgs84
+    ]
+    extent = None
+    if boxes:
+        columns = list(zip(*boxes, strict=True))
+        extent = [min(columns[0]), min(columns[1]), max(columns[2]), max(columns[3])]
+    basemap = resolve(state.settings.basemap, state.settings.basemap_attribution)
+    return MapConfig(basemap=basemap, extent_wgs84=extent, max_features=state.settings.max_features)
 
 
 @router.get("/schema/query-object")

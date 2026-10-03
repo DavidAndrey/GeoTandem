@@ -118,6 +118,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/config/map': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Map Config */
+    get: operations['map_config_api_config_map_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/schema/query-object': {
     parameters: {
       query?: never
@@ -771,6 +788,17 @@ export interface components {
        */
       bbox: [number, number, number, number]
     }
+    /** Basemap */
+    Basemap: {
+      /** Url */
+      url: string
+      /** Attribution */
+      attribution: string
+      /** Max Zoom */
+      max_zoom: number
+      /** External */
+      external: boolean
+    }
     /**
      * Between
      * @description Inclusive value range (F-4.2).
@@ -1322,6 +1350,14 @@ export interface components {
       description?: string | null
       /** For Model */
       for_model?: boolean | null
+    }
+    /** MapConfig */
+    MapConfig: {
+      basemap: components['schemas']['Basemap'] | null
+      /** Extent Wgs84 */
+      extent_wgs84: number[] | null
+      /** Max Features */
+      max_features: number
     }
     /**
      * Message
@@ -2441,6 +2477,26 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  map_config_api_config_map_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['MapConfig']
         }
       }
     }

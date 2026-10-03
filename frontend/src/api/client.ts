@@ -27,6 +27,8 @@ export type SetupStatus = Schemas['SetupStatus']
 export type StartPassword = Schemas['StartPassword']
 export type AccountUpdate = Schemas['AccountUpdate']
 export type VisibilityRow = Schemas['VisibilityRow']
+export type MapConfig = Schemas['MapConfig']
+export type QueryObject = Schemas['QueryObject-Input']
 
 export class ApiRequestError extends Error {
   readonly status: number
@@ -80,6 +82,10 @@ export const api = {
   },
   layers: () => request<LayerInfo[]>('/api/layers'),
   layer: (name: string) => request<LayerInfo>(`/api/layers/${enc(name)}`),
+  query: (query: QueryObject) => request<QueryResult>('/api/query', json('POST', query)),
+  count: (queries: QueryObject[]) =>
+    request<Schemas['Counts']>('/api/query/count', json('POST', { queries })),
+  mapConfig: () => request<MapConfig>('/api/config/map'),
   sampleRows: (layer: string, limit = 50) =>
     request<QueryResult>('/api/query', json('POST', { source: layer, output: 'table', limit })),
 

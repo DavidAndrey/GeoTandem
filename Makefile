@@ -7,7 +7,7 @@ install:
 	cd e2e && npm ci && npx playwright install chromium
 
 dev:
-	GEOTANDEM_DATA_DIR=./data GEOTANDEM_LOAD_SAMPLE_DATA=true uv run geotandem serve --reload
+	GEOTANDEM_DATA_DIR=./data GEOTANDEM_LOAD_SAMPLE_DATA=true GEOTANDEM_BASEMAP=swisstopo-grau uv run geotandem serve --reload
 
 lint:
 	uv run ruff check .

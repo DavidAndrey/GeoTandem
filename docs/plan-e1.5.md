@@ -80,27 +80,28 @@ of E1.2 deliberately and additively; etappen.md notes it in WP25.
   `unknown_layer`. Counting under limits and visibility.
 - Frontend types regenerated.
 
-### WP21 — Map foundation and analysis state (frontend)
+### WP21 — Analysis state and map configuration (foundation)
 
-- Leaflet 1.9 + react-leaflet 5, Zustand, Leaflet-Geoman. Background map per
-  D2: setting `GEOTANDEM_BASEMAP`, `GET /api/config/map` (tile URL,
-  attribution, whether it is external, initial extent from the visible
-  layers), hint on the map while an external background is active.
+- Leaflet 1.9 (without react-leaflet, see tech-stack 4.2: license), Zustand,
+  Leaflet-Geoman, ajv. Background map per D2: setting `GEOTANDEM_BASEMAP`,
+  `GET /api/config/map` (tile source, attribution, whether it is external,
+  initial extent from the visible layers, result-size limit for D5).
 - Store `analysis`: displayed layers (catalog or derived, order, visibility,
-  opacity, symbology), result layer, condition tree (editor model with ids
-  for groups and rows), restriction (view / drawn shape), derived recipes,
-  pending edits of the editor ("Übernehmen" / "Verwerfen"). Map position is
-  not part of the "unsaved" state (design decision 3).
-- `toQuery(...)` functions: store → query object for the result, for each
-  displayed and each derived layer, and per condition alone. **Every one is
-  validated in the unit tests against `schema/query-object/v1.json` (ajv)**,
-  including generated random edit sequences. This is E1.5's "fertig wenn"
-  as a test.
-- Map shell: Leaflet map, scale bar, zoom, home (extent of the visible
-  layers), background on/off, layer rendering via `/api/query` per D5.
+  opacity, symbology), result layer, condition tree, restriction, derived
+  recipes, the editor's draft ("Übernehmen" / "Verwerfen"), the unsaved flag
+  (map position does not count, design decision 3).
+- `query.ts`: analysis → query object for the result, each displayed and
+  derived layer, the total ("von 39") and each condition alone. **Every one
+  is validated in the unit tests against `schema/query-object/v1.json`
+  (ajv)**, including 300 random analyses with incomplete rows. JSON Schema
+  cannot express pydantic's cross-field rules (dwithin needs a distance,
+  min ≤ max); WP25 asserts the server rejects none of the UI's queries.
 
-### WP22 — Workplace and layer panel (B1, B3, B11, B12, F-4.1, F-4.9, F-8.1)
+### WP22 — Map, workplace and layer panel (B1, B3, B11, B12, F-4.1, F-4.9, F-8.1)
 
+- Map component on plain Leaflet: scale, zoom, home (extent of the visible
+  layers), background on/off with the hint for an external source, one pane
+  per layer for the drawing order, fetching per D5.
 - Layout B1: sidebar 250 px (tabs Klassik | Prompt disabled "ab E2"), map,
   toolbar B10 (reduced per D8).
 - Layer panel: add layers (B11 popover: search over title and name, only

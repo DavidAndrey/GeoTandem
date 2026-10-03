@@ -361,6 +361,24 @@
         }
       }
     },
+    "/api/config/map": {
+      "get": {
+        "summary": "Map Config",
+        "operationId": "map_config_api_config_map_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapConfig"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/schema/query-object": {
       "get": {
         "summary": "Query Object Schema",
@@ -2992,6 +3010,34 @@
         "title": "BBox",
         "description": "Source geometry intersects a WGS84 bounding box, e.g. the map view (F-4.3)."
       },
+      "Basemap": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "attribution": {
+            "type": "string",
+            "title": "Attribution"
+          },
+          "max_zoom": {
+            "type": "integer",
+            "title": "Max Zoom"
+          },
+          "external": {
+            "type": "boolean",
+            "title": "External"
+          }
+        },
+        "type": "object",
+        "required": [
+          "url",
+          "attribution",
+          "max_zoom",
+          "external"
+        ],
+        "title": "Basemap"
+      },
       "Between": {
         "properties": {
           "op": {
@@ -4320,6 +4366,45 @@
         "type": "object",
         "title": "LayerUpdate",
         "description": "Curated layer fields. ``name`` never changes; renaming sets ``title`` (plan D1)."
+      },
+      "MapConfig": {
+        "properties": {
+          "basemap": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Basemap"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "extent_wgs84": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extent Wgs84"
+          },
+          "max_features": {
+            "type": "integer",
+            "title": "Max Features"
+          }
+        },
+        "type": "object",
+        "required": [
+          "basemap",
+          "extent_wgs84",
+          "max_features"
+        ],
+        "title": "MapConfig"
       },
       "Message": {
         "properties": {

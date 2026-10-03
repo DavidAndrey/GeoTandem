@@ -9,7 +9,7 @@ import os
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -45,9 +45,25 @@ class Settings(BaseSettings):
     cookie_secure: bool = Field(
         default=False, description="Send the session cookie over HTTPS only; set behind TLS."
     )
+    basemap: str = Field(
+        default="none",
+        description="Background map: 'none', 'swisstopo-grau', 'osm' or a tile URL template "
+        "(F-4.9). Anything but 'none' makes browsers fetch tiles from outside (F-9.1).",
+    )
+    basemap_attribution: str = Field(
+        default="", description="Attribution shown for an own tile URL template."
+    )
     frontend_dir: Path | None = Field(
         default=None, description="Built frontend to serve at '/'; none in development."
     )
+
+    @field_validator("basemap")
+    @classmethod
+    def _known_basemap(cls, value: str) -> str:
+        from geotandem.basemap import resolve
+
+        resolve(value)  # fail at start, not when the first map opens
+        return value
 
     @property
     def staging_dir(self) -> Path:

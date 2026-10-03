@@ -44,7 +44,7 @@ Auswahlregeln:
 | Datenkern | SpatiaLite (Standard) / PostGIS (Produktion) | Layer, Metadaten, Sitzungen, Protokolle |
 | Frontend-Gerüst | Vite + TypeScript + React 19 (Node 24 LTS) | Einseiten-Anwendung |
 | Navigation | React Router | Anwenderbereich / Adminbereich / Sitzungen |
-| Karte | Leaflet + react-leaflet | Kartendarstellung und -bedienung |
+| Karte | Leaflet (ohne react-leaflet, siehe 4.2) + Leaflet-Geoman | Kartendarstellung und -bedienung, Zeichnen |
 | Gestaltung | Tailwind CSS | Oberflächengestaltung ohne eigene CSS-Schicht |
 | Tests Backend | pytest + httpx | Einheiten-, Schnittstellen- und Backend-Vergleichstests |
 | Tests Frontend | Vitest + React Testing Library | Einheiten- und Komponententests |
@@ -78,7 +78,9 @@ nennt, worauf gebaut wird; die Sperrdateien aus E1.1 sind massgeblich.
 | Vitest | 5.0 | **5** | |
 | Tailwind CSS | 4.3 | **4** | |
 | Leaflet | 1.9.4 | **1.9** | siehe 4.2 |
-| react-leaflet | 5.0 | **5** | verlangt React 19 — passt zur Wahl oben |
+| react-leaflet | 5.0 | — | in E1.5 verworfen: Hippocratic License 2.1, siehe 4.2 |
+| Leaflet-Geoman (free) | 2.20 | **2.x** | Zeichnen von Rechteck und Polygon (F-4.3), MIT |
+| Zustand | 5.0 | **5** | Analysezustand (4.4), MIT |
 | Testing Library (React) | 16.3 | **16** | |
 | Playwright | 1.63 | **1.x** | |
 | TypeScript | 7.0 | **5.9** | entschieden in E1.1, siehe 4.5 |
@@ -218,7 +220,16 @@ ausgeliefert — ein Prozess, ein Port, kein zusätzlicher Webserver (F-9.7).
 
 ### 4.2 Karte
 
-**Leaflet** mit **react-leaflet**.
+**Leaflet**, eingebunden über eine dünne eigene React-Schicht.
+
+> **Entschieden in E1.5 (2026-10-03): kein react-leaflet.** react-leaflet 5.0
+> steht unter der Hippocratic License 2.1, keiner OSI-Open-Source-Lizenz: Sie
+> knüpft die Nutzung an ethische Bedingungen, deren Prüfung im Einsatzumfeld
+> offen ist. Der Bedarf — eine Karte, eine Handvoll GeoJSON-Ebenen, Popups,
+> Zeichnen — ist mit Leaflet (BSD-2) und wenigen eigenen Komponenten gedeckt.
+> Zeichnen übernimmt Leaflet-Geoman free (MIT). Fällt die Lizenzprüfung
+> zugunsten von react-leaflet aus, ist der Wechsel ein Umbau der Kartenschicht,
+> nicht der Anwendung.
 
 Leaflet deckt den geforderten Funktionsumfang vollständig ab: Zoom, Verschieben,
 Hintergrundkarte, Legende, Massstab, Popups (F-4.9), GeoJSON-Ergebnisebenen
@@ -234,9 +245,8 @@ OGC-Dienste ohnehin ausserhalb des Umfangs liegen
 nicht.
 
 Zur Einordnung des Reifegrads: Leaflet steht seit 1.9.4 (Mai 2023) still, eine
-2.0 mit ESM-Umbau ist im Alpha-Stadium; react-leaflet 5.0 (Dezember 2024) hat
-seither keine Nachfolgeversion. Das ist für diesen Demonstrator eher Vorteil als
-Risiko — die Bibliothek ist fertig, nicht verwaist, und der geforderte Umfang
+2.0 mit ESM-Umbau ist im Alpha-Stadium. Das ist für diesen Demonstrator eher
+Vorteil als Risiko — die Bibliothek ist fertig, nicht verwaist, und der geforderte Umfang
 bewegt sich nicht. Festzuhalten bleibt, dass ein späterer Sprung auf Leaflet 2.0
 ein Umbau und kein Versionswechsel wird.
 
@@ -359,7 +369,7 @@ zu dem sie spätestens fällig wird.
 
 | Offen | Zu entscheiden bis | Anmerkung |
 |---|---|---|
-| Bibliothek für Analysezustand (4.4) | E1.5 | Serverzustand entschieden in E1.3: TanStack Query. Für den Analysezustand ein schlanker Speicher (Zustand) als Kandidat |
+| ~~Bibliothek für Analysezustand (4.4)~~ | — | Entschieden: TanStack Query für den Serverzustand (E1.3), Zustand für den Analysezustand (E1.5) |
 | ~~Komponentenbasis für Bedienelemente (4.3)~~ | — | Entschieden in E1.3: Radix UI (`radix-ui`), dazu Lucide-Icons; Schriften gebündelt über `@fontsource` statt Google Fonts (F-9.1) |
 | Diagrammbibliothek (F-8.3) | E5.1 | Auswahl erst, wenn die Kennzahlen feststehen; Leichtgewichtigkeit vor Funktionsumfang |
 | Kartenexport als Bild (F-8.7) | E5.3 | Clientseitig aus dem Browser oder serverseitig gerendert — beides hat spürbare Folgen für den Containerumfang |
