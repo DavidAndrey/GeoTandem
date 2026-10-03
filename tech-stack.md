@@ -80,6 +80,7 @@ nennt, worauf gebaut wird; die Sperrdateien aus E1.1 sind massgeblich.
 | Leaflet | 1.9.4 | **1.9** | siehe 4.2 |
 | react-leaflet | 5.0 | — | in E1.5 verworfen: Hippocratic License 2.1, siehe 4.2 |
 | Leaflet-Geoman (free) | 2.20 | **2.x** | Zeichnen von Rechteck und Polygon (F-4.3), MIT |
+| geographiclib-geodesic | 2.2 | **2.x** | Messen von Strecke und Fläche auf dem Ellipsoid (E1.8), Karneys Referenzimplementierung, MIT, ohne Abhängigkeiten |
 | Zustand | 5.0 | **5** | Analysezustand (4.4), MIT |
 | Testing Library (React) | 16.3 | **16** | |
 | Playwright | 1.63 | **1.x** | |

@@ -84,6 +84,8 @@ export function DataLayer({
       pointToLayer: (f, latlng) => L.circleMarker(latlng, { pane, ...styleOf(f) }),
       onEachFeature: (f, shape) => {
         shape.on('click', (event: L.LeafletMouseEvent) => {
+          // While measuring, a click sets a point (the map handles it), nothing more.
+          if (useMapView.getState().measuring) return
           const properties = (f.properties ?? {}) as Record<string, unknown>
           // While a reference feature is being picked (F-4.3), the click picks it.
           const pick = useMapView.getState().pick
