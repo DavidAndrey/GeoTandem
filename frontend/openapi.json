@@ -324,10 +324,951 @@
           }
         }
       }
+    },
+    "/api/admin/layers": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Layers",
+        "description": "The data catalog (design D2).",
+        "operationId": "layers_api_admin_layers_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AdminLayerInfo"
+                  },
+                  "type": "array",
+                  "title": "Response Layers Api Admin Layers Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/layers/{name}": {
+      "patch": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Patch Layer",
+        "description": "Rename (title only, the identifier stays) and describe a layer (F-2.7, F-2.8).",
+        "operationId": "patch_layer_api_admin_layers__name__patch",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LayerUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LayerInfo"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Delete Layer",
+        "description": "Delete a layer and its data for good (F-2.7; no archive, plan D2).",
+        "operationId": "delete_layer_api_admin_layers__name__delete",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/api/admin/layers/{name}/attributes/{attribute}": {
+      "patch": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Patch Attribute",
+        "description": "Attribute metadata (F-2.8).",
+        "operationId": "patch_attribute_api_admin_layers__name__attributes__attribute__patch",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          },
+          {
+            "name": "attribute",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Attribute"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttributeUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttributeInfo"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/api/admin/layers/{name}/profile": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Layer Profile",
+        "description": "The layer profile as the model will see it (F-2.9); ``null`` if not for the model.",
+        "operationId": "layer_profile_api_admin_layers__name__profile_get",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/LayerProfile"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Layer Profile Api Admin Layers  Name  Profile Get"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/api/admin/imports": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Upload",
+        "description": "Step 1: stage the file and preview it with detected options (F-2.4).",
+        "operationId": "upload_api_admin_imports_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_api_admin_imports_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Upload"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Content Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/imports/{import_id}/preview": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Repreview",
+        "description": "Read again with other options: encoding, delimiter, sheet or layer (design D11).",
+        "operationId": "repreview_api_admin_imports__import_id__preview_post",
+        "parameters": [
+          {
+            "name": "import_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Import Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReadOptions"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Preview"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/api/admin/imports/{import_id}/commit": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Commit",
+        "description": "Import with the wizard's decisions. The outcome, also a failed one, is in ``status``.\n\nA successful import removes the staged file; after a failed one it stays,\nso the decisions can be corrected and committed again.",
+        "operationId": "commit_api_admin_imports__import_id__commit_post",
+        "parameters": [
+          {
+            "name": "import_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Import Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportDecisions"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportRunInfo"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/api/admin/imports/{import_id}": {
+      "delete": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Cancel",
+        "description": "Close the wizard without importing; logged as aborted (design D7).",
+        "operationId": "cancel_api_admin_imports__import_id__delete",
+        "parameters": [
+          {
+            "name": "import_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Import Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportRunInfo"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/api/admin/import-log": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Import Runs",
+        "operationId": "import_runs_api_admin_import_log_get",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "running",
+                    "ok",
+                    "warning",
+                    "failed",
+                    "aborted"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "layer",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Layer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 200,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ImportRunSummary"
+                  },
+                  "title": "Response Import Runs Api Admin Import Log Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/import-log/{run_id}": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Import Run",
+        "operationId": "import_run_api_admin_import_log__run_id__get",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportRunInfo"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "AdminLayerInfo": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "vector",
+              "table"
+            ],
+            "title": "Kind"
+          },
+          "geometry_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geometry Type"
+          },
+          "feature_count": {
+            "type": "integer",
+            "title": "Feature Count"
+          },
+          "bbox_wgs84": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bbox Wgs84"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "dataset_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dataset Version"
+          },
+          "for_model": {
+            "type": "boolean",
+            "title": "For Model"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "attributes": {
+            "items": {
+              "$ref": "#/components/schemas/AttributeInfo"
+            },
+            "type": "array",
+            "title": "Attributes"
+          },
+          "last_import": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImportRunSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "title",
+          "description",
+          "kind",
+          "geometry_type",
+          "feature_count",
+          "bbox_wgs84",
+          "source",
+          "dataset_version",
+          "for_model",
+          "created_at",
+          "updated_at",
+          "attributes",
+          "last_import"
+        ],
+        "title": "AdminLayerInfo"
+      },
       "Aggregate": {
         "properties": {
           "by_layer": {
@@ -568,6 +1509,21 @@
               }
             ],
             "title": "Value Domain"
+          },
+          "for_model": {
+            "type": "boolean",
+            "title": "For Model"
+          },
+          "references": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "References"
           }
         },
         "type": "object",
@@ -577,7 +1533,9 @@
           "label",
           "description",
           "unit",
-          "value_domain"
+          "value_domain",
+          "for_model",
+          "references"
         ],
         "title": "AttributeInfo"
       },
@@ -634,6 +1592,150 @@
         ],
         "title": "AttributeJoin",
         "description": "Left join of a layer by key (F-4.6).\n\nJoined fields are addressable by their name, or by ``prefix + name`` when a\nprefix is given; clashes with source attributes are rejected."
+      },
+      "AttributeProfile": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "range": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Range"
+          },
+          "codes": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Codes"
+          },
+          "references": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "References"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "type",
+          "label"
+        ],
+        "title": "AttributeProfile"
+      },
+      "AttributeUpdate": {
+        "properties": {
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "value_domain": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ValueDomain"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "for_model": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "For Model"
+          }
+        },
+        "type": "object",
+        "title": "AttributeUpdate"
       },
       "BBox": {
         "properties": {
@@ -719,6 +1821,20 @@
         ],
         "title": "Between",
         "description": "Inclusive value range (F-4.2)."
+      },
+      "Body_upload_api_admin_imports_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_api_admin_imports_post"
       },
       "Buffer": {
         "properties": {
@@ -836,6 +1952,64 @@
         ],
         "title": "Classified"
       },
+      "ColumnPreview": {
+        "properties": {
+          "source_name": {
+            "type": "string",
+            "title": "Source Name"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "data_type": {
+            "type": "string",
+            "enum": [
+              "integer",
+              "real",
+              "text",
+              "boolean"
+            ],
+            "title": "Data Type"
+          },
+          "null_count": {
+            "type": "integer",
+            "title": "Null Count"
+          },
+          "distinct_count": {
+            "type": "integer",
+            "title": "Distinct Count"
+          },
+          "samples": {
+            "items": {},
+            "type": "array",
+            "title": "Samples"
+          },
+          "value_domain": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Domain"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_name",
+          "name",
+          "data_type",
+          "null_count",
+          "distinct_count",
+          "samples",
+          "value_domain"
+        ],
+        "title": "ColumnPreview"
+      },
       "Compare": {
         "properties": {
           "op": {
@@ -952,6 +2126,79 @@
         ],
         "title": "Feature"
       },
+      "FieldDecision": {
+        "properties": {
+          "source_name": {
+            "type": "string",
+            "title": "Source Name"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "include": {
+            "type": "boolean",
+            "title": "Include",
+            "default": true
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "value_domain": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Domain"
+          },
+          "for_model": {
+            "type": "boolean",
+            "title": "For Model",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_name"
+        ],
+        "title": "FieldDecision"
+      },
       "GeoJSONGeometry": {
         "properties": {
           "type": {
@@ -1011,6 +2258,29 @@
         "title": "GeometryFilter",
         "description": "Source geometry relates to a drawn geometry (F-4.3)."
       },
+      "GeometryReference": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "const": "geometry",
+            "title": "Mode",
+            "default": "geometry"
+          },
+          "crs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Crs"
+          }
+        },
+        "type": "object",
+        "title": "GeometryReference"
+      },
       "GraduatedSize": {
         "properties": {
           "kind": {
@@ -1044,6 +2314,19 @@
           "attr"
         ],
         "title": "GraduatedSize"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
       },
       "Health": {
         "properties": {
@@ -1090,6 +2373,341 @@
           "capabilities"
         ],
         "title": "Health"
+      },
+      "ImportDecisions": {
+        "properties": {
+          "options": {
+            "$ref": "#/components/schemas/ReadOptions",
+            "default": {}
+          },
+          "geo": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/GeometryReference"
+              },
+              {
+                "$ref": "#/components/schemas/XYReference"
+              },
+              {
+                "$ref": "#/components/schemas/KeyReference"
+              }
+            ],
+            "title": "Geo",
+            "default": {
+              "mode": "geometry"
+            },
+            "discriminator": {
+              "propertyName": "mode",
+              "mapping": {
+                "geometry": "#/components/schemas/GeometryReference",
+                "key": "#/components/schemas/KeyReference",
+                "xy": "#/components/schemas/XYReference"
+              }
+            }
+          },
+          "layer_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Layer Name"
+          },
+          "replace": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Replace"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          },
+          "for_model": {
+            "type": "boolean",
+            "title": "For Model",
+            "default": true
+          },
+          "fields": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/FieldDecision"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fields"
+          }
+        },
+        "type": "object",
+        "title": "ImportDecisions",
+        "description": "What the wizard settled (design D6); everything not given follows the preview."
+      },
+      "ImportRunInfo": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Started At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "actor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor"
+          },
+          "source_name": {
+            "type": "string",
+            "title": "Source Name"
+          },
+          "source_format": {
+            "type": "string",
+            "title": "Source Format"
+          },
+          "layer_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Layer Name"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "create",
+              "replace"
+            ],
+            "title": "Mode"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "running",
+              "ok",
+              "warning",
+              "failed",
+              "aborted"
+            ],
+            "title": "Status"
+          },
+          "read_count": {
+            "type": "integer",
+            "title": "Read Count"
+          },
+          "imported_count": {
+            "type": "integer",
+            "title": "Imported Count"
+          },
+          "rejected_count": {
+            "type": "integer",
+            "title": "Rejected Count"
+          },
+          "decisions": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Decisions"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/Message"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/Message"
+            },
+            "type": "array",
+            "title": "Errors"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/Step"
+            },
+            "type": "array",
+            "title": "Steps"
+          },
+          "rejected_sample": {
+            "items": {
+              "$ref": "#/components/schemas/RejectedRow"
+            },
+            "type": "array",
+            "title": "Rejected Sample"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "started_at",
+          "finished_at",
+          "actor",
+          "source_name",
+          "source_format",
+          "layer_name",
+          "mode",
+          "status",
+          "read_count",
+          "imported_count",
+          "rejected_count",
+          "decisions",
+          "warnings",
+          "errors",
+          "steps",
+          "rejected_sample"
+        ],
+        "title": "ImportRunInfo"
+      },
+      "ImportRunSummary": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Started At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "actor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor"
+          },
+          "source_name": {
+            "type": "string",
+            "title": "Source Name"
+          },
+          "source_format": {
+            "type": "string",
+            "title": "Source Format"
+          },
+          "layer_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Layer Name"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "create",
+              "replace"
+            ],
+            "title": "Mode"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "running",
+              "ok",
+              "warning",
+              "failed",
+              "aborted"
+            ],
+            "title": "Status"
+          },
+          "read_count": {
+            "type": "integer",
+            "title": "Read Count"
+          },
+          "imported_count": {
+            "type": "integer",
+            "title": "Imported Count"
+          },
+          "rejected_count": {
+            "type": "integer",
+            "title": "Rejected Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "started_at",
+          "finished_at",
+          "actor",
+          "source_name",
+          "source_format",
+          "layer_name",
+          "mode",
+          "status",
+          "read_count",
+          "imported_count",
+          "rejected_count"
+        ],
+        "title": "ImportRunSummary"
       },
       "InList": {
         "properties": {
@@ -1159,6 +2777,68 @@
         "title": "IsNull",
         "description": "Attribute has no value. Combine with ``not`` for 'has a value'."
       },
+      "KeyProposal": {
+        "properties": {
+          "column": {
+            "type": "string",
+            "title": "Column"
+          },
+          "layer": {
+            "type": "string",
+            "title": "Layer"
+          },
+          "attribute": {
+            "type": "string",
+            "title": "Attribute"
+          },
+          "matched": {
+            "type": "integer",
+            "title": "Matched"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "column",
+          "layer",
+          "attribute",
+          "matched",
+          "total"
+        ],
+        "title": "KeyProposal"
+      },
+      "KeyReference": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "const": "key",
+            "title": "Mode",
+            "default": "key"
+          },
+          "column": {
+            "type": "string",
+            "title": "Column"
+          },
+          "layer": {
+            "type": "string",
+            "title": "Layer"
+          },
+          "attribute": {
+            "type": "string",
+            "title": "Attribute"
+          }
+        },
+        "type": "object",
+        "required": [
+          "column",
+          "layer",
+          "attribute"
+        ],
+        "title": "KeyReference"
+      },
       "LayerInfo": {
         "properties": {
           "name": {
@@ -1210,6 +2890,10 @@
             ],
             "title": "Bbox Wgs84"
           },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
           "dataset_version": {
             "anyOf": [
               {
@@ -1220,6 +2904,27 @@
               }
             ],
             "title": "Dataset Version"
+          },
+          "for_model": {
+            "type": "boolean",
+            "title": "For Model"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
           },
           "attributes": {
             "items": {
@@ -1238,10 +2943,155 @@
           "geometry_type",
           "feature_count",
           "bbox_wgs84",
+          "source",
           "dataset_version",
+          "for_model",
+          "created_at",
+          "updated_at",
           "attributes"
         ],
         "title": "LayerInfo"
+      },
+      "LayerProfile": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "geometry_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geometry Type"
+          },
+          "feature_count": {
+            "type": "integer",
+            "title": "Feature Count"
+          },
+          "attributes": {
+            "items": {
+              "$ref": "#/components/schemas/AttributeProfile"
+            },
+            "type": "array",
+            "title": "Attributes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "title",
+          "kind",
+          "feature_count",
+          "attributes"
+        ],
+        "title": "LayerProfile",
+        "description": "What the model learns about a layer: structure and meaning, never content (F-9.3).\n\nDerived from the metadata (F-2.8); only layers and attributes marked\n``for_model``. E2.2 limits it to the layers visible to the user."
+      },
+      "LayerUpdate": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "for_model": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "For Model"
+          }
+        },
+        "type": "object",
+        "title": "LayerUpdate",
+        "description": "Curated layer fields. ``name`` never changes; renaming sets ``title`` (plan D1)."
+      },
+      "Message": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "column": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Column"
+          },
+          "count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "Message",
+        "description": "A finding about the source; ``code`` is stable, ``message`` explains it."
       },
       "Metric": {
         "properties": {
@@ -1647,6 +3497,176 @@
           "attr"
         ],
         "title": "OrderBy"
+      },
+      "Preview": {
+        "properties": {
+          "format": {
+            "type": "string",
+            "enum": [
+              "geojson",
+              "shapefile",
+              "gpkg",
+              "csv",
+              "xlsx"
+            ],
+            "title": "Format"
+          },
+          "file_name": {
+            "type": "string",
+            "title": "File Name"
+          },
+          "options": {
+            "$ref": "#/components/schemas/ReadOptions"
+          },
+          "sublayers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sublayers"
+          },
+          "record_count": {
+            "type": "integer",
+            "title": "Record Count"
+          },
+          "layer_name": {
+            "type": "string",
+            "title": "Layer Name"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "geometry_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geometry Type"
+          },
+          "crs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Crs"
+          },
+          "crs_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Crs Label"
+          },
+          "bbox": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bbox"
+          },
+          "bbox_wgs84": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bbox Wgs84"
+          },
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/ColumnPreview"
+            },
+            "type": "array",
+            "title": "Columns"
+          },
+          "xy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/XYProposal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "keys": {
+            "items": {
+              "$ref": "#/components/schemas/KeyProposal"
+            },
+            "type": "array",
+            "title": "Keys"
+          },
+          "sample_rows": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Sample Rows"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/Message"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/Message"
+            },
+            "type": "array",
+            "title": "Errors"
+          }
+        },
+        "type": "object",
+        "required": [
+          "format",
+          "file_name",
+          "options",
+          "sublayers",
+          "record_count",
+          "layer_name",
+          "title",
+          "geometry_type",
+          "crs",
+          "crs_label",
+          "bbox",
+          "bbox_wgs84",
+          "columns",
+          "xy",
+          "keys",
+          "sample_rows",
+          "warnings",
+          "errors"
+        ],
+        "title": "Preview"
       },
       "QueryObject-Input": {
         "properties": {
@@ -2083,6 +4103,70 @@
         "title": "QueryResult",
         "description": "A GeoJSON FeatureCollection plus the query and its provenance."
       },
+      "ReadOptions": {
+        "properties": {
+          "sublayer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sublayer"
+          },
+          "encoding": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Encoding"
+          },
+          "delimiter": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delimiter"
+          }
+        },
+        "type": "object",
+        "title": "ReadOptions",
+        "description": "How to read a file; every field is detected when left empty."
+      },
+      "RejectedRow": {
+        "properties": {
+          "row": {
+            "type": "integer",
+            "title": "Row"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "values": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Values"
+          }
+        },
+        "type": "object",
+        "required": [
+          "row",
+          "reason",
+          "values"
+        ],
+        "title": "RejectedRow"
+      },
       "ResultMeta": {
         "properties": {
           "schema_version": {
@@ -2360,6 +4444,24 @@
         "title": "SpatialRelation",
         "description": "Keep source features related to at least one feature of ``layer`` (F-4.4).\n\nThe predicate reads ``source <predicate> layer``: ``within`` keeps source\nfeatures lying inside a feature of ``layer``."
       },
+      "Step": {
+        "properties": {
+          "step": {
+            "type": "string",
+            "title": "Step"
+          },
+          "ms": {
+            "type": "number",
+            "title": "Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "step",
+          "ms"
+        ],
+        "title": "Step"
+      },
       "TextMatch": {
         "properties": {
           "op": {
@@ -2444,6 +4546,23 @@
         ],
         "title": "ToolDescription"
       },
+      "Upload": {
+        "properties": {
+          "import_id": {
+            "type": "string",
+            "title": "Import Id"
+          },
+          "preview": {
+            "$ref": "#/components/schemas/Preview"
+          }
+        },
+        "type": "object",
+        "required": [
+          "import_id",
+          "preview"
+        ],
+        "title": "Upload"
+      },
       "Validation": {
         "properties": {
           "valid": {
@@ -2473,6 +4592,148 @@
           "operations"
         ],
         "title": "Validation"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "ValueDomain": {
+        "properties": {
+          "min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min"
+          },
+          "max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max"
+          },
+          "codes": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Codes"
+          }
+        },
+        "type": "object",
+        "title": "ValueDomain",
+        "description": "A range for numbers or a code list (code → meaning), F-2.8."
+      },
+      "XYProposal": {
+        "properties": {
+          "x": {
+            "type": "string",
+            "title": "X"
+          },
+          "y": {
+            "type": "string",
+            "title": "Y"
+          },
+          "crs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Crs"
+          }
+        },
+        "type": "object",
+        "required": [
+          "x",
+          "y",
+          "crs"
+        ],
+        "title": "XYProposal"
+      },
+      "XYReference": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "const": "xy",
+            "title": "Mode",
+            "default": "xy"
+          },
+          "x": {
+            "type": "string",
+            "title": "X"
+          },
+          "y": {
+            "type": "string",
+            "title": "Y"
+          },
+          "crs": {
+            "type": "integer",
+            "title": "Crs"
+          }
+        },
+        "type": "object",
+        "required": [
+          "x",
+          "y",
+          "crs"
+        ],
+        "title": "XYReference"
       }
     }
   }

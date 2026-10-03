@@ -38,9 +38,15 @@ class Settings(BaseSettings):
     )
     max_features: int = Field(default=10_000, ge=1, description="Result size limit (F-9.6).")
     query_timeout_s: float = Field(default=10.0, gt=0, description="Query run time limit (F-9.6).")
+    max_import_mb: int = Field(default=200, ge=1, description="Largest accepted upload (E1.3).")
     frontend_dir: Path | None = Field(
         default=None, description="Built frontend to serve at '/'; none in development."
     )
+
+    @property
+    def staging_dir(self) -> Path:
+        """Uploads waiting for their import decisions."""
+        return self.data_dir / "staging"
 
     @property
     def sqlalchemy_url(self) -> str:

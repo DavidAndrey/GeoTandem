@@ -1,7 +1,10 @@
+from collections.abc import AsyncIterator
 from pathlib import Path
 
+import httpx
 import pytest
 
+from geotandem.app import create_app
 from geotandem.config import Settings
 from geotandem.data.interface import DataBackend
 from geotandem.data.spatialite import SpatiaLiteBackend
@@ -30,3 +33,18 @@ def sample(request: pytest.FixtureRequest, tmp_path_factory: pytest.TempPathFact
     backend = SpatiaLiteBackend(bootstrap(settings), settings.internal_crs)
     load_sample(backend)
     return backend
+
+
+@pytest.fixture
+async def client(tmp_path: Path) -> AsyncIterator[httpx.AsyncClient]:
+    frontend = tmp_path / "dist"
+    frontend.mkdir()
+    (frontend / "index.html").write_text("<!doctype html><title>GeoTandem</title>")
+    settings = Settings(
+        data_dir=tmp_path / "data", load_sample_data=True, max_features=100, frontend_dir=frontend
+    )
+    app = create_app(settings)
+    async with app.router.lifespan_context(app):
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+            yield c

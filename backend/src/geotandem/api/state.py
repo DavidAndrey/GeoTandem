@@ -4,6 +4,7 @@ from fastapi import Request
 
 from geotandem.config import Settings
 from geotandem.data import DataBackend, Limits, Op
+from geotandem.importing.staging import Staging
 from geotandem.tools import ToolContext, ToolRegistry
 
 
@@ -13,6 +14,7 @@ class AppState:
     backend: DataBackend
     unsupported: dict[Op, list[str]]
     tools: ToolRegistry
+    staging: Staging
 
     @property
     def limits(self) -> Limits:

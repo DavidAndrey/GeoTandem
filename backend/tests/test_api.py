@@ -1,31 +1,14 @@
 """HTTP interface in-process via httpx's ASGI transport (tech-stack 5.1)."""
 
 import json
-from collections.abc import AsyncIterator
 from pathlib import Path
 
 import httpx
 import pytest
 
-from geotandem.app import create_app, openapi_document
-from geotandem.config import Settings
+from geotandem.app import openapi_document
 
 GOLDEN = Path(__file__).parent / "golden"
-
-
-@pytest.fixture
-async def client(tmp_path: Path) -> AsyncIterator[httpx.AsyncClient]:
-    frontend = tmp_path / "dist"
-    frontend.mkdir()
-    (frontend / "index.html").write_text("<!doctype html><title>GeoTandem</title>")
-    settings = Settings(
-        data_dir=tmp_path / "data", load_sample_data=True, max_features=100, frontend_dir=frontend
-    )
-    app = create_app(settings)
-    async with app.router.lifespan_context(app):
-        transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
-            yield c
 
 
 async def test_health(client: httpx.AsyncClient) -> None:

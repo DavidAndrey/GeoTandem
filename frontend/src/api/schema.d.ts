@@ -132,10 +132,247 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/admin/layers': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Layers
+     * @description The data catalog (design D2).
+     */
+    get: operations['layers_api_admin_layers_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/admin/layers/{name}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post?: never
+    /**
+     * Delete Layer
+     * @description Delete a layer and its data for good (F-2.7; no archive, plan D2).
+     */
+    delete: operations['delete_layer_api_admin_layers__name__delete']
+    options?: never
+    head?: never
+    /**
+     * Patch Layer
+     * @description Rename (title only, the identifier stays) and describe a layer (F-2.7, F-2.8).
+     */
+    patch: operations['patch_layer_api_admin_layers__name__patch']
+    trace?: never
+  }
+  '/api/admin/layers/{name}/attributes/{attribute}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    /**
+     * Patch Attribute
+     * @description Attribute metadata (F-2.8).
+     */
+    patch: operations['patch_attribute_api_admin_layers__name__attributes__attribute__patch']
+    trace?: never
+  }
+  '/api/admin/layers/{name}/profile': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Layer Profile
+     * @description The layer profile as the model will see it (F-2.9); ``null`` if not for the model.
+     */
+    get: operations['layer_profile_api_admin_layers__name__profile_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/admin/imports': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Upload
+     * @description Step 1: stage the file and preview it with detected options (F-2.4).
+     */
+    post: operations['upload_api_admin_imports_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/admin/imports/{import_id}/preview': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Repreview
+     * @description Read again with other options: encoding, delimiter, sheet or layer (design D11).
+     */
+    post: operations['repreview_api_admin_imports__import_id__preview_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/admin/imports/{import_id}/commit': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Commit
+     * @description Import with the wizard's decisions. The outcome, also a failed one, is in ``status``.
+     *
+     *     A successful import removes the staged file; after a failed one it stays,
+     *     so the decisions can be corrected and committed again.
+     */
+    post: operations['commit_api_admin_imports__import_id__commit_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/admin/imports/{import_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post?: never
+    /**
+     * Cancel
+     * @description Close the wizard without importing; logged as aborted (design D7).
+     */
+    delete: operations['cancel_api_admin_imports__import_id__delete']
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/admin/import-log': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Import Runs */
+    get: operations['import_runs_api_admin_import_log_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/admin/import-log/{run_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Import Run */
+    get: operations['import_run_api_admin_import_log__run_id__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
 }
 export type webhooks = Record<string, never>
 export interface components {
   schemas: {
+    /** AdminLayerInfo */
+    AdminLayerInfo: {
+      /** Name */
+      name: string
+      /** Title */
+      title: string
+      /** Description */
+      description: string
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: 'vector' | 'table'
+      /** Geometry Type */
+      geometry_type: string | null
+      /** Feature Count */
+      feature_count: number
+      /** Bbox Wgs84 */
+      bbox_wgs84: number[] | null
+      /** Source */
+      source: string
+      /** Dataset Version */
+      dataset_version: string | null
+      /** For Model */
+      for_model: boolean
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string
+      /** Updated At */
+      updated_at: string | null
+      /** Attributes */
+      attributes: components['schemas']['AttributeInfo'][]
+      last_import: components['schemas']['ImportRunSummary'] | null
+    }
     /**
      * Aggregate
      * @description Summarise source features per feature of an area layer (F-4.7).
@@ -227,6 +464,10 @@ export interface components {
       value_domain: {
         [key: string]: unknown
       } | null
+      /** For Model */
+      for_model: boolean
+      /** References */
+      references: string | null
     }
     /**
      * AttributeJoin
@@ -255,6 +496,39 @@ export interface components {
       fields: string[]
       /** Prefix */
       prefix?: string | null
+    }
+    /** AttributeProfile */
+    AttributeProfile: {
+      /** Name */
+      name: string
+      /** Type */
+      type: string
+      /** Label */
+      label: string
+      /** Description */
+      description?: string | null
+      /** Unit */
+      unit?: string | null
+      /** Range */
+      range?: number[] | null
+      /** Codes */
+      codes?: {
+        [key: string]: string
+      } | null
+      /** References */
+      references?: string | null
+    }
+    /** AttributeUpdate */
+    AttributeUpdate: {
+      /** Label */
+      label?: string | null
+      /** Description */
+      description?: string | null
+      /** Unit */
+      unit?: string | null
+      value_domain?: components['schemas']['ValueDomain'] | null
+      /** For Model */
+      for_model?: boolean | null
     }
     /**
      * BBox
@@ -291,6 +565,11 @@ export interface components {
       min: number
       /** Max */
       max: number
+    }
+    /** Body_upload_api_admin_imports_post */
+    Body_upload_api_admin_imports_post: {
+      /** File */
+      file: string
     }
     /**
      * Buffer
@@ -355,6 +634,28 @@ export interface components {
        */
       classes: number
     }
+    /** ColumnPreview */
+    ColumnPreview: {
+      /** Source Name */
+      source_name: string
+      /** Name */
+      name: string
+      /**
+       * Data Type
+       * @enum {string}
+       */
+      data_type: 'integer' | 'real' | 'text' | 'boolean'
+      /** Null Count */
+      null_count: number
+      /** Distinct Count */
+      distinct_count: number
+      /** Samples */
+      samples: unknown[]
+      /** Value Domain */
+      value_domain: {
+        [key: string]: unknown
+      } | null
+    }
     /**
      * Compare
      * @description Attribute comparison with a constant (F-4.2).
@@ -411,6 +712,36 @@ export interface components {
         [key: string]: unknown
       } | null
     }
+    /** FieldDecision */
+    FieldDecision: {
+      /** Source Name */
+      source_name: string
+      /** Name */
+      name?: string | null
+      /**
+       * Include
+       * @default true
+       */
+      include: boolean
+      /** Label */
+      label?: string | null
+      /**
+       * Description
+       * @default
+       */
+      description: string
+      /** Unit */
+      unit?: string | null
+      /** Value Domain */
+      value_domain?: {
+        [key: string]: unknown
+      } | null
+      /**
+       * For Model
+       * @default true
+       */
+      for_model: boolean
+    }
     /**
      * GeoJSONGeometry
      * @description GeoJSON geometry in WGS84. Coordinates are checked when compiled.
@@ -442,6 +773,16 @@ export interface components {
        */
       predicate: 'intersects' | 'within' | 'contains'
     }
+    /** GeometryReference */
+    GeometryReference: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      mode: 'geometry'
+      /** Crs */
+      crs?: number | null
+    }
     /** GraduatedSize */
     GraduatedSize: {
       /**
@@ -465,6 +806,11 @@ export interface components {
        */
       max_size: number
     }
+    /** HTTPValidationError */
+    HTTPValidationError: {
+      /** Detail */
+      detail?: components['schemas']['ValidationError'][]
+    }
     /** Health */
     Health: {
       /**
@@ -483,6 +829,126 @@ export interface components {
       /** Sample Dataset Version */
       sample_dataset_version: string
       capabilities: components['schemas']['Capabilities']
+    }
+    /**
+     * ImportDecisions
+     * @description What the wizard settled (design D6); everything not given follows the preview.
+     */
+    ImportDecisions: {
+      /** @default {} */
+      options: components['schemas']['ReadOptions']
+      /**
+       * Geo
+       * @default {
+       *       "mode": "geometry"
+       *     }
+       */
+      geo:
+        | components['schemas']['GeometryReference']
+        | components['schemas']['XYReference']
+        | components['schemas']['KeyReference']
+      /** Layer Name */
+      layer_name?: string | null
+      /** Replace */
+      replace?: string | null
+      /** Title */
+      title?: string | null
+      /**
+       * Description
+       * @default
+       */
+      description: string
+      /**
+       * For Model
+       * @default true
+       */
+      for_model: boolean
+      /** Fields */
+      fields?: components['schemas']['FieldDecision'][] | null
+    }
+    /** ImportRunInfo */
+    ImportRunInfo: {
+      /** Id */
+      id: number
+      /**
+       * Started At
+       * Format: date-time
+       */
+      started_at: string
+      /** Finished At */
+      finished_at: string | null
+      /** Actor */
+      actor: string | null
+      /** Source Name */
+      source_name: string
+      /** Source Format */
+      source_format: string
+      /** Layer Name */
+      layer_name: string | null
+      /**
+       * Mode
+       * @enum {string}
+       */
+      mode: 'create' | 'replace'
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: 'running' | 'ok' | 'warning' | 'failed' | 'aborted'
+      /** Read Count */
+      read_count: number
+      /** Imported Count */
+      imported_count: number
+      /** Rejected Count */
+      rejected_count: number
+      /** Decisions */
+      decisions: {
+        [key: string]: unknown
+      }
+      /** Warnings */
+      warnings: components['schemas']['Message'][]
+      /** Errors */
+      errors: components['schemas']['Message'][]
+      /** Steps */
+      steps: components['schemas']['Step'][]
+      /** Rejected Sample */
+      rejected_sample: components['schemas']['RejectedRow'][]
+    }
+    /** ImportRunSummary */
+    ImportRunSummary: {
+      /** Id */
+      id: number
+      /**
+       * Started At
+       * Format: date-time
+       */
+      started_at: string
+      /** Finished At */
+      finished_at: string | null
+      /** Actor */
+      actor: string | null
+      /** Source Name */
+      source_name: string
+      /** Source Format */
+      source_format: string
+      /** Layer Name */
+      layer_name: string | null
+      /**
+       * Mode
+       * @enum {string}
+       */
+      mode: 'create' | 'replace'
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: 'running' | 'ok' | 'warning' | 'failed' | 'aborted'
+      /** Read Count */
+      read_count: number
+      /** Imported Count */
+      imported_count: number
+      /** Rejected Count */
+      rejected_count: number
     }
     /**
      * InList
@@ -518,6 +984,33 @@ export interface components {
        */
       attr: string
     }
+    /** KeyProposal */
+    KeyProposal: {
+      /** Column */
+      column: string
+      /** Layer */
+      layer: string
+      /** Attribute */
+      attribute: string
+      /** Matched */
+      matched: number
+      /** Total */
+      total: number
+    }
+    /** KeyReference */
+    KeyReference: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      mode: 'key'
+      /** Column */
+      column: string
+      /** Layer */
+      layer: string
+      /** Attribute */
+      attribute: string
+    }
     /** LayerInfo */
     LayerInfo: {
       /** Name */
@@ -537,10 +1030,70 @@ export interface components {
       feature_count: number
       /** Bbox Wgs84 */
       bbox_wgs84: number[] | null
+      /** Source */
+      source: string
       /** Dataset Version */
       dataset_version: string | null
+      /** For Model */
+      for_model: boolean
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string
+      /** Updated At */
+      updated_at: string | null
       /** Attributes */
       attributes: components['schemas']['AttributeInfo'][]
+    }
+    /**
+     * LayerProfile
+     * @description What the model learns about a layer: structure and meaning, never content (F-9.3).
+     *
+     *     Derived from the metadata (F-2.8); only layers and attributes marked
+     *     ``for_model``. E2.2 limits it to the layers visible to the user.
+     */
+    LayerProfile: {
+      /** Name */
+      name: string
+      /** Title */
+      title: string
+      /** Description */
+      description?: string | null
+      /** Kind */
+      kind: string
+      /** Geometry Type */
+      geometry_type?: string | null
+      /** Feature Count */
+      feature_count: number
+      /** Attributes */
+      attributes: components['schemas']['AttributeProfile'][]
+    }
+    /**
+     * LayerUpdate
+     * @description Curated layer fields. ``name`` never changes; renaming sets ``title`` (plan D1).
+     */
+    LayerUpdate: {
+      /** Title */
+      title?: string | null
+      /** Description */
+      description?: string | null
+      /** For Model */
+      for_model?: boolean | null
+    }
+    /**
+     * Message
+     * @description A finding about the source; ``code`` is stable, ``message`` explains it.
+     */
+    Message: {
+      /** Code */
+      code: string
+      /** Message */
+      message: string
+      /** Column */
+      column?: string | null
+      /** Count */
+      count?: number | null
     }
     /** Metric */
     Metric: {
@@ -698,6 +1251,48 @@ export interface components {
        */
       dir: 'asc' | 'desc'
     }
+    /** Preview */
+    Preview: {
+      /**
+       * Format
+       * @enum {string}
+       */
+      format: 'geojson' | 'shapefile' | 'gpkg' | 'csv' | 'xlsx'
+      /** File Name */
+      file_name: string
+      options: components['schemas']['ReadOptions']
+      /** Sublayers */
+      sublayers: string[]
+      /** Record Count */
+      record_count: number
+      /** Layer Name */
+      layer_name: string
+      /** Title */
+      title: string
+      /** Geometry Type */
+      geometry_type: string | null
+      /** Crs */
+      crs: number | null
+      /** Crs Label */
+      crs_label: string | null
+      /** Bbox */
+      bbox: number[] | null
+      /** Bbox Wgs84 */
+      bbox_wgs84: number[] | null
+      /** Columns */
+      columns: components['schemas']['ColumnPreview'][]
+      xy: components['schemas']['XYProposal'] | null
+      /** Keys */
+      keys: components['schemas']['KeyProposal'][]
+      /** Sample Rows */
+      sample_rows: {
+        [key: string]: unknown
+      }[]
+      /** Warnings */
+      warnings: components['schemas']['Message'][]
+      /** Errors */
+      errors: components['schemas']['Message'][]
+    }
     /**
      * GeoTandem query object
      * @description Declarative, backend-neutral description of one analysis.
@@ -836,6 +1431,29 @@ export interface components {
       query: components['schemas']['QueryObject-Output']
       meta: components['schemas']['ResultMeta']
     }
+    /**
+     * ReadOptions
+     * @description How to read a file; every field is detected when left empty.
+     */
+    ReadOptions: {
+      /** Sublayer */
+      sublayer?: string | null
+      /** Encoding */
+      encoding?: string | null
+      /** Delimiter */
+      delimiter?: string | null
+    }
+    /** RejectedRow */
+    RejectedRow: {
+      /** Row */
+      row: number
+      /** Reason */
+      reason: string
+      /** Values */
+      values: {
+        [key: string]: unknown
+      }
+    }
     /** ResultMeta */
     ResultMeta: {
       /** Schema Version */
@@ -952,6 +1570,13 @@ export interface components {
           )
         | null
     }
+    /** Step */
+    Step: {
+      /** Step */
+      step: string
+      /** Ms */
+      ms: number
+    }
     /**
      * TextMatch
      * @description Text search in a string attribute (F-4.2).
@@ -1001,6 +1626,12 @@ export interface components {
         [key: string]: unknown
       }
     }
+    /** Upload */
+    Upload: {
+      /** Import Id */
+      import_id: string
+      preview: components['schemas']['Preview']
+    }
     /** Validation */
     Validation: {
       /**
@@ -1013,6 +1644,56 @@ export interface components {
       layers: string[]
       /** Operations */
       operations: components['schemas']['Op'][]
+    }
+    /** ValidationError */
+    ValidationError: {
+      /** Location */
+      loc: (string | number)[]
+      /** Message */
+      msg: string
+      /** Error Type */
+      type: string
+      /** Input */
+      input?: unknown
+      /** Context */
+      ctx?: Record<string, never>
+    }
+    /**
+     * ValueDomain
+     * @description A range for numbers or a code list (code → meaning), F-2.8.
+     */
+    ValueDomain: {
+      /** Min */
+      min?: number | null
+      /** Max */
+      max?: number | null
+      /** Codes */
+      codes?: {
+        [key: string]: string
+      } | null
+    }
+    /** XYProposal */
+    XYProposal: {
+      /** X */
+      x: string
+      /** Y */
+      y: string
+      /** Crs */
+      crs: number | null
+    }
+    /** XYReference */
+    XYReference: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      mode: 'xy'
+      /** X */
+      x: string
+      /** Y */
+      y: string
+      /** Crs */
+      crs: number
     }
   }
   responses: never
@@ -1306,6 +1987,598 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['ToolDescription'][]
+        }
+      }
+    }
+  }
+  layers_api_admin_layers_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AdminLayerInfo'][]
+        }
+      }
+    }
+  }
+  delete_layer_api_admin_layers__name__delete: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        name: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Content Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  patch_layer_api_admin_layers__name__patch: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        name: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['LayerUpdate']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['LayerInfo']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Content Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  patch_attribute_api_admin_layers__name__attributes__attribute__patch: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        name: string
+        attribute: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AttributeUpdate']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AttributeInfo']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Content Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  layer_profile_api_admin_layers__name__profile_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        name: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['LayerProfile'] | null
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Content Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  upload_api_admin_imports_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'multipart/form-data': components['schemas']['Body_upload_api_admin_imports_post']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['Upload']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Content Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  repreview_api_admin_imports__import_id__preview_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        import_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ReadOptions']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['Preview']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Content Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  commit_api_admin_imports__import_id__commit_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        import_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ImportDecisions']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ImportRunInfo']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Content Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  cancel_api_admin_imports__import_id__delete: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        import_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ImportRunInfo']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Content Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  import_runs_api_admin_import_log_get: {
+    parameters: {
+      query?: {
+        status?: ('running' | 'ok' | 'warning' | 'failed' | 'aborted') | null
+        layer?: string | null
+        limit?: number
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ImportRunSummary'][]
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  import_run_api_admin_import_log__run_id__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        run_id: number
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ImportRunInfo']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Content Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
         }
       }
     }
