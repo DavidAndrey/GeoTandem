@@ -1,7 +1,7 @@
 import { beforeEach, expect, test } from 'vitest'
 import { assertValidQuery } from '../test/schema'
 import { resultQuery } from './query'
-import { currentAnalysis, useAnalysis } from './store'
+import { currentAnalysis, nextSort, useAnalysis } from './store'
 import { newAttributeRow, newSpatialRow } from './tree'
 
 const store = () => useAnalysis.getState()
@@ -76,4 +76,41 @@ test('changing the result layer inside the editor keeps the other draft edits', 
   store().setResult('kitas')
   expect(store().draft?.children).toHaveLength(1)
   expect(store().tree.children).toHaveLength(0) // nothing applied yet
+})
+
+test('sorting cycles ↓ / ↑ / aus; Shift sets the second key (design B8)', () => {
+  const desc = (attr: string) => ({ attr, dir: 'desc' as const })
+  const asc = (attr: string) => ({ attr, dir: 'asc' as const })
+  expect(nextSort([], 'n', false)).toEqual([desc('n')])
+  expect(nextSort([desc('n')], 'n', false)).toEqual([asc('n')])
+  expect(nextSort([asc('n')], 'n', false)).toEqual([])
+  expect(nextSort([desc('n'), asc('a')], 'b', false)).toEqual([desc('b')])
+  expect(nextSort([desc('n')], 'a', true)).toEqual([desc('n'), desc('a')])
+  expect(nextSort([desc('n'), desc('a')], 'b', true)).toEqual([desc('n'), desc('b')])
+  expect(nextSort([desc('n'), desc('a')], 'a', true)).toEqual([desc('n'), asc('a')])
+  expect(nextSort([desc('n'), asc('a')], 'a', true)).toEqual([desc('n')])
+})
+
+test('columns and sort mark the analysis unsaved; tab and mode do not (design C7)', () => {
+  store().addLayer('schulen')
+  store().load(currentAnalysis(store()))
+  store().setTableTab('schulen')
+  store().setTableMode('all')
+  store().setOnlyView(true)
+  expect(store().dirty).toBe(false)
+  store().toggleSort('schulen', 'schueler', false)
+  expect(store().dirty).toBe(true)
+  store().load(currentAnalysis(store()))
+  store().setColumns('schulen', { order: ['name'], hidden: ['typ'] })
+  expect(store().dirty).toBe(true)
+})
+
+test('removing a layer drops its tab, columns and sort', () => {
+  store().addLayer('schulen')
+  store().addLayer('strassen')
+  store().setTableTab('strassen')
+  store().toggleSort('strassen', 'name', false)
+  store().setColumns('strassen', { order: [], hidden: ['klasse'] })
+  store().removeLayer('strassen')
+  expect(store().table).toEqual({ tab: null, mode: 'hits', onlyView: false, columns: {}, sort: {} })
 })

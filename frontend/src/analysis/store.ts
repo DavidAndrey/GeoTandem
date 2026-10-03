@@ -1,7 +1,18 @@
 // The analysis state of the classic mode as one store (tech-stack 4.4, plan D1).
 // Server state stays in TanStack Query; this holds only what the user built.
 import { create } from 'zustand'
-import type { DisplayLayer, Group, Id, Node, Recipe, Restriction, Symbology } from './model'
+import type {
+  ColumnChoice,
+  DisplayLayer,
+  Group,
+  Id,
+  Node,
+  Recipe,
+  Restriction,
+  SortKey,
+  Symbology,
+  TableState,
+} from './model'
 import type { Analysis } from './model'
 import { canBeResult, emptyTree } from './query'
 import * as T from './tree'
@@ -11,6 +22,7 @@ interface AnalysisStore extends Analysis {
   draft: Group | null
   /** Changed since the last save; moving the map does not count (design decision 3). */
   dirty: boolean
+  table: TableState
 
   addLayer: (layer: string, asResult?: boolean) => void
   addDerived: (name: string, recipe: Recipe) => Id
@@ -31,17 +43,51 @@ interface AnalysisStore extends Analysis {
   discard: () => void
   setRestriction: (restriction: Restriction) => void
 
+  setTableTab: (id: Id | null) => void
+  setTableMode: (mode: TableState['mode']) => void
+  setOnlyView: (onlyView: boolean) => void
+  setColumns: (id: Id, choice: ColumnChoice) => void
+  /** Header click: ↓ / ↑ / aus; ``additive`` (Shift) sets the second key (design B8). */
+  toggleSort: (id: Id, attr: string, additive: boolean) => void
+
   reset: () => void
-  load: (analysis: Analysis) => void
+  load: (analysis: Analysis, table?: TableState) => void
 }
 
-const initial = (): Analysis & { draft: null; dirty: boolean } => ({
+export const emptyTable = (): TableState => ({
+  tab: null,
+  mode: 'hits',
+  onlyView: false,
+  columns: {},
+  sort: {},
+})
+
+/** The next sort after a header click: ↓ / ↑ / aus, at most two keys. */
+export function nextSort(sort: SortKey[], attr: string, additive: boolean): SortKey[] {
+  const at = sort.findIndex((k) => k.attr === attr)
+  const current = sort[at]
+  const next: SortKey | null = !current
+    ? { attr, dir: 'desc' }
+    : current.dir === 'desc'
+      ? { attr, dir: 'asc' }
+      : null
+  if (!additive) return next ? [next] : []
+  if (current) return sort.flatMap((k, i) => (i === at ? (next ? [next] : []) : [k]))
+  return [...sort.slice(0, 1), { attr, dir: 'desc' }]
+}
+
+function withoutKey<T>(record: Record<Id, T>, id: Id): Record<Id, T> {
+  return Object.fromEntries(Object.entries(record).filter(([key]) => key !== id))
+}
+
+const initial = (): Analysis & { draft: null; dirty: boolean; table: TableState } => ({
   layers: [],
   result: null,
   tree: emptyTree(),
   restriction: null,
   draft: null,
   dirty: false,
+  table: emptyTable(),
 })
 
 const layerPatch =
@@ -91,6 +137,12 @@ export const useAnalysis = create<AnalysisStore>()((set, get) => ({
     set((s) => ({
       layers: s.layers.filter((l) => l.id !== id),
       result: s.result === id ? null : s.result,
+      table: {
+        ...s.table,
+        tab: s.table.tab === id ? null : s.table.tab,
+        columns: withoutKey(s.table.columns, id),
+        sort: withoutKey(s.table.sort, id),
+      },
       dirty: true,
     })),
 
@@ -134,8 +186,26 @@ export const useAnalysis = create<AnalysisStore>()((set, get) => ({
   discard: () => set({ draft: null }),
   setRestriction: (restriction) => set({ restriction, dirty: true }),
 
+  setTableTab: (tab) => set((s) => ({ table: { ...s.table, tab } })),
+  setTableMode: (mode) => set((s) => ({ table: { ...s.table, mode } })),
+  setOnlyView: (onlyView) => set((s) => ({ table: { ...s.table, onlyView } })),
+  setColumns: (id, choice) =>
+    set((s) => ({
+      table: { ...s.table, columns: { ...s.table.columns, [id]: choice } },
+      dirty: true,
+    })),
+  toggleSort: (id, attr, additive) =>
+    set((s) => ({
+      table: {
+        ...s.table,
+        sort: { ...s.table.sort, [id]: nextSort(s.table.sort[id] ?? [], attr, additive) },
+      },
+      dirty: true,
+    })),
+
   reset: () => set(initial()),
-  load: (analysis) => set({ ...analysis, draft: null, dirty: false }),
+  load: (analysis, table) =>
+    set({ ...analysis, table: table ?? emptyTable(), draft: null, dirty: false }),
 }))
 
 /** The analysis as the query sees it: the draft counts while the editor is open. */

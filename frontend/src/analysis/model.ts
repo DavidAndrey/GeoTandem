@@ -110,3 +110,27 @@ export interface Analysis {
   tree: Group
   restriction: Restriction
 }
+
+// --- attribute table (F-8.2, design B8) -------------------------------------------------
+
+export interface SortKey {
+  attr: string
+  dir: 'asc' | 'desc'
+}
+
+/** Column choice of one layer: an order and what is hidden, so new columns still appear. */
+export interface ColumnChoice {
+  order: string[]
+  hidden: string[]
+}
+
+/** Saved with the session (design C7); changing columns or sort marks it unsaved. */
+export interface TableState {
+  /** Displayed layer whose tab is open; the result layer when null. */
+  tab: Id | null
+  mode: 'hits' | 'all'
+  /** "nur aktueller Kartenausschnitt": display only, never a filter. */
+  onlyView: boolean
+  columns: Record<Id, ColumnChoice>
+  sort: Record<Id, SortKey[]>
+}
