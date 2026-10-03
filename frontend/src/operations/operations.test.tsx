@@ -34,6 +34,7 @@ const catalog = [
     geometry_type: null,
     attributes: [
       attribute({ name: 'gem_nr', data_type: 'integer' }),
+      attribute({ name: 'gemeinde', data_type: 'text', label: 'Gemeinde' }),
       attribute({ name: 'einwohner', data_type: 'integer', label: 'Einwohner' }),
     ],
   }),
@@ -97,6 +98,23 @@ test('a join shows its match rate (B5)', async () => {
   })
   for (const call of calls.filter((c) => c.key === 'POST /api/query/count'))
     for (const q of (call.body as { queries: unknown[] }).queries) assertValidQuery(q)
+})
+
+test('join keys pair only fields of the same kind (F-2.14)', async () => {
+  fakeApi({ 'GET /api/layers': catalog, 'POST /api/query/count': { counts: [11, 12] } })
+  open('gemeinden', 'join')
+  const dialog = await screen.findByRole('dialog', { name: /Join · Gemeinden/ })
+  const tableKey = () => within(dialog).getByLabelText('Schlüssel in der Tabelle')
+  const options = () =>
+    within(tableKey())
+      .getAllByRole('option')
+      .map((o) => o.textContent)
+  // A number key is offered number keys only ...
+  expect(options()).not.toContain('Gemeinde')
+  // ... a text key text keys only.
+  await userEvent.selectOptions(within(dialog).getByLabelText('Schlüssel im Layer'), 'name')
+  expect(options()).toEqual(['Gemeinde'])
+  expect(tableKey()).toHaveValue('gemeinde')
 })
 
 test('an aggregation is classified by its first metric (B6, B7)', async () => {

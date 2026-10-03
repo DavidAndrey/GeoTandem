@@ -6,6 +6,8 @@ from typing import Any
 from geoalchemy2.admin.dialects.sqlite import init_spatialite
 from sqlalchemy import Connection, Engine, event
 
+from geotandem.data import text as text_rules
+
 READ_ONLY = "geotandem_read_only"
 """Execution option for connections that never write; they need no write lock."""
 
@@ -35,6 +37,10 @@ def attach(engine: Engine, library: str) -> None:
             dbapi_conn.enable_load_extension(False)
         # Loads the EPSG table so ST_Transform works; a no-op on an initialised file.
         init_spatialite(dbapi_conn, transaction=True)
+        # Text compares alike on every backend (F-2.14): SQLite's own lower() folds
+        # ASCII only, and its default order is by bytes ("Ä" after "Z").
+        dbapi_conn.create_function(text_rules.LOWER, 1, text_rules.lower, deterministic=True)
+        dbapi_conn.create_collation(text_rules.COLLATION, text_rules.compare)
         dbapi_conn.execute("PRAGMA foreign_keys = ON")
         dbapi_conn.execute("PRAGMA journal_mode = WAL")
         dbapi_conn.isolation_level = None

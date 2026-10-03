@@ -42,6 +42,8 @@ GEOM = "geom"
 GEOJSON = "__geojson"
 WGS84 = 4326
 
+_ORDERING = frozenset({"lt", "le", "gt", "ge"})
+
 _COMPARE: dict[str, Callable[[Any, Any], ColumnElement[bool]]] = {
     "eq": operator.eq,
     "ne": operator.ne,
@@ -166,6 +168,9 @@ class Compiler:
                 self.use(Op.ATTRIBUTE_FILTER)
                 col = scope.attr(c.attr)
                 _check_values(scope, c.attr, col, [c.value])
+                if c.cmp in _ORDERING and _python_type(col) is str:
+                    # "before / after" in text follows the text rules, not bytes (F-2.14).
+                    return _COMPARE[c.cmp](d.text_order(col), c.value)
                 return _COMPARE[c.cmp](col, c.value)
             case m.Between():
                 self.use(Op.ATTRIBUTE_FILTER)
@@ -226,6 +231,16 @@ class Compiler:
         self.use(Op.ATTRIBUTE_JOIN)
         right = self.scope(join.layer)
         left_key, right_key = src.attr(join.left_key), right.attr(join.right_key)
+        kinds = (_kind(left_key), _kind(right_key))
+        if None not in kinds and kinds[0] != kinds[1]:
+            # SQLite would match text "101" with the number 101, PostgreSQL would not:
+            # refused on every backend (F-2.14).
+            raise QueryError(
+                f"Join keys differ in type: '{join.left_key}' is {kinds[0]}, "
+                f"'{join.right_key}' of '{join.layer}' is {kinds[1]}.",
+                left_key=join.left_key,
+                right_key=join.right_key,
+            )
         for name in join.fields:
             target = (join.prefix or "") + name
             if target in src.columns:
@@ -390,6 +405,9 @@ class Compiler:
                     available=available,
                 )
             expr = namespace[order.attr]
+            if _python_type(expr) is str:
+                # Text sorts by the text rules ("Ägerten" with A), on every backend (F-2.14).
+                expr = self.dialect.text_order(expr)
             # Explicit NULL placement: backends differ in their default.
             stmt = stmt.order_by(
                 expr.desc().nulls_last() if order.dir == "desc" else expr.asc().nulls_last()
@@ -421,6 +439,18 @@ def _python_type(col: ColumnElement[Any]) -> type | None:
         return col.type.python_type
     except NotImplementedError:
         return None
+
+
+def _kind(col: ColumnElement[Any]) -> str | None:
+    """Number, text or boolean — the kinds that compare alike on every backend."""
+    python = _python_type(col)
+    if python is bool:
+        return "boolean"
+    if python in (int, float):
+        return "number"
+    if python is str:
+        return "text"
+    return None
 
 
 def _check_numeric(scope: Scope, name: str, col: ColumnElement[Any]) -> None:

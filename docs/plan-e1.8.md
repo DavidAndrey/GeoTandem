@@ -25,7 +25,7 @@ differences) contradicts F-2.14 "im selben Umfang" and F-10.7.
 |---|---|---|---|
 | Case-insensitive search | `lower()` folds ASCII only: "Änggisteibach" not found by "änggi" | A function registered on every connection, Python `str.lower` (keeps "ß", like PostgreSQL) | `lower()` on a UTF-8 database |
 | Text order (`order_by`) and ranges (`<`, `>`, `between` on text) | bytes: "Ägerten" after "Zollikofen" | A collation registered on every connection: base letters first (accents and case ignored), then accents, then case, then the bytes as tie-break | ICU collation, rules to match |
-| Buffer shape | SpatiaLite's default segment count | Segment count set explicitly in the buffer | Same explicit count |
+| Buffer shape | SpatiaLite's default, 30 segments per quarter circle (121 vertices; PostGIS defaults to 8, 33 vertices) — measured | 30 passed explicitly in every buffer, so today's results stay | `quad_segs=30` |
 | Join keys of different type | SQLite compares '101' and 101 loosely | Rejected when the key types differ | Same rejection |
 
 Not changed: search stays sensitive to accents ("Munsingen" does not find

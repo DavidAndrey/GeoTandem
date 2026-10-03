@@ -10,7 +10,7 @@ import { useAnalysis } from '../analysis/store'
 import { api, type LayerInfo } from '../api/client'
 import { useLayers } from '../api/queries'
 import { ErrorNotice, Loading } from '../components/ui'
-import { catalogFields, fieldsOf, type Field } from '../editor/fields'
+import { catalogFields, fieldsOf, keyKind, type Field } from '../editor/fields'
 import { isIdentifier } from '../admin/wizard'
 import { ACCENT, layerColor } from '../map/style'
 import { layerTitle } from '../workplace/layerInfo'
@@ -214,9 +214,16 @@ function JoinForm({
   )
   const rightFields = catalogFields(right, catalog)
   const [leftKey, setLeftKey] = useState(leftFields[0]?.name ?? '')
-  const [rightKey, setRightKey] = useState(
-    rightFields.find((f) => f.name === leftFields[0]?.name)?.name ?? rightFields[0]?.name ?? '',
-  )
+  // Only keys of the same kind can match (F-2.14); the same name is proposed first.
+  const partners = (key: string, fields: Field[]) => {
+    const kind = leftFields.find((f) => f.name === key)?.type
+    return fields.filter((f) => kind === undefined || keyKind(f.type) === keyKind(kind))
+  }
+  const partnerFor = (key: string, fields: Field[]) => {
+    const candidates = partners(key, fields)
+    return (candidates.find((f) => f.name === key) ?? candidates[0])?.name ?? ''
+  }
+  const [rightKey, setRightKey] = useState(partnerFor(leftFields[0]?.name ?? '', rightFields))
   const [chosen, setChosen] = useState<string[]>([])
   const [keepUnmatched, setKeepUnmatched] = useState(true)
   const taken = new Set(leftFields.map((f) => f.name))
@@ -253,8 +260,7 @@ function JoinForm({
           onChange={(e) => {
             setRight(e.target.value)
             setChosen([])
-            const fields = catalogFields(e.target.value, catalog)
-            setRightKey(fields.find((f) => f.name === leftKey)?.name ?? fields[0]?.name ?? '')
+            setRightKey(partnerFor(leftKey, catalogFields(e.target.value, catalog)))
           }}
         >
           {tables.map((l) => (
@@ -270,12 +276,15 @@ function JoinForm({
           label="Schlüssel im Layer"
           fields={leftFields}
           value={leftKey}
-          onChange={setLeftKey}
+          onChange={(key) => {
+            setLeftKey(key)
+            setRightKey(partnerFor(key, rightFields))
+          }}
         />
         =
         <FieldSelect
           label="Schlüssel in der Tabelle"
-          fields={rightFields}
+          fields={partners(leftKey, rightFields)}
           value={rightKey}
           onChange={setRightKey}
         />

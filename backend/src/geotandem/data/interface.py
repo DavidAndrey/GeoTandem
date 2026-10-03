@@ -122,6 +122,10 @@ class SpatialDialect(Protocol):
         """Text search with identical semantics on every backend (F-2.14)."""
         ...
 
+    def text_order(self, expr: Any) -> ColumnElement[Any]:
+        """``expr`` compared and sorted by the text rules (data/text.py, F-2.14)."""
+        ...
+
     def index_candidates(
         self, table: FromClause, search: Any, expand_m: float = 0
     ) -> ColumnElement[bool] | None:

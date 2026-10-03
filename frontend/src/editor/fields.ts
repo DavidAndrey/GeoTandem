@@ -47,3 +47,7 @@ export function fieldsOf(
 
 export const labelOf = (fields: Field[]) => (name: string) =>
   fields.find((f) => f.name === name)?.label ?? name
+
+/** Number, text or yes/no: join keys must be of the same kind on every backend (F-2.14). */
+export const keyKind = (type: FieldType) =>
+  type === 'integer' || type === 'real' ? 'number' : type

@@ -55,6 +55,14 @@ sie aus den Raumbedingungen ab; sie zeigen, *warum* ein Objekt Treffer ist.
 auf der Karte Umriss und Ring, nie eine eigene Farbe (Entwurf B9). Nicht Teil
 des Analysezustands und nicht gespeichert.
 
+**Funktionsgleichheit** (F-2.14) — Jede Operation liefert auf jedem Backend
+dasselbe Ergebnis. Wo eine Datenbankfunktion abweicht, gleicht der
+Dialekt-Adapter sie an: Suche ohne Rücksicht auf Groß-/Kleinschreibung faltet
+auch Umlaute („änggi" findet „Änggisteibach"), Text sortiert nach
+Grundbuchstaben („Ägerten" bei A), Puffer haben überall 30 Segmente je
+Viertelkreis, Join-Schlüssel müssen gleichartig sein. Akzente zählen weiterhin
+(„Munsingen" findet „Münsingen" nicht).
+
 **Ausführungsmaschine** (`engine`) — Übersetzt ein Abfrageobjekt über die
 Datenzugriffsschicht in eine Abfrage und führt sie unter serverseitigen
 Grenzwerten aus (F-9.6). Das einzige, was Abfragen ausführt.

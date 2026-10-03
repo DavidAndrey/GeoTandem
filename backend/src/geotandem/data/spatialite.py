@@ -38,6 +38,7 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 from sqlalchemy.types import TypeEngine
 
+from geotandem.data import text as text_rules
 from geotandem.data.interface import (
     OP_REQUIREMENTS,
     AttributeSpec,
@@ -109,7 +110,8 @@ class SpatiaLiteDialect:
         return func.ST_Distance(a, b) <= meters
 
     def buffer(self, geom: Any, meters: float) -> ColumnElement[Any]:
-        return func.ST_Buffer(geom, meters)
+        # Explicit, not SpatiaLite's default: the same shape on every backend (F-2.14).
+        return func.ST_Buffer(geom, meters, text_rules.BUFFER_QUADRANT_SEGMENTS)
 
     def transform(self, geom: Any, srid: int) -> ColumnElement[Any]:
         return func.ST_Transform(geom, srid)
@@ -129,11 +131,13 @@ class SpatiaLiteDialect:
         self, column: Any, text: str, mode: TextMode, case_sensitive: bool
     ) -> ColumnElement[bool]:
         # SQLite's LIKE ignores ASCII case, so case-sensitive matching uses GLOB.
-        # Known gap: SQLite's lower() folds ASCII only (e.g. not "Ü"); see F-2.14.
+        # Case-insensitive matching folds both sides with the same Unicode rule
+        # (data/text.py), not SQLite's ASCII-only lower() (F-2.14).
+        fold: Any = getattr(func, text_rules.LOWER)
         if mode == "equals":
             if case_sensitive:
                 return column == text  # type: ignore[no-any-return]
-            return func.lower(column) == text.lower()
+            return fold(column) == text_rules.lower(text)  # type: ignore[no-any-return]
         if case_sensitive:
             escaped = "".join(f"[{ch}]" if ch in "*?[" else ch for ch in text)
             pattern = {
@@ -142,12 +146,16 @@ class SpatiaLiteDialect:
                 "ends_with": f"*{escaped}",
             }[mode]
             return column.op("GLOB")(pattern)  # type: ignore[no-any-return]
-        lowered = func.lower(column)
+        lowered = fold(column)
+        needle = text_rules.lower(text) or ""
         if mode == "contains":
-            return lowered.contains(text.lower(), autoescape=True)
+            return lowered.contains(needle, autoescape=True)  # type: ignore[no-any-return]
         if mode == "starts_with":
-            return lowered.startswith(text.lower(), autoescape=True)
-        return lowered.endswith(text.lower(), autoescape=True)
+            return lowered.startswith(needle, autoescape=True)  # type: ignore[no-any-return]
+        return lowered.endswith(needle, autoescape=True)  # type: ignore[no-any-return]
+
+    def text_order(self, expr: Any) -> ColumnElement[Any]:
+        return expr.collate(text_rules.COLLATION)  # type: ignore[no-any-return]
 
     def index_candidates(
         self, table: FromClause, search: Any, expand_m: float = 0

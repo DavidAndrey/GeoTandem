@@ -174,9 +174,11 @@ sind Daten, nicht Schema, und werden über das Migrationswerkzeug aus P.3
 Der Regelfall ist, dass räumliche Operationen **in der Datenbank** laufen und
 nicht in Python — nur so gilt F-2.14 überprüfbar für beide Backends. Shapely und
 pyproj sind für Import, Transformation und gezeichnete Geometrien aus der
-Oberfläche zuständig, nicht für die Analyse. Wo eine Operation auf SpatiaLite
-fehlt und im Anwendungscode nachgebildet werden müsste, ist das eine offene
-Entscheidung der Anforderungen (F-2.14) und keine stillschweigende Ausnahme.
+Oberfläche zuständig, nicht für die Analyse. Wo eine Datenbankfunktion anders
+rechnet als auf dem anderen Backend, gleicht der Dialekt-Adapter sie an (E1.8):
+SpatiaLite erhält eigene Funktionen für Groß-/Kleinschreibung und
+Textreihenfolge, deren Regeln einmal in `geotandem/data/text.py` stehen;
+Abweichungen gelten als Fehler (F-10.7), nicht als Eigenart des Backends.
 
 ### 3.5 Modellanbindung und MCP
 
@@ -378,7 +380,7 @@ zu dem sie spätestens fällig wird.
 | Transport der MCP-Server-Rolle (F-7.5) | E4.1 | stdio und/oder HTTP; hängt an der Frage aus [vision.md 8.2](vision.md) |
 | Format und Ablage des Prüffallbestands (F-3.13) | E3.1 | Dateiartefakt im Repository, Läufe im Datenkern; siehe [bewertung.md 10](bewertung.md) |
 | Übersetzungsbibliothek (F-10.6) | nach E6 | Nach [etappen.md 10](etappen.md) ausserhalb der sechs Etappen |
-| Umgang mit SpatiaLite-Lücken (F-2.14) | E1.2 | Keine reine Technologiefrage — die Entscheidung steht in den Anforderungen offen und prägt den Dialekt-Adapter |
+| ~~Umgang mit SpatiaLite-Lücken (F-2.14)~~ | — | Entschieden in E1.8 (P1 + T1): jede Operation liefert auf jedem Backend dasselbe Ergebnis; weicht eine Datenbankfunktion ab, gleicht der Dialekt-Adapter sie an (Groß-/Kleinschreibung, Textreihenfolge, Puffer, Join-Schlüssel), festgehalten in `geotandem/data/text.py` und geprüft durch einen backendneutralen Testbestand ([docs/plan-e1.8.md](docs/plan-e1.8.md)) |
 
 ## 10 Bezug zu den Anforderungen
 
