@@ -3,6 +3,7 @@ from pathlib import Path
 
 import httpx
 import pytest
+from fastapi import FastAPI
 
 from geotandem.app import create_app
 from geotandem.config import Settings
@@ -18,6 +19,17 @@ BACKENDS = ["spatialite"]
 @pytest.fixture
 def settings(tmp_path: Path) -> Settings:
     return Settings(data_dir=tmp_path / "data")
+
+
+@pytest.fixture
+def settings_env(settings: Settings, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Point commands that read the environment (the CLI) at the test's data directory."""
+    from geotandem.config import get_settings
+
+    monkeypatch.setenv("GEOTANDEM_DATA_DIR", str(settings.data_dir))
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
 
 
 @pytest.fixture(params=BACKENDS)
@@ -36,15 +48,26 @@ def sample(request: pytest.FixtureRequest, tmp_path_factory: pytest.TempPathFact
 
 
 @pytest.fixture
-async def client(tmp_path: Path) -> AsyncIterator[httpx.AsyncClient]:
+def app(tmp_path: Path) -> FastAPI:
     frontend = tmp_path / "dist"
     frontend.mkdir()
     (frontend / "index.html").write_text("<!doctype html><title>GeoTandem</title>")
     settings = Settings(
         data_dir=tmp_path / "data", load_sample_data=True, max_features=100, frontend_dir=frontend
     )
-    app = create_app(settings)
+    return create_app(settings)
+
+
+@pytest.fixture
+async def client(app: FastAPI) -> AsyncIterator[httpx.AsyncClient]:
     async with app.router.lifespan_context(app):
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
             yield c
+
+
+@pytest.fixture
+def backend_of_client(client: httpx.AsyncClient, app: FastAPI) -> DataBackend:
+    """The data core behind ``client``, for arranging state the API cannot reach."""
+    backend: DataBackend = app.state.geotandem.backend
+    return backend

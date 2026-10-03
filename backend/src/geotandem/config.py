@@ -39,6 +39,12 @@ class Settings(BaseSettings):
     max_features: int = Field(default=10_000, ge=1, description="Result size limit (F-9.6).")
     query_timeout_s: float = Field(default=10.0, gt=0, description="Query run time limit (F-9.6).")
     max_import_mb: int = Field(default=200, ge=1, description="Largest accepted upload (E1.3).")
+    session_hours: float = Field(
+        default=12, gt=0, description="Login session lifetime, extended on use (F-3.12)."
+    )
+    cookie_secure: bool = Field(
+        default=False, description="Send the session cookie over HTTPS only; set behind TLS."
+    )
     frontend_dir: Path | None = Field(
         default=None, description="Built frontend to serve at '/'; none in development."
     )

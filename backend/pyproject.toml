@@ -17,6 +17,7 @@ dependencies = [
     "pyogrio>=0.13,<0.14",
     "openpyxl>=3.1",
     "python-multipart>=0.0.20",
+    "argon2-cffi>=25.1",
 ]
 
 [project.scripts]

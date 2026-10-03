@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, File, Query, Response, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
-from geotandem.api.errors import ErrorBody
+from geotandem.api.errors import ErrorBody, NotFound, Problem
 from geotandem.api.state import AppState, get_state
 from geotandem.catalog import (
     AttributeInfo,
@@ -24,7 +24,6 @@ from geotandem.catalog import (
     update_attribute,
     update_layer,
 )
-from geotandem.engine.errors import QueryError
 from geotandem.importing import Preview, ReadOptions, SourceError
 from geotandem.importing import log as import_log
 from geotandem.importing.log import ImportRunInfo, ImportRunSummary, ImportStatus
@@ -39,17 +38,12 @@ ERRORS: dict[int | str, dict[str, Any]] = {
 }
 
 
-class NotFound(QueryError):
-    status = 404
-    code = "not_found"
-
-
-class TooLarge(QueryError):
+class TooLarge(Problem):
     status = 413
     code = "upload_too_large"
 
 
-class SourceProblem(QueryError):
+class SourceProblem(Problem):
     """A file that cannot be read as given (design D11); ``details.code`` says why."""
 
     code = "unreadable_source"

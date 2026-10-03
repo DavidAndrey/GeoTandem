@@ -12,7 +12,7 @@ from starlette.responses import Response
 from starlette.types import Scope
 
 from geotandem import __version__
-from geotandem.api import admin, errors, routes
+from geotandem.api import admin, auth, errors, routes
 from geotandem.api.state import AppState
 from geotandem.config import Settings, get_settings
 from geotandem.data.spatialite import SpatiaLiteBackend
@@ -68,6 +68,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     errors.install(app)
     app.include_router(routes.router)
     app.include_router(admin.router)
+    app.include_router(auth.router)
     frontend = settings.frontend_dir
     if frontend is not None and Path(frontend, "index.html").exists():
         app.mount("/", SinglePageApp(directory=frontend, html=True), name="frontend")

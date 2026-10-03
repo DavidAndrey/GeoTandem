@@ -101,6 +101,52 @@ class ImportRun(Base):
     """Rejected rows with their reason, capped at 1000 (design D8)."""
 
 
+Role = Literal["admin", "user"]
+ROLES: tuple[Role, ...] = ("admin", "user")
+
+
+class User(Base):
+    """A local account (F-3.12; etappen 11.1: no groups, no SSO)."""
+
+    __tablename__ = "app_user"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    username: Mapped[str] = mapped_column(String(63), unique=True)
+    display_name: Mapped[str] = mapped_column(default="")
+    password_hash: Mapped[str]
+    role: Mapped[str] = mapped_column(String(16))
+    status: Mapped[str] = mapped_column(String(16), default="active")
+    """``active`` or ``locked``."""
+    must_change_password: Mapped[bool] = mapped_column(default=False)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.current_timestamp())
+    last_login_at: Mapped[datetime | None]
+
+
+class AuthSession(Base):
+    """A server-side login session; the cookie holds the token, the table only its hash."""
+
+    __tablename__ = "auth_session"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("app_user.id", ondelete="CASCADE"))
+    created_at: Mapped[datetime] = mapped_column(server_default=func.current_timestamp())
+    expires_at: Mapped[datetime]
+
+    user: Mapped[User] = relationship()
+
+
+class LayerVisibility(Base):
+    """Layer released for a role (F-2.7). Administrators see every layer regardless."""
+
+    __tablename__ = "layer_visibility"
+
+    layer_id: Mapped[int] = mapped_column(
+        ForeignKey("layer.id", ondelete="CASCADE"), primary_key=True
+    )
+    role: Mapped[str] = mapped_column(String(16), primary_key=True)
+
+
 class AppMeta(Base):
     """Instance-wide facts fixed at first start, e.g. the internal CRS."""
 

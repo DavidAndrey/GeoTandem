@@ -7,8 +7,26 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from geotandem.auth.accounts import AccountError
 from geotandem.engine import QueryError
 from geotandem.tools import UnknownTool
+
+
+class Problem(Exception):
+    """A rejected HTTP request with a stable ``code`` (same body as engine errors)."""
+
+    status = 400
+    code = "bad_request"
+
+    def __init__(self, message: str, **details: Any) -> None:
+        super().__init__(message)
+        self.message = message
+        self.details = details
+
+
+class NotFound(Problem):
+    status = 404
+    code = "not_found"
 
 
 class ErrorBody(BaseModel):
@@ -26,6 +44,14 @@ def install(app: FastAPI) -> None:
     @app.exception_handler(QueryError)
     async def _query_error(_: Request, exc: QueryError) -> JSONResponse:
         return _body(exc.status, exc.code, exc.message, **exc.details)
+
+    @app.exception_handler(Problem)
+    async def _problem(_: Request, exc: Problem) -> JSONResponse:
+        return _body(exc.status, exc.code, exc.message, **exc.details)
+
+    @app.exception_handler(AccountError)
+    async def _account_rule(_: Request, exc: AccountError) -> JSONResponse:
+        return _body(400, exc.code, exc.message)
 
     @app.exception_handler(RequestValidationError)
     async def _schema_violation(_: Request, exc: RequestValidationError) -> JSONResponse:
