@@ -43,7 +43,8 @@ export function tableRows(
   })
 }
 
-function extent(coordinates: unknown): BBox | null {
+/** Extent of GeoJSON coordinates in WGS84; ``null`` for none. */
+export function extent(coordinates: unknown): BBox | null {
   const box: BBox = [Infinity, Infinity, -Infinity, -Infinity]
   const walk = (c: unknown) => {
     if (!Array.isArray(c)) return

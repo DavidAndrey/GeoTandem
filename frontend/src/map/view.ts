@@ -23,6 +23,9 @@ interface MapViewStore {
    */
   featureRequest: { bbox: BBox; mode: 'zoom' | 'pan' | 'view'; at: number } | null
   zoomToFeature: (bbox: BBox, mode: 'zoom' | 'pan' | 'view') => void
+  /** A search hit shown on the map (plan E1.8, G1): not saved, gone with the next search. */
+  found: { geometry: GeoJSON.Geometry; label: string } | null
+  setFound: (found: { geometry: GeoJSON.Geometry; label: string } | null) => void
   /** The editor row whose hits the map shows (design B2 "Aktive Bedingung"). */
   activeRow: string | null
   setActiveRow: (id: string | null) => void
@@ -39,6 +42,8 @@ export const useMapView = create<MapViewStore>()((set) => ({
   setDrawing: (drawing) => set({ drawing }),
   featureRequest: null,
   zoomToFeature: (bbox, mode) => set({ featureRequest: { bbox, mode, at: Date.now() } }),
+  found: null,
+  setFound: (found) => set({ found }),
   activeRow: null,
   setActiveRow: (activeRow) => set({ activeRow }),
 }))

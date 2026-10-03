@@ -13,6 +13,7 @@ import L from 'leaflet'
 import { Table2 } from 'lucide-react'
 import { useHits } from '../map/data'
 import { DataLayer } from '../map/DataLayer'
+import { FoundOverlay, MapSearch } from '../map/MapSearch'
 import { RestrictionLayer } from '../map/Restriction'
 import { fitBbox, shownBounds, useLeafletMap } from '../map/leaflet'
 import { MapView, toolClass } from '../map/MapView'
@@ -106,6 +107,7 @@ function MapLayers() {
   return (
     <div className="relative min-h-0 flex-1">
       <MapView
+        leading={<MapSearch />}
         tools={<TableToggle />}
         legend={
           visible.length > 0 && (
@@ -140,6 +142,7 @@ function MapLayers() {
         <RestrictionLayer restriction={analysis.restriction} onDrawn={onDrawn} />
         <ZoomOnRequest layers={analysis.layers} catalog={catalog.data} />
         <FeatureOnRequest />
+        <FoundOverlay />
       </MapView>
       {active && hitIds && resultTitle && (
         <p role="status" className="card absolute bottom-6 left-3 z-[1000] px-3 py-1 text-sm">

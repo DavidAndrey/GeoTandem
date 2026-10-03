@@ -14,11 +14,14 @@ export function MapView({
   children,
   legend,
   tools,
+  leading,
 }: {
   children?: ReactNode
   legend?: ReactNode
   /** A further group in the toolbar, e.g. the table toggle. */
   tools?: ReactNode
+  /** The first group of the toolbar: search (design B10). */
+  leading?: ReactNode
 }) {
   const container = useRef<HTMLDivElement>(null)
   const [map, setMap] = useState<L.Map | null>(null)
@@ -88,6 +91,7 @@ export function MapView({
         aria-orientation="vertical"
         className="card absolute top-3 right-3 z-[1000] flex flex-col divide-y divide-[var(--color-divider)] py-0.5"
       >
+        {leading && <div className="flex flex-col">{leading}</div>}
         <div className="flex flex-col">
           <button
             type="button"
