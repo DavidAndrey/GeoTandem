@@ -67,6 +67,12 @@ Ziel: eine vollständig benutzbare GIS-Anwendung ohne jede LLM-Beteiligung.
 von Hand beantwortet, als Sitzung gespeichert und reproduziert — ohne
 konfigurierte LLM-Anbindung (F-4.11).
 
+> **E1 abgeschlossen (2026-10-03).** Die Vorführung ist als Abnahmetest
+> festgehalten (`e2e/tests/acceptance-e1.7.spec.ts`): Das Prüfskript (`make
+> gate`) beantwortet die Referenzfrage von Hand, speichert sie, startet den
+> Container neu und findet die Sitzung danach mit identischem Ergebnis wieder
+> ([docs/plan-e1.7.md](docs/plan-e1.7.md)).
+
 ## 4 E2 — Lokale LLM-Anbindung, Modus B
 
 Ziel: dieselbe Fragestellung per Prompt, unter sichtbarer und durchgesetzter

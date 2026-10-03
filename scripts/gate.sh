@@ -63,6 +63,7 @@ fi
 
 step "playwright again, on the data of the first pass"
 port=$(docker port "$name" 8000/tcp | head -n1 | sed 's/.*://')  # new port after restart
-(cd e2e && E2E_BASE_URL="http://127.0.0.1:$port" npx playwright test --reporter=line)
+# Marked, so tests that save in the first pass insist on finding it (E1.7).
+(cd e2e && E2E_AFTER_RESTART=1 E2E_BASE_URL="http://127.0.0.1:$port" npx playwright test --reporter=line)
 
 step "gate passed"

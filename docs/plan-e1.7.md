@@ -1,6 +1,6 @@
 # Plan E1.7 — Sitzung speichern und wiederherstellen
 
-> Stand: 2026-10-03 · **entschieden 2026-10-03** · Bezug: [etappen.md 3](../etappen.md),
+> Stand: 2026-10-03 · **umgesetzt (WP31–WP35)** · Bezug: [etappen.md 3](../etappen.md),
 > [anforderungen.md 4, 8](../anforderungen.md) (F-4.10, F-8.9), [design/e1/README.md](../design/e1/README.md)
 > (screens C1–C8, "Verhalten und Zustand"), [plan-e1.6.md](plan-e1.6.md)
 >
@@ -157,3 +157,29 @@ session store from WP32.
 - "Unterschied in Tabelle zeigen" in C4 (D4).
 - "Layer wiederherstellen" in C8 (D5); needs a layer history.
 - Affected sessions in the admin's delete and update dialogs (D9).
+
+## 6 Found on the way
+
+- **The sample data changed under the plan.** After E1.6 the synthetic
+  Tandemtal was replaced by real data for Bern-Mittelland (commit 1828db3):
+  the reference question now has ten hits, not seven. The plan's numbers
+  were adjusted; nothing in the design depended on them.
+- **No `/restamp` (WP31).** Saving always computes a new stamp, so "Mit
+  aktuellen Daten übernehmen" is a save. One way fewer to change a session.
+- **State and query can drift (WP32).** The frontend cannot compute the
+  canonical query hash, so the check endpoint takes the query rebuilt from
+  the saved state and compares hashes itself (`state_matches`).
+- **"Same hits, new version" is identical (WP31).** A layer re-imported with
+  the same features keeps the result: the notice says the result is
+  identical and names the new version, and stays open instead of closing.
+- **Write transactions begin IMMEDIATE (WP31).** A catalog read on a second
+  connection inside one deadlocks against it ("database is locked"); session
+  writes read the catalog first.
+- **Landing in the last session (WP33)** would have put other end-to-end
+  tests, all signed in as the same administrator, into a saved session. The
+  acceptance tests use accounts of their own, and landing only happens into
+  an empty workplace.
+- **The restart proof (WP35).** A test that saves when nothing is saved
+  would pass its second run on its own work. The gate now marks the run after
+  the restart (`E2E_AFTER_RESTART`), and the test then insists on finding
+  the session of the first run.

@@ -89,9 +89,18 @@ Bauabschnitt.
 **HITL-Stufe** — Grad der menschlichen Kontrolle über Modellaktionen. Der
 Schnitt der Stufen wird in E2.0 festgelegt.
 
-**Sitzung** — Ein benannt gespeicherter Analysezustand (F-4.10), ab E1.7.
-Nicht zu verwechseln mit der **Anmeldung** (`auth_session`), der serverseitigen
-Login-Sitzung eines Kontos.
+**Sitzung** (`analysis_session`) — Ein benannt gespeicherter Analysezustand
+(F-4.10), ab E1.7: der Zustand als versioniertes JSON (Layer, Bedingungen,
+Rezepte, Tabelle, Kartenausschnitt), dazu das Abfrageobjekt des Ergebnisses und
+sein **Ergebnis-Stempel**. Privat für ihr Konto, auch gegenüber
+Administratoren. Nicht zu verwechseln mit der **Anmeldung** (`auth_session`),
+der serverseitigen Login-Sitzung eines Kontos.
+
+**Ergebnis-Stempel** (`ResultStamp`) — Ein Ergebnis ohne seine Objekte:
+Trefferzahl, Prüfsumme der sortierten Objekt-IDs, Abfrage-Hash und Fassung je
+beteiligtem Layer. Der Server berechnet ihn beim Speichern; beim Öffnen läuft
+die gespeicherte Abfrage erneut und wird mit ihm verglichen — „identisch" oder
+„weicht ab" mit Ursache (F-8.9).
 
 **Konto** (`app_user`) — Ein lokales Benutzerkonto mit genau einer **Rolle**
 (`role`): Administrator (`admin`) oder Anwender (`user`), F-3.12. Ein neues

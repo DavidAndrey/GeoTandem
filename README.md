@@ -136,6 +136,11 @@ docker run --rm -v geotandem-data:/data -v "$PWD":/backup debian \
 
 Wiederherstellen: Datei zurück nach `/data/geotandem.sqlite` kopieren.
 
+Die Datei enthält alles: Layer, Metadaten, Konten, Protokolle und die
+gespeicherten Sitzungen (F-4.10) samt ihrem Ergebnis-Stempel. Nach einer
+Wiederherstellung zeigt das Öffnen einer Sitzung an, ob ihr Ergebnis noch
+dasselbe ist.
+
 ## Aufbau
 
 ```
