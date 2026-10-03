@@ -49,6 +49,7 @@ from geotandem.data.interface import (
     TextMode,
 )
 from geotandem.db.orm import Layer, LayerAttribute
+from geotandem.geo import common_geometry_type
 
 TABLE_PREFIX = "lyr_"
 GEOM = "geom"
@@ -371,7 +372,7 @@ def _prepare(
     rows = list(layer.rows)
     if layer.kind != "vector":
         return rows, None
-    geometry_type = layer.geometry_type or _geometry_type(rows)
+    geometry_type = layer.geometry_type or common_geometry_type(g for g, _ in rows)
     if geometry_type.startswith("Multi"):
         rows = [(_to_multi(g), attrs) for g, attrs in rows]
     if geometry_type != "Geometry":
@@ -417,18 +418,6 @@ def _merge_attributes(session: Session, entry: Layer, specs: Sequence[AttributeS
         else:
             kept.position = position
             kept.data_type = spec.data_type
-
-
-def _geometry_type(rows: list[tuple[BaseGeometry | None, Mapping[str, Any]]]) -> str:
-    kinds: set[str] = {str(g.geom_type) for g, _ in rows if g is not None}
-    if not kinds:
-        return "Geometry"
-    if len(kinds) == 1:
-        return kinds.pop()
-    base = {k.removeprefix("Multi") for k in kinds}
-    if len(base) == 1:
-        return "Multi" + base.pop()
-    return "Geometry"
 
 
 def _to_multi(geom: BaseGeometry | None) -> BaseGeometry | None:

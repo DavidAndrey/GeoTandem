@@ -3,7 +3,7 @@
 Analysis never reprojects here — that happens in the database.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from functools import cache
 
 import numpy as np
@@ -26,3 +26,20 @@ def reprojector(source_srid: int, target_srid: int) -> Callable[[BaseGeometry], 
         return shapely.transform(geom, coords)
 
     return apply
+
+
+def common_geometry_type(geometries: Iterable[BaseGeometry | None]) -> str:
+    """The one geometry type a layer column can hold: ``Point``, ``MultiPolygon``, …
+
+    Single and multi variants of one type become multi; anything else is
+    ``Geometry``. Rows without geometry don't count.
+    """
+    kinds: set[str] = {str(g.geom_type) for g in geometries if g is not None}
+    if not kinds:
+        return "Geometry"
+    if len(kinds) == 1:
+        return kinds.pop()
+    base = {k.removeprefix("Multi") for k in kinds}
+    if len(base) == 1 and base <= {"Point", "LineString", "Polygon"}:
+        return "Multi" + base.pop()
+    return "Geometry"

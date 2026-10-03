@@ -41,8 +41,8 @@ Target: "Alle drei Importwege enden als verwalteter Layer mit Raumindex und
 gepflegten Metadaten." The three paths are **vector file**, **table + X/Y
 columns** and **table + area key joined to a geometry layer**.
 
-New dependencies: `pyogrio` (raw API, no geopandas), `pandas`, `openpyxl`,
-`python-multipart`. New settings: `GEOTANDEM_MAX_IMPORT_MB` (default 200) and
+New dependencies: `pyogrio` (raw API, no geopandas), `openpyxl`,
+`python-multipart` (pandas was dropped in WP12, see tech-stack 3.4). New settings: `GEOTANDEM_MAX_IMPORT_MB` (default 200) and
 a staging dir under `data_dir`.
 
 ### WP11 — Admin schema migration 0002 and backend interface
@@ -79,7 +79,8 @@ Module `geotandem/importing/`, with no HTTP and no database access:
 - `read_source(path) → Source`: GeoJSON, Shapefile (zip with .shp/.shx/.dbf,
   .prj/.cpg optional), GeoPackage (one sublayer is chosen if there are several)
   through `pyogrio.raw`. CSV (encoding UTF-8 → cp1252 fallback, delimiter
-  sniffing, override possible), XLSX (sheet choice) through pandas.
+  sniffing, override possible) through `csv`, XLSX (sheet choice) through
+  openpyxl; column types are inferred by our own code.
 - `Preview`: columns with detected type, sample values, null count, distinct
   count; geometry type; detected CRS (or `None`); record count; bbox.
 - Proposals: X/Y columns by name and value range; CRS from range (WGS84

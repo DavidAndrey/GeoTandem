@@ -67,7 +67,8 @@ nennt, worauf gebaut wird; die Sperrdateien aus E1.1 sind massgeblich.
 | Shapely | 2.1 | **2.x** | |
 | pyproj | 3.8 | 3.x | verlangt selbst bereits Python ≥ 3.12 |
 | pyogrio | 0.13 | aktuelle 0.x | |
-| pandas | 3.0 | **3.x** | 3.0 hat gegenüber 2.x brechende Änderungen (u. a. Copy-on-Write); nur für den Import verwendet, geringe Angriffsfläche |
+| pandas | 3.0 | — | in E1.3 verworfen, siehe 3.4 |
+| openpyxl | 3.1 | **3.x** | Excel-Import |
 | pytest | 9.1 | **9.x** | |
 | MCP-SDK | 2.2 | **2.x** | Für E4/E6 relevant, wird dort erneut geprüft |
 | Node | 24 LTS | **24 LTS** | 26 wird am 2026-10-28 LTS; Vite 8 und Vitest 5 verlangen ≥ 22.12 |
@@ -159,7 +160,14 @@ sind Daten, nicht Schema, und werden über das Migrationswerkzeug aus P.3
 | Vektorformate lesen (GeoJSON, Shapefile, GeoPackage) | pyogrio (GDAL/OGR) | F-2.1 |
 | Geometrieoperationen im Anwendungscode | Shapely 2 | F-2.5, F-2.14 |
 | CRS-Erkennung und -Transformation | pyproj | F-2.5 |
-| Tabellendaten (CSV, Excel) | pandas + openpyxl | F-2.2, F-2.3 |
+| Tabellendaten (CSV, Excel) | `csv` (Standardbibliothek) + openpyxl | F-2.2, F-2.3 |
+
+> **Entschieden in E1.3 (2026-10-03): kein pandas.** Die Typerkennung der
+> Tabellenspalten ist eigener Code (`geotandem.importing.values`), weil
+> pandas genau die zwei Fälle falsch behandelt, auf die der Geobezug angewiesen
+> ist: Gebietsschlüssel mit führender Null („0999") würden zu Zahlen, und
+> Dezimalkommas („3,5") blieben Text. Ohne eigene Inferenz bliebe von pandas nur
+> das Einlesen — das leisten `csv` und openpyxl ohne die Abhängigkeit.
 
 Der Regelfall ist, dass räumliche Operationen **in der Datenbank** laufen und
 nicht in Python — nur so gilt F-2.14 überprüfbar für beide Backends. Shapely und
