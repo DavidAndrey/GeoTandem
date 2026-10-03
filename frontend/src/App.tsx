@@ -5,6 +5,7 @@ import { ImportLogPage } from './admin/ImportLogPage'
 import { ImportRunPage } from './admin/ImportRunPage'
 import { ImportWizard } from './admin/ImportWizard'
 import { LayerPage } from './admin/LayerPage'
+import { SystemPage } from './admin/SystemPage'
 import { UsersPage } from './admin/UsersPage'
 import { VisibilityPage } from './admin/VisibilityPage'
 import { useMe } from './api/queries'
@@ -13,7 +14,7 @@ import { LoginPage } from './auth/LoginPage'
 import { PasswordPage } from './auth/PasswordPage'
 import { SetupPage } from './auth/SetupPage'
 import { UserMenu } from './auth/UserMenu'
-import { MapPage } from './pages/MapPage'
+import { Workplace } from './workplace/Workplace'
 
 const link = ({ isActive }: { isActive: boolean }) =>
   `font-heading border-b-2 px-1 text-[17px] font-semibold ${isActive ? 'border-accent' : 'border-transparent hover:border-neutral-400'}`
@@ -52,7 +53,7 @@ export function App() {
         <Route path="/passwort" element={<PasswordPage />} />
         <Route element={<RequireAccount />}>
           <Route element={<Shell />}>
-            <Route path="/" element={<MapPage />} />
+            <Route path="/" element={<Workplace />} />
             <Route
               path="/admin"
               element={
@@ -69,6 +70,7 @@ export function App() {
               <Route path="protokoll/:id" element={<ImportRunPage />} />
               <Route path="benutzer" element={<UsersPage />} />
               <Route path="sichtbarkeit" element={<VisibilityPage />} />
+              <Route path="system" element={<SystemPage />} />
             </Route>
             <Route path="*" element={<p>Diese Seite gibt es nicht.</p>} />
           </Route>

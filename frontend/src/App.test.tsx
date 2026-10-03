@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, test, vi } from 'vitest'
 import { App } from './App'
@@ -19,18 +19,26 @@ const health = {
 const unauthorized = () =>
   new Response('{"code":"not_authenticated","message":"Please sign in."}', { status: 401 })
 
-test('start page shows the backend status', async () => {
-  fakeApi({ ...signedIn(), 'GET /api/health': health, 'GET /api/layers': [layer()] })
+const mapConfig = { basemap: null, extent_wgs84: [7.8, 46.8, 8, 47], max_features: 10000 }
+
+test('the start page is the workplace, beginning without layers', async () => {
+  fakeApi({ ...signedIn(), 'GET /api/layers': [layer()], 'GET /api/config/map': mapConfig })
   renderAt('/', <App />)
+  expect(await screen.findByRole('region', { name: 'Karte' })).toBeInTheDocument()
+  expect(screen.getByText(/Noch keine Layer/)).toBeInTheDocument()
+  expect(screen.getByRole('tab', { name: 'Prompt · ab E2' })).toBeDisabled()
+})
+
+test('the system status lives in the administration', async () => {
+  fakeApi({ ...signedIn(), 'GET /api/health': health })
+  renderAt('/admin/system', <App />)
   expect(await screen.findByText('Bereit')).toBeInTheDocument()
   expect(screen.getByText('EPSG:2056')).toBeInTheDocument()
-  const layers = screen.getByRole('region', { name: 'Verfügbare Layer' })
-  expect(await within(layers).findByText('Gemeinden')).toBeInTheDocument()
 })
 
 test('unreachable backend is reported, not swallowed', async () => {
   fakeApi({ ...signedIn(), 'GET /api/health': () => new Response('{}', { status: 502 }) })
-  renderAt('/', <App />)
+  renderAt('/admin/system', <App />)
   expect(await screen.findByRole('alert')).toHaveTextContent('Backend nicht erreichbar')
 })
 
@@ -41,7 +49,11 @@ test('administrators reach the administration area', async () => {
 })
 
 test('users see neither the link nor the area', async () => {
-  fakeApi({ ...signedIn({ role: 'user', username: 'm.keller' }), 'GET /api/health': health })
+  fakeApi({
+    ...signedIn({ role: 'user', username: 'm.keller' }),
+    'GET /api/layers': [],
+    'GET /api/config/map': mapConfig,
+  })
   renderAt('/admin/daten', <App />)
   expect(await screen.findByRole('alert')).toHaveTextContent('nur Administratoren')
   expect(screen.queryByRole('link', { name: 'Administration' })).not.toBeInTheDocument()

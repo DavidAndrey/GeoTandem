@@ -20,6 +20,12 @@ async function freshPage(browser: Browser): Promise<Page> {
   return context.newPage()
 }
 
+/** The layers offered by "+ Layer" (design B11): what this account may see. */
+async function offeredLayers(page: Page) {
+  await page.getByRole('button', { name: 'Layer', exact: true }).click()
+  return page.getByRole('dialog', { name: 'Layer hinzufügen' })
+}
+
 async function signIn(page: Page, name: string, password: string) {
   await page.goto('/anmelden')
   await page.getByLabel('Benutzername').fill(name)
@@ -68,9 +74,10 @@ test('the user sets a password and sees the released layers only', async ({ brow
   await page.getByLabel('Neues Passwort wiederholen').fill(userPassword)
   await page.getByRole('button', { name: 'Passwort ändern' }).click()
 
-  const layers = page.getByRole('region', { name: 'Verfügbare Layer' })
+  const layers = await offeredLayers(page)
   await expect(layers.getByText('Schulen', { exact: true })).toBeVisible()
   await expect(layers.getByText(hiddenTitle)).toHaveCount(0)
+  await page.keyboard.press('Escape')
   await expect(page.getByRole('link', { name: 'Administration' })).toHaveCount(0)
 
   // The API says the same, whatever the interface shows.
@@ -83,8 +90,7 @@ test('the user sets a password and sees the released layers only', async ({ brow
 
 test('the admin sees the hidden layer and releases it', async ({ page }) => {
   await page.goto('/')
-  const layers = page.getByRole('region', { name: 'Verfügbare Layer' })
-  await expect(layers.getByText(hiddenTitle)).toBeVisible()
+  await expect((await offeredLayers(page)).getByText(hiddenTitle)).toBeVisible()
   await page.goto('/admin/sichtbarkeit')
   const box = page.getByRole('checkbox', { name: `${hiddenTitle} für Anwender` })
   await expect(box).not.toBeChecked()
@@ -100,8 +106,7 @@ test('the admin sees the hidden layer and releases it', async ({ page }) => {
 test('after release the user sees it too', async ({ browser }) => {
   const page = await freshPage(browser)
   await signIn(page, username, userPassword)
-  const layers = page.getByRole('region', { name: 'Verfügbare Layer' })
-  await expect(layers.getByText(hiddenTitle)).toBeVisible()
+  await expect((await offeredLayers(page)).getByText(hiddenTitle)).toBeVisible()
   await page.context().close()
 })
 

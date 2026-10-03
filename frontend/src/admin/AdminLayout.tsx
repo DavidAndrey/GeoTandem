@@ -17,6 +17,10 @@ const groups: { title: string; links: { to?: string; label: string; from?: strin
     ],
   },
   {
+    title: 'Betrieb',
+    links: [{ to: '/admin/system', label: 'System' }],
+  },
+  {
     title: 'Später',
     links: [
       { label: 'Modelle', from: 'E2' },

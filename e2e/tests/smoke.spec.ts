@@ -10,6 +10,8 @@ const golden = (name: string) =>
 test('the application starts and reports a ready data core', async ({ page }) => {
   await page.goto('/')
   await expect(page).toHaveTitle('GeoTandem')
+  await expect(page.getByRole('region', { name: 'Karte' })).toBeVisible()
+  await page.goto('/admin/system')
   const status = page.getByRole('region', { name: 'Systemstatus' })
   await expect(status).toContainText('Bereit')
   await expect(status).toContainText('spatialite')

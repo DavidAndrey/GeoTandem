@@ -86,6 +86,9 @@ export const useHealth = () => useQuery({ queryKey: keys.health, queryFn: api.he
 
 export const useAdminLayers = () => useQuery({ queryKey: keys.layers, queryFn: api.admin.layers })
 
+export const useMapConfig = () =>
+  useQuery({ queryKey: ['map-config'], queryFn: api.mapConfig, staleTime: Infinity })
+
 /** The layers the signed-in account may see (F-2.7). */
 export const useLayers = () => useQuery({ queryKey: ['layer', 'list'], queryFn: api.layers })
 
