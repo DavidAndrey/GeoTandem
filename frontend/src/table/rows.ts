@@ -1,9 +1,10 @@
 // The attribute table's rows and columns (F-8.2, design B8): pure functions over
 // the features the map already fetched, so table and map show the same result.
-import type { ColumnChoice, SortKey } from '../analysis/model'
-import type { ExplainColumn } from '../analysis/query'
+import type { Analysis, ColumnChoice, DisplayLayer, SortKey } from '../analysis/model'
+import { resultLayer, type ExplainColumn } from '../analysis/query'
 import type { LayerInfo, QueryResult } from '../api/client'
 import type { BBox } from '../map/view'
+import { panelOrder } from '../workplace/layerInfo'
 
 type Feature = QueryResult['features'][number]
 
@@ -155,4 +156,11 @@ export function shownColumns(available: TableColumn[], choice: ColumnChoice | un
 /** All available columns in the order the menu shows them (design B8 "Spalten ▾"). */
 export function orderedColumns(available: TableColumn[], choice: ColumnChoice | undefined) {
   return shownColumns(available, choice && { ...choice, hidden: [] })
+}
+
+/** Result layer first, then the panel's order (design B8). */
+export function tabOrder(analysis: Analysis): DisplayLayer[] {
+  const result = resultLayer(analysis)
+  const rest = panelOrder(analysis.layers).filter((l) => l.id !== result?.id)
+  return result ? [result, ...rest] : rest
 }

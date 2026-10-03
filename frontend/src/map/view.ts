@@ -17,6 +17,9 @@ interface MapViewStore {
   /** Drawing the restriction "Nur in: Fläche" (F-4.3). */
   drawing: 'rectangle' | 'polygon' | null
   setDrawing: (drawing: 'rectangle' | 'polygon' | null) => void
+  /** From the table (design B8): ``zoom`` fits the feature (⌖), ``pan`` only brings it into view. */
+  featureRequest: { bbox: BBox; mode: 'zoom' | 'pan'; at: number } | null
+  zoomToFeature: (bbox: BBox, mode: 'zoom' | 'pan') => void
   /** The editor row whose hits the map shows (design B2 "Aktive Bedingung"). */
   activeRow: string | null
   setActiveRow: (id: string | null) => void
@@ -31,6 +34,8 @@ export const useMapView = create<MapViewStore>()((set) => ({
   setPick: (pick) => set({ pick }),
   drawing: null,
   setDrawing: (drawing) => set({ drawing }),
+  featureRequest: null,
+  zoomToFeature: (bbox, mode) => set({ featureRequest: { bbox, mode, at: Date.now() } }),
   activeRow: null,
   setActiveRow: (activeRow) => set({ activeRow }),
 }))

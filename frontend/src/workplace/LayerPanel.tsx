@@ -13,6 +13,7 @@ import { ConfirmDialog, Menu, MenuItem } from '../components/ui'
 import { layerColor } from '../map/style'
 import { useMapView } from '../map/view'
 import { OperationDialog, type Operation } from '../operations/OperationDialog'
+import { useDock } from '../table/dock'
 import { AddLayers } from './AddLayers'
 import { geometryKind, layerTitle } from './layerInfo'
 import { Swatch } from './Swatch'
@@ -143,6 +144,14 @@ function LayerRow({ layer, catalog }: { layer: DisplayLayer; catalog: LayerInfo[
             </button>
             <Menu label={`Aktionen für ${title}`}>
               <MenuItem onSelect={() => zoomTo(layer.id)}>Auf Layer zoomen</MenuItem>
+              <MenuItem
+                onSelect={() => {
+                  s.setTableTab(layer.id)
+                  useDock.getState().setOpen(true)
+                }}
+              >
+                Tabelle öffnen
+              </MenuItem>
               {!isResult && canBeResult(layer) && (
                 <MenuItem onSelect={() => s.setResult(layer.id)}>Als Ergebnis-Layer</MenuItem>
               )}

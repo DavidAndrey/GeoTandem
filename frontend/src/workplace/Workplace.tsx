@@ -1,22 +1,26 @@
 // Workplace of the classic mode (design B1): sidebar with layers and query,
 // map beside it. Everything on the map comes from query objects (E1.5).
 import { useShallow } from 'zustand/react/shallow'
-import { useQuery } from '@tanstack/react-query'
 import { Tabs } from 'radix-ui'
 import { useCallback, useEffect } from 'react'
 import type { DisplayLayer, GeoJSONGeometry, ReferenceRow } from '../analysis/model'
 import { layerQuery, resultQuery, resultWhere, rowQueries } from '../analysis/query'
 import { currentAnalysis, useAnalysis } from '../analysis/store'
-import { api, type LayerInfo } from '../api/client'
+import type { LayerInfo } from '../api/client'
 import { useLayers, useMapConfig } from '../api/queries'
 import { EditorPanel } from '../editor/EditorPanel'
+import L from 'leaflet'
+import { Table2 } from 'lucide-react'
+import { useHits } from '../map/data'
 import { DataLayer } from '../map/DataLayer'
 import { RestrictionLayer } from '../map/Restriction'
 import { fitBbox, shownBounds, useLeafletMap } from '../map/leaflet'
-import { MapView } from '../map/MapView'
+import { MapView, toolClass } from '../map/MapView'
 import { ACCENT, layerColor } from '../map/style'
 import { useLegend } from '../map/symbolize'
 import { useMapView } from '../map/view'
+import { useDock } from '../table/dock'
+import { TableDock } from '../table/TableDock'
 import { catalogInfo, geometryKind, labelAttribute, layerTitle, panelOrder } from './layerInfo'
 import { LayerPanel } from './LayerPanel'
 import { QueryPanel } from './QueryPanel'
@@ -52,7 +56,10 @@ export function Workplace() {
         </Tabs.Root>
       </aside>
       {editing && <EditorPanel />}
-      <MapLayers />
+      <div className="flex min-h-0 flex-col">
+        <MapLayers />
+        <TableDock />
+      </div>
     </div>
   )
 }
@@ -74,12 +81,7 @@ function MapLayers() {
   const where = active ? active.query.where : resultWhere(analysis)
   const shown = active ? active.query : resultQuery(analysis)
   // Hits of the result layer, told apart only while there are conditions (design B9).
-  const hits = useQuery({
-    queryKey: ['map-hits', shown],
-    queryFn: () => (shown ? api.query({ ...shown, select: [] }) : null),
-    enabled: Boolean(shown && where),
-  })
-  const hitIds = where && hits.data ? new Set(hits.data.features.map((f) => f.id)) : null
+  const hitIds = useHits(shown).ids
   const visible = panelOrder(analysis.layers).filter((l) => l.visible)
   const maxFeatures = config.data?.max_features ?? Infinity
   const onPick = useCallback(
@@ -100,8 +102,9 @@ function MapLayers() {
   )
 
   return (
-    <div className="relative min-h-0">
+    <div className="relative min-h-0 flex-1">
       <MapView
+        tools={<TableToggle />}
         legend={
           visible.length > 0 && (
             <Legend
@@ -132,6 +135,7 @@ function MapLayers() {
         })}
         <RestrictionLayer restriction={analysis.restriction} onDrawn={onDrawn} />
         <ZoomOnRequest layers={analysis.layers} catalog={catalog.data} />
+        <FeatureOnRequest />
       </MapView>
       {active && hitIds && resultTitle && (
         <p role="status" className="card absolute bottom-6 left-3 z-[1000] px-3 py-1 text-sm">
@@ -140,6 +144,39 @@ function MapLayers() {
       )}
     </div>
   )
+}
+
+/** ▦ in the toolbar (design B10): opens and closes the attribute table. */
+function TableToggle() {
+  const { open, setOpen } = useDock()
+  const hasLayers = useAnalysis((s) => s.layers.length > 0)
+  return (
+    <button
+      type="button"
+      className={toolClass}
+      title="Attributtabelle ein/aus"
+      aria-label="Attributtabelle"
+      aria-pressed={open}
+      disabled={!hasLayers}
+      onClick={() => setOpen(!open)}
+    >
+      <Table2 size={15} />
+    </button>
+  )
+}
+
+/** A feature picked in the table: ⌖ zooms to it, a row click only pans it into view. */
+function FeatureOnRequest() {
+  const map = useLeafletMap()
+  const request = useMapView((s) => s.featureRequest)
+  useEffect(() => {
+    if (!map || !request) return
+    const [west, south, east, north] = request.bbox
+    const bounds = L.latLngBounds([south, west], [north, east])
+    if (request.mode === 'zoom') map.fitBounds(bounds, { padding: [48, 48], maxZoom: 17 })
+    else if (!map.getBounds().contains(bounds)) map.panTo(bounds.getCenter())
+  }, [map, request])
+  return null
 }
 
 function ZoomOnRequest({

@@ -7,7 +7,19 @@ import { useMapConfig } from '../api/queries'
 import { fitBbox, MapContext } from './leaflet'
 import { useMapView } from './view'
 
-export function MapView({ children, legend }: { children?: ReactNode; legend?: ReactNode }) {
+export const toolClass =
+  'flex size-7 items-center justify-center hover:bg-neutral-200 disabled:opacity-45'
+
+export function MapView({
+  children,
+  legend,
+  tools,
+}: {
+  children?: ReactNode
+  legend?: ReactNode
+  /** A further group in the toolbar, e.g. the table toggle. */
+  tools?: ReactNode
+}) {
   const container = useRef<HTMLDivElement>(null)
   const [map, setMap] = useState<L.Map | null>(null)
   const [showBasemap, setShowBasemap] = useState(true)
@@ -59,7 +71,7 @@ export function MapView({ children, legend }: { children?: ReactNode; legend?: R
     }
   }, [map, basemap, showBasemap])
 
-  const tool = 'flex size-7 items-center justify-center hover:bg-neutral-200 disabled:opacity-45'
+  const tool = toolClass
   return (
     <div className="relative h-full min-h-64">
       <div
@@ -128,6 +140,7 @@ export function MapView({ children, legend }: { children?: ReactNode; legend?: R
             <List size={15} />
           </button>
         </div>
+        {tools && <div className="flex flex-col">{tools}</div>}
       </div>
       {showLegend && legend && (
         <div className="card absolute right-12 bottom-6 z-[1000] max-w-64 p-2 text-xs">

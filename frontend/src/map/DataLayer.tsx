@@ -1,16 +1,15 @@
 // One displayed layer on the map: fetched through the query machinery, never
 // around it (etappen E1.5), drawn in its own pane so the panel order holds.
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import L from 'leaflet'
 import { useEffect } from 'react'
 import type { DisplayLayer, QueryObject } from '../analysis/model'
-import { and } from '../analysis/query'
-import { api, type LayerInfo, type QueryResult } from '../api/client'
+import type { LayerInfo, QueryResult } from '../api/client'
+import { useLayerFeatures } from './data'
 import { shownBounds, useLeafletMap } from './leaflet'
 import { featureName, popupContent } from './popup'
 import { featureStyle, layerColor, type HitState } from './style'
 import { symbolizer, useLegend } from './symbolize'
-import { roundBbox, useMapView } from './view'
+import { useMapView } from './view'
 
 export function DataLayer({
   layer,
@@ -38,17 +37,7 @@ export function DataLayer({
 }) {
   const map = useLeafletMap()
   const setLegend = useLegend((s) => s.set)
-  const bbox = useMapView((s) => s.bbox)
-  const viewed = largerThanLimit && bbox ? roundBbox(bbox) : null
-  const effective: QueryObject = viewed
-    ? { ...query, where: and(query.where, { op: 'bbox', bbox: viewed }) ?? undefined }
-    : query
-  const result = useQuery({
-    queryKey: ['map-layer', effective],
-    queryFn: () => api.query(effective),
-    placeholderData: keepPreviousData,
-    enabled: layer.visible,
-  })
+  const result = useLayerFeatures(query, largerThanLimit, layer.visible)
 
   useEffect(() => {
     onState?.({ error: result.error, count: result.data?.features.length ?? null })
