@@ -6,6 +6,7 @@ import type { Schemas } from '../api/client'
 export type QueryObject = Schemas['QueryObject-Input']
 export type Condition = NonNullable<QueryObject['where']>
 export type Symbology = NonNullable<QueryObject['symbology']>
+export type Column = NonNullable<QueryObject['columns']>[number]
 export type AttributeJoin = Schemas['AttributeJoin']
 export type Aggregate = Schemas['Aggregate']
 export type GeoJSONGeometry = Schemas['GeoJSONGeometry']

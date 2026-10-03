@@ -1,4 +1,4 @@
-"""Query-object schema v0 — the single contract between UI, model and engine.
+"""Query-object schema — the single contract between UI, model and engine.
 
 Evaluation order is fixed and independent of field order in the document:
 
@@ -13,13 +13,17 @@ Evaluation order is fixed and independent of field order in the document:
                          ``related`` it sees the buffered geometry
 6. ``aggregate``       — summarise the remaining features per feature of an
                          area layer; the result features become those areas
-7. ``select`` / ``order_by`` / ``limit``
+7. ``columns``         — computed attributes of each result feature, from its
+                         result geometry (after ``buffer``; the area after
+                         ``aggregate``) and another layer (v2)
+8. ``select`` / ``order_by`` / ``limit`` — computed columns included
 
 ``symbology`` and ``output`` are render hints: validated, never executed.
 Geometries in queries are GeoJSON in WGS84 (EPSG:4326); distances are metres.
 
-Version history: v0 (E1.2); v1 (E1.5) adds the condition ``related``. v1 is a
-superset: a v0 document is read as v1 with the same meaning and result.
+Version history: v0 (E1.2); v1 (E1.5) adds the condition ``related``; v2
+(E1.6) adds computed ``columns``. Each is a superset of the one before: an
+older document is read as v2 with the same meaning and result.
 
 The JSON schema is the whole intrinsic contract: no rule couples fields
 behind its back. Where one field depends on another, the model is split into
@@ -314,6 +318,45 @@ class OrderBy(_Model):
     dir: Literal["asc", "desc"] = "asc"
 
 
+# --- Computed columns (v2, F-8.2) ------------------------------------------------
+
+
+class DistanceColumn(_Model):
+    """Distance in metres to the nearest feature of ``layer``; null if none qualifies."""
+
+    fn: Literal["distance_to"]
+    name: Identifier = Field(description="Name of the result attribute.")
+    layer: Identifier
+    where: Condition | None = Field(
+        default=None, description="Filter on the attributes of ``layer``."
+    )
+
+
+class ValueColumn(_Model):
+    """Attribute ``attr`` of the feature of ``layer`` the result feature relates to.
+
+    Reads ``result <predicate> layer``. When several features qualify, the one
+    with the lowest ``fid`` gives the value; null when none does.
+    """
+
+    fn: Literal["value_of"]
+    name: Identifier = Field(description="Name of the result attribute.")
+    layer: Identifier
+    attr: Identifier = Field(description="Attribute of ``layer``.")
+    predicate: Literal["within", "intersects"] = "within"
+    where: Condition | None = Field(
+        default=None, description="Filter on the attributes of ``layer``."
+    )
+
+
+Column = Annotated[DistanceColumn | ValueColumn, Field(discriminator="fn")]
+"""A computed attribute of each result feature (since v2): why it is a hit.
+
+Its name must not clash with another result attribute (checked against the
+data, like joined fields). It can be selected and ordered by.
+"""
+
+
 # --- Symbology (render hint, F-4.8) --------------------------------------------
 
 
@@ -357,13 +400,14 @@ class QueryObject(_Model):
 
     model_config = ConfigDict(extra="forbid", title="GeoTandem query object")
 
-    schema_version: Literal["1"] = SCHEMA_VERSION
+    schema_version: Literal["2"] = SCHEMA_VERSION
     source: Identifier
     attribute_join: AttributeJoin | None = None
     where: Condition | None = None
     buffer: Buffer | None = None
     spatial_relation: SpatialRelation | None = None
     aggregate: Aggregate | None = None
+    columns: list[Column] = Field(default_factory=list)
     select: list[Identifier] | None = Field(
         default=None, description="Result attributes; all when omitted."
     )
@@ -375,8 +419,8 @@ class QueryObject(_Model):
     @model_validator(mode="before")
     @classmethod
     def _upgrade(cls, data: Any) -> Any:
-        """Read a v0 document as v1: v1 only adds, so the version is all that changes."""
-        if isinstance(data, dict) and data.get("schema_version") == "0":
+        """Read a v0 or v1 document as v2: each version only adds, so the version is all."""
+        if isinstance(data, dict) and data.get("schema_version") in ("0", "1"):
             return {**data, "schema_version": SCHEMA_VERSION}
         return data
 
@@ -388,4 +432,6 @@ TopologicalRelation.model_rebuild()
 DistanceRelation.model_rebuild()
 RelatedTopological.model_rebuild()
 RelatedByDistance.model_rebuild()
+DistanceColumn.model_rebuild()
+ValueColumn.model_rebuild()
 QueryObject.model_rebuild()

@@ -236,7 +236,7 @@ function JoinForm({
     queryKey: ['join-rate', recipe],
     queryFn: () =>
       recipe
-        ? api.count([recipeQuery(recipe), { schema_version: '1', source: base, output: 'map' }])
+        ? api.count([recipeQuery(recipe), { schema_version: '2', source: base, output: 'map' }])
         : null,
     enabled: Boolean(recipe),
   })

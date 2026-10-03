@@ -264,6 +264,34 @@ class Compiler:
             conds.append(self.condition(rel.where, other))
         return exists(select(literal(1)).where(*conds))
 
+    def computed_columns(
+        self, columns: list[m.Column], geom: Any, namespace: dict[str, ColumnElement[Any]]
+    ) -> None:
+        """Add each computed column (v2) as a correlated scalar subquery on ``geom``."""
+        d = self.dialect
+        for column in columns:
+            if column.name in namespace:
+                raise QueryError(
+                    f"Computed column '{column.name}' clashes with another result attribute.",
+                    attribute=column.name,
+                )
+            self.use(Op.SPATIAL_RELATION)
+            other = self.scope(column.layer)
+            other_geom = other.require_geom(column.fn)
+            conds = [] if column.where is None else [self.condition(column.where, other)]
+            if isinstance(column, m.DistanceColumn):
+                # Unbounded nearest search: no index prefilter applies.
+                expr = select(func.min(d.distance(geom, other_geom))).where(*conds)
+            else:
+                relate = d.within if column.predicate == "within" else d.intersects
+                expr = (
+                    select(other.attr(column.attr))
+                    .where(self.indexed(other, geom, relate(geom, other_geom)), *conds)
+                    .order_by(other.columns[FID])
+                    .limit(1)
+                )
+            namespace[column.name] = expr.scalar_subquery()
+
     # --- query -----------------------------------------------------------------
 
     def compile(self, q: m.QueryObject, max_features: int) -> Compiled:
@@ -286,6 +314,10 @@ class Compiler:
             return self.aggregate(q, q.aggregate, src, geom, filters, max_features)
 
         namespace = src.columns
+        if q.columns:
+            if geom is None:
+                src.require_geom("columns")
+            self.computed_columns(q.columns, geom, namespace)
         columns = _output_columns(q.select, namespace)
         if geom is not None:
             columns.append(self.geojson(geom))
@@ -333,6 +365,7 @@ class Compiler:
             else:
                 namespace[metric.as_] = getattr(func, metric.fn)(features.c[metric.attr])
 
+        self.computed_columns(q.columns, area_geom, namespace)
         columns = [*_output_columns(q.select, namespace), self.geojson(area_geom)]
         stmt = (
             select(*columns)

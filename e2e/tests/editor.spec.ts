@@ -11,7 +11,7 @@ async function addLayers(page: Page, names: RegExp[]) {
 }
 
 const reference = {
-  schema_version: '1',
+  schema_version: '2',
   source: 'schulen',
   where: {
     op: 'and',
@@ -53,7 +53,7 @@ test('conditions built by hand count like the hand-written query', async ({ page
   await editor.getByRole('button', { name: 'Übernehmen' }).click()
 
   const expected = await page.request.post('/api/query/count', {
-    data: { queries: [reference, { schema_version: '1', source: 'schulen' }] },
+    data: { queries: [reference, { schema_version: '2', source: 'schulen' }] },
   })
   const [hits, total] = (await expected.json()).counts
   expect(hits).toBeGreaterThan(0)

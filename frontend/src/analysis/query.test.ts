@@ -11,7 +11,7 @@ import type {
   Restriction,
   SpatialOperator,
 } from './model'
-import { emptyTree, layerQuery, resultQuery, rowQueries, totalQuery } from './query'
+import { emptyTree, explainColumns, layerQuery, resultQuery, rowQueries, totalQuery } from './query'
 
 const catalog = (id: string, layer = id): DisplayLayer => ({
   id,
@@ -73,7 +73,7 @@ describe('the reference question', () => {
     const query = resultQuery(analysis(tree))
     assertValidQuery(query)
     expect(query).toEqual({
-      schema_version: '1',
+      schema_version: '2',
       source: 'schulen',
       output: 'map',
       where: {
@@ -103,10 +103,55 @@ describe('the reference question', () => {
     expect(queries.map((q) => q.id)).toEqual(['r1', 'r2', 'r3'])
     queries.forEach((q) => assertValidQuery(q.query))
     expect(totalQuery(analysis(tree))).toEqual({
-      schema_version: '1',
+      schema_version: '2',
       source: 'schulen',
       output: 'map',
     })
+  })
+
+  test('the result layer carries columns that explain its hits (design B8)', () => {
+    const state = analysis(tree)
+    const labelOf = (layer: string) => (layer === 'gemeinden' ? 'name' : null)
+    expect(explainColumns(state, labelOf)).toEqual([
+      {
+        row: 'r2',
+        kind: 'distance',
+        column: {
+          fn: 'distance_to',
+          name: 'calc_distanz_strassen_klasse',
+          layer: 'strassen',
+          where: { op: 'compare', attr: 'klasse', cmp: 'eq', value: 'haupt' },
+        },
+      },
+      {
+        row: 'r3',
+        kind: 'value',
+        column: {
+          fn: 'value_of',
+          name: 'calc_gemeinden_name',
+          layer: 'gemeinden',
+          attr: 'name',
+          predicate: 'within',
+        },
+      },
+      {
+        row: 'r3',
+        kind: 'value',
+        column: {
+          fn: 'value_of',
+          name: 'calc_gemeinden_anteil_u20',
+          layer: 'gemeinden',
+          attr: 'anteil_u20',
+          predicate: 'within',
+        },
+      },
+    ])
+    const shown = layerQuery(catalog('schulen'), state, labelOf)
+    assertValidQuery(shown)
+    expect(shown.columns).toHaveLength(3)
+    // Other layers, the result query and the counts stay as they were (F-8.9).
+    expect(layerQuery(catalog('strassen'), state, labelOf).columns).toBeUndefined()
+    expect(resultQuery(state)?.columns).toBeUndefined()
   })
 })
 
@@ -146,7 +191,7 @@ test('incomplete rows are left out, never sent half-made', () => {
     ],
   }
   const query = resultQuery(analysis(tree))
-  expect(query).toEqual({ schema_version: '1', source: 'schulen', output: 'map' })
+  expect(query).toEqual({ schema_version: '2', source: 'schulen', output: 'map' })
   expect(rowQueries(analysis(tree))).toEqual([])
 })
 
@@ -318,22 +363,26 @@ test('every random analysis yields only valid query objects', () => {
     const result = resultQuery(state)
     assertValidQuery(result)
     for (const { query } of rowQueries(state)) assertValidQuery(query)
+    const shown = layerQuery(catalog('schulen'), state, () => 'name')
+    assertValidQuery(shown)
+    const names = (shown.columns ?? []).map((c) => c.name)
+    expect(new Set(names).size).toBe(names.length)
   }
 })
 
 test('the schema check itself rejects invalid queries', () => {
-  expect(() => assertValidQuery({ schema_version: '1', source: 'Schulen' })).toThrow()
+  expect(() => assertValidQuery({ schema_version: '2', source: 'Schulen' })).toThrow()
   // Since option A the schema is the whole contract: a distance relation
   // without distance is rejected here, not only by the server.
   expect(() =>
     assertValidQuery({
-      schema_version: '1',
+      schema_version: '2',
       source: 'schulen',
       where: { op: 'related', layer: 'strassen', predicate: 'dwithin' },
     }),
   ).toThrow()
   expect(() =>
-    assertValidQuery({ schema_version: '1', source: 'schulen', where: { op: 'touches' } }),
+    assertValidQuery({ schema_version: '2', source: 'schulen', where: { op: 'touches' } }),
   ).toThrow()
 })
 

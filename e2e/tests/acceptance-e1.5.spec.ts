@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs'
 
 const read = (path: string) => JSON.parse(readFileSync(new URL(path, import.meta.url), 'utf-8'))
 const reference = read('../fixtures/reference-question.json')
-const validate = new Ajv2020({ strict: false }).compile(read('../../schema/query-object/v1.json'))
+const validate = new Ajv2020({ strict: false }).compile(read('../../schema/query-object/v2.json'))
 const AREAS = 'gemeinden_bevoelkerung'
 
 /** The share of under-20s lives in a table; E1.3 imports it keyed onto the municipalities. */
@@ -98,7 +98,7 @@ test('the reference question, answered by hand', async ({ page, request }) => {
 
   // The engine's answer to the hand-written reference ...
   const expected = await request.post('/api/query/count', {
-    data: { queries: [reference, { schema_version: '1', source: 'schulen' }] },
+    data: { queries: [reference, { schema_version: '2', source: 'schulen' }] },
   })
   const [hits, total] = (await expected.json()).counts
   expect(hits).toBe(7)

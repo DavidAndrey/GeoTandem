@@ -17,7 +17,7 @@ import { MapView } from '../map/MapView'
 import { ACCENT, layerColor } from '../map/style'
 import { useLegend } from '../map/symbolize'
 import { useMapView } from '../map/view'
-import { catalogInfo, geometryKind, layerTitle, panelOrder } from './layerInfo'
+import { catalogInfo, geometryKind, labelAttribute, layerTitle, panelOrder } from './layerInfo'
 import { LayerPanel } from './LayerPanel'
 import { QueryPanel } from './QueryPanel'
 import { Swatch } from './Swatch'
@@ -94,6 +94,10 @@ function MapLayers() {
     [setRestriction],
   )
   const resultTitle = analysis.layers.find((l) => l.id === analysis.result)
+  const labelOf = useCallback(
+    (layer: string) => labelAttribute(catalog.data?.find((l) => l.name === layer)),
+    [catalog.data],
+  )
 
   return (
     <div className="relative min-h-0">
@@ -116,7 +120,7 @@ function MapLayers() {
             <DataLayer
               key={layer.id}
               layer={layer}
-              query={layerQuery(layer, analysis)}
+              query={layerQuery(layer, analysis, labelOf)}
               order={analysis.layers.length - index}
               title={layerTitle(layer, catalog.data)}
               info={info}

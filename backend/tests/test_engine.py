@@ -418,3 +418,155 @@ def test_count_equals_the_number_of_features(sample: DataBackend, query: dict[st
 def test_count_is_not_capped_by_the_result_size_limit(sample: DataBackend) -> None:
     small = Limits(max_features=10, timeout_s=10)
     assert count_query(QueryObject(source="schulen"), sample, small) == 120
+
+
+# --- computed columns (schema v2) ------------------------------------------------
+
+
+def test_distance_column_matches_oracle(sample: DataBackend) -> None:
+    main_roads = [g for _, g, p in oracle("strassen") if p["klasse"] == "haupt"]
+    expected = {fid: min(g.distance(r) for r in main_roads) for fid, g, _ in oracle("schulen")}
+    result = run(
+        sample,
+        {
+            "source": "schulen",
+            "columns": [
+                {
+                    "fn": "distance_to",
+                    "name": "distanz_haupt",
+                    "layer": "strassen",
+                    "where": {"op": "compare", "attr": "klasse", "cmp": "eq", "value": "haupt"},
+                }
+            ],
+        },
+    )
+    actual = {f.id: f.properties["distanz_haupt"] for f in result.features}
+    assert actual.keys() == expected.keys()
+    for fid, distance in expected.items():
+        assert actual[fid] == pytest.approx(distance, abs=0.01)
+
+
+def test_value_column_matches_oracle(sample: DataBackend) -> None:
+    municipalities = oracle("gemeinden")
+    expected = {
+        fid: next((p["name"] for _, area, p in municipalities if g.within(area)), None)
+        for fid, g, _ in oracle("schulen")
+    }
+    result = run(
+        sample,
+        {
+            "source": "schulen",
+            "columns": [
+                {"fn": "value_of", "name": "gemeinde", "layer": "gemeinden", "attr": "name"}
+            ],
+        },
+    )
+    assert {f.id: f.properties["gemeinde"] for f in result.features} == expected
+    assert any(expected.values())
+
+
+def test_columns_are_null_when_nothing_qualifies(sample: DataBackend) -> None:
+    nothing = {"op": "compare", "attr": "gem_nr", "cmp": "eq", "value": -1}
+    result = run(
+        sample,
+        {
+            "source": "schulen",
+            "limit": 3,
+            "columns": [
+                {"fn": "distance_to", "name": "d", "layer": "gemeinden", "where": nothing},
+                {
+                    "fn": "value_of",
+                    "name": "v",
+                    "layer": "gemeinden",
+                    "attr": "name",
+                    "where": nothing,
+                },
+            ],
+        },
+    )
+    assert [(f.properties["d"], f.properties["v"]) for f in result.features] == [(None, None)] * 3
+
+
+def test_columns_can_be_selected_and_ordered_by(sample: DataBackend) -> None:
+    result = run(
+        sample,
+        {
+            "source": "schulen",
+            "columns": [{"fn": "distance_to", "name": "d", "layer": "strassen"}],
+            "select": ["name", "d"],
+            "order_by": [{"attr": "d", "dir": "desc"}],
+            "limit": 5,
+        },
+    )
+    distances = [f.properties["d"] for f in result.features]
+    assert distances == sorted(distances, reverse=True)
+    assert set(result.features[0].properties) == {"name", "d"}
+
+
+def test_columns_after_aggregate_use_the_area(sample: DataBackend) -> None:
+    rivers = [g for _, g, _ in oracle("gewaesser")]
+    expected = {fid: min(area.distance(r) for r in rivers) for fid, area, _ in oracle("gemeinden")}
+    result = run(
+        sample,
+        {
+            "source": "schulen",
+            "aggregate": {"by_layer": "gemeinden", "metrics": [{"fn": "count", "as": "n"}]},
+            "columns": [{"fn": "distance_to", "name": "d", "layer": "gewaesser"}],
+        },
+    )
+    for f in result.features:
+        assert f.properties["d"] == pytest.approx(expected[f.id], abs=0.01)
+
+
+@pytest.mark.parametrize(
+    ("columns", "code", "fragment"),
+    [
+        ([{"fn": "distance_to", "name": "name", "layer": "strassen"}], "invalid_query", "clashes"),
+        (
+            [
+                {"fn": "distance_to", "name": "d", "layer": "strassen"},
+                {"fn": "distance_to", "name": "d", "layer": "gemeinden"},
+            ],
+            "invalid_query",
+            "clashes",
+        ),
+        (
+            [{"fn": "value_of", "name": "v", "layer": "gemeinden", "attr": "einwohner"}],
+            "unknown_attribute",
+            "einwohner",
+        ),
+        (
+            [{"fn": "distance_to", "name": "d", "layer": "bevoelkerung"}],
+            "unsupported_operation",
+            "table layer",
+        ),
+    ],
+)
+def test_bad_columns_are_rejected(
+    sample: DataBackend, columns: list[dict[str, Any]], code: str, fragment: str
+) -> None:
+    with pytest.raises(QueryError) as info:
+        run(sample, {"source": "schulen", "columns": columns})
+    assert info.value.code == code
+    assert fragment in str(info.value)
+
+
+def test_column_on_a_hidden_layer_is_unknown(sample: DataBackend) -> None:
+    view = LayerView(sample, {"schulen"})
+    with pytest.raises(QueryError) as info:
+        run(
+            view,
+            {
+                "source": "schulen",
+                "columns": [{"fn": "distance_to", "name": "d", "layer": "strassen"}],
+            },
+        )
+    assert info.value.code == "unknown_layer"
+
+
+def test_count_ignores_columns(sample: DataBackend) -> None:
+    query = {
+        "source": "schulen",
+        "columns": [{"fn": "distance_to", "name": "d", "layer": "strassen"}],
+    }
+    assert count_query(QueryObject.model_validate(query), sample, LIMITS) == 120

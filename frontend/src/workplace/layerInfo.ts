@@ -42,3 +42,9 @@ export function panelOrder<T extends { source: { kind: string } }>(layers: T[]):
     ...layers.filter((l) => l.source.kind === 'derived'),
   ]
 }
+
+/** The text attribute that names a feature: "name"-like first, else the first text one. */
+export function labelAttribute(info: LayerInfo | undefined): string | null {
+  const texts = (info?.attributes ?? []).filter((a) => a.data_type === 'text').map((a) => a.name)
+  return ['name', 'bezeichnung', 'titel'].find((n) => texts.includes(n)) ?? texts[0] ?? null
+}

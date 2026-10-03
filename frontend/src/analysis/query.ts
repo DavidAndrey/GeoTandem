@@ -1,8 +1,9 @@
-// Analysis state → query objects (schema v1). Pure and exhaustively tested:
+// Analysis state → query objects (schema v2). Pure and exhaustively tested:
 // every query the interface sends comes from here (etappen E1.5 "fertig wenn").
 import type {
   Analysis,
   AttributeRow,
+  Column,
   Condition,
   DisplayLayer,
   Group,
@@ -13,7 +14,7 @@ import type {
   Row,
 } from './model'
 
-const base = (source: string): QueryObject => ({ schema_version: '1', source, output: 'map' })
+const base = (source: string): QueryObject => ({ schema_version: '2', source, output: 'map' })
 
 function negate(condition: Condition | null, not: boolean): Condition | null {
   return condition && not ? { op: 'not', arg: condition } : condition
@@ -158,13 +159,107 @@ export function recipeQuery(recipe: Recipe, filtered: Condition | null = null): 
   }
 }
 
-/** All features of a displayed layer, as drawn on the map. */
-export function layerQuery(layer: DisplayLayer, analysis?: Analysis): QueryObject {
+/** The text attribute that names a feature of ``layer``, if the catalog knows one. */
+export type LabelOf = (layer: string) => string | null
+
+/**
+ * All features of a displayed layer, as drawn on the map and listed in the table.
+ * The result layer also carries the columns that explain its hits (design B8).
+ */
+export function layerQuery(
+  layer: DisplayLayer,
+  analysis?: Analysis,
+  labelOf?: LabelOf,
+): QueryObject {
   const query =
     layer.source.kind === 'catalog'
       ? base(layer.source.layer)
       : recipeQuery(layer.source.recipe, analysis ? filteredSourceOf(layer, analysis) : null)
-  return layer.symbology ? { ...query, symbology: layer.symbology } : query
+  const columns =
+    analysis && layer.id === resultLayer(analysis)?.id
+      ? explainColumns(analysis, labelOf).map((c) => c.column)
+      : []
+  return {
+    ...query,
+    ...(columns.length ? { columns } : {}),
+    ...(layer.symbology ? { symbology: layer.symbology } : {}),
+  }
+}
+
+// --- computed columns (schema v2, design B8) ------------------------------------------
+
+export interface ExplainColumn {
+  column: Column
+  /** The spatial row it explains. */
+  row: string
+  /** "berechnet" (a distance) or "aus Raumfilter" (a value of the related feature). */
+  kind: 'distance' | 'value'
+}
+
+const MAX_NAME = 63
+
+function columnName(...parts: string[]): string {
+  return ['calc', ...parts].join('_').slice(0, MAX_NAME)
+}
+
+/**
+ * One column per complete spatial row that shows why a feature is a hit: the
+ * distance for "≤ / > Distanz", the related area's name and filtered attribute
+ * for "liegt in / ausserhalb / schneidet". Names follow the content, so the same
+ * row keeps its column when others change.
+ */
+export function explainColumns(analysis: Analysis, labelOf: LabelOf = () => null): ExplainColumn[] {
+  const found: ExplainColumn[] = []
+  const add = (row: string, kind: ExplainColumn['kind'], column: Column) => {
+    if (found.some((c) => JSON.stringify(c.column) === JSON.stringify(column))) return
+    let name = column.name
+    for (let i = 2; found.some((c) => c.column.name === name); i++)
+      name = `${column.name.slice(0, MAX_NAME - 3)}_${i}`
+    found.push({ row, kind, column: { ...column, name } })
+  }
+  const walk = (node: Node) => {
+    if (node.kind === 'group') return node.children.forEach(walk)
+    if (node.kind === 'reference') {
+      if (!node.layer || node.fid === null) return
+      add(node.id, 'distance', {
+        fn: 'distance_to',
+        name: columnName('distanz', node.layer, String(node.fid)),
+        layer: node.layer,
+        where: { op: 'compare', attr: 'fid', cmp: 'eq', value: node.fid },
+      })
+      return
+    }
+    if (node.kind !== 'spatial' || !node.layer) return
+    const filter = node.filter ? attributeCondition(node.filter) : null
+    if (node.operator === 'near' || node.operator === 'far') {
+      add(node.id, 'distance', {
+        fn: 'distance_to',
+        name: columnName(
+          'distanz',
+          node.layer,
+          ...(filter && node.filter ? [node.filter.attr] : []),
+        ),
+        layer: node.layer,
+        ...(filter ? { where: filter } : {}),
+      })
+      return
+    }
+    if (node.operator === 'contains') return
+    const predicate = node.operator === 'intersects' ? 'intersects' : 'within'
+    const attrs = [labelOf(node.layer), filter && node.filter ? node.filter.attr : null]
+    for (const attr of attrs) {
+      if (!attr) continue
+      add(node.id, 'value', {
+        fn: 'value_of',
+        name: columnName(node.layer, attr),
+        layer: node.layer,
+        attr,
+        predicate,
+      })
+    }
+  }
+  walk(analysis.tree)
+  return found
 }
 
 /** "Nur gefilterte Objekte" (design B4): the result's conditions, if the buffer is about it. */

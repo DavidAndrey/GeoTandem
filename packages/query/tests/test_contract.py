@@ -31,6 +31,20 @@ VALID: list[dict[str, Any]] = [
     {"spatial_relation": {"layer": "g", "predicate": "contains"}},
     {"aggregate": {"by_layer": "g", "metrics": [{"fn": "count", "as": "n"}]}},
     {"aggregate": {"by_layer": "g", "metrics": [{"fn": "avg", "attr": "a", "as": "m"}]}},
+    {"columns": [{"fn": "distance_to", "name": "d", "layer": "g"}]},
+    {"columns": [{"fn": "value_of", "name": "v", "layer": "g", "attr": "a"}]},
+    {
+        "columns": [
+            {
+                "fn": "value_of",
+                "name": "v",
+                "layer": "g",
+                "attr": "a",
+                "predicate": "intersects",
+                "where": {"op": "compare", "attr": "b", "cmp": "gt", "value": 1},
+            }
+        ]
+    },
     *[
         {k: v for k, v in json.loads(p.read_text()).items() if k != "source"}
         for p in sorted(GOLDEN.glob("*.query.json"))
@@ -53,7 +67,16 @@ INVALID: list[dict[str, Any]] = [
     {"aggregate": {"by_layer": "g", "metrics": []}},
     {"buffer": {"distance_m": 0}},
     {"symbology": {"kind": "classified", "attr": "a", "method": "quantile", "classes": 20}},
-    {"schema_version": "2"},
+    {"columns": [{"fn": "distance_to", "name": "d", "layer": "g", "attr": "a"}]},
+    {"columns": [{"fn": "value_of", "name": "v", "layer": "g"}]},
+    {
+        "columns": [
+            {"fn": "value_of", "name": "v", "layer": "g", "attr": "a", "predicate": "dwithin"}
+        ]
+    },
+    {"columns": [{"fn": "nearest", "name": "n", "layer": "g"}]},
+    {"columns": [{"fn": "distance_to", "name": "D", "layer": "g"}]},
+    {"schema_version": "3"},
 ]
 
 
@@ -73,8 +96,9 @@ def test_schema_and_models_agree(payload: dict[str, Any]) -> None:
     assert by_schema == (payload in VALID)
 
 
-def test_the_one_deliberate_difference_is_reading_v0() -> None:
-    """The server reads a v0 document as v1 (F-10.3); the v1 schema describes v1 only."""
-    v0 = {"schema_version": "0", "source": "schulen"}
-    assert pydantic_accepts(v0)
-    assert not VALIDATOR.is_valid(v0)
+@pytest.mark.parametrize("version", ["0", "1"])
+def test_the_one_deliberate_difference_is_reading_older_versions(version: str) -> None:
+    """The server reads v0 and v1 documents as v2 (F-10.3); the schema describes v2 only."""
+    older = {"schema_version": version, "source": "schulen"}
+    assert pydantic_accepts(older)
+    assert not VALIDATOR.is_valid(older)

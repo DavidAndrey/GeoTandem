@@ -968,6 +968,90 @@ export interface components {
       password: string
     }
     /**
+     * DistanceColumn
+     * @description Distance in metres to the nearest feature of ``layer``; null if none qualifies.
+     */
+    'DistanceColumn-Input': {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      fn: 'distance_to'
+      /**
+       * Name
+       * @description Name of the result attribute.
+       */
+      name: string
+      /**
+       * Layer
+       * @description Lower-case layer or attribute name.
+       */
+      layer: string
+      /**
+       * Where
+       * @description Filter on the attributes of ``layer``.
+       */
+      where?:
+        | (
+            | components['schemas']['Compare']
+            | components['schemas']['Between']
+            | components['schemas']['InList']
+            | components['schemas']['TextMatch']
+            | components['schemas']['IsNull']
+            | components['schemas']['BBox']
+            | components['schemas']['GeometryFilter']
+            | components['schemas']['NearFeature']
+            | components['schemas']['RelatedTopological-Input']
+            | components['schemas']['RelatedByDistance-Input']
+            | components['schemas']['And-Input']
+            | components['schemas']['Or-Input']
+            | components['schemas']['Not-Input']
+          )
+        | null
+    }
+    /**
+     * DistanceColumn
+     * @description Distance in metres to the nearest feature of ``layer``; null if none qualifies.
+     */
+    'DistanceColumn-Output': {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      fn: 'distance_to'
+      /**
+       * Name
+       * @description Name of the result attribute.
+       */
+      name: string
+      /**
+       * Layer
+       * @description Lower-case layer or attribute name.
+       */
+      layer: string
+      /**
+       * Where
+       * @description Filter on the attributes of ``layer``.
+       */
+      where?:
+        | (
+            | components['schemas']['Compare']
+            | components['schemas']['Between']
+            | components['schemas']['InList']
+            | components['schemas']['TextMatch']
+            | components['schemas']['IsNull']
+            | components['schemas']['BBox']
+            | components['schemas']['GeometryFilter']
+            | components['schemas']['NearFeature']
+            | components['schemas']['RelatedTopological-Output']
+            | components['schemas']['RelatedByDistance-Output']
+            | components['schemas']['And-Output']
+            | components['schemas']['Or-Output']
+            | components['schemas']['Not-Output']
+          )
+        | null
+    }
+    /**
      * DistanceRelation
      * @description Source within ``distance_m`` of a feature of ``layer``.
      */
@@ -1693,10 +1777,10 @@ export interface components {
     'QueryObject-Input': {
       /**
        * Schema Version
-       * @default 1
+       * @default 2
        * @constant
        */
-      schema_version: '1'
+      schema_version: '2'
       /**
        * Source
        * @description Lower-case layer or attribute name.
@@ -1730,6 +1814,10 @@ export interface components {
           )
         | null
       aggregate?: components['schemas']['Aggregate'] | null
+      /** Columns */
+      columns?: (
+        components['schemas']['DistanceColumn-Input'] | components['schemas']['ValueColumn-Input']
+      )[]
       /**
        * Select
        * @description Result attributes; all when omitted.
@@ -1762,10 +1850,10 @@ export interface components {
     'QueryObject-Output': {
       /**
        * Schema Version
-       * @default 1
+       * @default 2
        * @constant
        */
-      schema_version: '1'
+      schema_version: '2'
       /**
        * Source
        * @description Lower-case layer or attribute name.
@@ -1799,6 +1887,10 @@ export interface components {
           )
         | null
       aggregate?: components['schemas']['Aggregate'] | null
+      /** Columns */
+      columns?: (
+        components['schemas']['DistanceColumn-Output'] | components['schemas']['ValueColumn-Output']
+      )[]
       /**
        * Select
        * @description Result attributes; all when omitted.
@@ -2259,6 +2351,118 @@ export interface components {
       input?: unknown
       /** Context */
       ctx?: Record<string, never>
+    }
+    /**
+     * ValueColumn
+     * @description Attribute ``attr`` of the feature of ``layer`` the result feature relates to.
+     *
+     *     Reads ``result <predicate> layer``. When several features qualify, the one
+     *     with the lowest ``fid`` gives the value; null when none does.
+     */
+    'ValueColumn-Input': {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      fn: 'value_of'
+      /**
+       * Name
+       * @description Name of the result attribute.
+       */
+      name: string
+      /**
+       * Layer
+       * @description Lower-case layer or attribute name.
+       */
+      layer: string
+      /**
+       * Attr
+       * @description Attribute of ``layer``.
+       */
+      attr: string
+      /**
+       * Predicate
+       * @default within
+       * @enum {string}
+       */
+      predicate: 'within' | 'intersects'
+      /**
+       * Where
+       * @description Filter on the attributes of ``layer``.
+       */
+      where?:
+        | (
+            | components['schemas']['Compare']
+            | components['schemas']['Between']
+            | components['schemas']['InList']
+            | components['schemas']['TextMatch']
+            | components['schemas']['IsNull']
+            | components['schemas']['BBox']
+            | components['schemas']['GeometryFilter']
+            | components['schemas']['NearFeature']
+            | components['schemas']['RelatedTopological-Input']
+            | components['schemas']['RelatedByDistance-Input']
+            | components['schemas']['And-Input']
+            | components['schemas']['Or-Input']
+            | components['schemas']['Not-Input']
+          )
+        | null
+    }
+    /**
+     * ValueColumn
+     * @description Attribute ``attr`` of the feature of ``layer`` the result feature relates to.
+     *
+     *     Reads ``result <predicate> layer``. When several features qualify, the one
+     *     with the lowest ``fid`` gives the value; null when none does.
+     */
+    'ValueColumn-Output': {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      fn: 'value_of'
+      /**
+       * Name
+       * @description Name of the result attribute.
+       */
+      name: string
+      /**
+       * Layer
+       * @description Lower-case layer or attribute name.
+       */
+      layer: string
+      /**
+       * Attr
+       * @description Attribute of ``layer``.
+       */
+      attr: string
+      /**
+       * Predicate
+       * @default within
+       * @enum {string}
+       */
+      predicate: 'within' | 'intersects'
+      /**
+       * Where
+       * @description Filter on the attributes of ``layer``.
+       */
+      where?:
+        | (
+            | components['schemas']['Compare']
+            | components['schemas']['Between']
+            | components['schemas']['InList']
+            | components['schemas']['TextMatch']
+            | components['schemas']['IsNull']
+            | components['schemas']['BBox']
+            | components['schemas']['GeometryFilter']
+            | components['schemas']['NearFeature']
+            | components['schemas']['RelatedTopological-Output']
+            | components['schemas']['RelatedByDistance-Output']
+            | components['schemas']['And-Output']
+            | components['schemas']['Or-Output']
+            | components['schemas']['Not-Output']
+          )
+        | null
     }
     /**
      * ValueDomain

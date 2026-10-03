@@ -10,7 +10,7 @@ def q(**kwargs: object) -> QueryObject:
 
 def test_minimal_query_gets_defaults() -> None:
     query = q()
-    assert query.schema_version == "1"
+    assert query.schema_version == "2"
     assert query.output == "map"
     assert query.order_by == []
 
@@ -71,7 +71,7 @@ def test_full_query_validates() -> None:
         {"buffer": {"distance_m": 0}},
         {"aggregate": {"by_layer": "g", "metrics": [{"fn": "sum", "as": "s"}]}},
         {"aggregate": {"by_layer": "g", "metrics": [{"fn": "count", "attr": "a", "as": "n"}]}},
-        {"schema_version": "2"},
+        {"schema_version": "3"},
         {"where": {"op": "related", "layer": "g", "predicate": "dwithin"}},
         {"where": {"op": "related", "layer": "g", "predicate": "within", "distance_m": 5}},
         {"where": {"op": "related", "layer": "G", "predicate": "within"}},
@@ -119,7 +119,7 @@ def test_metric_alias_round_trips() -> None:
 def test_v0_document_is_read_as_v1_with_the_same_hash() -> None:
     v0 = q(schema_version="0", where={"op": "compare", "attr": "a", "cmp": "eq", "value": 1})
     v1 = q(where={"op": "compare", "attr": "a", "cmp": "eq", "value": 1})
-    assert v0.schema_version == "1"
+    assert v0.schema_version == "2"
     assert query_hash(v0) == query_hash(v1)
 
 
@@ -164,3 +164,23 @@ def test_variants_carry_only_their_fields() -> None:
     dumped = query.model_dump(mode="json", by_alias=True, exclude_none=False)
     assert "distance_m" not in dumped["where"]
     assert "attr" not in dumped["aggregate"]["metrics"][0]
+
+
+# --- v2 (E1.6) -----------------------------------------------------------------
+
+
+def test_v1_document_is_read_as_v2_with_the_same_hash() -> None:
+    where = {"op": "related", "layer": "strassen", "predicate": "dwithin", "distance_m": 500}
+    assert query_hash(q(schema_version="1", where=where)) == query_hash(q(where=where))
+
+
+def test_columns_are_told_apart_by_fn() -> None:
+    query = q(
+        columns=[
+            {"fn": "distance_to", "name": "d", "layer": "strassen"},
+            {"fn": "value_of", "name": "g", "layer": "gemeinden", "attr": "name"},
+        ]
+    )
+    distance, value = query.columns
+    assert distance.fn == "distance_to"
+    assert value.fn == "value_of" and value.predicate == "within"

@@ -15,7 +15,7 @@ async def test_health(client: httpx.AsyncClient) -> None:
     body = (await client.get("/api/health")).json()
     assert body["status"] == "ok"
     assert body["backend"] == "spatialite"
-    assert body["schema_version"] == "1"
+    assert body["schema_version"] == "2"
     assert body["sample_dataset_version"] == "tandemtal-1"
     assert body["capabilities"]["missing"] == {}
 
@@ -73,7 +73,7 @@ async def test_rejections_share_one_body(
 
 async def test_schema_and_tools(client: httpx.AsyncClient) -> None:
     schema = (await client.get("/api/schema/query-object")).json()
-    assert schema["$id"].endswith("/query-object/v1.json")
+    assert schema["$id"].endswith("/query-object/v2.json")
     tools = (await client.get("/api/tools")).json()
     assert [t["name"] for t in tools] == ["list_layers", "describe_layer", "run_query"]
 

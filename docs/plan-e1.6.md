@@ -68,14 +68,24 @@ left them as a reported gap.
   `fn`), `SCHEMA_VERSION = "2"`, upgrade v1→v2 (version only), `v2.json`
   exported, v0/v1 untouched. Name clashes with source or joined attributes
   rejected. Contract test corpus (S3) extended.
-- Engine: correlated subqueries with the index prefilter; `distance_to` in
-  metres in the working CRS; `value_of` returns the first match by fid when
-  several areas qualify (documented). Not allowed together with `aggregate`
-  (validated, like the existing rules). Capability: `Op.SPATIAL_RELATION`.
-- Tests: shapely oracle for both functions, NULL when nothing qualifies,
-  hidden layer → `unknown_layer`, v1 golden files unchanged after upgrade.
-- Frontend types regenerated; `query.ts` adds one column per spatial row to
-  the result query's `columns`; ajv tests switch to `v2.json`.
+- Engine: correlated scalar subqueries on the **result geometry** (after
+  `buffer`; the area after `aggregate`, so no coupling rule is needed, S3);
+  `value_of` with the index prefilter, `distance_to` without (unbounded
+  nearest search); `distance_to` in metres in the working CRS; `value_of`
+  returns the first match by fid when several features qualify. Columns can
+  be selected and ordered by. Name clashes are rejected against the data,
+  like joined fields. Capability: `Op.SPATIAL_RELATION`.
+- Tests: shapely oracle for both functions and after `aggregate`, NULL when
+  nothing qualifies, clashes, table layer, hidden layer → `unknown_layer`,
+  counting ignores columns. Golden results unchanged; only their query
+  hashes changed (the version is part of the canonical form).
+- Frontend types regenerated; ajv tests switch to `v2.json`.
+  `explainColumns` (query.ts) derives the columns from the tree: distance
+  for ≤ / > Distanz and the reference feature, the related area's name and
+  filtered attribute for liegt in / ausserhalb / schneidet. They go on the
+  **result layer's display query** (map and table), not on `resultQuery`:
+  the analysis' query object, its counts and the E1.5 reference stay as
+  they were.
 
 ### WP27 — Table state and sorting (foundation)
 
