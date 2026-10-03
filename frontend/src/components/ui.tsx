@@ -67,6 +67,8 @@ export function Dots({ value, max = 4, label }: { value: number; max?: number; l
   )
 }
 
+// Menus and confirmations stack above dialogs (Modal: z-1200), since both open
+// from inside them, e.g. a row's ⋯ in the session list (design C3, C6).
 export function Menu({ label, children }: { label: string; children: ReactNode }) {
   return (
     <DropdownMenu.Root>
@@ -76,7 +78,7 @@ export function Menu({ label, children }: { label: string; children: ReactNode }
       <DropdownMenu.Portal>
         <DropdownMenu.Content
           align="end"
-          className="card bg-neutral-100 z-50 min-w-40 py-1 shadow-[var(--shadow-md)]"
+          className="card bg-neutral-100 z-[1300] min-w-40 py-1 shadow-[var(--shadow-md)]"
         >
           {children}
         </DropdownMenu.Content>
@@ -126,8 +128,8 @@ export function ConfirmDialog({
   return (
     <AlertDialog.Root open={open} onOpenChange={onOpenChange}>
       <AlertDialog.Portal>
-        <AlertDialog.Overlay className="bg-ink/30 fixed inset-0 z-40" />
-        <AlertDialog.Content className="card fixed top-1/3 left-1/2 z-50 w-[28rem] max-w-[calc(100vw-2rem)] -translate-x-1/2 p-5 shadow-[var(--shadow-md)]">
+        <AlertDialog.Overlay className="bg-ink/30 fixed inset-0 z-[1250]" />
+        <AlertDialog.Content className="card fixed top-1/3 left-1/2 z-[1300] w-[28rem] max-w-[calc(100vw-2rem)] -translate-x-1/2 p-5 shadow-[var(--shadow-md)]">
           <AlertDialog.Title className="mb-2 text-xl">{title}</AlertDialog.Title>
           <AlertDialog.Description asChild>
             <div className="text-sm">{children}</div>

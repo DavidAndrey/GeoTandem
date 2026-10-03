@@ -1,11 +1,5 @@
-import {
-  expect,
-  test,
-  type APIRequestContext,
-  type Browser,
-  type BrowserContext,
-  type Page,
-} from '@playwright/test'
+import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
+import { ensureAccount, signIn } from './accounts'
 import { buildReferenceQuestion, ensureAreaLayer, validate, watchQueries } from './reference'
 
 // Acceptance E1.7 (etappen.md): "Eine gespeicherte Sitzung liefert nach
@@ -21,35 +15,7 @@ import { buildReferenceQuestion, ensureAreaLayer, validate, watchQueries } from 
 
 test.describe.configure({ mode: 'serial' })
 
-const PASSWORD = 'vorfuehrung-passwort-1'
 const DEMO = 'Vorführung E1'
-
-/** An account of its own, so that no other test lands in these sessions. */
-async function ensureAccount(admin: APIRequestContext, browser: Browser, username: string) {
-  const users = (await (await admin.get('/api/admin/users')).json()) as { username: string }[]
-  if (users.some((u) => u.username === username)) return
-  const created = await admin.post('/api/admin/users', { data: { username, role: 'admin' } })
-  expect(created.ok()).toBe(true)
-  const { start_password } = await created.json()
-  const context = await browser.newContext({ storageState: { cookies: [], origins: [] } })
-  await context.request.post('/api/auth/login', { data: { username, password: start_password } })
-  const changed = await context.request.post('/api/auth/password', {
-    data: { current: start_password, new: PASSWORD },
-  })
-  expect(changed.ok()).toBe(true)
-  await context.close()
-}
-
-/** A browser that has never seen this instance, signed in through the login page (design A2). */
-async function signIn(browser: Browser, username: string): Promise<[BrowserContext, Page]> {
-  const context = await browser.newContext({ storageState: { cookies: [], origins: [] } })
-  const page = await context.newPage()
-  await page.goto('/')
-  await page.getByLabel('Benutzername').fill(username)
-  await page.getByLabel('Passwort').fill(PASSWORD)
-  await page.getByRole('button', { name: 'Anmelden' }).click()
-  return [context, page]
-}
 
 async function sessionsOf(page: Page) {
   return (await (await page.request.get('/api/sessions')).json()) as {

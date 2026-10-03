@@ -1,17 +1,19 @@
 // Opening a saved query from the menu or the list (design B1, C6).
 import { useMutation } from '@tanstack/react-query'
 import { currentAnalysis, useAnalysis } from '../analysis/store'
-import { useLayers } from '../api/queries'
+import { useEnsureLayers } from '../api/queries'
 import { openQuery } from './actions'
 import { wouldLose } from './part'
 import { useQueryUi } from './ui'
 
 /** Opens a query and reports what had to be left out on today's layers. */
 export function useOpenQuery() {
-  const catalog = useLayers()
+  const layers = useEnsureLayers()
   const { setPending, setMessage } = useQueryUi()
   return useMutation({
-    mutationFn: (id: string) => openQuery(id, new Set(catalog.data?.map((l) => l.name) ?? [])),
+    // Under load the catalog may still be loading when a query is chosen; an
+    // empty catalog would make every layer look missing.
+    mutationFn: async (id: string) => openQuery(id, new Set((await layers()).map((l) => l.name))),
     onSuccess: (removed) => {
       setPending(null)
       setMessage(

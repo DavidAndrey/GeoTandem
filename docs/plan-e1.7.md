@@ -53,7 +53,7 @@ the state as a contract, B can follow then, from a state that has proven itself.
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| D1 | Saved queries (B1 "Gespeicherte Abfragen", C6, shared and read-only for others) | **Left out, reported.** Sessions only | F-4.10 asks for sessions. Saved queries are a second artefact with sharing rules, not in the requirements. "Kein stiller Umfangszuwachs" |
+| D1 | Saved queries (B1 "Gespeicherte Abfragen", C6, shared and read-only for others) | **Left out, reported.** Sessions only. *Built afterwards on request: [plan-e1.7b.md](plan-e1.7b.md).* | F-4.10 asks for sessions. Saved queries are a second artefact with sharing rules, not in the requirements. "Kein stiller Umfangszuwachs" |
 | D2 | Ownership | Sessions are **private** to their owner (design decision 2), also for administrators; deleting an account deletes its sessions | Design; nothing in F-3.x lets an admin read a user's work |
 | D3 | Map view | Saved with the session (`bbox` at save time) and restored on open; moving the map still does not set *ungespeichert* | The example (C7) saves it; restoring the view is what "wiederherstellen" means to a user |
 | D4 | C4 "Unterschied in Tabelle zeigen" | **Left out, reported.** The deviation notice names the cause (layers whose `dataset_version` changed or that are gone) and old → new hit count; "Mit aktuellen Daten übernehmen" sets a new stamp | Showing added and removed rows would need the old ids, and ids are not stable across `replace_layer` (plan E1.6, D6), so such a diff would mislead |
@@ -153,7 +153,7 @@ session store from WP32.
 
 ## 5 Reported gaps (not built)
 
-- Saved and shared queries, B1 "Gespeicherte Abfragen", C6 (D1).
+- ~~Saved and shared queries, B1 "Gespeicherte Abfragen", C6 (D1).~~ Built in E1.7b.
 - "Unterschied in Tabelle zeigen" in C4 (D4).
 - "Layer wiederherstellen" in C8 (D5); needs a layer history.
 - Affected sessions in the admin's delete and update dialogs (D9).

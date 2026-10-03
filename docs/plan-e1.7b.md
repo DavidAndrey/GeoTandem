@@ -1,6 +1,6 @@
 # Plan E1.7b — Gespeicherte und geteilte Abfragen
 
-> Stand: 2026-10-03 · **beauftragt, Entscheidungen nach Empfehlung** · Bezug:
+> Stand: 2026-10-03 · **umgesetzt (WP36–WP38)** · Bezug:
 > [plan-e1.7.md](plan-e1.7.md) (D1: zunächst ausgelassen), [design/e1/README.md](../design/e1/README.md)
 > (B1 "Gespeicherte Abfragen", C6, C7 `gespeicherteAbfrage`)
 >
@@ -62,3 +62,34 @@ built now on explicit request (2026-10-03). The design is the reference.
 
 - Queries on derived result layers (Q2).
 - "Verwendung" on the layer page (Q9).
+
+## 4 Found on the way
+
+- **Summaries carry the query object (WP37).** The B1 menu shows each
+  query's hit count; with the query object in the list it is one count
+  request for all of them instead of one fetch per query.
+- **Menus opened under dialogs (WP38).** The shared row menu and the
+  confirmation sat below the modal's overlay, so "⋯ → Löschen" in C6 — and
+  the same menu in the session list C3 — could not be clicked. Unit tests
+  without layout cannot see stacking; the end-to-end test did. Menus and
+  confirmations now stack above dialogs.
+- **Opening a query before the catalog had loaded (WP38).** Under load the
+  layer list could still be on its way when a query was chosen; an empty
+  catalog made its result layer look missing and the open failed. Opening
+  now waits for the catalog.
+- **⌖ right after another zoom did nothing (WP38).** Leaflet drops an
+  animated zoom asked for while another one runs. Feature requests now wait
+  for the running zoom to end. Found by `table.spec` once it zoomed to the
+  layer first.
+- **Two map-click tests depended on the first view (WP38).** The first view
+  covers every layer the account sees, which grows with what earlier tests
+  imported, so a feature clicked by position could be outside the map: under
+  load in the gate's second pass, `editor.spec` (E1.5) picked nothing and
+  still passed its weak check, then failed on the count. Both tests now zoom
+  to their layer before clicking, and the pick check rejects the waiting
+  state too.
+- **Fresh accounts per run (WP38).** The gate runs the suite twice on the
+  same data; the test creates its two accounts with a run suffix, so the
+  second run starts from nothing instead of from the first run's queries. The
+  shared query's name carries the run too: shared queries are visible to
+  every account, including other runs'.

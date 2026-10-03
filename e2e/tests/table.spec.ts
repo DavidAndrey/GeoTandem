@@ -25,6 +25,11 @@ test('table and map highlight each other', async ({ page }) => {
   await expect(dock.getByText('1 ausgewählt')).toBeVisible()
 
   // Map → row: from another tab, the click opens the school's tab and its row.
+  // Zoomed to the schools first: the dock made the map smaller, and the first
+  // view covers every layer, which grows with the data earlier tests imported.
+  const panel = page.getByRole('region', { name: 'Layer' })
+  await panel.getByRole('button', { name: /^Schulen/, expanded: false }).click()
+  await panel.getByRole('button', { name: 'Auf Layer zoomen' }).click()
   await dock.getByRole('tab', { name: 'Strassen' }).click()
   await pane.locator('path.leaflet-interactive').nth(100).click({ force: true })
   await expect(dock.getByRole('tab', { name: /Schulen/ })).toHaveAttribute('aria-selected', 'true')

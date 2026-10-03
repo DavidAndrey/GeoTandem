@@ -90,7 +90,15 @@ export const useMapConfig = () =>
   useQuery({ queryKey: ['map-config'], queryFn: api.mapConfig, staleTime: Infinity })
 
 /** The layers the signed-in account may see (F-2.7). */
-export const useLayers = () => useQuery({ queryKey: ['layer', 'list'], queryFn: api.layers })
+const layerList = { queryKey: ['layer', 'list'], queryFn: api.layers }
+
+export const useLayers = () => useQuery(layerList)
+
+/** The catalog, waiting for it if it has not loaded yet — for actions that need it now. */
+export function useEnsureLayers() {
+  const client = useQueryClient()
+  return () => client.ensureQueryData(layerList)
+}
 
 /** An empty name means "no layer" and fetches nothing. */
 export const useLayer = (name: string) =>

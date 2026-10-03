@@ -73,6 +73,11 @@ test('conditions built by hand count like the hand-written query', async ({ page
 test('a reference feature is picked on the map (F-4.3)', async ({ page }) => {
   await page.goto('/')
   await addLayers(page, [/^Schulen/, /^Gemeinden/])
+  // The first view covers every layer this account sees, which grows with the data
+  // earlier tests imported: zoom to the municipalities, so the one clicked is in view.
+  const panel = page.getByRole('region', { name: 'Layer' })
+  await panel.getByRole('button', { name: /^Gemeinden/, expanded: false }).click()
+  await panel.getByRole('button', { name: 'Auf Layer zoomen' }).click()
   await page.getByRole('button', { name: 'Bearbeiten ›' }).click()
   const editor = page.getByRole('region', { name: 'Abfrage-Editor' })
   await editor.getByRole('button', { name: 'Bedingung', exact: true }).first().click()
@@ -85,6 +90,7 @@ test('a reference feature is picked on the map (F-4.3)', async ({ page }) => {
     .locator('.leaflet-pane[class*="layer-gemeinden"] path.leaflet-interactive')
     .first()
     .click({ force: true })
-  await expect(row.locator('button.chip')).not.toHaveText('Objekt wählen')
+  // Picked: neither the prompt nor the waiting state ("auf der Karte klicken …").
+  await expect(row.locator('button.chip')).not.toHaveText(/Objekt wählen|auf der Karte klicken/)
   await expect(row.getByLabel('Treffer dieser Bedingung')).not.toHaveText('–')
 })

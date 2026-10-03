@@ -175,12 +175,27 @@ function FeatureOnRequest() {
     if (!map || !request) return
     const [west, south, east, north] = request.bbox
     const bounds = L.latLngBounds([south, west], [north, east])
-    if (request.mode === 'view') map.fitBounds(bounds)
-    else if (request.mode === 'zoom') map.fitBounds(bounds, { padding: [48, 48], maxZoom: 17 })
-    else if (!map.getBounds().contains(bounds)) map.panTo(bounds.getCenter())
+    const apply = () => {
+      if (request.mode === 'view') map.fitBounds(bounds)
+      else if (request.mode === 'zoom') map.fitBounds(bounds, { padding: [48, 48], maxZoom: 17 })
+      else if (!map.getBounds().contains(bounds)) map.panTo(bounds.getCenter())
+    }
+    // Leaflet drops an animated zoom asked for while another one runs (e.g. ⌖ right
+    // after "Auf Layer zoomen"); it is applied when that one ends instead.
+    if (isZooming(map)) {
+      map.once('zoomend', apply)
+      return () => {
+        map.off('zoomend', apply)
+      }
+    }
+    apply()
   }, [map, request])
   return null
 }
+
+/** Leaflet keeps this flag private; there is no public way to ask. */
+const isZooming = (map: L.Map) =>
+  Boolean((map as unknown as { _animatingZoom?: boolean })._animatingZoom)
 
 function ZoomOnRequest({
   layers,

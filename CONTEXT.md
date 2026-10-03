@@ -96,6 +96,13 @@ sein **Ergebnis-Stempel**. Privat für ihr Konto, auch gegenüber
 Administratoren. Nicht zu verwechseln mit der **Anmeldung** (`auth_session`),
 der serverseitigen Login-Sitzung eines Kontos.
 
+**Gespeicherte Abfrage** (`saved_query`) — Ergebnis-Layer, Bedingungen und
+Einschränkung unter einem Namen, über Sitzungen wiederverwendbar (Entwurf C6).
+Nur auf Katalog-Layern. **Geteilt** ist sie für jedes Konto lesbar, das alle
+ihre Layer sieht; ändern kann sie nur, wer sie gespeichert hat — alle anderen
+speichern eine Kopie. Eine Sitzung merkt sich, aus welcher Abfrage sie kommt,
+behält aber ihre eigenen Bedingungen.
+
 **Ergebnis-Stempel** (`ResultStamp`) — Ein Ergebnis ohne seine Objekte:
 Trefferzahl, Prüfsumme der sortierten Objekt-IDs, Abfrage-Hash und Fassung je
 beteiligtem Layer. Der Server berechnet ihn beim Speichern; beim Öffnen läuft
