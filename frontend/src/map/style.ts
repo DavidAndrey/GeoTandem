@@ -41,3 +41,47 @@ export function featureStyle(
     radius: options.radius ?? (state === 'hit' ? 6 : 5),
   }
 }
+
+const INK = '#201f1d'
+
+export type Mark = 'selected' | 'hover'
+
+export interface MarkStyle {
+  color: string
+  weight: number
+  opacity: number
+  fill: false
+  /** Points only. */
+  radius?: number
+  dashArray?: string
+}
+
+/**
+ * A feature picked in the table or on the map (design B9): an outline and a
+ * ring, never a new colour, so maps with classes stay readable. Points get
+ * both parts; lines and areas a dark outline above them.
+ */
+export function markStyle(mark: Mark, part: 'outline' | 'ring' | 'shape', radius = 6): MarkStyle {
+  const opacity = mark === 'hover' ? 0.6 : 1
+  switch (part) {
+    case 'outline':
+      return { color: INK, weight: 2.5, opacity, fill: false, radius }
+    case 'ring':
+      return {
+        color: INK,
+        weight: 1.5,
+        opacity,
+        fill: false,
+        radius: radius + 6,
+        ...(mark === 'selected' ? { dashArray: '3 3' } : {}),
+      }
+    case 'shape':
+      return {
+        color: INK,
+        weight: mark === 'selected' ? 3.5 : 2.5,
+        opacity,
+        fill: false,
+        ...(mark === 'hover' ? { dashArray: '4 3' } : {}),
+      }
+  }
+}

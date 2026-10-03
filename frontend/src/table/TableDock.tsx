@@ -303,6 +303,21 @@ function Grid({
     })),
   )
   const zoomToFeature = useMapView((st) => st.zoomToFeature)
+  const focus = useSelection((st) => (st.layer === layer.id ? st.focus : null))
+
+  // A feature picked on the map: scroll its row into view (design B8).
+  useEffect(() => {
+    const element = scroller.current
+    if (!focus || !element) return
+    const index = rows.findIndex((r) => r.id === focus.fid)
+    if (index === -1) return
+    const top = index * ROW
+    const visible = element.clientHeight - ROW // below the sticky header
+    if (top < element.scrollTop || top > element.scrollTop + visible)
+      element.scrollTop = Math.max(0, top - visible / 2)
+    // Only a new pick scrolls, not a re-sorted list.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus])
 
   useEffect(() => {
     const element = scroller.current
@@ -390,7 +405,11 @@ function Grid({
                 data-fid={row.id}
                 style={{ height: ROW }}
                 className={`cursor-pointer ${isSelected ? 'bg-accent-100 shadow-[inset_3px_0_0_var(--color-accent)]' : selection.hover === row.id ? 'bg-neutral-200' : ''} ${row.hit ? '' : 'text-muted'}`}
-                onClick={() => selection.select(layer.id, row.id)}
+                onClick={() => {
+                  selection.select(layer.id, row.id)
+                  // Brings the feature into view without changing the zoom (design B8).
+                  if (row.bbox) zoomToFeature(row.bbox, 'pan')
+                }}
                 onPointerEnter={() => selection.setHover({ layer: layer.id, fid: row.id })}
                 onPointerLeave={() => selection.setHover(null)}
               >
