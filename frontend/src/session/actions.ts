@@ -20,9 +20,14 @@ function applied(): Analysis {
 
 function body(name: string, note: string) {
   const analysis = applied()
-  const { table } = useAnalysis.getState()
+  const { table, queryRef } = useAnalysis.getState()
   const view = useMapView.getState().bbox
-  return { name, note, ...toSaved({ analysis, table, view }), query: resultQuery(analysis) }
+  return {
+    name,
+    note,
+    ...toSaved({ analysis, table, view, queryRef }),
+    query: resultQuery(analysis),
+  }
 }
 
 function current(detail: SessionDetail): CurrentSession {
@@ -99,7 +104,9 @@ export async function openSession(
     const fitted = reconcile(fromSaved(detail.state_version, detail.state), available)
     removed = fitted.removed
     useSelection.getState().clear()
-    useAnalysis.getState().load(fitted.saved.analysis, fitted.saved.table)
+    useAnalysis
+      .getState()
+      .load(fitted.saved.analysis, fitted.saved.table, fitted.saved.queryRef ?? null)
     if (fitted.saved.view) useMapView.getState().zoomToFeature(fitted.saved.view, 'view')
   } catch (error) {
     if (!(error instanceof SessionFormatError)) throw error

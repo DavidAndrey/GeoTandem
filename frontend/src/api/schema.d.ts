@@ -2416,6 +2416,8 @@ export interface components {
       /** Result Layer */
       result_layer: string
       conditions: components['schemas']['Conditions']
+      /** @description The result query object, e.g. to count its hits. */
+      query: components['schemas']['QueryObject-Output']
       /**
        * Created At
        * Format: date-time
@@ -2432,7 +2434,6 @@ export interface components {
       state: {
         [key: string]: unknown
       }
-      query: components['schemas']['QueryObject-Output']
     }
     /** SavedQueryPatch */
     SavedQueryPatch: {
@@ -2456,6 +2457,8 @@ export interface components {
       /** Result Layer */
       result_layer: string
       conditions: components['schemas']['Conditions']
+      /** @description The result query object, e.g. to count its hits. */
+      query: components['schemas']['QueryObject-Output']
       /**
        * Created At
        * Format: date-time

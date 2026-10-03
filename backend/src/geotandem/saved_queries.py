@@ -69,6 +69,7 @@ class SavedQuerySummary(BaseModel):
     shared: bool
     result_layer: str
     conditions: Conditions
+    query: QueryObject = Field(description="The result query object, e.g. to count its hits.")
     created_at: datetime
     updated_at: datetime
 
@@ -76,7 +77,6 @@ class SavedQuerySummary(BaseModel):
 class SavedQueryDetail(SavedQuerySummary):
     state_version: int
     state: dict[str, Any]
-    query: QueryObject
 
 
 class Usage(BaseModel):
@@ -142,6 +142,7 @@ def _summary(row: SavedQuery, viewer: int) -> SavedQuerySummary:
         shared=row.shared,
         result_layer=query.source,
         conditions=conditions(query),
+        query=query,
         created_at=row.created_at,
         updated_at=row.updated_at,
     )
@@ -152,7 +153,6 @@ def _detail(row: SavedQuery, viewer: int) -> SavedQueryDetail:
         **_summary(row, viewer).model_dump(),
         state_version=row.state_version,
         state=row.state,
-        query=QueryObject.model_validate(row.query),
     )
 
 

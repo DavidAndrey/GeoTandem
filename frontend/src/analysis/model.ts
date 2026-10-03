@@ -111,6 +111,26 @@ export interface Analysis {
   restriction: Restriction
 }
 
+// --- saved queries (plan E1.7b) --------------------------------------------------------
+
+/** The part of the analysis a saved query holds: result layer, conditions, restriction. */
+export interface QueryPart {
+  /** Catalog layer name (plan E1.7b, Q2). */
+  result: string
+  tree: Group
+  restriction: Restriction
+}
+
+/** The saved query the current one came from (plan E1.7b, Q6; design C7 "gespeicherteAbfrage"). */
+export interface QueryRef {
+  id: string
+  name: string
+  mine: boolean
+  shared: boolean
+  /** The query part as saved, to tell whether it has changed since. */
+  snapshot: string
+}
+
 // --- attribute table (F-8.2, design B8) -------------------------------------------------
 
 export interface SortKey {

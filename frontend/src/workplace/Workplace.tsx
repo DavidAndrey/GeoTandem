@@ -24,6 +24,7 @@ import { TableDock } from '../table/TableDock'
 import { catalogInfo, geometryKind, labelAttribute, layerTitle, panelOrder } from './layerInfo'
 import { LayerPanel } from './LayerPanel'
 import { QueryPanel } from './QueryPanel'
+import { SavedQueries } from '../queries/SavedQueries'
 import { Swatch } from './Swatch'
 
 export function Workplace() {
@@ -52,6 +53,7 @@ export function Workplace() {
           <Tabs.Content value="klassik" className="flex flex-col gap-5 pt-3">
             <LayerPanel />
             <QueryPanel />
+            <SavedQueries />
           </Tabs.Content>
         </Tabs.Root>
       </aside>

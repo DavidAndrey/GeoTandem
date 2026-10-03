@@ -7834,6 +7834,10 @@
           "conditions": {
             "$ref": "#/components/schemas/Conditions"
           },
+          "query": {
+            "$ref": "#/components/schemas/QueryObject-Output",
+            "description": "The result query object, e.g. to count its hits."
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -7852,9 +7856,6 @@
             "additionalProperties": true,
             "type": "object",
             "title": "State"
-          },
-          "query": {
-            "$ref": "#/components/schemas/QueryObject-Output"
           }
         },
         "type": "object",
@@ -7866,11 +7867,11 @@
           "shared",
           "result_layer",
           "conditions",
+          "query",
           "created_at",
           "updated_at",
           "state_version",
-          "state",
-          "query"
+          "state"
         ],
         "title": "SavedQueryDetail"
       },
@@ -7933,6 +7934,10 @@
           "conditions": {
             "$ref": "#/components/schemas/Conditions"
           },
+          "query": {
+            "$ref": "#/components/schemas/QueryObject-Output",
+            "description": "The result query object, e.g. to count its hits."
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -7953,6 +7958,7 @@
           "shared",
           "result_layer",
           "conditions",
+          "query",
           "created_at",
           "updated_at"
         ],

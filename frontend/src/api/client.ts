@@ -34,6 +34,9 @@ export type SessionDetail = Schemas['SessionDetail']
 export type SessionWrite = Schemas['SessionWrite']
 export type SessionStamp = Schemas['SessionStamp']
 export type SessionCheck = Schemas['Check']
+export type SavedQuerySummary = Schemas['SavedQuerySummary']
+export type SavedQueryDetail = Schemas['SavedQueryDetail']
+export type SavedQueryWrite = Schemas['SavedQueryWrite']
 
 export class ApiRequestError extends Error {
   readonly status: number
@@ -108,6 +111,20 @@ export const api = {
         `/api/sessions/${enc(id)}/check`,
         json('POST', { rebuilt, has_result: rebuilt !== null }),
       ),
+  },
+  queries: {
+    list: () => request<SavedQuerySummary[]>('/api/queries'),
+    get: (id: string) => request<SavedQueryDetail>(`/api/queries/${enc(id)}`),
+    create: (body: SavedQueryWrite) =>
+      request<SavedQueryDetail>('/api/queries', json('POST', body)),
+    save: (id: string, body: SavedQueryWrite) =>
+      request<SavedQueryDetail>(`/api/queries/${enc(id)}`, json('PUT', body)),
+    patch: (id: string, body: { name?: string; shared?: boolean }) =>
+      request<SavedQuerySummary>(`/api/queries/${enc(id)}`, json('PATCH', body)),
+    duplicate: (id: string) =>
+      request<SavedQuerySummary>(`/api/queries/${enc(id)}/duplicate`, { method: 'POST' }),
+    usage: (id: string) => request<Schemas['Usage']>(`/api/queries/${enc(id)}/usage`),
+    remove: (id: string) => request<undefined>(`/api/queries/${enc(id)}`, { method: 'DELETE' }),
   },
   sampleRows: (layer: string, limit = 50) =>
     request<QueryResult>('/api/query', json('POST', { source: layer, output: 'table', limit })),

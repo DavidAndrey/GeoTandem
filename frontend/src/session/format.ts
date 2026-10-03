@@ -1,7 +1,15 @@
 // The analysis state as a session saves it (design C7; plan E1.7, S5): what
 // the user built, the table's columns and sort, and the map view. Versioned,
 // so a later version can read what an earlier one wrote.
-import type { Analysis, DisplayLayer, Group, Node, Row, TableState } from '../analysis/model'
+import type {
+  Analysis,
+  DisplayLayer,
+  Group,
+  Node,
+  QueryRef,
+  Row,
+  TableState,
+} from '../analysis/model'
 import type { BBox } from '../map/view'
 
 export const STATE_VERSION = 1
@@ -11,6 +19,8 @@ export interface SavedState {
   table: TableState
   /** The map view when saved; moving the map is no change, but opening restores it (plan D3). */
   view: BBox | null
+  /** The saved query it came from (plan E1.7b, Q6); added later, absent in older states. */
+  queryRef?: QueryRef | null
 }
 
 export class SessionFormatError extends Error {}
@@ -19,7 +29,7 @@ export function toSaved(saved: SavedState): {
   state_version: number
   state: Record<string, unknown>
 } {
-  const { analysis, table, view } = saved
+  const { analysis, table, view, queryRef } = saved
   return {
     state_version: STATE_VERSION,
     state: {
@@ -29,6 +39,8 @@ export function toSaved(saved: SavedState): {
       restriction: analysis.restriction,
       table,
       view,
+      // ``query.id`` is what the server counts as a use of the saved query (design C6).
+      query: queryRef ?? null,
     },
   }
 }
@@ -59,6 +71,7 @@ export function fromSaved(version: number, state: unknown): SavedState {
     },
     table: state.table as unknown as TableState,
     view: Array.isArray(state.view) && state.view.length === 4 ? (state.view as BBox) : null,
+    queryRef: isObject(state.query) ? (state.query as unknown as QueryRef) : null,
   }
 }
 

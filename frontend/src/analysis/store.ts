@@ -7,6 +7,8 @@ import type {
   Group,
   Id,
   Node,
+  QueryPart,
+  QueryRef,
   Recipe,
   Restriction,
   SortKey,
@@ -23,6 +25,7 @@ interface AnalysisStore extends Analysis {
   /** Changed since the last save; moving the map does not count (design decision 3). */
   dirty: boolean
   table: TableState
+  queryRef: QueryRef | null
 
   addLayer: (layer: string, asResult?: boolean) => void
   addDerived: (name: string, recipe: Recipe) => Id
@@ -50,8 +53,12 @@ interface AnalysisStore extends Analysis {
   /** Header click: ↓ / ↑ / aus; ``additive`` (Shift) sets the second key (design B8). */
   toggleSort: (id: Id, attr: string, additive: boolean) => void
 
+  /** Replaces result layer, conditions and restriction by a saved query's (design B1). */
+  applyQuery: (part: QueryPart, ref: QueryRef | null) => void
+  setQueryRef: (ref: QueryRef | null) => void
+
   reset: () => void
-  load: (analysis: Analysis, table?: TableState) => void
+  load: (analysis: Analysis, table?: TableState, queryRef?: QueryRef | null) => void
   /** After saving: the state is unchanged, it just no longer counts as unsaved. */
   markSaved: () => void
 }
@@ -82,7 +89,12 @@ function withoutKey<T>(record: Record<Id, T>, id: Id): Record<Id, T> {
   return Object.fromEntries(Object.entries(record).filter(([key]) => key !== id))
 }
 
-const initial = (): Analysis & { draft: null; dirty: boolean; table: TableState } => ({
+const initial = (): Analysis & {
+  draft: null
+  dirty: boolean
+  table: TableState
+  queryRef: QueryRef | null
+} => ({
   layers: [],
   result: null,
   tree: emptyTree(),
@@ -90,6 +102,7 @@ const initial = (): Analysis & { draft: null; dirty: boolean; table: TableState 
   draft: null,
   dirty: false,
   table: emptyTable(),
+  queryRef: null,
 })
 
 const layerPatch =
@@ -205,9 +218,43 @@ export const useAnalysis = create<AnalysisStore>()((set, get) => ({
       dirty: true,
     })),
 
+  applyQuery: (part, queryRef) =>
+    set((s) => {
+      // The result layer joins the map if it is not shown yet.
+      const shown = s.layers.some((l) => l.id === part.result)
+      const layers: DisplayLayer[] = shown
+        ? s.layers
+        : [
+            {
+              id: part.result,
+              source: { kind: 'catalog', layer: part.result },
+              visible: true,
+              opacity: 1,
+              symbology: null,
+            },
+            ...s.layers,
+          ]
+      return {
+        layers,
+        result: part.result,
+        tree: part.tree,
+        restriction: part.restriction,
+        draft: null,
+        queryRef,
+        dirty: true,
+      }
+    }),
+  setQueryRef: (queryRef) => set({ queryRef }),
+
   reset: () => set(initial()),
-  load: (analysis, table) =>
-    set({ ...analysis, table: table ?? emptyTable(), draft: null, dirty: false }),
+  load: (analysis, table, queryRef) =>
+    set({
+      ...analysis,
+      table: table ?? emptyTable(),
+      queryRef: queryRef ?? null,
+      draft: null,
+      dirty: false,
+    }),
   markSaved: () => set({ dirty: false }),
 }))
 

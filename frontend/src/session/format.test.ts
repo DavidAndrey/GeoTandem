@@ -149,3 +149,18 @@ test('without the result layer the session opens without a result', () => {
   expect(removed.result).toBe(true)
   expect(saved.analysis.result).toBeNull()
 })
+
+test('the saved query a session came from is saved with it (plan E1.7b, Q6)', () => {
+  const queryRef = { id: 'q1', name: 'Primarschulen', mine: true, shared: true, snapshot: '{}' }
+  const { state_version, state } = toSaved({
+    analysis: analysis(emptyTree()),
+    table: emptyTable(),
+    view: null,
+    queryRef,
+  })
+  expect(state.query).toEqual(queryRef)
+  expect(fromSaved(state_version, JSON.parse(JSON.stringify(state))).queryRef).toEqual(queryRef)
+  // States saved before it existed have none.
+  const older = Object.fromEntries(Object.entries(state).filter(([key]) => key !== 'query'))
+  expect(fromSaved(state_version, older).queryRef).toBeNull()
+})
