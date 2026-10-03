@@ -1,5 +1,5 @@
 // Test data shaped like the backend's responses.
-import type { AttributeInfo, LayerInfo, Preview } from '../api/client'
+import type { Account, AttributeInfo, LayerInfo, Preview } from '../api/client'
 
 export function attribute(patch: Partial<AttributeInfo> = {}): AttributeInfo {
   return {
@@ -89,3 +89,23 @@ function column(source_name: string, name: string, data_type: AttributeInfo['dat
     value_domain: null,
   }
 }
+
+export function account(patch: Partial<Account> = {}): Account {
+  return {
+    id: 1,
+    username: 'admin',
+    display_name: 'Systemverwaltung',
+    role: 'admin',
+    status: 'active',
+    must_change_password: false,
+    created_at: '2026-10-03T08:00:00',
+    last_login_at: '2026-10-03T09:00:00',
+    ...patch,
+  }
+}
+
+/** Routes every signed-in page needs. */
+export const signedIn = (patch: Partial<Account> = {}) => ({
+  'GET /api/auth/me': account(patch),
+  'GET /api/auth/setup': { needs_setup: false, sample_loaded: true },
+})

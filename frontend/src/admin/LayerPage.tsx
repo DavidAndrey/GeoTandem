@@ -10,7 +10,9 @@ import {
   useProfile,
   useSampleRows,
   useUpdateAttribute,
+  useSetVisibility,
   useUpdateLayer,
+  useVisibility,
 } from '../api/queries'
 import { ErrorNotice, Loading } from '../components/ui'
 import { formatCodes, parseCodes } from './codes'
@@ -133,6 +135,7 @@ function DescriptionTab({ layer }: { layer: LayerInfo }) {
           />
           Für das Modell sichtbar (wirkt ab E2)
         </label>
+        <UserVisibility layer={layer.name} />
         <div className="flex items-center gap-3">
           <button type="submit" className="btn btn-primary" disabled={!dirty || update.isPending}>
             Speichern
@@ -156,6 +159,26 @@ function DescriptionTab({ layer }: { layer: LayerInfo }) {
         <dd>{layer.geometry_type ?? '–'}</dd>
       </dl>
     </form>
+  )
+}
+
+/** Released for the role "user" (design D10; the same switch as on the visibility page). */
+function UserVisibility({ layer }: { layer: string }) {
+  const rows = useVisibility()
+  const set = useSetVisibility()
+  const row = rows.data?.find((r) => r.layer === layer)
+  if (!row) return null
+  return (
+    <label className="flex items-center gap-2">
+      <input
+        type="checkbox"
+        checked={row.roles.user ?? false}
+        disabled={set.isPending}
+        onChange={(e) => set.mutate({ layer, visible: e.target.checked })}
+      />
+      Für Anwender sichtbar
+      <ErrorNotice error={set.error} />
+    </label>
   )
 }
 

@@ -12,8 +12,8 @@ const groups: { title: string; links: { to?: string; label: string; from?: strin
   {
     title: 'Zugang',
     links: [
-      { label: 'Benutzer', from: 'E1.4' },
-      { label: 'Sichtbarkeit', from: 'E1.4' },
+      { to: '/admin/benutzer', label: 'Benutzer' },
+      { to: '/admin/sichtbarkeit', label: 'Sichtbarkeit' },
     ],
   },
   {

@@ -21,6 +21,12 @@ export type ImportRunSummary = Schemas['ImportRunSummary']
 export type ImportStatus = ImportRunSummary['status']
 export type Message = Schemas['Message']
 export type QueryResult = Schemas['QueryResult']
+export type Account = Schemas['Account']
+export type Role = Account['role']
+export type SetupStatus = Schemas['SetupStatus']
+export type StartPassword = Schemas['StartPassword']
+export type AccountUpdate = Schemas['AccountUpdate']
+export type VisibilityRow = Schemas['VisibilityRow']
 
 export class ApiRequestError extends Error {
   readonly status: number
@@ -56,6 +62,23 @@ const enc = encodeURIComponent
 
 export const api = {
   health: () => request<Health>('/api/health'),
+
+  auth: {
+    setupStatus: () => request<SetupStatus>('/api/auth/setup'),
+    setup: (body: {
+      username: string
+      display_name: string
+      password: string
+      load_sample: boolean
+    }) => request<Account>('/api/auth/setup', json('POST', body)),
+    login: (username: string, password: string) =>
+      request<Account>('/api/auth/login', json('POST', { username, password })),
+    logout: () => request<undefined>('/api/auth/logout', { method: 'POST' }),
+    me: () => request<Account>('/api/auth/me'),
+    changePassword: (current: string, next: string) =>
+      request<undefined>('/api/auth/password', json('POST', { current, new: next })),
+  },
+  layers: () => request<LayerInfo[]>('/api/layers'),
   layer: (name: string) => request<LayerInfo>(`/api/layers/${enc(name)}`),
   sampleRows: (layer: string, limit = 50) =>
     request<QueryResult>('/api/query', json('POST', { source: layer, output: 'table', limit })),
@@ -94,5 +117,24 @@ export const api = {
       return request<ImportRunSummary[]>(`/api/admin/import-log${query}`)
     },
     importRun: (id: number) => request<ImportRunInfo>(`/api/admin/import-log/${id}`),
+
+    users: () => request<Account[]>('/api/admin/users'),
+    createUser: (body: { username: string; display_name: string; role: Role }) =>
+      request<StartPassword>('/api/admin/users', json('POST', body)),
+    updateUser: (username: string, body: AccountUpdate) =>
+      request<Account>(`/api/admin/users/${enc(username)}`, json('PATCH', body)),
+    resetPassword: (username: string) =>
+      request<StartPassword>(`/api/admin/users/${enc(username)}/reset-password`, {
+        method: 'POST',
+      }),
+    deleteUser: (username: string) =>
+      request<undefined>(`/api/admin/users/${enc(username)}`, { method: 'DELETE' }),
+
+    visibility: () => request<VisibilityRow[]>('/api/admin/visibility'),
+    setVisibility: (layer: string, visible: boolean) =>
+      request<VisibilityRow[]>(
+        '/api/admin/visibility',
+        json('PUT', { layer, role: 'user', visible }),
+      ),
   },
 }

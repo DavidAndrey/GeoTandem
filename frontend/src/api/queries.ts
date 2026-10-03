@@ -1,7 +1,15 @@
 // Server state through TanStack Query (tech-stack 4.4): cached, invalidated
 // after changes, never mirrored into component state.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, type AttributeUpdate, type ImportStatus, type LayerUpdate } from './client'
+import {
+  api,
+  ApiRequestError,
+  type AccountUpdate,
+  type AttributeUpdate,
+  type ImportStatus,
+  type LayerUpdate,
+  type VisibilityRow,
+} from './client'
 
 export const keys = {
   health: ['health'] as const,
@@ -11,11 +19,75 @@ export const keys = {
   rows: (name: string) => ['rows', name] as const,
   importLog: (filter: object) => ['admin', 'import-log', filter] as const,
   importRun: (id: number) => ['admin', 'import-run', id] as const,
+  me: ['auth', 'me'] as const,
+  setup: ['auth', 'setup'] as const,
+  users: ['admin', 'users'] as const,
+  visibility: ['admin', 'visibility'] as const,
+}
+
+/** The signed-in account, or ``null`` when nobody is signed in. */
+export const useMe = () =>
+  useQuery({
+    queryKey: keys.me,
+    queryFn: async () => {
+      try {
+        return await api.auth.me()
+      } catch (error) {
+        if (error instanceof ApiRequestError && error.status === 401) return null
+        throw error
+      }
+    },
+    staleTime: 60_000,
+  })
+
+export const useSetupStatus = () =>
+  useQuery({ queryKey: keys.setup, queryFn: api.auth.setupStatus })
+
+/** After sign-in, sign-out or a password change everything cached may be stale. */
+export function useResetSession() {
+  const client = useQueryClient()
+  return () => client.resetQueries()
+}
+
+export const useUsers = () => useQuery({ queryKey: keys.users, queryFn: api.admin.users })
+
+export function useUpdateUser() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: ({ username, body }: { username: string; body: AccountUpdate }) =>
+      api.admin.updateUser(username, body),
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.users }),
+  })
+}
+
+export const useVisibility = () =>
+  useQuery({ queryKey: keys.visibility, queryFn: api.admin.visibility })
+
+/** Shown at once, rolled back if the server refuses. */
+export function useSetVisibility() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: ({ layer, visible }: { layer: string; visible: boolean }) =>
+      api.admin.setVisibility(layer, visible),
+    onMutate: async ({ layer, visible }) => {
+      await client.cancelQueries({ queryKey: keys.visibility })
+      const before = client.getQueryData<VisibilityRow[]>(keys.visibility)
+      client.setQueryData<VisibilityRow[]>(keys.visibility, (rows) =>
+        rows?.map((r) => (r.layer === layer ? { ...r, roles: { ...r.roles, user: visible } } : r)),
+      )
+      return { before }
+    },
+    onError: (_error, _vars, context) => client.setQueryData(keys.visibility, context?.before),
+    onSuccess: (rows) => client.setQueryData(keys.visibility, rows),
+  })
 }
 
 export const useHealth = () => useQuery({ queryKey: keys.health, queryFn: api.health })
 
 export const useAdminLayers = () => useQuery({ queryKey: keys.layers, queryFn: api.admin.layers })
+
+/** The layers the signed-in account may see (F-2.7). */
+export const useLayers = () => useQuery({ queryKey: ['layer', 'list'], queryFn: api.layers })
 
 /** An empty name means "no layer" and fetches nothing. */
 export const useLayer = (name: string) =>

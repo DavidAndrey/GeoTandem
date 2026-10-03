@@ -2,7 +2,7 @@ import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, test, vi } from 'vitest'
 import { App } from '../App'
-import { attribute, csvPreview, layer } from '../test/fixtures'
+import { account, attribute, csvPreview, layer, signedIn } from '../test/fixtures'
 import { fakeApi, renderAt } from '../test/render'
 import { AttributeRows } from './LayerPage'
 
@@ -18,7 +18,10 @@ test('the catalog lists layers and filters incomplete ones', async () => {
     geometry_type: 'LineString',
     attributes: [attribute({ name: 'name', data_type: 'text', label: 'Name', description: 'x' })],
   })
-  fakeApi({ 'GET /api/admin/layers': [gemeinden, { ...complete, last_import: null }] })
+  fakeApi({
+    ...signedIn(),
+    'GET /api/admin/layers': [gemeinden, { ...complete, last_import: null }],
+  })
   renderAt('/admin/daten', <App />)
 
   const table = await screen.findByRole('table')
@@ -59,6 +62,7 @@ test('the field editor saves label, unit and range', async () => {
 
 test('the wizard walks a CSV with coordinates to a committed import', async () => {
   const calls = fakeApi({
+    ...signedIn(),
     'GET /api/admin/layers': [gemeinden],
     'POST /api/admin/imports': { import_id: 'abc', preview: csvPreview() },
     'POST /api/admin/imports/abc/commit': {
@@ -75,7 +79,7 @@ test('the wizard walks a CSV with coordinates to a committed import', async () =
   renderAt('/admin/daten/import', <App />)
 
   const file = new File(['Nr;E;N\n'], 'messstellen.csv', { type: 'text/csv' })
-  await userEvent.upload(screen.getByLabelText('Importdatei'), file)
+  await userEvent.upload(await screen.findByLabelText('Importdatei'), file)
   expect(await screen.findByText('messstellen.csv')).toBeInTheDocument()
   const title = screen.getByLabelText('Bezeichnung')
   await userEvent.clear(title)
@@ -102,6 +106,7 @@ test('the wizard walks a CSV with coordinates to a committed import', async () =
 
 test('a failed commit is shown and the wizard stays open', async () => {
   fakeApi({
+    ...signedIn(),
     'GET /api/admin/layers': [gemeinden],
     'POST /api/admin/imports': { import_id: 'abc', preview: csvPreview() },
     'POST /api/admin/imports/abc/commit': {
@@ -114,7 +119,7 @@ test('a failed commit is shown and the wizard stays open', async () => {
   })
   renderAt('/admin/daten/import', <App />)
   await userEvent.upload(
-    screen.getByLabelText('Importdatei'),
+    await screen.findByLabelText('Importdatei'),
     new File(['x'], 'messstellen.csv', { type: 'text/csv' }),
   )
   await screen.findByText('messstellen.csv')
@@ -125,4 +130,49 @@ test('a failed commit is shown and the wizard stays open', async () => {
   expect(alert).toHaveTextContent('Import fehlgeschlagen')
   expect(alert).toHaveTextContent("A layer 'messstellen' already exists.")
   expect(screen.getByRole('button', { name: 'Übernehmen' })).toBeEnabled()
+})
+
+test('a new account shows its start password once', async () => {
+  const calls = fakeApi({
+    ...signedIn(),
+    'GET /api/admin/users': [account()],
+    'POST /api/admin/users': {
+      account: account({ id: 2, username: 's.brun', role: 'user', must_change_password: true }),
+      start_password: 'k7-Tm4-q9xYz',
+    },
+  })
+  renderAt('/admin/benutzer', <App />)
+  await userEvent.click(await screen.findByRole('button', { name: 'Konto' }))
+  const form = screen.getByRole('form', { name: 'Neues Konto' })
+  await userEvent.type(within(form).getByLabelText('Benutzer'), 's.brun')
+  await userEvent.click(within(form).getByRole('button', { name: 'Anlegen' }))
+
+  expect(await screen.findByLabelText('Startpasswort')).toHaveTextContent('k7-Tm4-q9xYz')
+  expect(calls.find((c) => c.key === 'POST /api/admin/users')?.body).toEqual({
+    username: 's.brun',
+    display_name: '',
+    role: 'user',
+  })
+})
+
+test('the visibility matrix releases a layer for users', async () => {
+  const row = (visible: boolean) => [
+    { layer: 'kitas', title: 'Kitas', roles: { admin: true, user: visible } },
+  ]
+  const calls = fakeApi({
+    ...signedIn(),
+    'GET /api/admin/visibility': row(false),
+    'PUT /api/admin/visibility': row(true),
+  })
+  renderAt('/admin/sichtbarkeit', <App />)
+  const box = await screen.findByRole('checkbox', { name: 'Kitas für Anwender' })
+  expect(box).not.toBeChecked()
+  expect(screen.getByRole('checkbox', { name: 'Kitas für Administrator' })).toBeDisabled()
+  await userEvent.click(box)
+  await vi.waitFor(() => expect(box).toBeChecked())
+  expect(calls.find((c) => c.key === 'PUT /api/admin/visibility')?.body).toEqual({
+    layer: 'kitas',
+    role: 'user',
+    visible: true,
+  })
 })
