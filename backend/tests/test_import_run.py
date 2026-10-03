@@ -23,6 +23,7 @@ from geotandem.importing.run import (
     KeyReference,
     XYReference,
     abort,
+    key_candidates,
     run_import,
 )
 from geotandem.sample.load import load_sample
@@ -332,3 +333,19 @@ def test_invalid_geometry_is_repaired_missing_one_rejected(
             conn.scalar(select(func.min(func.ST_IsValid(backend.layer_table("kaputt").c.geom))))
             == 1
         )
+
+
+def test_key_candidates_are_unique_and_not_references(
+    sample_backend: DataBackend, files: dict[str, Path]
+) -> None:
+    imported(
+        sample_backend,
+        files,
+        "kennzahlen.xlsx",
+        geo=KeyReference(column="Gem-Nr", layer="gemeinden", attribute="gem_nr"),
+    )
+    candidates = key_candidates(sample_backend)
+    assert ("gemeinden", "gem_nr") in candidates
+    assert ("schulen", "typ") not in candidates  # repeats: not a key
+    assert ("kennzahlen", "gem_nr") not in candidates  # a reference to gemeinden.gem_nr
+    assert ("kennzahlen", "stichtag") not in candidates

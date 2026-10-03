@@ -13,11 +13,8 @@ export function MapPage() {
   if (error) return <p role="alert">Backend nicht erreichbar: {error}</p>
   if (!health) return <p>Verbinde …</p>
   return (
-    <section
-      aria-label="Systemstatus"
-      className="max-w-md rounded border border-slate-200 bg-white p-4"
-    >
-      <h1 className="mb-2 font-semibold">Systemstatus</h1>
+    <section aria-label="Systemstatus" className="card max-w-md p-4">
+      <h1 className="mb-2 text-2xl">Systemstatus</h1>
       <dl className="grid grid-cols-2 gap-y-1 text-sm">
         <dt>Status</dt>
         <dd>{health.status === 'ok' ? 'Bereit' : 'Eingeschränkt'}</dd>

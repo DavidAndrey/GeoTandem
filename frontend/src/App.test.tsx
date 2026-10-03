@@ -1,17 +1,9 @@
-import { render, screen } from '@testing-library/react'
-import { MemoryRouter } from 'react-router'
+import { screen } from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
 import { App } from './App'
+import { renderAt } from './test/render'
 
 afterEach(() => vi.unstubAllGlobals())
-
-function renderAt(path: string) {
-  return render(
-    <MemoryRouter initialEntries={[path]}>
-      <App />
-    </MemoryRouter>,
-  )
-}
 
 test('start page shows the backend status', async () => {
   vi.stubGlobal(
@@ -30,14 +22,14 @@ test('start page shows the backend status', async () => {
       ),
     ),
   )
-  renderAt('/')
+  renderAt('/', <App />)
   expect(await screen.findByText('Bereit')).toBeInTheDocument()
   expect(screen.getByText('EPSG:2056')).toBeInTheDocument()
 })
 
 test('unreachable backend is reported, not swallowed', async () => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 502 })))
-  renderAt('/')
+  renderAt('/', <App />)
   expect(await screen.findByRole('alert')).toHaveTextContent('Backend nicht erreichbar')
 })
 
@@ -46,6 +38,6 @@ test('navigation reaches the administration area', () => {
     'fetch',
     vi.fn(() => new Promise(() => {})),
   )
-  renderAt('/admin')
+  renderAt('/admin', <App />)
   expect(screen.getByRole('heading', { name: 'Administration' })).toBeInTheDocument()
 })

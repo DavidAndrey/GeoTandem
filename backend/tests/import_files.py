@@ -5,6 +5,7 @@ embed timestamps and would never be byte-stable.
 """
 
 import json
+import shutil
 import warnings
 import zipfile
 from datetime import date
@@ -71,7 +72,9 @@ def _raw_write(
 
 
 def make_files(directory: Path) -> dict[str, Path]:
-    directory.mkdir(parents=True, exist_ok=True)
+    # GDAL appends to an existing GeoPackage, so a re-run must start empty.
+    shutil.rmtree(directory, ignore_errors=True)
+    directory.mkdir(parents=True)
     files: dict[str, Path] = {}
 
     # GeoJSON, WGS84: the sample file itself.
@@ -142,3 +145,11 @@ def make_files(directory: Path) -> dict[str, Path]:
     workbook.save(files["kennzahlen.xlsx"])
 
     return files
+
+
+if __name__ == "__main__":
+    # Used by the Playwright suite: `python backend/tests/import_files.py <dir>`.
+    import sys
+
+    for path in make_files(Path(sys.argv[1])).values():
+        print(path)

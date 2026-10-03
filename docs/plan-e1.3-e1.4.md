@@ -147,10 +147,11 @@ All routes go under `/api/admin` (D5):
 - Vitest/RTL for wizard step logic and field editor. Playwright: each of the
   three paths through the wizard, after which the layer appears in the catalog.
 
-**Acceptance E1.3:** Playwright imports `schulen_extra.gpkg`,
-`messstellen.csv` (X/Y, EPSG:2056) and `kennzahlen.xlsx` (key `gem_nr` →
-`gemeinden`). Each one ends in the catalog with metadata, an R-tree and a
-log entry.
+**Acceptance E1.3:** `e2e/tests/import.spec.ts` imports `netz.gpkg` (second
+layer of the file), `messstellen.csv` (X/Y, EPSG:2056, semicolons, decimal
+commas) and `kennzahlen.xlsx` (key `Gem-Nr` → `gemeinden.gem_nr`). Each one
+ends in the catalog with metadata, an R-tree and a log entry. The files come
+from `backend/tests/import_files.py`, the same generator as the pytest fixtures.
 
 ## 3 E1.4 — Anmeldung, Rollen, Sichtbarkeit
 

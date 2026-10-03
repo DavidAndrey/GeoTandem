@@ -359,8 +359,8 @@ zu dem sie spätestens fällig wird.
 
 | Offen | Zu entscheiden bis | Anmerkung |
 |---|---|---|
-| Bibliothek für Serverzustand und Analysezustand (4.4) | E1.5 | Kandidaten: TanStack Query für den Serverzustand, dazu ein schlanker Speicher (Zustand) für den Analysezustand |
-| Komponentenbasis für Bedienelemente (4.3) | E1.5 | Kandidaten: Radix UI, Headless UI, Base UI |
+| Bibliothek für Analysezustand (4.4) | E1.5 | Serverzustand entschieden in E1.3: TanStack Query. Für den Analysezustand ein schlanker Speicher (Zustand) als Kandidat |
+| ~~Komponentenbasis für Bedienelemente (4.3)~~ | — | Entschieden in E1.3: Radix UI (`radix-ui`), dazu Lucide-Icons; Schriften gebündelt über `@fontsource` statt Google Fonts (F-9.1) |
 | Diagrammbibliothek (F-8.3) | E5.1 | Auswahl erst, wenn die Kennzahlen feststehen; Leichtgewichtigkeit vor Funktionsumfang |
 | Kartenexport als Bild (F-8.7) | E5.3 | Clientseitig aus dem Browser oder serverseitig gerendert — beides hat spürbare Folgen für den Containerumfang |
 | PostGIS in der Testumgebung (F-10.7) | P.2 | Testcontainers oder Dienstcontainer der Bauumgebung |

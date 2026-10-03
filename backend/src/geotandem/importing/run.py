@@ -110,20 +110,25 @@ class ImportBlocked(SourceError):
 
 
 def key_candidates(backend: DataBackend) -> dict[tuple[str, str], set[str]]:
-    """Integer and text attributes of vector layers, with their values, for key proposals."""
+    """Attributes of vector layers that can serve as area key, with their values.
+
+    A key identifies one feature, so only attributes with unique values count.
+    Attributes that are themselves references (a key-join import) are skipped:
+    the layer they point to is the one to join to, not its copy.
+    """
     candidates: dict[tuple[str, str], set[str]] = {}
     for info in list_layers(backend.engine):
         if info.kind != "vector":
             continue
         table = backend.layer_table(info.name)
         for attribute in info.attributes:
-            if attribute.data_type not in ("integer", "text"):
+            if attribute.data_type not in ("integer", "text") or attribute.references:
                 continue
             with backend.engine.connect() as conn:
-                values = conn.scalars(select(table.c[attribute.name]).distinct())
-                candidates[(info.name, attribute.name)] = {
-                    key_text(v) for v in values if v is not None
-                }
+                values = [v for v in conn.scalars(select(table.c[attribute.name])) if v is not None]
+            keys = {key_text(v) for v in values}
+            if values and len(keys) == len(values):
+                candidates[(info.name, attribute.name)] = keys
     return candidates
 
 
