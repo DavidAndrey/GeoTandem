@@ -1,5 +1,6 @@
 """The layer registry (F-2.7, F-2.8) as API-ready models, and its curation."""
 
+from collections.abc import Collection
 from datetime import datetime
 from typing import Any, Literal
 
@@ -48,12 +49,13 @@ def _info(layer: Layer) -> LayerInfo:
     )
 
 
-def list_layers(engine: Engine) -> list[LayerInfo]:
+def list_layers(engine: Engine, only: Collection[str] | None = None) -> list[LayerInfo]:
+    """All layers, or those named in ``only`` (the layers an account may see)."""
+    stmt = select(Layer).options(selectinload(Layer.attributes)).order_by(Layer.name)
+    if only is not None:
+        stmt = stmt.where(Layer.name.in_(list(only)))
     with Session(engine) as session:
-        layers = session.scalars(
-            select(Layer).options(selectinload(Layer.attributes)).order_by(Layer.name)
-        )
-        return [_info(layer) for layer in layers]
+        return [_info(layer) for layer in session.scalars(stmt)]
 
 
 def get_layer(engine: Engine, name: str) -> LayerInfo | None:

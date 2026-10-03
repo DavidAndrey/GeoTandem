@@ -9,6 +9,7 @@ from __future__ import annotations
 import re
 import secrets
 from datetime import datetime
+from typing import Literal
 
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError
@@ -132,9 +133,7 @@ def reset_password(engine: Engine, username: str) -> str:
     """Set a generated start password the user must change; end their sessions (design D9)."""
     password = generate_password()
     with Session(engine) as session, session.begin():
-        user = session.scalar(select(User).where(User.username == username.strip().lower()))
-        if user is None:
-            raise AccountError("unknown_user", f"There is no account '{username}'.")
+        user = _user(session, username)
         user.password_hash = _hasher.hash(password)
         user.must_change_password = True
         revoke_sessions(session, user.id)
@@ -158,3 +157,65 @@ def revoke_sessions(session: Session, user_id: int) -> None:
     """End every login of an account, e.g. when it is locked or its password reset."""
     for login in session.scalars(select(AuthSession).where(AuthSession.user_id == user_id)):
         session.delete(login)
+
+
+# --- administration (design D9) -----------------------------------------------
+
+
+class AccountUpdate(BaseModel):
+    display_name: str | None = None
+    role: Role | None = None
+    status: Literal["active", "locked"] | None = None
+
+
+def list_accounts(engine: Engine) -> list[Account]:
+    with Session(engine) as session:
+        return [_account(u) for u in session.scalars(select(User).order_by(User.username))]
+
+
+def _user(session: Session, username: str) -> User:
+    user = session.scalar(select(User).where(User.username == username.strip().lower()))
+    if user is None:
+        raise AccountError("unknown_user", f"There is no account '{username}'.")
+    return user
+
+
+def _guard_last_admin(session: Session, user: User) -> None:
+    """Refuse to leave the instance without an active administrator (design D9)."""
+    if user.role != "admin" or user.status != "active":
+        return
+    others = session.scalar(
+        select(func.count())
+        .select_from(User)
+        .where(User.role == "admin", User.status == "active", User.id != user.id)
+    )
+    if not others:
+        raise AccountError(
+            "last_admin", "The last active administrator cannot be demoted, locked or deleted."
+        )
+
+
+def update(engine: Engine, username: str, change: AccountUpdate) -> Account:
+    with Session(engine) as session, session.begin():
+        user = _user(session, username)
+        demoted = change.role is not None and change.role != "admin"
+        locked = change.status == "locked"
+        if demoted or locked:
+            _guard_last_admin(session, user)
+        if change.display_name is not None:
+            user.display_name = change.display_name.strip()
+        if change.role is not None:
+            user.role = change.role
+        if change.status is not None:
+            user.status = change.status
+            if locked:
+                revoke_sessions(session, user.id)
+        session.flush()
+        return _account(user)
+
+
+def delete(engine: Engine, username: str) -> None:
+    with Session(engine) as session, session.begin():
+        user = _user(session, username)
+        _guard_last_admin(session, user)
+        session.delete(user)

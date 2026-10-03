@@ -6,10 +6,12 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from geotandem import __version__
+from geotandem.api.auth import CurrentAccount
 from geotandem.api.errors import ErrorBody
 from geotandem.api.state import AppState, get_state
+from geotandem.auth.visibility import view_for
 from geotandem.catalog import LayerInfo, get_layer, list_layers
-from geotandem.data import Op
+from geotandem.data import DataBackend, Op
 from geotandem.engine import QueryResult, run_query, validate_query
 from geotandem.engine.errors import UnknownLayer
 from geotandem.sample.load import dataset_version
@@ -19,6 +21,14 @@ from geotandem_query.export import json_schema
 
 router = APIRouter(prefix="/api")
 State = Annotated[AppState, Depends(get_state)]
+
+
+def visible_backend(state: State, account: CurrentAccount) -> DataBackend:
+    """The data core restricted to the layers this account may see (F-2.7)."""
+    return view_for(state.backend, account)
+
+
+Visible = Annotated[DataBackend, Depends(visible_backend)]
 
 ERRORS: dict[int | str, dict[str, Any]] = {
     status: {"model": ErrorBody} for status in (400, 404, 413, 422, 504)
@@ -67,28 +77,28 @@ def health(state: State) -> Health:
 
 
 @router.get("/layers")
-def layers(state: State) -> list[LayerInfo]:
-    return list_layers(state.backend.engine)
+def layers(backend: Visible) -> list[LayerInfo]:
+    return list_layers(backend.engine, only=backend.layer_names())
 
 
 @router.get("/layers/{name}", responses=ERRORS)
-def layer(name: str, state: State) -> LayerInfo:
-    info = get_layer(state.backend.engine, name)
+def layer(name: str, backend: Visible) -> LayerInfo:
+    info = get_layer(backend.engine, name) if name in backend.layer_names() else None
     if info is None:
         raise LayerNotFound(f"Unknown layer '{name}'.", layer=name)
     return info
 
 
 @router.post("/query", responses=ERRORS)
-def query(body: QueryObject, state: State) -> QueryResult:
+def query(body: QueryObject, state: State, backend: Visible) -> QueryResult:
     """Run a query object (F-8.9); the result carries its query and provenance."""
-    return run_query(body, state.backend, state.limits, state.unsupported)
+    return run_query(body, backend, state.limits, state.unsupported)
 
 
 @router.post("/query/validate", responses=ERRORS)
-def validate(body: QueryObject, state: State) -> Validation:
+def validate(body: QueryObject, state: State, backend: Visible) -> Validation:
     """Check a query against schema and data core without running it (F-5.9)."""
-    compiled = validate_query(body, state.backend, state.limits, state.unsupported)
+    compiled = validate_query(body, backend, state.limits, state.unsupported)
     return Validation(layers=compiled.layers, operations=sorted(compiled.ops))
 
 
@@ -99,5 +109,5 @@ def query_object_schema() -> dict[str, Any]:
 
 
 @router.get("/tools")
-def tools(state: State) -> list[ToolDescription]:
+def tools(state: State, _: CurrentAccount) -> list[ToolDescription]:
     return state.tools.describe()

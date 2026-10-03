@@ -5,6 +5,7 @@ from typing import Any
 
 import httpx
 import pytest
+from api_helpers import ADMIN_PASSWORD
 from import_files import LV95, make_files
 
 from geotandem.app import create_app
@@ -116,6 +117,9 @@ async def test_upload_size_limit(tmp_path: Path) -> None:
     async with app.router.lifespan_context(app):
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            await client.post(
+                "/api/auth/setup", json={"username": "admin", "password": ADMIN_PASSWORD}
+            )
             response = await upload(client, big)
     assert (response.status_code, response.json()["code"]) == (413, "upload_too_large")
     assert list(settings.staging_dir.iterdir()) == []

@@ -15,6 +15,7 @@ from typing import Any
 from shapely.geometry import shape
 from shapely.geometry.base import BaseGeometry
 
+from geotandem.auth import visibility
 from geotandem.catalog import get_layer
 from geotandem.data import AttributeSpec, DataBackend, NewLayer
 from geotandem.geo import reprojector
@@ -95,6 +96,8 @@ def load_sample(backend: DataBackend, directory: Path = DATA_DIR) -> list[str]:
             backend.engine, run_id, status="ok", read_count=count, imported_count=count
         )
         loaded.append(name)
+    # The sample is meant to be seen by everyone (plan D6).
+    visibility.release(backend.engine, loaded)
     if loaded:
         log.info("sample dataset %s: loaded %s", version, ", ".join(loaded))
     return loaded

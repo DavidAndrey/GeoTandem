@@ -39,13 +39,14 @@ def _list_layers(context: ToolContext, _: NoArguments) -> LayerList:
     return LayerList(
         layers=[
             LayerSummary.model_validate(info.model_dump())
-            for info in list_layers(context.backend.engine)
+            for info in list_layers(context.backend.engine, only=context.backend.layer_names())
         ]
     )
 
 
 def _describe_layer(context: ToolContext, args: LayerName) -> LayerInfo:
-    info = get_layer(context.backend.engine, args.layer)
+    visible = args.layer in context.backend.layer_names()
+    info = get_layer(context.backend.engine, args.layer) if visible else None
     if info is None:
         raise UnknownLayer(f"Unknown layer '{args.layer}'.", layer=args.layer)
     return info

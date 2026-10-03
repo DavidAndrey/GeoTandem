@@ -4,14 +4,18 @@ Every route that changes data lives here, under one router, so a single
 dependency guards all of them once accounts exist (E1.4, plan D5).
 """
 
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, File, Query, Response, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
+from geotandem.api.auth import require_admin
 from geotandem.api.errors import ErrorBody, NotFound, Problem
 from geotandem.api.state import AppState, get_state
+from geotandem.auth import accounts, visibility
+from geotandem.auth.accounts import Account, AccountUpdate
+from geotandem.auth.visibility import VisibilityRow
 from geotandem.catalog import (
     AttributeInfo,
     AttributeUpdate,
@@ -24,17 +28,19 @@ from geotandem.catalog import (
     update_attribute,
     update_layer,
 )
+from geotandem.db.orm import Role
 from geotandem.importing import Preview, ReadOptions, SourceError
 from geotandem.importing import log as import_log
 from geotandem.importing.log import ImportRunInfo, ImportRunSummary, ImportStatus
 from geotandem.importing.run import ImportDecisions, abort, preview_file, run_import
 from geotandem.importing.staging import UnknownUpload, UploadTooLarge
 
-router = APIRouter(prefix="/api/admin", tags=["admin"])
+# One guard for every route below (plan D5): signed in, start password changed, admin.
+router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(require_admin)])
 State = Annotated[AppState, Depends(get_state)]
 
 ERRORS: dict[int | str, dict[str, Any]] = {
-    status: {"model": ErrorBody} for status in (400, 404, 413, 422)
+    status: {"model": ErrorBody} for status in (400, 401, 403, 404, 413, 422)
 }
 
 
@@ -49,12 +55,12 @@ class SourceProblem(Problem):
     code = "unreadable_source"
 
 
-def actor(state: State) -> str | None:
-    """The account behind a change; E1.4 replaces this with the signed-in user."""
-    return None
+def actor(account: Annotated[Account, Depends(require_admin)]) -> str:
+    """The account behind a change, for the import log."""
+    return account.username
 
 
-Actor = Annotated[str | None, Depends(actor)]
+Actor = Annotated[str, Depends(actor)]
 
 
 # --- layers -------------------------------------------------------------------
@@ -210,3 +216,81 @@ def import_run(run_id: int, state: State) -> ImportRunInfo:
     if run is None:
         raise NotFound(f"Unknown import run {run_id}.", run_id=run_id)
     return run
+
+
+# --- accounts (F-3.12, design D9) ---------------------------------------------
+
+
+class NewAccount(BaseModel):
+    username: str
+    display_name: str = ""
+    role: Role = "user"
+
+
+class StartPassword(BaseModel):
+    """Shown once to the administrator; the user must change it at first sign-in."""
+
+    account: Account
+    start_password: str
+
+
+@router.get("/users")
+def users(state: State) -> list[Account]:
+    return accounts.list_accounts(state.backend.engine)
+
+
+@router.post("/users", status_code=201, responses=ERRORS)
+def create_user(body: NewAccount, state: State) -> StartPassword:
+    password = accounts.generate_password()
+    account = accounts.create(
+        state.backend.engine,
+        body.username,
+        password,
+        body.role,
+        display_name=body.display_name,
+        must_change_password=True,
+    )
+    return StartPassword(account=account, start_password=password)
+
+
+@router.patch("/users/{username}", responses=ERRORS)
+def update_user(username: str, body: AccountUpdate, state: State) -> Account:
+    """Change role, lock or unlock, rename; never the last active administrator away."""
+    return accounts.update(state.backend.engine, username, body)
+
+
+@router.post("/users/{username}/reset-password", responses=ERRORS)
+def reset_password(username: str, state: State) -> StartPassword:
+    password = accounts.reset_password(state.backend.engine, username)
+    account = next(
+        a for a in accounts.list_accounts(state.backend.engine) if a.username == username.lower()
+    )
+    return StartPassword(account=account, start_password=password)
+
+
+@router.delete("/users/{username}", status_code=204, responses=ERRORS)
+def delete_user(username: str, state: State) -> Response:
+    accounts.delete(state.backend.engine, username)
+    return Response(status_code=204)
+
+
+# --- visibility (F-2.7, design D10) -------------------------------------------
+
+
+class VisibilityChange(BaseModel):
+    layer: str
+    role: Literal["user"]
+    visible: bool
+
+
+@router.get("/visibility")
+def visibility_matrix(state: State) -> list[VisibilityRow]:
+    """Layer by role; administrators always see every layer. New imports start hidden."""
+    return visibility.matrix(state.backend.engine)
+
+
+@router.put("/visibility", responses=ERRORS)
+def set_visibility(body: VisibilityChange, state: State) -> list[VisibilityRow]:
+    if not visibility.set_visible(state.backend.engine, body.layer, body.role, body.visible):
+        raise NotFound(f"Unknown layer '{body.layer}'.", layer=body.layer)
+    return visibility.matrix(state.backend.engine)

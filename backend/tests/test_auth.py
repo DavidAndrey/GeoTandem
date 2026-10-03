@@ -24,46 +24,46 @@ async def set_up(client: httpx.AsyncClient, **body: object) -> httpx.Response:
 # --- first administrator (A1) ------------------------------------------------
 
 
-async def test_setup_creates_the_first_admin_once(client: httpx.AsyncClient) -> None:
-    assert (await client.get("/api/auth/setup")).json()["needs_setup"] is True
+async def test_setup_creates_the_first_admin_once(anonymous: httpx.AsyncClient) -> None:
+    assert (await anonymous.get("/api/auth/setup")).json()["needs_setup"] is True
 
-    response = await set_up(client, display_name="Systemverwaltung")
+    response = await set_up(anonymous, display_name="Systemverwaltung")
     assert response.status_code == 200
     assert response.json()["role"] == "admin"
     assert sessions.COOKIE in response.cookies
-    me = (await client.get("/api/auth/me")).json()
+    me = (await anonymous.get("/api/auth/me")).json()
     assert (me["username"], me["display_name"]) == ("admin", "Systemverwaltung")
     assert "password_hash" not in me
 
-    assert (await client.get("/api/auth/setup")).json()["needs_setup"] is False
-    again = await client.post("/api/auth/setup", json={"username": "boss", "password": PASSWORD})
+    assert (await anonymous.get("/api/auth/setup")).json()["needs_setup"] is False
+    again = await anonymous.post("/api/auth/setup", json={"username": "boss", "password": PASSWORD})
     assert (again.status_code, again.json()["code"]) == (409, "setup_closed")
 
 
-async def test_setup_enforces_password_rules(client: httpx.AsyncClient) -> None:
-    response = await set_up(client, password="kurz")
+async def test_setup_enforces_password_rules(anonymous: httpx.AsyncClient) -> None:
+    response = await set_up(anonymous, password="kurz")
     assert (response.status_code, response.json()["code"]) == (400, "password_too_short")
-    assert (await client.get("/api/auth/setup")).json()["needs_setup"] is True
+    assert (await anonymous.get("/api/auth/setup")).json()["needs_setup"] is True
 
 
-async def test_cookie_is_http_only_and_strict(client: httpx.AsyncClient) -> None:
-    header = (await set_up(client)).headers["set-cookie"].lower()
+async def test_cookie_is_http_only_and_strict(anonymous: httpx.AsyncClient) -> None:
+    header = (await set_up(anonymous)).headers["set-cookie"].lower()
     assert "httponly" in header and "samesite=strict" in header
 
 
 # --- login and logout (A2) ---------------------------------------------------
 
 
-async def test_login_logout(client: httpx.AsyncClient) -> None:
-    await set_up(client)
-    await client.post("/api/auth/logout")
-    assert (await client.get("/api/auth/me")).status_code == 401
+async def test_login_logout(anonymous: httpx.AsyncClient) -> None:
+    await set_up(anonymous)
+    await anonymous.post("/api/auth/logout")
+    assert (await anonymous.get("/api/auth/me")).status_code == 401
 
-    response = await client.post(
+    response = await anonymous.post(
         "/api/auth/login", json={"username": "ADMIN", "password": PASSWORD}
     )
     assert response.status_code == 200
-    assert (await client.get("/api/auth/me")).json()["username"] == "admin"
+    assert (await anonymous.get("/api/auth/me")).json()["username"] == "admin"
 
 
 @pytest.mark.parametrize(
@@ -74,11 +74,11 @@ async def test_login_logout(client: httpx.AsyncClient) -> None:
     ],
 )
 async def test_failed_login_does_not_say_why(
-    client: httpx.AsyncClient, credentials: dict[str, str]
+    anonymous: httpx.AsyncClient, credentials: dict[str, str]
 ) -> None:
-    await set_up(client)
-    client.cookies.clear()
-    response = await client.post("/api/auth/login", json=credentials)
+    await set_up(anonymous)
+    anonymous.cookies.clear()
+    response = await anonymous.post("/api/auth/login", json=credentials)
     assert response.status_code == 401
     assert response.json()["message"] == (
         "Username or password is wrong, or the account is locked."
@@ -86,13 +86,13 @@ async def test_failed_login_does_not_say_why(
 
 
 async def test_locked_account_cannot_sign_in_and_loses_its_session(
-    client: httpx.AsyncClient, backend_of_client: DataBackend
+    anonymous: httpx.AsyncClient, backend_of_client: DataBackend
 ) -> None:
-    await set_up(client)
+    await set_up(anonymous)
     with Session(backend_of_client.engine) as session, session.begin():
         session.execute(update(User).values(status="locked"))
-    assert (await client.get("/api/auth/me")).status_code == 401
-    response = await client.post(
+    assert (await anonymous.get("/api/auth/me")).status_code == 401
+    response = await anonymous.post(
         "/api/auth/login", json={"username": "admin", "password": PASSWORD}
     )
     assert response.status_code == 401
@@ -101,23 +101,23 @@ async def test_locked_account_cannot_sign_in_and_loses_its_session(
 # --- own password (A4) ---------------------------------------------------------
 
 
-async def test_change_password(client: httpx.AsyncClient) -> None:
-    await set_up(client)
+async def test_change_password(anonymous: httpx.AsyncClient) -> None:
+    await set_up(anonymous)
     url = "/api/auth/password"
-    wrong = await client.post(url, json={"current": "falsch-falsch", "new": "neues-passwort-1"})
+    wrong = await anonymous.post(url, json={"current": "falsch-falsch", "new": "neues-passwort-1"})
     assert wrong.json()["code"] == "wrong_password"
-    same = await client.post(url, json={"current": PASSWORD, "new": PASSWORD})
+    same = await anonymous.post(url, json={"current": PASSWORD, "new": PASSWORD})
     assert same.json()["code"] == "password_unchanged"
-    short = await client.post(url, json={"current": PASSWORD, "new": "kurz"})
+    short = await anonymous.post(url, json={"current": PASSWORD, "new": "kurz"})
     assert short.json()["code"] == "password_too_short"
     assert (
-        await client.post(url, json={"current": PASSWORD, "new": "neues-passwort-1"})
+        await anonymous.post(url, json={"current": PASSWORD, "new": "neues-passwort-1"})
     ).status_code == 204
 
-    client.cookies.clear()
-    old = await client.post("/api/auth/login", json={"username": "admin", "password": PASSWORD})
+    anonymous.cookies.clear()
+    old = await anonymous.post("/api/auth/login", json={"username": "admin", "password": PASSWORD})
     assert old.status_code == 401
-    new = await client.post(
+    new = await anonymous.post(
         "/api/auth/login", json={"username": "admin", "password": "neues-passwort-1"}
     )
     assert new.status_code == 200
