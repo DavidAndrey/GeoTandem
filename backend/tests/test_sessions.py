@@ -184,3 +184,23 @@ async def test_a_hidden_layer_is_missing(client: httpx.AsyncClient) -> None:
     assert check["identical"] is False
     assert check["missing_layers"] == ["gewaesser"]
     assert check["current"] is None
+
+
+async def test_check_tells_whether_the_state_still_rebuilds_the_saved_query(
+    client: httpx.AsyncClient,
+) -> None:
+    created = await save_new(client)
+    path = f"/api/sessions/{created['id']}/check"
+    same = await client.post(path, json={"rebuilt": QUERY, "has_result": True})
+    assert same.json()["state_matches"] is True
+    # Key order and omitted defaults do not matter: the canonical form decides.
+    reordered = {**dict(reversed(list(QUERY.items()))), "output": "map"}
+    assert (await client.post(path, json={"rebuilt": reordered, "has_result": True})).json()[
+        "state_matches"
+    ] is True
+    other = {**QUERY, "limit": 3}
+    assert (await client.post(path, json={"rebuilt": other, "has_result": True})).json()[
+        "state_matches"
+    ] is False
+    assert (await client.post(path, json={"has_result": False})).json()["state_matches"] is False
+    assert (await client.post(path)).json()["state_matches"] is None

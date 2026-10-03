@@ -26,7 +26,7 @@ from geotandem.catalog import list_layers
 from geotandem.data import DataBackend
 from geotandem.db.orm import AnalysisSession
 from geotandem.engine import QueryError, ResultStamp
-from geotandem_query import QueryObject
+from geotandem_query import QueryObject, query_hash
 
 MAX_STATE_BYTES = 1_000_000
 """Protects the data file, e.g. from a drawn polygon with a million vertices (plan D10)."""
@@ -96,6 +96,20 @@ class Check(BaseModel):
     changed_layers: list[str] = Field(description="Layers with a new dataset version.")
     missing_layers: list[str] = Field(description="Layers deleted or no longer visible.")
     error: str | None = Field(default=None, description="Why the query no longer runs.")
+    state_matches: bool | None = Field(
+        default=None,
+        description="The query rebuilt from the saved state is the saved query; "
+        "null when none was sent.",
+    )
+
+
+class CheckRequest(BaseModel):
+    rebuilt: QueryObject | None = Field(
+        default=None, description="The result query the interface rebuilt from the state."
+    )
+    has_result: bool = Field(
+        default=False, description="Whether the interface rebuilt a result at all."
+    )
 
 
 def _now() -> datetime:
@@ -319,6 +333,7 @@ def check(
     session_id: str,
     backend: DataBackend,
     stamp_of: Callable[[QueryObject], ResultStamp],
+    request: CheckRequest | None = None,
 ) -> Check:
     """Run the saved query again and compare with the saved stamp (design C4, C8).
 
@@ -336,6 +351,24 @@ def check(
     if query is not None and query.source not in versions and query.source not in missing:
         missing.insert(0, query.source)
     changed = _changed(saved, versions)
+    result = _compare(query, saved, versions, missing, changed, stamp_of)
+    if request is not None:
+        rebuilt = request.rebuilt if request.has_result else None
+        same_presence = (rebuilt is None) == (query is None)
+        result.state_matches = same_presence and (
+            rebuilt is None or query is None or query_hash(rebuilt) == query_hash(query)
+        )
+    return result
+
+
+def _compare(
+    query: QueryObject | None,
+    saved: SessionStamp | None,
+    versions: dict[str, str | None],
+    missing: list[str],
+    changed: list[str],
+    stamp_of: Callable[[QueryObject], ResultStamp],
+) -> Check:
     if query is None:
         return Check(
             identical=saved is None,

@@ -29,6 +29,11 @@ export type AccountUpdate = Schemas['AccountUpdate']
 export type VisibilityRow = Schemas['VisibilityRow']
 export type MapConfig = Schemas['MapConfig']
 export type QueryObject = Schemas['QueryObject-Input']
+export type SessionSummary = Schemas['SessionSummary']
+export type SessionDetail = Schemas['SessionDetail']
+export type SessionWrite = Schemas['SessionWrite']
+export type SessionStamp = Schemas['SessionStamp']
+export type SessionCheck = Schemas['Check']
 
 export class ApiRequestError extends Error {
   readonly status: number
@@ -86,6 +91,24 @@ export const api = {
   count: (queries: QueryObject[]) =>
     request<Schemas['Counts']>('/api/query/count', json('POST', { queries })),
   mapConfig: () => request<MapConfig>('/api/config/map'),
+  sessions: {
+    list: () => request<SessionSummary[]>('/api/sessions'),
+    last: () => request<SessionDetail | null>('/api/sessions/last'),
+    get: (id: string) => request<SessionDetail>(`/api/sessions/${enc(id)}`),
+    create: (body: SessionWrite) => request<SessionDetail>('/api/sessions', json('POST', body)),
+    save: (id: string, body: SessionWrite) =>
+      request<SessionDetail>(`/api/sessions/${enc(id)}`, json('PUT', body)),
+    rename: (id: string, body: { name?: string; note?: string }) =>
+      request<SessionSummary>(`/api/sessions/${enc(id)}`, json('PATCH', body)),
+    duplicate: (id: string) =>
+      request<SessionSummary>(`/api/sessions/${enc(id)}/duplicate`, { method: 'POST' }),
+    remove: (id: string) => request<undefined>(`/api/sessions/${enc(id)}`, { method: 'DELETE' }),
+    check: (id: string, rebuilt: QueryObject | null) =>
+      request<SessionCheck>(
+        `/api/sessions/${enc(id)}/check`,
+        json('POST', { rebuilt, has_result: rebuilt !== null }),
+      ),
+  },
   sampleRows: (layer: string, limit = 50) =>
     request<QueryResult>('/api/query', json('POST', { source: layer, output: 'table', limit })),
 

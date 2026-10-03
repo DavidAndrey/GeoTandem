@@ -173,7 +173,8 @@ function FeatureOnRequest() {
     if (!map || !request) return
     const [west, south, east, north] = request.bbox
     const bounds = L.latLngBounds([south, west], [north, east])
-    if (request.mode === 'zoom') map.fitBounds(bounds, { padding: [48, 48], maxZoom: 17 })
+    if (request.mode === 'view') map.fitBounds(bounds)
+    else if (request.mode === 'zoom') map.fitBounds(bounds, { padding: [48, 48], maxZoom: 17 })
     else if (!map.getBounds().contains(bounds)) map.panTo(bounds.getCenter())
   }, [map, request])
   return null

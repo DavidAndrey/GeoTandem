@@ -53,7 +53,8 @@ export function MapView({
   // The first view shows every layer this account may see.
   const fitted = useRef(false)
   useEffect(() => {
-    if (map && extent && !fitted.current) {
+    // A session that is being opened brings its own view (plan E1.7, D3).
+    if (map && extent && !fitted.current && !useMapView.getState().featureRequest) {
       map.invalidateSize() // the container may have been sized after the map was made
       fitBbox(map, extent)
       fitted.current = true

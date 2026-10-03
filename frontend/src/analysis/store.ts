@@ -52,6 +52,8 @@ interface AnalysisStore extends Analysis {
 
   reset: () => void
   load: (analysis: Analysis, table?: TableState) => void
+  /** After saving: the state is unchanged, it just no longer counts as unsaved. */
+  markSaved: () => void
 }
 
 export const emptyTable = (): TableState => ({
@@ -206,6 +208,7 @@ export const useAnalysis = create<AnalysisStore>()((set, get) => ({
   reset: () => set(initial()),
   load: (analysis, table) =>
     set({ ...analysis, table: table ?? emptyTable(), draft: null, dirty: false }),
+  markSaved: () => set({ dirty: false }),
 }))
 
 /** The analysis as the query sees it: the draft counts while the editor is open. */

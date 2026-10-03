@@ -12,7 +12,14 @@ from geotandem import sessions
 from geotandem.api.auth import CurrentAccount
 from geotandem.api.routes import ERRORS, State, Visible
 from geotandem.engine import ResultStamp, stamp_query
-from geotandem.sessions import Check, SessionDetail, SessionRename, SessionSummary, SessionWrite
+from geotandem.sessions import (
+    Check,
+    CheckRequest,
+    SessionDetail,
+    SessionRename,
+    SessionSummary,
+    SessionWrite,
+)
 from geotandem_query import QueryObject
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
@@ -105,7 +112,12 @@ def check(
     state: State,
     backend: Visible,
     stamp: Stamper,
+    body: CheckRequest | None = None,
 ) -> Check:
-    """Open with check (design C4): the saved query again, against the saved stamp."""
+    """Open with check (design C4): the saved query again, against the saved stamp.
+
+    With the query the interface rebuilt from the saved state, also tells
+    whether state and query still agree (``state_matches``).
+    """
     engine = state.backend.engine
-    return sessions.check(engine, account.id, session_id, backend, stamp)
+    return sessions.check(engine, account.id, session_id, backend, stamp, body)

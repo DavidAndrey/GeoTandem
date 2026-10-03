@@ -632,6 +632,9 @@ export interface paths {
     /**
      * Check
      * @description Open with check (design C4): the saved query again, against the saved stamp.
+     *
+     *     With the query the interface rebuilt from the saved state, also tells
+     *     whether state and query still agree (``state_matches``).
      */
     post: operations['check_api_sessions__session_id__check_post']
     delete?: never
@@ -994,6 +997,22 @@ export interface components {
        * @description Why the query no longer runs.
        */
       error?: string | null
+      /**
+       * State Matches
+       * @description The query rebuilt from the saved state is the saved query; null when none was sent.
+       */
+      state_matches?: boolean | null
+    }
+    /** CheckRequest */
+    CheckRequest: {
+      /** @description The result query the interface rebuilt from the state. */
+      rebuilt?: components['schemas']['QueryObject-Input'] | null
+      /**
+       * Has Result
+       * @description Whether the interface rebuilt a result at all.
+       * @default false
+       */
+      has_result: boolean
     }
     /** Classified */
     Classified: {
@@ -5163,7 +5182,11 @@ export interface operations {
       }
       cookie?: never
     }
-    requestBody?: never
+    requestBody?: {
+      content: {
+        'application/json': components['schemas']['CheckRequest'] | null
+      }
+    }
     responses: {
       /** @description Successful Response */
       200: {

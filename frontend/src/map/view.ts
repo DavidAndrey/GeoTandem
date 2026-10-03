@@ -17,9 +17,12 @@ interface MapViewStore {
   /** Drawing the restriction "Nur in: Fläche" (F-4.3). */
   drawing: 'rectangle' | 'polygon' | null
   setDrawing: (drawing: 'rectangle' | 'polygon' | null) => void
-  /** From the table (design B8): ``zoom`` fits the feature (⌖), ``pan`` only brings it into view. */
-  featureRequest: { bbox: BBox; mode: 'zoom' | 'pan'; at: number } | null
-  zoomToFeature: (bbox: BBox, mode: 'zoom' | 'pan') => void
+  /**
+   * ``zoom`` fits a feature (⌖ in the table, design B8), ``pan`` only brings it
+   * into view, ``view`` restores a saved map view (plan E1.7, D3).
+   */
+  featureRequest: { bbox: BBox; mode: 'zoom' | 'pan' | 'view'; at: number } | null
+  zoomToFeature: (bbox: BBox, mode: 'zoom' | 'pan' | 'view') => void
   /** The editor row whose hits the map shows (design B2 "Aktive Bedingung"). */
   activeRow: string | null
   setActiveRow: (id: string | null) => void

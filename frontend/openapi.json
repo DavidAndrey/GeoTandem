@@ -2850,7 +2850,7 @@
           "sessions"
         ],
         "summary": "Check",
-        "description": "Open with check (design C4): the saved query again, against the saved stamp.",
+        "description": "Open with check (design C4): the saved query again, against the saved stamp.\n\nWith the query the interface rebuilt from the saved state, also tells\nwhether state and query still agree (``state_matches``).",
         "operationId": "check_api_sessions__session_id__check_post",
         "parameters": [
           {
@@ -2863,6 +2863,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/CheckRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -3886,6 +3903,18 @@
             ],
             "title": "Error",
             "description": "Why the query no longer runs."
+          },
+          "state_matches": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State Matches",
+            "description": "The query rebuilt from the saved state is the saved query; null when none was sent."
           }
         },
         "type": "object",
@@ -3898,6 +3927,29 @@
         ],
         "title": "Check",
         "description": "The saved stamp against the current data (design C4, C8)."
+      },
+      "CheckRequest": {
+        "properties": {
+          "rebuilt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QueryObject-Input"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The result query the interface rebuilt from the state."
+          },
+          "has_result": {
+            "type": "boolean",
+            "title": "Has Result",
+            "description": "Whether the interface rebuilt a result at all.",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "CheckRequest"
       },
       "Classified": {
         "properties": {
