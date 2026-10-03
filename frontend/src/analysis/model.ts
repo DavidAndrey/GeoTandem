@@ -31,6 +31,8 @@ export interface DisplayLayer {
   /** 0..1 */
   opacity: number
   symbology: Symbology | null
+  /** A table layer: listed and in the attribute table, never drawn, never the result (B11). */
+  table?: boolean
 }
 
 // --- conditions (F-4.2 to F-4.4, design B2) -----------------------------------------

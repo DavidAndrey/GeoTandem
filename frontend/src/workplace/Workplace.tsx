@@ -84,7 +84,7 @@ function MapLayers() {
   const shown = active ? active.query : resultQuery(analysis)
   // Hits of the result layer, told apart only while there are conditions (design B9).
   const hitIds = useHits(shown).ids
-  const visible = panelOrder(analysis.layers).filter((l) => l.visible)
+  const visible = panelOrder(analysis.layers).filter((l) => l.visible && !l.table)
   const maxFeatures = config.data?.max_features ?? Infinity
   const onPick = useCallback(
     (rowId: string, fid: number, label: string) => {
@@ -120,6 +120,8 @@ function MapLayers() {
       >
         {/* Drawn in the order the panel shows (top first), not the store's. */}
         {panelOrder(analysis.layers).map((layer, index) => {
+          // Table layers are never drawn; the attribute table reads them (design B11).
+          if (layer.table) return null
           const info = catalogInfo(layer, catalog.data)
           return (
             <DataLayer

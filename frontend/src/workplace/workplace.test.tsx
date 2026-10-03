@@ -50,8 +50,8 @@ test('layers come from the picker; the first becomes the result layer', async ()
   renderAt('/', <App />)
   await userEvent.click(await screen.findByRole('button', { name: 'Layer' }))
   const picker = await screen.findByRole('dialog', { name: 'Layer hinzufügen' })
-  // Table layers are join sources, not map layers (design B11).
-  expect(within(picker).getByRole('checkbox', { name: /Bevölkerung/ })).toBeDisabled()
+  // Table layers are listed for the attribute table, never drawn nor the result (B11).
+  await userEvent.click(within(picker).getByRole('checkbox', { name: /Bevölkerung/ }))
   await userEvent.click(within(picker).getByRole('checkbox', { name: /Schulen/ }))
   await userEvent.click(within(picker).getByRole('checkbox', { name: /Gemeinden/ }))
   await userEvent.click(within(picker).getByRole('button', { name: 'Hinzufügen' }))
@@ -60,7 +60,13 @@ test('layers come from the picker; the first becomes the result layer', async ()
   const rows = within(panel)
     .getAllByRole('button')
     .filter((b) => b.hasAttribute('aria-expanded') && b.textContent !== ' Layer')
-  expect(rows.map((b) => b.textContent)).toEqual(['SchulenErgebnis', 'Gemeinden'])
+  expect(rows.map((b) => b.textContent)).toEqual(['Bevölkerung', 'SchulenErgebnis', 'Gemeinden'])
+  expect(within(panel).queryByRole('button', { name: 'Bevölkerung ausblenden' })).toBeNull()
+  expect(useAnalysis.getState().result).toBe('schulen')
+
+  // The table layer has its tab in the attribute table.
+  await userEvent.click(screen.getByRole('button', { name: 'Attributtabelle' }))
+  expect(await screen.findByRole('tab', { name: 'Bevölkerung' })).toBeInTheDocument()
   expect(await screen.findByLabelText('Trefferzahl')).toHaveTextContent('120 von 120')
 
   // Every query the interface sent is a valid query object (etappen E1.5).

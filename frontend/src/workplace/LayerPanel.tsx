@@ -102,14 +102,19 @@ function LayerRow({ layer, catalog }: { layer: DisplayLayer; catalog: LayerInfo[
     <div className={`rounded-[var(--radius-md)] ${open ? 'bg-neutral-200/60' : ''}`}>
       <div className="flex items-center gap-1.5 py-0.5 text-sm">
         <GripVertical size={13} aria-hidden className="text-muted cursor-grab" />
-        <button
-          type="button"
-          aria-label={`${title} ${layer.visible ? 'ausblenden' : 'einblenden'}`}
-          aria-pressed={layer.visible}
-          onClick={() => s.setVisible(layer.id, !layer.visible)}
-        >
-          {layer.visible ? <Eye size={14} /> : <EyeOff size={14} className="text-muted" />}
-        </button>
+        {kind === 'table' ? (
+          // Never drawn, so nothing to show or hide (design B11).
+          <span aria-hidden className="inline-block w-3.5" />
+        ) : (
+          <button
+            type="button"
+            aria-label={`${title} ${layer.visible ? 'ausblenden' : 'einblenden'}`}
+            aria-pressed={layer.visible}
+            onClick={() => s.setVisible(layer.id, !layer.visible)}
+          >
+            {layer.visible ? <Eye size={14} /> : <EyeOff size={14} className="text-muted" />}
+          </button>
+        )}
         <Swatch kind={kind} color={layerColor(layer)} />
         <button
           type="button"
@@ -122,7 +127,25 @@ function LayerRow({ layer, catalog }: { layer: DisplayLayer; catalog: LayerInfo[
           {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
         </button>
       </div>
-      {open && (
+      {open && kind === 'table' && (
+        <div className="mb-1 ml-5 flex items-center gap-1 pb-1.5 pr-1 text-xs">
+          <span className="text-muted flex-1">Tabelle, nur in der Attributtabelle</span>
+          <Menu label={`Aktionen für ${title}`}>
+            <MenuItem
+              onSelect={() => {
+                s.setTableTab(layer.id)
+                useDock.getState().setOpen(true)
+              }}
+            >
+              Tabelle öffnen
+            </MenuItem>
+            <MenuItem danger onSelect={() => s.removeLayer(layer.id)}>
+              Aus Analyse entfernen
+            </MenuItem>
+          </Menu>
+        </div>
+      )}
+      {open && kind !== 'table' && (
         <div className="mb-1 ml-5 flex flex-col gap-1.5 pb-1.5 pr-1 text-xs">
           <label className="flex items-center gap-2">
             Deckkraft
@@ -155,7 +178,7 @@ function LayerRow({ layer, catalog }: { layer: DisplayLayer; catalog: LayerInfo[
               {!isResult && canBeResult(layer) && (
                 <MenuItem onSelect={() => s.setResult(layer.id)}>Als Ergebnis-Layer</MenuItem>
               )}
-              {kind !== 'table' && layer.source.kind === 'catalog' && (
+              {layer.source.kind === 'catalog' && (
                 <>
                   <MenuItem onSelect={() => setOperation('buffer')}>Puffer …</MenuItem>
                   <MenuItem onSelect={() => setOperation('join')}>Join …</MenuItem>

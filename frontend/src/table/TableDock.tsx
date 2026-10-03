@@ -1,7 +1,7 @@
 // Attribute table docked under the map (F-8.2, design B8): one tab per
 // displayed layer, the result layer first. Reads the same cached queries as the
 // map (plan E1.6 D2), so table and map always show the same result.
-import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Crosshair } from 'lucide-react'
+import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Crosshair, GripVertical } from 'lucide-react'
 import { Popover } from 'radix-ui'
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useShallow } from 'zustand/react/shallow'
@@ -479,13 +479,18 @@ function ColumnMenu({
   const ordered = orderedColumns(available, choice)
   const hidden = new Set(choice?.hidden ?? [])
   const names = ordered.map((c) => c.name)
-  const move = (index: number, by: number) => {
+  const moveTo = (from: number, to: number) => {
+    if (from === to) return
     const order = [...names]
-    const [moved] = order.splice(index, 1)
+    const [moved] = order.splice(from, 1)
     if (moved === undefined) return
-    order.splice(index + by, 0, moved)
+    order.splice(to, 0, moved)
     onChange({ order, hidden: [...hidden] })
   }
+  const move = (index: number, by: number) => moveTo(index, index + by)
+  // Dragged by the handle (design B8); the arrows stay for keyboards.
+  const [dragged, setDragged] = useState<number | null>(null)
+  const [over, setOver] = useState<number | null>(null)
   return (
     <Popover.Root>
       <Popover.Trigger className="btn text-sm">
@@ -501,7 +506,31 @@ function ColumnMenu({
           <p className="label-caps mb-1">Spalten</p>
           <ul className="flex max-h-72 flex-col gap-0.5 overflow-auto">
             {ordered.map((column, index) => (
-              <li key={column.name} className="flex items-center gap-2">
+              <li
+                key={column.name}
+                className={`flex items-center gap-2 ${over === index && dragged !== index ? 'border-accent border-t-2' : 'border-t-2 border-transparent'} ${dragged === index ? 'opacity-50' : ''}`}
+                draggable
+                onDragStart={(e) => {
+                  setDragged(index)
+                  e.dataTransfer.effectAllowed = 'move'
+                  e.dataTransfer.setData('text/plain', column.name)
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault()
+                  setOver(index)
+                }}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  if (dragged !== null) moveTo(dragged, index)
+                  setDragged(null)
+                  setOver(null)
+                }}
+                onDragEnd={() => {
+                  setDragged(null)
+                  setOver(null)
+                }}
+              >
+                <GripVertical size={13} aria-hidden className="text-muted shrink-0 cursor-grab" />
                 <label className="flex flex-1 items-center gap-2">
                   <input
                     type="checkbox"

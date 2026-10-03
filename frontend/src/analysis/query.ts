@@ -141,7 +141,7 @@ export function restrictionCondition(restriction: Restriction): Condition | null
 
 /** Aggregations summarise; conditions would filter before summarising (plan S2). */
 export const canBeResult = (layer: DisplayLayer) =>
-  layer.source.kind === 'catalog' || layer.source.recipe.op !== 'aggregate'
+  !layer.table && (layer.source.kind === 'catalog' || layer.source.recipe.op !== 'aggregate')
 
 export function recipeQuery(recipe: Recipe, filtered: Condition | null = null): QueryObject {
   switch (recipe.op) {

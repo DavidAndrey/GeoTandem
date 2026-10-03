@@ -1,5 +1,6 @@
 // "+ Layer" (design B11): only layers this account may see; table layers are
-// join sources, not map layers; layers already in use are greyed out.
+// listed for the attribute table and joins, never drawn; layers already in use
+// are greyed out.
 import { Plus } from 'lucide-react'
 import { Popover } from 'radix-ui'
 import { useState } from 'react'
@@ -52,7 +53,7 @@ export function AddLayers() {
           <ErrorNotice error={catalog.error} />
           <ul className="max-h-64 overflow-auto text-sm">
             {shown.map((layer) => {
-              const disabled = inUse.has(layer.name) || layer.kind === 'table'
+              const disabled = inUse.has(layer.name)
               return (
                 <li key={layer.name}>
                   <label
@@ -71,7 +72,14 @@ export function AddLayers() {
                       }
                     />
                     <span className="flex-1">{layer.title}</span>
-                    {layer.kind === 'table' && <span className="text-xs">nur für Join</span>}
+                    {layer.kind === 'table' && (
+                      <span
+                        className="text-muted text-xs"
+                        title="Erscheint in der Attributtabelle, nicht auf der Karte"
+                      >
+                        Tabelle
+                      </span>
+                    )}
                   </label>
                 </li>
               )
@@ -95,9 +103,14 @@ export function AddLayers() {
               onClick={() => {
                 // Added in reverse so the first chosen ends on top; it also becomes
                 // the result layer if there is none yet.
-                const first = chosen[0]
+                // Tables are listed and readable in the attribute table, never the result.
+                const isTable = (name: string) =>
+                  catalog.data?.find((l) => l.name === name)?.kind === 'table'
+                const first = chosen.find((name) => !isTable(name))
                 const noResult = useAnalysis.getState().result === null
-                ;[...chosen].reverse().forEach((name) => addLayer(name, noResult && name === first))
+                ;[...chosen]
+                  .reverse()
+                  .forEach((name) => addLayer(name, noResult && name === first, isTable(name)))
                 setOpen(false)
               }}
             >

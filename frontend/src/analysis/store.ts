@@ -27,7 +27,8 @@ interface AnalysisStore extends Analysis {
   table: TableState
   queryRef: QueryRef | null
 
-  addLayer: (layer: string, asResult?: boolean) => void
+  /** ``table``: a table layer, shown in the attribute table only (design B11). */
+  addLayer: (layer: string, asResult?: boolean, table?: boolean) => void
   addDerived: (name: string, recipe: Recipe) => Id
   removeLayer: (id: Id) => void
   moveLayer: (id: Id, toIndex: number) => void
@@ -115,7 +116,7 @@ const layerPatch =
 export const useAnalysis = create<AnalysisStore>()((set, get) => ({
   ...initial(),
 
-  addLayer: (layer, asResult) =>
+  addLayer: (layer, asResult, table) =>
     set((s) => {
       if (s.layers.some((l) => l.id === layer)) return s
       const added: DisplayLayer = {
@@ -124,9 +125,10 @@ export const useAnalysis = create<AnalysisStore>()((set, get) => ({
         visible: true,
         opacity: 1,
         symbology: null,
+        ...(table ? { table: true } : {}),
       }
-      // New layers go on top; the first one becomes the result layer.
-      const result = asResult || s.result === null ? layer : s.result
+      // New layers go on top; the first one becomes the result layer — never a table.
+      const result = !table && (asResult || s.result === null) ? layer : s.result
       return { layers: [added, ...s.layers], result, dirty: true }
     }),
 

@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { App } from '../App'
@@ -155,4 +155,22 @@ test('rows are selected by click and checkbox; the selection is not saved', asyn
   expect(useAnalysis.getState().dirty).toBe(false)
   await userEvent.click(screen.getByRole('button', { name: 'Tabelle einklappen' }))
   expect(screen.queryByRole('table')).not.toBeInTheDocument()
+})
+
+test('columns are reordered by dragging (design B8)', async () => {
+  const table = await openTable()
+  await userEvent.click(screen.getByRole('button', { name: /Spalten/ }))
+  const menu = await screen.findByRole('dialog', { name: 'Spalten' })
+  const items = within(menu).getAllByRole('listitem')
+  const transfer = { setData: () => {}, effectAllowed: '' }
+  // "Schüler" (third) dragged onto "Name" (first).
+  fireEvent.dragStart(items[2] as HTMLElement, { dataTransfer: transfer })
+  fireEvent.dragOver(items[0] as HTMLElement, { dataTransfer: transfer })
+  fireEvent.drop(items[0] as HTMLElement, { dataTransfer: transfer })
+  expect(
+    within(table)
+      .getAllByRole('columnheader')
+      .map((h) => h.textContent),
+  ).toEqual(['', 'Schüler', 'Name', 'Schulart', 'Zoomen'])
+  expect(useAnalysis.getState().table.columns.schulen?.order).toEqual(['schueler', 'name', 'typ'])
 })
