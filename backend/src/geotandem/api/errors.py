@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from geotandem.auth.accounts import AccountError
 from geotandem.engine import QueryError
+from geotandem.sessions import SessionError
 from geotandem.tools import UnknownTool
 
 
@@ -52,6 +53,10 @@ def install(app: FastAPI) -> None:
     @app.exception_handler(AccountError)
     async def _account_rule(_: Request, exc: AccountError) -> JSONResponse:
         return _body(400, exc.code, exc.message)
+
+    @app.exception_handler(SessionError)
+    async def _session_rule(_: Request, exc: SessionError) -> JSONResponse:
+        return _body(exc.status, exc.code, exc.message, **exc.details)
 
     @app.exception_handler(RequestValidationError)
     async def _schema_violation(_: Request, exc: RequestValidationError) -> JSONResponse:

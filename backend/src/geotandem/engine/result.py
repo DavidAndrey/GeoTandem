@@ -32,3 +32,16 @@ class QueryResult(BaseModel):
     features: list[Feature]
     query: QueryObject
     meta: ResultMeta
+
+
+class ResultStamp(BaseModel):
+    """A result without its features (design "Ergebnis-Stempel", F-8.9).
+
+    Same query on the same data gives the same stamp; comparing stamps tells
+    whether a saved result still holds, without storing the features.
+    """
+
+    count: int
+    ids_hash: str = Field(description="sha256 of the sorted feature ids.")
+    query_hash: str
+    data_versions: dict[str, str | None]

@@ -16,7 +16,7 @@ from shapely.geometry.base import BaseGeometry
 
 from geotandem.data import DataBackend, Limits
 from geotandem.data.view import LayerView
-from geotandem.engine import QueryError, QueryResult, count_query, run_query
+from geotandem.engine import QueryError, QueryResult, count_query, run_query, stamp_query
 from geotandem.geo import WGS84, reprojector
 from geotandem.sample import DATA_DIR
 from geotandem.sample.load import dataset_version
@@ -599,3 +599,35 @@ def test_count_ignores_columns(sample: DataBackend) -> None:
         "columns": [{"fn": "distance_to", "name": "d", "layer": "strassen"}],
     }
     assert count_query(QueryObject.model_validate(query), sample, LIMITS) == 137
+
+
+# --- result stamp (E1.7, F-8.9) ---------------------------------------------------
+
+
+def test_stamp_matches_the_result_and_repeats(sample: DataBackend) -> None:
+    query = json.loads((GOLDEN / "schools_near_river.query.json").read_text("utf-8"))
+    parsed = QueryObject.model_validate(query)
+    result = run(sample, query)
+    stamp = stamp_query(parsed, sample, LIMITS)
+    assert stamp.count == len(result.features)
+    assert stamp.query_hash == result.meta.query_hash
+    assert stamp.data_versions == result.meta.data_versions
+    assert stamp == stamp_query(parsed, sample, LIMITS)
+    other = QueryObject.model_validate({**query, "limit": 1})
+    assert stamp_query(other, sample, LIMITS).ids_hash != stamp.ids_hash
+
+
+def test_stamp_is_not_capped_by_the_result_size_limit(sample: DataBackend) -> None:
+    small = Limits(max_features=10, timeout_s=10)
+    expected = count_query(QueryObject(source="schulen"), sample, LIMITS)
+    assert expected > small.max_features
+    assert stamp_query(QueryObject(source="schulen"), sample, small).count == expected
+
+
+def test_stamp_with_limit_keeps_the_query_order(sample: DataBackend) -> None:
+    query = {"source": "schulen", "order_by": [{"attr": "standorte", "dir": "desc"}], "limit": 5}
+    top = run(sample, query)
+    expected = {"source": "schulen", "where": {"op": "in", "attr": "fid", "values": ids(top)}}
+    stamp = stamp_query(QueryObject.model_validate(query), sample, LIMITS)
+    same = stamp_query(QueryObject.model_validate(expected), sample, LIMITS)
+    assert stamp.ids_hash == same.ids_hash

@@ -147,6 +147,33 @@ class LayerVisibility(Base):
     role: Mapped[str] = mapped_column(String(16), primary_key=True)
 
 
+class AnalysisSession(Base):
+    """A named, saved analysis state (F-4.10), private to its owner (design decision 2).
+
+    Not to be confused with ``AuthSession``, the login. Holds the frontend's
+    state as versioned JSON, the result query object and the result stamp
+    the server computed from it (F-8.9; plan E1.7, S5).
+    """
+
+    __tablename__ = "analysis_session"
+    __table_args__ = (UniqueConstraint("owner_id", "name"),)
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    owner_id: Mapped[int] = mapped_column(ForeignKey("app_user.id", ondelete="CASCADE"))
+    name: Mapped[str] = mapped_column(String(120))
+    note: Mapped[str] = mapped_column(default="")
+    state_version: Mapped[int]
+    state: Mapped[dict[str, Any]] = mapped_column(JSON)
+    query: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    """The result query object, canonical; null while the analysis has no result layer."""
+    stamp: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    """``ResultStamp`` of ``query`` at save time."""
+    stamped_at: Mapped[datetime | None]
+    created_at: Mapped[datetime] = mapped_column(server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.current_timestamp())
+    opened_at: Mapped[datetime | None]
+
+
 class AppMeta(Base):
     """Instance-wide facts fixed at first start, e.g. the internal CRS."""
 

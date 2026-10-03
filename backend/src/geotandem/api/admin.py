@@ -1,7 +1,9 @@
 """Administration interface (F-3.1): import and layer management (E1.3).
 
-Every route that changes data lives here, under one router, so a single
-dependency guards all of them once accounts exist (E1.4, plan D5).
+Every route that changes geodata, the catalog or accounts lives here, under
+one router, so a single dependency guards all of them (E1.4, plan D5). What a
+user writes for themselves — their password, their sessions (E1.7) — lives
+with the user's own routes.
 """
 
 from typing import Annotated, Any, Literal

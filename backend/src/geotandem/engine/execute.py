@@ -1,5 +1,6 @@
 """Validate and run query objects under server-side limits (F-5.9, F-9.6)."""
 
+import hashlib
 import json
 import time
 from collections.abc import Iterable
@@ -11,7 +12,7 @@ from geotandem.catalog import get_layer
 from geotandem.data import DataBackend, Limits, Op, QueryTimeout
 from geotandem.engine.compile import FID, GEOJSON, Compiled, compile_query
 from geotandem.engine.errors import QueryTimedOut, ResultTooLarge
-from geotandem.engine.result import Feature, QueryResult, ResultMeta
+from geotandem.engine.result import Feature, QueryResult, ResultMeta, ResultStamp
 from geotandem_query import QueryObject, query_hash
 
 
@@ -40,10 +41,7 @@ def run_query(
             max_features=limits.max_features,
         )
     features = [_feature(row) for row in rows]
-    versions: dict[str, str | None] = {}
-    for name in compiled.layers:
-        info = get_layer(backend.engine, name)
-        versions[name] = info.dataset_version if info else None
+    versions = _versions(compiled, backend)
     return QueryResult(
         features=features,
         query=query,
@@ -80,6 +78,42 @@ def count_query(
             timeout_s=limits.timeout_s,
         ) from None
     return int(next(iter(result[0].values())))
+
+
+def stamp_query(
+    query: QueryObject, backend: DataBackend, limits: Limits, unsupported: Iterable[Op] = ()
+) -> ResultStamp:
+    """The result's stamp: count, hash of the sorted ids, provenance (F-8.9).
+
+    Like counting, not capped by the result-size limit: only ids are read, and
+    none leave the server. The query's own ordering stays, so a ``limit``
+    picks the same features as ``run_query``.
+    """
+    compiled = compile_query(query, backend, COUNT_CAP, unsupported)
+    found = compiled.stmt.with_only_columns(compiled.stmt.selected_columns[FID]).subquery()
+    try:
+        rows = backend.execute(select(found.c[FID]).order_by(found.c[FID]), limits)
+    except QueryTimeout:
+        raise QueryTimedOut(
+            f"The query took longer than {limits.timeout_s:g} s and was stopped.",
+            timeout_s=limits.timeout_s,
+        ) from None
+    ids = ",".join(str(row[FID]) for row in rows)
+    return ResultStamp(
+        count=len(rows),
+        ids_hash=hashlib.sha256(ids.encode()).hexdigest(),
+        query_hash=query_hash(query),
+        data_versions=_versions(compiled, backend),
+    )
+
+
+def _versions(compiled: Compiled, backend: DataBackend) -> dict[str, str | None]:
+    """Dataset version of every layer the query touched."""
+    versions: dict[str, str | None] = {}
+    for name in compiled.layers:
+        info = get_layer(backend.engine, name)
+        versions[name] = info.dataset_version if info else None
+    return versions
 
 
 def _feature(row: dict[str, Any]) -> Feature:

@@ -23,6 +23,7 @@ READ_ROUTES = [
     ("POST", "/api/query/count", {"queries": [{"source": "schulen"}]}),
     ("GET", "/api/tools", None),
     ("GET", "/api/config/map", None),
+    ("GET", "/api/sessions", None),
 ]
 ADMIN_ROUTES = [
     ("GET", "/api/admin/layers", None),

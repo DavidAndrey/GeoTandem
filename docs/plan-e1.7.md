@@ -79,8 +79,9 @@ the state as a contract, B can follow then, from a state that has proven itself.
   (F-2.7): a hidden layer is a missing layer.
 - API `/api/sessions` (signed-in users, owner-scoped; another user's id is
   404, never 403): `GET`, `POST`, `GET/PATCH/DELETE /{id}`,
-  `POST /{id}/duplicate`, `POST /{id}/check`, `POST /{id}/restamp`. The
-  user's last opened session: `GET /api/sessions/last`.
+  `POST /{id}/duplicate`, `POST /{id}/check` (also records the opening).
+  The user's last opened session: `GET /api/sessions/last`. Saving (`PUT`)
+  always sets a new stamp, so "Mit aktuellen Daten übernehmen" is a save.
 - `api/admin.py` wording: the admin router holds every route that changes
   geodata or the catalog.
 - Tests: CRUD and ownership (two accounts), unique names, limits, invalid
@@ -119,7 +120,7 @@ the state as a contract, B can follow then, from a state that has proven itself.
 
 - On open: `POST /check`. Identical → notice "identisch", closes after a
   few seconds. Deviating → lasting notice with the cause and old → new
-  count, "Mit aktuellen Daten übernehmen" (restamp). Missing layers per D5.
+  count, "Mit aktuellen Daten übernehmen" (a save, which restamps). Missing layers per D5.
 - The map restores the saved view (D3).
 - Tests: identical, changed version, missing result layer, missing
   condition layer.
@@ -131,7 +132,7 @@ the state as a contract, B can follow then, from a state that has proven itself.
   E1.6), adds the buffer, reads the hits in the table, saves the session
   "Vorführung E1" and checks the stamp against a direct query; the second
   pass, **after the container restart**, signs in fresh, lands in that
-  session and sees "identisch", the same seven rows in the same order, the
+  session and sees "identisch", the same ten rows in the same order, the
   same columns and sort. Every request validates against `v2.json`; no LLM
   connection exists (F-4.11).
 - A data change case: replace a layer the session uses, reopen, see the
