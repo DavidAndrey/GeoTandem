@@ -6,6 +6,8 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { api, type Account } from '../api/client'
 import { useResetSession } from '../api/queries'
+import { newSession } from '../session/actions'
+import { guarded, useSessionUi } from '../session/ui'
 import { PasswordForm } from './PasswordForm'
 import { ROLE_LABELS } from './rules'
 
@@ -17,6 +19,9 @@ export function UserMenu({ account }: { account: Account }) {
   const logout = useMutation({
     mutationFn: api.auth.logout,
     onSettled: async () => {
+      // The next account starts empty and lands in its own last session.
+      newSession()
+      useSessionUi.getState().setLanded(false)
       await resetSession()
       navigate('/anmelden', { replace: true })
     },
@@ -49,7 +54,7 @@ export function UserMenu({ account }: { account: Account }) {
             </DropdownMenu.Item>
             <DropdownMenu.Item
               className="cursor-pointer px-3 py-1 text-sm outline-none data-[highlighted]:bg-neutral-200"
-              onSelect={() => logout.mutate()}
+              onSelect={() => guarded('abmelden', () => logout.mutate())}
             >
               Abmelden
             </DropdownMenu.Item>

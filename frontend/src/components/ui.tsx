@@ -1,6 +1,6 @@
 // Small shared building blocks on Radix primitives (tech-stack 4.3, plan D8).
 import { AlertTriangle, Check, Circle, Loader, MoreHorizontal, X } from 'lucide-react'
-import { AlertDialog, DropdownMenu } from 'radix-ui'
+import { AlertDialog, Dialog, DropdownMenu } from 'radix-ui'
 import type { ReactNode } from 'react'
 import { ApiRequestError, type ImportStatus } from '../api/client'
 import { STATUS_LABELS } from '../admin/format'
@@ -141,5 +141,37 @@ export function ConfirmDialog({
         </AlertDialog.Content>
       </AlertDialog.Portal>
     </AlertDialog.Root>
+  )
+}
+
+export function Modal({
+  open,
+  onOpenChange,
+  title,
+  description,
+  children,
+  wide,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  title: string
+  /** For assistive technology when the dialog has no visible description. */
+  description: string
+  children: ReactNode
+  wide?: boolean
+}) {
+  return (
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="bg-ink/30 fixed inset-0 z-[1200]" />
+        <Dialog.Content
+          className={`card fixed top-[12%] left-1/2 z-[1200] max-h-[80vh] ${wide ? 'w-[46rem]' : 'w-[30rem]'} max-w-[calc(100vw-2rem)] -translate-x-1/2 overflow-auto p-5 shadow-[var(--shadow-md)]`}
+        >
+          <Dialog.Title className="mb-3 text-xl">{title}</Dialog.Title>
+          <Dialog.Description className="sr-only">{description}</Dialog.Description>
+          {children}
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   )
 }
