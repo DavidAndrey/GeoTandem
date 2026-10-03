@@ -1,0 +1,31 @@
+{
+  "id": "s_8f21",
+  "name": "Schulen an Hauptstrassen",
+  "notiz": "",
+  "besitzer": "admin",
+  "geaendert": "2026-10-02T14:02:00",
+  "layer": [
+    {"id": "schulen", "sichtbar": true, "deckkraft": 1.0},
+    {"id": "hauptstr", "sichtbar": true, "deckkraft": 1.0},
+    {"id": "stadtteile_kinder", "sichtbar": true, "deckkraft": 0.8},
+    {"id": "kitas", "sichtbar": false, "deckkraft": 1.0}
+  ],
+  "abfrage": {
+    "ziel": "schulen",
+    "baum": {"op": "UND", "kinder": [
+      {"typ": "attribut", "feld": "schulart", "operator": "ist_eins_von", "werte": ["Grundschule"]},
+      {"typ": "raum", "beziehung": "distanz_max", "layer": "hauptstr", "meter": 500},
+      {"typ": "raum", "beziehung": "liegt_in", "layer": "stadtteile_kinder", "filter": {"feld": "ant_u18", "operator": ">", "wert": 20}}
+    ]},
+    "einschraenkung": null,
+    "gespeicherteAbfrage": "q_grundschulen_hauptstr"
+  },
+  "abgeleitet": [
+    {"id": "puffer_1", "name": "Puffer 500 m", "op": "buffer", "quelle": "hauptstr", "m": 500, "verschmelzen": true, "nurGefiltert": false, "darstellung": "vorgabe"}
+  ],
+  "karte": {"zentrum": [2683120, 1247860], "zoom": 14, "grundkarte": "stadtplan"},
+  "tabelle": {"reiter": "schulen", "modus": "treffer", "nurAusschnitt": false,
+    "spalten": ["name", "schulart", "schueler", "@distanz:hauptstr", "@liegt_in:stadtteile_kinder.bezirk", "@liegt_in:stadtteile_kinder.ant_u18"],
+    "sortierung": [{"spalte": "schueler", "richtung": "absteigend"}]},
+  "stempel": {"treffer": 7, "idsHash": "a3f9…", "datenstand": {"schulen": 4, "hauptstr": 1, "stadtteile_kinder": 2}}
+}

@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/classical-591d89fb-aeac-49b4-9ae8-a1193e2a67ea/styles.css">
+<script src="_ds/classical-591d89fb-aeac-49b4-9ae8-a1193e2a67ea/_ds_bundle.js"></script>
+<style>
+body{margin:0;background:var(--color-surface);font-family:var(--font-body);color:var(--color-text)}
+a{color:var(--color-accent-700)}a:hover{color:var(--color-accent-900)}
+.dv-turn{padding:40px 44px 40px;border-bottom:1px solid var(--color-divider);scroll-margin-top:16px}
+.dv-thd{display:flex;align-items:baseline;gap:12px;margin:0 0 6px}
+.dv-tid{font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:var(--color-text);color:var(--color-bg);border-radius:4px;text-decoration:none}
+.dv-tname{font:400 30px/1.1 var(--font-heading);color:var(--color-text)}
+.dv-intro{font:13px/1.55 var(--font-body);max-width:820px;margin:0 0 8px;color:var(--color-neutral-700);text-wrap:pretty}
+.dv-grp{font:600 20px/1.2 var(--font-heading);margin:36px 0 2px;padding-top:14px;border-top:1px solid var(--color-divider);max-width:1800px}
+.dv-gsub{font:italic 13px/1.5 var(--font-body);color:var(--color-neutral-600);margin:0 0 16px;max-width:820px;text-wrap:pretty}
+.dv-opts{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:9px;scroll-margin-top:16px;max-width:100%}
+.dv-oid{font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:color-mix(in srgb,var(--color-text) 9%,transparent);color:var(--color-text);border-radius:5px;text-decoration:none}
+.dv-olabel{display:flex;align-items:baseline;gap:8px;font:13px/1.3 var(--font-body);color:var(--color-neutral-700)}
+.dv-card{max-width:100%;background:var(--color-bg);border:1px solid var(--color-divider);border-radius:6px;box-shadow:var(--shadow-sm);overflow:hidden}
+.dv-opt:target .dv-oid{background:var(--color-accent);color:var(--color-bg)}
+.dv-next{margin:30px 0 0;font:13px/1.6 var(--font-body);color:var(--color-neutral-600)}
+.wf{font:12px/1.45 var(--font-body);color:var(--color-text);display:flex;flex-direction:column}
+.wf-top{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--color-divider)}
+.wf-brand{font:600 16px/1 var(--font-heading)}
+.wf-h{font:600 14px/1.2 var(--font-heading);margin:0;white-space:nowrap}
+.wf-row>.wf-box,.wf-row>.wf-tag{flex:none;white-space:nowrap}
+.wf-k{font:9.5px/1.2 var(--font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--color-neutral-600)}
+.wf-box{border:1px solid var(--color-divider);border-radius:4px;padding:8px}
+.wf-map{position:relative;background:repeating-linear-gradient(135deg,transparent 0 9px,color-mix(in srgb,var(--color-text) 6%,transparent) 9px 10px);border:1px solid var(--color-divider);border-radius:4px;overflow:hidden}
+.wf-ln{height:6px;border-radius:3px;background:var(--color-neutral-200)}
+.wf-btn{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--color-accent);color:var(--color-accent-700);border-radius:4px;padding:3px 9px;font-size:11px;white-space:nowrap}
+.wf-btn.q{border-color:var(--color-divider);color:var(--color-text)}
+.wf-tag{display:inline-block;border:1px solid var(--color-divider);border-radius:999px;padding:1px 7px;font-size:10.5px;white-space:nowrap}
+.wf-tag.a{border-color:var(--color-accent);color:var(--color-accent-700)}
+.wf-note{font:italic 15px/1.25 var(--font-heading);color:var(--color-accent-700);max-width:520px;text-wrap:pretty}
+.wf-note::before{content:"↳ "}
+.wf-ref{font:9.5px ui-monospace,Menlo,monospace;color:var(--color-neutral-500)}
+.wf-code{font:10px/1.6 ui-monospace,Menlo,monospace;background:var(--color-surface);border-radius:4px;padding:8px 10px;white-space:pre;overflow:hidden}
+.wf-row{display:flex;align-items:center;gap:8px}
+.wf-col{display:flex;flex-direction:column;gap:6px}
+.wf-dot{display:inline-block;vertical-align:middle;width:9px;height:9px;border-radius:50%;border:1px solid var(--color-text);flex:none}
+.wf-dot.on{background:var(--color-text)}
+.wf-chk{display:inline-block;vertical-align:middle;width:10px;height:10px;border:1px solid var(--color-text);border-radius:2px;flex:none}
+.wf-chk.on{background:var(--color-text)}
+.wf-seg{display:inline-flex;border:1px solid var(--color-divider);border-radius:4px;overflow:hidden}
+.wf-seg>span{padding:3px 9px;font-size:11px;white-space:nowrap}
+.wf-seg>span+span{border-left:1px solid var(--color-divider)}
+.wf-seg>.on{box-shadow:inset 0 -2px 0 var(--color-accent);color:var(--color-accent-700)}
+.wf-add{color:var(--color-accent-700)}
+.wf-del{color:var(--color-neutral-500);text-decoration:line-through}
+.wf-t{width:100%;border-collapse:collapse;font-size:11px}
+.wf-t th{font-weight:600;text-align:left;border-bottom:1px solid var(--color-text);padding:3px 5px;white-space:nowrap}
+.wf-t td{border-bottom:1px solid var(--color-divider);padding:3px 5px}
+.wf-ring{position:absolute;border:1.5px dashed var(--color-accent);border-radius:50%}
+.wf-pt{position:absolute;width:7px;height:7px;background:var(--color-text);border-radius:50%}
+.wf-pt.h{background:var(--color-accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--color-accent) 25%,transparent)}
+.wf-road{position:absolute;height:3px;background:var(--color-neutral-400);transform-origin:left center}
+.wf-area{position:absolute;border:1px solid var(--color-neutral-400);background:color-mix(in srgb,var(--color-accent) 10%,transparent)}
+.wf-float{position:absolute;background:var(--color-bg);border:1px solid var(--color-divider);border-radius:4px;box-shadow:var(--shadow-md);padding:8px}
+.wf-bar{height:10px;background:var(--color-neutral-300);border-radius:2px}
+html[data-notes="off"] .wf-note{display:none}
+html[data-refs="off"] .wf-ref{display:none}
+html[data-rel="off"] .rel{display:none}
+.dv-opt{max-width:100%}
+</style>
+</helmet>
+<section class="dv-turn" id="e1"><div class="dv-thd"><a class="dv-tid" href="#e1">E1</a><span class="dv-tname">GeoTandem · Etappe 1 · Bildschirmreferenz</span></div>
+<p class="dv-intro">Konsolidierter Stand aller festgelegten Bildschirme für E1 (Klassik-Modus, ohne LLM-Anbindung). Grundlage für Review und Umsetzung. Codes A–D ersetzen die Entwurfsnummern; die Herkunft steht an jedem Bildschirm („aus 11a"). Die Entwurfsdatei bleibt unverändert als Ausgangspunkt für E2.</p>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;max-width:1200px;font-size:11px">
+<div class="wf-box wf-col" style="gap:2px"><b>E1.1</b><span>Gerüst, erster Start, Beispieldatensatz</span><span style="color:var(--color-accent-700)">A1 · S</span></div><div class="wf-box wf-col" style="gap:2px"><b>E1.2</b><span>Abfrageobjekt und Ausführung</span><span style="color:var(--color-accent-700)">B2 · C7</span></div><div class="wf-box wf-col" style="gap:2px"><b>E1.3</b><span>Import, Layer-Verwaltung, Protokoll</span><span style="color:var(--color-accent-700)">D2 – D8 · D11</span></div><div class="wf-box wf-col" style="gap:2px"><b>E1.4</b><span>Anmeldung, Rollen, Admin, Sichtbarkeit</span><span style="color:var(--color-accent-700)">A2 – A4 · D1 · D9 · D10</span></div><div class="wf-box wf-col" style="gap:2px"><b>E1.5</b><span>Karte, Filter, Operationen, Darstellung</span><span style="color:var(--color-accent-700)">B1 – B7 · B10 – B13 · D3</span></div><div class="wf-box wf-col" style="gap:2px"><b>E1.6</b><span>Attributtabelle</span><span style="color:var(--color-accent-700)">B8 · B9</span></div><div class="wf-box wf-col" style="gap:2px"><b>E1.7</b><span>Sitzung speichern und wiederherstellen</span><span style="color:var(--color-accent-700)">C1 – C8</span></div>
+</div></section>
+<section class="dv-turn" id="nav"><div class="dv-thd"><a class="dv-tid" href="#nav">N</a><span class="dv-tname">Globale Navigation und Beziehungen</span></div>
+<p class="dv-intro">Zwei Bereiche mit je einer festen Kopfzeile: Anwendung (A, B, C) und Administration (D). Alles im Arbeitsplatz ist Panel, Menü oder Dialog über derselben Seite; eigene Adressen haben nur Seiten.</p>
+<h3 class="dv-grp">Kopfzeilen</h3><div class="dv-opts">
+<div class="dv-opt"><div class="dv-olabel">Anwendung</div><div class="dv-card" style="width:760px"><div class="wf"><div class="wf-top"><span class="wf-brand">GeoTandem</span><span style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);font-size:9px;flex:none">1</span><span class="wf-tag" style="border-color:var(--color-accent)">Schulen an Hauptstrassen ▾</span><span style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);font-size:9px;flex:none">2</span><span style="font-size:10px;color:var(--color-neutral-500);white-space:nowrap">● ungespeichert</span><span style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);font-size:9px;flex:none">3</span><span style="flex:1"></span><span class="wf-btn q">Administration</span><span style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);font-size:9px;flex:none">4</span><span style="font-size:11px;white-space:nowrap">admin ▾</span><span style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);font-size:9px;flex:none">5</span></div>
+<div style="display:grid;grid-template-columns:auto 1fr;gap:4px 10px;padding:10px 12px;font-size:11px;align-items:center"><span style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);font-size:9px;flex:none">1</span><span>Marke → Arbeitsplatz <a class="dv-oid" href="#B1">B1</a></span><span style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);font-size:9px;flex:none">2</span><span>Sitzungsmenü <a class="dv-oid" href="#C1">C1</a></span><span style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);font-size:9px;flex:none">3</span><span>Änderungsanzeige; nach Speichern „gespeichert 14:02"</span><span style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);font-size:9px;flex:none">4</span><span>nur Rolle Administrator → <a class="dv-oid" href="#D1">D1</a> (fehlt in <a class="dv-oid" href="#A3">A3</a>)</span><span style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);font-size:9px;flex:none">5</span><span>Benutzermenü: Name, Rolle, Passwort ändern, Abmelden → <a class="dv-oid" href="#C5">C5</a> / <a class="dv-oid" href="#A2">A2</a></span></div></div></div></div>
+<div class="dv-opt"><div class="dv-olabel">Administration</div><div class="dv-card" style="width:560px"><div class="wf"><div class="wf-top"><span class="wf-brand">GeoTandem</span><span class="wf-tag">Administration</span><span style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);font-size:9px;flex:none">6</span><span style="flex:1"></span><span class="wf-btn q">Zur Anwendung</span><span style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);font-size:9px;flex:none">7</span><span style="font-size:11px">admin ▾</span></div>
+<div style="display:grid;grid-template-columns:auto 1fr;gap:4px 10px;padding:10px 12px;font-size:11px;align-items:center"><span style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);font-size:9px;flex:none">6</span><span>Bereichskennung; darunter die Seitennavigation <a class="dv-oid" href="#D1">D1</a></span><span style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;border:1px solid var(--color-accent);color:var(--color-accent-700);font-size:9px;flex:none">7</span><span>zurück in die zuletzt offene Sitzung <a class="dv-oid" href="#B1">B1</a></span></div></div></div></div>
+</div>
+<h3 class="dv-grp">Bildschirmgruppen</h3><p class="dv-gsub">Jeder Bildschirm trägt unten „Von / Nach" aus der Übergangstabelle.</p>
+<div style="display:grid;grid-template-columns:220px auto minmax(300px,380px) auto 300px;align-items:start;max-width:1200px">
+<div class="wf-box wf-col" style="gap:4px;padding:10px;background:var(--color-bg)"><div class="wf-row" style="gap:6px;margin-bottom:4px"><span class="dv-tid">A</span><span class="wf-h">Zugang</span></div><div class="wf-row" style="gap:6px;font-size:11px"><a class="dv-oid" href="#A1">A1</a><span style="flex:1">Ersteinrichtung</span><span style="font-size:9.5px;color:var(--color-neutral-600)">Seite</span></div><div class="wf-row" style="gap:6px;font-size:11px"><a class="dv-oid" href="#A2">A2</a><span style="flex:1">Anmeldung</span><span style="font-size:9.5px;color:var(--color-neutral-600)">Seite</span></div><div class="wf-row" style="gap:6px;font-size:11px"><a class="dv-oid" href="#A3">A3</a><span style="flex:1">Anwendersicht nach Rolle</span><span style="font-size:9.5px;color:var(--color-neutral-600)">Variante von B1</span></div><div class="wf-row" style="gap:6px;font-size:11px"><a class="dv-oid" href="#A4">A4</a><span style="flex:1">Passwort ändern</span><span style="font-size:9.5px;color:var(--color-neutral-600)">Dialog · Pflichtseite</span></div></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:10px;color:var(--color-accent-700);text-align:center;padding:0 6px"><span style="font-size:18px;line-height:1">⇄</span>Anmelden<br>Abmelden</div><div class="wf-box wf-col" style="gap:4px;padding:10px;background:var(--color-bg)"><div class="wf-row" style="gap:6px;margin-bottom:4px"><span class="dv-tid">B</span><span class="wf-h">Arbeitsplatz</span></div><div class="wf-row" style="gap:6px;font-size:11px"><a class="dv-oid" href="#B1">B1</a><span style="flex:1">Arbeitsplatz · Klassik</span><span style="font-size:9.5px;color:var(--color-neutral-600)">Seite</span></div><div class="wf-row" style="gap:6px;font-size:11px"><a class="dv-oid" href="#B2">B2</a><span style="flex:1">Abfrage-Editor</span><span style="font-size:9.5px;color:var(--color-neutral-600)">Panel</span></div><div class="wf-row" style="gap:6px;font-size:11px"><a class="dv-oid" href="#B3">B3</a><span style="flex:1">Layer-Menü ⋯</span><span style="font-size:9.5px;color:var(--color-neutral-600)">Menü</span></div><div class="wf-row" style="gap:6px;font-size:11px"><a class="dv-oid" href="#B4">B4</a><span style="flex:1">Puffer</span><span style="font-size:9.5px;color:var(--color-neutral-600)">Dialog</span></div><div class="wf-row" style="gap:6px;font-size:11px"><a class="dv-oid" href="#B5">B5</a><span style="flex:1">Join · Sachdaten anhängen</span><span style="font-size:9.5px;color:var(--color-neutral-600)">Dialog</span></div><div class="wf-row" style="gap:6px;font-size:11px"><a class="dv-oid" href="#B6">B6</a><span style="flex:1">Aggregation nach Gebiet</span><span style="font-size:9.5px;color:var(--color-neutral-600)">Dialog</span></div><div class="wf-row" style="gap:6px;font-size:11px"><a class="dv-oid" href="#B7">B7</a><span style="flex:1">Darstellung abgeleiteter Layer</span><span style="font-size:9.5px;color:var(--color-neutral-600)">Aufklappbereich</span></div><div class="wf-row" style="gap:6px;font-size:11px"><a class="dv-oid" href="#B8">B8</a><span style="flex:1">Attributtabelle</span><span style="font-size:9.5px;color:var(--color-neutral-600)">Dock unter der Karte</span></div><div class="wf-row" style="gap:6px;font-size:11px"><a class="dv-oid" href="#B9">B9</a><span style="flex:1">Kartenzustände</span><span style="font-size:9.5px;color:var(--color-neutral-600)">Regel</span></div><div class="wf-row" style="gap:6px;font-size:11px"><a class="dv-oid" href="#B10">B10</a><span style="flex:1">Kartenwerkzeuge</span><span style="font-size:9.5px;color:var(--color-neutral-600)">Leiste</span></div><div class="wf-row" style="gap:6px;font-size:11px"><a class="dv-oid" href="#B11">B11</a><span style="flex:1">Layer hinzufügen</span><span style="font-size:9.5px;color:var(--color-neutral-600)">Popover</span></div><div class="wf-row" style="gap:6px;font-size:11px"><a class="dv-oid" href="#B12">B12</a><span style="flex:1">Leerzustände</span><span style="font-size:9.5px;color:var(--color-neutral-600)">Zustände</span></div><div class="wf-row" style="gap:6px;font-size:11px"><a class="dv-oid" href="#B13">B13</a><span style="flex:1">Ergebnis-Layer wechseln</span><span style="font-size:9.5px;color:var(--color-neutral-600)">Dialog</span></div></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:10px;color:var(--color-accent-700);text-align:center;padding:0 6px"><span style="font-size:18px;line-height:1">⇄</span>Sitzungsmenü<br>Abfragen</div><div class="wf-box wf-col" style="gap:4px;padding:10px;background:var(--color-bg)"><div class="wf-row" style="gap:6px;margin-bottom:4px"><span class="dv-tid">C</span><span class="wf-h">Sitzung und Abfragen</span></div><div class="wf-row" style="gap:6px;font-size:11px"><a class="dv-oid" href="#C1">C1</a><span style="flex:1">Sitzungsmenü</span><span style="font-size:9.5px;color:var(--color-neutral-600)">Menü</span></div><div class="wf-row" style="gap:6px;font-size:11px"><a class="dv-oid" href="#C2">C2</a><span style="flex:1">Speichern unter</span><span style="font-size:9.5px;color:var(--color-neutral-600)">Dialog</span></div><div class="wf-row" style="gap:6px;font-size:11px"><a class="dv-oid" href="#C3">C3</a><span style="flex:1">Sitzungen</span><span style="font-size:9.5px;color:var(--color-neutral-600)">Dialog</span></div><div class="wf-row" style="gap:6px;font-size:11px"><a class="dv-oid" href="#C4">C4</a><span style="flex:1">Öffnen mit Ergebnisprüfung</span><span style="font-size:9.5px;color:var(--color-neutral-600)">Zustand von B1</span></div><div class="wf-row" style="gap:6px;font-size:11px"><a class="dv-oid" href="#C5">C5</a><span style="flex:1">Ungespeicherte Änderungen</span><span style="font-size:9.5px;color:var(--color-neutral-600)">Dialog</span></div><div class="wf-row" style="gap:6px;font-size:11px"><a class="dv-oid" href="#C6">C6</a><span style="flex:1">Abfragen verwalten</span><span style="font-size:9.5px;color:var(--color-neutral-600)">Dialog</span></div><div class="wf-row" style="gap:6px;font-size:11px"><a class="dv-oid" href="#C7">C7</a><span style="flex:1">Gespeicherter Zustand</span><span style="font-size:9.5px;color:var(--color-neutral-600)">Datenmodell</span></div><div class="wf-row" style="gap:6px;font-size:11px"><a class="dv-oid" href="#C8">C8</a><span style="flex:1">Öffnen mit fehlendem Layer</span><span style="font-size:9.5px;color:var(--color-neutral-600)">Zustand von B1</span></div></div>
+<div></div><div></div><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:10px;color:var(--color-accent-700);text-align:center;padding:8px 0"><span style="font-size:18px;line-height:1">⇅</span>Administration<br>Zur Anwendung</div><div></div><div></div>
+<div></div><div></div><div style="grid-column:3 / 6"><div class="wf-box wf-col" style="gap:4px;padding:10px;background:var(--color-bg)"><div class="wf-row" style="gap:6px;margin-bottom:4px"><span class="dv-tid">D</span><span class="wf-h">Administration</span></div><div class="wf-row" style="gap:6px;font-size:11px"><a class="dv-oid" href="#D1">D1</a><span style="flex:1">Admin-Rahmen</span><span style="font-size:9.5px;color:var(--color-neutral-600)">Seite</span></div><div class="wf-row" style="gap:6px;font-size:11px"><a class="dv-oid" href="#D2">D2</a><span style="flex:1">Datenkatalog mit Importstatus</span><span style="font-size:9.5px;color:var(--color-neutral-600)">Seite</span></div><div class="wf-row" style="gap:6px;font-size:11px"><a class="dv-oid" href="#D3">D3</a><span style="flex:1">Layer-Detail</span><span style="font-size:9.5px;color:var(--color-neutral-600)">Seite mit Reitern</span></div><div class="wf-row" style="gap:6px;font-size:11px"><a class="dv-oid" href="#D4">D4</a><span style="flex:1">Aktualisieren mit Vergleich</span><span style="font-size:9.5px;color:var(--color-neutral-600)">Dialog</span></div><div class="wf-row" style="gap:6px;font-size:11px"><a class="dv-oid" href="#D5">D5</a><span style="flex:1">Löschen mit Abhängigkeiten</span><span style="font-size:9.5px;color:var(--color-neutral-600)">Dialog</span></div><div class="wf-row" style="gap:6px;font-size:11px"><a class="dv-oid" href="#D6">D6</a><span style="flex:1">Import-Assistent</span><span style="font-size:9.5px;color:var(--color-neutral-600)">Seite · 4 Schritte</span></div><div class="wf-row" style="gap:6px;font-size:11px"><a class="dv-oid" href="#D7">D7</a><span style="flex:1">Importprotokoll</span><span style="font-size:9.5px;color:var(--color-neutral-600)">Seite</span></div><div class="wf-row" style="gap:6px;font-size:11px"><a class="dv-oid" href="#D8">D8</a><span style="flex:1">Importvorgang</span><span style="font-size:9.5px;color:var(--color-neutral-600)">Seite</span></div><div class="wf-row" style="gap:6px;font-size:11px"><a class="dv-oid" href="#D9">D9</a><span style="flex:1">Benutzer</span><span style="font-size:9.5px;color:var(--color-neutral-600)">Seite</span></div><div class="wf-row" style="gap:6px;font-size:11px"><a class="dv-oid" href="#D10">D10</a><span style="flex:1">Sichtbarkeit</span><span style="font-size:9.5px;color:var(--color-neutral-600)">Seite</span></div><div class="wf-row" style="gap:6px;font-size:11px"><a class="dv-oid" href="#D11">D11</a><span style="flex:1">Import fehlgeschlagen</span><span style="font-size:9.5px;color:var(--color-neutral-600)">Zustand von D6</span></div></div></div></div>
+<h3 class="dv-grp">Vorführung E1 als Ablauf</h3><p class="dv-gsub">Eine mehrschichtige Frage von Hand lösen, speichern, nach Neustart identisch wiederherstellen, ohne LLM-Anbindung.</p>
+<div class="wf-row" style="gap:6px;flex-wrap:wrap;font-size:11px"><span class="wf-box wf-row" style="gap:5px;padding:4px 7px"><a class="dv-oid" href="#A1">A1</a><span>Einrichten mit Beispieldaten</span></span><span style="color:var(--color-accent-700)">→</span><span class="wf-box wf-row" style="gap:5px;padding:4px 7px"><a class="dv-oid" href="#B1">B1</a><span>Layer zuschalten</span></span><span style="color:var(--color-accent-700)">→</span><span class="wf-box wf-row" style="gap:5px;padding:4px 7px"><a class="dv-oid" href="#B2">B2</a><span>3 Bedingungen → 7 von 39</span></span><span style="color:var(--color-accent-700)">→</span><span class="wf-box wf-row" style="gap:5px;padding:4px 7px"><a class="dv-oid" href="#B3">B3</a><span>⋯ Hauptverkehrsstr.</span></span><span style="color:var(--color-accent-700)">→</span><span class="wf-box wf-row" style="gap:5px;padding:4px 7px"><a class="dv-oid" href="#B4">B4</a><span>Puffer 500 m</span></span><span style="color:var(--color-accent-700)">→</span><span class="wf-box wf-row" style="gap:5px;padding:4px 7px"><a class="dv-oid" href="#B8">B8</a><span>Treffer lesen, GS Nord</span></span><span style="color:var(--color-accent-700)">→</span><span class="wf-box wf-row" style="gap:5px;padding:4px 7px"><a class="dv-oid" href="#C2">C2</a><span>Speichern</span></span><span style="color:var(--color-accent-700)">→</span><span class="wf-box wf-row" style="gap:5px;padding:4px 7px"><span style="font-style:italic">Neustart</span></span><span style="color:var(--color-accent-700)">→</span><span class="wf-box wf-row" style="gap:5px;padding:4px 7px"><a class="dv-oid" href="#A2">A2</a><span>Anmelden</span></span><span style="color:var(--color-accent-700)">→</span><span class="wf-box wf-row" style="gap:5px;padding:4px 7px"><a class="dv-oid" href="#C3">C3</a><span>Sitzung öffnen</span></span><span style="color:var(--color-accent-700)">→</span><span class="wf-box wf-row" style="gap:5px;padding:4px 7px"><a class="dv-oid" href="#C4">C4</a><span>„identisch"</span></span></div>
+<div style="display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start;margin-top:8px">
+<div class="wf-col" style="gap:6px;flex:1 1 560px;max-width:700px"><h3 class="dv-grp" style="margin-top:28px">Übergänge</h3><table class="wf-t"><thead><tr><th>Von</th><th>Auslöser</th><th>Nach</th></tr></thead><tbody><tr><td><span style="font-style:italic">Start</span></td><td>Erster Start ohne Konto</td><td><a class="dv-oid" href="#A1">A1</a></td></tr><tr><td><a class="dv-oid" href="#A1">A1</a></td><td>Einrichten</td><td><a class="dv-oid" href="#B1">B1</a></td></tr><tr><td><a class="dv-oid" href="#A2">A2</a></td><td>Anmelden → letzte Sitzung</td><td><a class="dv-oid" href="#B1">B1</a></td></tr><tr><td><a class="dv-oid" href="#A2">A2</a></td><td>Anmeldung als Anwender</td><td><a class="dv-oid" href="#A3">A3</a></td></tr><tr><td><a class="dv-oid" href="#A3">A3</a></td><td>gleicher Arbeitsplatz, weniger Layer</td><td><a class="dv-oid" href="#B1">B1</a></td></tr><tr><td><a class="dv-oid" href="#A2">A2</a></td><td>Direktaufruf /sitzung/:id</td><td><a class="dv-oid" href="#C4">C4</a></td></tr><tr><td><a class="dv-oid" href="#A2">A2</a></td><td>Erste Anmeldung mit Startpasswort</td><td><a class="dv-oid" href="#A4">A4</a></td></tr><tr><td><span style="font-style:italic">Benutzermenü</span></td><td>Passwort ändern</td><td><a class="dv-oid" href="#A4">A4</a></td></tr><tr><td><a class="dv-oid" href="#A4">A4</a></td><td>Speichern</td><td><a class="dv-oid" href="#B1">B1</a></td></tr><tr><td><a class="dv-oid" href="#B1">B1</a></td><td>„Bearbeiten ›" oder Klick auf Bedingung</td><td><a class="dv-oid" href="#B2">B2</a></td></tr><tr><td><a class="dv-oid" href="#B2">B2</a></td><td>Übernehmen / Verwerfen</td><td><a class="dv-oid" href="#B1">B1</a></td></tr><tr><td><a class="dv-oid" href="#B2">B2</a></td><td>Ergebnis-Layer ▾ ändern</td><td><a class="dv-oid" href="#B13">B13</a></td></tr><tr><td><a class="dv-oid" href="#B13">B13</a></td><td>Wechseln · Abbrechen</td><td><a class="dv-oid" href="#B2">B2</a></td></tr><tr><td><a class="dv-oid" href="#B1">B1</a></td><td>+ Layer</td><td><a class="dv-oid" href="#B11">B11</a></td></tr><tr><td><a class="dv-oid" href="#B11">B11</a></td><td>Hinzufügen</td><td><a class="dv-oid" href="#B1">B1</a></td></tr><tr><td><a class="dv-oid" href="#B11">B11</a></td><td>Neue Daten importieren (Admin)</td><td><a class="dv-oid" href="#D6">D6</a></td></tr><tr><td><a class="dv-oid" href="#B1">B1</a></td><td>⋯ an einem Layer</td><td><a class="dv-oid" href="#B3">B3</a></td></tr><tr><td><a class="dv-oid" href="#B3">B3</a></td><td>Puffer erzeugen …</td><td><a class="dv-oid" href="#B4">B4</a></td></tr><tr><td><a class="dv-oid" href="#B3">B3</a></td><td>Daten anhängen (Join) …</td><td><a class="dv-oid" href="#B5">B5</a></td></tr><tr><td><a class="dv-oid" href="#B3">B3</a></td><td>Aggregieren nach Gebiet …</td><td><a class="dv-oid" href="#B6">B6</a></td></tr><tr><td><a class="dv-oid" href="#B4">B4</a></td><td>Erzeugen → Gruppe „Abgeleitet"</td><td><a class="dv-oid" href="#B1">B1</a></td></tr><tr><td><a class="dv-oid" href="#B5">B5</a></td><td>Anhängen → Gruppe „Abgeleitet"</td><td><a class="dv-oid" href="#B1">B1</a></td></tr><tr><td><a class="dv-oid" href="#B6">B6</a></td><td>Berechnen → Gruppe „Abgeleitet"</td><td><a class="dv-oid" href="#B1">B1</a></td></tr><tr><td><a class="dv-oid" href="#B3">B3</a></td><td>Darstellung … (abgeleiteter Layer)</td><td><a class="dv-oid" href="#B7">B7</a></td></tr><tr><td><a class="dv-oid" href="#B3">B3</a></td><td>Tabelle öffnen</td><td><a class="dv-oid" href="#B8">B8</a></td></tr><tr><td><a class="dv-oid" href="#B3">B3</a></td><td>Im Datenkatalog öffnen (Admin)</td><td><a class="dv-oid" href="#D3">D3</a></td></tr><tr><td><a class="dv-oid" href="#B7">B7</a></td><td>In Datenkatalog übernehmen (Admin)</td><td><a class="dv-oid" href="#D3">D3</a></td></tr><tr><td><a class="dv-oid" href="#B1">B1</a></td><td>Tabelle ist angedockt</td><td><a class="dv-oid" href="#B8">B8</a></td></tr><tr><td><a class="dv-oid" href="#B8">B8</a></td><td>Zeile ↔ Objekt anklicken</td><td><a class="dv-oid" href="#B9">B9</a></td></tr><tr><td><a class="dv-oid" href="#B8">B8</a></td><td>Auswahl als Filter</td><td><a class="dv-oid" href="#B2">B2</a></td></tr><tr><td><a class="dv-oid" href="#B1">B1</a></td><td>Werkzeugleiste</td><td><a class="dv-oid" href="#B10">B10</a></td></tr><tr><td><a class="dv-oid" href="#B1">B1</a></td><td>keine Layer · 0 Treffer</td><td><a class="dv-oid" href="#B12">B12</a></td></tr><tr><td><a class="dv-oid" href="#B12">B12</a></td><td>+ Layer hinzufügen</td><td><a class="dv-oid" href="#B11">B11</a></td></tr><tr><td><a class="dv-oid" href="#B12">B12</a></td><td>Bedingungen prüfen</td><td><a class="dv-oid" href="#B2">B2</a></td></tr><tr><td><a class="dv-oid" href="#B12">B12</a></td><td>Importieren (leerer Katalog)</td><td><a class="dv-oid" href="#D6">D6</a></td></tr><tr><td><a class="dv-oid" href="#B1">B1</a></td><td>Sitzungsname ▾</td><td><a class="dv-oid" href="#C1">C1</a></td></tr><tr><td><a class="dv-oid" href="#C1">C1</a></td><td>Speichern unter … · ⌘S bei neuer Sitzung</td><td><a class="dv-oid" href="#C2">C2</a></td></tr><tr><td><a class="dv-oid" href="#C1">C1</a></td><td>Alle öffnen …</td><td><a class="dv-oid" href="#C3">C3</a></td></tr><tr><td><a class="dv-oid" href="#C1">C1</a></td><td>Neue Sitzung · Zuletzt … bei Änderungen</td><td><a class="dv-oid" href="#C5">C5</a></td></tr><tr><td><a class="dv-oid" href="#C1">C1</a></td><td>Neue Sitzung</td><td><a class="dv-oid" href="#B12">B12</a></td></tr><tr><td><a class="dv-oid" href="#C3">C3</a></td><td>Öffnen bei Änderungen</td><td><a class="dv-oid" href="#C5">C5</a></td></tr><tr><td><a class="dv-oid" href="#C3">C3</a></td><td>Zeile anklicken</td><td><a class="dv-oid" href="#C4">C4</a></td></tr><tr><td><a class="dv-oid" href="#C3">C3</a></td><td>Öffnen, ein Layer fehlt</td><td><a class="dv-oid" href="#C8">C8</a></td></tr><tr><td><a class="dv-oid" href="#C8">C8</a></td><td>Layer wiederherstellen (Admin)</td><td><a class="dv-oid" href="#D3">D3</a></td></tr><tr><td><a class="dv-oid" href="#C8">C8</a></td><td>Ohne betroffene Teile öffnen</td><td><a class="dv-oid" href="#B1">B1</a></td></tr><tr><td><a class="dv-oid" href="#C5">C5</a></td><td>Speichern und öffnen</td><td><a class="dv-oid" href="#C2">C2</a></td></tr><tr><td><a class="dv-oid" href="#C4">C4</a></td><td>Hinweis schliessen · Übernehmen</td><td><a class="dv-oid" href="#B1">B1</a></td></tr><tr><td><a class="dv-oid" href="#C4">C4</a></td><td>Unterschied in Tabelle zeigen</td><td><a class="dv-oid" href="#B8">B8</a></td></tr><tr><td><a class="dv-oid" href="#C2">C2</a></td><td>schreibt</td><td><a class="dv-oid" href="#C7">C7</a></td></tr><tr><td><a class="dv-oid" href="#C4">C4</a></td><td>liest</td><td><a class="dv-oid" href="#C7">C7</a></td></tr><tr><td><a class="dv-oid" href="#B1">B1</a></td><td>Gespeicherte Abfragen ▾ → Verwalten …</td><td><a class="dv-oid" href="#C6">C6</a></td></tr><tr><td><a class="dv-oid" href="#C6">C6</a></td><td>Öffnen ersetzt die Abfrage</td><td><a class="dv-oid" href="#B1">B1</a></td></tr><tr><td><a class="dv-oid" href="#B1">B1</a></td><td>Administration (nur Admin)</td><td><a class="dv-oid" href="#D1">D1</a></td></tr><tr><td><a class="dv-oid" href="#D1">D1</a></td><td>Zur Anwendung</td><td><a class="dv-oid" href="#B1">B1</a></td></tr><tr><td><a class="dv-oid" href="#D1">D1</a></td><td>Datenkatalog</td><td><a class="dv-oid" href="#D2">D2</a></td></tr><tr><td><a class="dv-oid" href="#D1">D1</a></td><td>Importprotokoll</td><td><a class="dv-oid" href="#D7">D7</a></td></tr><tr><td><a class="dv-oid" href="#D1">D1</a></td><td>Benutzer</td><td><a class="dv-oid" href="#D9">D9</a></td></tr><tr><td><a class="dv-oid" href="#D1">D1</a></td><td>Sichtbarkeit</td><td><a class="dv-oid" href="#D10">D10</a></td></tr><tr><td><a class="dv-oid" href="#D2">D2</a></td><td>Zeile · ⋯ Öffnen</td><td><a class="dv-oid" href="#D3">D3</a></td></tr><tr><td><a class="dv-oid" href="#D2">D2</a></td><td>+ Importieren</td><td><a class="dv-oid" href="#D6">D6</a></td></tr><tr><td><a class="dv-oid" href="#D2">D2</a></td><td>Status → Details ansehen</td><td><a class="dv-oid" href="#D8">D8</a></td></tr><tr><td><a class="dv-oid" href="#D3">D3</a></td><td>Aktualisieren (Assistent mit Ziel-Layer)</td><td><a class="dv-oid" href="#D6">D6</a></td></tr><tr><td><a class="dv-oid" href="#D6">D6</a></td><td>Schritt 4 bei bestehendem Layer</td><td><a class="dv-oid" href="#D4">D4</a></td></tr><tr><td><a class="dv-oid" href="#D4">D4</a></td><td>Ersetzen</td><td><a class="dv-oid" href="#D3">D3</a></td></tr><tr><td><a class="dv-oid" href="#D6">D6</a></td><td>Übernehmen (neuer Layer)</td><td><a class="dv-oid" href="#D3">D3</a></td></tr><tr><td><a class="dv-oid" href="#D6">D6</a></td><td>Datei nicht lesbar · keine Zuordnung</td><td><a class="dv-oid" href="#D11">D11</a></td></tr><tr><td><a class="dv-oid" href="#D11">D11</a></td><td>Erneut lesen</td><td><a class="dv-oid" href="#D6">D6</a></td></tr><tr><td><a class="dv-oid" href="#D11">D11</a></td><td>als ✗ protokolliert</td><td><a class="dv-oid" href="#D7">D7</a></td></tr><tr><td><a class="dv-oid" href="#D3">D3</a></td><td>Löschen</td><td><a class="dv-oid" href="#D5">D5</a></td></tr><tr><td><a class="dv-oid" href="#D2">D2</a></td><td>⋯ Löschen</td><td><a class="dv-oid" href="#D5">D5</a></td></tr><tr><td><a class="dv-oid" href="#D3">D3</a></td><td>Verlauf → Bericht</td><td><a class="dv-oid" href="#D8">D8</a></td></tr><tr><td><a class="dv-oid" href="#D3">D3</a></td><td>Verwendung → Sichtbarkeit</td><td><a class="dv-oid" href="#D10">D10</a></td></tr><tr><td><a class="dv-oid" href="#D7">D7</a></td><td>Zeile anklicken</td><td><a class="dv-oid" href="#D8">D8</a></td></tr><tr><td><a class="dv-oid" href="#D7">D7</a></td><td>Spalte Ziel-Layer</td><td><a class="dv-oid" href="#D3">D3</a></td></tr><tr><td><a class="dv-oid" href="#D8">D8</a></td><td>Erneut importieren</td><td><a class="dv-oid" href="#D6">D6</a></td></tr><tr><td><span style="font-style:italic">Benutzermenü</span></td><td>Abmelden bei Änderungen</td><td><a class="dv-oid" href="#C5">C5</a></td></tr><tr><td><span style="font-style:italic">Benutzermenü</span></td><td>Abmelden</td><td><a class="dv-oid" href="#A2">A2</a></td></tr></tbody></table></div>
+<div class="wf-col" style="gap:6px;flex:1 1 420px;max-width:560px"><h3 class="dv-grp" style="margin-top:28px">Adressen</h3><table class="wf-t"><thead><tr><th>Route</th><th>Bildschirm</th><th>Hinweis</th></tr></thead><tbody><tr><td style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px">/einrichtung</td><td><a class="dv-oid" href="#A1">A1</a></td><td style="color:var(--color-neutral-700)">nur ohne Konto</td></tr><tr><td style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px">/anmelden</td><td><a class="dv-oid" href="#A2">A2</a></td><td style="color:var(--color-neutral-700)"></td></tr><tr><td style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px">/passwort</td><td><a class="dv-oid" href="#A4">A4</a></td><td style="color:var(--color-neutral-700)">nur bei Startpasswort</td></tr><tr><td style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px">/</td><td><a class="dv-oid" href="#B1">B1</a></td><td style="color:var(--color-neutral-700)">öffnet die letzte Sitzung oder eine leere</td></tr><tr><td style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px">/sitzung/:id</td><td><a class="dv-oid" href="#B1">B1</a> <a class="dv-oid" href="#C4">C4</a></td><td style="color:var(--color-neutral-700)">Sitzung mit eigener Adresse, Prüfung beim Laden</td></tr><tr><td style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px">/admin/daten</td><td><a class="dv-oid" href="#D1">D1</a> <a class="dv-oid" href="#D2">D2</a></td><td style="color:var(--color-neutral-700)">Standardseite der Administration</td></tr><tr><td style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px">/admin/daten/:layer?reiter=…</td><td><a class="dv-oid" href="#D3">D3</a></td><td style="color:var(--color-neutral-700)"></td></tr><tr><td style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px">/admin/daten/import?ziel=:layer</td><td><a class="dv-oid" href="#D6">D6</a> <a class="dv-oid" href="#D4">D4</a></td><td style="color:var(--color-neutral-700)">ohne ziel = neuer Layer</td></tr><tr><td style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px">/admin/protokoll</td><td><a class="dv-oid" href="#D7">D7</a></td><td style="color:var(--color-neutral-700)"></td></tr><tr><td style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px">/admin/protokoll/:id</td><td><a class="dv-oid" href="#D8">D8</a></td><td style="color:var(--color-neutral-700)"></td></tr><tr><td style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px">/admin/benutzer</td><td><a class="dv-oid" href="#D9">D9</a></td><td style="color:var(--color-neutral-700)"></td></tr><tr><td style="font-family:ui-monospace,Menlo,monospace;font-size:10.5px">/admin/sichtbarkeit</td><td><a class="dv-oid" href="#D10">D10</a></td><td style="color:var(--color-neutral-700)"></td></tr></tbody></table>
+<span style="font-size:11px;color:var(--color-neutral-700)">Ohne eigene Adresse: B2–B7, B8 (Dock), B11–B13, C1–C3, C5, C6, C8, D4, D5, D11. A4 aus dem Benutzermenü ist ein Dialog, als Pflichtschritt die Seite /passwort.</span></div></div>
+</section>
+<section class="dv-turn" id="daten"><div class="dv-thd"><a class="dv-tid" href="#daten">S</a><span class="dv-tname">Datenstand der Beispiele</span></div>
+<p class="dv-intro">Alle Bildschirme zeigen denselben Stand: heute ist der 02.10., angemeldet ist admin. Referenzfrage: <em>Grundschulen höchstens 500 m von einer Hauptverkehrsstrasse, in Stadtteilen mit Kinderanteil über 20 %</em> → 7 von 39 Schulen (Grundschule 24 · Distanz 17 · Stadtteil 20). Taugt als Fixture für E1.1.</p>
+<div style="display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start">
+<div class="dv-card" style="width:620px"><div class="wf" style="padding:14px;gap:8px;font-size:11px"><span class="wf-h">Layer</span><table class="wf-t"><thead><tr><th>Layer</th><th>Typ</th><th>Objekte</th><th>Version</th><th>Quelle · Stand</th><th>Anwender</th></tr></thead><tbody>
+<tr><td>Schulen</td><td>Punkt</td><td>39</td><td>v4</td><td>WFS Kanton · 01.09.</td><td>✓</td></tr>
+<tr><td>Hauptverkehrsstr.</td><td>Linie</td><td>214</td><td>v1</td><td>strassen.gpkg · 12.06.</td><td>✓</td></tr>
+<tr><td>Stadtteile</td><td>Fläche</td><td>38</td><td>v1</td><td>GeoPackage · 03.03.</td><td>✓</td></tr>
+<tr><td>Stadtteile · Kinderanteil</td><td>Fläche</td><td>38</td><td>v2</td><td>stadtteile_2025.csv über ags · 02.10. (38 / 40, ⚠ 2)</td><td>✓</td></tr>
+<tr><td>Bevölkerung 2025</td><td>Tabelle</td><td>36</td><td>v1</td><td>CSV · 03.03.</td><td>✓</td></tr>
+<tr><td>Kitas</td><td>Punkt</td><td>61</td><td>v1</td><td>Shapefile · 03.03.</td><td>— Entwurf</td></tr>
+</tbody></table>
+<span class="wf-k" style="margin-top:6px">Abgeleitet (nur in Sitzungen)</span><span>Puffer 500 m ← Hauptverkehrsstr. · Stadtteile · Schulkennzahlen ← Stadtteile + Schulen · Stadtteile + Bevölkerung ← Join</span></div></div>
+<div class="wf-col" style="gap:16px">
+<div class="dv-card" style="width:520px"><div class="wf" style="padding:14px;gap:8px;font-size:11px"><span class="wf-h">Sitzungen (admin, privat)</span><table class="wf-t"><thead><tr><th>Name</th><th>Ergebnis-Layer</th><th>Treffer</th><th>Gespeichert</th></tr></thead><tbody>
+<tr><td>Schulen an Hauptstrassen</td><td>Schulen</td><td>7</td><td>heute 14:02</td></tr>
+<tr><td>Schulkennzahlen je Stadtteil</td><td>Stadtteile · Kinderanteil</td><td>38</td><td>gestern</td></tr>
+<tr><td>Kitas je Stadtteil</td><td>Kitas</td><td>12 → 14 nach v2</td><td>28.09.</td></tr></tbody></table></div></div>
+<div class="dv-card" style="width:520px"><div class="wf" style="padding:14px;gap:8px;font-size:11px"><span class="wf-h">Gespeicherte Abfragen</span><table class="wf-t"><thead><tr><th>Name</th><th>Ergebnis-Layer</th><th>Bed.</th><th>Geteilt</th></tr></thead><tbody>
+<tr><td>Grundschulen an Hauptstr.</td><td>Schulen · 7</td><td>1 A · 2 R</td><td>—</td></tr>
+<tr><td>Schulen ≥ 300 Schüler</td><td>Schulen · 11</td><td>1 A</td><td>✓</td></tr>
+<tr><td>Kitas in kinderreichen Stadtteilen</td><td>Kitas · 12</td><td>1 R</td><td>—</td></tr>
+<tr><td>Kinderreiche Stadtteile</td><td>Stadtteile · Kinderanteil · 14</td><td>1 A</td><td>✓</td></tr></tbody></table></div></div>
+<div class="dv-card" style="width:520px"><div class="wf" style="padding:14px;gap:6px;font-size:11px"><span class="wf-h">Konten</span><span>admin · Administrator · aktiv</span><span>m.keller · Mara Keller · Anwender · aktiv</span><span style="color:var(--color-neutral-500)">t.huber · Tom Huber · Anwender · gesperrt</span></div></div>
+</div></div></section>
+<section class="dv-turn" id="gA"><div class="dv-thd"><a class="dv-tid" href="#gA">A</a><span class="dv-tname">Zugang</span></div><p class="dv-intro">Konto anlegen, anmelden, Rolle bestimmt die Sicht. E1.1 · E1.4</p><div class="dv-opts"><div class="dv-opt" id="A1"><div class="dv-olabel"><a class="dv-oid" href="#A1" style="background:var(--color-text);color:var(--color-bg)">A1</a><span style="font:600 16px/1.2 var(--font-heading);color:var(--color-text)">Ersteinrichtung</span><span class="wf-tag">Seite</span><span class="wf-ref">aus 8b</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="dv-card" style="width:340px;"><div class="wf" style="padding:22px;gap:10px">
+<span class="wf-h">Willkommen · Ersteinrichtung</span>
+<span style="font-size:11px;color:var(--color-neutral-700)">Es gibt noch kein Konto. Legen Sie den ersten Administrator an.</span>
+<div class="wf-col" style="gap:3px"><span class="wf-k">Benutzername</span><div class="wf-box" style="padding:4px 8px">admin</div></div>
+<div class="wf-col" style="gap:3px"><span class="wf-k">Passwort · wiederholen</span><div class="wf-row"><div class="wf-box" style="padding:4px 8px;flex:1">••••••••</div><div class="wf-box" style="padding:4px 8px;flex:1">••••••••</div></div></div>
+<div class="wf-row" style="font-size:11px"><span class="wf-chk on"></span>Beispieldatensatz laden</div>
+<span class="wf-btn" style="align-self:flex-start">Einrichten</span>
+<span class="wf-ref">E1.1 · F-10.5</span>
+</div></div></div>
+<div class="rel wf-row" style="gap:5px;flex-wrap:wrap;font-size:11px;max-width:640px"><span class="wf-k">Von</span><span style="font-style:italic">Start</span><span class="wf-k" style="margin-left:10px">Nach</span><a class="dv-oid" href="#B1">B1</a></div>
+<div class="wf-note">Nur sichtbar, solange kein Konto existiert. „Beispieldatensatz laden" legt die sechs Layer aus dem Datenstand an (E1.1, F-10.5).</div></div>
+<div class="dv-opt" id="A2"><div class="dv-olabel"><a class="dv-oid" href="#A2" style="background:var(--color-text);color:var(--color-bg)">A2</a><span style="font:600 16px/1.2 var(--font-heading);color:var(--color-text)">Anmeldung</span><span class="wf-tag">Seite</span><span class="wf-ref">aus 8a</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="dv-card" style="width:320px;"><div class="wf" style="padding:22px;gap:12px">
+<span class="wf-brand" style="font-size:22px">GeoTandem</span>
+<div class="wf-col" style="gap:3px"><span class="wf-k">Benutzername</span><div class="wf-box" style="padding:4px 8px">m.keller</div></div>
+<div class="wf-col" style="gap:3px"><span class="wf-k">Passwort</span><div class="wf-box" style="padding:4px 8px">••••••••</div></div>
+<span class="wf-btn" style="align-self:flex-start">Anmelden</span>
+<span style="font-size:10.5px;color:var(--color-neutral-600)">Passwort vergessen? Bitte an den Administrator wenden.</span>
+<span class="wf-ref">F-3.12</span>
+</div></div></div>
+<div class="rel wf-row" style="gap:5px;flex-wrap:wrap;font-size:11px;max-width:640px"><span class="wf-k">Von</span><span style="font-style:italic">Benutzermenü</span><span class="wf-k" style="margin-left:10px">Nach</span><a class="dv-oid" href="#B1">B1</a><a class="dv-oid" href="#A3">A3</a><a class="dv-oid" href="#C4">C4</a><a class="dv-oid" href="#A4">A4</a></div>
+<div class="wf-note">Nach der Anmeldung öffnet die zuletzt verwendete Sitzung. Ein Direktaufruf /sitzung/:id führt nach der Anmeldung dorthin.</div></div>
+<div class="dv-opt" id="A3"><div class="dv-olabel"><a class="dv-oid" href="#A3" style="background:var(--color-text);color:var(--color-bg)">A3</a><span style="font:600 16px/1.2 var(--font-heading);color:var(--color-text)">Anwendersicht nach Rolle</span><span class="wf-tag">Variante von B1</span><span class="wf-ref">aus 8g</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="dv-card" style="width:420px;"><div class="wf">
+<div class="wf-top"><span class="wf-brand">GeoTandem</span><span class="wf-tag">Schulen an Hauptstrassen ▾</span><span style="flex:1"></span><span style="font-size:11px">m.keller ▾</span></div>
+<div style="display:grid;grid-template-columns:1fr 160px;gap:10px;padding:10px">
+<div class="wf-col" style="gap:4px;font-size:11px"><span class="wf-k">Layer</span><div class="wf-row"><span class="wf-chk on"></span>Schulen</div><div class="wf-row"><span class="wf-chk on"></span>Hauptverkehrsstr.</div><div class="wf-row"><span class="wf-chk on"></span>Stadtteile · Kinderanteil</div><span style="color:var(--color-neutral-500)">(Kitas nicht sichtbar)</span></div>
+<div class="wf-box wf-col" style="gap:3px;font-size:11px;box-shadow:var(--shadow-md)"><b>Mara Keller</b><span style="color:var(--color-neutral-600)">Anwender</span><span style="border-top:1px solid var(--color-divider);padding-top:3px">Passwort ändern</span><span>Abmelden</span></div>
+</div></div></div></div>
+<div class="rel wf-row" style="gap:5px;flex-wrap:wrap;font-size:11px;max-width:640px"><span class="wf-k">Von</span><a class="dv-oid" href="#A2">A2</a><span class="wf-k" style="margin-left:10px">Nach</span><a class="dv-oid" href="#B1">B1</a></div>
+<div class="wf-note">Prüfung „Fertig wenn" E1.4: m.keller sieht keinen Admin-Knopf und keine Kitas (Entwurf, siehe D10).</div></div>
+<div class="dv-opt" id="A4"><div class="dv-olabel"><a class="dv-oid" href="#A4" style="background:var(--color-text);color:var(--color-bg)">A4</a><span style="font:600 16px/1.2 var(--font-heading);color:var(--color-text)">Passwort ändern</span><span class="wf-tag">Dialog · Pflichtseite</span><span class="wf-ref">neu</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="dv-card" style="width:300px"><div class="wf" style="padding:14px;gap:9px;font-size:11px"><span class="wf-h">Passwort ändern</span><span style="color:var(--color-neutral-600)">aus dem Benutzermenü</span>
+<div class="wf-col" style="gap:3px"><span class="wf-k">Aktuelles Passwort</span><div class="wf-box" style="padding:4px 8px">••••••••</div></div>
+<div class="wf-col" style="gap:3px"><span class="wf-k">Neues Passwort · wiederholen</span><div class="wf-row"><div class="wf-box" style="padding:4px 8px;flex:1">••••••••••</div><div class="wf-box" style="padding:4px 8px;flex:1">••••••••••</div></div></div>
+<span style="color:var(--color-neutral-600);font-size:10.5px">✓ mind. 10 Zeichen · ✓ stimmt überein</span>
+<div class="wf-row"><span class="wf-btn">Speichern</span><span class="wf-btn q">Abbrechen</span></div><span class="wf-ref">F-3.12</span></div></div>
+<div class="dv-card" style="width:320px"><div class="wf" style="padding:22px;gap:10px;font-size:11px"><span class="wf-brand" style="font-size:22px">GeoTandem</span><span class="wf-h">Neues Passwort festlegen</span><span style="color:var(--color-neutral-700)">Hallo s.brun, Ihr Konto wurde mit einem Startpasswort angelegt. Bitte legen Sie ein eigenes fest.</span>
+<div class="wf-col" style="gap:3px"><span class="wf-k">Neues Passwort · wiederholen</span><div class="wf-row"><div class="wf-box" style="padding:4px 8px;flex:1">••••••••••</div><div class="wf-box" style="padding:4px 8px;flex:1">••••••••••</div></div></div>
+<span class="wf-btn" style="align-self:flex-start">Speichern und weiter</span><span style="font-size:10.5px;color:var(--color-neutral-600)">Abmelden</span><span class="wf-ref">/passwort · nach A2</span></div></div></div>
+<div class="rel wf-row" style="gap:5px;flex-wrap:wrap;font-size:11px;max-width:640px"><span class="wf-k">Von</span><a class="dv-oid" href="#A2">A2</a><span style="font-style:italic">Benutzermenü</span><span class="wf-k" style="margin-left:10px">Nach</span><a class="dv-oid" href="#B1">B1</a></div>
+<div class="wf-note">Zwei Wege, gleiches Formular. Mit Startpasswort (D9 „Bei erster Anmeldung ändern") gibt es kein Abbrechen. Regel: mindestens 10 Zeichen, nicht gleich dem alten.</div></div></div></section>
+<section class="dv-turn" id="gB"><div class="dv-thd"><a class="dv-tid" href="#gB">B</a><span class="dv-tname">Arbeitsplatz</span></div><p class="dv-intro">Karte, Layer, Abfrage, Operationen, Tabelle. E1.2 · E1.5 · E1.6</p><div class="dv-opts"><div class="dv-opt" id="B1"><div class="dv-olabel"><a class="dv-oid" href="#B1" style="background:var(--color-text);color:var(--color-bg)">B1</a><span style="font:600 16px/1.2 var(--font-heading);color:var(--color-text)">Arbeitsplatz · Klassik</span><span class="wf-tag">Seite</span><span class="wf-ref">aus 11a</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="dv-card" style="width:1080px"><div class="wf">
+<div class="wf-top"><span class="wf-brand">GeoTandem</span><span class="wf-tag" style="border-color:var(--color-accent)">Schulen an Hauptstrassen ▾</span><span style="font-size:10px;color:var(--color-neutral-500);white-space:nowrap">● ungespeichert</span><span style="flex:1"></span><span class="wf-btn q">Administration</span><span style="font-size:11px;white-space:nowrap">admin ▾</span></div>
+<div style="display:grid;grid-template-columns:250px 1fr;min-height:620px">
+<div class="wf-col" style="padding:10px;border-right:1px solid var(--color-divider);gap:9px;font-size:11px">
+<div class="wf-seg" style="align-self:flex-start"><span class="on">Klassik</span><span style="color:var(--color-neutral-500)">Prompt · ab E2</span></div>
+<div class="wf-row"><span class="wf-k">Layer</span><span style="flex:1"></span><span class="wf-add">+ Layer</span></div>
+<div class="wf-col" style="gap:5px">
+<div class="wf-row" style="gap:5px;padding:0 3px"><span style="color:var(--color-neutral-500)">⋮⋮</span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg><span style="width:7px;height:7px;border-radius:50%;background:var(--color-text);flex:none"></span><span style="flex:1">Schulen</span><span>⌄</span></div>
+<div class="wf-box wf-col" style="gap:5px;margin-left:16px;padding:5px">
+<div class="wf-row" style="gap:5px;font-size:10.5px">Deckkraft <div style="flex:1;position:relative;height:8px"><div style="position:absolute;left:0;right:0;top:3px;height:2px;background:var(--color-neutral-300)"></div><div style="position:absolute;left:0;width:100%;top:3px;height:2px;background:var(--color-accent)"></div></div>100 %</div>
+<div class="wf-row" style="gap:4px"><span class="wf-tag">Auf Layer zoomen</span><span class="wf-tag" style="border-color:var(--color-accent);color:var(--color-accent-700)">⋯ → B3</span></div></div>
+<div class="wf-row" style="gap:5px;padding:0 3px"><span style="color:var(--color-neutral-500)">⋮⋮</span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg><span style="width:10px;height:2px;background:var(--color-neutral-500);flex:none"></span><span style="flex:1">Hauptverkehrsstr.</span><span>›</span></div>
+<div class="wf-row" style="gap:5px;padding:0 3px"><span style="color:var(--color-neutral-500)">⋮⋮</span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg><span style="display:flex;flex:none"><span style="width:4px;height:8px;background:var(--color-accent-100)"></span><span style="width:4px;height:8px;background:var(--color-accent-500)"></span><span style="width:4px;height:8px;background:var(--color-accent-900)"></span></span><span style="flex:1">Stadtteile · Kinderanteil</span><span>›</span></div>
+<div class="wf-row" style="gap:5px;padding:0 3px;color:var(--color-neutral-500)"><span style="color:var(--color-neutral-500)">⋮⋮</span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/></svg><span style="width:7px;height:7px;border-radius:50%;border:1px solid currentColor;flex:none"></span><span style="flex:1">Kitas</span><span>›</span></div>
+<span class="wf-k" style="margin-top:3px">Abgeleitet · Sitzung</span>
+<div class="wf-row" style="gap:5px;padding:0 3px"><span style="color:var(--color-neutral-500)">⋮⋮</span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg><span style="width:10px;height:8px;background:color-mix(in srgb,var(--color-accent) 25%,transparent);border:1px solid var(--color-accent);flex:none"></span><span style="flex:1;white-space:nowrap">Puffer 500 m</span><span style="color:var(--color-neutral-500);font-size:10px" title="aus Hauptverkehrsstr.">↰</span></div>
+</div>
+<div style="border-top:1px solid var(--color-divider);margin-top:4px"></div>
+<div class="wf-row"><span class="wf-k">Abfrage</span><span style="flex:1"></span><span style="color:var(--color-neutral-600);font-size:10.5px">7 von 39</span></div>
+<div class="wf-row" style="gap:5px">Ergebnis: <span class="wf-tag a">Schulen ▾</span></div>
+<div class="wf-box wf-col" style="padding:6px;gap:5px">
+<span class="wf-tag" style="font-size:9px;align-self:flex-start">UND</span>
+<div class="wf-row" style="gap:3px;flex-wrap:wrap"><span class="wf-tag" style="font-size:9px;border-style:dashed">A</span><span class="wf-tag">Schulart</span><span class="wf-tag a">= Grundschule</span></div>
+<div class="wf-row" style="gap:3px;flex-wrap:wrap"><span class="wf-tag" style="font-size:9px;border-style:dashed">R</span><span class="wf-tag">≤ 500 m zu</span><span class="wf-tag a">Hauptverkehrsstr.</span></div>
+<div class="wf-row" style="gap:3px;flex-wrap:wrap"><span class="wf-tag" style="font-size:9px;border-style:dashed">R</span><span class="wf-tag">liegt in</span><span class="wf-tag a">Stadtteile · Kinderanteil &gt; 20 %</span></div>
+<div class="wf-row"><span class="wf-add">+ Bedingung</span><span style="flex:1"></span><span class="wf-add">Bearbeiten ›</span></div></div>
+<div class="wf-row" style="gap:4px 6px;flex-wrap:wrap;font-size:10.5px;color:var(--color-neutral-600)"><span>Nur in:</span><span class="wf-tag">Ausschnitt</span><span class="wf-tag">Fläche ✎</span></div>
+<span class="wf-k" style="margin-top:2px">Gespeicherte Abfragen</span>
+<div class="wf-row" style="gap:6px"><span class="wf-tag" style="flex:1;min-width:0;border-color:var(--color-accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Grundschulen an Hauptstr. ▾</span><span class="wf-btn q" style="padding:2px 6px" title="Speichern">↓</span></div>
+<div class="wf-box wf-col" style="padding:4px 0;gap:0;font-size:10.5px;box-shadow:var(--shadow-md)">
+<span style="padding:2px 8px">Speichern</span>
+<span style="padding:2px 8px">Speichern unter …</span>
+<span style="padding:2px 8px;border-top:1px solid var(--color-divider)">Neue Abfrage (leer)</span>
+<span class="wf-k" style="padding:5px 8px 1px">Gespeichert · Schulen</span>
+<div class="wf-row" style="padding:2px 8px;color:var(--color-accent-700)"><span style="flex:1">✓ Grundschulen an Hauptstr.</span><span style="color:var(--color-neutral-500)">7</span></div>
+<div class="wf-row" style="padding:2px 8px"><span style="flex:1">Schulen ≥ 300 Schüler</span><span style="color:var(--color-neutral-500)">11</span></div>
+<span class="wf-k" style="padding:5px 8px 1px">Andere Ziel-Layer</span>
+<div class="wf-row" style="padding:2px 8px"><span style="flex:1">Kitas in kinderreichen Stadtt.</span><span class="wf-tag" style="font-size:9px">Kitas</span></div>
+<span style="padding:2px 8px;border-top:1px solid var(--color-divider)">Verwalten …</span>
+</div>
+<span style="font-size:10px;color:var(--color-neutral-600)">Auswählen ersetzt die aktuelle Abfrage (bei Änderungen mit Rückfrage). „Verwalten" öffnet <a href="#C6">C6</a>.</span>
+<span style="flex:1"></span>
+<span class="wf-ref">F-4.1 – F-4.4 · F-8.2 · F-8.9</span>
+</div>
+<div class="wf-col" style="gap:0;padding:10px">
+<div class="wf-map" style="flex:1;min-height:340px;border-radius:4px 4px 0 0">
+<div class="wf-area" style="left:40px;top:40px;width:200px;height:150px;background:var(--color-accent-100)"></div>
+<div class="wf-area" style="left:240px;top:40px;width:180px;height:170px;background:var(--color-accent-500);opacity:.55"></div>
+<div class="wf-area" style="left:420px;top:60px;width:220px;height:140px;background:var(--color-accent-300);opacity:.7"></div>
+<div class="wf-area" style="left:100px;top:190px;width:260px;height:130px;background:var(--color-accent-300);opacity:.7"></div>
+<div style="position:absolute;left:-20px;top:120px;width:900px;height:70px;background:color-mix(in srgb,var(--color-accent) 18%,transparent);border-top:1px dashed var(--color-accent);border-bottom:1px dashed var(--color-accent);transform:rotate(-6deg)"></div>
+<div class="wf-road" style="left:-20px;top:155px;width:900px;transform:rotate(-6deg)"></div>
+<div class="wf-road" style="left:470px;top:0;width:360px;transform:rotate(72deg)"></div>
+<div class="wf-pt" style="left:120px;top:150px;background:var(--color-accent)"></div>
+<div class="wf-pt" style="left:330px;top:120px;background:var(--color-accent)"></div>
+<div class="wf-pt" style="left:400px;top:140px;background:var(--color-accent)"></div>
+<div class="wf-pt" style="left:560px;top:110px;background:var(--color-accent)"></div>
+<div class="wf-pt" style="left:200px;top:260px;opacity:.35"></div><div class="wf-pt" style="left:600px;top:250px;opacity:.35"></div><div class="wf-pt" style="left:80px;top:60px;opacity:.35"></div>
+<div style="position:absolute;left:252px;top:128px;width:16px;height:16px;border:2px solid var(--color-text);border-radius:50%;background:var(--color-accent)"></div>
+<div style="position:absolute;left:246px;top:122px;width:24px;height:24px;border:1px dashed var(--color-text);border-radius:50%"></div>
+<div class="wf-float" style="left:276px;top:100px;white-space:nowrap;font-size:10px;display:flex;flex-direction:column;gap:2px;padding:6px 8px"><b>GS Nord</b><span>Grundschule · 356 Schüler</span><span>120 m zu B12 · Nord</span></div>
+<div class="wf-float" style="right:8px;top:8px;padding:0;display:flex;flex-direction:column;width:24px;font-size:11px;line-height:21px;text-align:center">
+<span>⌕</span><span style="border-top:1px solid var(--color-divider)">+</span><span>−</span><span>⌂</span><span>◎</span>
+<span style="border-top:1px solid var(--color-divider);color:var(--color-accent-700)">ⓘ</span><span>⟷</span><span>▢</span><span>✎</span>
+<span style="border-top:1px solid var(--color-divider)">▦</span><span>≡</span></div>
+<div style="position:absolute;left:8px;bottom:6px;font-size:9.5px;display:flex;align-items:center;gap:6px;color:var(--color-neutral-700)"><span style="display:inline-block;width:34px;height:3px;border:1px solid var(--color-text);border-top:none"></span>200 m</div>
+</div>
+<div style="text-align:center;font-size:9px;color:var(--color-neutral-500);border:1px solid var(--color-divider);border-top:none;border-bottom:none;line-height:10px">═</div>
+<div class="wf-col" style="gap:6px;font-size:11px;border:1px solid var(--color-divider);border-radius:0 0 4px 4px;padding:8px">
+<div class="wf-row" style="gap:10px"><span style="border-bottom:2px solid var(--color-accent);color:var(--color-accent-700)">Schulen · 7 <span style="font-size:9px">(Ergebnis)</span></span><span style="color:var(--color-neutral-600)">Stadtteile · Kinderanteil · 38</span><span style="color:var(--color-neutral-600)">Puffer 500 m · 1</span><span style="flex:1"></span>
+<span class="wf-seg" style="flex:none"><span class="on">Treffer (7)</span><span>Alle (39)</span></span><span class="wf-row" style="gap:4px;font-size:10.5px;flex:none"><span class="wf-chk"></span>nur aktuellen Kartenausschnitt</span><span class="wf-btn q">Spalten ▾</span><span>⌄</span></div>
+<table class="wf-t"><thead><tr><th style="width:18px"><span class="wf-chk"></span></th><th>Name</th><th>Schulart</th><th style="color:var(--color-accent-700)">Schüler ↓</th><th>Distanz Hauptstr.</th><th>Stadtteil</th><th>Kinder %</th><th style="width:18px"></th></tr></thead><tbody>
+<tr><td><span class="wf-chk"></span></td><td>GS Hafen</td><td>Grundschule</td><td>412</td><td>210 m</td><td>Hafen</td><td>27 %</td><td>⌖</td></tr>
+<tr style="background:color-mix(in srgb,var(--color-accent) 14%,transparent);box-shadow:inset 3px 0 0 var(--color-accent)"><td><span class="wf-chk on"></span></td><td><b>GS Nord</b></td><td>Grundschule</td><td>356</td><td>120 m</td><td>Nord</td><td>23 %</td><td>⌖</td></tr>
+<tr><td><span class="wf-chk"></span></td><td>GS Altstadt</td><td>Grundschule</td><td>301</td><td>340 m</td><td>Altstadt</td><td>22 %</td><td>⌖</td></tr>
+<tr><td><span class="wf-chk"></span></td><td>GS Ost</td><td>Grundschule</td><td>288</td><td>460 m</td><td>Ost</td><td>21 %</td><td>⌖</td></tr>
+<tr><td colspan="8" style="color:var(--color-neutral-500)">… 3 weitere</td></tr>
+</tbody></table>
+<div class="wf-row" style="gap:8px"><span class="wf-btn q" style="opacity:.55">Auswahl als Filter</span><span style="flex:1"></span><span style="color:var(--color-neutral-600)">1 ausgewählt</span></div>
+</div>
+</div></div></div></div></div>
+<div class="rel wf-row" style="gap:5px;flex-wrap:wrap;font-size:11px;max-width:640px"><span class="wf-k">Von</span><a class="dv-oid" href="#A1">A1</a><a class="dv-oid" href="#A2">A2</a><a class="dv-oid" href="#A3">A3</a><a class="dv-oid" href="#A4">A4</a><a class="dv-oid" href="#B2">B2</a><a class="dv-oid" href="#B11">B11</a><a class="dv-oid" href="#B4">B4</a><a class="dv-oid" href="#B5">B5</a><a class="dv-oid" href="#B6">B6</a><a class="dv-oid" href="#C8">C8</a><a class="dv-oid" href="#C4">C4</a><a class="dv-oid" href="#C6">C6</a><a class="dv-oid" href="#D1">D1</a><span class="wf-k" style="margin-left:10px">Nach</span><a class="dv-oid" href="#B2">B2</a><a class="dv-oid" href="#B11">B11</a><a class="dv-oid" href="#B3">B3</a><a class="dv-oid" href="#B8">B8</a><a class="dv-oid" href="#B10">B10</a><a class="dv-oid" href="#B12">B12</a><a class="dv-oid" href="#C1">C1</a><a class="dv-oid" href="#C6">C6</a><a class="dv-oid" href="#D1">D1</a></div>
+<div class="wf-note">Referenzbild der Vorführung E1. Layer-Panel steuert nur Anzeige (Sichtbarkeit, Reihenfolge, Deckkraft); Operationen über ⋯ (B3). Abfrage ist global mit einem Ergebnis-Layer je Sitzung. Der Reiter Prompt ist in E1 deaktiviert (F-4.11).</div></div>
+<div class="dv-opt" id="B2"><div class="dv-olabel"><a class="dv-oid" href="#B2" style="background:var(--color-text);color:var(--color-bg)">B2</a><span style="font:600 16px/1.2 var(--font-heading);color:var(--color-text)">Abfrage-Editor</span><span class="wf-tag">Panel</span><span class="wf-ref">aus 11b + 9c</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="dv-card" style="width:1080px"><div class="wf">
+<div class="wf-top"><span class="wf-brand">GeoTandem</span><span class="wf-tag" style="border-color:var(--color-accent)">Schulen an Hauptstrassen ▾</span><span style="font-size:10px;color:var(--color-neutral-500);white-space:nowrap">● ungespeichert</span><span style="flex:1"></span><span class="wf-btn q">Administration</span><span style="font-size:11px;white-space:nowrap">admin ▾</span></div>
+<div style="display:grid;grid-template-columns:minmax(110px,160px) minmax(300px,440px) minmax(260px,1fr);min-height:420px">
+<div class="wf-col" style="padding:10px;border-right:1px solid var(--color-divider);gap:8px;font-size:11px;opacity:.55">
+<div class="wf-seg" style="align-self:flex-start"><span class="on">Klassik</span><span style="color:var(--color-neutral-500)">Prompt · ab E2</span></div>
+<span class="wf-k">Layer</span><div class="wf-ln" style="width:85%"></div><div class="wf-ln" style="width:75%"></div><div class="wf-ln" style="width:80%"></div>
+<span class="wf-k">Abfrage</span><div class="wf-box" style="height:80px;border-color:var(--color-accent)"></div></div>
+<div class="wf-col" style="padding:12px;gap:8px;border-right:1px solid var(--color-divider);font-size:11px;box-shadow:var(--shadow-md)">
+<div class="wf-row"><span class="wf-h">Abfrage</span><span style="flex:1"></span><span style="color:var(--color-neutral-600)">→ 7 von 39</span><span>×</span></div>
+<div class="wf-row" style="gap:5px">Ergebnis: <span class="wf-tag a">Schulen ▾</span><span style="color:var(--color-neutral-600);font-size:10.5px">· Ziel-Layer wechseln setzt Attribut-Zeilen zurück</span></div>
+<div class="wf-row"><span class="wf-seg"><span class="on">UND</span><span>ODER</span></span><span style="color:var(--color-neutral-600)">alle folgenden</span></div>
+<div class="wf-row" style="gap:5px;margin-left:12px"><span class="wf-tag" style="font-size:9px;border-style:dashed">Attribut</span><span class="wf-tag">Schulart</span><span class="wf-tag a">ist eins von</span><span class="wf-tag a">Grundschule ×</span><span style="flex:1"></span><span style="font-size:10px;color:var(--color-neutral-500)">24</span></div>
+<div class="wf-row" style="gap:5px;margin-left:12px;border:1px solid var(--color-accent);border-radius:4px;padding:2px"><span class="wf-tag" style="font-size:9px;border-style:dashed">Raum</span><span class="wf-tag">≤ Distanz zu</span><span class="wf-tag a">Hauptverkehrsstr.</span><span class="wf-box" style="padding:1px 6px">500 m</span><span style="flex:1"></span><span style="font-size:10px;color:var(--color-neutral-500)">17</span></div>
+<div class="wf-row" style="gap:5px;margin-left:12px"><span class="wf-tag" style="font-size:9px;border-style:dashed">Raum</span><span class="wf-tag">liegt in</span><span class="wf-tag a">Stadtteile · Kinderanteil</span><span class="wf-tag a">&gt; 20 %</span><span style="flex:1"></span><span style="font-size:10px;color:var(--color-neutral-500)">20</span></div>
+<div class="wf-row" style="margin-left:12px;gap:10px"><span class="wf-add">+ Bedingung ▾</span><span class="wf-add">+ Gruppe</span></div>
+<span style="flex:1"></span>
+<div class="wf-row"><span class="wf-btn">Übernehmen</span><span class="wf-btn q">Verwerfen</span><span style="flex:1"></span><span class="wf-ref">B2 · B2</span></div>
+</div>
+<div class="wf-col" style="padding:10px">
+<div class="wf-map" style="flex:1">
+<div style="position:absolute;left:-20px;top:120px;width:700px;height:80px;background:color-mix(in srgb,var(--color-accent) 22%,transparent);border-top:1px dashed var(--color-accent);border-bottom:1px dashed var(--color-accent);transform:rotate(-6deg)"></div>
+<div class="wf-road" style="left:-20px;top:160px;width:700px;transform:rotate(-6deg)"></div>
+<div class="wf-pt h" style="left:90px;top:160px"></div><div class="wf-pt h" style="left:200px;top:140px"></div><div class="wf-pt" style="left:260px;top:280px;opacity:.35"></div>
+<div class="wf-float" style="right:8px;top:8px;padding:0;display:flex;flex-direction:column;width:24px;font-size:11px;line-height:21px;text-align:center">
+<span>⌕</span><span style="border-top:1px solid var(--color-divider)">+</span><span>−</span><span>⌂</span><span>◎</span>
+<span style="border-top:1px solid var(--color-divider);color:var(--color-accent-700)">ⓘ</span><span>⟷</span><span>▢</span><span>✎</span>
+<span style="border-top:1px solid var(--color-divider)">▦</span><span>≡</span></div>
+<div class="wf-float" style="left:8px;bottom:8px;right:40px;font-size:10px">Aktive Bedingung: Puffer 500 m · 17 Schulen</div>
+</div></div>
+</div></div></div>
+<div class="dv-card" style="width:600px;"><div class="wf" style="padding:14px;gap:10px;font-size:11px">
+<div class="wf-row"><span class="wf-h">Filter · Schulen</span><span style="flex:1"></span><span class="wf-seg"><span class="on">UND</span><span>ODER</span></span><span style="color:var(--color-neutral-600)">→ 24 von 39</span></div>
+<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
+<div class="wf-box wf-col" style="gap:5px"><span class="wf-k">Vergleich</span><div class="wf-row" style="gap:4px"><span class="wf-tag">Schüler</span><span class="wf-tag a">≥ ▾</span><span class="wf-box" style="padding:1px 6px">200</span></div><span style="color:var(--color-neutral-500);font-size:10px">= ≠ &lt; ≤ &gt; ≥</span></div>
+<div class="wf-box wf-col" style="gap:5px"><span class="wf-k">Wertebereich</span><div class="wf-row" style="gap:4px"><span class="wf-tag">Baujahr</span><span class="wf-tag a">zwischen ▾</span><span class="wf-box" style="padding:1px 6px">1960</span>–<span class="wf-box" style="padding:1px 6px">1990</span></div>
+<div style="display:flex;align-items:flex-end;gap:2px;height:18px"><div class="wf-bar" style="flex:1;height:30%"></div><div class="wf-bar" style="flex:1;height:70%;background:var(--color-accent)"></div><div class="wf-bar" style="flex:1;height:100%;background:var(--color-accent)"></div><div class="wf-bar" style="flex:1;height:60%;background:var(--color-accent)"></div><div class="wf-bar" style="flex:1;height:40%"></div></div></div>
+<div class="wf-box wf-col" style="gap:5px"><span class="wf-k">Textsuche</span><div class="wf-row" style="gap:4px"><span class="wf-tag">Name</span><span class="wf-tag a">enthält ▾</span><span class="wf-box" style="padding:1px 6px">Gesamt</span></div><span style="color:var(--color-neutral-500);font-size:10px">enthält · beginnt mit · endet mit · ist leer</span></div>
+<div class="wf-box wf-col" style="gap:5px"><span class="wf-k">Wert in Liste</span><div class="wf-row" style="gap:4px"><span class="wf-tag">Schulart</span><span class="wf-tag a">ist eins von ▾</span></div><div class="wf-row" style="gap:4px;flex-wrap:wrap"><span class="wf-tag a">Grundschule ×</span><span class="wf-tag a">Gesamtschule ×</span><span class="wf-add">+ 4 weitere</span></div></div>
+</div>
+<span style="color:var(--color-neutral-600)">Feldwahl zeigt die fachliche Bezeichnung aus <a href="#D3">D3</a>; die Operatoren richten sich nach dem Feldtyp (Zahl, Text, Datum).</span>
+<span class="wf-ref">F-4.2</span>
+</div></div></div>
+<div class="rel wf-row" style="gap:5px;flex-wrap:wrap;font-size:11px;max-width:640px"><span class="wf-k">Von</span><a class="dv-oid" href="#B1">B1</a><a class="dv-oid" href="#B13">B13</a><a class="dv-oid" href="#B8">B8</a><a class="dv-oid" href="#B12">B12</a><span class="wf-k" style="margin-left:10px">Nach</span><a class="dv-oid" href="#B1">B1</a><a class="dv-oid" href="#B13">B13</a></div>
+<div class="wf-note">Ein UND/ODER-Baum für Attribut- und Raumbedingungen. Zahl rechts = Treffer der Bedingung allein. Die Werteingabe der Attribut-Zeilen richtet sich nach dem Operator (zweite Karte).</div></div>
+<div class="dv-opt" id="B3"><div class="dv-olabel"><a class="dv-oid" href="#B3" style="background:var(--color-text);color:var(--color-bg)">B3</a><span style="font:600 16px/1.2 var(--font-heading);color:var(--color-text)">Layer-Menü ⋯</span><span class="wf-tag">Menü</span><span class="wf-ref">neu</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="dv-card" style="width:560px"><div class="wf" style="padding:12px;gap:8px;font-size:11px">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
+<div class="wf-col" style="gap:5px"><span class="wf-k">Katalog-Layer · Schulen</span>
+<div class="wf-row" style="gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:var(--color-text);flex:none"></span><span style="flex:1">Schulen</span><span class="wf-tag" style="border-color:var(--color-accent);color:var(--color-accent-700)">⋯</span></div>
+<div class="wf-box wf-col" style="padding:4px 0;gap:0;box-shadow:var(--shadow-md)">
+<span style="padding:2px 10px">Auf Layer zoomen</span><span style="padding:2px 10px">Tabelle öffnen <span style="float:right;color:var(--color-neutral-500)">B8</span></span><span style="padding:2px 10px">Als Ergebnis-Layer der Abfrage</span>
+<span style="padding:2px 10px;border-top:1px solid var(--color-divider)">Puffer erzeugen … <span style="float:right;color:var(--color-neutral-500)">B4</span></span><span style="padding:2px 10px">Daten anhängen (Join) … <span style="float:right;color:var(--color-neutral-500)">B5</span></span><span style="padding:2px 10px">Aggregieren nach Gebiet … <span style="float:right;color:var(--color-neutral-500)">B6</span></span>
+<span style="padding:2px 10px;border-top:1px solid var(--color-divider)">Im Datenkatalog öffnen <span style="float:right;color:var(--color-neutral-500)">D3 · Admin</span></span>
+<span style="padding:2px 10px;border-top:1px solid var(--color-divider)">Aus Analyse entfernen</span></div>
+<span style="font-size:10px;color:var(--color-neutral-600)">Entfernen nimmt den Layer nur aus der Sitzung. Ist er Ergebnis-Layer oder in einer Bedingung, fragt das Menü nach.</span></div>
+<div class="wf-col" style="gap:5px"><span class="wf-k">Abgeleiteter Layer · Puffer 500 m</span>
+<div class="wf-row" style="gap:5px"><span style="width:10px;height:8px;background:color-mix(in srgb,var(--color-accent) 25%,transparent);border:1px solid var(--color-accent);flex:none"></span><span style="flex:1">Puffer 500 m</span><span class="wf-tag" style="border-color:var(--color-accent);color:var(--color-accent-700)">⋯</span></div>
+<div class="wf-box wf-col" style="padding:4px 0;gap:0;box-shadow:var(--shadow-md)">
+<span style="padding:2px 10px">Auf Layer zoomen</span><span style="padding:2px 10px">Tabelle öffnen <span style="float:right;color:var(--color-neutral-500)">B8</span></span><span style="padding:2px 10px">Als Ergebnis-Layer der Abfrage</span>
+<span style="padding:2px 10px;border-top:1px solid var(--color-divider)">Parameter ändern … <span style="float:right;color:var(--color-neutral-500)">B4</span></span><span style="padding:2px 10px">Darstellung … <span style="float:right;color:var(--color-neutral-500)">B7</span></span><span style="padding:2px 10px">Puffer · Join · Aggregation …</span>
+<span style="padding:2px 10px;border-top:1px solid var(--color-divider)">In Datenkatalog übernehmen … <span style="float:right;color:var(--color-neutral-500)">D3 · Admin</span></span>
+<span style="padding:2px 10px;border-top:1px solid var(--color-divider)">Löschen</span></div>
+<span style="font-size:10px;color:var(--color-neutral-600)">Löschen entfernt das Rezept aus der Sitzung; abhängige abgeleitete Layer werden mitgenannt.</span></div>
+</div><span class="wf-ref">F-4.1 · F-4.5 – F-4.7 · F-8.2</span></div></div></div>
+<div class="rel wf-row" style="gap:5px;flex-wrap:wrap;font-size:11px;max-width:640px"><span class="wf-k">Von</span><a class="dv-oid" href="#B1">B1</a><span class="wf-k" style="margin-left:10px">Nach</span><a class="dv-oid" href="#B4">B4</a><a class="dv-oid" href="#B5">B5</a><a class="dv-oid" href="#B6">B6</a><a class="dv-oid" href="#B7">B7</a><a class="dv-oid" href="#B8">B8</a><a class="dv-oid" href="#D3">D3</a></div>
+<div class="wf-note">Einziger Einstieg in Operationen. Katalog-Layer bleiben unverändert; Puffer, Join und Aggregation erzeugen abgeleitete Layer (Gruppe „Abgeleitet · Sitzung").</div></div>
+<div class="dv-opt" id="B4"><div class="dv-olabel"><a class="dv-oid" href="#B4" style="background:var(--color-text);color:var(--color-bg)">B4</a><span style="font:600 16px/1.2 var(--font-heading);color:var(--color-text)">Puffer</span><span class="wf-tag">Dialog</span><span class="wf-ref">aus 9d</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="dv-card" style="width:300px;"><div class="wf" style="padding:14px;gap:8px;font-size:11px">
+<span class="wf-h">Puffer um Hauptverkehrsstr.</span>
+<div class="wf-row">Distanz <span class="wf-box" style="padding:2px 8px">500</span><span class="wf-seg"><span class="on">m</span><span>km</span></span></div>
+<div class="wf-row"><span class="wf-chk on"></span>Überlappende Puffer verschmelzen</div>
+<div class="wf-row"><span class="wf-chk"></span>Nur gefilterte Objekte (214 → 214)</div>
+<div class="wf-row">Name <span class="wf-box" style="padding:2px 6px;flex:1">Puffer 500 m</span></div>
+<div class="wf-map" style="height:70px"><div class="wf-road" style="left:0;top:34px;width:300px;transform:rotate(-5deg)"></div><div style="position:absolute;left:0;top:20px;width:300px;height:30px;background:color-mix(in srgb,var(--color-accent) 20%,transparent);transform:rotate(-5deg)"></div></div>
+<div class="wf-row"><span class="wf-btn">Erzeugen</span><span class="wf-btn q">Abbrechen</span></div>
+<span class="wf-ref">F-4.5</span>
+</div></div></div>
+<div class="rel wf-row" style="gap:5px;flex-wrap:wrap;font-size:11px;max-width:640px"><span class="wf-k">Von</span><a class="dv-oid" href="#B3">B3</a><span class="wf-k" style="margin-left:10px">Nach</span><a class="dv-oid" href="#B1">B1</a></div>
+<div class="wf-note">Für die Bedingung „≤ 500 m zu" ist kein Puffer nötig (B2). Der Puffer dient dem Sehen und Weiterverwenden der Fläche.</div></div>
+<div class="dv-opt" id="B5"><div class="dv-olabel"><a class="dv-oid" href="#B5" style="background:var(--color-text);color:var(--color-bg)">B5</a><span style="font:600 16px/1.2 var(--font-heading);color:var(--color-text)">Join · Sachdaten anhängen</span><span class="wf-tag">Dialog</span><span class="wf-ref">aus 9e</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="dv-card" style="width:360px;"><div class="wf" style="padding:14px;gap:8px;font-size:11px">
+<span class="wf-h">Daten an Stadtteile anhängen</span>
+<div style="display:grid;grid-template-columns:1fr 20px 1fr;gap:6px;align-items:center">
+<div class="wf-box wf-col" style="gap:2px"><span class="wf-k">Geometrie-Layer</span>Stadtteile<span class="wf-tag a">ags ▾</span></div>
+<span style="text-align:center">=</span>
+<div class="wf-box wf-col" style="gap:2px"><span class="wf-k">Tabelle</span><span class="wf-tag">bevoelkerung_2025 ▾</span><span class="wf-tag a">gemeinde_nr ▾</span></div></div>
+<div class="wf-row" style="gap:6px"><span style="flex:1">36 / 38 Stadtteile mit Treffer</span><div class="wf-bar" style="width:100px;background:var(--color-accent)"></div></div>
+<div class="wf-row">Ohne Treffer <span class="wf-seg"><span class="on">behalten</span><span>verwerfen</span></span></div>
+<div class="wf-row" style="flex-wrap:wrap;gap:4px">Felder <span class="wf-tag a">ew_total ✓</span><span class="wf-tag a">ant_65plus ✓</span><span class="wf-tag">quelle</span></div>
+<div class="wf-row"><span class="wf-btn">Anhängen</span><span class="wf-btn q">Abbrechen</span></div>
+<span class="wf-ref">F-4.6</span>
+</div></div></div>
+<div class="rel wf-row" style="gap:5px;flex-wrap:wrap;font-size:11px;max-width:640px"><span class="wf-k">Von</span><a class="dv-oid" href="#B3">B3</a><span class="wf-k" style="margin-left:10px">Nach</span><a class="dv-oid" href="#B1">B1</a></div>
+<div class="wf-note">Hängt die Tabelle „Bevölkerung 2025" (36 Zeilen) über den Gebietsschlüssel an. Ergebnis: abgeleiteter Layer „Stadtteile + Bevölkerung".</div></div>
+<div class="dv-opt" id="B6"><div class="dv-olabel"><a class="dv-oid" href="#B6" style="background:var(--color-text);color:var(--color-bg)">B6</a><span style="font:600 16px/1.2 var(--font-heading);color:var(--color-text)">Aggregation nach Gebiet</span><span class="wf-tag">Dialog</span><span class="wf-ref">aus 9f</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="dv-card" style="width:380px;"><div class="wf" style="padding:14px;gap:8px;font-size:11px">
+<span class="wf-h">Aggregieren nach Gebiet</span>
+<div class="wf-row" style="gap:4px;flex-wrap:wrap">Für jedes <span class="wf-tag a">Stadtteile ▾</span> zähle/berechne aus <span class="wf-tag a">Schulen (gefiltert) ▾</span></div>
+<table class="wf-t"><thead><tr><th>Funktion</th><th>Feld</th><th>Neuer Name</th><th></th></tr></thead><tbody>
+<tr><td><span class="wf-tag">Anzahl</span></td><td>—</td><td>anz_schulen</td><td>×</td></tr>
+<tr><td><span class="wf-tag">Summe</span></td><td>Schüler</td><td>sum_schueler</td><td>×</td></tr>
+<tr><td><span class="wf-tag">Mittelwert</span></td><td>Baujahr</td><td>mittel_baujahr</td><td>×</td></tr>
+</tbody></table>
+<span class="wf-add">+ Kennzahl (Anzahl · Summe · Mittelwert · Min · Max)</span>
+<div class="wf-row">Zuordnung <span class="wf-seg"><span class="on">liegt in</span><span>schneidet</span></span></div>
+<div class="wf-row"><span class="wf-btn">Berechnen</span><span style="flex:1"></span><span style="color:var(--color-neutral-600)">→ Layer „Stadtteile · Schulkennzahlen"</span></div>
+<span class="wf-ref">F-4.7</span>
+</div></div></div>
+<div class="rel wf-row" style="gap:5px;flex-wrap:wrap;font-size:11px;max-width:640px"><span class="wf-k">Von</span><a class="dv-oid" href="#B3">B3</a><span class="wf-k" style="margin-left:10px">Nach</span><a class="dv-oid" href="#B1">B1</a></div>
+<div class="wf-note">Ergebnis „Stadtteile · Schulkennzahlen" (Sitzung „Schulkennzahlen je Stadtteil"); Darstellung automatisch als Klassen über die erste Kennzahl (B7).</div></div>
+<div class="dv-opt" id="B7"><div class="dv-olabel"><a class="dv-oid" href="#B7" style="background:var(--color-text);color:var(--color-bg)">B7</a><span style="font:600 16px/1.2 var(--font-heading);color:var(--color-text)">Darstellung abgeleiteter Layer</span><span class="wf-tag">Aufklappbereich</span><span class="wf-ref">aus 9h</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="dv-card" style="width:300px"><div class="wf" style="padding:10px;gap:6px;font-size:11px">
+<div class="wf-row" style="gap:5px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg><span style="display:flex;flex:none"><span style="width:4px;height:8px;background:var(--color-accent-100)"></span><span style="width:4px;height:8px;background:var(--color-accent-500)"></span><span style="width:4px;height:8px;background:var(--color-accent-900)"></span></span><span style="flex:1">Schulkennzahlen</span><span>⌄</span></div>
+<div class="wf-box wf-col" style="gap:5px;margin-left:16px;padding:6px">
+<div class="wf-row" style="gap:5px;font-size:10.5px">Deckkraft <div style="flex:1;position:relative;height:8px"><div style="position:absolute;left:0;right:0;top:3px;height:2px;background:var(--color-neutral-300)"></div><div style="position:absolute;left:0;width:70%;top:3px;height:2px;background:var(--color-accent)"></div></div>70 %</div>
+<span class="wf-k">Darstellen nach</span>
+<div class="wf-row" style="gap:4px;flex-wrap:wrap"><span class="wf-tag">einfarbig</span><span class="wf-tag a">anz_schulen</span><span class="wf-tag">sum_schueler</span></div>
+<div style="display:flex;height:8px;border-radius:2px;overflow:hidden"><span style="flex:1;background:var(--color-accent-100)"></span><span style="flex:1;background:var(--color-accent-300)"></span><span style="flex:1;background:var(--color-accent-500)"></span><span style="flex:1;background:var(--color-accent-700)"></span><span style="flex:1;background:var(--color-accent-900)"></span></div>
+<div class="wf-col" style="gap:2px;font-size:10px;color:var(--color-neutral-600)"><span>Herkunft: Aggregation · Stadtteile + Schulen (gefiltert)</span><span>Neu berechnen, wenn Filter sich ändert ✓</span></div>
+<div class="wf-row" style="gap:6px;flex-wrap:wrap"><span class="wf-add">In Datenkatalog übernehmen …</span><span class="wf-add">Bearbeiten</span><span style="color:var(--color-neutral-600)">Entfernen</span></div>
+</div>
+<span class="wf-k" style="margin-top:4px">Automatische Vorgaben</span>
+<table class="wf-t"><tbody>
+<tr><td>Puffer</td><td>Fläche, Akzentfarbe halbtransparent</td></tr>
+<tr><td>Aggregation</td><td>Klassen über erste Kennzahl</td></tr>
+<tr><td>Join</td><td>Darstellung des Geometrie-Layers</td></tr>
+</tbody></table>
+</div></div></div>
+<div class="rel wf-row" style="gap:5px;flex-wrap:wrap;font-size:11px;max-width:640px"><span class="wf-k">Von</span><a class="dv-oid" href="#B3">B3</a><span class="wf-k" style="margin-left:10px">Nach</span><a class="dv-oid" href="#D3">D3</a></div>
+<div class="wf-note">Vorschlag: automatische Vorgabe plus Schnellwahl des Feldes, kein voller Editor. Volle Darstellung erst nach Übernahme in den Katalog (D3).</div></div>
+<div class="dv-opt" id="B8"><div class="dv-olabel"><a class="dv-oid" href="#B8" style="background:var(--color-text);color:var(--color-bg)">B8</a><span style="font:600 16px/1.2 var(--font-heading);color:var(--color-text)">Attributtabelle</span><span class="wf-tag">Dock unter der Karte</span><span class="wf-ref">aus 10d</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="dv-card" style="width:680px;"><div class="wf" style="padding:12px;gap:8px;font-size:11px">
+<div class="wf-row" style="gap:10px"><span style="border-bottom:2px solid var(--color-accent);color:var(--color-accent-700)">Schulen · 7 von 39</span><span style="color:var(--color-neutral-600)">Stadtteile · Kinderanteil · 38</span><span style="color:var(--color-neutral-600)">Puffer 500 m · 1</span><span style="flex:1"></span>
+<span class="wf-seg" style="flex:none"><span class="on">Treffer (7)</span><span>Alle (39)</span></span><span class="wf-row" style="gap:4px;font-size:10.5px"><span class="wf-chk"></span>nur aktuellen Kartenausschnitt</span><span class="wf-btn q">Spalten ▾</span></div>
+<div class="wf-box wf-col" style="gap:2px;font-size:10.5px;color:var(--color-neutral-700);border-style:dashed"><span><b>Treffer / Alle:</b> zeigt das Ergebnis des Filters oder alle Objekte des Layers (Nicht-Treffer grau, wie in B9).</span><span><b>Nur aktuellen Kartenausschnitt:</b> blendet zusätzlich Zeilen aus, deren Objekt ausserhalb des aktuellen Kartenausschnitts liegt. Reine Anzeige; ändert den Filter nicht und folgt jedem Verschieben oder Zoomen.</span></div>
+<table class="wf-t"><thead><tr><th style="width:18px"><span class="wf-chk"></span></th><th>Name</th><th>Schulart</th><th style="color:var(--color-accent-700)">Schüler ↓</th><th>Distanz Hauptstr.</th><th>Stadtteil</th><th style="width:18px"></th></tr></thead><tbody>
+<tr><td><span class="wf-chk"></span></td><td>GS Hafen</td><td>Grundschule</td><td>412</td><td>210 m</td><td>Hafen</td><td>⌖</td></tr>
+<tr style="background:color-mix(in srgb,var(--color-accent) 14%,transparent);box-shadow:inset 3px 0 0 var(--color-accent)"><td><span class="wf-chk on"></span></td><td><b>GS Nord</b></td><td>Grundschule</td><td>356</td><td>120 m</td><td>Nord</td><td>⌖</td></tr>
+<tr><td><span class="wf-chk"></span></td><td>GS Altstadt</td><td>Grundschule</td><td>301</td><td>340 m</td><td>Altstadt</td><td>⌖</td></tr>
+<tr style="background:color-mix(in srgb,var(--color-text) 5%,transparent)"><td><span class="wf-chk"></span></td><td>GS Ost</td><td>Grundschule</td><td>288</td><td>460 m</td><td>Ost</td><td>⌖</td></tr>
+<tr><td colspan="7" style="color:var(--color-neutral-500)">… 3 weitere</td></tr>
+</tbody></table>
+<div style="display:grid;grid-template-columns:1fr 220px;gap:12px">
+<div class="wf-col" style="gap:3px;color:var(--color-neutral-700)">
+<span><b>Sortieren:</b> Klick auf Spaltenkopf (↓ / ↑ / aus), Umschalt-Klick für zweite Sortierung.</span>
+<span><b>Hervorheben:</b> Zeile anklicken markiert das Objekt auf der Karte; Objekt auf der Karte anklicken springt zur Zeile. Überfahren hebt kurz hervor (graue Zeile).</span>
+<span><b>⌖</b> zoomt auf das Objekt. Mehrfachauswahl über die Kästchen, dann „Auswahl als Filter".</span>
+<span><b>Distanz Hauptstr.</b> ist eine berechnete Spalte aus der Filterbedingung in B2.</span></div>
+<div class="wf-box wf-col" style="gap:3px;box-shadow:var(--shadow-md)"><span class="wf-k">Spalten</span>
+<div class="wf-row"><span style="color:var(--color-neutral-500)">⋮⋮</span><span class="wf-chk on"></span>Name</div>
+<div class="wf-row"><span style="color:var(--color-neutral-500)">⋮⋮</span><span class="wf-chk on"></span>Schulart</div>
+<div class="wf-row"><span style="color:var(--color-neutral-500)">⋮⋮</span><span class="wf-chk on"></span>Schüler</div>
+<div class="wf-row"><span style="color:var(--color-neutral-500)">⋮⋮</span><span class="wf-chk on"></span>Distanz Hauptstr. <span class="wf-tag" style="font-size:9px">berechnet</span></div>
+<div class="wf-row"><span style="color:var(--color-neutral-500)">⋮⋮</span><span class="wf-chk on"></span>Stadtteil <span class="wf-tag" style="font-size:9px">aus Raumfilter</span></div>
+<div class="wf-row"><span style="color:var(--color-neutral-500)">⋮⋮</span><span class="wf-chk"></span>Baujahr</div>
+<span style="font-size:10px;color:var(--color-neutral-600)">Fachliche Namen aus D3 · Auswahl wird mit der Sitzung gespeichert</span></div>
+</div>
+<div class="wf-row" style="gap:8px"><span class="wf-btn q" style="opacity:.55">Auswahl als Filter</span><span class="wf-btn q" style="opacity:.55">Export ab E5</span><span style="flex:1"></span><span style="color:var(--color-neutral-600)">1 ausgewählt</span></div>
+</div></div></div>
+<div class="rel wf-row" style="gap:5px;flex-wrap:wrap;font-size:11px;max-width:640px"><span class="wf-k">Von</span><a class="dv-oid" href="#B3">B3</a><a class="dv-oid" href="#B1">B1</a><a class="dv-oid" href="#C4">C4</a><span class="wf-k" style="margin-left:10px">Nach</span><a class="dv-oid" href="#B9">B9</a><a class="dv-oid" href="#B2">B2</a></div>
+<div class="wf-note">Reiter je Layer, standardmässig der Ergebnis-Layer. Spalten und Sortierung werden mit der Sitzung gespeichert (C7). Spalten aus dem Raumfilter zeigen, warum ein Objekt Treffer ist.</div></div>
+<div class="dv-opt" id="B9"><div class="dv-olabel"><a class="dv-oid" href="#B9" style="background:var(--color-text);color:var(--color-bg)">B9</a><span style="font:600 16px/1.2 var(--font-heading);color:var(--color-text)">Kartenzustände</span><span class="wf-tag">Regel</span><span class="wf-ref">aus 10e</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="dv-card" style="width:360px;"><div class="wf" style="padding:10px;gap:8px;font-size:11px">
+<div class="wf-map" style="height:190px">
+<div class="wf-road" style="left:0;top:90px;width:360px;transform:rotate(-6deg)"></div>
+<div class="wf-pt" style="left:80px;top:70px;background:var(--color-accent)"></div>
+<div class="wf-pt" style="left:240px;top:60px;background:var(--color-accent)"></div>
+<div class="wf-pt" style="left:200px;top:120px;opacity:.35"></div><div class="wf-pt" style="left:300px;top:150px;opacity:.35"></div>
+<div style="position:absolute;left:146px;top:84px;width:16px;height:16px;border:2px solid var(--color-text);border-radius:50%;background:var(--color-accent)"></div>
+<div style="position:absolute;left:146px;top:84px;width:16px;height:16px;margin:-6px;border:1px dashed var(--color-text);border-radius:50%;padding:6px;box-sizing:content-box"></div>
+<div class="wf-float" style="left:170px;top:70px;font-size:10px;padding:4px 6px"><b>GS Nord</b> · Zeile 2</div>
+</div>
+<div class="wf-col" style="gap:3px;color:var(--color-neutral-700)">
+<div class="wf-row"><span class="wf-pt" style="position:static;background:var(--color-accent)"></span>Treffer</div>
+<div class="wf-row"><span class="wf-pt" style="position:static;opacity:.35"></span>kein Treffer (bei „Alle")</div>
+<div class="wf-row"><span style="width:10px;height:10px;border:2px solid var(--color-text);border-radius:50%;background:var(--color-accent);flex:none"></span>ausgewählt</div></div>
+</div></div></div>
+<div class="rel wf-row" style="gap:5px;flex-wrap:wrap;font-size:11px;max-width:640px"><span class="wf-k">Von</span><a class="dv-oid" href="#B8">B8</a><span class="wf-k" style="margin-left:10px">Nach</span>—</div>
+<div class="wf-note">Auswahl ist immer Umriss + Ring, nie eine neue Farbe, damit sie auch über Klassenkarten (D3 · Darstellung) lesbar bleibt.</div></div>
+<div class="dv-opt" id="B10"><div class="dv-olabel"><a class="dv-oid" href="#B10" style="background:var(--color-text);color:var(--color-bg)">B10</a><span style="font:600 16px/1.2 var(--font-heading);color:var(--color-text)">Kartenwerkzeuge</span><span class="wf-tag">Leiste</span><span class="wf-ref">aus 3a</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="dv-card" style="width:380px;"><div class="wf" style="padding:10px">
+<div class="wf-map" style="height:230px">
+<div class="wf-road" style="left:0;top:110px;width:400px;transform:rotate(-7deg)"></div>
+<div class="wf-pt h" style="left:90px;top:90px"></div><div class="wf-pt h" style="left:210px;top:100px"></div><div class="wf-pt" style="left:150px;top:170px"></div>
+<div class="wf-float" style="right:8px;top:8px;padding:0;display:flex;flex-direction:column;width:22px;font-size:11px;line-height:19px;text-align:center">
+<span>⌕</span><span style="border-top:1px solid var(--color-divider)">+</span><span>−</span><span>⌂</span><span>◎</span>
+<span style="border-top:1px solid var(--color-divider)">ⓘ</span><span>⟷</span><span>▢</span><span>✎</span>
+<span style="border-top:1px solid var(--color-divider)">▦</span><span>≡</span></div>
+<div style="position:absolute;left:8px;bottom:6px;font-size:9.5px;display:flex;align-items:center;gap:6px;color:var(--color-neutral-700)"><span style="display:inline-block;width:34px;height:3px;border:1px solid var(--color-text);border-top:none"></span>200 m</div>
+</div></div></div></div>
+<div class="rel wf-row" style="gap:5px;flex-wrap:wrap;font-size:11px;max-width:640px"><span class="wf-k">Von</span><a class="dv-oid" href="#B1">B1</a><span class="wf-k" style="margin-left:10px">Nach</span>—</div>
+<div class="wf-note">Gruppen: Suche · Zoom/Home/Standort · Info/Messen/Auswahl/Zeichnen · Grundkarte/Legende. Beschriftung als Tooltip. Legende (≡) kommt aus der Darstellung im Katalog.</div></div>
+<div class="dv-opt" id="B11"><div class="dv-olabel"><a class="dv-oid" href="#B11" style="background:var(--color-text);color:var(--color-bg)">B11</a><span style="font:600 16px/1.2 var(--font-heading);color:var(--color-text)">Layer hinzufügen</span><span class="wf-tag">Popover</span><span class="wf-ref">neu</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="dv-card" style="width:320px"><div class="wf" style="padding:12px;gap:7px;font-size:11px">
+<div class="wf-row"><span class="wf-k">Layer hinzufügen</span><span style="flex:1"></span><span>×</span></div>
+<span style="border-bottom:1px solid var(--color-divider);font-size:10.5px;color:var(--color-neutral-500);padding-bottom:2px">⌕ Layer oder Synonym („Quartiere")</span>
+<div class="wf-row" style="opacity:.45"><span class="wf-chk on"></span><span style="width:7px;height:7px;border-radius:50%;background:var(--color-text);flex:none"></span><span style="flex:1">Schulen</span><span>39 · in Sitzung</span></div>
+<div class="wf-row" style="opacity:.45"><span class="wf-chk on"></span><span style="width:10px;height:2px;background:var(--color-neutral-500);flex:none"></span><span style="flex:1">Hauptverkehrsstr.</span><span>214 · in Sitzung</span></div>
+<div class="wf-row"><span class="wf-chk on"></span><span style="width:10px;height:8px;border:1px solid var(--color-neutral-500);flex:none"></span><span style="flex:1">Stadtteile</span><span style="color:var(--color-neutral-600)">38</span></div>
+<div class="wf-row" style="opacity:.45"><span class="wf-chk on"></span><span style="width:10px;height:8px;background:var(--color-accent-300);flex:none"></span><span style="flex:1">Stadtteile · Kinderanteil</span><span>38 · in Sitzung</span></div>
+<div class="wf-row"><span class="wf-chk"></span><span style="width:10px;height:8px;border:1px dashed var(--color-neutral-500);flex:none"></span><span style="flex:1">Bevölkerung 2025 <span class="wf-tag" style="font-size:9px">Tabelle</span></span><span style="color:var(--color-neutral-600)">36</span></div>
+<div class="wf-row"><span class="wf-chk"></span><span style="width:7px;height:7px;border-radius:50%;border:1px solid currentColor;flex:none"></span><span style="flex:1">Kitas <span class="wf-tag" style="font-size:9px">Entwurf · nur Admin</span></span><span style="color:var(--color-neutral-600)">61</span></div>
+<div class="wf-row" style="border-top:1px solid var(--color-divider);padding-top:6px"><span class="wf-btn">Hinzufügen (1)</span><span style="flex:1"></span><span class="wf-add">Neue Daten importieren ›</span></div>
+<span style="font-size:10px;color:var(--color-neutral-600)">Tabellen ohne Geometrie erscheinen nicht auf der Karte, nur als Reiter in B8 und als Quelle für Join (B5).</span><span class="wf-ref">F-4.1 · F-2.7</span></div></div></div>
+<div class="rel wf-row" style="gap:5px;flex-wrap:wrap;font-size:11px;max-width:640px"><span class="wf-k">Von</span><a class="dv-oid" href="#B1">B1</a><a class="dv-oid" href="#B12">B12</a><span class="wf-k" style="margin-left:10px">Nach</span><a class="dv-oid" href="#B1">B1</a><a class="dv-oid" href="#D6">D6</a></div>
+<div class="wf-note">Zeigt nur Layer, die für die Rolle sichtbar sind (D10). Bereits verwendete Layer sind ausgegraut. Mehrfachauswahl; neue Layer kommen oben in die Liste.</div></div>
+<div class="dv-opt" id="B12"><div class="dv-olabel"><a class="dv-oid" href="#B12" style="background:var(--color-text);color:var(--color-bg)">B12</a><span style="font:600 16px/1.2 var(--font-heading);color:var(--color-text)">Leerzustände</span><span class="wf-tag">Zustände</span><span class="wf-ref">neu</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="dv-card" style="width:340px"><div class="wf"><div class="wf-top"><span class="wf-brand">GeoTandem</span><span class="wf-tag" style="border-color:var(--color-accent)">Neue Sitzung ▾</span></div>
+<div style="display:grid;grid-template-columns:130px 1fr;min-height:180px"><div class="wf-col" style="padding:8px;gap:8px;border-right:1px solid var(--color-divider);font-size:10.5px"><span class="wf-k">Layer</span><span style="color:var(--color-neutral-600)">Noch keine Layer.</span><span class="wf-btn" style="align-self:flex-start">+ Layer hinzufügen</span><span class="wf-k" style="margin-top:6px">Abfrage</span><span style="color:var(--color-neutral-500)">Zuerst einen Layer hinzufügen.</span></div>
+<div class="wf-map" style="margin:8px"><div class="wf-float" style="left:8px;bottom:8px;font-size:10px">Grundkarte · Stadtplan</div></div></div></div></div>
+<div class="dv-card" style="width:380px"><div class="wf" style="padding:12px;gap:7px;font-size:11px"><div class="wf-row"><span class="wf-k">Abfrage</span><span style="flex:1"></span><span style="color:var(--color-accent-700)">0 von 39</span></div>
+<div class="wf-box wf-col" style="padding:6px;gap:4px"><span class="wf-tag" style="font-size:9px;align-self:flex-start">UND</span>
+<div class="wf-row" style="gap:3px"><span class="wf-tag">Schulart</span><span class="wf-tag a">= Grundschule</span><span style="flex:1"></span><span style="font-size:10px;color:var(--color-neutral-500)">24</span></div>
+<div class="wf-row" style="gap:3px;border:1px solid var(--color-accent);border-radius:4px;padding:1px"><span class="wf-tag">≤ 50 m zu</span><span class="wf-tag a">Hauptverkehrsstr.</span><span style="flex:1"></span><span style="font-size:10px;color:var(--color-accent-700)">0</span></div></div>
+<div class="wf-box" style="border-style:dashed;text-align:center;padding:10px;color:var(--color-neutral-700)">Keine Treffer. Die markierte Bedingung trifft allein auf kein Objekt zu.<br><span class="wf-add">Bedingungen prüfen ›</span></div></div></div>
+<div class="dv-card" style="width:340px"><div class="wf" style="padding:12px;gap:8px;font-size:11px"><span class="wf-h">Daten</span><div class="wf-box" style="border-style:dashed;text-align:center;padding:18px;color:var(--color-neutral-700)">Noch keine Layer im Katalog.<div class="wf-row" style="justify-content:center;margin-top:8px"><span class="wf-btn">+ Importieren</span><span class="wf-btn q">Beispieldatensatz laden</span></div></div><span style="font-size:10px;color:var(--color-neutral-600)">D2 ohne Daten. Anwender sehen in B11 „Noch keine Daten freigegeben".</span></div></div></div>
+<div class="rel wf-row" style="gap:5px;flex-wrap:wrap;font-size:11px;max-width:640px"><span class="wf-k">Von</span><a class="dv-oid" href="#B1">B1</a><a class="dv-oid" href="#C1">C1</a><span class="wf-k" style="margin-left:10px">Nach</span><a class="dv-oid" href="#B11">B11</a><a class="dv-oid" href="#B2">B2</a><a class="dv-oid" href="#D6">D6</a></div>
+<div class="wf-note">Jeder Leerzustand nennt den nächsten Schritt. Bei 0 Treffern hilft die Zahl je Bedingung (B2) zu sehen, welche Bedingung alles ausfiltert.</div></div>
+<div class="dv-opt" id="B13"><div class="dv-olabel"><a class="dv-oid" href="#B13" style="background:var(--color-text);color:var(--color-bg)">B13</a><span style="font:600 16px/1.2 var(--font-heading);color:var(--color-text)">Ergebnis-Layer wechseln</span><span class="wf-tag">Dialog</span><span class="wf-ref">neu</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="dv-card" style="width:360px"><div class="wf" style="padding:14px;gap:9px;font-size:11px"><span class="wf-h">Ergebnis-Layer auf „Kitas" wechseln?</span>
+<div class="wf-col" style="gap:3px"><span class="wf-k">Wird entfernt</span><span class="wf-del">Schulart = Grundschule</span></div>
+<div class="wf-col" style="gap:3px"><span class="wf-k">Bleibt</span><span>≤ 500 m zu Hauptverkehrsstr.</span><span>liegt in Stadtteile · Kinderanteil &gt; 20 %</span></div>
+<div class="wf-row"><span class="wf-chk on"></span>Aktuelle Abfrage vorher speichern unter …</div>
+<div class="wf-row"><span class="wf-btn">Wechseln</span><span class="wf-btn q">Abbrechen</span></div><span class="wf-ref">B2 · F-4.2</span></div></div></div>
+<div class="rel wf-row" style="gap:5px;flex-wrap:wrap;font-size:11px;max-width:640px"><span class="wf-k">Von</span><a class="dv-oid" href="#B2">B2</a><span class="wf-k" style="margin-left:10px">Nach</span><a class="dv-oid" href="#B2">B2</a></div>
+<div class="wf-note">Attribut-Bedingungen gehören zum Ergebnis-Layer und fallen weg; Raumbedingungen gelten für jeden Geometrie-Layer und bleiben.</div></div></div></section>
+<section class="dv-turn" id="gC"><div class="dv-thd"><a class="dv-tid" href="#gC">C</a><span class="dv-tname">Sitzung und Abfragen</span></div><p class="dv-intro">Arbeitsstand speichern, wieder öffnen, prüfen. E1.7</p><div class="dv-opts"><div class="dv-opt" id="C1"><div class="dv-olabel"><a class="dv-oid" href="#C1" style="background:var(--color-text);color:var(--color-bg)">C1</a><span style="font:600 16px/1.2 var(--font-heading);color:var(--color-text)">Sitzungsmenü</span><span class="wf-tag">Menü</span><span class="wf-ref">aus 4a</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="dv-card" style="width:340px;"><div class="wf">
+<div class="wf-top"><span class="wf-brand">GeoTandem</span><span class="wf-tag" style="border-color:var(--color-accent)">Schulen an Hauptstrassen ▾</span><span style="font-size:10px;color:var(--color-neutral-500);white-space:nowrap">● ungespeichert</span></div>
+<div style="padding:0 12px 12px 92px"><div class="wf-box wf-col" style="padding:4px 0;gap:0;font-size:11px;box-shadow:var(--shadow-md);width:220px">
+<span style="padding:3px 10px">Speichern <span style="float:right;color:var(--color-neutral-500)">⌘S</span></span>
+<span style="padding:3px 10px">Speichern unter …</span>
+<span style="padding:3px 10px;border-top:1px solid var(--color-divider)">Neue Sitzung</span>
+<span class="wf-k" style="padding:6px 10px 2px">Zuletzt</span>
+<span style="padding:3px 10px">Kitas je Stadtteil</span>
+<span style="padding:3px 10px">Schulkennzahlen je Stadtteil</span>
+<span style="padding:3px 10px">Alle öffnen … <span style="float:right;color:var(--color-neutral-500)">C3</span></span>
+<span style="padding:3px 10px;border-top:1px solid var(--color-divider);color:var(--color-neutral-600)">Diese Sitzung löschen</span>
+</div></div></div></div></div>
+<div class="rel wf-row" style="gap:5px;flex-wrap:wrap;font-size:11px;max-width:640px"><span class="wf-k">Von</span><a class="dv-oid" href="#B1">B1</a><span class="wf-k" style="margin-left:10px">Nach</span><a class="dv-oid" href="#C2">C2</a><a class="dv-oid" href="#C3">C3</a><a class="dv-oid" href="#C5">C5</a><a class="dv-oid" href="#B12">B12</a></div>
+<div class="wf-note">Am Sitzungsnamen in der Kopfzeile. ● ungespeichert erscheint bei jeder Änderung ausser reinem Verschieben oder Zoomen.</div></div>
+<div class="dv-opt" id="C2"><div class="dv-olabel"><a class="dv-oid" href="#C2" style="background:var(--color-text);color:var(--color-bg)">C2</a><span style="font:600 16px/1.2 var(--font-heading);color:var(--color-text)">Speichern unter</span><span class="wf-tag">Dialog</span><span class="wf-ref">aus 12a</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="dv-card" style="width:400px;"><div class="wf" style="padding:14px;gap:10px;font-size:11px">
+<span class="wf-h">Sitzung speichern</span>
+<div class="wf-col" style="gap:3px"><span class="wf-k">Name</span><div class="wf-box" style="padding:5px 8px;border-color:var(--color-accent)">Schulen an Hauptstrassen</div></div>
+<div class="wf-col" style="gap:3px"><span class="wf-k">Notiz (optional)</span><div class="wf-box" style="padding:5px 8px;height:34px;color:var(--color-neutral-500)">Fragestellung, Annahmen …</div></div>
+<div class="wf-col" style="gap:4px"><span class="wf-k">Wird gespeichert</span>
+<div class="wf-box wf-col" style="gap:3px;padding:6px 8px">
+<div class="wf-row"><span style="flex:1">Layer · Reihenfolge · Sichtbarkeit · Deckkraft</span><span style="color:var(--color-neutral-600)">4</span></div>
+<div class="wf-row"><span style="flex:1">Abfrage · Ziel Schulen</span><span style="color:var(--color-neutral-600)">3 Bed.</span></div>
+<div class="wf-row"><span style="flex:1">Abgeleitete Layer (als Rezept)</span><span style="color:var(--color-neutral-600)">Puffer 500 m</span></div>
+<div class="wf-row"><span style="flex:1">Kartenausschnitt · Tabelle (Spalten, Sortierung)</span><span style="color:var(--color-neutral-600)">✓</span></div>
+<div class="wf-row" style="border-top:1px solid var(--color-divider);padding-top:3px"><span style="flex:1">Ergebnis-Stempel</span><span style="color:var(--color-accent-700)">7 Treffer · #a3f9</span></div>
+</div></div>
+<div class="wf-row"><span class="wf-btn">Speichern</span><span class="wf-btn q">Abbrechen</span><span style="flex:1"></span><span class="wf-ref">F-4.10</span></div>
+</div></div></div>
+<div class="rel wf-row" style="gap:5px;flex-wrap:wrap;font-size:11px;max-width:640px"><span class="wf-k">Von</span><a class="dv-oid" href="#C1">C1</a><a class="dv-oid" href="#C5">C5</a><span class="wf-k" style="margin-left:10px">Nach</span><a class="dv-oid" href="#C7">C7</a></div>
+<div class="wf-note">Der Ergebnis-Stempel (Trefferzahl + Prüfsumme der IDs + Datenstand je Layer) ist die Grundlage für C4.</div></div>
+<div class="dv-opt" id="C3"><div class="dv-olabel"><a class="dv-oid" href="#C3" style="background:var(--color-text);color:var(--color-bg)">C3</a><span style="font:600 16px/1.2 var(--font-heading);color:var(--color-text)">Sitzungen</span><span class="wf-tag">Dialog</span><span class="wf-ref">aus 12b</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="dv-card" style="width:520px;"><div class="wf" style="padding:14px;gap:10px;font-size:11px">
+<div class="wf-row"><span class="wf-h">Sitzungen</span><span style="flex:1"></span><span style="border-bottom:1px solid var(--color-divider);width:120px;font-size:10.5px;color:var(--color-neutral-500)">⌕ Suchen</span></div>
+<table class="wf-t"><thead><tr><th>Name</th><th>Ziel-Layer</th><th>Treffer</th><th>Geändert</th><th></th></tr></thead><tbody>
+<tr style="background:var(--color-surface)"><td><b>Schulen an Hauptstrassen</b></td><td>Schulen</td><td>7</td><td>heute 14:02</td><td style="color:var(--color-neutral-600)">offen</td></tr>
+<tr><td>Schulkennzahlen je Stadtteil</td><td>Stadtteile · Kinderanteil</td><td>38</td><td>gestern</td><td>⋯</td></tr>
+<tr><td>Kitas je Stadtteil</td><td>Kitas</td><td>12 <span class="wf-tag a" style="font-size:9px">Daten neu</span></td><td>28.09.</td><td>⋯</td></tr>
+</tbody></table>
+<div class="wf-row" style="gap:12px;color:var(--color-neutral-700)"><span>⋯ = Öffnen · Umbenennen · Duplizieren · Löschen</span><span style="flex:1"></span><span class="wf-btn q">Schliessen</span></div>
+<span style="color:var(--color-neutral-700)">„Daten neu": ein beteiligter Layer wurde seit dem Speichern aktualisiert (<a href="#D4">D4</a>). Sitzungen sind privat; Teilen gibt es nur für Abfragen (<a href="#C6">C6</a>).</span>
+<span class="wf-ref">ersetzt C3 · F-4.10</span>
+</div></div></div>
+<div class="rel wf-row" style="gap:5px;flex-wrap:wrap;font-size:11px;max-width:640px"><span class="wf-k">Von</span><a class="dv-oid" href="#C1">C1</a><span class="wf-k" style="margin-left:10px">Nach</span><a class="dv-oid" href="#C5">C5</a><a class="dv-oid" href="#C4">C4</a><a class="dv-oid" href="#C8">C8</a></div>
+<div class="wf-note">Sitzungen sind privat. „Daten neu" heisst: ein beteiligter Layer hat seit dem Speichern eine neue Version (D4).</div></div>
+<div class="dv-opt" id="C4"><div class="dv-olabel"><a class="dv-oid" href="#C4" style="background:var(--color-text);color:var(--color-bg)">C4</a><span style="font:600 16px/1.2 var(--font-heading);color:var(--color-text)">Öffnen mit Ergebnisprüfung</span><span class="wf-tag">Zustand von B1</span><span class="wf-ref">aus 12c</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="wf-col" style="gap:12px">
+<div class="dv-card" style="width:520px;"><div class="wf">
+<div class="wf-top"><span class="wf-brand">GeoTandem</span><span class="wf-tag" style="border-color:var(--color-accent)">Schulen an Hauptstrassen ▾</span><span style="font-size:10px;color:var(--color-neutral-500);white-space:nowrap">gespeichert 14:02</span></div>
+<div class="wf-row" style="gap:8px;padding:7px 12px;border-bottom:1px solid var(--color-divider);font-size:11px"><span style="color:var(--color-accent-700)">✓</span><span style="flex:1">Wiederhergestellt · 7 Treffer, identisch mit dem Speicherstand</span><span style="color:var(--color-neutral-500)">×</span></div>
+<div class="wf-map" style="height:90px;margin:10px;border-radius:4px"><div class="wf-pt" style="left:80px;top:40px;background:var(--color-accent)"></div><div class="wf-pt" style="left:200px;top:30px;background:var(--color-accent)"></div><div class="wf-pt" style="left:330px;top:55px;background:var(--color-accent)"></div></div>
+</div></div>
+<div class="dv-card" style="width:520px;border-color:var(--color-accent)"><div class="wf">
+<div class="wf-top"><span class="wf-brand">GeoTandem</span><span class="wf-tag" style="border-color:var(--color-accent)">Kitas je Stadtteil ▾</span></div>
+<div class="wf-col" style="gap:6px;padding:8px 12px;border-bottom:1px solid var(--color-divider);font-size:11px">
+<div class="wf-row" style="gap:8px"><span style="color:var(--color-accent-700)">!</span><span style="flex:1"><b>Ergebnis weicht ab:</b> 12 → 14 Treffer</span></div>
+<span style="color:var(--color-neutral-700);margin-left:16px">Layer „Stadtteile · Kinderanteil" wurde am 02.10. aktualisiert (v1 → v2, 31 Werte geändert). Abfrage und Rezepte sind unverändert.</span>
+<div class="wf-row" style="gap:6px;margin-left:16px"><span class="wf-btn">Unterschied in Tabelle zeigen</span><span class="wf-btn q">Mit aktuellen Daten übernehmen</span></div></div>
+<div class="wf-map" style="height:90px;margin:10px;border-radius:4px"><div class="wf-pt" style="left:80px;top:40px;background:var(--color-accent)"></div><div class="wf-pt h" style="left:260px;top:50px"></div></div>
+</div></div>
+</div></div>
+<div class="rel wf-row" style="gap:5px;flex-wrap:wrap;font-size:11px;max-width:640px"><span class="wf-k">Von</span><a class="dv-oid" href="#A2">A2</a><a class="dv-oid" href="#C3">C3</a><span class="wf-k" style="margin-left:10px">Nach</span><a class="dv-oid" href="#B1">B1</a><a class="dv-oid" href="#B8">B8</a><a class="dv-oid" href="#C7">C7</a></div>
+<div class="wf-note">„Fertig wenn" E1.7. Gleich: kurzer Hinweis. Abweichend: Hinweis bleibt, bis entschieden ist; Ursache aus dem Datenstand im Stempel.</div></div>
+<div class="dv-opt" id="C5"><div class="dv-olabel"><a class="dv-oid" href="#C5" style="background:var(--color-text);color:var(--color-bg)">C5</a><span style="font:600 16px/1.2 var(--font-heading);color:var(--color-text)">Ungespeicherte Änderungen</span><span class="wf-tag">Dialog</span><span class="wf-ref">aus 12d</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="dv-card" style="width:360px;"><div class="wf" style="padding:14px;gap:10px;font-size:11px">
+<span class="wf-h">Änderungen speichern?</span>
+<span style="color:var(--color-neutral-700)">„Schulen an Hauptstrassen" hat ungespeicherte Änderungen: 1 Bedingung, Kartenausschnitt.</span>
+<div class="wf-row"><span class="wf-btn">Speichern und öffnen</span><span class="wf-btn q">Verwerfen</span><span style="flex:1"></span><span class="wf-btn q">Abbrechen</span></div>
+<span class="wf-ref">C1 · ● ungespeichert</span>
+</div></div></div>
+<div class="rel wf-row" style="gap:5px;flex-wrap:wrap;font-size:11px;max-width:640px"><span class="wf-k">Von</span><a class="dv-oid" href="#C1">C1</a><a class="dv-oid" href="#C3">C3</a><span style="font-style:italic">Benutzermenü</span><span class="wf-k" style="margin-left:10px">Nach</span><a class="dv-oid" href="#C2">C2</a></div>
+<div class="wf-note">Bei Öffnen, Neue Sitzung und Abmelden.</div></div>
+<div class="dv-opt" id="C6"><div class="dv-olabel"><a class="dv-oid" href="#C6" style="background:var(--color-text);color:var(--color-bg)">C6</a><span style="font:600 16px/1.2 var(--font-heading);color:var(--color-text)">Abfragen verwalten</span><span class="wf-tag">Dialog</span><span class="wf-ref">aus 11c</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="dv-card" style="width:560px"><div class="wf" style="padding:14px;gap:10px;font-size:11px">
+<div class="wf-row"><span class="wf-h">Gespeicherte Abfragen</span><span style="flex:1"></span><span style="border-bottom:1px solid var(--color-divider);width:120px;font-size:10.5px;color:var(--color-neutral-500)">⌕ Suchen</span><span class="wf-tag">Alle Ziel-Layer ▾</span></div>
+<table class="wf-t"><thead><tr><th>Name</th><th>Ziel-Layer</th><th>Bedingungen</th><th>Geändert</th><th>Geteilt</th><th></th></tr></thead><tbody>
+<tr style="background:var(--color-surface)"><td><b>Grundschulen an Hauptstr.</b></td><td>Schulen</td><td>1 A · 2 R</td><td>heute</td><td><span class="wf-chk"></span></td><td>⋯</td></tr>
+<tr><td>Schulen ≥ 300 Schüler</td><td>Schulen</td><td>1 A</td><td>gestern</td><td><span class="wf-chk on"></span></td><td>⋯</td></tr>
+<tr><td>Kitas in kinderreichen Stadtteilen</td><td>Kitas</td><td>1 R</td><td>28.09.</td><td><span class="wf-chk"></span></td><td>⋯</td></tr>
+<tr><td>Kinderreiche Stadtteile</td><td>Stadtteile · Kinderanteil</td><td>1 A</td><td>03.03.</td><td><span class="wf-chk on"></span></td><td>⋯</td></tr>
+</tbody></table>
+<div class="wf-row" style="gap:12px;color:var(--color-neutral-700)"><span>⋯ = Öffnen · Umbenennen · Duplizieren · Löschen</span><span style="flex:1"></span><span class="wf-btn q">Schliessen</span></div>
+<div class="wf-col" style="gap:3px;color:var(--color-neutral-700)">
+<span><b>Geteilt:</b> für alle Anwender sichtbar (nur lesend, Kopie zum Ändern). Erscheint im Reiter „Verwendung" des Ziel-Layers (<a href="#D3">D3</a>).</span>
+<span><b>Löschen</b> fragt nach, wenn die Abfrage in einer Sitzung verwendet wird.</span></div>
+<span class="wf-ref">F-4.9 · F-8.9</span>
+</div></div></div>
+<div class="rel wf-row" style="gap:5px;flex-wrap:wrap;font-size:11px;max-width:640px"><span class="wf-k">Von</span><a class="dv-oid" href="#B1">B1</a><span class="wf-k" style="margin-left:10px">Nach</span><a class="dv-oid" href="#B1">B1</a></div>
+<div class="wf-note">Abfrage = Ergebnis-Layer + Bedingungen, über Sitzungen wiederverwendbar. Geteilte Abfragen sind für alle lesbar, Ändern erzeugt eine Kopie.</div></div>
+<div class="dv-opt" id="C7"><div class="dv-olabel"><a class="dv-oid" href="#C7" style="background:var(--color-text);color:var(--color-bg)">C7</a><span style="font:600 16px/1.2 var(--font-heading);color:var(--color-text)">Gespeicherter Zustand</span><span class="wf-tag">Datenmodell</span><span class="wf-ref">aus 12e</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="dv-card" style="width:420px;"><div class="wf" style="padding:14px;gap:8px;font-size:11px">
+<div class="wf-code">sitzung {
+  name, notiz, besitzer, geaendert
+  layer:   [{id, sichtbar, deckkraft}]   # Reihenfolge
+  abfrage: {ziel:"schulen", baum:{UND:[…]}}
+  abgeleitet: [{id:"puffer_1",
+    op:"buffer", quelle:"hauptstr", m:500}]
+  karte:   {zentrum, zoom}
+  tabelle: {reiter, spalten, sort}
+  stempel: {treffer:7, ids_hash:"a3f9…",
+    datenstand:{schulen:v4, hauptstr:v1,
+      stadtteile_kinder:v2}}
+}</div>
+<span style="color:var(--color-neutral-700)">Öffnen = Abfrageobjekt neu ausführen, ohne Modell (F-8.9). Vergleich über <i>datenstand</i> erklärt jede Abweichung.</span>
+<span class="wf-ref">F-4.10 · F-8.9 · F-2.15</span>
+</div></div></div>
+<div class="rel wf-row" style="gap:5px;flex-wrap:wrap;font-size:11px;max-width:640px"><span class="wf-k">Von</span><a class="dv-oid" href="#C2">C2</a><a class="dv-oid" href="#C4">C4</a><span class="wf-k" style="margin-left:10px">Nach</span>—</div>
+<div class="wf-note">Für die Umsetzung. Öffnen führt das Abfrageobjekt ohne Modell erneut aus (F-8.9). Abgeleitete Layer sind Rezepte, keine Geometrien.</div></div>
+<div class="dv-opt" id="C8"><div class="dv-olabel"><a class="dv-oid" href="#C8" style="background:var(--color-text);color:var(--color-bg)">C8</a><span style="font:600 16px/1.2 var(--font-heading);color:var(--color-text)">Öffnen mit fehlendem Layer</span><span class="wf-tag">Zustand von B1</span><span class="wf-ref">neu</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="dv-card" style="width:440px"><div class="wf"><div class="wf-top"><span class="wf-brand">GeoTandem</span><span class="wf-tag" style="border-color:var(--color-accent)">Kitas je Stadtteil ▾</span></div>
+<div class="wf-col" style="gap:6px;padding:8px 12px;border-bottom:1px solid var(--color-divider);font-size:11px"><div class="wf-row" style="gap:8px"><span style="color:var(--color-accent-700)">!</span><b style="flex:1">Ergebnis-Layer „Kitas" ist archiviert</b></div>
+<span style="color:var(--color-neutral-700);margin-left:16px">Die Abfrage kann nicht ausgeführt werden. Karte und übrige Layer sind geöffnet.</span>
+<div class="wf-row" style="gap:6px;margin-left:16px"><span class="wf-btn">Layer wiederherstellen</span><span class="wf-btn q">Anderen Ergebnis-Layer wählen</span></div></div>
+<div class="wf-map" style="height:70px;margin:10px"></div></div></div>
+<div class="dv-card" style="width:300px"><div class="wf" style="padding:12px;gap:6px;font-size:11px"><div class="wf-row"><span class="wf-k">Abfrage</span><span style="flex:1"></span><span style="color:var(--color-accent-700)">abweichend</span></div>
+<div class="wf-box wf-col" style="padding:6px;gap:4px"><span class="wf-tag" style="font-size:9px;align-self:flex-start">UND</span>
+<div class="wf-row" style="gap:3px"><span class="wf-tag">Schulart</span><span class="wf-tag a">= Grundschule</span></div>
+<div class="wf-row" style="gap:3px;opacity:.55"><span class="wf-tag" style="text-decoration:line-through">≤ 500 m zu Hauptverkehrsstr.</span><span style="color:var(--color-accent-700)">!</span></div>
+<div class="wf-row" style="gap:3px"><span class="wf-tag">liegt in</span><span class="wf-tag a">Stadtteile · Kinderanteil &gt; 20 %</span></div></div>
+<span style="color:var(--color-neutral-700)">Beispiel: Hauptverkehrsstr. wurde archiviert. Die Bedingung ist abgeschaltet, das Ergebnis weicht vom Stempel ab (C4).</span><span class="wf-ref">F-4.10 · D5 · D10</span></div></div></div>
+<div class="rel wf-row" style="gap:5px;flex-wrap:wrap;font-size:11px;max-width:640px"><span class="wf-k">Von</span><a class="dv-oid" href="#C3">C3</a><span class="wf-k" style="margin-left:10px">Nach</span><a class="dv-oid" href="#D3">D3</a><a class="dv-oid" href="#B1">B1</a></div>
+<div class="wf-note">Ein fehlender Layer (archiviert in D5 oder nicht mehr freigegeben in D10) blockiert das Öffnen nie. Fehlt nur ein Bedingungs-Layer, wird die Bedingung abgeschaltet und markiert; fehlt der Ergebnis-Layer, öffnet die Sitzung ohne Ergebnis.</div></div></div></section>
+<section class="dv-turn" id="gD"><div class="dv-thd"><a class="dv-tid" href="#gD">D</a><span class="dv-tname">Administration</span></div><p class="dv-intro">Daten, Import, Konten, Sichtbarkeit. E1.3 · E1.4</p><div class="dv-opts"><div class="dv-opt" id="D1"><div class="dv-olabel"><a class="dv-oid" href="#D1" style="background:var(--color-text);color:var(--color-bg)">D1</a><span style="font:600 16px/1.2 var(--font-heading);color:var(--color-text)">Admin-Rahmen</span><span class="wf-tag">Seite</span><span class="wf-ref">aus 8c</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="dv-card" style="width:600px;"><div class="wf">
+<div class="wf-top"><span class="wf-brand">GeoTandem</span><span class="wf-tag">Administration</span><span style="flex:1"></span><span class="wf-btn q">Zur Anwendung</span><span style="font-size:11px">admin ▾</span></div>
+<div style="display:grid;grid-template-columns:170px 1fr;min-height:260px">
+<div class="wf-col" style="padding:10px;border-right:1px solid var(--color-divider);gap:5px;font-size:11px">
+<span class="wf-k">Daten</span><span style="color:var(--color-accent-700);border-bottom:1px solid var(--color-accent)">Datenkatalog</span><span>Importprotokoll</span>
+<span class="wf-k" style="margin-top:6px">Zugang</span><span>Benutzer</span><span>Sichtbarkeit</span>
+<span class="wf-k" style="margin-top:6px;opacity:.45">Modelle · ab E2</span><span style="opacity:.45">Anbindungen</span><span style="opacity:.45">Kontrollstufen</span><span style="opacity:.45">Protokoll</span>
+<span class="wf-k" style="margin-top:6px;opacity:.45">Bewertung · ab E3</span>
+<span class="wf-k" style="opacity:.45">MCP · ab E4</span>
+</div>
+<div class="wf-col" style="padding:12px;gap:8px"><span class="wf-h">Datenkatalog</span><div class="wf-box" style="height:180px;display:flex;align-items:center;justify-content:center;color:var(--color-neutral-500);font-size:11px">Inhalt aus <a href="#D2">D2</a></div></div>
+</div></div></div></div>
+<div class="rel wf-row" style="gap:5px;flex-wrap:wrap;font-size:11px;max-width:640px"><span class="wf-k">Von</span><a class="dv-oid" href="#B1">B1</a><span class="wf-k" style="margin-left:10px">Nach</span><a class="dv-oid" href="#B1">B1</a><a class="dv-oid" href="#D2">D2</a><a class="dv-oid" href="#D7">D7</a><a class="dv-oid" href="#D9">D9</a><a class="dv-oid" href="#D10">D10</a></div>
+<div class="wf-note">Seitennavigation. Spätere Gruppen (E2–E4) stehen ausgegraut, ohne Funktion (entschieden).</div></div>
+<div class="dv-opt" id="D2"><div class="dv-olabel"><a class="dv-oid" href="#D2" style="background:var(--color-text);color:var(--color-bg)">D2</a><span style="font:600 16px/1.2 var(--font-heading);color:var(--color-text)">Datenkatalog mit Importstatus</span><span class="wf-tag">Seite</span><span class="wf-ref">aus 5d + 7d</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="dv-card" style="width:640px;"><div class="wf" style="padding:14px;gap:10px">
+<div class="wf-row"><span class="wf-h">Daten</span><span style="border-bottom:1px solid var(--color-divider);width:140px;font-size:10.5px;color:var(--color-neutral-500)">⌕ Layer suchen</span><span class="wf-tag">Alle</span><span class="wf-tag">Unvollständig</span><span style="flex:1"></span><span class="wf-btn">+ Importieren</span></div>
+<table class="wf-t"><thead><tr><th>Layer</th><th>Typ</th><th>Quelle</th><th>Stand</th><th>Objekte</th><th>Metadaten</th><th>Für Modell</th><th></th></tr></thead><tbody>
+<tr><td>Schulen</td><td>Punkt</td><td>WFS Kanton</td><td>01.09.</td><td>39</td><td>●●●●</td><td><span class="wf-chk on"></span></td><td>⋯</td></tr>
+<tr><td>Hauptverkehrsstr.</td><td>Linie</td><td>GeoPackage</td><td>12.06.</td><td>214</td><td>●●●○</td><td><span class="wf-chk on"></span></td><td>⋯</td></tr>
+<tr><td>Stadtteile</td><td>Fläche</td><td>GeoPackage</td><td>03.03.</td><td>38</td><td>●●●○</td><td><span class="wf-chk on"></span></td><td>⋯</td></tr>
+<tr style="background:var(--color-surface)"><td>Stadtteile · Kinderanteil</td><td>Fläche</td><td>CSV + Schlüssel</td><td>heute</td><td>38</td><td style="color:var(--color-accent-700)">●●○○</td><td><span class="wf-chk on"></span></td><td>⋯</td></tr>
+<tr><td>Bevölkerung 2025</td><td>Tabelle</td><td>CSV</td><td>03.03.</td><td>36</td><td>●●○○</td><td><span class="wf-chk"></span></td><td>⋯</td></tr>
+<tr><td>Kitas</td><td>Punkt</td><td>Shapefile</td><td>03.03.</td><td>61</td><td>●○○○</td><td><span class="wf-chk"></span></td><td>⋯</td></tr>
+</tbody></table>
+<div class="wf-row" style="font-size:11px;color:var(--color-neutral-600)">⋯ = Öffnen · Aktualisieren · Duplizieren · Löschen</div>
+<span class="wf-ref">F-2.1 · F-2.8 · F-2.9</span>
+</div></div>
+<div class="dv-card" style="width:520px;"><div class="wf" style="padding:14px;gap:8px">
+<table class="wf-t"><thead><tr><th>Layer</th><th>Stand</th><th>Letzter Import</th><th></th></tr></thead><tbody>
+<tr><td>Schulen</td><td>01.09.</td><td>✓ zeitgesteuert</td><td>⋯</td></tr>
+<tr style="background:var(--color-surface)"><td>Stadtteile · Kinderanteil</td><td>heute</td><td><span class="wf-tag a">⚠ 2 Warnungen</span></td><td>⋯</td></tr>
+<tr><td>Kitas</td><td>03.03.</td><td>✓ Shapefile</td><td>⋯</td></tr>
+</tbody></table>
+<div class="wf-box wf-col" style="gap:3px;font-size:11px;width:240px;margin-left:200px;box-shadow:var(--shadow-md)">
+<b>Import 02.10. 13:55</b><span>38 / 40 übernommen</span><span>2 Schlüssel ohne Treffer</span><span class="wf-add">Details ansehen ›</span></div>
+<span class="wf-ref">F-2.7 · F-2.10</span>
+</div></div></div>
+<div class="rel wf-row" style="gap:5px;flex-wrap:wrap;font-size:11px;max-width:640px"><span class="wf-k">Von</span><a class="dv-oid" href="#D1">D1</a><span class="wf-k" style="margin-left:10px">Nach</span><a class="dv-oid" href="#D3">D3</a><a class="dv-oid" href="#D6">D6</a><a class="dv-oid" href="#D8">D8</a><a class="dv-oid" href="#D5">D5</a></div>
+<div class="wf-note">Einstieg in die Datenverwaltung. Die Statusspalte (zweite Karte) zeigt den letzten Import je Layer; das Popover führt zum Vorgang (D8).</div></div>
+<div class="dv-opt" id="D3"><div class="dv-olabel"><a class="dv-oid" href="#D3" style="background:var(--color-text);color:var(--color-bg)">D3</a><span style="font:600 16px/1.2 var(--font-heading);color:var(--color-text)">Layer-Detail</span><span class="wf-tag">Seite mit Reitern</span><span class="wf-ref">aus 5e + 9g</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="dv-card" style="width:520px;"><div class="wf">
+<div class="wf-top"><span class="wf-h">Stadtteile · Kinderanteil</span><span style="color:var(--color-neutral-500);font-size:11px" title="Umbenennen">✎</span><span style="flex:1"></span><span class="wf-btn q">Aktualisieren</span><span class="wf-btn q">Löschen</span></div>
+<div class="wf-row" style="padding:6px 12px;gap:14px;font-size:11px;border-bottom:1px solid var(--color-divider)"><span style="border-bottom:2px solid var(--color-accent);color:var(--color-accent-700)">Beschreibung</span><span>Felder</span><span>Vorschau</span><span>Verlauf</span><span>Darstellung</span><span>Verwendung</span></div>
+<div class="wf-col" style="padding:12px;gap:8px">
+<div class="wf-k">Beschreibung für Mensch und Modell</div>
+<div class="wf-box wf-col" style="gap:5px"><div class="wf-ln" style="width:92%"></div><div class="wf-ln" style="width:70%"></div></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px">
+<div class="wf-col" style="gap:2px"><span class="wf-k">Quelle</span>Statistikamt, CSV</div>
+<div class="wf-col" style="gap:2px"><span class="wf-k">Stand</span>2025 · importiert heute</div>
+<div class="wf-col" style="gap:2px"><span class="wf-k">Synonyme</span><span><span class="wf-tag">Quartiere</span> <span class="wf-tag">Viertel</span></span></div>
+<div class="wf-col" style="gap:2px"><span class="wf-k">Sichtbar</span>Alle · für Modell ✓</div>
+</div>
+<span class="wf-ref">F-2.8 · F-2.9</span>
+</div></div></div>
+<div class="dv-card" style="width:520px"><div class="wf"><div class="wf-top"><span class="wf-h">Stadtteile · Kinderanteil</span><span style="color:var(--color-neutral-500);font-size:11px" title="Umbenennen">✎</span><span style="flex:1"></span><span class="wf-btn q">Aktualisieren</span><span class="wf-btn q">Löschen</span></div>
+<div class="wf-row" style="padding:6px 12px;gap:14px;font-size:11px;border-bottom:1px solid var(--color-divider)"><span>Beschreibung</span><span style="border-bottom:2px solid var(--color-accent);color:var(--color-accent-700)">Felder</span><span>Vorschau</span><span>Verlauf</span><span>Darstellung</span><span>Verwendung</span></div><div class="wf-col" style="padding:12px;gap:8px"><div class="wf-row"><span class="wf-k">5 Felder · 1 unvollständig</span><span style="flex:1"></span><span class="wf-tag">Nur unvollständige</span></div>
+<table class="wf-t"><thead><tr><th>Spalte</th><th>Typ</th><th>Bezeichnung</th><th>Einheit</th><th>Für Modell</th><th></th></tr></thead><tbody>
+<tr><td>ags</td><td>Text</td><td>Gebietsschlüssel</td><td>—</td><td><span class="wf-chk on"></span></td><td>›</td></tr>
+<tr style="background:var(--color-surface)"><td><b>ant_u18</b></td><td>Zahl</td><td>Kinderanteil unter 18</td><td>%</td><td><span class="wf-chk on"></span></td><td>⌄</td></tr>
+<tr><td colspan="6"><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;padding:4px 0;font-size:10.5px">
+<div class="wf-col" style="gap:2px"><span class="wf-k">Beschreibung</span><div class="wf-box" style="padding:3px 6px">Anteil der unter 18-Jährigen an der Wohnbevölkerung</div></div>
+<div class="wf-col" style="gap:2px"><span class="wf-k">Synonyme</span><div class="wf-row" style="gap:4px"><span class="wf-tag">Kinderanteil</span><span class="wf-tag">Jugendanteil</span><span class="wf-add">+</span></div></div>
+<div class="wf-col" style="gap:2px"><span class="wf-k">Wertebereich</span><span>0–100 · Ø 18,4 · 1 Ausreisser</span></div>
+<div class="wf-col" style="gap:2px"><span class="wf-k">Anzeigename in Tabelle</span><div class="wf-box" style="padding:3px 6px">Kinder %</div></div>
+</div></td></tr>
+<tr><td>ew</td><td>Zahl</td><td><span style="color:var(--color-accent-700)">— ergänzen</span></td><td></td><td><span class="wf-chk on"></span></td><td>›</td></tr>
+<tr><td>bezirk</td><td>Text</td><td>Bezirk</td><td>—</td><td><span class="wf-chk on"></span></td><td>›</td></tr>
+<tr><td>intern_id</td><td>Text</td><td>—</td><td></td><td><span class="wf-chk"></span></td><td>›</td></tr>
+</tbody></table>
+<div class="wf-row"><span class="wf-btn">Speichern</span><span style="flex:1"></span><span class="wf-ref">F-2.8 · F-2.9</span></div></div></div></div><div class="dv-card" style="width:520px"><div class="wf"><div class="wf-top"><span class="wf-h">Stadtteile · Kinderanteil</span><span style="color:var(--color-neutral-500);font-size:11px" title="Umbenennen">✎</span><span style="flex:1"></span><span class="wf-btn q">Aktualisieren</span><span class="wf-btn q">Löschen</span></div>
+<div class="wf-row" style="padding:6px 12px;gap:14px;font-size:11px;border-bottom:1px solid var(--color-divider)"><span>Beschreibung</span><span>Felder</span><span style="border-bottom:2px solid var(--color-accent);color:var(--color-accent-700)">Vorschau</span><span>Verlauf</span><span>Darstellung</span><span>Verwendung</span></div><div class="wf-col" style="padding:12px;gap:8px"><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+<div class="wf-map" style="height:170px"><div class="wf-area" style="left:20px;top:20px;width:70px;height:60px"></div><div class="wf-area" style="left:90px;top:20px;width:60px;height:70px;background:color-mix(in srgb,var(--color-accent) 30%,transparent)"></div><div class="wf-area" style="left:30px;top:80px;width:100px;height:60px"></div><div class="wf-float" style="right:6px;bottom:6px;font-size:9.5px">38 Flächen · LV95</div></div>
+<div class="wf-col" style="gap:4px;font-size:11px">
+<div class="wf-row"><span class="wf-k">Steckbrief für das Modell</span><span style="flex:1"></span><span class="wf-ref">F-2.9</span></div>
+<div class="wf-code" style="white-space:pre-wrap;font-size:9.5px">layer: Stadtteile · Kinderanteil
+geometrie: Fläche (38)
+felder:
+  ant_u18: Kinderanteil unter 18 [%]
+  bezirk: Bezirk
+  ew: (ohne Bezeichnung)</div></div></div>
+<table class="wf-t"><thead><tr><th>ags</th><th>bezirk</th><th>Kinder %</th><th>ew</th></tr></thead><tbody><tr><td>0101</td><td>Nord</td><td>23,1</td><td>8 420</td></tr><tr style="background:var(--color-surface)"><td>0102</td><td>Nord</td><td>19,7</td><td>6 105</td></tr><tr><td>0201</td><td>Hafen</td><td>27,4</td><td>4 980</td></tr></tbody></table>
+<span style="font-size:10.5px;color:var(--color-neutral-600)">Zeile anklicken = Fläche auf der Karte hervorheben</span></div></div></div><div class="dv-card" style="width:520px"><div class="wf"><div class="wf-top"><span class="wf-h">Stadtteile · Kinderanteil</span><span style="color:var(--color-neutral-500);font-size:11px" title="Umbenennen">✎</span><span style="flex:1"></span><span class="wf-btn q">Aktualisieren</span><span class="wf-btn q">Löschen</span></div>
+<div class="wf-row" style="padding:6px 12px;gap:14px;font-size:11px;border-bottom:1px solid var(--color-divider)"><span>Beschreibung</span><span>Felder</span><span>Vorschau</span><span style="border-bottom:2px solid var(--color-accent);color:var(--color-accent-700)">Verlauf</span><span>Darstellung</span><span>Verwendung</span></div><div class="wf-col" style="padding:12px;gap:8px"><div class="wf-k">Versionen und Importprotokoll</div>
+<table class="wf-t"><thead><tr><th>Zeitpunkt</th><th>Vorgang</th><th>Quelle</th><th>Ergebnis</th><th>Von</th><th></th></tr></thead><tbody>
+<tr style="background:var(--color-surface)"><td>heute 14:10</td><td>Metadaten</td><td>—</td><td>2 Felder beschrieben</td><td>admin</td><td></td></tr>
+<tr><td>heute 13:55</td><td>Import v2</td><td>stadtteile_2025.csv</td><td>38 / 40 · ⚠ 2</td><td>admin</td><td><span class="wf-btn q" style="padding:1px 6px">Bericht</span></td></tr>
+<tr><td>03.03.</td><td>Import v1</td><td>stadtteile_2024.csv</td><td>✓ 38 / 38</td><td>admin</td><td><span class="wf-btn q" style="padding:1px 6px">Wiederherstellen</span></td></tr>
+<tr><td>03.03.</td><td>Import</td><td>stadtteile_2024.csv</td><td style="color:var(--color-accent-700)">✗ Trennzeichen</td><td>admin</td><td><span class="wf-btn q" style="padding:1px 6px">Fehler</span></td></tr>
+</tbody></table>
+<div class="wf-row" style="font-size:11px;color:var(--color-neutral-600)">„Bericht" öffnet den Prüfbericht aus Schritt 4 (<a href="#D6">D6</a>). Vorversionen werden 90 Tage behalten.</div>
+<span class="wf-ref">F-2.7 · F-2.10</span></div></div></div><div class="dv-card" style="width:520px"><div class="wf"><div class="wf-top"><span class="wf-h">Stadtteile · Kinderanteil</span><span style="color:var(--color-neutral-500);font-size:11px" title="Umbenennen">✎</span><span style="flex:1"></span><span class="wf-btn q">Aktualisieren</span><span class="wf-btn q">Löschen</span></div>
+<div class="wf-row" style="padding:6px 12px;gap:14px;font-size:11px;border-bottom:1px solid var(--color-divider)"><span>Beschreibung</span><span>Felder</span><span>Vorschau</span><span>Verlauf</span><span>Darstellung</span><span style="border-bottom:2px solid var(--color-accent);color:var(--color-accent-700)">Verwendung</span></div><div class="wf-col" style="padding:12px;gap:8px"><div class="wf-k">Wo dieser Layer verwendet wird</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:11px">
+<div class="wf-box wf-col" style="gap:3px"><span class="wf-k">Sitzungen · 3</span><span>Schulen an Hauptstrassen ›</span><span>Kitas je Stadtteil ›</span><span>Schulkennzahlen je Stadtteil ›</span></div>
+<div class="wf-box wf-col" style="gap:3px;opacity:.45"><span class="wf-k">Prüffälle · ab E3</span><span>—</span></div>
+<div class="wf-box wf-col" style="gap:3px"><span class="wf-k">Gespeicherte Abfragen · 2</span><span>Kinderreiche Stadtteile ›</span><span>Kitas in kinderreichen Stadtteilen ›</span></div>
+<div class="wf-box wf-col" style="gap:3px"><span class="wf-k">Sichtbarkeit</span><div class="wf-row"><span class="wf-chk on"></span>Administrator</div><div class="wf-row"><span class="wf-chk on"></span>Anwender</div><div class="wf-row"><span class="wf-chk on"></span>Modell (Steckbrief)</div><div class="wf-row"><span class="wf-chk"></span>MCP-Server</div></div>
+</div>
+<span style="font-size:10.5px;color:var(--color-neutral-600)">Dieselbe Liste erscheint beim Löschen (<a href="#D5">D5</a>) und Aktualisieren (<a href="#D4">D4</a>).</span>
+<span class="wf-ref">F-2.7 · F-3.11</span></div></div></div></div>
+<div class="dv-card" style="width:600px;"><div class="wf" style="padding:14px;gap:10px;font-size:11px">
+<div class="wf-row"><span class="wf-h">Darstellung · Stadtteile · Kinderanteil</span><span style="flex:1"></span><span class="wf-tag">Reiter in D3 · gilt global</span></div>
+<div class="wf-seg" style="align-self:flex-start"><span>Einzelfarbe</span><span>Kategorien</span><span class="on">Klassen</span><span>Abgestufte Grösse</span></div>
+<div style="display:grid;grid-template-columns:1fr 200px;gap:14px">
+<div class="wf-col" style="gap:7px">
+<div class="wf-row">Feld <span class="wf-tag a">ant_u18 · Kinderanteil ▾</span></div>
+<div class="wf-row">Methode <span class="wf-seg"><span class="on">Quantile</span><span>gleiche Intervalle</span></span> Klassen <span class="wf-box" style="padding:1px 6px">5</span></div>
+<div class="wf-row">Farbverlauf <div style="display:flex;border:1px solid var(--color-divider);border-radius:3px;overflow:hidden"><span style="width:16px;height:12px;background:var(--color-accent-100)"></span><span style="width:16px;height:12px;background:var(--color-accent-300)"></span><span style="width:16px;height:12px;background:var(--color-accent-500)"></span><span style="width:16px;height:12px;background:var(--color-accent-700)"></span><span style="width:16px;height:12px;background:var(--color-accent-900)"></span></div> ▾</div>
+<div class="wf-col" style="gap:2px"><span class="wf-k">Verteilung und Klassengrenzen</span>
+<div style="position:relative;display:flex;align-items:flex-end;gap:2px;height:40px"><div class="wf-bar" style="flex:1;height:90%"></div><div class="wf-bar" style="flex:1;height:100%"></div><div class="wf-bar" style="flex:1;height:60%"></div><div class="wf-bar" style="flex:1;height:45%"></div><div class="wf-bar" style="flex:1;height:30%"></div><div class="wf-bar" style="flex:1;height:15%"></div><div class="wf-bar" style="flex:1;height:8%"></div>
+<div style="position:absolute;left:20%;top:0;bottom:0;border-left:1px dashed var(--color-accent)"></div><div style="position:absolute;left:38%;top:0;bottom:0;border-left:1px dashed var(--color-accent)"></div><div style="position:absolute;left:55%;top:0;bottom:0;border-left:1px dashed var(--color-accent)"></div><div style="position:absolute;left:75%;top:0;bottom:0;border-left:1px dashed var(--color-accent)"></div></div></div>
+<div class="wf-row">Umriss <span class="wf-tag">dünn ▾</span> Deckkraft <span class="wf-tag">80 % ▾</span></div>
+</div>
+<div class="wf-col" style="gap:5px"><div class="wf-map" style="height:110px"><div class="wf-area" style="left:10px;top:10px;width:60px;height:45px;background:var(--color-accent-300)"></div><div class="wf-area" style="left:70px;top:10px;width:55px;height:55px;background:var(--color-accent-700)"></div><div class="wf-area" style="left:20px;top:55px;width:80px;height:45px;background:var(--color-accent-100)"></div><div class="wf-area" style="left:125px;top:20px;width:60px;height:60px;background:var(--color-accent-500)"></div></div>
+<span class="wf-k">Legende</span>
+<div class="wf-col" style="gap:2px;font-size:10.5px"><div class="wf-row"><span style="width:12px;height:8px;background:var(--color-accent-100)"></span>&lt; 15 %</div><div class="wf-row"><span style="width:12px;height:8px;background:var(--color-accent-300)"></span>15 – 20 %</div><div class="wf-row"><span style="width:12px;height:8px;background:var(--color-accent-500)"></span>20 – 25 %</div><div class="wf-row"><span style="width:12px;height:8px;background:var(--color-accent-700)"></span>25 – 30 %</div><div class="wf-row"><span style="width:12px;height:8px;background:var(--color-accent-900)"></span>≥ 30 %</div></div></div>
+</div>
+<span class="wf-ref">F-4.8 · F-8.1</span>
+</div></div></div>
+<div class="rel wf-row" style="gap:5px;flex-wrap:wrap;font-size:11px;max-width:640px"><span class="wf-k">Von</span><a class="dv-oid" href="#B3">B3</a><a class="dv-oid" href="#B7">B7</a><a class="dv-oid" href="#C8">C8</a><a class="dv-oid" href="#D2">D2</a><a class="dv-oid" href="#D4">D4</a><a class="dv-oid" href="#D6">D6</a><a class="dv-oid" href="#D7">D7</a><span class="wf-k" style="margin-left:10px">Nach</span><a class="dv-oid" href="#D6">D6</a><a class="dv-oid" href="#D5">D5</a><a class="dv-oid" href="#D8">D8</a><a class="dv-oid" href="#D10">D10</a></div>
+<div class="wf-note">Reiter: Beschreibung · Felder · Vorschau · Verlauf · Darstellung · Verwendung. Darstellung (letzte Karte) gilt global für alle Sitzungen; daraus entsteht die Legende.</div></div>
+<div class="dv-opt" id="D4"><div class="dv-olabel"><a class="dv-oid" href="#D4" style="background:var(--color-text);color:var(--color-bg)">D4</a><span style="font:600 16px/1.2 var(--font-heading);color:var(--color-text)">Aktualisieren mit Vergleich</span><span class="wf-tag">Dialog</span><span class="wf-ref">aus 5f</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="dv-card" style="width:380px;"><div class="wf" style="padding:14px;gap:8px">
+<span class="wf-h">Neue Version · Stadtteile · Kinderanteil</span>
+<div class="wf-code"><div>~ 31 Werte geändert (ant_u18)</div><div>= 38 Objekte, Felder unverändert</div></div>
+<div class="wf-row" style="font-size:11px"><span class="wf-chk on"></span>Vorversion 90 Tage behalten</div>
+<div class="wf-row" style="font-size:11px;color:var(--color-neutral-600)">Betroffen: 3 Sitzungen, 2 gespeicherte Abfragen. Abweichungen meldet C4 beim Öffnen.</div>
+<div class="wf-row"><span class="wf-btn">Ersetzen</span><span class="wf-btn q">Abbrechen</span></div>
+</div></div></div>
+<div class="rel wf-row" style="gap:5px;flex-wrap:wrap;font-size:11px;max-width:640px"><span class="wf-k">Von</span><a class="dv-oid" href="#D6">D6</a><span class="wf-k" style="margin-left:10px">Nach</span><a class="dv-oid" href="#D3">D3</a></div>
+<div class="wf-note">Letzter Schritt des Assistenten, wenn das Ziel ein bestehender Layer ist. Ersetzen erhöht die Version (v1 → v2).</div></div>
+<div class="dv-opt" id="D5"><div class="dv-olabel"><a class="dv-oid" href="#D5" style="background:var(--color-text);color:var(--color-bg)">D5</a><span style="font:600 16px/1.2 var(--font-heading);color:var(--color-text)">Löschen mit Abhängigkeiten</span><span class="wf-tag">Dialog</span><span class="wf-ref">aus 5g</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="dv-card" style="width:340px;"><div class="wf" style="padding:14px;gap:8px">
+<span class="wf-h">„Kitas" löschen?</span>
+<span style="font-size:11px">Wird verwendet in:</span>
+<div class="wf-col" style="gap:3px;font-size:11px"><span>• Sitzung „Kitas je Stadtteil"</span><span>• Abfrage „Kitas in kinderreichen Stadtteilen"</span></div>
+<div class="wf-row" style="font-size:11px"><span class="wf-dot on"></span>Archivieren (ausblenden, wiederherstellbar)</div>
+<div class="wf-row" style="font-size:11px"><span class="wf-dot"></span>Endgültig löschen</div>
+<div class="wf-row"><span class="wf-btn">Ausführen</span><span class="wf-btn q">Abbrechen</span></div>
+</div></div></div>
+<div class="rel wf-row" style="gap:5px;flex-wrap:wrap;font-size:11px;max-width:640px"><span class="wf-k">Von</span><a class="dv-oid" href="#D3">D3</a><a class="dv-oid" href="#D2">D2</a><span class="wf-k" style="margin-left:10px">Nach</span>—</div>
+<div class="wf-note">Standard ist Archivieren, damit Sitzungen und Protokoll nachvollziehbar bleiben.</div></div>
+<div class="dv-opt" id="D6"><div class="dv-olabel"><a class="dv-oid" href="#D6" style="background:var(--color-text);color:var(--color-bg)">D6</a><span style="font:600 16px/1.2 var(--font-heading);color:var(--color-text)">Import-Assistent</span><span class="wf-tag">Seite · 4 Schritte</span><span class="wf-ref">aus 5a</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="dv-card" style="width:400px;"><div class="wf" style="padding:14px;gap:10px">
+<div class="wf-row" style="font-size:11px;gap:6px"><span class="wf-tag a">1 Datei</span>›<span class="wf-tag">2 Geobezug</span>›<span class="wf-tag">3 Felder</span>›<span class="wf-tag">4 Prüfen</span></div>
+<span class="wf-h">Datei oder Quelle wählen</span>
+<div class="wf-box" style="border-style:dashed;text-align:center;padding:18px;font-size:11px;color:var(--color-neutral-600)">Datei hierher ziehen oder <span class="wf-add">auswählen</span><br><span style="font-size:10px">CSV · GeoPackage · Shapefile (zip) · GeoJSON</span></div>
+<div class="wf-row" style="font-size:11px;gap:6px">oder <span class="wf-tag">WFS / OGC-Dienst</span><span class="wf-tag">Datenbanktabelle</span></div>
+<div class="wf-box wf-col" style="gap:3px;font-size:11px"><div class="wf-row"><b>stadtteile_2025.csv</b><span style="flex:1"></span>48 KB · ✓ gelesen</div><span style="color:var(--color-neutral-600)">40 Zeilen · 5 Spalten · Trennzeichen „;" · UTF-8</span></div>
+<div class="wf-row" style="font-size:11px;gap:6px">Layername <span class="wf-box" style="padding:2px 8px">Stadtteile · Kinderanteil</span></div>
+<span class="wf-ref">F-2.1 · F-2.2</span>
+<div class="wf-row"><span class="wf-btn q">Abbrechen</span><span style="flex:1"></span><span class="wf-btn">Weiter</span></div>
+</div></div><div class="dv-card" style="width:400px;"><div class="wf" style="padding:14px;gap:10px">
+<div class="wf-row" style="font-size:11px;gap:6px"><span class="wf-tag" style="color:var(--color-neutral-500)">✓ 1 Datei</span>›<span class="wf-tag a">2 Geobezug</span>›<span class="wf-tag">3 Felder</span>›<span class="wf-tag">4 Prüfen</span></div>
+<span class="wf-h">Wie ist der Raumbezug angegeben?</span>
+<div class="wf-row" style="font-size:11px"><span class="wf-dot"></span>Geometrie in der Datei <span style="color:var(--color-neutral-500)">(nicht gefunden)</span></div>
+<div class="wf-row" style="font-size:11px"><span class="wf-dot"></span>Koordinatenspalten (X / Y)</div>
+<div class="wf-row" style="font-size:11px"><span class="wf-dot on"></span>Schlüssel auf vorhandenen Layer</div>
+<div class="wf-box wf-col" style="gap:5px;font-size:11px;margin-left:16px">
+<div class="wf-row" style="gap:5px">Spalte <span class="wf-tag a">ags ▾</span> = <span class="wf-tag a">Stadtteile.ags ▾</span></div>
+<div class="wf-row" style="gap:6px"><span style="flex:1">38 / 40 zugeordnet</span><div class="wf-bar" style="width:90px;background:var(--color-accent)"></div></div></div>
+<div class="wf-row" style="font-size:11px;gap:6px">Koordinatensystem <span class="wf-tag">LV95 (erkannt) ▾</span></div>
+<span class="wf-ref">F-2.3</span>
+<div class="wf-row"><span class="wf-btn q">Zurück</span><span style="flex:1"></span><span class="wf-btn">Weiter</span></div>
+</div></div><div class="dv-card" style="width:400px"><div class="wf" style="padding:14px;gap:10px">
+<div class="wf-row" style="font-size:11px;gap:6px"><span class="wf-tag" style="color:var(--color-neutral-500)">✓ 1 Datei</span>›<span class="wf-tag" style="color:var(--color-neutral-500)">✓ 2 Geobezug</span>›<span class="wf-tag a">3 Felder</span>›<span class="wf-tag">4 Prüfen</span></div>
+<span class="wf-h">Felder beschreiben</span>
+<table class="wf-t"><thead><tr><th>Spalte</th><th>Bezeichnung</th><th>Einheit</th><th>Für Modell</th></tr></thead><tbody>
+<tr><td>ant_u18</td><td>Kinderanteil unter 18</td><td>%</td><td><span class="wf-chk on"></span></td></tr>
+<tr><td>ew</td><td><span style="color:var(--color-neutral-500)">— ergänzen</span></td><td></td><td><span class="wf-chk on"></span></td></tr>
+<tr><td>intern_id</td><td>—</td><td></td><td><span class="wf-chk"></span></td></tr>
+</tbody></table>
+<div class="wf-row"><span class="wf-btn q">Zurück</span><span style="flex:1"></span><span class="wf-btn">Weiter</span></div>
+<span class="wf-ref">F-2.2 – F-2.4 · F-2.8</span>
+</div></div>
+<div class="dv-card" style="width:400px;"><div class="wf" style="padding:14px;gap:10px">
+<div class="wf-row" style="font-size:11px;gap:6px"><span class="wf-tag" style="color:var(--color-neutral-500)">✓ 1 Datei</span>›<span class="wf-tag" style="color:var(--color-neutral-500)">✓ 2 Geobezug</span>›<span class="wf-tag" style="color:var(--color-neutral-500)">✓ 3 Felder</span>›<span class="wf-tag a">4 Prüfen</span></div>
+<span class="wf-h">Prüfen und übernehmen</span>
+<div class="wf-row" style="font-size:11px"><span>✓</span><span style="flex:1">Koordinatensystem LV95</span></div>
+<div class="wf-row" style="font-size:11px"><span>✓</span><span style="flex:1">Geometrien gültig</span></div>
+<div class="wf-row" style="font-size:11px"><span style="color:var(--color-accent-700)">⚠</span><span style="flex:1">2 Schlüssel ohne Treffer</span><span class="wf-btn q" style="padding:1px 6px">Zeigen</span></div>
+<div class="wf-row" style="font-size:11px"><span style="color:var(--color-accent-700)">⚠</span><span style="flex:1">ant_u18: 1 Wert &gt; 100</span><span class="wf-btn q" style="padding:1px 6px">Zeigen</span></div>
+<div class="wf-row" style="font-size:11px"><span>○</span><span style="flex:1">1 Feld ohne Bezeichnung</span><span class="wf-btn q" style="padding:1px 6px">→ Schritt 3</span></div>
+<div class="wf-map" style="height:80px"><div class="wf-area" style="left:20px;top:10px;width:70px;height:55px"></div><div class="wf-area" style="left:90px;top:10px;width:60px;height:60px"></div><div class="wf-area" style="left:150px;top:15px;width:80px;height:50px;background:color-mix(in srgb,var(--color-accent) 30%,transparent)"></div><span class="wf-k" style="position:absolute;right:6px;bottom:4px">Vorschau</span></div>
+<div class="wf-row" style="font-size:11px"><span class="wf-chk on"></span>Für Modell sichtbar · <span class="wf-chk on" style="margin-left:6px"></span>Im Katalog (<a href="#D2">D2</a>)</div>
+<span class="wf-ref">F-2.4 · aus D6</span>
+<div class="wf-row"><span class="wf-btn q">Zurück</span><span style="flex:1"></span><span class="wf-btn">Übernehmen</span></div>
+</div></div></div></div>
+<div class="rel wf-row" style="gap:5px;flex-wrap:wrap;font-size:11px;max-width:640px"><span class="wf-k">Von</span><a class="dv-oid" href="#B11">B11</a><a class="dv-oid" href="#B12">B12</a><a class="dv-oid" href="#D2">D2</a><a class="dv-oid" href="#D3">D3</a><a class="dv-oid" href="#D11">D11</a><a class="dv-oid" href="#D8">D8</a><span class="wf-k" style="margin-left:10px">Nach</span><a class="dv-oid" href="#D4">D4</a><a class="dv-oid" href="#D3">D3</a><a class="dv-oid" href="#D11">D11</a></div>
+<div class="wf-note">Datei → Geobezug → Felder → Prüfen. „Für Modell" wird schon in E1 gesetzt und gespeichert, wirkt aber erst ab E2. Warnungen blockieren nicht, sie verlinken zur Korrektur und landen im Protokoll (D8).</div></div>
+<div class="dv-opt" id="D7"><div class="dv-olabel"><a class="dv-oid" href="#D7" style="background:var(--color-text);color:var(--color-bg)">D7</a><span style="font:600 16px/1.2 var(--font-heading);color:var(--color-text)">Importprotokoll</span><span class="wf-tag">Seite</span><span class="wf-ref">aus 7a</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="dv-card" style="width:680px;"><div class="wf" style="padding:14px;gap:10px">
+<div class="wf-row"><span class="wf-h">Importprotokoll</span><span style="border-bottom:1px solid var(--color-divider);width:130px;font-size:10.5px;color:var(--color-neutral-500)">⌕ Datei, Layer …</span><span class="wf-seg"><span class="on">Alle</span><span>✓ Erfolg</span><span>⚠ Warnung</span><span>✗ Fehler</span></span><span style="flex:1"></span><span class="wf-tag">Letzte 30 Tage ▾</span><span class="wf-btn q">CSV</span></div>
+<table class="wf-t"><thead><tr><th></th><th>Zeitpunkt</th><th>Quelle</th><th>Weg</th><th>Ziel-Layer</th><th>Ergebnis</th><th>Dauer</th><th>Von</th></tr></thead><tbody>
+<tr><td style="color:var(--color-accent-700)">⚠</td><td>02.10. 13:55</td><td>stadtteile_2025.csv</td><td>Tabelle + Schlüssel</td><td>Stadtteile · Kinderanteil v2</td><td>38 / 40 übernommen</td><td>4 s</td><td>admin</td></tr>
+<tr><td>✓</td><td>01.09. 08:00</td><td>WFS Kanton · schulen</td><td>Dienst</td><td>Schulen v4</td><td>39 / 39</td><td>2 s</td><td>zeitgesteuert</td></tr>
+<tr style="background:var(--color-surface)"><td style="color:var(--color-accent-700)">✗</td><td>03.03. 10:12</td><td>stadtteile_2024.csv</td><td>Tabelle</td><td>—</td><td>abgebrochen · Trennzeichen</td><td>1 s</td><td>admin</td></tr>
+<tr><td>✓</td><td>03.03. 10:15</td><td>stadtteile_2024.csv</td><td>Tabelle + Schlüssel</td><td>Stadtteile · Kinderanteil v1</td><td>38 / 38</td><td>3 s</td><td>admin</td></tr>
+<tr><td>✓</td><td>12.06. 16:40</td><td>strassen.gpkg</td><td>Vektor</td><td>Hauptverkehrsstr. v1</td><td>214 / 214 · CRS 4326 → LV95</td><td>6 s</td><td>admin</td></tr>
+</tbody></table>
+<div class="wf-row" style="font-size:11px;color:var(--color-neutral-600)">Zeile anklicken → Detail (<a href="#D8">D8</a>) · Spalte „Ziel-Layer" führt zu <a href="#D3">D3</a></div>
+<span class="wf-ref">F-2.10 · F-3.1</span>
+</div></div></div>
+<div class="rel wf-row" style="gap:5px;flex-wrap:wrap;font-size:11px;max-width:640px"><span class="wf-k">Von</span><a class="dv-oid" href="#D1">D1</a><a class="dv-oid" href="#D11">D11</a><span class="wf-k" style="margin-left:10px">Nach</span><a class="dv-oid" href="#D8">D8</a><a class="dv-oid" href="#D3">D3</a></div>
+<div class="wf-note">Alle Vorgänge inklusive abgebrochener Versuche.</div></div>
+<div class="dv-opt" id="D8"><div class="dv-olabel"><a class="dv-oid" href="#D8" style="background:var(--color-text);color:var(--color-bg)">D8</a><span style="font:600 16px/1.2 var(--font-heading);color:var(--color-text)">Importvorgang</span><span class="wf-tag">Seite</span><span class="wf-ref">aus 7c</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="dv-card" style="width:520px;"><div class="wf">
+<div class="wf-top"><span style="color:var(--color-accent-700)">⚠</span><span class="wf-h">Import · stadtteile_2025.csv</span><span style="flex:1"></span><span class="wf-btn q">Erneut importieren</span></div>
+<div class="wf-col" style="padding:12px;gap:9px;font-size:11px">
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+<div class="wf-col" style="gap:1px"><span class="wf-k">Zeitpunkt</span>02.10. 13:55</div>
+<div class="wf-col" style="gap:1px"><span class="wf-k">Von</span>admin</div>
+<div class="wf-col" style="gap:1px"><span class="wf-k">Quelle</span>Datei · 48 KB</div>
+<div class="wf-col" style="gap:1px"><span class="wf-k">Ziel</span><a href="#D3">Stadtteile v2</a></div></div>
+<span class="wf-k">Ablauf</span>
+<div class="wf-row"><span>✓</span><span style="flex:1">Datei gelesen · 40 Zeilen · UTF-8 · „;"</span><span style="color:var(--color-neutral-500)">0,2 s</span></div>
+<div class="wf-row"><span>✓</span><span style="flex:1">Geobezug über ags → Stadtteile</span><span style="color:var(--color-neutral-500)">1,1 s</span></div>
+<div class="wf-row"><span style="color:var(--color-accent-700)">⚠</span><span style="flex:1">2 Schlüssel ohne Treffer (0999, 1203)</span><span class="wf-btn q" style="padding:1px 6px">Zeilen ↓</span></div>
+<div class="wf-row"><span style="color:var(--color-accent-700)">⚠</span><span style="flex:1">ant_u18: 1 Wert &gt; 100 übernommen</span><span class="wf-btn q" style="padding:1px 6px">Zeigen</span></div>
+<div class="wf-row"><span>✓</span><span style="flex:1">Raumindex erstellt · 38 Objekte</span><span style="color:var(--color-neutral-500)">0,4 s</span></div>
+<div class="wf-row"><span>✓</span><span style="flex:1">Vorversion v1 archiviert</span></div>
+<span class="wf-k">Entscheidungen im Assistenten</span>
+<span style="color:var(--color-neutral-700)">„Trotzdem übernehmen" bei 2 Warnungen · 1 Feld ohne Bezeichnung</span>
+<span class="wf-ref">F-2.4 · F-2.5 · F-2.10</span>
+</div></div></div></div>
+<div class="rel wf-row" style="gap:5px;flex-wrap:wrap;font-size:11px;max-width:640px"><span class="wf-k">Von</span><a class="dv-oid" href="#D2">D2</a><a class="dv-oid" href="#D3">D3</a><a class="dv-oid" href="#D7">D7</a><span class="wf-k" style="margin-left:10px">Nach</span><a class="dv-oid" href="#D6">D6</a></div>
+<div class="wf-note">Hält auch die Entscheidungen im Assistenten fest.</div></div>
+<div class="dv-opt" id="D9"><div class="dv-olabel"><a class="dv-oid" href="#D9" style="background:var(--color-text);color:var(--color-bg)">D9</a><span style="font:600 16px/1.2 var(--font-heading);color:var(--color-text)">Benutzer</span><span class="wf-tag">Seite</span><span class="wf-ref">aus 8e</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="dv-card" style="width:540px;"><div class="wf" style="padding:14px;gap:10px">
+<div class="wf-row"><span class="wf-h">Benutzer</span><span style="flex:1"></span><span class="wf-btn">+ Konto</span></div>
+<table class="wf-t"><thead><tr><th>Benutzer</th><th>Name</th><th>Rolle</th><th>Status</th><th>Letzte Anmeldung</th><th></th></tr></thead><tbody>
+<tr><td>admin</td><td>Systemverwaltung</td><td><span class="wf-tag a">Administrator</span></td><td>aktiv</td><td>heute 13:40</td><td>⋯</td></tr>
+<tr><td>m.keller</td><td>Mara Keller</td><td><span class="wf-tag">Anwender</span></td><td>aktiv</td><td>heute 14:02</td><td>⋯</td></tr>
+<tr style="opacity:.55"><td>t.huber</td><td>Tom Huber</td><td><span class="wf-tag">Anwender</span></td><td>gesperrt</td><td>12.08.</td><td>⋯</td></tr>
+</tbody></table>
+<span style="font-size:11px;color:var(--color-neutral-600)">⋯ = Rolle ändern · Passwort zurücksetzen · Sperren · Löschen. Der letzte Administrator lässt sich weder sperren noch herabstufen.</span>
+<div class="wf-box wf-col" style="gap:6px;width:250px;box-shadow:var(--shadow-md);font-size:11px">
+<b>Neues Konto</b>
+<div class="wf-row">Benutzer <div class="wf-box" style="padding:2px 6px;flex:1">s.brun</div></div>
+<div class="wf-row">Rolle <span class="wf-seg"><span>Admin</span><span class="on">Anwender</span></span></div>
+<div class="wf-row">Startpasswort <span class="wf-box" style="padding:2px 6px">k7-Tm4-q9</span><span class="wf-add">↻</span></div>
+<div class="wf-row" style="font-size:10.5px"><span class="wf-chk on"></span>Bei erster Anmeldung ändern</div>
+<span class="wf-btn" style="align-self:flex-start">Anlegen</span></div>
+<span class="wf-ref">F-3.12</span>
+</div></div></div>
+<div class="rel wf-row" style="gap:5px;flex-wrap:wrap;font-size:11px;max-width:640px"><span class="wf-k">Von</span><a class="dv-oid" href="#D1">D1</a><span class="wf-k" style="margin-left:10px">Nach</span>—</div>
+<div class="wf-note">Lokale Konten, zwei Rollen. Der letzte Administrator lässt sich weder sperren noch herabstufen.</div></div>
+<div class="dv-opt" id="D10"><div class="dv-olabel"><a class="dv-oid" href="#D10" style="background:var(--color-text);color:var(--color-bg)">D10</a><span style="font:600 16px/1.2 var(--font-heading);color:var(--color-text)">Sichtbarkeit</span><span class="wf-tag">Seite</span><span class="wf-ref">aus 8f</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="dv-card" style="width:460px;"><div class="wf" style="padding:14px;gap:10px">
+<div class="wf-row"><span class="wf-h">Sichtbarkeit</span><span style="flex:1"></span><span class="wf-ref">F-2.7</span></div>
+<table class="wf-t"><thead><tr><th>Layer</th><th>Administrator</th><th>Anwender</th></tr></thead><tbody>
+<tr><td>Schulen</td><td><span class="wf-chk on"></span></td><td><span class="wf-chk on"></span></td></tr>
+<tr><td>Hauptverkehrsstr.</td><td><span class="wf-chk on"></span></td><td><span class="wf-chk on"></span></td></tr>
+<tr><td>Stadtteile</td><td><span class="wf-chk on"></span></td><td><span class="wf-chk on"></span></td></tr>
+<tr><td>Stadtteile · Kinderanteil</td><td><span class="wf-chk on"></span></td><td><span class="wf-chk on"></span></td></tr>
+<tr><td>Bevölkerung 2025</td><td><span class="wf-chk on"></span></td><td><span class="wf-chk on"></span></td></tr>
+<tr style="background:var(--color-surface)"><td>Kitas <span class="wf-tag">Entwurf</span></td><td><span class="wf-chk on"></span></td><td><span class="wf-chk"></span></td></tr>
+</tbody></table>
+<div class="wf-row" style="font-size:11px"><span style="flex:1">Neue Layer für Anwender</span><span class="wf-seg"><span>sofort sichtbar</span><span class="on">erst nach Freigabe</span></span></div>
+</div></div></div>
+<div class="rel wf-row" style="gap:5px;flex-wrap:wrap;font-size:11px;max-width:640px"><span class="wf-k">Von</span><a class="dv-oid" href="#D1">D1</a><a class="dv-oid" href="#D3">D3</a><span class="wf-k" style="margin-left:10px">Nach</span>—</div>
+<div class="wf-note">Layer × Rolle. Derselbe Schalter steht im Reiter „Verwendung" von D3.</div></div>
+<div class="dv-opt" id="D11"><div class="dv-olabel"><a class="dv-oid" href="#D11" style="background:var(--color-text);color:var(--color-bg)">D11</a><span style="font:600 16px/1.2 var(--font-heading);color:var(--color-text)">Import fehlgeschlagen</span><span class="wf-tag">Zustand von D6</span><span class="wf-ref">neu</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start"><div class="dv-card" style="width:400px"><div class="wf" style="padding:14px;gap:9px;font-size:11px">
+<div class="wf-row" style="gap:6px"><span class="wf-tag a">1 Datei</span>›<span class="wf-tag">2 Geobezug</span>›<span class="wf-tag">3 Felder</span>›<span class="wf-tag">4 Prüfen</span></div>
+<span class="wf-h">Datei oder Quelle wählen</span>
+<div class="wf-box wf-col" style="gap:4px;border-color:var(--color-text)"><div class="wf-row"><span>✗</span><b style="flex:1">stadtteile_2024.csv</b><span>41 KB</span></div><span>Trennzeichen nicht erkannt: alle Werte landen in einer Spalte.</span>
+<div class="wf-row" style="gap:6px">Trennzeichen <span class="wf-seg"><span class="on">;</span><span>,</span><span>Tab</span></span> Kodierung <span class="wf-tag">UTF-8 ▾</span></div>
+<div class="wf-row"><span class="wf-btn q">Erneut lesen</span></div></div>
+<div class="wf-row"><span class="wf-btn q">Abbrechen</span><span style="flex:1"></span><span class="wf-btn" style="opacity:.45">Weiter</span></div><span class="wf-ref">F-2.1 · F-2.10</span></div></div>
+<div class="dv-card" style="width:400px"><div class="wf" style="padding:14px;gap:9px;font-size:11px">
+<div class="wf-row" style="gap:6px"><span class="wf-tag" style="color:var(--color-neutral-500)">✓ 1 Datei</span>›<span class="wf-tag a">2 Geobezug</span>›<span class="wf-tag">3 Felder</span>›<span class="wf-tag">4 Prüfen</span></div>
+<span class="wf-h">Wie ist der Raumbezug angegeben?</span>
+<div class="wf-row"><span class="wf-dot on"></span>Schlüssel auf vorhandenen Layer</div>
+<div class="wf-box wf-col" style="gap:5px;margin-left:16px;border-color:var(--color-text)"><div class="wf-row" style="gap:5px">Spalte <span class="wf-tag a">bezirk ▾</span> = <span class="wf-tag a">Stadtteile.ags ▾</span></div>
+<div class="wf-row" style="gap:6px"><span>✗</span><span style="flex:1">0 / 40 zugeordnet. Andere Spalte wählen?</span></div><span style="color:var(--color-neutral-600)">Vorschlag: Spalte „ags" passt zu 38 / 40.</span></div>
+<div class="wf-row"><span class="wf-btn q">Zurück</span><span style="flex:1"></span><span class="wf-btn" style="opacity:.45">Weiter</span></div><span class="wf-ref">F-2.3</span></div></div></div>
+<div class="rel wf-row" style="gap:5px;flex-wrap:wrap;font-size:11px;max-width:640px"><span class="wf-k">Von</span><a class="dv-oid" href="#D6">D6</a><span class="wf-k" style="margin-left:10px">Nach</span><a class="dv-oid" href="#D6">D6</a><a class="dv-oid" href="#D7">D7</a></div>
+<div class="wf-note">Fehler blockieren den nächsten Schritt, Warnungen nicht (D6). Jeder Versuch wird protokolliert, auch abgebrochene (D7, Zeile 03.03. 10:12).</div></div></div></section>
+<section class="dv-turn" id="abgleich"><div class="dv-thd"><a class="dv-tid" href="#abgleich">✓</a><span class="dv-tname">Abgleich und offene Punkte</span></div>
+<div style="display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start">
+<div class="wf-col" style="gap:5px;max-width:620px;font-size:12px"><h3 class="dv-grp" style="margin-top:8px">Gegenüber den Entwürfen angeglichen</h3>
+<span>• Stadtteile-Import: 40 Zeilen, 38 zugeordnet, 2 Schlüssel ohne Treffer (vorher 312 / 310, widersprach 38 Flächen). <a href="#D6">D6</a> <a href="#D7">D7</a> <a href="#D8">D8</a> <a href="#D3">D3</a></span>
+<span>• Basis-Layer „Stadtteile" und Tabelle „Bevölkerung 2025" in Katalog und Sichtbarkeit ergänzt; Import und Join brauchen sie. <a href="#D2">D2</a> <a href="#D10">D10</a></span>
+<span>• Abfrage-Editor zeigt dieselben drei Bedingungen wie der Arbeitsplatz (vorher ODER-Gruppe mit nicht vorhandenen Industriezonen). <a href="#B2">B2</a></span>
+<span>• Darstellungsbeispiel nutzt ant_u18 statt anz_schulen (gehört zu einem abgeleiteten Layer, der nicht im Katalog steht). <a href="#D3">D3</a></span>
+<span>• Sitzungen und Abfragen auf vorhandene Layer umbenannt: „Lärm an Schulen", „Schulen nahe Industrie", „Kitas ohne Grünfläche", „Kitas in Reichweite" entfallen. <a href="#C3">C3</a> <a href="#C6">C6</a> <a href="#D3">D3</a> <a href="#D5">D5</a></span>
+<span>• Abweichungsbeispiel beim Öffnen folgt aus dem echten Update Stadtteile · Kinderanteil v1 → v2 vom 02.10. <a href="#C4">C4</a> <a href="#D4">D4</a></span>
+<span>• GS Nord liegt im Stadtteil Nord (Tabelle, Popup, Vorschau einheitlich). <a href="#B1">B1</a> <a href="#B8">B8</a></span>
+<span>• Prompt-Reiter in E1 deaktiviert; Prüffälle in „Verwendung" als „ab E3". <a href="#B1">B1</a> <a href="#D3">D3</a></span>
+<span>• Layer-Menü ⋯ neu ausgearbeitet. <a href="#B3">B3</a></span>
+<span>• Ergänzt: Passwort ändern, Layer hinzufügen, Leerzustände, Ergebnis-Layer wechseln, fehlender Layer beim Öffnen, Import fehlgeschlagen. <a href="#A4">A4</a> <a href="#B11">B11</a> <a href="#B12">B12</a> <a href="#B13">B13</a> <a href="#C8">C8</a> <a href="#D11">D11</a></span></div>
+<div class="wf-col" style="gap:5px;max-width:520px;font-size:12px"><h3 class="dv-grp" style="margin-top:8px">Im Review entschieden</h3>
+<span>1. Darstellung abgeleiteter Layer: Vorgabe plus Schnellwahl, kein voller Editor. <span class="wf-tag a" style="font-size:9.5px">entschieden</span> <a href="#B7">B7</a></span>
+<span>2. Sitzungen sind privat; geteilt werden nur Abfragen. <span class="wf-tag a" style="font-size:9.5px">entschieden</span> <a href="#C3">C3</a> <a href="#C6">C6</a></span>
+<span>3. Verschieben und Zoomen allein setzen kein „ungespeichert". <span class="wf-tag a" style="font-size:9.5px">entschieden</span> <a href="#C1">C1</a></span>
+<span>4. Importprotokolle und verworfene Zeilen werden aufbewahrt wie gezeigt; Dauer siehe 7. <span class="wf-tag a" style="font-size:9.5px">entschieden</span> <a href="#D8">D8</a></span>
+<span>5. Spätere Admin-Gruppen werden ausgegraut gezeigt. <span class="wf-tag a" style="font-size:9.5px">entschieden</span> <a href="#D1">D1</a></span>
+<span>6. „Für Modell" wird schon in E1 gepflegt, als Vorbereitung für E2. <span class="wf-tag a" style="font-size:9.5px">entschieden</span>
+<h3 class="dv-grp" style="margin-top:20px">Noch offen · mit Vorschlag</h3>
+<span>7. Aufbewahrung: Importprotokoll 2 Jahre, verworfene Zeilen 90 Tage (wie Vorversionen in D3). <a href="#D8">D8</a></span>
+<span>8. Koordinaten und Massstab: Massstabsleiste bleibt; Koordinaten erscheinen nur im Info-Werkzeug ⓘ, keine Massstabszahl. <a href="#B10">B10</a></span> <a href="#D2">D2</a> <a href="#D6">D6</a> <a href="#D3">D3</a></span></div>
+</div></section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;notes&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Anzeige&quot;},&quot;refs&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Anzeige&quot;},&quot;relations&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Anzeige&quot;}}">
+class Component extends DCLogic {
+  sync() {
+    const d = document.documentElement.dataset;
+    d.notes = (this.props.notes ?? true) ? "on" : "off";
+    d.refs = (this.props.refs ?? true) ? "on" : "off";
+    d.rel = (this.props.relations ?? true) ? "on" : "off";
+  }
+  componentDidMount() { this.sync(); }
+  componentDidUpdate() { this.sync(); }
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

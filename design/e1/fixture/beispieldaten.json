@@ -1,0 +1,48 @@
+{
+  "stand": "02.10.",
+  "layer": [
+    {"id": "schulen", "name": "Schulen", "typ": "Punkt", "objekte": 39, "version": 4, "quelle": "WFS Kanton", "stand": "01.09.", "anwender": true, "fuerModell": true,
+     "felder": ["name", "schulart", "schueler", "baujahr", "traegerschaft"],
+     "werte": {"schulart": {"Grundschule": 24, "Realschule": 9, "Gymnasium": 6}}},
+    {"id": "hauptstr", "name": "Hauptverkehrsstr.", "typ": "Linie", "objekte": 214, "version": 1, "quelle": "strassen.gpkg", "stand": "12.06.", "anwender": true, "fuerModell": true, "crs": "EPSG:4326 → LV95"},
+    {"id": "stadtteile", "name": "Stadtteile", "typ": "Fläche", "objekte": 38, "version": 1, "quelle": "GeoPackage", "stand": "03.03.", "anwender": true, "fuerModell": true, "schluessel": "ags"},
+    {"id": "stadtteile_kinder", "name": "Stadtteile · Kinderanteil", "typ": "Fläche", "objekte": 38, "version": 2, "quelle": "stadtteile_2025.csv über ags", "stand": "02.10.", "anwender": true, "fuerModell": true,
+     "felder": {"ags": "Gebietsschlüssel", "ant_u18": "Kinderanteil unter 18 [%] · Anzeige: Kinder %", "ew": null, "bezirk": "Bezirk", "intern_id": null},
+     "import": {"zeilen": 40, "zugeordnet": 38, "ohneTreffer": ["0999", "1203"], "warnungen": ["ant_u18: 1 Wert > 100"]},
+     "versionen": [{"v": 1, "datei": "stadtteile_2024.csv", "datum": "03.03.", "ergebnis": "38 / 38"}, {"v": 2, "datei": "stadtteile_2025.csv", "datum": "02.10.", "ergebnis": "38 / 40", "aenderung": "31 Werte ant_u18 geändert"}],
+     "darstellung": {"art": "Klassen", "feld": "ant_u18", "methode": "Quantile", "klassen": ["< 15 %", "15 – 20 %", "20 – 25 %", "25 – 30 %", "≥ 30 %"]}},
+    {"id": "bevoelkerung_2025", "name": "Bevölkerung 2025", "typ": "Tabelle", "objekte": 36, "version": 1, "quelle": "CSV", "stand": "03.03.", "anwender": true, "fuerModell": false, "schluessel": "gemeinde_nr", "felder": ["ew_total", "ant_65plus", "quelle"]},
+    {"id": "kitas", "name": "Kitas", "typ": "Punkt", "objekte": 61, "version": 1, "quelle": "Shapefile", "stand": "03.03.", "anwender": false, "status": "Entwurf", "fuerModell": false}
+  ],
+  "konten": [
+    {"benutzer": "admin", "name": "Systemverwaltung", "rolle": "Administrator", "status": "aktiv"},
+    {"benutzer": "m.keller", "name": "Mara Keller", "rolle": "Anwender", "status": "aktiv"},
+    {"benutzer": "t.huber", "name": "Tom Huber", "rolle": "Anwender", "status": "gesperrt"}
+  ],
+  "referenzfrage": {
+    "text": "Grundschulen höchstens 500 m von einer Hauptverkehrsstrasse, in Stadtteilen mit Kinderanteil über 20 %",
+    "abfrage": {"ziel": "schulen", "baum": {"op": "UND", "kinder": [
+      {"typ": "attribut", "feld": "schulart", "operator": "ist_eins_von", "werte": ["Grundschule"]},
+      {"typ": "raum", "beziehung": "distanz_max", "layer": "hauptstr", "meter": 500},
+      {"typ": "raum", "beziehung": "liegt_in", "layer": "stadtteile_kinder", "filter": {"feld": "ant_u18", "operator": ">", "wert": 20}}
+    ]}},
+    "erwartet": {"treffer": 7, "von": 39, "jeBedingung": [24, 17, 20],
+      "beispielTreffer": [
+        {"name": "GS Hafen", "schueler": 412, "distanz_m": 210, "stadtteil": "Hafen", "kinder": 27},
+        {"name": "GS Nord", "schueler": 356, "distanz_m": 120, "stadtteil": "Nord", "kinder": 23},
+        {"name": "GS Altstadt", "schueler": 301, "distanz_m": 340, "stadtteil": "Altstadt", "kinder": 22},
+        {"name": "GS Ost", "schueler": 288, "distanz_m": 460, "stadtteil": "Ost", "kinder": 21}
+      ]}
+  },
+  "sitzungen": [
+    {"name": "Schulen an Hauptstrassen", "besitzer": "admin", "ziel": "schulen", "treffer": 7, "gespeichert": "heute 14:02", "abgeleitet": [{"op": "buffer", "quelle": "hauptstr", "m": 500, "verschmelzen": true}]},
+    {"name": "Schulkennzahlen je Stadtteil", "besitzer": "admin", "ziel": "stadtteile_kinder", "treffer": 38, "gespeichert": "gestern", "abgeleitet": [{"op": "aggregate", "gebiete": "stadtteile", "quelle": "schulen", "kennzahlen": ["anzahl", "summe:schueler", "mittel:baujahr"]}]},
+    {"name": "Kitas je Stadtteil", "besitzer": "admin", "ziel": "kitas", "treffer": 12, "gespeichert": "28.09.", "datenstand": {"kitas": 1, "stadtteile_kinder": 1}, "nachUpdate": {"treffer": 14, "grund": "stadtteile_kinder v1 → v2"}}
+  ],
+  "abfragen": [
+    {"name": "Grundschulen an Hauptstr.", "ziel": "schulen", "treffer": 7, "bedingungen": "1 A · 2 R", "geteilt": false},
+    {"name": "Schulen ≥ 300 Schüler", "ziel": "schulen", "treffer": 11, "bedingungen": "1 A", "geteilt": true},
+    {"name": "Kitas in kinderreichen Stadtteilen", "ziel": "kitas", "treffer": 12, "bedingungen": "1 R", "geteilt": false},
+    {"name": "Kinderreiche Stadtteile", "ziel": "stadtteile_kinder", "treffer": 14, "bedingungen": "1 A", "geteilt": true}
+  ]
+}
