@@ -26,13 +26,16 @@ export function useLayerFeatures(query: QueryObject, largerThanLimit: boolean, e
   return { ...result, viewed: viewed !== null }
 }
 
-/** Ids of the features ``query`` returns; ``null`` while it has no conditions (design B9). */
+/**
+ * Ids of the features ``query`` returns; ``null`` while it has no conditions (design B9).
+ * Only the ids travel, so hits beyond the result-size limit are still marked.
+ */
 export function useHits(query: QueryObject | null) {
   const result = useQuery({
     queryKey: ['map-hits', query],
-    queryFn: () => (query ? api.query({ ...query, select: [] }) : null),
+    queryFn: () => (query ? api.ids(query) : null),
     enabled: Boolean(query?.where),
   })
-  const ids = query?.where && result.data ? new Set(result.data.features.map((f) => f.id)) : null
+  const ids = query?.where && result.data ? new Set(result.data.ids) : null
   return { ...result, ids }
 }

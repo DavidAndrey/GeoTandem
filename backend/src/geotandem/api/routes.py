@@ -1,5 +1,7 @@
 """HTTP interface v0 (E1.2). Contract for the frontend; types are generated from it."""
 
+import time
+from dataclasses import replace
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends
@@ -13,8 +15,15 @@ from geotandem.auth.visibility import view_for
 from geotandem.basemap import Basemap, resolve
 from geotandem.catalog import LayerInfo, get_layer, list_layers
 from geotandem.data import DataBackend, Op
-from geotandem.engine import QueryError, QueryResult, count_query, run_query, validate_query
-from geotandem.engine.errors import UnknownLayer
+from geotandem.engine import (
+    QueryError,
+    QueryResult,
+    count_query,
+    ids_query,
+    run_query,
+    validate_query,
+)
+from geotandem.engine.errors import QueryTimedOut, UnknownLayer
 from geotandem.sample.load import dataset_version
 from geotandem.tools import ToolDescription
 from geotandem_query import SCHEMA_VERSION, QueryObject
@@ -113,16 +122,43 @@ def count(body: CountRequest, state: State, backend: Visible) -> Counts:
     """Count the features of several queries at once, e.g. one per condition (design B2).
 
     Nothing but numbers leaves the server. A rejected query names its position
-    in ``details.index``.
+    in ``details.index``. All of them share one time limit, as one query would:
+    a request of many slow counts must not hold a worker many times as long.
     """
+    budget = state.limits.timeout_s
+    deadline = time.monotonic() + budget
     counts = []
     for index, query in enumerate(body.queries):
+        left = deadline - time.monotonic()
         try:
-            counts.append(count_query(query, backend, state.limits, state.unsupported))
+            if left <= 0:
+                raise QueryTimedOut("", timeout_s=budget)
+            limits = replace(state.limits, timeout_s=left)
+            counts.append(count_query(query, backend, limits, state.unsupported))
+        except QueryTimedOut as exc:
+            raise QueryTimedOut(
+                f"Counting took longer than {budget:g} s and was stopped.",
+                timeout_s=budget,
+                index=index,
+            ) from exc
         except QueryError as exc:
             exc.details["index"] = index
             raise
     return Counts(counts=counts)
+
+
+class Ids(BaseModel):
+    ids: list[int]
+    """Sorted."""
+
+
+@router.post("/query/ids", responses=ERRORS)
+def ids(body: QueryObject, state: State, backend: Visible) -> Ids:
+    """The ids of the features a query returns, for marking hits (design B9).
+
+    No geometry or attribute is sent, so the result-size limit does not apply.
+    """
+    return Ids(ids=ids_query(body, backend, state.limits, state.unsupported))
 
 
 @router.post("/query/validate", responses=ERRORS)

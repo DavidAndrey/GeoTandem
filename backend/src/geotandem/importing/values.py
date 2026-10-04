@@ -86,11 +86,7 @@ def infer(values: Sequence[Any]) -> tuple[AttributeType, list[Any], bool]:
     if any(isinstance(v, datetime | date | time) for v in present):
         return "text", convert(_as_text), True
     if all(isinstance(v, bool) or (isinstance(v, str) and v.lower() in _BOOLEAN) for v in present):
-        return (
-            "boolean",
-            convert(lambda v: v if isinstance(v, bool) else _BOOLEAN[v.lower()]),
-            False,
-        )
+        return "boolean", convert(_as_boolean), False
     if any(_is_code(v) for v in present):
         return "text", convert(_as_text), False
     if all(_is_int(v) for v in present):
@@ -98,11 +94,7 @@ def infer(values: Sequence[Any]) -> tuple[AttributeType, list[Any], bool]:
     if all(_is_number(v) or (isinstance(v, str) and _REAL_DOT.match(v)) for v in present):
         return "real", convert(float), False
     if all(_is_number(v) or (isinstance(v, str) and _REAL_COMMA.match(v)) for v in present):
-        return (
-            "real",
-            convert(lambda v: float(v.replace(",", ".") if isinstance(v, str) else v)),
-            False,
-        )
+        return "real", convert(_comma_decimal), False
     return "text", convert(_as_text), False
 
 

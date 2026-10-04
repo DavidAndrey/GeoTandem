@@ -6,7 +6,9 @@ from pathlib import Path
 import httpx
 import pytest
 
+from geotandem.api import routes
 from geotandem.app import openapi_document
+from geotandem.data import Limits
 from geotandem.sample.load import dataset_version
 
 GOLDEN = Path(__file__).parent / "golden"
@@ -111,6 +113,39 @@ async def test_count_names_the_rejected_query(client: httpx.AsyncClient) -> None
     )
     assert (response.status_code, response.json()["code"]) == (400, "unknown_layer")
     assert response.json()["details"]["index"] == 1
+
+
+async def test_counts_share_one_time_limit(
+    client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Each count gets what is left of the request's limit; none starts after it."""
+    clock = [0.0]
+    given: list[float] = []
+
+    def slow_count(_query: object, _backend: object, limits: Limits, _ops: object) -> int:
+        given.append(limits.timeout_s)
+        clock[0] += 4  # each count takes 4 s of the 10 s limit
+        return 1
+
+    monkeypatch.setattr(routes.time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(routes, "count_query", slow_count)
+    response = await client.post("/api/query/count", json={"queries": [{"source": "schulen"}] * 5})
+    assert (response.status_code, response.json()["code"]) == (504, "query_timeout")
+    assert response.json()["details"] == {"timeout_s": 10, "index": 3}
+    assert given == [10, 6, 2]
+
+
+async def test_ids_mark_hits_beyond_the_result_limit(client: httpx.AsyncClient) -> None:
+    schools = {"source": "schulen"}
+    # 137 schools exceed max_features=100: /api/query refuses, the ids still come.
+    assert (await client.post("/api/query", json=schools)).status_code == 413
+    ids = (await client.post("/api/query/ids", json=schools)).json()["ids"]
+    assert len(ids) == 137 and ids == sorted(ids)
+    primar = {**schools, "where": {"op": "in", "attr": "typ", "values": ["primar"]}}
+    limited = {**primar, "limit": 5}
+    features = (await client.post("/api/query", json=limited)).json()["features"]
+    picked = (await client.post("/api/query/ids", json=limited)).json()["ids"]
+    assert picked == sorted(f["id"] for f in features)
 
 
 async def test_count_request_size_is_limited(client: httpx.AsyncClient) -> None:

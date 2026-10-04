@@ -39,12 +39,15 @@ function backend() {
     ...signedIn({ role: 'user', username: 'm.keller' }),
     'GET /api/layers': [schulen],
     'GET /api/config/map': { basemap: null, extent_wgs84: [7.8, 46.8, 8, 47], max_features: 10000 },
-    // The hit query asks for no attributes; it gets the primary schools.
     'POST /api/query': (init) => {
       const query = JSON.parse(String(init?.body))
       assertValidQuery(query)
-      const hits = query.select ? features.filter((f) => f.properties.typ === 'primar') : features
-      return { type: 'FeatureCollection', features: hits, query, meta: {} }
+      return { type: 'FeatureCollection', features, query, meta: {} }
+    },
+    // The hits: the primary schools.
+    'POST /api/query/ids': (init) => {
+      assertValidQuery(JSON.parse(String(init?.body)))
+      return { ids: features.filter((f) => f.properties.typ === 'primar').map((f) => f.id) }
     },
     'POST /api/query/count': { counts: [2, 3] },
   })

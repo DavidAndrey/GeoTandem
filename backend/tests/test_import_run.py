@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 from import_files import LV95, make_files, sample_features
 from shapely.geometry import shape
-from sqlalchemy import func, select
+from sqlalchemy import event, func, select
 from sqlalchemy.orm import Session
 
 from geotandem.catalog import get_layer
@@ -405,6 +405,31 @@ def test_key_candidates_are_unique_and_not_key_join_copies(
     # A key-join layer is no key target, not even with its unique columns:
     # a re-import of the same table must still be keyed to gemeinden.
     assert not any(layer == "kennzahlen" for layer, _ in candidates)
+
+
+def test_key_candidates_are_read_once_per_dataset_version(
+    sample_backend: DataBackend, files: dict[str, Path]
+) -> None:
+    reads: list[str] = []
+
+    def record(_conn: Any, _cursor: Any, statement: str, *_: Any) -> None:
+        if "FROM lyr_" in statement:
+            reads.append(statement)
+
+    event.listen(sample_backend.engine, "before_cursor_execute", record)
+    try:
+        first = key_candidates(sample_backend)
+        assert reads
+        reads.clear()
+        assert key_candidates(sample_backend) == first
+        assert reads == []  # nothing changed: nothing read
+        imported(sample_backend, files, "schulen.geojson", replace="schulen")
+        reads.clear()
+        key_candidates(sample_backend)
+        assert [r for r in reads if "lyr_schulen" in r]  # the replaced layer only
+        assert not [r for r in reads if "lyr_gemeinden" in r]
+    finally:
+        event.remove(sample_backend.engine, "before_cursor_execute", record)
 
 
 def test_decided_key_import_is_clean(sample_backend: DataBackend) -> None:

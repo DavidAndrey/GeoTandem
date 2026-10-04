@@ -21,6 +21,7 @@ READ_ROUTES = [
     ("POST", "/api/query", {"source": "schulen", "output": "table", "limit": 1}),
     ("POST", "/api/query/validate", {"source": "schulen"}),
     ("POST", "/api/query/count", {"queries": [{"source": "schulen"}]}),
+    ("POST", "/api/query/ids", {"source": "schulen"}),
     ("GET", "/api/tools", None),
     ("GET", "/api/config/map", None),
     ("GET", "/api/sessions", None),
@@ -152,6 +153,7 @@ async def test_hidden_layer_cannot_be_used_as_a_condition(
         ("/api/query", query),
         ("/api/query/validate", query),
         ("/api/query/count", {"queries": [query]}),
+        ("/api/query/ids", query),
     ):
         response = await client.post(path, json=body)
         assert (response.status_code, response.json()["code"]) == (400, "unknown_layer")

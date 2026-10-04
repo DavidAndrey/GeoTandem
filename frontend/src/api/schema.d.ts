@@ -89,9 +89,32 @@ export interface paths {
      * @description Count the features of several queries at once, e.g. one per condition (design B2).
      *
      *     Nothing but numbers leaves the server. A rejected query names its position
-     *     in ``details.index``.
+     *     in ``details.index``. All of them share one time limit, as one query would:
+     *     a request of many slow counts must not hold a worker many times as long.
      */
     post: operations['count_api_query_count_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/query/ids': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Ids
+     * @description The ids of the features a query returns, for marking hits (design B9).
+     *
+     *     No geometry or attribute is sent, so the result-size limit does not apply.
+     */
+    post: operations['ids_api_query_ids_post']
     delete?: never
     options?: never
     head?: never
@@ -1577,6 +1600,11 @@ export interface components {
       /** Sample Dataset Version */
       sample_dataset_version: string
       capabilities: components['schemas']['Capabilities']
+    }
+    /** Ids */
+    Ids: {
+      /** Ids */
+      ids: number[]
     }
     /**
      * ImportDecisions
@@ -3293,6 +3321,75 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['Counts']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Content Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Gateway Timeout */
+      504: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  ids_api_query_ids_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['QueryObject-Input']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['Ids']
         }
       }
       /** @description Bad Request */

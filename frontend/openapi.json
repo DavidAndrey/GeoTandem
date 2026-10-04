@@ -206,7 +206,7 @@
     "/api/query/count": {
       "post": {
         "summary": "Count",
-        "description": "Count the features of several queries at once, e.g. one per condition (design B2).\n\nNothing but numbers leaves the server. A rejected query names its position\nin ``details.index``.",
+        "description": "Count the features of several queries at once, e.g. one per condition (design B2).\n\nNothing but numbers leaves the server. A rejected query names its position\nin ``details.index``. All of them share one time limit, as one query would:\na request of many slow counts must not hold a worker many times as long.",
         "operationId": "count_api_query_count_post",
         "requestBody": {
           "content": {
@@ -225,6 +225,85 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Counts"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Content Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/query/ids": {
+      "post": {
+        "summary": "Ids",
+        "description": "The ids of the features a query returns, for marking hits (design B9).\n\nNo geometry or attribute is sent, so the result-size limit does not apply.",
+        "operationId": "ids_api_query_ids_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryObject-Input"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ids"
                 }
               }
             }
@@ -5707,6 +5786,22 @@
           "capabilities"
         ],
         "title": "Health"
+      },
+      "Ids": {
+        "properties": {
+          "ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ids"
+        ],
+        "title": "Ids"
       },
       "ImportDecisions": {
         "properties": {

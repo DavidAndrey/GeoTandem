@@ -22,6 +22,7 @@ from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Annotated, Any, Literal
+from weakref import WeakKeyDictionary
 
 import shapely
 from geoalchemy2.shape import to_shape
@@ -32,7 +33,7 @@ from shapely.geometry import Point
 from shapely.geometry.base import BaseGeometry
 from sqlalchemy import select
 
-from geotandem.catalog import list_layers
+from geotandem.catalog import LayerInfo, list_layers
 from geotandem.data import AttributeSpec, DataBackend, LayerExists, NewLayer
 from geotandem.geo import common_geometry_type, reprojector
 from geotandem.importing import log
@@ -119,19 +120,40 @@ def key_candidates(backend: DataBackend) -> dict[tuple[str, str], set[str]]:
     unique columns all match themselves.
     """
     candidates: dict[tuple[str, str], set[str]] = {}
+    known = _key_cache.get(backend.engine, {})
+    current: dict[tuple[str, str | None], dict[str, set[str]]] = {}
     for info in list_layers(backend.engine):
         if info.kind != "vector" or any(a.references for a in info.attributes):
             continue
-        table = backend.layer_table(info.name)
-        for attribute in info.attributes:
-            if attribute.data_type not in ("integer", "text"):
-                continue
-            with backend.engine.connect() as conn:
-                values = [v for v in conn.scalars(select(table.c[attribute.name])) if v is not None]
-            keys = {key_text(v) for v in values}
-            if values and len(keys) == len(values):
-                candidates[(info.name, attribute.name)] = keys
+        # A layer's values change only with a new dataset version: read each once.
+        version = (info.name, info.dataset_version)
+        fresh = version not in known or info.dataset_version is None
+        current[version] = _unique_columns(backend, info) if fresh else known[version]
+        candidates.update({(info.name, name): keys for name, keys in current[version].items()})
+    _key_cache[backend.engine] = current  # versions no longer there drop out
     return candidates
+
+
+_key_cache: WeakKeyDictionary[Any, dict[tuple[str, str | None], dict[str, set[str]]]] = (
+    WeakKeyDictionary()
+)
+
+
+def _unique_columns(backend: DataBackend, info: LayerInfo) -> dict[str, set[str]]:
+    """The integer and text columns of a layer whose values are unique, in one read."""
+    names = [a.name for a in info.attributes if a.data_type in ("integer", "text")]
+    if not names:
+        return {}
+    table = backend.layer_table(info.name)
+    with backend.engine.connect() as conn:
+        rows = conn.execute(select(*(table.c[n] for n in names))).all()
+    unique = {}
+    for i, name in enumerate(names):
+        values = [row[i] for row in rows if row[i] is not None]
+        keys = {key_text(v) for v in values}
+        if values and len(keys) == len(values):
+            unique[name] = keys
+    return unique
 
 
 def preview_file(path: Path, file_name: str, options: ReadOptions, backend: DataBackend) -> Preview:

@@ -16,10 +16,10 @@ from typing import Annotated, Any
 
 from pydantic import BaseModel, Field, StringConstraints
 from sqlalchemy import Engine, func, or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, contains_eager
 
 from geotandem.data import DataBackend
-from geotandem.db.orm import AnalysisSession, SavedQuery, User
+from geotandem.db.orm import AnalysisSession, SavedQuery
 from geotandem.db.spatialite import reading
 from geotandem_query import QueryObject
 from geotandem_query import models as m
@@ -213,7 +213,8 @@ def list_queries(engine: Engine, viewer: int, backend: DataBackend) -> list[Save
         rows = db.scalars(
             select(SavedQuery)
             .where(or_(SavedQuery.owner_id == viewer, SavedQuery.shared.is_(True)))
-            .join(User)
+            .join(SavedQuery.owner)
+            .options(contains_eager(SavedQuery.owner))  # one query, not one per owner
             .order_by(SavedQuery.name)
         )
         return [_summary(row, viewer) for row in rows if _readable(row, viewer, visible)]

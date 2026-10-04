@@ -93,6 +93,7 @@ export const api = {
   query: (query: QueryObject) => request<QueryResult>('/api/query', json('POST', query)),
   count: (queries: QueryObject[]) =>
     request<Schemas['Counts']>('/api/query/count', json('POST', { queries })),
+  ids: (query: QueryObject) => request<Schemas['Ids']>('/api/query/ids', json('POST', query)),
   mapConfig: () => request<MapConfig>('/api/config/map'),
   sessions: {
     list: () => request<SessionSummary[]>('/api/sessions'),

@@ -90,6 +90,28 @@ def stamp_query(
     picks the same features as ``run_query``.
     """
     compiled = compile_query(query, backend, COUNT_CAP, unsupported)
+    ids = _ids(compiled, backend, limits)
+    return ResultStamp(
+        count=len(ids),
+        ids_hash=hashlib.sha256(",".join(map(str, ids)).encode()).hexdigest(),
+        query_hash=query_hash(query),
+        data_versions=_versions(compiled, backend),
+    )
+
+
+def ids_query(
+    query: QueryObject, backend: DataBackend, limits: Limits, unsupported: Iterable[Op] = ()
+) -> list[int]:
+    """The ids of the features ``query`` returns, sorted (design B9: the hits on the map).
+
+    Like counting, not capped by the result-size limit: no geometry or
+    attribute leaves the server, so a large hit set is still marked.
+    """
+    return _ids(compile_query(query, backend, COUNT_CAP, unsupported), backend, limits)
+
+
+def _ids(compiled: Compiled, backend: DataBackend, limits: Limits) -> list[int]:
+    # The query's own ordering stays inside, so a ``limit`` picks what run_query does.
     found = compiled.stmt.with_only_columns(compiled.stmt.selected_columns[FID]).subquery()
     try:
         rows = backend.execute(select(found.c[FID]).order_by(found.c[FID]), limits)
@@ -98,13 +120,7 @@ def stamp_query(
             f"The query took longer than {limits.timeout_s:g} s and was stopped.",
             timeout_s=limits.timeout_s,
         ) from None
-    ids = ",".join(str(row[FID]) for row in rows)
-    return ResultStamp(
-        count=len(rows),
-        ids_hash=hashlib.sha256(ids.encode()).hexdigest(),
-        query_hash=query_hash(query),
-        data_versions=_versions(compiled, backend),
-    )
+    return [int(row[FID]) for row in rows]
 
 
 def _versions(compiled: Compiled, backend: DataBackend) -> dict[str, str | None]:

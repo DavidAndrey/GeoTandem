@@ -5,6 +5,8 @@ from typing import Any
 import httpx
 import pytest
 from api_helpers import ADMIN_PASSWORD, USER_PASSWORD, sign_in, sign_in_as
+from fastapi import FastAPI
+from sqlalchemy import event
 
 PRIMARY = {"op": "in", "attr": "typ", "values": ["primar"]}
 NEAR_RIVER = {"op": "related", "layer": "gewaesser", "predicate": "dwithin", "distance_m": 500}
@@ -152,3 +154,28 @@ async def test_usage_counts_sessions_of_every_account(client: httpx.AsyncClient)
     assert check["identical"] is True
     await sign_in(client, "m.keller", USER_PASSWORD)
     assert (await client.get("/api/queries")).json() == []
+
+
+async def test_the_list_reads_owners_in_one_query(client: httpx.AsyncClient, app: FastAPI) -> None:
+    for owner in ("anna", "bert", "carl"):
+        await sign_in(client, "admin", ADMIN_PASSWORD)
+        await sign_in_as(client, owner)
+        own = await save_new(client, name=f"Von {owner}")
+        await client.patch(f"/api/queries/{own['id']}", json={"shared": True})
+
+    statements: list[str] = []
+
+    def record(_conn: Any, _cursor: Any, statement: str, *_: Any) -> None:
+        if "saved_query" in statement or "app_user" in statement:
+            statements.append(statement)
+
+    engine = app.state.geotandem.backend.engine
+    event.listen(engine, "before_cursor_execute", record)
+    try:
+        listed = (await client.get("/api/queries")).json()
+    finally:
+        event.remove(engine, "before_cursor_execute", record)
+    assert sorted(q["owner"] for q in listed) == ["anna", "bert", "carl"]
+    # The login check reads the account; the list itself is one statement.
+    assert len([s for s in statements if "saved_query" in s]) == 1
+    assert len([s for s in statements if "saved_query" not in s]) <= 1
