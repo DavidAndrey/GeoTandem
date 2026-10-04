@@ -1,6 +1,6 @@
 # GeoTandem — Technologie-Stack
 
-> Status: Entwurf v0.4 · Stand: 2026-09-30 · Bezug: [vision.md](vision.md),
+> Status: Entwurf v0.5 · Stand: 2026-10-04 · Bezug: [vision.md](vision.md),
 > [anforderungen.md](anforderungen.md), [etappen.md](etappen.md)
 >
 > *Was* gebaut wird, steht in den Anforderungen; *warum*, in der Vision; *in
@@ -46,6 +46,7 @@ Auswahlregeln:
 | Navigation | React Router | Anwenderbereich / Adminbereich / Sitzungen |
 | Karte | Leaflet (ohne react-leaflet, siehe 4.2) + Leaflet-Geoman | Kartendarstellung und -bedienung, Zeichnen |
 | Gestaltung | Tailwind CSS | Oberflächengestaltung ohne eigene CSS-Schicht |
+| Mehrsprachigkeit | Lingui | Meldungskatalog der Oberfläche, ICU-Meldungen (4.6) |
 | Tests Backend | pytest + httpx | Einheiten-, Schnittstellen- und Backend-Vergleichstests |
 | Tests Frontend | Vitest + React Testing Library | Einheiten- und Komponententests |
 | Tests durchgehend | Playwright | Vorführskripte der Etappen als Abnahmetests |
@@ -82,6 +83,7 @@ nennt, worauf gebaut wird; die Sperrdateien aus E1.1 sind massgeblich.
 | Leaflet-Geoman (free) | 2.20 | **2.x** | Zeichnen von Rechteck und Polygon (F-4.3), MIT |
 | geographiclib-geodesic | 2.2 | **2.x** | Messen von Strecke und Fläche auf dem Ellipsoid (E1.8), Karneys Referenzimplementierung, MIT, ohne Abhängigkeiten |
 | Zustand | 5.0 | **5** | Analysezustand (4.4), MIT |
+| Lingui | 6.9 | **6** | Meldungskatalog (4.6), MIT; Makros über Babel (`@rolldown/plugin-babel`) |
 | Testing Library (React) | 16.3 | **16** | |
 | Playwright | 1.63 | **1.x** | |
 | TypeScript | 7.0 | **5.9** | entschieden in E1.1, siehe 4.5 |
@@ -292,6 +294,22 @@ Ausführungsmaschine auseinander, und der Sperrpunkt E1.2 wäre wertlos.
 > sobald beide Werkzeuge TypeScript 7 tragen; er betrifft nur das Bauwerkzeug,
 > nicht die Struktur der erzeugten Typen.
 
+### 4.6 Mehrsprachigkeit
+
+**Lingui** (F-10.6), entschieden 2026-10-04 für E1.9
+([docs/plan-e1.9.md](docs/plan-e1.9.md)). Der deutsche Ausgangstext bleibt in
+den Komponenten stehen und ist zugleich Schlüssel der Meldung; Extraktion und
+Kompilierung geschehen beim Bauen, die Meldungen folgen ICU MessageFormat
+(Platzhalter, Plural). Zahlen, Daten und Sortierung richten sich nach einer
+zentralen Formatierungs-Locale (`de-CH`), nicht nach Literalen im Code.
+Ablehnungen des Backends übersetzt das Frontend über ihren Code; der englische
+Text der Antwort bleibt für Protokoll, API-Clients und das Modell (F-5.9).
+
+Preis der Wahl: Lingui-Makros brauchen Babel, das `@vitejs/plugin-react` 6
+nicht mehr mitbringt; es kommt über `@rolldown/plugin-babel` nur für das Makro
+zurück. Erweist sich das in WP46 als untragbar, bleibt Lingui ohne Makros oder
+i18next.
+
 ## 5 Tests
 
 ### 5.1 Ebenen
@@ -380,7 +398,7 @@ zu dem sie spätestens fällig wird.
 | PostGIS in der Testumgebung (F-10.7) | P.2 | Testcontainers oder Dienstcontainer der Bauumgebung |
 | Transport der MCP-Server-Rolle (F-7.5) | E4.1 | stdio und/oder HTTP; hängt an der Frage aus [vision.md 8.2](vision.md) |
 | Format und Ablage des Prüffallbestands (F-3.13) | E3.1 | Dateiartefakt im Repository, Läufe im Datenkern; siehe [bewertung.md 10](bewertung.md) |
-| Übersetzungsbibliothek (F-10.6) | nach E6 | Nach [etappen.md 10](etappen.md) ausserhalb der sechs Etappen |
+| ~~Übersetzungsbibliothek (F-10.6)~~ | — | Entschieden für E1.9: Lingui, siehe 4.6; weitere Sprachen samt Sprachwahl nach E6 ([etappen.md 10](etappen.md)) |
 | ~~Umgang mit SpatiaLite-Lücken (F-2.14)~~ | — | Entschieden in E1.8 (P1 + T1): jede Operation liefert auf jedem Backend dasselbe Ergebnis; weicht eine Datenbankfunktion ab, gleicht der Dialekt-Adapter sie an (Groß-/Kleinschreibung, Textreihenfolge, Puffer, Join-Schlüssel), festgehalten in `geotandem/data/text.py` und geprüft durch einen backendneutralen Testbestand ([docs/plan-e1.8.md](docs/plan-e1.8.md)) |
 
 ## 10 Bezug zu den Anforderungen

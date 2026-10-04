@@ -72,6 +72,13 @@ konfigurierte LLM-Anbindung (F-4.11).
 > gate`) beantwortet die Referenzfrage von Hand, speichert sie, startet den
 > Container neu und findet die Sitzung danach mit identischem Ergebnis wieder
 > ([docs/plan-e1.7.md](docs/plan-e1.7.md)).
+>
+> **E1.9 vor E2 eingeschoben (2026-10-04): Grundlage der Mehrsprachigkeit.**
+> Alle Texte der Oberfläche stehen in einem Meldungskatalog (vorerst nur
+> Deutsch), Zahlen und Daten folgen einer zentralen Formatierungs-Locale, und
+> Ablehnungen des Backends erscheinen über ihren Code. Damit entsteht jede
+> Oberfläche ab E2 gleich übersetzbar; Französisch und weitere Sprachen samt
+> Sprachwahl bleiben nach E6 ([docs/plan-e1.9.md](docs/plan-e1.9.md)).
 
 ## 4 E2 — Lokale LLM-Anbindung, Modus B
 
@@ -195,7 +202,8 @@ Nicht Teil der sechs Etappen, sinnvoll erst danach:
 - Externe Modell-APIs samt Kennzeichnung und Freigabe der Datenweitergabe
   (F-7.2, F-9.3, F-9.4) — der lokale Betrieb ist der Normalfall und muss zuerst
   tragen.
-- Mehrsprachige Oberfläche (F-10.6).
+- Mehrsprachige Oberfläche (F-10.6): Französisch, dann Italienisch und
+  Englisch, samt Sprachwahl. Die Grundlage dafür entsteht in E1.9.
 - Export und Import der HITL- und Prompt-Konfiguration zum Vergleich von
   Varianten (F-10.4), sobald die Stufen aus E2.0 sich in der Praxis bewährt
   haben oder eben nicht.
