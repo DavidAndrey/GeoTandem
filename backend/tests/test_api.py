@@ -14,8 +14,13 @@ from geotandem.sample.load import dataset_version
 GOLDEN = Path(__file__).parent / "golden"
 
 
-async def test_health(client: httpx.AsyncClient) -> None:
-    body = (await client.get("/api/health")).json()
+async def test_health_says_only_whether_the_instance_is_ready(client: httpx.AsyncClient) -> None:
+    client.cookies.clear()  # anyone may ask, e.g. the container's health check
+    assert (await client.get("/api/health")).json() == {"status": "ok"}
+
+
+async def test_administrators_see_what_the_instance_runs_on(client: httpx.AsyncClient) -> None:
+    body = (await client.get("/api/admin/system")).json()
     assert body["status"] == "ok"
     assert body["backend"] == "spatialite"
     assert body["schema_version"] == "2"

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './test'
 import { buildReferenceQuestion, ensureAreaLayer, reference, validate, watchQueries } from './reference'
 
 // Acceptance E1.5 (etappen.md): every action in the interface produces a valid

@@ -9,7 +9,7 @@ import os
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field, field_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -39,11 +39,39 @@ class Settings(BaseSettings):
     max_features: int = Field(default=10_000, ge=1, description="Result size limit (F-9.6).")
     query_timeout_s: float = Field(default=10.0, gt=0, description="Query run time limit (F-9.6).")
     max_import_mb: int = Field(default=200, ge=1, description="Largest accepted upload (E1.3).")
+    max_request_mb: float = Field(
+        default=2,
+        gt=0,
+        description="Largest request body but an administrator's upload (security review #3).",
+    )
     session_hours: float = Field(
         default=12, gt=0, description="Login session lifetime, extended on use (F-3.12)."
     )
+    setup_token: SecretStr | None = Field(
+        default=None,
+        min_length=16,
+        description="Token the first administrator's setup asks for (security review #1). "
+        "Unset: one is made at each start while no account exists and written to the log.",
+    )
+    login_failures: int = Field(
+        default=10,
+        ge=1,
+        description="Failed sign-ins per username and client address in 15 minutes "
+        "before sign-in is refused for a while (security review #2).",
+    )
+    login_failures_per_address: int = Field(
+        default=50,
+        ge=1,
+        description="Failed sign-ins per client address in 15 minutes, whatever the username.",
+    )
     cookie_secure: bool = Field(
-        default=False, description="Send the session cookie over HTTPS only; set behind TLS."
+        default=False,
+        description="Send the session cookie over HTTPS only. Requests that arrive over "
+        "HTTPS get such a cookie anyway (security review #4).",
+    )
+    api_docs: bool = Field(
+        default=False,
+        description="Serve /docs, /redoc and /openapi.json; off on a public instance (review #10).",
     )
     basemap: str = Field(
         default="none",
@@ -56,6 +84,12 @@ class Settings(BaseSettings):
     frontend_dir: Path | None = Field(
         default=None, description="Built frontend to serve at '/'; none in development."
     )
+
+    @field_validator("setup_token", mode="before")
+    @classmethod
+    def _empty_is_unset(cls, value: object) -> object:
+        # Compose passes an unset variable on as "" (compose.yaml).
+        return None if value == "" else value
 
     @field_validator("basemap")
     @classmethod

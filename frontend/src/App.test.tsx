@@ -7,7 +7,7 @@ import { fakeApi, renderAt } from './test/render'
 
 afterEach(() => vi.unstubAllGlobals())
 
-const health = {
+const system = {
   status: 'ok',
   version: '0.1.0',
   backend: 'spatialite',
@@ -30,14 +30,14 @@ test('the start page is the workplace, beginning without layers', async () => {
 })
 
 test('the system status lives in the administration', async () => {
-  fakeApi({ ...signedIn(), 'GET /api/health': health })
+  fakeApi({ ...signedIn(), 'GET /api/admin/system': system })
   renderAt('/admin/system', <App />)
   expect(await screen.findByText('Bereit')).toBeInTheDocument()
   expect(screen.getByText('EPSG:2056')).toBeInTheDocument()
 })
 
 test('unreachable backend is reported, not swallowed', async () => {
-  fakeApi({ ...signedIn(), 'GET /api/health': () => new Response('{}', { status: 502 }) })
+  fakeApi({ ...signedIn(), 'GET /api/admin/system': () => new Response('{}', { status: 502 }) })
   renderAt('/admin/system', <App />)
   expect(await screen.findByRole('alert')).toHaveTextContent('Backend nicht erreichbar')
 })
@@ -76,6 +76,38 @@ test('a fresh instance sends to the setup', async () => {
   renderAt('/', <App />)
   expect(await screen.findByRole('heading', { name: 'Ersteinrichtung' })).toBeInTheDocument()
   expect(screen.getByRole('checkbox', { name: /Beispieldatensatz/ })).toBeChecked()
+})
+
+test('the setup takes the token from the link in the log and sends it', async () => {
+  const calls = fakeApi({
+    'GET /api/auth/me': unauthorized,
+    'GET /api/auth/setup': { needs_setup: true, sample_loaded: true },
+    'POST /api/auth/setup': account(),
+  })
+  renderAt('/einrichtung#token=aus-dem-protokoll', <App />)
+  const token = await screen.findByLabelText('Einrichtungscode')
+  expect(token).toHaveValue('aus-dem-protokoll')
+  await userEvent.type(screen.getByLabelText('Passwort'), 'admin-passwort-1')
+  await userEvent.type(screen.getByLabelText('Passwort wiederholen'), 'admin-passwort-1')
+  await userEvent.click(screen.getByRole('button', { name: 'Einrichten' }))
+  await vi.waitFor(() =>
+    expect(calls.find((c) => c.key === 'POST /api/auth/setup')?.body).toMatchObject({
+      token: 'aus-dem-protokoll',
+      username: 'admin',
+    }),
+  )
+})
+
+test('without the token the setup cannot be sent', async () => {
+  fakeApi({
+    'GET /api/auth/me': unauthorized,
+    'GET /api/auth/setup': { needs_setup: true, sample_loaded: true },
+  })
+  renderAt('/einrichtung', <App />)
+  expect(await screen.findByLabelText('Einrichtungscode')).toHaveValue('')
+  await userEvent.type(screen.getByLabelText('Passwort'), 'admin-passwort-1')
+  await userEvent.type(screen.getByLabelText('Passwort wiederholen'), 'admin-passwort-1')
+  expect(screen.getByRole('button', { name: 'Einrichten' })).toBeDisabled()
 })
 
 test('signing in with a start password leads to the mandatory password page', async () => {

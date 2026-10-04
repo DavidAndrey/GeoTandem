@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page } from './test'
 import { ensureAccount, signIn } from './accounts'
 
 // Saved and shared queries (plan E1.7b, design B1, C6): one account saves a

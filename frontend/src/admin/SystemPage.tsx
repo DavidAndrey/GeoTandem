@@ -1,14 +1,15 @@
 // System status for administrators: data core, internal CRS, schema and sample
-// versions (formerly the start page placeholder of E1.1 to E1.4).
+// versions (formerly the start page placeholder of E1.1 to E1.4). Only here:
+// /api/health tells everyone else no more than ready or not (security review #10).
 import { useEffect, useState } from 'react'
-import { api, type Health } from '../api/client'
+import { api, type SystemStatus } from '../api/client'
 
 export function SystemPage() {
-  const [health, setHealth] = useState<Health>()
+  const [health, setHealth] = useState<SystemStatus>()
   const [error, setError] = useState<string>()
 
   useEffect(() => {
-    api.health().then(setHealth, (e: Error) => setError(e.message))
+    api.admin.system().then(setHealth, (e: Error) => setError(e.message))
   }, [])
 
   if (error) return <p role="alert">Backend nicht erreichbar: {error}</p>

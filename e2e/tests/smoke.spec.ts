@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs'
-import { expect, test } from '@playwright/test'
+import { expect, test } from './test'
 
 // Smoke test for E1.1/E1.2. The E1 demonstration script (etappen.md 3)
 // replaces the UI part once the map exists (E1.5).

@@ -1,0 +1,84 @@
+# The public demonstrator behind Traefik v3 (security-review.md): on top of compose.yaml,
+#
+#   GEOTANDEM_HOST=geotandem.example.org TRAEFIK_IPS=172.18.0.0/16 \
+#     docker compose -f compose.yaml -f compose.traefik.yaml up -d --build
+#
+# Traefik terminates TLS and is the only way in: no port is published on the host.
+# Traefik must already run with the Docker provider, attached to TRAEFIK_NETWORK.
+#
+# Everything limited here is limited by the app as well (api/guards.py, auth/throttle.py):
+# the proxy is a second layer, not the only one.
+#
+# - TRAEFIK_IPS: the address(es) Traefik reaches the app from, as IPs or CIDR,
+#   e.g. the subnet of TRAEFIK_NETWORK:
+#     docker network inspect traefik -f '{{(index .IPAM.Config 0).Subnet}}'
+#   uvicorn takes the client address from X-Forwarded-For only from these, so the
+#   sign-in limits count per client, not per proxy. Every container on that
+#   network is trusted alike: keep it to Traefik and the apps behind it.
+# - Request bodies are limited here, before the app reads them (review #3):
+#   2 MB in general, TRAEFIK_MAX_IMPORT_BYTES for uploads. Keep the latter a
+#   little above GEOTANDEM_MAX_IMPORT_MB.
+# - POST /api/auth/setup is only open from GEOTANDEM_SETUP_FROM (review #1), on top
+#   of the setup token the app asks for anyway (its log, or GEOTANDEM_SETUP_TOKEN);
+#   by default from nowhere outside, so the first administrator is created with
+#     docker compose exec geotandem geotandem user create admin --role admin
+
+services:
+  geotandem:
+    ports: !reset []
+    networks: [traefik]
+    environment:
+      GEOTANDEM_COOKIE_SECURE: "true"
+      FORWARDED_ALLOW_IPS: ${TRAEFIK_IPS:?set TRAEFIK_IPS to the address or subnet Traefik connects from}
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: ${TRAEFIK_NETWORK:-traefik}
+      traefik.http.services.geotandem.loadbalancer.server.port: "8000"
+
+      # Everything: TLS, security headers, small bodies.
+      traefik.http.routers.geotandem.rule: Host(`${GEOTANDEM_HOST:?set GEOTANDEM_HOST}`)
+      traefik.http.routers.geotandem.entrypoints: ${TRAEFIK_ENTRYPOINT:-websecure}
+      traefik.http.routers.geotandem.tls.certresolver: ${TRAEFIK_CERTRESOLVER:-letsencrypt}
+      traefik.http.routers.geotandem.service: geotandem
+      traefik.http.routers.geotandem.middlewares: geotandem-headers,geotandem-body
+
+      # Password checks: rate-limited per client before they reach the app (review #2).
+      traefik.http.routers.geotandem-auth.rule: Host(`${GEOTANDEM_HOST}`) && Method(`POST`) && (Path(`/api/auth/login`) || Path(`/api/auth/password`))
+      traefik.http.routers.geotandem-auth.entrypoints: ${TRAEFIK_ENTRYPOINT:-websecure}
+      traefik.http.routers.geotandem-auth.tls.certresolver: ${TRAEFIK_CERTRESOLVER:-letsencrypt}
+      traefik.http.routers.geotandem-auth.service: geotandem
+      traefik.http.routers.geotandem-auth.middlewares: geotandem-headers,geotandem-body,geotandem-auth-rate
+
+      # First administrator: not from the internet (review #1).
+      traefik.http.routers.geotandem-setup.rule: Host(`${GEOTANDEM_HOST}`) && Method(`POST`) && Path(`/api/auth/setup`)
+      traefik.http.routers.geotandem-setup.entrypoints: ${TRAEFIK_ENTRYPOINT:-websecure}
+      traefik.http.routers.geotandem-setup.tls.certresolver: ${TRAEFIK_CERTRESOLVER:-letsencrypt}
+      traefik.http.routers.geotandem-setup.service: geotandem
+      traefik.http.routers.geotandem-setup.middlewares: geotandem-headers,geotandem-body,geotandem-setup-from
+
+      # Imports: the one route with large bodies.
+      traefik.http.routers.geotandem-import.rule: Host(`${GEOTANDEM_HOST}`) && Method(`POST`) && Path(`/api/admin/imports`)
+      traefik.http.routers.geotandem-import.entrypoints: ${TRAEFIK_ENTRYPOINT:-websecure}
+      traefik.http.routers.geotandem-import.tls.certresolver: ${TRAEFIK_CERTRESOLVER:-letsencrypt}
+      traefik.http.routers.geotandem-import.service: geotandem
+      traefik.http.routers.geotandem-import.middlewares: geotandem-headers,geotandem-import-body
+
+      traefik.http.middlewares.geotandem-body.buffering.maxRequestBodyBytes: "2000000"
+      traefik.http.middlewares.geotandem-import-body.buffering.maxRequestBodyBytes: ${TRAEFIK_MAX_IMPORT_BYTES:-210000000}
+      traefik.http.middlewares.geotandem-auth-rate.ratelimit.average: "30"
+      traefik.http.middlewares.geotandem-auth-rate.ratelimit.period: 1m
+      traefik.http.middlewares.geotandem-auth-rate.ratelimit.burst: "15"
+      traefik.http.middlewares.geotandem-setup-from.ipallowlist.sourcerange: ${GEOTANDEM_SETUP_FROM:-127.0.0.1/32}
+
+      # Security headers (review #4, #7), a second time: the app sets them too,
+      # and the Content-Security-Policy only there, as it knows the tile server.
+      traefik.http.middlewares.geotandem-headers.headers.stsSeconds: "31536000"
+      traefik.http.middlewares.geotandem-headers.headers.stsIncludeSubdomains: "false"
+      traefik.http.middlewares.geotandem-headers.headers.contentTypeNosniff: "true"
+      traefik.http.middlewares.geotandem-headers.headers.frameDeny: "true"
+      traefik.http.middlewares.geotandem-headers.headers.referrerPolicy: same-origin
+
+networks:
+  traefik:
+    external: true
+    name: ${TRAEFIK_NETWORK:-traefik}

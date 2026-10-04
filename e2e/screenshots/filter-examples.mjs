@@ -168,7 +168,9 @@ if (missing.length || extra.length)
 const api = await request.newContext({ baseURL })
 const setup = await (await api.get('/api/auth/setup')).json()
 const login = setup.needs_setup
-  ? await api.post('/api/auth/setup', { data: { ...ADMIN, load_sample: true } })
+  ? await api.post('/api/auth/setup', {
+      data: { ...ADMIN, token: process.env.GEOTANDEM_SETUP_TOKEN ?? '', load_sample: true },
+    })
   : await api.post('/api/auth/login', { data: ADMIN })
 if (!login.ok()) throw new Error(`cannot sign in: ${await login.text()}`)
 

@@ -1,7 +1,9 @@
-// First start (design A1): the first account becomes administrator.
+// First start (design A1): the first account becomes administrator, with the
+// setup token from the installation (security review #1). The log's link
+// brings it as "#token=…": a fragment no server receives.
 import { useMutation } from '@tanstack/react-query'
-import { useState } from 'react'
-import { Navigate, useNavigate } from 'react-router'
+import { useEffect, useState } from 'react'
+import { Navigate, useLocation, useNavigate } from 'react-router'
 import { api } from '../api/client'
 import { useResetSession, useSetupStatus } from '../api/queries'
 import { ErrorNotice, Loading } from '../components/ui'
@@ -11,7 +13,11 @@ import { passwordProblems } from './rules'
 export function SetupPage() {
   const status = useSetupStatus()
   const navigate = useNavigate()
+  const location = useLocation()
   const resetSession = useResetSession()
+  const [token, setToken] = useState(
+    () => new URLSearchParams(location.hash.slice(1)).get('token') ?? '',
+  )
   const [username, setUsername] = useState('admin')
   const [displayName, setDisplayName] = useState('')
   const [password, setPassword] = useState('')
@@ -19,18 +25,31 @@ export function SetupPage() {
   const [loadSample, setLoadSample] = useState(true)
   const setup = useMutation({
     mutationFn: () =>
-      api.auth.setup({ username, display_name: displayName, password, load_sample: loadSample }),
+      api.auth.setup({
+        token: token.trim(),
+        username,
+        display_name: displayName,
+        password,
+        load_sample: loadSample,
+      }),
     onSuccess: async () => {
       await resetSession()
       navigate('/', { replace: true })
     },
   })
 
+  // Read once, then out of the address bar and the history.
+  useEffect(() => {
+    if (location.hash)
+      navigate({ pathname: location.pathname, search: location.search }, { replace: true })
+  }, [location, navigate])
+
   if (status.isPending) return <Loading />
   if (status.data && !status.data.needs_setup && !setup.isPending && !setup.isSuccess)
     return <Navigate to="/anmelden" replace />
   const problems = passwordProblems('', password, repeat)
-  const ready = username.trim() !== '' && repeat !== '' && problems.length === 0
+  const ready =
+    token.trim() !== '' && username.trim() !== '' && repeat !== '' && problems.length === 0
 
   return (
     <AccessCard title="Ersteinrichtung">
@@ -43,6 +62,21 @@ export function SetupPage() {
           if (ready) setup.mutate()
         }}
       >
+        <Field label="Einrichtungscode">
+          <input
+            className="input font-mono"
+            autoComplete="off"
+            spellCheck={false}
+            required
+            aria-describedby="setup-token-hint"
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+          />
+        </Field>
+        <p id="setup-token-hint" className="text-muted -mt-2 mb-3 text-xs">
+          Steht beim ersten Start im Protokoll der Installation (<code>docker logs</code>) oder ist
+          dort als <code>GEOTANDEM_SETUP_TOKEN</code> gesetzt.
+        </p>
         <Field label="Benutzername">
           <input
             className="input"

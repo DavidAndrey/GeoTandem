@@ -1,4 +1,4 @@
-import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
+import { expect, test, type APIRequestContext, type Page } from './test'
 import { ensureAccount, signIn } from './accounts'
 import { buildReferenceQuestion, ensureAreaLayer, validate, watchQueries } from './reference'
 

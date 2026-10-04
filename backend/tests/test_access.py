@@ -28,6 +28,7 @@ READ_ROUTES = [
     ("GET", "/api/queries", None),
 ]
 ADMIN_ROUTES = [
+    ("GET", "/api/admin/system", None),
     ("GET", "/api/admin/layers", None),
     ("PATCH", "/api/admin/layers/schulen", {"title": "X"}),
     ("DELETE", "/api/admin/layers/schulen", None),

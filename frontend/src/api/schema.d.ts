@@ -195,6 +195,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/admin/system': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** System */
+    get: operations['system_api_admin_system_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/admin/layers': {
     parameters: {
       query?: never
@@ -524,6 +541,9 @@ export interface paths {
     /**
      * Setup
      * @description Create the first administrator; closed as soon as any account exists.
+     *
+     *     Only with the installation's token: reaching the address is not enough
+     *     (security review #1). Wrong tokens are braked like failed sign-ins.
      */
     post: operations['setup_api_auth_setup_post']
     delete?: never
@@ -541,7 +561,10 @@ export interface paths {
     }
     get?: never
     put?: never
-    /** Login */
+    /**
+     * Login
+     * @description Repeated failures are braked per username and client address (review #2).
+     */
     post: operations['login_api_auth_login_post']
     delete?: never
     options?: never
@@ -595,6 +618,9 @@ export interface paths {
     /**
      * Change Password
      * @description A changed password signs out every other login, e.g. one with a stolen cookie.
+     *
+     *     Wrong current passwords count like failed sign-ins: a stolen cookie must
+     *     not become a way to guess the password (review #2).
      */
     post: operations['change_password_api_auth_password_post']
     delete?: never
@@ -1582,24 +1608,18 @@ export interface components {
       /** Detail */
       detail?: components['schemas']['ValidationError'][]
     }
-    /** Health */
+    /**
+     * Health
+     * @description For the container's health check and monitors: nothing else, as anyone may ask
+     *     (security review #10). Version, backend and capabilities are the administrators'
+     *     (``/api/admin/system``).
+     */
     Health: {
       /**
        * Status
        * @enum {string}
        */
       status: 'ok' | 'degraded'
-      /** Version */
-      version: string
-      /** Backend */
-      backend: string
-      /** Internal Crs */
-      internal_crs: number
-      /** Schema Version */
-      schema_version: string
-      /** Sample Dataset Version */
-      sample_dataset_version: string
-      capabilities: components['schemas']['Capabilities']
     }
     /** Ids */
     Ids: {
@@ -2704,6 +2724,8 @@ export interface components {
     }
     /** SetupRequest */
     SetupRequest: {
+      /** Token */
+      token: string
       /** Username */
       username: string
       /**
@@ -2754,6 +2776,28 @@ export interface components {
       step: string
       /** Ms */
       ms: number
+    }
+    /**
+     * SystemStatus
+     * @description What the instance runs on; for administrators only (security review #10).
+     */
+    SystemStatus: {
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: 'ok' | 'degraded'
+      /** Version */
+      version: string
+      /** Backend */
+      backend: string
+      /** Internal Crs */
+      internal_crs: number
+      /** Schema Version */
+      schema_version: string
+      /** Sample Dataset Version */
+      sample_dataset_version: string
+      capabilities: components['schemas']['Capabilities']
     }
     /**
      * TextMatch
@@ -3566,6 +3610,26 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['ToolDescription'][]
+        }
+      }
+    }
+  }
+  system_api_admin_system_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['SystemStatus']
         }
       }
     }
@@ -4979,6 +5043,24 @@ export interface operations {
           'application/json': components['schemas']['HTTPValidationError']
         }
       }
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
     }
   }
   login_api_auth_login_post: {
@@ -5046,6 +5128,24 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
         }
       }
     }
@@ -5122,6 +5222,24 @@ export interface operations {
           'application/json': components['schemas']['ErrorBody']
         }
       }
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
     }
   }
   change_password_api_auth_password_post: {
@@ -5187,6 +5305,24 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
         }
       }
     }

@@ -501,6 +501,27 @@
         }
       }
     },
+    "/api/admin/system": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "System",
+        "operationId": "system_api_admin_system_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemStatus"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/admin/layers": {
       "get": {
         "tags": [
@@ -2207,7 +2228,7 @@
           "auth"
         ],
         "summary": "Setup",
-        "description": "Create the first administrator; closed as soon as any account exists.",
+        "description": "Create the first administrator; closed as soon as any account exists.\n\nOnly with the installation's token: reaching the address is not enough\n(security review #1). Wrong tokens are braked like failed sign-ins.",
         "operationId": "setup_api_auth_setup_post",
         "requestBody": {
           "content": {
@@ -2270,6 +2291,26 @@
               }
             }
           },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -2289,6 +2330,7 @@
           "auth"
         ],
         "summary": "Login",
+        "description": "Repeated failures are braked per username and client address (review #2).",
         "operationId": "login_api_auth_login_post",
         "requestBody": {
           "content": {
@@ -2343,6 +2385,26 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -2435,6 +2497,26 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
           }
         }
       }
@@ -2445,7 +2527,7 @@
           "auth"
         ],
         "summary": "Change Password",
-        "description": "A changed password signs out every other login, e.g. one with a stolen cookie.",
+        "description": "A changed password signs out every other login, e.g. one with a stolen cookie.\n\nWrong current passwords count like failed sign-ins: a stolen cookie must\nnot become a way to guess the password (review #2).",
         "operationId": "change_password_api_auth_password_post",
         "requestBody": {
           "content": {
@@ -2493,6 +2575,26 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -5107,10 +5209,12 @@
         "properties": {
           "username": {
             "type": "string",
+            "maxLength": 64,
             "title": "Username"
           },
           "password": {
             "type": "string",
+            "maxLength": 1024,
             "title": "Password"
           }
         },
@@ -5750,42 +5854,14 @@
               "degraded"
             ],
             "title": "Status"
-          },
-          "version": {
-            "type": "string",
-            "title": "Version"
-          },
-          "backend": {
-            "type": "string",
-            "title": "Backend"
-          },
-          "internal_crs": {
-            "type": "integer",
-            "title": "Internal Crs"
-          },
-          "schema_version": {
-            "type": "string",
-            "title": "Schema Version"
-          },
-          "sample_dataset_version": {
-            "type": "string",
-            "title": "Sample Dataset Version"
-          },
-          "capabilities": {
-            "$ref": "#/components/schemas/Capabilities"
           }
         },
         "type": "object",
         "required": [
-          "status",
-          "version",
-          "backend",
-          "internal_crs",
-          "schema_version",
-          "sample_dataset_version",
-          "capabilities"
+          "status"
         ],
-        "title": "Health"
+        "title": "Health",
+        "description": "For the container's health check and monitors: nothing else, as anyone may ask\n(security review #10). Version, backend and capabilities are the administrators'\n(``/api/admin/system``)."
       },
       "Ids": {
         "properties": {
@@ -6899,10 +6975,12 @@
         "properties": {
           "current": {
             "type": "string",
+            "maxLength": 1024,
             "title": "Current"
           },
           "new": {
             "type": "string",
+            "maxLength": 1024,
             "title": "New"
           }
         },
@@ -8569,8 +8647,14 @@
       },
       "SetupRequest": {
         "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 256,
+            "title": "Token"
+          },
           "username": {
             "type": "string",
+            "maxLength": 64,
             "title": "Username"
           },
           "display_name": {
@@ -8580,6 +8664,7 @@
           },
           "password": {
             "type": "string",
+            "maxLength": 1024,
             "title": "Password"
           },
           "load_sample": {
@@ -8590,6 +8675,7 @@
         },
         "type": "object",
         "required": [
+          "token",
           "username",
           "password"
         ],
@@ -8669,6 +8755,53 @@
           "ms"
         ],
         "title": "Step"
+      },
+      "SystemStatus": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "degraded"
+            ],
+            "title": "Status"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "backend": {
+            "type": "string",
+            "title": "Backend"
+          },
+          "internal_crs": {
+            "type": "integer",
+            "title": "Internal Crs"
+          },
+          "schema_version": {
+            "type": "string",
+            "title": "Schema Version"
+          },
+          "sample_dataset_version": {
+            "type": "string",
+            "title": "Sample Dataset Version"
+          },
+          "capabilities": {
+            "$ref": "#/components/schemas/Capabilities"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "version",
+          "backend",
+          "internal_crs",
+          "schema_version",
+          "sample_dataset_version",
+          "capabilities"
+        ],
+        "title": "SystemStatus",
+        "description": "What the instance runs on; for administrators only (security review #10)."
       },
       "TextMatch": {
         "properties": {

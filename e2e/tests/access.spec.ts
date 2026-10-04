@@ -1,4 +1,4 @@
-import { expect, test, type Browser, type Page } from '@playwright/test'
+import { expect, test, type Browser, type Page } from './test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { FILES_DIR } from '../global-setup'

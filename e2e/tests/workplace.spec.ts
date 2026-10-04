@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './test'
 
 // Workplace (design B1, F-4.1, F-4.9, F-8.1): layers from the catalog on the
 // map, in panel order, with popups. The reference question follows in E1.5 WP25.

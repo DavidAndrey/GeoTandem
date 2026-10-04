@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from fastapi import Request
 
+from geotandem.auth.throttle import LoginThrottle
 from geotandem.config import Settings
 from geotandem.data import DataBackend, Limits, Op
 from geotandem.importing.staging import Staging
@@ -15,6 +16,9 @@ class AppState:
     unsupported: dict[Op, list[str]]
     tools: ToolRegistry
     staging: Staging
+    login_throttle: LoginThrottle
+    setup_token: str | None = None
+    """While no account exists: what setup asks for (auth.setup_token)."""
 
     @property
     def limits(self) -> Limits:

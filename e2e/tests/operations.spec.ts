@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page } from './test'
 import { readFileSync } from 'node:fs'
 
 // Operations (design B4–B7, F-4.5 to F-4.8) as derived layers, against the real engine.

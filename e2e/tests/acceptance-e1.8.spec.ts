@@ -1,4 +1,4 @@
-import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
+import { expect, test, type APIRequestContext, type Page } from './test'
 
 // Acceptance E1.8 (docs/plan-e1.8.md): the same results on every backend for
 // text (F-2.14), and the classic map tools and catalog extras built with it —

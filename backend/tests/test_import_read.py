@@ -223,6 +223,39 @@ def test_unsupported_and_unreadable_files(tmp_path: Path) -> None:
     assert info.value.code == "empty"
 
 
+@pytest.mark.parametrize(
+    ("name", "content", "described_as"),
+    [
+        ("kaputt.gpkg", b"not a geopackage", "a GeoPackage"),
+        ("kaputt.zip", b"PK\x03\x04garbage", "a zipped shapefile"),
+        ("kaputt.geojson", b'{"type": "Feat', "a GeoJSON"),
+        ("kaputt.xlsx", b"nope", "an Excel workbook"),
+    ],
+)
+def test_an_unreadable_file_is_described_without_server_details(
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+    name: str,
+    content: bytes,
+    described_as: str,
+) -> None:
+    """The answer names the file and format; GDAL's text, with the staged path on the
+    server and driver hints, goes to the server log only (security review #10)."""
+    path = tmp_path / name
+    path.write_bytes(content)
+    with (
+        caplog.at_level("WARNING", logger="geotandem.importing.read"),
+        pytest.raises(SourceError) as info,
+    ):
+        read_source(path, name)
+    message = info.value.message
+    assert message.startswith(f"'{name}' cannot be read as ")
+    assert described_as.split(" ", 1)[1] in message
+    assert str(tmp_path) not in message and "DRIVER" not in message
+    assert info.value.details == {"file": name}
+    assert name in caplog.text and "unreadable" in caplog.text
+
+
 def test_files_that_point_elsewhere_are_not_followed(tmp_path: Path) -> None:
     """GDAL picks a driver by content: a .geojson must not read other files (F-2.1)."""
     secret = tmp_path / "secret.csv"

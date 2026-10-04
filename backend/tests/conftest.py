@@ -4,7 +4,7 @@ from pathlib import Path
 
 import httpx
 import pytest
-from api_helpers import ADMIN_PASSWORD
+from api_helpers import ADMIN_PASSWORD, SETUP_TOKEN
 from fastapi import FastAPI
 
 from geotandem.app import create_app
@@ -79,7 +79,11 @@ def app(tmp_path: Path, sample_database: Path) -> FastAPI:
     (tmp_path / "data").mkdir()
     shutil.copy(sample_database, tmp_path / "data" / "geotandem.sqlite")
     settings = Settings(
-        data_dir=tmp_path / "data", load_sample_data=True, max_features=100, frontend_dir=frontend
+        data_dir=tmp_path / "data",
+        load_sample_data=True,
+        max_features=100,
+        frontend_dir=frontend,
+        setup_token=SETUP_TOKEN,
     )
     return create_app(settings)
 
@@ -98,7 +102,12 @@ async def client(anonymous: httpx.AsyncClient) -> httpx.AsyncClient:
     """Signed in as the first administrator ("admin")."""
     response = await anonymous.post(
         "/api/auth/setup",
-        json={"username": "admin", "password": ADMIN_PASSWORD, "load_sample": False},
+        json={
+            "token": SETUP_TOKEN,
+            "username": "admin",
+            "password": ADMIN_PASSWORD,
+            "load_sample": False,
+        },
     )
     assert response.status_code == 200, response.text
     return anonymous

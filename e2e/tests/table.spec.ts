@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './test'
 
 // Attribute table (F-8.2, design B8, B9): highlighting in both directions
 // between table and map.

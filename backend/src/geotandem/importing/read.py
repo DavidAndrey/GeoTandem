@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import csv
 import io
+import logging
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -42,6 +43,15 @@ FORMATS: dict[str, Format] = {
     ".xlsx": "xlsx",
 }
 VECTOR_FORMATS: frozenset[Format] = frozenset({"geojson", "shapefile", "gpkg"})
+FORMAT_NAMES: dict[Format, str] = {
+    "geojson": "GeoJSON",
+    "shapefile": "zipped shapefile",
+    "gpkg": "GeoPackage",
+    "csv": "CSV",
+    "xlsx": "Excel workbook",
+}
+
+log = logging.getLogger(__name__)
 DELIMITERS = ",;\t|"
 _SNIFF_BYTES = 64 * 1024
 
@@ -64,6 +74,18 @@ class Message(BaseModel):
     message: str
     column: str | None = None
     count: int | None = None
+
+
+def _unreadable(file_name: str, fmt: Format, exc: Exception) -> SourceError:
+    """The reason in the server log, not in the answer: GDAL and openpyxl name the
+    staged file's path on the server and their own internals (security review #10)."""
+    log.warning("import file %r unreadable as %s: %s", file_name, fmt, exc)
+    return SourceError(
+        "unreadable",
+        f"'{file_name}' cannot be read as a {FORMAT_NAMES[fmt]}. "
+        "It may be damaged or of another format.",
+        file=file_name,
+    )
 
 
 class SourceError(Exception):
@@ -156,7 +178,7 @@ def _read_vector(path: Path, file_name: str, fmt: Format, options: ReadOptions) 
     try:
         sublayers = [str(name) for name, _ in pyogrio.list_layers(target)]
     except pyogrio.errors.DataSourceError as exc:
-        raise SourceError("unreadable", f"The file cannot be read: {exc}") from exc
+        raise _unreadable(file_name, fmt, exc) from exc
     if not sublayers:
         raise SourceError("no_layers", "The file contains no layer.")
     sublayer = options.sublayer or sublayers[0]
@@ -167,7 +189,7 @@ def _read_vector(path: Path, file_name: str, fmt: Format, options: ReadOptions) 
     try:
         meta, _, wkb, fields = pyogrio.raw.read(target, layer=sublayer, encoding=options.encoding)
     except (pyogrio.errors.DataSourceError, pyogrio.errors.DataLayerError) as exc:
-        raise SourceError("unreadable", f"The file cannot be read: {exc}") from exc
+        raise _unreadable(file_name, fmt, exc) from exc
 
     notes: list[Message] = []
     columns = []
@@ -373,7 +395,7 @@ def _read_xlsx(path: Path, file_name: str, options: ReadOptions) -> Source:
     try:
         workbook = openpyxl.load_workbook(path, read_only=True, data_only=True)
     except Exception as exc:  # openpyxl raises a zoo of exception types
-        raise SourceError("unreadable", f"The file cannot be read as Excel: {exc}") from exc
+        raise _unreadable(file_name, "xlsx", exc) from exc
     try:
         sheets = list(workbook.sheetnames)
         sheet = options.sublayer or sheets[0]

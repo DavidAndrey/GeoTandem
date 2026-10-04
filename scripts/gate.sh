@@ -49,8 +49,12 @@ port=$(docker port "$name" 8000/tcp | head -n1 | sed 's/.*://')
 docker logs "$name" 2>&1 | grep -q "sample dataset" \
   || { echo "sample dataset was not loaded on first start" >&2; exit 1; }
 
+# As an operator would: the setup token from the first start's log (security review #1).
+token=$(docker logs "$name" 2>&1 | grep -o 'Setup token: [A-Za-z0-9_-]*' | head -n1 | cut -d' ' -f3)
+[ -n "$token" ] || { echo "no setup token in the log of the first start" >&2; exit 1; }
+
 step "playwright against http://127.0.0.1:$port"
-(cd e2e && E2E_BASE_URL="http://127.0.0.1:$port" npx playwright test --reporter=line)
+(cd e2e && E2E_SETUP_TOKEN="$token" E2E_BASE_URL="http://127.0.0.1:$port" npx playwright test --reporter=line)
 
 step "restart on the same volume"
 since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -58,6 +62,10 @@ docker restart "$name" >/dev/null
 wait_healthy
 if docker logs --since "$since" "$name" 2>&1 | grep -q "sample dataset"; then
   echo "sample dataset was loaded again after restart" >&2
+  exit 1
+fi
+if docker logs --since "$since" "$name" 2>&1 | grep -q "Setup token"; then
+  echo "a set-up instance still offers a setup token" >&2
   exit 1
 fi
 

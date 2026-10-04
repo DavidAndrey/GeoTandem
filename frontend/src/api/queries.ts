@@ -12,7 +12,6 @@ import {
 } from './client'
 
 export const keys = {
-  health: ['health'] as const,
   layers: ['admin', 'layers'] as const,
   // Under 'one': a layer may be named "list" (['layer', 'list'] is the catalog).
   layerList: ['layer', 'list'] as const,
@@ -84,8 +83,6 @@ export function useSetVisibility() {
     onSuccess: (rows) => client.setQueryData(keys.visibility, rows),
   })
 }
-
-export const useHealth = () => useQuery({ queryKey: keys.health, queryFn: api.health })
 
 export const useAdminLayers = () => useQuery({ queryKey: keys.layers, queryFn: api.admin.layers })
 

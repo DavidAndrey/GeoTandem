@@ -39,7 +39,9 @@ nicht noch einmal. `make docker` und `make docker-run` tun dasselbe (der Contain
 Das Image enthält Backend und gebautes Frontend in einem Prozess auf Port 8000.
 Es läuft als Benutzer `geotandem` (UID 10001), der nur `/data` beschreiben
 darf, und meldet seinen Zustand über `/api/health` (`docker ps` zeigt
-`healthy`). Die Hintergrundkarte ist standardmässig aus; mit
+`healthy`). Die Antwort sagt nur `ok` oder `degraded`; Version, Datenkern und
+Fähigkeiten sehen Administratoren unter *Administration › System*
+(`/api/admin/system`). Die Hintergrundkarte ist standardmässig aus; mit
 `-e GEOTANDEM_BASEMAP=swisstopo-grau` lädt der Browser Kacheln von swisstopo
 (siehe [Konfiguration](#konfiguration)).
 
@@ -72,9 +74,19 @@ geotandem user create …`.
 
 **Erstes Konto.** Solange kein Konto existiert, führt die Anwendung auf die
 Ersteinrichtung: Das erste Konto wird Administrator und legt weitere an
-(Rollen Administrator und Anwender, F-3.12). Bis dahin ist die Einrichtung für
-jeden offen, der die Adresse erreicht — die Instanz also erst nach aussen
-öffnen, wenn das erste Konto steht. Ohne Browser geht es auch so:
+(Rollen Administrator und Anwender, F-3.12). Die Einrichtung verlangt einen
+**Einrichtungscode** aus der Installation, damit nicht Administrator wird, wer
+die Adresse zuerst erreicht. Ist `GEOTANDEM_SETUP_TOKEN` gesetzt, gilt dieser;
+sonst erzeugt jeder Start, solange kein Konto existiert, einen neuen und
+schreibt ihn ins Protokoll, samt Link, der ihn ins Formular einträgt:
+
+```sh
+docker logs <container> 2>&1 | grep "Setup token"
+# … Setup token: Xy3… — open /einrichtung#token=Xy3… on this instance, …
+```
+
+Der Code gilt nur bis zur Einrichtung und steht nach `#` im Link, den der
+Browser keinem Server schickt. Ohne Browser geht es auch so:
 
 ```sh
 docker exec -it <container> geotandem user create admin --role admin   # fragt nach dem Passwort
@@ -176,10 +188,37 @@ TOML-Datei, deren Pfad `GEOTANDEM_CONFIG_FILE` nennt (Umgebung geht vor Datei).
 | `GEOTANDEM_BASEMAP` | `none` (`make dev`: `swisstopo-grau`) | Hintergrundkarte: `none`, `swisstopo-grau`, `osm` oder eigene Kachel-URL mit `{z}/{x}/{y}`. Alles ausser `none` lässt den Browser Kacheln von aussen laden — der Anbieter sieht dann, welcher Kartenausschnitt betrachtet wird (F-9.1) |
 | `GEOTANDEM_BASEMAP_ATTRIBUTION` | leer | Quellenangabe zu einer eigenen Kachel-URL |
 | `GEOTANDEM_SESSION_HOURS` | `12` | Gültigkeit einer Anmeldung; verlängert sich bei Nutzung |
-| `GEOTANDEM_COOKIE_SECURE` | `false` | Sitzungscookie nur über HTTPS senden; hinter TLS auf `true` setzen |
+| `GEOTANDEM_COOKIE_SECURE` | `false` | Sitzungscookie nur über HTTPS senden. Kommt eine Anfrage über HTTPS an, gilt das ohnehin, und die Antwort trägt HSTS |
+| `GEOTANDEM_MAX_REQUEST_MB` | `2` | Grösster Anfragekörper; nur der Upload eines angemeldeten Administrators darf bis `MAX_IMPORT_MB` gehen. Die Grenze greift, bevor die Anwendung den Körper liest |
+| `GEOTANDEM_API_DOCS` | `false` (`make dev`: `true`) | `/docs`, `/redoc` und `/openapi.json` ausliefern; auf einer öffentlichen Instanz aus lassen |
+| `GEOTANDEM_SETUP_TOKEN` | leer | Einrichtungscode für das erste Konto, mindestens 16 Zeichen. Leer: jeder Start ohne Konto erzeugt einen und schreibt ihn ins Protokoll |
+| `GEOTANDEM_LOGIN_FAILURES` | `10` | Fehlgeschlagene Anmeldungen je Benutzername und Absenderadresse in 15 Minuten; danach antwortet die Anmeldung `429` mit `Retry-After`, auch auf das richtige Passwort |
+| `GEOTANDEM_LOGIN_FAILURES_PER_ADDRESS` | `50` | Dasselbe je Absenderadresse, gleich welcher Benutzername |
 | `GEOTANDEM_LOAD_SAMPLE_DATA` | `false` (Container: `true`) | Beispieldatensatz beim Start laden |
 | `GEOTANDEM_SPATIALITE_LIBRARY` | `mod_spatialite` | Name oder Pfad der SpatiaLite-Erweiterung |
 | `GEOTANDEM_FRONTEND_DIR` | leer (Container: `/app/frontend/dist`) | Gebautes Frontend, unter `/` ausgeliefert; in der Entwicklung liefert Vite es aus |
+
+**Öffentlich, hinter Traefik:** `compose.traefik.yaml` (Anleitung in der Datei)
+setzt TLS, Grössen- und Ratenbegrenzung und sperrt die Ersteinrichtung von
+aussen — als zweite Schicht: Die Anwendung begrenzt Anfragegrössen,
+Anmeldeversuche und Herkunft schreibender Anfragen (gleicher Ursprung) selbst
+und setzt ihre Sicherheits-Header (CSP, HSTS über HTTPS, `nosniff`,
+`X-Frame-Options`) auch ohne Proxy.
+
+**Sicherheitsprotokoll.** Anmeldungen (auch fehlgeschlagene, mit Grund:
+`unknown_user`, `wrong_password`, `account_locked`), gebremste Anmeldungen,
+Passwortwechsel, Konto-, Katalog-, Sichtbarkeits- und Importänderungen samt
+handelndem Konto sowie die Abweisungen der Schutzschicht stehen als je eine
+JSON-Zeile mit `"event"` auf stderr, also in `docker logs`. Passwörter und
+Sitzungstoken stehen nie darin. Auswerten etwa mit
+`docker logs <container> 2>&1 | grep '^{' | jq 'select(.event == "sign_in_failed")'`.
+
+**Hinter einem Reverse-Proxy** muss uvicorn dessen Adresse vertrauen
+(`FORWARDED_ALLOW_IPS`, ohne Präfix, z. B. `-e FORWARDED_ALLOW_IPS=172.18.0.2`),
+sonst scheinen alle Anfragen vom Proxy zu kommen und teilen sich die Grenze
+`GEOTANDEM_LOGIN_FAILURES_PER_ADDRESS`. Die Zähler liegen im Speicher und
+beginnen nach einem Neustart von vorn. Weitere Befunde und Massnahmen:
+[security-review.md](security-review.md).
 
 ## Sicherung (F-9.8)
 

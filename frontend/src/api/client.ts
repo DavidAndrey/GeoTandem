@@ -3,7 +3,7 @@
 import type { components } from './schema'
 
 export type Schemas = components['schemas']
-export type Health = Schemas['Health']
+export type SystemStatus = Schemas['SystemStatus']
 export type ApiError = Schemas['ErrorBody']
 export type LayerInfo = Schemas['LayerInfo']
 export type AdminLayerInfo = Schemas['AdminLayerInfo']
@@ -71,11 +71,10 @@ const json = (method: string, body: unknown): RequestInit => ({
 const enc = encodeURIComponent
 
 export const api = {
-  health: () => request<Health>('/api/health'),
-
   auth: {
     setupStatus: () => request<SetupStatus>('/api/auth/setup'),
     setup: (body: {
+      token: string
       username: string
       display_name: string
       password: string
@@ -131,6 +130,7 @@ export const api = {
     request<QueryResult>('/api/query', json('POST', { source: layer, output: 'table', limit })),
 
   admin: {
+    system: () => request<SystemStatus>('/api/admin/system'),
     layers: () => request<AdminLayerInfo[]>('/api/admin/layers'),
     updateLayer: (name: string, body: LayerUpdate) =>
       request<LayerInfo>(`/api/admin/layers/${enc(name)}`, json('PATCH', body)),

@@ -47,6 +47,8 @@ def _serve(args: argparse.Namespace) -> None:
         host=args.host,
         port=args.port,
         reload=args.reload,
+        # No "server: uvicorn" on every answer (security review #10).
+        server_header=False,
     )
 
 
@@ -71,6 +73,7 @@ def _engine() -> "Engine":
 def _user_create(args: argparse.Namespace) -> None:
     from getpass import getpass
 
+    from geotandem import audit
     from geotandem.auth import accounts
 
     if args.start_password:
@@ -90,18 +93,23 @@ def _user_create(args: argparse.Namespace) -> None:
         )
     except accounts.AccountError as exc:
         raise SystemExit(exc.message) from None
+    audit.configure()
+    audit.event("account_created", username="cli", account=account.username, role=account.role)
     print(f"created {account.username} ({account.role})")
     if must_change:
         print(f"start password: {password}  (to be changed at first sign-in)")
 
 
 def _user_reset(args: argparse.Namespace) -> None:
+    from geotandem import audit
     from geotandem.auth import accounts
 
     try:
-        _, password = accounts.reset_password(_engine(), args.username)
+        account, password = accounts.reset_password(_engine(), args.username)
     except accounts.AccountError as exc:
         raise SystemExit(exc.message) from None
+    audit.configure()
+    audit.event("account_password_reset", username="cli", account=account.username)
     print(f"start password: {password}  (to be changed at next sign-in)")
 
 

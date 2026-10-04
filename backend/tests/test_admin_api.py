@@ -5,7 +5,7 @@ from typing import Any
 
 import httpx
 import pytest
-from api_helpers import ADMIN_PASSWORD
+from api_helpers import ADMIN_PASSWORD, SETUP_TOKEN
 from import_files import LV95, make_files
 
 from geotandem.app import create_app
@@ -104,6 +104,9 @@ async def test_unreadable_upload(client: httpx.AsyncClient, tmp_path: Path) -> N
         "unreadable_source",
         "unreadable",
     )
+    # Nothing about the server: not where uploads wait, nor what reads them.
+    assert response.json()["message"].startswith("'kaputt.gpkg' cannot be read as a GeoPackage.")
+    assert "staging" not in response.text and "/" not in response.json()["message"]
     unsupported = tmp_path / "plan.dxf"
     unsupported.write_bytes(b"0")
     assert (await upload(client, unsupported)).json()["details"]["reason"] == "unsupported_format"
@@ -114,7 +117,7 @@ async def test_unreadable_upload(client: httpx.AsyncClient, tmp_path: Path) -> N
 
 
 async def test_upload_size_limit(tmp_path: Path) -> None:
-    settings = Settings(data_dir=tmp_path / "data", max_import_mb=1)
+    settings = Settings(data_dir=tmp_path / "data", max_import_mb=1, setup_token=SETUP_TOKEN)
     app = create_app(settings)
     big = tmp_path / "gross.csv"
     big.write_bytes(b"a,b\n" + b"1,2\n" * 300_000)
@@ -122,7 +125,8 @@ async def test_upload_size_limit(tmp_path: Path) -> None:
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             await client.post(
-                "/api/auth/setup", json={"username": "admin", "password": ADMIN_PASSWORD}
+                "/api/auth/setup",
+                json={"token": SETUP_TOKEN, "username": "admin", "password": ADMIN_PASSWORD},
             )
             response = await upload(client, big)
     assert (response.status_code, response.json()["code"]) == (413, "upload_too_large")

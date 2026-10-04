@@ -7,7 +7,6 @@ from typing import Annotated, Any, Literal
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
-from geotandem import __version__
 from geotandem.api.auth import CurrentAccount
 from geotandem.api.errors import ErrorBody
 from geotandem.api.state import AppState, get_state
@@ -24,9 +23,8 @@ from geotandem.engine import (
     validate_query,
 )
 from geotandem.engine.errors import QueryTimedOut, UnknownLayer
-from geotandem.sample.load import dataset_version
 from geotandem.tools import ToolDescription
-from geotandem_query import SCHEMA_VERSION, QueryObject
+from geotandem_query import QueryObject
 from geotandem_query.export import json_schema
 
 router = APIRouter(prefix="/api")
@@ -49,19 +47,12 @@ class LayerNotFound(UnknownLayer):
     status = 404
 
 
-class Capabilities(BaseModel):
-    supported: list[Op]
-    missing: dict[Op, list[str]]
-
-
 class Health(BaseModel):
+    """For the container's health check and monitors: nothing else, as anyone may ask
+    (security review #10). Version, backend and capabilities are the administrators'
+    (``/api/admin/system``)."""
+
     status: Literal["ok", "degraded"]
-    version: str
-    backend: str
-    internal_crs: int
-    schema_version: str
-    sample_dataset_version: str
-    capabilities: Capabilities
 
 
 class Validation(BaseModel):
@@ -72,18 +63,7 @@ class Validation(BaseModel):
 
 @router.get("/health")
 def health(state: State) -> Health:
-    missing = state.unsupported
-    return Health(
-        status="degraded" if missing else "ok",
-        version=__version__,
-        backend=state.backend.name,
-        internal_crs=state.backend.internal_srid,
-        schema_version=SCHEMA_VERSION,
-        sample_dataset_version=dataset_version(),
-        capabilities=Capabilities(
-            supported=[op for op in Op if op not in missing], missing=missing
-        ),
-    )
+    return Health(status="degraded" if state.unsupported else "ok")
 
 
 @router.get("/layers")

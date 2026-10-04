@@ -8,12 +8,21 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException
-from starlette.responses import Response
+from starlette.responses import FileResponse, HTMLResponse, Response
 from starlette.types import Scope
 
-from geotandem import __version__
+from geotandem import __version__, audit
 from geotandem.api import admin, auth, errors, queries, routes, sessions
+from geotandem.api.guards import (
+    CSP_NONCE,
+    NONCE_PLACEHOLDER,
+    BodyLimit,
+    SameOrigin,
+    SecurityHeaders,
+)
 from geotandem.api.state import AppState
+from geotandem.auth import accounts, setup_token
+from geotandem.auth.throttle import LoginThrottle
 from geotandem.config import Settings, get_settings
 from geotandem.data.spatialite import SpatiaLiteBackend
 from geotandem.db.bootstrap import bootstrap
@@ -40,19 +49,33 @@ def start(settings: Settings) -> AppState:
         load_sample(backend)
     staging = Staging(settings.staging_dir)
     staging.cleanup()
-    return AppState(settings, backend, unsupported, default_registry(), staging)
+    throttle = LoginThrottle(settings.login_failures, settings.login_failures_per_address)
+    token = None if accounts.has_accounts(engine) else setup_token.issue(settings)
+    return AppState(settings, backend, unsupported, default_registry(), staging, throttle, token)
 
 
 class SinglePageApp(StaticFiles):
-    """Serve the built frontend; unknown non-API paths get index.html (client routing)."""
+    """Serve the built frontend; unknown non-API paths get index.html (client routing).
+
+    The page names this request's Content-Security-Policy nonce, so it is
+    filled in on every load and never cached (security review #7).
+    """
+
+    _page: str | None = None
 
     async def get_response(self, path: str, scope: Scope) -> Response:
         try:
-            return await super().get_response(path, scope)
+            response = await super().get_response(path, scope)
         except HTTPException as exc:
             if exc.status_code != 404 or path.startswith("api/"):
                 raise
-            return await super().get_response("index.html", scope)
+            response = await super().get_response("index.html", scope)
+        if isinstance(response, FileResponse) and Path(response.path).name == "index.html":
+            if self._page is None:
+                self._page = Path(response.path).read_text(encoding="utf-8")
+            page = self._page.replace(NONCE_PLACEHOLDER, scope.get(CSP_NONCE, ""))
+            return HTMLResponse(page, headers={"Cache-Control": "no-store"})
+        return response
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -64,7 +87,22 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         yield
         app.state.geotandem.backend.engine.dispose()
 
-    app = FastAPI(title="GeoTandem", version=__version__, lifespan=lifespan)
+    docs = settings.api_docs
+    app = FastAPI(
+        title="GeoTandem",
+        version=__version__,
+        lifespan=lifespan,
+        docs_url="/docs" if docs else None,
+        redoc_url="/redoc" if docs else None,
+        openapi_url="/openapi.json" if docs else None,
+    )
+    # Outermost last: headers go on every answer, also on the guards' refusals.
+    app.add_middleware(BodyLimit)
+    app.add_middleware(SameOrigin)
+    app.add_middleware(SecurityHeaders)
+    # Outermost: every security event, the guards' included, knows its request.
+    app.add_middleware(audit.AuditContext)
+    audit.configure()
     errors.install(app)
     app.include_router(routes.router)
     app.include_router(admin.router)

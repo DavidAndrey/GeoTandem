@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page } from './test'
 
 // Query editor (design B2, F-4.2 to F-4.4) against the real engine: what the
 // interface counts equals what the hand-written query object counts.

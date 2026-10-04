@@ -1,4 +1,4 @@
-import { expect, test, type Locator } from '@playwright/test'
+import { expect, test, type Locator } from './test'
 import { buildReferenceQuestion, ensureAreaLayer, validate, watchQueries } from './reference'
 
 // Acceptance E1.6 (etappen.md): "Treffer lassen sich lesen und nicht nur

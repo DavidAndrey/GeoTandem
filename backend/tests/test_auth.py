@@ -5,6 +5,7 @@ from datetime import timedelta
 
 import httpx
 import pytest
+from api_helpers import SETUP_TOKEN
 from fastapi import FastAPI
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
@@ -19,7 +20,8 @@ PASSWORD = "korrekt-pferd-batterie"
 
 async def set_up(client: httpx.AsyncClient, **body: object) -> httpx.Response:
     return await client.post(
-        "/api/auth/setup", json={"username": "admin", "password": PASSWORD, **body}
+        "/api/auth/setup",
+        json={"token": SETUP_TOKEN, "username": "admin", "password": PASSWORD, **body},
     )
 
 
@@ -38,7 +40,7 @@ async def test_setup_creates_the_first_admin_once(anonymous: httpx.AsyncClient) 
     assert "password_hash" not in me
 
     assert (await anonymous.get("/api/auth/setup")).json()["needs_setup"] is False
-    again = await anonymous.post("/api/auth/setup", json={"username": "boss", "password": PASSWORD})
+    again = await set_up(anonymous, username="boss")
     assert (again.status_code, again.json()["code"]) == (409, "setup_closed")
 
 

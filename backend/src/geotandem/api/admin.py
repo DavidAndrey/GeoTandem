@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, File, Query, Response, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
+from geotandem import __version__, audit
 from geotandem.api.auth import require_admin
 from geotandem.api.errors import ErrorBody, NotFound, Problem
 from geotandem.api.state import AppState, get_state
@@ -31,13 +32,15 @@ from geotandem.catalog import (
     update_attribute,
     update_layer,
 )
-from geotandem.data import LayerExists
+from geotandem.data import LayerExists, Op
 from geotandem.db.orm import Role
 from geotandem.importing import Message, Preview, ReadOptions, SourceError
 from geotandem.importing import log as import_log
 from geotandem.importing.log import ImportRunInfo, ImportRunSummary, ImportStatus
 from geotandem.importing.run import ImportDecisions, abort, preview_file, run_import
 from geotandem.importing.staging import UnknownUpload, UploadTooLarge
+from geotandem.sample.load import dataset_version
+from geotandem_query import SCHEMA_VERSION
 
 # One guard for every route below (plan D5): signed in, start password changed, admin.
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(require_admin)])
@@ -67,6 +70,47 @@ def actor(account: Annotated[Account, Depends(require_admin)]) -> str:
 Actor = Annotated[str, Depends(actor)]
 
 
+def _fields(body: BaseModel) -> list[str]:
+    """Which fields a change set, for the security log; their values may be long texts."""
+    return sorted(body.model_dump(exclude_unset=True))
+
+
+# --- system ---------------------------------------------------------------------
+
+
+class Capabilities(BaseModel):
+    supported: list[Op]
+    missing: dict[Op, list[str]]
+
+
+class SystemStatus(BaseModel):
+    """What the instance runs on; for administrators only (security review #10)."""
+
+    status: Literal["ok", "degraded"]
+    version: str
+    backend: str
+    internal_crs: int
+    schema_version: str
+    sample_dataset_version: str
+    capabilities: Capabilities
+
+
+@router.get("/system")
+def system(state: State) -> SystemStatus:
+    missing = state.unsupported
+    return SystemStatus(
+        status="degraded" if missing else "ok",
+        version=__version__,
+        backend=state.backend.name,
+        internal_crs=state.backend.internal_srid,
+        schema_version=SCHEMA_VERSION,
+        sample_dataset_version=dataset_version(),
+        capabilities=Capabilities(
+            supported=[op for op in Op if op not in missing], missing=missing
+        ),
+    )
+
+
 # --- layers -------------------------------------------------------------------
 
 
@@ -92,30 +136,35 @@ def _layer(state: AppState, name: str) -> LayerInfo:
 
 
 @router.patch("/layers/{name}", responses=ERRORS)
-def patch_layer(name: str, body: LayerUpdate, state: State) -> LayerInfo:
+def patch_layer(name: str, body: LayerUpdate, state: State, user: Actor) -> LayerInfo:
     """Rename (title only, the identifier stays) and describe a layer (F-2.7, F-2.8)."""
     info = update_layer(state.backend.engine, name, body)
     if info is None:
         raise NotFound(f"Unknown layer '{name}'.", layer=name)
+    audit.event("layer_updated", username=user, layer=name, fields=_fields(body))
     return info
 
 
 @router.patch("/layers/{name}/attributes/{attribute}", responses=ERRORS)
 def patch_attribute(
-    name: str, attribute: str, body: AttributeUpdate, state: State
+    name: str, attribute: str, body: AttributeUpdate, state: State, user: Actor
 ) -> AttributeInfo:
     """Attribute metadata (F-2.8)."""
     info = update_attribute(state.backend.engine, name, attribute, body)
     if info is None:
         raise NotFound(f"Unknown attribute '{name}.{attribute}'.", layer=name, attribute=attribute)
+    audit.event(
+        "attribute_updated", username=user, layer=name, attribute=attribute, fields=_fields(body)
+    )
     return info
 
 
 @router.delete("/layers/{name}", status_code=204, responses=ERRORS)
-def delete_layer(name: str, state: State) -> Response:
+def delete_layer(name: str, state: State, user: Actor) -> Response:
     """Delete a layer and its data for good (F-2.7; no archive, plan D2)."""
     _layer(state, name)
     state.backend.drop_layer(name)
+    audit.event("layer_deleted", username=user, layer=name)
     return Response(status_code=204)
 
 
@@ -182,6 +231,7 @@ def duplicate_layer(name: str, body: Duplicate, state: State, user: Actor) -> La
         raise
     visibility.copy_visibility(engine, name, target)
     import_log.finish(engine, run_id, status="ok", read_count=count, imported_count=count)
+    audit.event("layer_duplicated", username=user, layer=name, copy=target)
     return _layer(state, target)
 
 
@@ -211,7 +261,7 @@ def _staged(state: AppState, import_id: str) -> Any:
 
 
 @router.post("/imports", responses=ERRORS)
-async def upload(state: State, file: Annotated[UploadFile, File()]) -> Upload:
+async def upload(state: State, file: Annotated[UploadFile, File()], user: Actor) -> Upload:
     """Step 1: stage the file and preview it with detected options (F-2.4)."""
     max_bytes = state.settings.max_import_mb * 1024 * 1024
     try:
@@ -223,6 +273,7 @@ async def upload(state: State, file: Annotated[UploadFile, File()]) -> Upload:
             f"The file exceeds {state.settings.max_import_mb} MB.",
             max_mb=state.settings.max_import_mb,
         ) from None
+    audit.event("import_uploaded", username=user, file=file.filename, import_id=import_id)
     path = state.staging.path(import_id)
     try:
         preview = await run_in_threadpool(
@@ -253,6 +304,14 @@ def commit(import_id: str, body: ImportDecisions, state: State, user: Actor) -> 
     """
     path = _staged(state, import_id)
     run = run_import(path, path.name, body, state.backend, actor=user)
+    audit.event(
+        "import_committed",
+        username=user,
+        import_id=import_id,
+        layer=run.layer_name,
+        replaced=body.replace,
+        status=run.status,
+    )
     if run.status in ("ok", "warning"):
         state.staging.delete(import_id)
         if body.replace is None and run.layer_name:
@@ -267,6 +326,7 @@ def cancel(import_id: str, state: State, user: Actor) -> ImportRunInfo:
     path = _staged(state, import_id)
     run = abort(state.backend.engine, path.name, actor=user)
     state.staging.delete(import_id)
+    audit.event("import_cancelled", username=user, import_id=import_id)
     return run
 
 
@@ -313,7 +373,7 @@ def users(state: State) -> list[Account]:
 
 
 @router.post("/users", status_code=201, responses=ERRORS)
-def create_user(body: NewAccount, state: State) -> StartPassword:
+def create_user(body: NewAccount, state: State, user: Actor) -> StartPassword:
     password = accounts.generate_password()
     account = accounts.create(
         state.backend.engine,
@@ -323,24 +383,30 @@ def create_user(body: NewAccount, state: State) -> StartPassword:
         display_name=body.display_name,
         must_change_password=True,
     )
+    audit.event("account_created", username=user, account=account.username, role=account.role)
     return StartPassword(account=account, start_password=password)
 
 
 @router.patch("/users/{username}", responses=ERRORS)
-def update_user(username: str, body: AccountUpdate, state: State) -> Account:
+def update_user(username: str, body: AccountUpdate, state: State, user: Actor) -> Account:
     """Change role, lock or unlock, rename; never the last active administrator away."""
-    return accounts.update(state.backend.engine, username, body)
+    account = accounts.update(state.backend.engine, username, body)
+    changes = body.model_dump(exclude_unset=True)
+    audit.event("account_updated", username=user, account=account.username, changes=changes)
+    return account
 
 
 @router.post("/users/{username}/reset-password", responses=ERRORS)
-def reset_password(username: str, state: State) -> StartPassword:
+def reset_password(username: str, state: State, user: Actor) -> StartPassword:
     account, password = accounts.reset_password(state.backend.engine, username)
+    audit.event("account_password_reset", username=user, account=account.username)
     return StartPassword(account=account, start_password=password)
 
 
 @router.delete("/users/{username}", status_code=204, responses=ERRORS)
-def delete_user(username: str, state: State) -> Response:
+def delete_user(username: str, state: State, user: Actor) -> Response:
     accounts.delete(state.backend.engine, username)
+    audit.event("account_deleted", username=user, account=username.strip().lower())
     return Response(status_code=204)
 
 
@@ -370,13 +436,23 @@ def visibility_default(state: State) -> VisibilityDefault:
 
 
 @router.put("/visibility/default")
-def set_visibility_default(body: VisibilityDefault, state: State) -> VisibilityDefault:
+def set_visibility_default(body: VisibilityDefault, state: State, user: Actor) -> VisibilityDefault:
     visibility.set_new_layers_visible(state.backend.engine, body.new_layers_visible)
+    audit.event(
+        "visibility_default_changed", username=user, new_layers_visible=body.new_layers_visible
+    )
     return body
 
 
 @router.put("/visibility", responses=ERRORS)
-def set_visibility(body: VisibilityChange, state: State) -> list[VisibilityRow]:
+def set_visibility(body: VisibilityChange, state: State, user: Actor) -> list[VisibilityRow]:
     if not visibility.set_visible(state.backend.engine, body.layer, body.role, body.visible):
         raise NotFound(f"Unknown layer '{body.layer}'.", layer=body.layer)
+    audit.event(
+        "visibility_changed",
+        username=user,
+        layer=body.layer,
+        role=body.role,
+        visible=body.visible,
+    )
     return visibility.matrix(state.backend.engine)

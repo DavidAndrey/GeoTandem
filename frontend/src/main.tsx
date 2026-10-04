@@ -1,4 +1,5 @@
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { setNonce } from 'get-nonce'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router'
@@ -9,6 +10,11 @@ import './index.css'
 
 const root = document.getElementById('root')
 if (!root) throw new Error('#root missing in index.html')
+
+// Dialogs lock scrolling with <style> elements they add at run time; the
+// Content-Security-Policy admits them only with the page's nonce (security review #7).
+const nonce = document.querySelector<HTMLMetaElement>('meta[property="csp-nonce"]')?.nonce
+if (nonce) setNonce(nonce)
 
 // A 401 anywhere means the session ended (expired, locked, signed out
 // elsewhere): re-asking "who am I" sends the guards to the sign-in page.

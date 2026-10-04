@@ -25,6 +25,7 @@ step "frontend"
 
 step "instance on port $port"
 mkdir -p "$work/data" "$work/shots"
+export GEOTANDEM_SETUP_TOKEN="screenshots-$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')"
 GEOTANDEM_DATA_DIR="$work/data" GEOTANDEM_LOAD_SAMPLE_DATA=true GEOTANDEM_BASEMAP=none \
   GEOTANDEM_FRONTEND_DIR="$PWD/frontend/dist" \
   uv run geotandem serve --port "$port" >"$work/server.log" 2>&1 &
