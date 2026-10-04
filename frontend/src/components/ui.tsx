@@ -1,4 +1,6 @@
 // Small shared building blocks on Radix primitives (tech-stack 4.3, plan D8).
+import { Trans } from '@lingui/react/macro'
+import { t } from '@lingui/core/macro'
 import { AlertTriangle, Check, Circle, Loader, MoreHorizontal, X } from 'lucide-react'
 import { AlertDialog, Dialog, DropdownMenu } from 'radix-ui'
 import type { ReactNode } from 'react'
@@ -23,7 +25,7 @@ export function ErrorNotice({ error }: { error: unknown }) {
 export function Loading() {
   return (
     <p className="text-muted flex items-center gap-2 text-sm">
-      <Loader size={14} className="animate-spin" aria-hidden /> Lädt …
+      <Loader size={14} className="animate-spin" aria-hidden /> <Trans>Lädt …</Trans>
     </p>
   )
 }
@@ -54,7 +56,7 @@ export function StatusBadge({ status }: { status: ImportStatus }) {
 /** Four-step indicator ●●●○ (design D2). */
 export function Dots({ value, max = 4, label }: { value: number; max?: number; label: string }) {
   return (
-    <span role="img" aria-label={`${label}: ${value} von ${max}`} className="inline-flex gap-0.5">
+    <span role="img" aria-label={t`${label}: ${value} von ${max}`} className="inline-flex gap-0.5">
       {Array.from({ length: max }, (_, i) => (
         <span
           key={i}
@@ -135,7 +137,9 @@ export function ConfirmDialog({
             <div className="text-sm">{children}</div>
           </AlertDialog.Description>
           <div className="mt-4 flex justify-end gap-2">
-            <AlertDialog.Cancel className="btn">Abbrechen</AlertDialog.Cancel>
+            <AlertDialog.Cancel className="btn">
+              <Trans>Abbrechen</Trans>
+            </AlertDialog.Cancel>
             <button type="button" className="btn btn-danger" onClick={onConfirm} disabled={busy}>
               {confirm}
             </button>

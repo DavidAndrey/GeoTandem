@@ -1,5 +1,6 @@
 // Addresses of the workplace (design "Adressen", plan D7): /sitzung/:id opens
 // that session with its check; / lands once in the last opened one.
+import { t } from '@lingui/core/macro'
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router'
 import { useAnalysis } from '../analysis/store'
@@ -31,7 +32,7 @@ export function useSessionRoute(id: string | undefined) {
             removed: { layers: [], rows: [], result: false },
             error:
               error instanceof ApiRequestError && error.status === 404
-                ? 'Diese Sitzung gibt es nicht oder nicht für dieses Konto.'
+                ? t`Diese Sitzung gibt es nicht oder nicht für dieses Konto.`
                 : error instanceof Error
                   ? error.message
                   : String(error),

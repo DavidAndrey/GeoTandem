@@ -160,9 +160,12 @@ export function describeSpatial(row: SpatialRow, labels: Labels, filterLabels?: 
   return row.not ? negated(condition) : condition
 }
 
+/** A feature without a name of its own. */
+export const objectLabel = (fid: number) => t`Objekt ${fid}`
+
 export function describeReference(row: ReferenceRow, labels: Labels): string {
   const fid = row.fid
-  const feature = fid === null ? '…' : row.label || t`Objekt ${fid}`
+  const feature = fid === null ? '…' : row.label || objectLabel(fid)
   const layer = row.layer ? labels.layer(row.layer) : '…'
   const distance = formatDistance(row.distance_m)
   const condition =

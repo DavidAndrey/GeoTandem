@@ -1,5 +1,6 @@
 // The query part of the analysis, as a saved query holds it (plan E1.7b, Q1).
 // Pure: what can be saved, whether it changed, how it fits today's layers.
+import { t } from '@lingui/core/macro'
 import type { Analysis, Group, Node, QueryPart, QueryRef, Row } from '../analysis/model'
 import { resultLayer } from '../analysis/query'
 
@@ -67,7 +68,7 @@ export function conditionLabel(c: { attribute: number; spatial: number; restrict
   const parts = [
     c.attribute ? `${c.attribute} A` : '',
     c.spatial ? `${c.spatial} R` : '',
-    c.restriction ? 'Fläche' : '',
+    c.restriction ? t`Fläche` : '',
   ].filter(Boolean)
   return parts.length ? parts.join(' · ') : 'keine'
 }

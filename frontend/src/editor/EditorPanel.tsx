@@ -1,6 +1,10 @@
 // Query editor (design B2, F-4.2 to F-4.4): an AND/OR tree of attribute,
 // spatial and reference conditions. It edits the draft; "Übernehmen" writes it
 // into the analysis, "Verwerfen" restores the previous state.
+import { hitsOf } from '../i18n/phrases'
+import { i18n } from '@lingui/core'
+import { Trans } from '@lingui/react/macro'
+import { msg, t } from '@lingui/core/macro'
 import { Crosshair, Plus, X } from 'lucide-react'
 import { DropdownMenu } from 'radix-ui'
 import { useState, type ReactNode } from 'react'
@@ -25,6 +29,7 @@ import { ResultSelect } from '../workplace/ResultSelect'
 import {
   formatScalar,
   needsDistance,
+  objectLabel,
   operatorLabel,
   operatorsFor,
   SPATIAL_OPERATOR_LIST,
@@ -51,27 +56,29 @@ export function EditorPanel() {
 
   return (
     <section
-      aria-label="Abfrage-Editor"
+      aria-label={t`Abfrage-Editor`}
       className="card flex min-h-0 flex-col overflow-hidden"
       onKeyDown={(e) => e.key === 'Escape' && close(false)}
     >
       <div className="border-divider flex items-center gap-2 border-b px-4 py-2">
         <h2 id="editor-title" className="flex-1 text-xl">
-          Abfrage
+          <Trans>Abfrage</Trans>
         </h2>
         {counts.data && (
-          <span className="text-sm" aria-label="Treffer im Entwurf">
-            → {counts.data.hits} von {counts.data.total}
+          <span className="text-sm" aria-label={t`Treffer im Entwurf`}>
+            → {hitsOf(counts.data.hits, counts.data.total)}
           </span>
         )}
-        <button type="button" aria-label="Verwerfen und schliessen" onClick={() => close(false)}>
+        <button type="button" aria-label={t`Verwerfen und schliessen`} onClick={() => close(false)}>
           <X size={16} />
         </button>
       </div>
       <div className="flex-1 overflow-auto px-4 py-3">
         <ResultSelect hint />
         {fields.length === 0 && analysis.result === null ? (
-          <p className="text-muted mt-3 text-sm">Erst einen Ergebnis-Layer wählen.</p>
+          <p className="text-muted mt-3 text-sm">
+            <Trans>Erst einen Ergebnis-Layer wählen.</Trans>
+          </p>
         ) : (
           <GroupEditor
             group={analysis.tree}
@@ -85,10 +92,10 @@ export function EditorPanel() {
       </div>
       <div className="border-divider flex gap-2 border-t px-4 py-2">
         <button type="button" className="btn btn-primary" onClick={() => close(true)}>
-          Übernehmen
+          <Trans>Übernehmen</Trans>
         </button>
         <button type="button" className="btn" onClick={() => close(false)}>
-          Verwerfen
+          <Trans>Verwerfen</Trans>
         </button>
       </div>
     </section>
@@ -112,11 +119,11 @@ function GroupEditor({ group, root, ...context }: { group: Group; root?: boolean
   return (
     <div
       role="group"
-      aria-label={root ? 'Bedingungen' : 'Gruppe'}
+      aria-label={root ? t`Bedingungen` : t`Gruppe`}
       className={root ? 'mt-3' : 'border-divider my-1 rounded-[var(--radius-md)] border p-2'}
     >
       <div className="mb-1.5 flex items-center gap-2 text-sm">
-        <div className="flex" role="radiogroup" aria-label="Verknüpfung">
+        <div className="flex" role="radiogroup" aria-label={t`Verknüpfung`}>
           {(['and', 'or'] as const).map((op) => (
             <button
               key={op}
@@ -126,12 +133,12 @@ function GroupEditor({ group, root, ...context }: { group: Group; root?: boolean
               className={`border px-2 text-xs first:rounded-l last:rounded-r ${group.op === op ? 'border-accent text-accent-700' : 'border-neutral-400'}`}
               onClick={() => editNode<Group>(group.id, { op })}
             >
-              {op === 'and' ? 'UND' : 'ODER'}
+              {op === 'and' ? t`UND` : t`ODER`}
             </button>
           ))}
         </div>
         <span className="text-muted text-xs">
-          {group.op === 'and' ? 'alle folgenden' : 'mindestens eine'}
+          {group.op === 'and' ? t`alle folgenden` : t`mindestens eine`}
         </span>
         {!root && (
           <>
@@ -139,7 +146,7 @@ function GroupEditor({ group, root, ...context }: { group: Group; root?: boolean
             <button
               type="button"
               className="ml-auto"
-              aria-label="Gruppe entfernen"
+              aria-label={t`Gruppe entfernen`}
               onClick={() => removeNode(group.id)}
             >
               <X size={13} />
@@ -161,7 +168,7 @@ function GroupEditor({ group, root, ...context }: { group: Group; root?: boolean
       <div className="mt-1.5 flex gap-3 text-sm">
         <DropdownMenu.Root>
           <DropdownMenu.Trigger className="text-accent-700 flex items-center gap-1">
-            <Plus size={13} aria-hidden /> Bedingung
+            <Plus size={13} aria-hidden /> <Trans>Bedingung</Trans>
           </DropdownMenu.Trigger>
           <DropdownMenu.Portal>
             <DropdownMenu.Content
@@ -169,9 +176,9 @@ function GroupEditor({ group, root, ...context }: { group: Group; root?: boolean
               className="card z-[1100] min-w-40 py-1 shadow-[var(--shadow-md)]"
             >
               {[
-                { label: 'Attribut', node: () => newAttributeRow(context.fields[0]?.name ?? '') },
-                { label: 'Raum', node: () => newSpatialRow(otherLayers[0]?.name ?? '') },
-                { label: 'Bezugsobjekt', node: () => newReferenceRow(otherLayers[0]?.name ?? '') },
+                { label: t`Attribut`, node: () => newAttributeRow(context.fields[0]?.name ?? '') },
+                { label: t`Raum`, node: () => newSpatialRow(otherLayers[0]?.name ?? '') },
+                { label: t`Bezugsobjekt`, node: () => newReferenceRow(otherLayers[0]?.name ?? '') },
               ].map((item) => (
                 <DropdownMenu.Item
                   key={item.label}
@@ -189,7 +196,7 @@ function GroupEditor({ group, root, ...context }: { group: Group; root?: boolean
           className="text-accent-700 flex items-center gap-1"
           onClick={() => addNode(group.id, newGroup(group.op === 'and' ? 'or' : 'and'))}
         >
-          <Plus size={13} aria-hidden /> Gruppe
+          <Plus size={13} aria-hidden /> <Trans>Gruppe</Trans>
         </button>
       </div>
     </div>
@@ -205,12 +212,12 @@ function NotToggle({ node }: { node: Node }) {
         checked={node.not}
         onChange={(e) => editNode(node.id, { not: e.target.checked })}
       />
-      NICHT
+      <Trans>NICHT</Trans>
     </label>
   )
 }
 
-const BADGES = { attribute: 'Attribut', spatial: 'Raum', reference: 'Bezug' }
+const BADGES = { attribute: msg`Attribut`, spatial: msg`Raum`, reference: msg`Bezug` }
 
 function RowEditor({
   row,
@@ -223,24 +230,25 @@ function RowEditor({
     useShallow((s) => ({ activeRow: s.activeRow, setActiveRow: s.setActiveRow })),
   )
   const count = counts?.get(row.id)
+  const badge = i18n._(BADGES[row.kind])
   return (
     <div
       role="group"
-      aria-label={`Bedingung ${BADGES[row.kind]}`}
+      aria-label={t`Bedingung ${badge}`}
       className={`flex flex-wrap items-center gap-1.5 rounded-[var(--radius-md)] border px-2 py-1 text-sm ${activeRow === row.id ? 'border-accent' : 'border-transparent'}`}
       onFocus={() => setActiveRow(row.id)}
     >
       <span className="text-muted rounded-full border border-dashed border-neutral-400 px-1.5 text-[11px]">
-        {BADGES[row.kind]}
+        {badge}
       </span>
       <NotToggle node={row} />
       {row.kind === 'attribute' && <AttributeEditor row={row} fields={fields} />}
       {row.kind === 'spatial' && <SpatialEditor row={row} catalog={catalog} />}
       {row.kind === 'reference' && <ReferenceEditor row={row} catalog={catalog} />}
-      <span className="text-muted ml-auto text-xs" aria-label="Treffer dieser Bedingung">
+      <span className="text-muted ml-auto text-xs" aria-label={t`Treffer dieser Bedingung`}>
         {count ?? '–'}
       </span>
-      <button type="button" aria-label="Bedingung entfernen" onClick={() => removeNode(row.id)}>
+      <button type="button" aria-label={t`Bedingung entfernen`} onClick={() => removeNode(row.id)}>
         <X size={13} />
       </button>
     </div>
@@ -281,7 +289,7 @@ export function AttributeEditor({
     <>
       <select
         className="input"
-        aria-label="Feld"
+        aria-label={t`Feld`}
         value={row.attr}
         onChange={(e) => {
           const next = fields.find((f) => f.name === e.target.value)
@@ -296,7 +304,11 @@ export function AttributeEditor({
           })
         }}
       >
-        {!field && <option value="">Feld …</option>}
+        {!field && (
+          <option value="">
+            <Trans>Feld …</Trans>
+          </option>
+        )}
         {fields.map((f) => (
           <option key={f.name} value={f.name}>
             {f.label}
@@ -305,7 +317,7 @@ export function AttributeEditor({
       </select>
       <select
         className="input"
-        aria-label="Operator"
+        aria-label={t`Operator`}
         value={row.operator}
         onChange={(e) => change({ operator: e.target.value as AttributeRow['operator'] })}
       >
@@ -327,7 +339,7 @@ export function AttributeEditor({
           <input
             className={`input ${dated ? 'w-36' : 'w-20'}`}
             type={dated ? 'date' : 'number'}
-            aria-label="von"
+            aria-label={t`von`}
             value={row.min ?? ''}
             onChange={(e) => change({ min: bound(e.target.value) })}
           />
@@ -335,7 +347,7 @@ export function AttributeEditor({
           <input
             className={`input ${dated ? 'w-36' : 'w-20'}`}
             type={dated ? 'date' : 'number'}
-            aria-label="bis"
+            aria-label={t({ message: 'bis', context: 'range' })}
             value={row.max ?? ''}
             onChange={(e) => change({ max: bound(e.target.value) })}
           />
@@ -348,21 +360,21 @@ export function AttributeEditor({
         (field?.type === 'boolean' ? (
           <select
             className="input"
-            aria-label="Wert"
+            aria-label={t`Wert`}
             value={row.value === null ? '' : String(row.value)}
             onChange={(e) =>
               change({ value: e.target.value === '' ? null : e.target.value === 'true' })
             }
           >
             <option value="">…</option>
-            <option value="true">ja</option>
-            <option value="false">nein</option>
+            <option value="true">{t`ja`}</option>
+            <option value="false">{t`nein`}</option>
           </select>
         ) : (
           <input
             className={`input ${numeric ? 'w-24' : dated ? 'w-36' : 'w-32'}`}
             type={numeric ? 'number' : dated ? 'date' : 'text'}
-            aria-label="Wert"
+            aria-label={t`Wert`}
             list={field?.codes ? listId : undefined}
             value={row.value === null ? '' : String(row.value)}
             onChange={(e) => change({ value: parseValue(e.target.value, field) })}
@@ -408,7 +420,7 @@ function ValueList({
       ))}
       <input
         className="input w-28"
-        aria-label="Wert hinzufügen"
+        aria-label={t`Wert hinzufügen`}
         list={field?.codes ? listId : undefined}
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -446,7 +458,11 @@ function LayerSelect({
       value={value}
       onChange={(e) => onChange(e.target.value)}
     >
-      {!value && <option value="">Layer …</option>}
+      {!value && (
+        <option value="">
+          <Trans>Layer …</Trans>
+        </option>
+      )}
       {layers.map((l) => (
         <option key={l.name} value={l.name}>
           {l.title}
@@ -469,7 +485,7 @@ function DistanceInput({
         className="input w-20"
         type="number"
         min={0}
-        aria-label="Distanz in Metern"
+        aria-label={t`Distanz in Metern`}
         value={value ?? ''}
         onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
       />
@@ -486,7 +502,7 @@ function SpatialEditor({ row, catalog }: { row: SpatialRow; catalog: LayerInfo[]
     <>
       <select
         className="input"
-        aria-label="Beziehung"
+        aria-label={t`Beziehung`}
         value={row.operator}
         onChange={(e) => change({ operator: e.target.value as SpatialOperator })}
       >
@@ -500,14 +516,16 @@ function SpatialEditor({ row, catalog }: { row: SpatialRow; catalog: LayerInfo[]
         <DistanceInput value={row.distance_m} onChange={(distance_m) => change({ distance_m })} />
       )}
       <LayerSelect
-        label="Bezugslayer"
+        label={t`Bezugslayer`}
         value={row.layer}
         catalog={catalog}
         onChange={(layer) => change({ layer, filter: null })}
       />
       {row.filter ? (
         <span className="flex w-full flex-wrap items-center gap-1.5 pl-6 text-xs">
-          <span className="text-muted">wo</span>
+          <span className="text-muted">
+            <Trans>wo</Trans>
+          </span>
           <AttributeEditor
             row={row.filter}
             fields={filterFields}
@@ -515,7 +533,7 @@ function SpatialEditor({ row, catalog }: { row: SpatialRow; catalog: LayerInfo[]
           />
           <button
             type="button"
-            aria-label="Filter entfernen"
+            aria-label={t`Filter entfernen`}
             onClick={() => change({ filter: null })}
           >
             <X size={12} />
@@ -528,7 +546,7 @@ function SpatialEditor({ row, catalog }: { row: SpatialRow; catalog: LayerInfo[]
             className="text-accent-700 text-xs"
             onClick={() => change({ filter: newAttributeRow(filterFields[0]?.name ?? '') })}
           >
-            + Filter
+            <Trans>+ Filter</Trans>
           </button>
         )
       )}
@@ -551,9 +569,11 @@ function ReferenceEditor({
     <>
       <span className="text-xs">≤</span>
       <DistanceInput value={row.distance_m} onChange={(m) => change({ distance_m: m ?? 0 })} />
-      <span className="text-xs">um</span>
+      <span className="text-xs">
+        <Trans context="around a feature">um</Trans>
+      </span>
       <LayerSelect
-        label="Layer des Bezugsobjekts"
+        label={t`Layer des Bezugsobjekts`}
         value={row.layer}
         catalog={catalog}
         onChange={(layer) => change({ layer, fid: null, label: '' })}
@@ -568,9 +588,9 @@ function ReferenceEditor({
         <Crosshair size={12} aria-hidden />
         {row.fid === null
           ? picking
-            ? 'auf der Karte klicken …'
-            : 'Objekt wählen'
-          : row.label || `Objekt ${row.fid}`}
+            ? t`auf der Karte klicken …`
+            : t`Objekt wählen`
+          : row.label || objectLabel(row.fid)}
       </button>
     </>
   )

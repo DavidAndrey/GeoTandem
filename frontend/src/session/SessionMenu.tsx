@@ -1,5 +1,8 @@
 // The session in the header (design C1): its name as a menu, and whether it
 // is saved. Changes are "ungespeichert" except moving the map (design decision 3).
+import { deleteTitle } from '../i18n/phrases'
+import { Trans } from '@lingui/react/macro'
+import { t } from '@lingui/core/macro'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDown } from 'lucide-react'
 import { DropdownMenu } from 'radix-ui'
@@ -9,7 +12,7 @@ import { api } from '../api/client'
 import { ConfirmDialog } from '../components/ui'
 import { newSession } from './actions'
 import { useSession } from './store'
-import { formatWhen, guarded, isMac, saveOrAsk, sessionKeys, useSessionUi, useUnsaved } from './ui'
+import { formatSaved, guarded, isMac, saveOrAsk, sessionKeys, useSessionUi, useUnsaved } from './ui'
 
 const item =
   'flex cursor-pointer items-center justify-between gap-6 px-3 py-1 text-sm outline-none data-[highlighted]:bg-neutral-200 data-[disabled]:cursor-default data-[disabled]:text-muted'
@@ -44,8 +47,8 @@ export function SessionMenu() {
   return (
     <div className="flex items-center gap-3">
       <DropdownMenu.Root>
-        <DropdownMenu.Trigger className="btn btn-primary" aria-label="Sitzungsmenü">
-          {current?.name ?? 'Neue Sitzung'}
+        <DropdownMenu.Trigger className="btn btn-primary" aria-label={t`Sitzungsmenü`}>
+          {current?.name ?? t`Neue Sitzung`}
           <ChevronDown size={14} aria-hidden />
         </DropdownMenu.Trigger>
         <DropdownMenu.Portal>
@@ -54,37 +57,47 @@ export function SessionMenu() {
             className="card z-[1100] min-w-64 py-1 shadow-[var(--shadow-md)]"
           >
             <DropdownMenu.Item className={item} onSelect={() => save.mutate()}>
-              Speichern <Shortcut>{isMac() ? '⌘S' : 'Ctrl+S'}</Shortcut>
+              <Trans>Speichern</Trans>{' '}
+              <Shortcut>
+                {isMac()
+                  ? '⌘S'
+                  : t({
+                      message: 'Ctrl+S',
+                      comment: 'Keyboard shortcut (German keyboards: Strg+S)',
+                    })}
+              </Shortcut>
             </DropdownMenu.Item>
             <DropdownMenu.Item className={item} onSelect={() => openDialog('saveAs')}>
-              Speichern unter …
+              <Trans>Speichern unter …</Trans>
             </DropdownMenu.Item>
             <DropdownMenu.Separator className="my-1 h-px bg-[var(--color-divider)]" />
             <DropdownMenu.Item
               className={item}
               onSelect={() =>
-                guarded('neu beginnen', () => {
+                guarded('new', () => {
                   newSession()
                   navigate('/')
                 })
               }
             >
-              Neue Sitzung
+              <Trans>Neue Sitzung</Trans>
             </DropdownMenu.Item>
             {recent.length > 0 && (
-              <DropdownMenu.Label className="label-caps px-3 pt-2">Zuletzt</DropdownMenu.Label>
+              <DropdownMenu.Label className="label-caps px-3 pt-2">
+                <Trans>Zuletzt</Trans>
+              </DropdownMenu.Label>
             )}
             {recent.map((s) => (
               <DropdownMenu.Item
                 key={s.id}
                 className={item}
-                onSelect={() => guarded('öffnen', () => navigate(`/sitzung/${s.id}`))}
+                onSelect={() => guarded('open', () => navigate(`/sitzung/${s.id}`))}
               >
                 {s.name}
               </DropdownMenu.Item>
             ))}
             <DropdownMenu.Item className={item} onSelect={() => openDialog('list')}>
-              Alle öffnen … <Shortcut>C3</Shortcut>
+              <Trans>Alle öffnen …</Trans> <Shortcut>C3</Shortcut>
             </DropdownMenu.Item>
             <DropdownMenu.Separator className="my-1 h-px bg-[var(--color-divider)]" />
             <DropdownMenu.Item
@@ -92,36 +105,40 @@ export function SessionMenu() {
               disabled={!current}
               onSelect={() => setDeleting(true)}
             >
-              Diese Sitzung löschen
+              <Trans>Diese Sitzung löschen</Trans>
             </DropdownMenu.Item>
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
-      <span role="status" aria-label="Speicherstand" className="text-muted text-sm">
+      <span role="status" aria-label={t`Speicherstand`} className="text-muted text-sm">
         {unsaved ? (
           <>
             <span aria-hidden className="mr-1 inline-block size-2 rounded-full bg-neutral-500" />
-            ungespeichert
+            <Trans>ungespeichert</Trans>
           </>
         ) : current ? (
-          `gespeichert ${formatWhen(current.savedAt).replace(/^heute /, '')}`
+          formatSaved(current.savedAt)
         ) : null}
       </span>
       {save.isError && (
         <span role="alert" className="text-danger text-sm">
-          Speichern fehlgeschlagen
+          <Trans>Speichern fehlgeschlagen</Trans>
         </span>
       )}
       {current && (
         <ConfirmDialog
           open={deleting}
           onOpenChange={setDeleting}
-          title={`„${current.name}" löschen?`}
-          confirm="Löschen"
+          title={deleteTitle(current.name)}
+          confirm={t`Löschen`}
           busy={remove.isPending}
           onConfirm={() => remove.mutate(current.id)}
         >
-          <p>Die Sitzung wird endgültig gelöscht; der Arbeitsplatz beginnt danach leer.</p>
+          <p>
+            <Trans>
+              Die Sitzung wird endgültig gelöscht; der Arbeitsplatz beginnt danach leer.
+            </Trans>
+          </p>
         </ConfirmDialog>
       )}
     </div>

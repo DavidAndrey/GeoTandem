@@ -1,5 +1,8 @@
 // "Speichern unter" (design C2): name, note, and what will be saved. The stamp
 // is the server's, computed when it saves (plan E1.7, S5).
+import { hitCount } from './notice'
+import { Trans } from '@lingui/react/macro'
+import { t } from '@lingui/core/macro'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check } from 'lucide-react'
 import { useState, type FormEvent, type ReactNode } from 'react'
@@ -26,8 +29,8 @@ export function SaveAsDialog() {
     <Modal
       open={open}
       onOpenChange={(next) => !next && close()}
-      title="Sitzung speichern"
-      description="Analyse unter einem Namen speichern"
+      title={t`Sitzung speichern`}
+      description={t`Analyse unter einem Namen speichern`}
     >
       {open && <SaveAsForm onDone={close} afterSave={afterSave} />}
     </Modal>
@@ -75,10 +78,15 @@ function SaveAsForm({ onDone, afterSave }: { onDone: () => void; afterSave: (() 
   }
   const result = resultLayer(analysis)
   const derived = analysis.layers.filter((l) => l.source.kind === 'derived')
+  const target = result ? layerTitle(result, catalog.data) : '–'
+  const conditions = rowCount(analysis.tree)
+  const trimmed = name.trim()
   return (
     <form onSubmit={submit} className="flex flex-col gap-3 text-sm">
       <label className="flex flex-col gap-1">
-        <span className="label-caps">Name</span>
+        <span className="label-caps">
+          <Trans>Name</Trans>
+        </span>
         <input
           className="input"
           value={name}
@@ -92,59 +100,65 @@ function SaveAsForm({ onDone, afterSave }: { onDone: () => void; afterSave: (() 
         />
       </label>
       <label className="flex flex-col gap-1">
-        <span className="label-caps">Notiz (optional)</span>
+        <span className="label-caps">
+          <Trans>Notiz (optional)</Trans>
+        </span>
         <textarea
           className="input min-h-16"
           value={note}
           maxLength={2000}
-          placeholder="Fragestellung, Annahmen …"
+          placeholder={t`Fragestellung, Annahmen …`}
           onChange={(e) => setNote(e.target.value)}
         />
       </label>
       <div>
-        <p className="label-caps mb-1">Wird gespeichert</p>
+        <p className="label-caps mb-1">
+          <Trans>Wird gespeichert</Trans>
+        </p>
         <dl className="card divide-y divide-[var(--color-divider)] px-3 py-1">
-          <Line term="Layer · Reihenfolge · Sichtbarkeit · Deckkraft">
+          <Line term={t`Layer · Reihenfolge · Sichtbarkeit · Deckkraft`}>
             {analysis.layers.length}
           </Line>
-          <Line term={`Abfrage · Ziel ${result ? layerTitle(result, catalog.data) : '–'}`}>
-            {rowCount(analysis.tree)} Bed.
+          <Line term={t`Abfrage · Ziel ${target}`}>
+            <Trans>{conditions} Bed.</Trans>
           </Line>
-          <Line term="Abgeleitete Layer (als Rezept)">
-            {derived.length ? derived.map((l) => layerTitle(l, catalog.data)).join(', ') : 'keine'}
+          <Line term={t`Abgeleitete Layer (als Rezept)`}>
+            {derived.length ? derived.map((l) => layerTitle(l, catalog.data)).join(', ') : t`keine`}
           </Line>
-          <Line term="Kartenausschnitt · Tabelle (Spalten, Sortierung)">
-            <Check size={14} aria-label="ja" />
+          <Line term={t`Kartenausschnitt · Tabelle (Spalten, Sortierung)`}>
+            <Check size={14} aria-label={t`ja`} />
           </Line>
-          <Line term="Ergebnis-Stempel">
+          <Line term={t`Ergebnis-Stempel`}>
             {query === null
-              ? 'kein Ergebnis-Layer'
+              ? t`kein Ergebnis-Layer`
               : hits.data
-                ? `${hits.data.counts[0]} Treffer`
+                ? hitCount(hits.data.counts[0] ?? 0)
                 : '…'}
           </Line>
         </dl>
       </div>
       {taken && (
         <div role="alert" className="card border-accent flex items-center gap-2 p-2">
-          <span className="flex-1">Eine Sitzung „{name.trim()}" gibt es schon.</span>
+          <span className="flex-1">
+            <Trans>Eine Sitzung „{trimmed}" gibt es schon.</Trans>
+          </span>
           <button
             type="button"
             className="btn btn-danger"
             disabled={save.isPending}
             onClick={() => save.mutate(taken)}
           >
-            Überschreiben
+            <Trans>Überschreiben</Trans>
           </button>
         </div>
       )}
       {save.isError && !(save.error instanceof NameTaken) && <ErrorNotice error={save.error} />}
       <div className="flex gap-2">
         <button type="submit" className="btn btn-primary" disabled={save.isPending || !name.trim()}>
-          Speichern
+          <Trans>Speichern</Trans>
         </button>
         <button type="button" className="btn" onClick={onDone}>
-          Abbrechen
+          <Trans>Abbrechen</Trans>
         </button>
       </div>
     </form>

@@ -1,3 +1,5 @@
+import { Trans } from '@lingui/react/macro'
+import { t } from '@lingui/core/macro'
 import { useEffect } from 'react'
 import { NavLink, Navigate, Outlet, Route, Routes, useLocation, useParams } from 'react-router'
 import { AdminLayout } from './admin/AdminLayout'
@@ -56,13 +58,13 @@ function Shell() {
       <header className="border-divider flex items-center gap-6 border-b px-4 py-2">
         <span className="font-heading text-xl font-semibold tracking-tight">GeoTandem</span>
         {workplace && <SessionMenu />}
-        <nav className="flex gap-4" aria-label="Hauptnavigation">
+        <nav className="flex gap-4" aria-label={t`Hauptnavigation`}>
           <NavLink to="/" end className={link}>
-            Karte
+            <Trans>Karte</Trans>
           </NavLink>
           {me.data?.role === 'admin' && (
             <NavLink to="/admin" className={link}>
-              Administration
+              <Trans>Administration</Trans>
             </NavLink>
           )}
         </nav>
@@ -74,6 +76,14 @@ function Shell() {
       </main>
       <SessionDialogs />
     </div>
+  )
+}
+
+function NotFound() {
+  return (
+    <p>
+      <Trans>Diese Seite gibt es nicht.</Trans>
+    </p>
   )
 }
 
@@ -112,7 +122,7 @@ export function App() {
               <Route path="sichtbarkeit" element={<VisibilityPage />} />
               <Route path="system" element={<SystemPage />} />
             </Route>
-            <Route path="*" element={<p>Diese Seite gibt es nicht.</p>} />
+            <Route path="*" element={<NotFound />} />
           </Route>
         </Route>
       </Route>

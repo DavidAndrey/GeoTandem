@@ -1,6 +1,7 @@
 // The analysis state as a session saves it (design C7; plan E1.7, S5): what
 // the user built, the table's columns and sort, and the map view. Versioned,
 // so a later version can read what an earlier one wrote.
+import { t } from '@lingui/core/macro'
 import type {
   Analysis,
   DisplayLayer,
@@ -52,7 +53,7 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
 export function fromSaved(version: number, state: unknown): SavedState {
   if (version !== STATE_VERSION)
     throw new SessionFormatError(
-      `Die Sitzung wurde mit Format ${version} gespeichert; diese Version liest Format ${STATE_VERSION}.`,
+      t`Die Sitzung wurde mit Format ${version} gespeichert; diese Version liest Format ${STATE_VERSION}.`,
     )
   if (
     !isObject(state) ||
@@ -63,7 +64,7 @@ export function fromSaved(version: number, state: unknown): SavedState {
     !isObject(state.table.columns) ||
     !isObject(state.table.sort)
   )
-    throw new SessionFormatError('Die gespeicherte Sitzung ist unvollständig.')
+    throw new SessionFormatError(t`Die gespeicherte Sitzung ist unvollständig.`)
   return {
     analysis: {
       layers: state.layers as DisplayLayer[],

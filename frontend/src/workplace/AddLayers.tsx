@@ -1,6 +1,8 @@
 // "+ Layer" (design B11): only layers this account may see; table layers are
 // listed for the attribute table and joins, never drawn; layers already in use
 // are greyed out.
+import { Trans } from '@lingui/react/macro'
+import { t } from '@lingui/core/macro'
 import { Plus } from 'lucide-react'
 import { Popover } from 'radix-ui'
 import { useState } from 'react'
@@ -32,20 +34,20 @@ export function AddLayers() {
       }}
     >
       <Popover.Trigger className="text-accent-700 flex items-center gap-1 text-sm">
-        <Plus size={13} aria-hidden /> Layer
+        <Plus size={13} aria-hidden /> <Trans>Layer</Trans>
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Content
           align="end"
           sideOffset={4}
           className="card z-[1100] w-72 p-3 shadow-[var(--shadow-md)]"
-          aria-label="Layer hinzufügen"
+          aria-label={t`Layer hinzufügen`}
         >
           <input
             type="search"
             className="input mb-2 w-full"
-            placeholder="Layer suchen"
-            aria-label="Layer suchen"
+            placeholder={t`Layer suchen`}
+            aria-label={t`Layer suchen`}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -75,9 +77,9 @@ export function AddLayers() {
                     {layer.kind === 'table' && (
                       <span
                         className="text-muted text-xs"
-                        title="Erscheint in der Attributtabelle, nicht auf der Karte"
+                        title={t`Erscheint in der Attributtabelle, nicht auf der Karte`}
                       >
-                        Tabelle
+                        <Trans>Tabelle</Trans>
                       </span>
                     )}
                   </label>
@@ -86,14 +88,14 @@ export function AddLayers() {
             })}
             {catalog.data && shown.length === 0 && (
               <li className="text-muted py-2">
-                {catalog.data.length === 0 ? 'Keine Layer freigegeben.' : 'Kein Layer passt.'}
+                {catalog.data.length === 0 ? t`Keine Layer freigegeben.` : t`Kein Layer passt.`}
               </li>
             )}
           </ul>
           <div className="mt-3 flex items-center gap-2">
             {me.data?.role === 'admin' && (
               <Link to="/admin/daten/import" className="text-accent-700 text-xs">
-                Neue Daten importieren
+                <Trans>Neue Daten importieren</Trans>
               </Link>
             )}
             <button
@@ -114,7 +116,7 @@ export function AddLayers() {
                 setOpen(false)
               }}
             >
-              Hinzufügen
+              <Trans>Hinzufügen</Trans>
             </button>
           </div>
         </Popover.Content>

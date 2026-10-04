@@ -18,7 +18,7 @@ export interface Notice {
 }
 
 // "#" in a plural would format with plain "de"; the count is formatted first (L4).
-const hits = (n: number) => {
+export const hitCount = (n: number) => {
   const count = formatNumber(n)
   return plural(n, { one: `${count} Treffer`, other: `${count} Treffer` })
 }
@@ -74,7 +74,7 @@ export function noticeOf(report: OpenReport, title: (layer: string) => string): 
 
   const deviating = !check.identical || removed.rows.length > 0 || check.state_matches === false
   if (!deviating) {
-    const count = saved ? hits(saved.count) : t`kein Ergebnis-Layer`
+    const count = saved ? hitCount(saved.count) : t`kein Ergebnis-Layer`
     return {
       ...base,
       tone: 'ok',
@@ -87,7 +87,7 @@ export function noticeOf(report: OpenReport, title: (layer: string) => string): 
   let headline = t`Ergebnis weicht ab`
   if (saved && current) {
     const before = formatNumber(saved.count)
-    const after = hits(current.count)
+    const after = hitCount(current.count)
     headline = t`Ergebnis weicht ab: ${before} → ${after}`
   }
   return { ...base, tone: 'warn', headline, lines, adopt: true }

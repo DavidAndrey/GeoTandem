@@ -1,5 +1,7 @@
 // Layer panel (design B1, B3; F-4.1): order, visibility, opacity. It controls
 // only the display; the query is edited below.
+import { Trans } from '@lingui/react/macro'
+import { t } from '@lingui/core/macro'
 import { ChevronDown, ChevronRight, Eye, EyeOff, GripVertical } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
@@ -28,19 +30,21 @@ export function LayerPanel() {
     <section aria-labelledby="layers-title">
       <div className="mb-1 flex items-center">
         <h2 id="layers-title" className="label-caps flex-1">
-          Layer
+          <Trans>Layer</Trans>
         </h2>
         <AddLayers />
       </div>
       {layers.length === 0 && (
         <p className="text-muted py-2 text-sm">
-          Noch keine Layer. Über „+ Layer" kommen sie aus dem Katalog.
+          <Trans>Noch keine Layer. Über „+ Layer" kommen sie aus dem Katalog.</Trans>
         </p>
       )}
       <LayerList layers={catalogLayers} catalog={catalog.data} />
       {derived.length > 0 && (
         <>
-          <h3 className="label-caps mt-3 mb-1">Abgeleitet · Sitzung</h3>
+          <h3 className="label-caps mt-3 mb-1">
+            <Trans>Abgeleitet · Sitzung</Trans>
+          </h3>
           <LayerList layers={derived} catalog={catalog.data} />
         </>
       )}
@@ -108,7 +112,7 @@ function LayerRow({ layer, catalog }: { layer: DisplayLayer; catalog: LayerInfo[
         ) : (
           <button
             type="button"
-            aria-label={`${title} ${layer.visible ? 'ausblenden' : 'einblenden'}`}
+            aria-label={layer.visible ? t`${title} ausblenden` : t`${title} einblenden`}
             aria-pressed={layer.visible}
             onClick={() => s.setVisible(layer.id, !layer.visible)}
           >
@@ -123,24 +127,30 @@ function LayerRow({ layer, catalog }: { layer: DisplayLayer; catalog: LayerInfo[
           onClick={() => setOpen(!open)}
         >
           <span className="flex-1">{title}</span>
-          {isResult && <span className="chip chip-active text-[11px]">Ergebnis</span>}
+          {isResult && (
+            <span className="chip chip-active text-[11px]">
+              <Trans>Ergebnis</Trans>
+            </span>
+          )}
           {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
         </button>
       </div>
       {open && kind === 'table' && (
         <div className="mb-1 ml-5 flex items-center gap-1 pb-1.5 pr-1 text-xs">
-          <span className="text-muted flex-1">Tabelle, nur in der Attributtabelle</span>
-          <Menu label={`Aktionen für ${title}`}>
+          <span className="text-muted flex-1">
+            <Trans>Tabelle, nur in der Attributtabelle</Trans>
+          </span>
+          <Menu label={t`Aktionen für ${title}`}>
             <MenuItem
               onSelect={() => {
                 s.setTableTab(layer.id)
                 useDock.getState().setOpen(true)
               }}
             >
-              Tabelle öffnen
+              <Trans>Tabelle öffnen</Trans>
             </MenuItem>
             <MenuItem danger onSelect={() => s.removeLayer(layer.id)}>
-              Aus Analyse entfernen
+              <Trans>Aus Analyse entfernen</Trans>
             </MenuItem>
           </Menu>
         </div>
@@ -148,13 +158,13 @@ function LayerRow({ layer, catalog }: { layer: DisplayLayer; catalog: LayerInfo[
       {open && kind !== 'table' && (
         <div className="mb-1 ml-5 flex flex-col gap-1.5 pb-1.5 pr-1 text-xs">
           <label className="flex items-center gap-2">
-            Deckkraft
+            <Trans>Deckkraft</Trans>
             <input
               type="range"
               min={0}
               max={100}
               step={5}
-              aria-label={`Deckkraft ${title}`}
+              aria-label={t`Deckkraft ${title}`}
               value={Math.round(layer.opacity * 100)}
               onChange={(e) => s.setOpacity(layer.id, Number(e.target.value) / 100)}
               className="accent-[var(--color-accent)] flex-1"
@@ -163,38 +173,54 @@ function LayerRow({ layer, catalog }: { layer: DisplayLayer; catalog: LayerInfo[
           </label>
           <div className="flex items-center gap-1">
             <button type="button" className="btn text-xs" onClick={() => zoomTo(layer.id)}>
-              Auf Layer zoomen
+              <Trans>Auf Layer zoomen</Trans>
             </button>
-            <Menu label={`Aktionen für ${title}`}>
-              <MenuItem onSelect={() => zoomTo(layer.id)}>Auf Layer zoomen</MenuItem>
+            <Menu label={t`Aktionen für ${title}`}>
+              <MenuItem onSelect={() => zoomTo(layer.id)}>
+                <Trans>Auf Layer zoomen</Trans>
+              </MenuItem>
               <MenuItem
                 onSelect={() => {
                   s.setTableTab(layer.id)
                   useDock.getState().setOpen(true)
                 }}
               >
-                Tabelle öffnen
+                <Trans>Tabelle öffnen</Trans>
               </MenuItem>
               {!isResult && canBeResult(layer) && (
-                <MenuItem onSelect={() => s.setResult(layer.id)}>Als Ergebnis-Layer</MenuItem>
+                <MenuItem onSelect={() => s.setResult(layer.id)}>
+                  <Trans>Als Ergebnis-Layer</Trans>
+                </MenuItem>
               )}
               {layer.source.kind === 'catalog' && (
                 <>
-                  <MenuItem onSelect={() => setOperation('buffer')}>Puffer …</MenuItem>
-                  <MenuItem onSelect={() => setOperation('join')}>Join …</MenuItem>
-                  <MenuItem onSelect={() => setOperation('aggregate')}>Aggregieren …</MenuItem>
+                  <MenuItem onSelect={() => setOperation('buffer')}>
+                    <Trans>Puffer …</Trans>
+                  </MenuItem>
+                  <MenuItem onSelect={() => setOperation('join')}>
+                    <Trans>Join …</Trans>
+                  </MenuItem>
+                  <MenuItem onSelect={() => setOperation('aggregate')}>
+                    <Trans>Aggregieren …</Trans>
+                  </MenuItem>
                 </>
               )}
-              <MenuItem onSelect={() => setOperation('symbology')}>Darstellung …</MenuItem>
+              <MenuItem onSelect={() => setOperation('symbology')}>
+                <Trans>Darstellung …</Trans>
+              </MenuItem>
               {index > 0 && (
-                <MenuItem onSelect={() => s.moveLayer(layer.id, index - 1)}>Nach oben</MenuItem>
+                <MenuItem onSelect={() => s.moveLayer(layer.id, index - 1)}>
+                  <Trans>Nach oben</Trans>
+                </MenuItem>
               )}
               {index < s.layers.length - 1 && (
-                <MenuItem onSelect={() => s.moveLayer(layer.id, index + 1)}>Nach unten</MenuItem>
+                <MenuItem onSelect={() => s.moveLayer(layer.id, index + 1)}>
+                  <Trans>Nach unten</Trans>
+                </MenuItem>
               )}
               {me.data?.role === 'admin' && name && (
                 <MenuItem onSelect={() => navigate(`/admin/daten/${name}`)}>
-                  Im Datenkatalog öffnen
+                  <Trans>Im Datenkatalog öffnen</Trans>
                 </MenuItem>
               )}
               <MenuItem
@@ -203,7 +229,7 @@ function LayerRow({ layer, catalog }: { layer: DisplayLayer; catalog: LayerInfo[
                   isResult || usedInConditions ? setRemoving(true) : s.removeLayer(layer.id)
                 }
               >
-                {layer.source.kind === 'derived' ? 'Löschen' : 'Aus Analyse entfernen'}
+                {layer.source.kind === 'derived' ? t`Löschen` : t`Aus Analyse entfernen`}
               </MenuItem>
             </Menu>
           </div>
@@ -216,8 +242,8 @@ function LayerRow({ layer, catalog }: { layer: DisplayLayer; catalog: LayerInfo[
         <ConfirmDialog
           open
           onOpenChange={(next) => !next && setRemoving(false)}
-          title={`„${title}" entfernen?`}
-          confirm="Entfernen"
+          title={t`„${title}" entfernen?`}
+          confirm={t`Entfernen`}
           onConfirm={() => {
             s.removeLayer(layer.id)
             setRemoving(false)
@@ -225,8 +251,8 @@ function LayerRow({ layer, catalog }: { layer: DisplayLayer; catalog: LayerInfo[
         >
           <p>
             {isResult
-              ? 'Der Layer ist Ergebnis-Layer; die Abfrage hat danach kein Ergebnis mehr.'
-              : 'Der Layer wird in einer Bedingung verwendet; die Bedingung wirkt weiter, der Layer wird nur nicht mehr angezeigt.'}
+              ? t`Der Layer ist Ergebnis-Layer; die Abfrage hat danach kein Ergebnis mehr.`
+              : t`Der Layer wird in einer Bedingung verwendet; die Bedingung wirkt weiter, der Layer wird nur nicht mehr angezeigt.`}
           </p>
         </ConfirmDialog>
       )}

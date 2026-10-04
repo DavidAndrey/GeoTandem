@@ -12,6 +12,7 @@ import { setupI18n } from './i18n/i18n'
 import './index.css'
 
 const root = document.getElementById('root')
+// eslint-disable-next-line lingui/no-unlocalized-strings -- a broken build, not a message
 if (!root) throw new Error('#root missing in index.html')
 
 // Dialogs lock scrolling with <style> elements they add at run time; the

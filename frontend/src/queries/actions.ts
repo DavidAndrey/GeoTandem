@@ -40,7 +40,7 @@ function body(name: string, shared: boolean) {
 export class QueryNameTaken extends Error {
   readonly existing: string
   constructor(existing: string) {
-    super('name taken')
+    super('name_taken')
     this.existing = existing
   }
 }

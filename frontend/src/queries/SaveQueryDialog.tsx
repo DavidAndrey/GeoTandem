@@ -1,4 +1,6 @@
 // "Speichern unter" for a query (design B1): name and whether to share it.
+import { Trans } from '@lingui/react/macro'
+import { t } from '@lingui/core/macro'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { useShallow } from 'zustand/react/shallow'
@@ -19,8 +21,8 @@ export function SaveQueryDialog() {
     <Modal
       open={dialog === 'saveAs'}
       onOpenChange={(next) => !next && close()}
-      title="Abfrage speichern"
-      description="Ergebnis-Layer und Bedingungen unter einem Namen speichern"
+      title={t`Abfrage speichern`}
+      description={t`Ergebnis-Layer und Bedingungen unter einem Namen speichern`}
     >
       {dialog === 'saveAs' && <SaveQueryForm onDone={close} />}
     </Modal>
@@ -52,13 +54,18 @@ function SaveQueryForm({ onDone }: { onDone: () => void }) {
     setTaken(null)
     save.mutate(undefined)
   }
+  const conditions = rows(analysis.tree)
+  const refName = ref?.name
+  const trimmed = name.trim()
   const title = part
     ? (catalog.data?.find((l) => l.name === part.result)?.title ?? part.result)
     : '–'
   return (
     <form onSubmit={submit} className="flex flex-col gap-3 text-sm">
       <label className="flex flex-col gap-1">
-        <span className="label-caps">Name</span>
+        <span className="label-caps">
+          <Trans>Name</Trans>
+        </span>
         <input
           className="input"
           value={name}
@@ -73,27 +80,36 @@ function SaveQueryForm({ onDone }: { onDone: () => void }) {
       </label>
       <label className="flex items-center gap-2">
         <input type="checkbox" checked={shared} onChange={(e) => setShared(e.target.checked)} />
-        Geteilt: für alle Anwender lesbar (Ändern erzeugt bei ihnen eine Kopie)
+        <Trans>Geteilt: für alle Anwender lesbar (Ändern erzeugt bei ihnen eine Kopie)</Trans>
       </label>
       <p className="text-muted">
-        Ziel {title} · {rows(analysis.tree)} Bedingungen
-        {analysis.restriction ? ' · mit Einschränkung' : ''}
+        {analysis.restriction ? (
+          <Trans>
+            Ziel {title} · {conditions} Bedingungen · mit Einschränkung
+          </Trans>
+        ) : (
+          <Trans>
+            Ziel {title} · {conditions} Bedingungen
+          </Trans>
+        )}
       </p>
       {ref && !ref.mine && (
         <p className="text-muted">
-          „{ref.name}" gehört jemand anderem; gespeichert wird eine eigene Kopie.
+          <Trans>„{refName}" gehört jemand anderem; gespeichert wird eine eigene Kopie.</Trans>
         </p>
       )}
       {taken && (
         <div role="alert" className="card flex items-center gap-2 p-2">
-          <span className="flex-1">Eine eigene Abfrage „{name.trim()}" gibt es schon.</span>
+          <span className="flex-1">
+            <Trans>Eine eigene Abfrage „{trimmed}" gibt es schon.</Trans>
+          </span>
           <button
             type="button"
             className="btn btn-danger"
             disabled={save.isPending}
             onClick={() => save.mutate(taken)}
           >
-            Überschreiben
+            <Trans>Überschreiben</Trans>
           </button>
         </div>
       )}
@@ -102,10 +118,10 @@ function SaveQueryForm({ onDone }: { onDone: () => void }) {
       )}
       <div className="flex gap-2">
         <button type="submit" className="btn btn-primary" disabled={save.isPending || !name.trim()}>
-          Speichern
+          <Trans>Speichern</Trans>
         </button>
         <button type="button" className="btn" onClick={onDone}>
-          Abbrechen
+          <Trans>Abbrechen</Trans>
         </button>
       </div>
     </form>

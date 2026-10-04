@@ -57,7 +57,7 @@ export async function saveSession(): Promise<SessionDetail | null> {
 export class NameTaken extends Error {
   readonly existing: string
   constructor(existing: string) {
-    super('name taken')
+    super('name_taken')
     this.existing = existing
   }
 }

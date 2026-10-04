@@ -57,7 +57,7 @@ export function UserMenu({ account }: { account: Account }) {
             </DropdownMenu.Item>
             <DropdownMenu.Item
               className="cursor-pointer px-3 py-1 text-sm outline-none data-[highlighted]:bg-neutral-200"
-              onSelect={() => guarded('abmelden', () => logout.mutate())}
+              onSelect={() => guarded('logout', () => logout.mutate())}
             >
               <Trans>Abmelden</Trans>
             </DropdownMenu.Item>

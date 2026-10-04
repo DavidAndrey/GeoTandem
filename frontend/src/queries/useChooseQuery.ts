@@ -1,4 +1,5 @@
 // Opening a saved query from the menu or the list (design B1, C6).
+import { t } from '@lingui/core/macro'
 import { useMutation } from '@tanstack/react-query'
 import { currentAnalysis, useAnalysis } from '../analysis/store'
 import { useEnsureLayers } from '../api/queries'
@@ -16,11 +17,8 @@ export function useOpenQuery() {
     mutationFn: async (id: string) => openQuery(id, new Set((await layers()).map((l) => l.name))),
     onSuccess: (removed) => {
       setPending(null)
-      setMessage(
-        removed.length
-          ? `Ohne ${removed.map((r) => `„${r}"`).join(', ')}: ihr Layer ist nicht verfügbar.`
-          : null,
-      )
+      const conditions = removed.map((r) => `„${r}"`).join(', ')
+      setMessage(removed.length ? t`Ohne ${conditions}: ihr Layer ist nicht verfügbar.` : null)
     },
     onError: (error) => {
       setPending(null)

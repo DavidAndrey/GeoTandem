@@ -1,5 +1,7 @@
 // Measuring on the map (design B10, plan E1.8 G2): click points, read the
 // geodesic length or area. A view tool like zoom — not saved, no query.
+import { Trans } from '@lingui/react/macro'
+import { t } from '@lingui/core/macro'
 import L from 'leaflet'
 import { Ruler, X } from 'lucide-react'
 import { useEffect, useMemo, useReducer } from 'react'
@@ -18,8 +20,8 @@ export function MeasureToggle() {
     <button
       type="button"
       className={toolClass}
-      title="Messen"
-      aria-label="Messen"
+      title={t`Messen`}
+      aria-label={t`Messen`}
       aria-pressed={measuring !== null}
       onClick={() => setMeasuring(measuring ? null : 'line')}
     >
@@ -29,6 +31,12 @@ export function MeasureToggle() {
 }
 
 /** The measurement on the map and its readout; lives inside the map. */
+function areaText({ area, perimeter }: { area: number; perimeter: number }) {
+  const surface = formatArea(area)
+  const length = formatLength(perimeter)
+  return t`${surface} · Umfang ${length}`
+}
+
 export function Measurement() {
   const measuring = useMapView((s) => s.measuring)
   // Keyed by the mode: switching between distance and area starts afresh.
@@ -109,11 +117,11 @@ function Measuring({ mode }: { mode: 'line' | 'area' }) {
   const area = areaOf(drawn)
   return (
     <section
-      aria-label="Messen"
+      aria-label={t`Messen`}
       className="card absolute top-3 right-12 z-[1000] flex w-64 flex-col gap-2 p-2 text-sm"
     >
       <div className="flex items-center gap-1">
-        <div role="group" aria-label="Messart" className="flex flex-1">
+        <div role="group" aria-label={t`Messart`} className="flex flex-1">
           {(['line', 'area'] as const).map((mode) => (
             <button
               key={mode}
@@ -122,24 +130,22 @@ function Measuring({ mode }: { mode: 'line' | 'area' }) {
               className={`btn -ml-px text-xs first:ml-0 ${measuring === mode ? 'btn-primary bg-accent-100' : ''}`}
               onClick={() => setMeasuring(mode)}
             >
-              {mode === 'line' ? 'Strecke' : 'Fläche'}
+              {mode === 'line' ? t`Strecke` : t`Fläche`}
             </button>
           ))}
         </div>
-        <button type="button" aria-label="Messen beenden" onClick={() => setMeasuring(null)}>
+        <button type="button" aria-label={t`Messen beenden`} onClick={() => setMeasuring(null)}>
           <X size={15} />
         </button>
       </div>
-      <p role="status" aria-label="Messwert" className="font-semibold">
-        {measuring === 'line'
-          ? formatLength(length)
-          : drawn.length >= 3
-            ? `${formatArea(area.area)} · Umfang ${formatLength(area.perimeter)}`
-            : '–'}
+      <p role="status" aria-label={t`Messwert`} className="font-semibold">
+        {measuring === 'line' ? formatLength(length) : drawn.length >= 3 ? areaText(area) : '–'}
       </p>
       <p className="text-muted text-xs">
-        Klicken setzt Punkte, Doppelklick schliesst ab, Esc beginnt neu. Gemessen auf dem Ellipsoid
-        (WGS84).
+        <Trans>
+          Klicken setzt Punkte, Doppelklick schliesst ab, Esc beginnt neu. Gemessen auf dem
+          Ellipsoid (WGS84).
+        </Trans>
       </p>
     </section>
   )

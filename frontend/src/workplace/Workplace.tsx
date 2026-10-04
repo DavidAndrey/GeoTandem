@@ -1,5 +1,8 @@
 // Workplace of the classic mode (design B1): sidebar with layers and query,
 // map beside it. Everything on the map comes from query objects (E1.5).
+import { formatNumber } from '../i18n/locale'
+import { Trans } from '@lingui/react/macro'
+import { t } from '@lingui/core/macro'
 import { useShallow } from 'zustand/react/shallow'
 import { Tabs } from 'radix-ui'
 import { useCallback, useEffect } from 'react'
@@ -37,19 +40,19 @@ export function Workplace() {
     >
       <aside
         className={`flex min-h-0 flex-col gap-4 overflow-auto pr-1 ${editing ? 'pointer-events-none opacity-50' : ''}`}
-        aria-label="Seitenleiste"
+        aria-label={t`Seitenleiste`}
         inert={editing}
       >
         <Tabs.Root defaultValue="klassik">
           <Tabs.List
             className="flex gap-4 border-b border-[var(--color-divider)]"
-            aria-label="Arbeitsweise"
+            aria-label={t`Arbeitsweise`}
           >
             <Tabs.Trigger value="klassik" className="tab text-sm">
-              Klassik
+              <Trans>Klassik</Trans>
             </Tabs.Trigger>
             <Tabs.Trigger value="prompt" className="tab text-muted text-sm" disabled>
-              Prompt · ab E2
+              <Trans>Prompt · ab E2</Trans>
             </Tabs.Trigger>
           </Tabs.List>
           <Tabs.Content value="klassik" className="flex flex-col gap-5 pt-3">
@@ -153,10 +156,19 @@ function MapLayers() {
       </MapView>
       {active && hitIds && resultTitle && (
         <p role="status" className="card absolute bottom-6 left-3 z-[1000] px-3 py-1 text-sm">
-          Aktive Bedingung: {hitIds.size} {layerTitle(resultTitle, catalog.data)}
+          <ActiveCount count={hitIds.size} layer={layerTitle(resultTitle, catalog.data)} />
         </p>
       )}
     </div>
+  )
+}
+
+function ActiveCount({ count, layer }: { count: number; layer: string }) {
+  const shown = formatNumber(count)
+  return (
+    <Trans>
+      Aktive Bedingung: {shown} {layer}
+    </Trans>
   )
 }
 
@@ -168,8 +180,8 @@ function TableToggle() {
     <button
       type="button"
       className={toolClass}
-      title="Attributtabelle ein/aus"
-      aria-label="Attributtabelle"
+      title={t`Attributtabelle ein/aus`}
+      aria-label={t`Attributtabelle`}
       aria-pressed={open}
       disabled={!hasLayers}
       onClick={() => setOpen(!open)}
@@ -246,8 +258,10 @@ function Legend({
 }) {
   const entries = useLegend((s) => s.entries)
   return (
-    <section aria-label="Legende">
-      <p className="label-caps mb-1">Legende</p>
+    <section aria-label={t`Legende`}>
+      <p className="label-caps mb-1">
+        <Trans>Legende</Trans>
+      </p>
       <ul className="flex flex-col gap-0.5">
         {layers.map((layer) => {
           const kind = geometryKind(layer, catalog)
@@ -256,10 +270,10 @@ function Legend({
             return (
               <li key={layer.id}>
                 <div className="flex items-center gap-1.5">
-                  <Swatch kind={kind} color={ACCENT} /> {title} · Treffer
+                  <Swatch kind={kind} color={ACCENT} /> <Trans>{title} · Treffer</Trans>
                 </div>
                 <div className="flex items-center gap-1.5 opacity-50">
-                  <Swatch kind={kind} color={layerColor(layer)} /> {title} · übrige
+                  <Swatch kind={kind} color={layerColor(layer)} /> <Trans>{title} · übrige</Trans>
                 </div>
               </li>
             )

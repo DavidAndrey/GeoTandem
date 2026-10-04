@@ -1,6 +1,9 @@
 // Attribute table docked under the map (F-8.2, design B8): one tab per
 // displayed layer, the result layer first. Reads the same cached queries as the
 // map (plan E1.6 D2), so table and map always show the same result.
+import { formatNumber } from '../i18n/locale'
+import { plural, t } from '@lingui/core/macro'
+import { Trans } from '@lingui/react/macro'
 import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Crosshair, GripVertical } from 'lucide-react'
 import { Popover } from 'radix-ui'
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
@@ -33,6 +36,15 @@ const OVERSCAN = 6
 /** One empty list, so the selection selector stays stable (a new [] would re-render forever). */
 const NONE: number[] = []
 
+const objectCount = (n: number) => {
+  const count = formatNumber(n)
+  return plural(n, { one: `${count} Objekt`, other: `${count} Objekte` })
+}
+const selectRow = (id: number) => t`Zeile ${id} auswählen`
+const zoomRow = (id: number) => t`Auf Zeile ${id} zoomen`
+const moveUp = (column: string) => t`${column} nach oben`
+const moveDown = (column: string) => t`${column} nach unten`
+
 export function TableDock() {
   const analysis = useAnalysis(useShallow(currentAnalysis))
   const tab = useAnalysis((s) => s.table.tab)
@@ -47,16 +59,16 @@ export function TableDock() {
     return (
       <div className="flex justify-end border-t border-[var(--color-divider)] pt-1">
         <button type="button" className="btn text-xs" onClick={() => setOpen(true)}>
-          <ChevronUp size={13} aria-hidden /> Attributtabelle öffnen
+          <ChevronUp size={13} aria-hidden /> <Trans>Attributtabelle öffnen</Trans>
         </button>
       </div>
     )
 
   return (
-    <section aria-label="Attributtabelle" className="flex min-h-0 flex-col" style={{ height }}>
+    <section aria-label={t`Attributtabelle`} className="flex min-h-0 flex-col" style={{ height }}>
       <Divider />
       <div className="flex min-h-0 flex-1 flex-col gap-2 pt-2">
-        <div role="tablist" aria-label="Tabellen" className="flex flex-wrap gap-x-4 gap-y-1">
+        <div role="tablist" aria-label={t`Tabellen`} className="flex flex-wrap gap-x-4 gap-y-1">
           {layers.map((layer) => {
             const selected = layer.id === active.id
             const isResult = layer.id === analysis.result
@@ -71,7 +83,11 @@ export function TableDock() {
                 onClick={() => setTableTab(layer.id)}
               >
                 {layerTitle(layer, catalog.data)}
-                {isResult && <span className="ml-1 text-xs">(Ergebnis)</span>}
+                {isResult && (
+                  <span className="ml-1 text-xs">
+                    <Trans>(Ergebnis)</Trans>
+                  </span>
+                )}
               </button>
             )
           })}
@@ -96,7 +112,7 @@ function Divider() {
     <div
       role="separator"
       aria-orientation="horizontal"
-      aria-label="Höhe der Tabelle"
+      aria-label={t`Höhe der Tabelle`}
       aria-valuenow={height}
       aria-valuemin={MIN_HEIGHT}
       tabIndex={0}
@@ -172,26 +188,29 @@ function LayerTable({
   )
   const columns = shownColumns(available, s.choice)
   const title = layerTitle(layer, catalog)
+  const hitsShown = formatNumber(hits?.size ?? 0)
+  const allShown = formatNumber(all.length)
+  const maxFeatures = formatValue(config.data?.max_features, null)
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
       <div className="flex flex-wrap items-center gap-3 text-sm">
         {hits ? (
-          <div role="group" aria-label="Anzeige" className="flex">
+          <div role="group" aria-label={t`Anzeige`} className="flex">
             <ModeButton pressed={mode === 'hits'} onClick={() => s.setTableMode('hits')}>
-              Treffer ({hits.size})
+              <Trans>Treffer ({hitsShown})</Trans>
             </ModeButton>
             <ModeButton pressed={mode === 'all'} onClick={() => s.setTableMode('all')}>
-              Alle ({all.length})
+              <Trans>Alle ({allShown})</Trans>
             </ModeButton>
           </div>
         ) : (
-          <span className="text-muted">{all.length} Objekte</span>
+          <span className="text-muted">{objectCount(all.length)}</span>
         )}
         {!isTable && (
           <label
             className="flex items-center gap-1.5"
-            title="Reine Anzeige: blendet Zeilen ausserhalb des Kartenausschnitts aus, ändert den Filter nicht."
+            title={t`Reine Anzeige: blendet Zeilen ausserhalb des Kartenausschnitts aus, ändert den Filter nicht.`}
           >
             <input
               type="checkbox"
@@ -199,7 +218,7 @@ function LayerTable({
               disabled={features.viewed}
               onChange={(e) => s.setOnlyView(e.target.checked)}
             />
-            nur aktueller Kartenausschnitt
+            <Trans>nur aktueller Kartenausschnitt</Trans>
           </label>
         )}
         <span className="flex-1" />
@@ -211,8 +230,8 @@ function LayerTable({
         <button
           type="button"
           className="btn border-transparent px-1"
-          aria-label="Tabelle einklappen"
-          title="Einklappen"
+          aria-label={t`Tabelle einklappen`}
+          title={t`Einklappen`}
           onClick={onCollapse}
         >
           <ChevronDown size={15} />
@@ -220,8 +239,9 @@ function LayerTable({
       </div>
       {features.viewed && (
         <p className="text-muted text-xs">
-          Nur der Kartenausschnitt ist geladen: der Layer hat mehr als{' '}
-          {formatValue(config.data?.max_features, null)} Objekte.
+          <Trans>
+            Nur der Kartenausschnitt ist geladen: der Layer hat mehr als {maxFeatures} Objekte.
+          </Trans>
         </p>
       )}
       {features.error ? (
@@ -236,10 +256,10 @@ function LayerTable({
           loading={features.isPending}
           empty={
             mode === 'hits'
-              ? 'Keine Treffer.'
+              ? t`Keine Treffer.`
               : onlyView
-                ? 'Kein Objekt im Kartenausschnitt.'
-                : 'Keine Objekte.'
+                ? t`Kein Objekt im Kartenausschnitt.`
+                : t`Keine Objekte.`
           }
           onSort={(attr, additive) => s.toggleSort(layer.id, attr, additive)}
         />
@@ -345,7 +365,7 @@ function Grid({
     >
       <table
         className="data-table w-full table-fixed text-sm [font-feature-settings:'tnum']"
-        aria-label={`Attribute von ${title}`}
+        aria-label={t`Attribute von ${title}`}
         aria-rowcount={rows.length + 1}
       >
         <thead className="sticky top-0 z-10 bg-[var(--color-bg)]">
@@ -353,7 +373,7 @@ function Grid({
             <th className="w-8">
               <input
                 type="checkbox"
-                aria-label="Alle Zeilen auswählen"
+                aria-label={t`Alle Zeilen auswählen`}
                 checked={allSelected}
                 disabled={rows.length === 0}
                 onChange={() =>
@@ -373,7 +393,7 @@ function Grid({
                   <button
                     type="button"
                     className={`inline-flex max-w-full items-center gap-0.5 truncate font-semibold ${key ? 'text-accent-700' : ''}`}
-                    title="Sortieren: ↓ / ↑ / aus · Umschalt für zweite Sortierung"
+                    title={t`Sortieren: ↓ / ↑ / aus · Umschalt für zweite Sortierung`}
                     onClick={(e) => onSort(column.name, e.shiftKey)}
                   >
                     <span className="truncate">{column.label}</span>
@@ -389,7 +409,9 @@ function Grid({
               )
             })}
             <th className="w-8">
-              <span className="sr-only">Zoomen</span>
+              <span className="sr-only">
+                <Trans>Zoomen</Trans>
+              </span>
             </th>
           </tr>
         </thead>
@@ -416,7 +438,7 @@ function Grid({
                 <td onClick={(e) => e.stopPropagation()}>
                   <input
                     type="checkbox"
-                    aria-label={`Zeile ${row.id} auswählen`}
+                    aria-label={selectRow(row.id)}
                     checked={isSelected}
                     onChange={() => selection.toggle(layer.id, row.id)}
                   />
@@ -434,8 +456,8 @@ function Grid({
                     <button
                       type="button"
                       className="text-muted hover:text-ink"
-                      aria-label={`Auf Zeile ${row.id} zoomen`}
-                      title="Auf Objekt zoomen"
+                      aria-label={zoomRow(row.id)}
+                      title={t`Auf Objekt zoomen`}
                       onClick={(e) => {
                         e.stopPropagation()
                         selection.select(layer.id, row.id)
@@ -453,7 +475,7 @@ function Grid({
         </tbody>
       </table>
       {rows.length === 0 && (
-        <p className="text-muted px-2 py-3 text-sm">{loading ? 'Lädt …' : empty}</p>
+        <p className="text-muted px-2 py-3 text-sm">{loading ? t`Lädt …` : empty}</p>
       )}
     </div>
   )
@@ -494,16 +516,18 @@ function ColumnMenu({
   return (
     <Popover.Root>
       <Popover.Trigger className="btn text-sm">
-        Spalten <ChevronDown size={13} aria-hidden />
+        <Trans>Spalten</Trans> <ChevronDown size={13} aria-hidden />
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Content
           align="end"
           sideOffset={4}
-          aria-label="Spalten"
+          aria-label={t`Spalten`}
           className="card z-[1100] w-80 p-3 text-sm shadow-[var(--shadow-md)]"
         >
-          <p className="label-caps mb-1">Spalten</p>
+          <p className="label-caps mb-1">
+            <Trans>Spalten</Trans>
+          </p>
           <ul className="flex max-h-72 flex-col gap-0.5 overflow-auto">
             {ordered.map((column, index) => (
               <li
@@ -548,13 +572,13 @@ function ColumnMenu({
                 </label>
                 {column.computed && (
                   <span className="chip text-[11px]">
-                    {column.computed === 'distance' ? 'berechnet' : 'aus Raumfilter'}
+                    {column.computed === 'distance' ? t`berechnet` : t`aus Raumfilter`}
                   </span>
                 )}
                 <button
                   type="button"
                   className="btn border-transparent px-0.5"
-                  aria-label={`${column.label} nach oben`}
+                  aria-label={moveUp(column.label)}
                   disabled={index === 0}
                   onClick={() => move(index, -1)}
                 >
@@ -563,7 +587,7 @@ function ColumnMenu({
                 <button
                   type="button"
                   className="btn border-transparent px-0.5"
-                  aria-label={`${column.label} nach unten`}
+                  aria-label={moveDown(column.label)}
                   disabled={index === ordered.length - 1}
                   onClick={() => move(index, 1)}
                 >
@@ -573,7 +597,9 @@ function ColumnMenu({
             ))}
           </ul>
           <p className="text-muted mt-2 text-xs">
-            Fachliche Namen aus dem Datenkatalog · Auswahl wird mit der Sitzung gespeichert
+            <Trans>
+              Fachliche Namen aus dem Datenkatalog · Auswahl wird mit der Sitzung gespeichert
+            </Trans>
           </p>
         </Popover.Content>
       </Popover.Portal>
@@ -589,9 +615,9 @@ function Footer({ layer }: { layer: DisplayLayer }) {
         type="button"
         className="btn text-sm"
         disabled
-        title="Export der Ergebnisdaten folgt in E5 (F-8.6)"
+        title={t`Export der Ergebnisdaten folgt in E5 (F-8.6)`}
       >
-        Export · ab E5
+        <Trans>Export · ab E5</Trans>
       </button>
       <span className="flex-1" />
       {count > 0 && <span className="text-muted">{count} ausgewählt</span>}

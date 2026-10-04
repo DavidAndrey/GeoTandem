@@ -1,4 +1,6 @@
 // The map (F-4.9, F-8.1) on plain Leaflet with a thin React layer (tech-stack 4.2).
+import { Trans } from '@lingui/react/macro'
+import { t } from '@lingui/core/macro'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 import { Home, Layers, List, Minus, Plus } from 'lucide-react'
@@ -82,12 +84,12 @@ export function MapView({
         ref={container}
         className="h-full w-full bg-neutral-200"
         role="region"
-        aria-label="Karte"
+        aria-label={t`Karte`}
       />
       <MapContext value={map}>{map && children}</MapContext>
       <div
         role="toolbar"
-        aria-label="Kartenwerkzeuge"
+        aria-label={t`Kartenwerkzeuge`}
         aria-orientation="vertical"
         className="card absolute top-3 right-3 z-[1000] flex flex-col divide-y divide-[var(--color-divider)] py-0.5"
       >
@@ -96,8 +98,8 @@ export function MapView({
           <button
             type="button"
             className={tool}
-            title="Hineinzoomen"
-            aria-label="Hineinzoomen"
+            title={t`Hineinzoomen`}
+            aria-label={t`Hineinzoomen`}
             onClick={() => map?.zoomIn()}
           >
             <Plus size={15} />
@@ -105,8 +107,8 @@ export function MapView({
           <button
             type="button"
             className={tool}
-            title="Herauszoomen"
-            aria-label="Herauszoomen"
+            title={t`Herauszoomen`}
+            aria-label={t`Herauszoomen`}
             onClick={() => map?.zoomOut()}
           >
             <Minus size={15} />
@@ -114,8 +116,8 @@ export function MapView({
           <button
             type="button"
             className={tool}
-            title="Alle Layer"
-            aria-label="Alle Layer"
+            title={t`Alle Layer`}
+            aria-label={t`Alle Layer`}
             disabled={!extent}
             onClick={() => map && extent && fitBbox(map, extent)}
           >
@@ -126,8 +128,8 @@ export function MapView({
           <button
             type="button"
             className={tool}
-            title={basemap ? 'Hintergrundkarte ein/aus' : 'Keine Hintergrundkarte konfiguriert'}
-            aria-label="Hintergrundkarte"
+            title={basemap ? t`Hintergrundkarte ein/aus` : t`Keine Hintergrundkarte konfiguriert`}
+            aria-label={t`Hintergrundkarte`}
             aria-pressed={Boolean(basemap) && showBasemap}
             disabled={!basemap}
             onClick={() => setShowBasemap(!showBasemap)}
@@ -137,8 +139,8 @@ export function MapView({
           <button
             type="button"
             className={tool}
-            title="Legende ein/aus"
-            aria-label="Legende"
+            title={t`Legende ein/aus`}
+            aria-label={t`Legende`}
             aria-pressed={showLegend}
             onClick={() => setShowLegend(!showLegend)}
           >
@@ -155,9 +157,9 @@ export function MapView({
       {basemap?.external && showBasemap && (
         <p
           className="absolute top-3 left-3 z-[1000] rounded bg-neutral-100/90 px-2 py-0.5 text-xs"
-          title="Die Kacheln kommen von ausserhalb dieser Installation; der Anbieter sieht den Kartenausschnitt."
+          title={t`Die Kacheln kommen von ausserhalb dieser Installation; der Anbieter sieht den Kartenausschnitt.`}
         >
-          Hintergrund extern
+          <Trans>Hintergrund extern</Trans>
         </p>
       )}
     </div>

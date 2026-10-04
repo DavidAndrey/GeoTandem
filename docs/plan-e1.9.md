@@ -94,6 +94,7 @@ The language of prompts and model explanations is decided in E2.
   `session/`, `components/ui.tsx`: every visible text, `aria-label`, `title`
   and placeholder into the catalog.
 - Tests: existing component tests green without changes to their text.
+- **Built 2026-10-04.**
 
 ### WP50 — Admin area, sign-in and setup
 
@@ -174,6 +175,33 @@ independent of WP49/50 and may move forward if the back end is free.
   removes everything bracketed and the data a test names; any letter left
   is a fragment outside the catalog. Back-end messages still count as data
   until WP51.
+- **Components use the core `t` too (WP49).** Since a change of language
+  reloads the page, components call `t` from `@lingui/core/macro` like the
+  builders, `<Trans>` where text and markup mix, and `msg` for tables of
+  labels at module level (operators, functions, steps). One way everywhere
+  instead of a hook here and a macro there.
+- **The lint rule sees less than it says (WP49).** `no-unlocalized-strings`
+  skips `title` attributes and lowercase single words ("bis", "wo",
+  "ungespeichert"), and exempted `new Error(…)`, whose message is shown.
+  Errors are no longer exempt; class lists, locale tags and camel-case keys
+  are. What the rule cannot see, a test now does: `src/i18n/screens.test.tsx`
+  renders the workplace, the session and query dialogs, measuring and all
+  four operations in `pseudo` and fails on any text or label outside ⟦…⟧
+  that is not data. It found "UND"/"ODER", the condition badges, "… von …"
+  hit counts and the eye button's label, all missed by the rule.
+- **Two places assembled German from parts (WP49).** The unsaved-changes
+  question built "Speichern und {verb}" from a verb each caller passed
+  ("öffnen", "abmelden"); callers now pass an action (`open`, `new`,
+  `logout`) and the dialog holds the three whole messages. The header's
+  "gespeichert 14:02" stripped "heute " from another message with a regular
+  expression; it is a message of its own now (`formatSaved`).
+- **The condition editor keeps its word order (WP49).** Inline editors read
+  as a sentence of fields: "≤ [500] m um [Objekt]", "wo [Feld] [Operator]",
+  "als [Name]". The words between the fields are messages with a context
+  for translators; a language with another order would need a different
+  layout of the row, which is a design question for that language.
+- **Addresses stay German (WP49).** `/sitzung/…`, `/anmelden`,
+  `/admin/daten` are paths, not text; they are not translated.
 
 ## 6 Adding a language later
 

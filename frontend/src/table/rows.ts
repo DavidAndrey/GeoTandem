@@ -1,5 +1,6 @@
 // The attribute table's rows and columns (F-8.2, design B8): pure functions over
 // the features the map already fetched, so table and map show the same result.
+import { t } from '@lingui/core/macro'
 import type { Analysis, ColumnChoice, DisplayLayer, SortKey } from '../analysis/model'
 import { resultLayer, type ExplainColumn } from '../analysis/query'
 import type { LayerInfo, QueryResult } from '../api/client'
@@ -126,7 +127,7 @@ function explainedColumn(c: ExplainColumn, info: LayerInfo | undefined): TableCo
   if (c.column.fn === 'distance_to')
     return {
       name: c.column.name,
-      label: `Distanz ${title}`,
+      label: t`Distanz ${title}`,
       unit: 'm',
       numeric: true,
       computed: c.kind,

@@ -1,6 +1,9 @@
 // Operations on a layer (design B4 buffer, B5 join, B6 aggregation) and its
 // symbology (B7, F-4.8). Each operation makes a derived layer: a recipe, i.e.
 // a query object, recomputed when shown (plan D7).
+import { i18n, type MessageDescriptor } from '@lingui/core'
+import { Trans } from '@lingui/react/macro'
+import { msg, t } from '@lingui/core/macro'
 import { useQuery } from '@tanstack/react-query'
 import { Dialog } from 'radix-ui'
 import { useState, type ReactNode } from 'react'
@@ -17,11 +20,11 @@ import { layerTitle } from '../workplace/layerInfo'
 
 export type Operation = 'buffer' | 'join' | 'aggregate' | 'symbology'
 
-const TITLES: Record<Operation, string> = {
-  buffer: 'Puffer',
-  join: 'Join',
-  aggregate: 'Aggregieren',
-  symbology: 'Darstellung',
+const TITLES: Record<Operation, MessageDescriptor> = {
+  buffer: msg`Puffer`,
+  join: msg`Join`,
+  aggregate: msg`Aggregieren`,
+  symbology: msg`Darstellung`,
 }
 
 export function OperationDialog({
@@ -41,12 +44,12 @@ export function OperationDialog({
         <Dialog.Overlay className="bg-ink/30 fixed inset-0 z-[1200]" />
         <Dialog.Content className="card fixed top-[15%] left-1/2 z-[1300] w-[30rem] max-w-[calc(100vw-2rem)] -translate-x-1/2 p-5 shadow-[var(--shadow-md)]">
           <Dialog.Title className="mb-1 text-xl">
-            {TITLES[operation]} · {title}
+            {i18n._(TITLES[operation])} · {title}
           </Dialog.Title>
           <Dialog.Description className="text-muted mb-3 text-xs">
             {operation === 'symbology'
-              ? 'Wie der Layer auf der Karte erscheint (F-4.8).'
-              : 'Ergibt einen abgeleiteten Layer dieser Sitzung; er wird bei jedem Öffnen neu berechnet.'}
+              ? t`Wie der Layer auf der Karte erscheint (F-4.8).`
+              : t`Ergibt einen abgeleiteten Layer dieser Sitzung; er wird bei jedem Öffnen neu berechnet.`}
           </Dialog.Description>
           {/* The forms take their defaults from the catalog, so they wait for it. */}
           {catalog.isPending && <Loading />}
@@ -92,7 +95,7 @@ function Actions({
   return (
     <div className="mt-4 flex gap-2">
       <button type="button" className="btn" onClick={onDone}>
-        Abbrechen
+        <Trans>Abbrechen</Trans>
       </button>
       <button
         type="button"
@@ -131,21 +134,21 @@ function BufferForm({
   const [onlyFiltered, setOnlyFiltered] = useState(false)
   const meters = unit === 'km' ? distance * 1000 : distance
   const [name, setName] = useState('')
-  const shownName = name || `Puffer ${distance} ${unit} · ${title}`
+  const shownName = name || t`Puffer ${distance} ${unit} · ${title}`
   return (
     <>
-      <Row label="Distanz">
+      <Row label={t`Distanz`}>
         <input
           className="input w-24"
           type="number"
           min={0}
-          aria-label="Distanz"
+          aria-label={t`Distanz`}
           value={distance}
           onChange={(e) => setDistance(Number(e.target.value))}
         />
         <select
           className="input"
-          aria-label="Einheit"
+          aria-label={t`Einheit`}
           value={unit}
           onChange={(e) => setUnit(e.target.value as 'm' | 'km')}
         >
@@ -160,13 +163,13 @@ function BufferForm({
             checked={onlyFiltered}
             onChange={(e) => setOnlyFiltered(e.target.checked)}
           />
-          Nur gefilterte Objekte (Treffer der Abfrage)
+          <Trans>Nur gefilterte Objekte (Treffer der Abfrage)</Trans>
         </label>
       )}
-      <Row label="Name">
+      <Row label={t`Name`}>
         <input
           className="input flex-1"
-          aria-label="Name"
+          aria-label={t`Name`}
           placeholder={shownName}
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -174,7 +177,7 @@ function BufferForm({
       </Row>
       <Actions
         onDone={onDone}
-        label="Puffer anlegen"
+        label={t`Puffer anlegen`}
         disabled={!(meters > 0)}
         onSubmit={() => {
           const id = addDerived(shownName, {
@@ -252,10 +255,10 @@ function JoinForm({
 
   return (
     <>
-      <Row label="Tabelle">
+      <Row label={t`Tabelle`}>
         <select
           className="input flex-1"
-          aria-label="Tabelle"
+          aria-label={t`Tabelle`}
           value={right}
           onChange={(e) => {
             setRight(e.target.value)
@@ -266,14 +269,14 @@ function JoinForm({
           {tables.map((l) => (
             <option key={l.name} value={l.name}>
               {l.title}
-              {l.kind === 'table' ? ' (Tabelle)' : ''}
+              {l.kind === 'table' ? t` (Tabelle)` : ''}
             </option>
           ))}
         </select>
       </Row>
-      <Row label="Schlüssel">
+      <Row label={t`Schlüssel`}>
         <FieldSelect
-          label="Schlüssel im Layer"
+          label={t`Schlüssel im Layer`}
           fields={leftFields}
           value={leftKey}
           onChange={(key) => {
@@ -283,14 +286,16 @@ function JoinForm({
         />
         =
         <FieldSelect
-          label="Schlüssel in der Tabelle"
+          label={t`Schlüssel in der Tabelle`}
           fields={partners(leftKey, rightFields)}
           value={rightKey}
           onChange={setRightKey}
         />
       </Row>
       <fieldset className="mb-2 text-sm">
-        <legend className="mb-1">Felder aus {rightTitle}</legend>
+        <legend className="mb-1">
+          <Trans>Felder aus {rightTitle}</Trans>
+        </legend>
         <div className="flex flex-wrap gap-x-4">
           {rightFields
             .filter((f) => f.name !== rightKey)
@@ -310,12 +315,16 @@ function JoinForm({
             ))}
         </div>
         {prefix && (
-          <p className="text-muted text-xs">Gleichnamige Felder erhalten das Präfix „{prefix}".</p>
+          <p className="text-muted text-xs">
+            <Trans>Gleichnamige Felder erhalten das Präfix „{prefix}".</Trans>
+          </p>
         )}
       </fieldset>
       {matched !== undefined && (
-        <p className="mb-2 text-sm" aria-label="Trefferquote">
-          {matched} / {total} Objekte finden einen Partner
+        <p className="mb-2 text-sm" aria-label={t`Trefferquote`}>
+          <Trans>
+            {matched} / {total} Objekte finden einen Partner
+          </Trans>
         </p>
       )}
       <ErrorNotice error={rate.error} />
@@ -325,11 +334,11 @@ function JoinForm({
           checked={keepUnmatched}
           onChange={(e) => setKeepUnmatched(e.target.checked)}
         />
-        Objekte ohne Partner behalten
+        <Trans>Objekte ohne Partner behalten</Trans>
       </label>
       <Actions
         onDone={onDone}
-        label="Join anlegen"
+        label={t`Join anlegen`}
         disabled={!recipe}
         onSubmit={() => {
           if (!recipe || recipe.op !== 'join') return
@@ -372,12 +381,12 @@ function FieldSelect({
 
 type MetricDraft = { fn: 'count' | 'sum' | 'avg' | 'min' | 'max'; attr: string; as: string }
 
-const FUNCTIONS: Record<MetricDraft['fn'], string> = {
-  count: 'Anzahl',
-  sum: 'Summe',
-  avg: 'Mittelwert',
-  min: 'Minimum',
-  max: 'Maximum',
+const FUNCTIONS: Record<MetricDraft['fn'], MessageDescriptor> = {
+  count: msg`Anzahl`,
+  sum: msg`Summe`,
+  avg: msg`Mittelwert`,
+  min: msg`Minimum`,
+  max: msg`Maximum`,
 }
 
 function AggregateForm({
@@ -416,10 +425,10 @@ function AggregateForm({
 
   return (
     <>
-      <Row label="Je Gebiet aus">
+      <Row label={t`Je Gebiet aus`}>
         <select
           className="input flex-1"
-          aria-label="Gebietslayer"
+          aria-label={t`Gebietslayer`}
           value={byLayer}
           onChange={(e) => setByLayer(e.target.value)}
         >
@@ -430,37 +439,41 @@ function AggregateForm({
           ))}
         </select>
       </Row>
-      <Row label="Zuordnung">
+      <Row label={t`Zuordnung`}>
         <select
           className="input"
-          aria-label="Zuordnung"
+          aria-label={t`Zuordnung`}
           value={predicate}
           onChange={(e) => setPredicate(e.target.value as 'within' | 'intersects')}
         >
-          <option value="within">liegt in</option>
-          <option value="intersects">schneidet</option>
+          <option value="within">
+            <Trans>liegt in</Trans>
+          </option>
+          <option value="intersects">{t`schneidet`}</option>
         </select>
       </Row>
-      <p className="mb-1 text-sm">Kennzahlen</p>
+      <p className="mb-1 text-sm">
+        <Trans>Kennzahlen</Trans>
+      </p>
       <ul className="mb-2 flex flex-col gap-1">
         {metrics.map((metric, i) => (
           <li key={i} className="flex items-center gap-1.5 text-sm">
             <select
               className="input"
-              aria-label="Funktion"
+              aria-label={t`Funktion`}
               value={metric.fn}
               onChange={(e) => set(i, { fn: e.target.value as MetricDraft['fn'] })}
             >
               {Object.entries(FUNCTIONS).map(([fn, label]) => (
                 <option key={fn} value={fn}>
-                  {label}
+                  {i18n._(label)}
                 </option>
               ))}
             </select>
             {metric.fn !== 'count' && (
               <select
                 className="input"
-                aria-label="Feld"
+                aria-label={t`Feld`}
                 value={metric.attr}
                 onChange={(e) =>
                   set(i, {
@@ -469,7 +482,9 @@ function AggregateForm({
                   })
                 }
               >
-                <option value="">Feld …</option>
+                <option value="">
+                  <Trans>Feld …</Trans>
+                </option>
                 {numeric.map((f) => (
                   <option key={f.name} value={f.name}>
                     {f.label}
@@ -477,17 +492,17 @@ function AggregateForm({
                 ))}
               </select>
             )}
-            als
+            <Trans context="metric name">als</Trans>
             <input
               className="input w-32 font-mono"
-              aria-label="Name der Kennzahl"
+              aria-label={t`Name der Kennzahl`}
               value={metric.as}
               onChange={(e) => set(i, { as: e.target.value })}
             />
             {metrics.length > 1 && (
               <button
                 type="button"
-                aria-label="Kennzahl entfernen"
+                aria-label={t`Kennzahl entfernen`}
                 onClick={() => setMetrics(metrics.filter((_, j) => j !== i))}
               >
                 ×
@@ -501,11 +516,11 @@ function AggregateForm({
         className="text-accent-700 text-sm"
         onClick={() => setMetrics([...metrics, { fn: 'sum', attr: '', as: '' }])}
       >
-        + Kennzahl
+        <Trans>+ Kennzahl</Trans>
       </button>
       <Actions
         onDone={onDone}
-        label="Aggregieren"
+        label={t`Aggregieren`}
         disabled={!valid}
         onSubmit={() => {
           const aggregate: Aggregate = {
@@ -578,32 +593,40 @@ function SymbologyForm({
 
   return (
     <>
-      <Row label="Art">
+      <Row label={t`Art`}>
         <select
           className="input flex-1"
-          aria-label="Art der Darstellung"
+          aria-label={t`Art der Darstellung`}
           value={kind}
           onChange={(e) => setKind(e.target.value as Symbology['kind'])}
         >
-          <option value="single">Einzelfarbe</option>
-          <option value="categorized">Kategorien</option>
-          <option value="classified">Klassen</option>
-          <option value="graduated_size">Abgestufte Grösse</option>
+          <option value="single">
+            <Trans>Einzelfarbe</Trans>
+          </option>
+          <option value="categorized">
+            <Trans>Kategorien</Trans>
+          </option>
+          <option value="classified">
+            <Trans>Klassen</Trans>
+          </option>
+          <option value="graduated_size">
+            <Trans>Abgestufte Grösse</Trans>
+          </option>
         </select>
       </Row>
       {kind === 'single' ? (
-        <Row label="Farbe">
+        <Row label={t`Farbe`}>
           <input
             type="color"
-            aria-label="Farbe"
+            aria-label={t`Farbe`}
             value={color}
             onChange={(e) => setColor(e.target.value)}
           />
         </Row>
       ) : (
-        <Row label="Feld">
+        <Row label={t`Feld`}>
           <FieldSelect
-            label="Feld der Darstellung"
+            label={t`Feld der Darstellung`}
             fields={choices}
             value={field}
             onChange={setAttr}
@@ -612,24 +635,28 @@ function SymbologyForm({
       )}
       {kind === 'classified' && (
         <>
-          <Row label="Methode">
+          <Row label={t`Methode`}>
             <select
               className="input"
-              aria-label="Methode"
+              aria-label={t`Methode`}
               value={method}
               onChange={(e) => setMethod(e.target.value as 'quantile' | 'equal_interval')}
             >
-              <option value="quantile">Quantile</option>
-              <option value="equal_interval">gleiche Intervalle</option>
+              <option value="quantile">
+                <Trans>Quantile</Trans>
+              </option>
+              <option value="equal_interval">
+                <Trans>gleiche Intervalle</Trans>
+              </option>
             </select>
           </Row>
-          <Row label="Klassen">
+          <Row label={t`Klassen`}>
             <input
               className="input w-16"
               type="number"
               min={2}
               max={9}
-              aria-label="Anzahl Klassen"
+              aria-label={t`Anzahl Klassen`}
               value={classes}
               onChange={(e) => setClasses(Math.min(9, Math.max(2, Number(e.target.value))))}
             />
@@ -637,11 +664,13 @@ function SymbologyForm({
         </>
       )}
       {kind !== 'single' && choices.length === 0 && (
-        <p className="text-muted text-sm">Dieser Layer hat kein passendes Feld.</p>
+        <p className="text-muted text-sm">
+          <Trans>Dieser Layer hat kein passendes Feld.</Trans>
+        </p>
       )}
       <Actions
         onDone={onDone}
-        label="Übernehmen"
+        label={t`Übernehmen`}
         disabled={!symbology}
         onSubmit={() => setSymbology(layer.id, symbology)}
       />

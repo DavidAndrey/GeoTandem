@@ -1,5 +1,7 @@
 // The result of opening a session, under the header (design C4, C8):
 // identical closes by itself, a deviation stays until decided.
+import { Trans } from '@lingui/react/macro'
+import { t } from '@lingui/core/macro'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, Check, Loader, X } from 'lucide-react'
 import { useEffect } from 'react'
@@ -40,7 +42,7 @@ export function OpenNotice() {
   return (
     <section
       role={notice.tone === 'ok' || notice.tone === 'pending' ? 'status' : 'alert'}
-      aria-label="Ergebnisprüfung"
+      aria-label={t`Ergebnisprüfung`}
       className={`border-divider flex items-start gap-3 border-b px-4 py-2 text-sm ${notice.tone === 'warn' || notice.tone === 'error' ? 'bg-accent-100' : ''}`}
     >
       <Icon
@@ -64,11 +66,11 @@ export function OpenNotice() {
                 onClick={() => {
                   setReport(null)
                   document
-                    .querySelector<HTMLSelectElement>('[aria-label="Ergebnis-Layer"]')
+                    .querySelector<HTMLSelectElement>(`[aria-label="${t`Ergebnis-Layer`}"]`)
                     ?.focus()
                 }}
               >
-                Anderen Ergebnis-Layer wählen
+                <Trans>Anderen Ergebnis-Layer wählen</Trans>
               </button>
             )}
             {notice.adopt && (
@@ -77,9 +79,9 @@ export function OpenNotice() {
                 className="btn"
                 disabled={adopt.isPending}
                 onClick={() => adopt.mutate()}
-                title="Speichert die Sitzung mit dem heutigen Ergebnis als neuen Stempel."
+                title={t`Speichert die Sitzung mit dem heutigen Ergebnis als neuen Stempel.`}
               >
-                Mit aktuellen Daten übernehmen
+                <Trans>Mit aktuellen Daten übernehmen</Trans>
               </button>
             )}
           </div>
@@ -89,7 +91,7 @@ export function OpenNotice() {
       <button
         type="button"
         className="text-muted hover:text-ink"
-        aria-label="Hinweis schliessen"
+        aria-label={t`Hinweis schliessen`}
         onClick={() => setReport(null)}
       >
         <X size={15} />

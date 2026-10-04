@@ -1,4 +1,7 @@
 // "Alle öffnen" (design C3): the account's own sessions (design decision 2).
+import { actionsFor, deleteTitle } from '../i18n/phrases'
+import { Trans } from '@lingui/react/macro'
+import { t } from '@lingui/core/macro'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
@@ -16,8 +19,8 @@ export function SessionsDialog() {
     <Modal
       open={dialog === 'list'}
       onOpenChange={(next) => !next && close()}
-      title="Sitzungen"
-      description="Gespeicherte Sitzungen öffnen, umbenennen, duplizieren oder löschen"
+      title={t`Sitzungen`}
+      description={t`Gespeicherte Sitzungen öffnen, umbenennen, duplizieren oder löschen`}
       wide
     >
       {dialog === 'list' && <SessionList onClose={close} />}
@@ -58,7 +61,7 @@ function SessionList({ onClose }: { onClose: () => void }) {
   })
   const open = (id: string) => {
     onClose()
-    if (id !== current?.id) guarded('öffnen', () => navigate(`/sitzung/${id}`))
+    if (id !== current?.id) guarded('open', () => navigate(`/sitzung/${id}`))
   }
   const title = (layer: string | null) =>
     layer ? (catalog.data?.find((l) => l.name === layer)?.title ?? layer) : '–'
@@ -70,8 +73,8 @@ function SessionList({ onClose }: { onClose: () => void }) {
       <input
         className="input self-end"
         type="search"
-        placeholder="Suchen"
-        aria-label="Sitzungen suchen"
+        placeholder={t`Suchen`}
+        aria-label={t`Sitzungen suchen`}
         value={search}
         onChange={(e) => setSearch(e.target.value)}
       />
@@ -81,18 +84,28 @@ function SessionList({ onClose }: { onClose: () => void }) {
         <ErrorNotice error={sessions.error} />
       ) : shown.length === 0 ? (
         <p className="text-muted">
-          {sessions.data.length ? 'Keine Sitzung passt.' : 'Noch keine Sitzung gespeichert.'}
+          {sessions.data.length ? t`Keine Sitzung passt.` : t`Noch keine Sitzung gespeichert.`}
         </p>
       ) : (
-        <table className="data-table w-full" aria-label="Sitzungen">
+        <table className="data-table w-full" aria-label={t`Sitzungen`}>
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Ziel-Layer</th>
-              <th>Treffer</th>
-              <th>Geändert</th>
               <th>
-                <span className="sr-only">Aktionen</span>
+                <Trans>Name</Trans>
+              </th>
+              <th>
+                <Trans>Ziel-Layer</Trans>
+              </th>
+              <th>
+                <Trans>Treffer</Trans>
+              </th>
+              <th>
+                <Trans>Geändert</Trans>
+              </th>
+              <th>
+                <span className="sr-only">
+                  <Trans>Aktionen</Trans>
+                </span>
               </th>
             </tr>
           </thead>
@@ -109,7 +122,7 @@ function SessionList({ onClose }: { onClose: () => void }) {
                     >
                       <input
                         className="input w-full"
-                        aria-label="Neuer Name"
+                        aria-label={t`Neuer Name`}
                         value={renaming.name}
                         maxLength={120}
                         autoFocus
@@ -133,23 +146,31 @@ function SessionList({ onClose }: { onClose: () => void }) {
                   {s.data_changed && (
                     <span
                       className="chip chip-active ml-2 text-[11px]"
-                      title="Ein beteiligter Layer hat seit dem Speichern eine neue Fassung oder fehlt."
+                      title={t`Ein beteiligter Layer hat seit dem Speichern eine neue Fassung oder fehlt.`}
                     >
-                      Daten neu
+                      <Trans>Daten neu</Trans>
                     </span>
                   )}
                 </td>
                 <td>{formatWhen(s.updated_at)}</td>
                 <td className="text-right">
-                  {s.id === current?.id ? <span className="text-muted">offen</span> : null}
-                  <Menu label={`Aktionen für ${s.name}`}>
-                    <MenuItem onSelect={() => open(s.id)}>Öffnen</MenuItem>
-                    <MenuItem onSelect={() => setRenaming({ id: s.id, name: s.name })}>
-                      Umbenennen
+                  {s.id === current?.id ? (
+                    <span className="text-muted">
+                      <Trans>offen</Trans>
+                    </span>
+                  ) : null}
+                  <Menu label={actionsFor(s.name)}>
+                    <MenuItem onSelect={() => open(s.id)}>
+                      <Trans>Öffnen</Trans>
                     </MenuItem>
-                    <MenuItem onSelect={() => duplicate.mutate(s.id)}>Duplizieren</MenuItem>
+                    <MenuItem onSelect={() => setRenaming({ id: s.id, name: s.name })}>
+                      <Trans>Umbenennen</Trans>
+                    </MenuItem>
+                    <MenuItem onSelect={() => duplicate.mutate(s.id)}>
+                      <Trans>Duplizieren</Trans>
+                    </MenuItem>
                     <MenuItem danger onSelect={() => setDeleting(s)}>
-                      Löschen
+                      <Trans>Löschen</Trans>
                     </MenuItem>
                   </Menu>
                 </td>
@@ -163,23 +184,27 @@ function SessionList({ onClose }: { onClose: () => void }) {
       )}
       <div className="flex items-end justify-between gap-4">
         <p className="text-muted text-xs">
-          „Daten neu": ein beteiligter Layer wurde seit dem Speichern aktualisiert. Sitzungen sind
-          privat.
+          <Trans>
+            „Daten neu": ein beteiligter Layer wurde seit dem Speichern aktualisiert. Sitzungen sind
+            privat.
+          </Trans>
         </p>
         <button type="button" className="btn" onClick={onClose}>
-          Schliessen
+          <Trans>Schliessen</Trans>
         </button>
       </div>
       {deleting && (
         <ConfirmDialog
           open
           onOpenChange={(next) => !next && setDeleting(null)}
-          title={`„${deleting.name}" löschen?`}
-          confirm="Löschen"
+          title={deleteTitle(deleting.name)}
+          confirm={t`Löschen`}
           busy={remove.isPending}
           onConfirm={() => remove.mutate(deleting.id)}
         >
-          <p>Die Sitzung wird endgültig gelöscht.</p>
+          <p>
+            <Trans>Die Sitzung wird endgültig gelöscht.</Trans>
+          </p>
         </ConfirmDialog>
       )}
     </div>

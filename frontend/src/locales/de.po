@@ -7,6 +7,14 @@ msgstr ""
 "X-Generator: @lingui/cli\n"
 "Language: de\n"
 
+#: src/operations/OperationDialog.tsx
+msgid " (Tabelle)"
+msgstr " (Tabelle)"
+
+#: src/queries/SavedQueries.tsx
+msgid "· geändert"
+msgstr "· geändert"
+
 #: src/admin/wizard.ts
 msgid "„{name}\" ist kein gültiger Feldname."
 msgstr "„{name}\" ist kein gültiger Feldname."
@@ -19,10 +27,51 @@ msgstr "„{name}\" ist reserviert."
 msgid "„{name}\" kommt mehrfach vor."
 msgstr "„{name}\" kommt mehrfach vor."
 
+#: src/i18n/phrases.ts
+msgid "„{name}\" löschen?"
+msgstr "„{name}\" löschen?"
+
+#: src/queries/SaveQueryDialog.tsx
+msgid "„{refName}\" gehört jemand anderem; gespeichert wird eine eigene Kopie."
+msgstr "„{refName}\" gehört jemand anderem; gespeichert wird eine eigene Kopie."
+
+#: src/workplace/LayerPanel.tsx
+msgid "„{title}\" entfernen?"
+msgstr "„{title}\" entfernen?"
+
+#: src/session/SessionsDialog.tsx
+msgid "„Daten neu\": ein beteiligter Layer wurde seit dem Speichern aktualisiert. Sitzungen sind privat."
+msgstr "„Daten neu\": ein beteiligter Layer wurde seit dem Speichern aktualisiert. Sitzungen sind privat."
+
+#: src/table/TableDock.tsx
+msgid "(Ergebnis)"
+msgstr "(Ergebnis)"
+
+#. placeholder {0}: usage.data.sessions
+#: src/queries/ManageQueriesDialog.tsx
+msgid "{0, plural, one {Die Abfrage wird in # Sitzung verwendet. Diese behält ihre Bedingungen; nur der Name geht verloren.} other {Die Abfrage wird in # Sitzungen verwendet. Diese behalten ihre Bedingungen; nur der Name geht verloren.}}"
+msgstr "{0, plural, one {Die Abfrage wird in # Sitzung verwendet. Diese behält ihre Bedingungen; nur der Name geht verloren.} other {Die Abfrage wird in # Sitzungen verwendet. Diese behalten ihre Bedingungen; nur der Name geht verloren.}}"
+
+#: src/workplace/ResultSelect.tsx
+msgid "{attributeRows, plural, one {Eine Attribut-Bedingung bezieht sich auf die Felder des bisherigen Layers und fällt weg. Räumliche Bedingungen bleiben.} other {# Attribut-Bedingungen beziehen sich auf die Felder des bisherigen Layers und fallen weg. Räumliche Bedingungen bleiben.}}"
+msgstr "{attributeRows, plural, one {Eine Attribut-Bedingung bezieht sich auf die Felder des bisherigen Layers und fällt weg. Räumliche Bedingungen bleiben.} other {# Attribut-Bedingungen beziehen sich auf die Felder des bisherigen Layers und fallen weg. Räumliche Bedingungen bleiben.}}"
+
+#: src/table/TableDock.tsx
+msgid "{column} nach oben"
+msgstr "{column} nach oben"
+
+#: src/table/TableDock.tsx
+msgid "{column} nach unten"
+msgstr "{column} nach unten"
+
 #. Spatial condition, then the attribute filter on its layer
 #: src/editor/describe.ts
 msgid "{condition} ({filter})"
 msgstr "{condition} ({filter})"
+
+#: src/session/SaveAsDialog.tsx
+msgid "{conditions} Bed."
+msgstr "{conditions} Bed."
 
 #. Attribute condition: field, operator, value(s). Reorder as the language needs.
 #: src/editor/describe.ts
@@ -48,13 +97,25 @@ msgstr "{field} {op} {values}"
 msgid "{km} km"
 msgstr "{km} km"
 
+#: src/components/ui.tsx
+msgid "{label}: {value} von {max}"
+msgstr "{label}: {value} von {max}"
+
 #: src/editor/describe.ts
 msgid "{m} m"
 msgstr "{m} m"
 
+#: src/operations/OperationDialog.tsx
+msgid "{matched} / {total} Objekte finden einen Partner"
+msgstr "{matched} / {total} Objekte finden einen Partner"
+
 #: src/admin/wizard.ts
 msgid "{n, plural, one {{count} Datensatz gelesen} other {{count} Datensätze gelesen}}"
 msgstr "{n, plural, one {{count} Datensatz gelesen} other {{count} Datensätze gelesen}}"
+
+#: src/table/TableDock.tsx
+msgid "{n, plural, one {{count} Objekt} other {{count} Objekte}}"
+msgstr "{n, plural, one {{count} Objekt} other {{count} Objekte}}"
 
 #: src/session/notice.ts
 msgid "{n, plural, one {{count} Treffer} other {{count} Treffer}}"
@@ -65,9 +126,45 @@ msgstr "{n, plural, one {{count} Treffer} other {{count} Treffer}}"
 msgid "{op} {layer}"
 msgstr "{op} {layer}"
 
+#: src/i18n/phrases.ts
+msgid "{shown} von {all}"
+msgstr "{shown} von {all}"
+
+#: src/map/Measurement.tsx
+msgid "{surface} · Umfang {length}"
+msgstr "{surface} · Umfang {length}"
+
+#: src/workplace/Workplace.tsx
+msgid "{title} · Treffer"
+msgstr "{title} · Treffer"
+
+#: src/workplace/Workplace.tsx
+msgid "{title} · übrige"
+msgstr "{title} · übrige"
+
+#: src/workplace/LayerPanel.tsx
+msgid "{title} ausblenden"
+msgstr "{title} ausblenden"
+
+#: src/workplace/LayerPanel.tsx
+msgid "{title} einblenden"
+msgstr "{title} einblenden"
+
 #: src/admin/wizard.ts
 msgid "{unlabelled, plural, one {# Feld ohne Bezeichnung} other {# Felder ohne Bezeichnung}}"
 msgstr "{unlabelled, plural, one {# Feld ohne Bezeichnung} other {# Felder ohne Bezeichnung}}"
+
+#: src/workplace/QueryPanel.tsx
+msgid "+ Bedingung"
+msgstr "+ Bedingung"
+
+#: src/editor/EditorPanel.tsx
+msgid "+ Filter"
+msgstr "+ Filter"
+
+#: src/operations/OperationDialog.tsx
+msgid "+ Kennzahl"
+msgstr "+ Kennzahl"
 
 #: src/editor/describe.ts
 msgid "> {distance} zu {layer}"
@@ -89,27 +186,265 @@ msgstr "≤ {distance} zu {layer}"
 msgid "≤ Distanz zu"
 msgstr "≤ Distanz zu"
 
+#. Badge: attribute condition
+#: src/workplace/QueryPanel.tsx
+msgid "A"
+msgstr "A"
+
 #: src/editor/describe.ts
 msgctxt "date"
 msgid "ab"
 msgstr "ab"
 
+#: src/components/ui.tsx
+#: src/operations/OperationDialog.tsx
+#: src/queries/SaveQueryDialog.tsx
+#: src/session/SaveAsDialog.tsx
+#: src/session/SessionDialogs.tsx
+msgid "Abbrechen"
+msgstr "Abbrechen"
+
+#: src/editor/EditorPanel.tsx
+#: src/workplace/QueryPanel.tsx
+msgid "Abfrage"
+msgstr "Abfrage"
+
+#: src/session/SaveAsDialog.tsx
+msgid "Abfrage · Ziel {target}"
+msgstr "Abfrage · Ziel {target}"
+
+#: src/queries/SaveQueryDialog.tsx
+msgid "Abfrage speichern"
+msgstr "Abfrage speichern"
+
 #: src/session/notice.ts
 msgid "Abfrage und Rezepte sind unverändert."
 msgstr "Abfrage und Rezepte sind unverändert."
 
+#: src/editor/EditorPanel.tsx
+msgid "Abfrage-Editor"
+msgstr "Abfrage-Editor"
+
+#: src/queries/ManageQueriesDialog.tsx
+msgid "Abfragen suchen"
+msgstr "Abfragen suchen"
+
+#: src/workplace/LayerPanel.tsx
+msgid "Abgeleitet · Sitzung"
+msgstr "Abgeleitet · Sitzung"
+
+#: src/session/SaveAsDialog.tsx
+msgid "Abgeleitete Layer (als Rezept)"
+msgstr "Abgeleitete Layer (als Rezept)"
+
+#: src/operations/OperationDialog.tsx
+msgid "Abgestufte Grösse"
+msgstr "Abgestufte Grösse"
+
 #: src/auth/UserMenu.tsx
 msgid "Abmelden"
 msgstr "Abmelden"
+
+#: src/App.tsx
+msgid "Administration"
+msgstr "Administration"
+
+#: src/operations/OperationDialog.tsx
+msgid "Aggregieren"
+msgstr "Aggregieren"
+
+#: src/workplace/LayerPanel.tsx
+msgid "Aggregieren …"
+msgstr "Aggregieren …"
+
+#: src/queries/ManageQueriesDialog.tsx
+#: src/session/SessionsDialog.tsx
+msgid "Aktionen"
+msgstr "Aktionen"
+
+#: src/i18n/phrases.ts
+msgid "Aktionen für {name}"
+msgstr "Aktionen für {name}"
+
+#: src/workplace/LayerPanel.tsx
+msgid "Aktionen für {title}"
+msgstr "Aktionen für {title}"
+
+#: src/workplace/Workplace.tsx
+msgid "Aktive Bedingung: {shown} {layer}"
+msgstr "Aktive Bedingung: {shown} {layer}"
+
+#: src/queries/SavedQueries.tsx
+msgid "Aktuelle Abfrage ersetzen?"
+msgstr "Aktuelle Abfrage ersetzen?"
+
+#: src/table/TableDock.tsx
+msgid "Alle ({allShown})"
+msgstr "Alle ({allShown})"
+
+#: src/editor/EditorPanel.tsx
+msgid "alle folgenden"
+msgstr "alle folgenden"
+
+#: src/map/MapView.tsx
+msgid "Alle Layer"
+msgstr "Alle Layer"
+
+#: src/session/SessionMenu.tsx
+msgid "Alle öffnen …"
+msgstr "Alle öffnen …"
+
+#: src/table/TableDock.tsx
+msgid "Alle Zeilen auswählen"
+msgstr "Alle Zeilen auswählen"
+
+#: src/queries/ManageQueriesDialog.tsx
+msgid "Alle Ziel-Layer"
+msgstr "Alle Ziel-Layer"
+
+#: src/operations/OperationDialog.tsx
+msgctxt "metric name"
+msgid "als"
+msgstr "als"
+
+#: src/queries/ManageQueriesDialog.tsx
+msgid "Als eigene Kopie speichern"
+msgstr "Als eigene Kopie speichern"
+
+#: src/workplace/LayerPanel.tsx
+msgid "Als Ergebnis-Layer"
+msgstr "Als Ergebnis-Layer"
+
+#: src/queries/SavedQueries.tsx
+msgid "als Kopie"
+msgstr "als Kopie"
 
 #: src/editor/describe.ts
 msgctxt "date"
 msgid "am"
 msgstr "am"
 
+#: src/session/SaveAsDialog.tsx
+msgid "Analyse unter einem Namen speichern"
+msgstr "Analyse unter einem Namen speichern"
+
+#: src/queries/SavedQueries.tsx
+msgid "Andere Ziel-Layer"
+msgstr "Andere Ziel-Layer"
+
+#: src/session/OpenNotice.tsx
+msgid "Anderen Ergebnis-Layer wählen"
+msgstr "Anderen Ergebnis-Layer wählen"
+
+#: src/operations/OperationDialog.tsx
+msgid "Anzahl"
+msgstr "Anzahl"
+
+#: src/operations/OperationDialog.tsx
+msgid "Anzahl Klassen"
+msgstr "Anzahl Klassen"
+
+#: src/table/TableDock.tsx
+msgid "Anzeige"
+msgstr "Anzeige"
+
+#: src/workplace/Workplace.tsx
+msgid "Arbeitsweise"
+msgstr "Arbeitsweise"
+
+#: src/operations/OperationDialog.tsx
+msgid "Art"
+msgstr "Art"
+
+#: src/operations/OperationDialog.tsx
+msgid "Art der Darstellung"
+msgstr "Art der Darstellung"
+
+#: src/editor/EditorPanel.tsx
+msgid "Attribut"
+msgstr "Attribut"
+
+#: src/table/TableDock.tsx
+msgid "Attribute von {title}"
+msgstr "Attribute von {title}"
+
+#: src/table/TableDock.tsx
+#: src/workplace/Workplace.tsx
+msgid "Attributtabelle"
+msgstr "Attributtabelle"
+
+#: src/workplace/Workplace.tsx
+msgid "Attributtabelle ein/aus"
+msgstr "Attributtabelle ein/aus"
+
+#: src/table/TableDock.tsx
+msgid "Attributtabelle öffnen"
+msgstr "Attributtabelle öffnen"
+
+#: src/editor/EditorPanel.tsx
+msgid "auf der Karte klicken …"
+msgstr "auf der Karte klicken …"
+
+#: src/workplace/QueryPanel.tsx
+msgid "Auf der Karte zeichnen; Doppelklick schliesst die Fläche."
+msgstr "Auf der Karte zeichnen; Doppelklick schliesst die Fläche."
+
+#: src/workplace/LayerPanel.tsx
+msgid "Auf Layer zoomen"
+msgstr "Auf Layer zoomen"
+
+#: src/table/TableDock.tsx
+msgid "Auf Objekt zoomen"
+msgstr "Auf Objekt zoomen"
+
+#: src/table/TableDock.tsx
+msgid "Auf Zeile {id} zoomen"
+msgstr "Auf Zeile {id} zoomen"
+
+#: src/workplace/LayerPanel.tsx
+msgid "Aus Analyse entfernen"
+msgstr "Aus Analyse entfernen"
+
+#: src/table/TableDock.tsx
+msgid "aus Raumfilter"
+msgstr "aus Raumfilter"
+
+#: src/workplace/QueryPanel.tsx
+msgid "Ausschnitt"
+msgstr "Ausschnitt"
+
+#: src/queries/SavedQueries.tsx
+msgid "Auswählen ersetzt die aktuelle Abfrage (bei Änderungen mit Rückfrage)."
+msgstr "Auswählen ersetzt die aktuelle Abfrage (bei Änderungen mit Rückfrage)."
+
+#: src/workplace/QueryPanel.tsx
+msgid "Bearbeiten ›"
+msgstr "Bearbeiten ›"
+
+#: src/editor/EditorPanel.tsx
+msgid "Bedingung"
+msgstr "Bedingung"
+
 #: src/session/notice.ts
 msgid "Bedingung „{condition}\" entfernt: ihr Layer fehlt."
 msgstr "Bedingung „{condition}\" entfernt: ihr Layer fehlt."
+
+#: src/editor/EditorPanel.tsx
+msgid "Bedingung {badge}"
+msgstr "Bedingung {badge}"
+
+#: src/editor/EditorPanel.tsx
+msgid "Bedingung entfernen"
+msgstr "Bedingung entfernen"
+
+#: src/editor/EditorPanel.tsx
+#: src/queries/ManageQueriesDialog.tsx
+msgid "Bedingungen"
+msgstr "Bedingungen"
+
+#: src/workplace/QueryPanel.tsx
+msgid "Bedingungen (Übersicht)"
+msgstr "Bedingungen (Übersicht)"
 
 #: src/editor/describe.ts
 msgid "beginnt mit"
@@ -123,8 +458,33 @@ msgstr "bei {feature} ({layer})"
 msgid "Benutzermenü"
 msgstr "Benutzermenü"
 
+#: src/table/TableDock.tsx
+msgid "berechnet"
+msgstr "berechnet"
+
+#: src/editor/EditorPanel.tsx
+msgid "Beziehung"
+msgstr "Beziehung"
+
+#: src/editor/EditorPanel.tsx
+msgid "Bezug"
+msgstr "Bezug"
+
+#: src/editor/EditorPanel.tsx
+msgid "Bezugslayer"
+msgstr "Bezugslayer"
+
+#: src/editor/EditorPanel.tsx
+msgid "Bezugsobjekt"
+msgstr "Bezugsobjekt"
+
 #: src/editor/describe.ts
 msgctxt "date"
+msgid "bis"
+msgstr "bis"
+
+#: src/editor/EditorPanel.tsx
+msgctxt "range"
 msgid "bis"
 msgstr "bis"
 
@@ -140,6 +500,19 @@ msgstr "Bitte Schlüsselspalte und Ziel-Layer wählen."
 msgid "Bitte X- und Y-Spalte wählen."
 msgstr "Bitte X- und Y-Spalte wählen."
 
+#. Keyboard shortcut (German keyboards: Strg+S)
+#: src/session/SessionMenu.tsx
+msgid "Ctrl+S"
+msgstr "Ctrl+S"
+
+#: src/operations/OperationDialog.tsx
+msgid "Darstellung"
+msgstr "Darstellung"
+
+#: src/workplace/LayerPanel.tsx
+msgid "Darstellung …"
+msgstr "Darstellung …"
+
 #: src/admin/wizard.ts
 msgid "Das Koordinatensystem ist nicht erkannt; bitte wählen."
 msgstr "Das Koordinatensystem ist nicht erkannt; bitte wählen."
@@ -151,6 +524,22 @@ msgstr "Das Passwort ist geändert."
 #: src/admin/wizard.ts
 msgid "Datei"
 msgstr "Datei"
+
+#: src/session/SessionsDialog.tsx
+msgid "Daten neu"
+msgstr "Daten neu"
+
+#: src/workplace/LayerPanel.tsx
+msgid "Deckkraft"
+msgstr "Deckkraft"
+
+#: src/workplace/LayerPanel.tsx
+msgid "Deckkraft {title}"
+msgstr "Deckkraft {title}"
+
+#: src/workplace/QueryPanel.tsx
+msgid "Der aktuelle Kartenausschnitt, festgehalten beim Klick"
+msgstr "Der aktuelle Kartenausschnitt, festgehalten beim Klick"
 
 #: src/queries/actions.ts
 msgid "Der Ergebnis-Layer „{result}\" ist nicht verfügbar."
@@ -168,6 +557,14 @@ msgstr "Der gespeicherte Zustand ergibt nicht mehr genau die gespeicherte Abfrag
 msgid "Der Layer braucht eine Bezeichnung."
 msgstr "Der Layer braucht eine Bezeichnung."
 
+#: src/workplace/LayerPanel.tsx
+msgid "Der Layer ist Ergebnis-Layer; die Abfrage hat danach kein Ergebnis mehr."
+msgstr "Der Layer ist Ergebnis-Layer; die Abfrage hat danach kein Ergebnis mehr."
+
+#: src/workplace/LayerPanel.tsx
+msgid "Der Layer wird in einer Bedingung verwendet; die Bedingung wirkt weiter, der Layer wird nur nicht mehr angezeigt."
+msgstr "Der Layer wird in einer Bedingung verwendet; die Bedingung wirkt weiter, der Layer wird nur nicht mehr angezeigt."
+
 #: src/admin/wizard.ts
 msgid "Der Layername besteht aus Kleinbuchstaben, Ziffern und einzelnen Unterstrichen und beginnt mit einem Buchstaben."
 msgstr "Der Layername besteht aus Kleinbuchstaben, Ziffern und einzelnen Unterstrichen und beginnt mit einem Buchstaben."
@@ -175,6 +572,18 @@ msgstr "Der Layername besteht aus Kleinbuchstaben, Ziffern und einzelnen Unterst
 #: src/session/notice.ts
 msgid "Die Abfrage kann nicht ausgeführt werden. Karte und übrige Layer sind geöffnet."
 msgstr "Die Abfrage kann nicht ausgeführt werden. Karte und übrige Layer sind geöffnet."
+
+#: src/queries/ManageQueriesDialog.tsx
+msgid "Die Abfrage wird endgültig gelöscht."
+msgstr "Die Abfrage wird endgültig gelöscht."
+
+#: src/queries/SavedQueries.tsx
+msgid "Die aktuelle Abfrage hat Änderungen, die in keiner gespeicherten Abfrage stehen. „{name}\" ersetzt sie."
+msgstr "Die aktuelle Abfrage hat Änderungen, die in keiner gespeicherten Abfrage stehen. „{name}\" ersetzt sie."
+
+#: src/session/SessionDialogs.tsx
+msgid "Die Analyse hat Änderungen, die noch nicht gespeichert sind."
+msgstr "Die Analyse hat Änderungen, die noch nicht gespeichert sind."
 
 #: src/admin/wizard.ts
 msgid "Die Datei enthält keine Geometrien."
@@ -184,6 +593,26 @@ msgstr "Die Datei enthält keine Geometrien."
 msgid "Die gespeicherte Abfrage läuft nicht mehr: {error}"
 msgstr "Die gespeicherte Abfrage läuft nicht mehr: {error}"
 
+#: src/session/format.ts
+msgid "Die gespeicherte Sitzung ist unvollständig."
+msgstr "Die gespeicherte Sitzung ist unvollständig."
+
+#: src/map/MapView.tsx
+msgid "Die Kacheln kommen von ausserhalb dieser Installation; der Anbieter sieht den Kartenausschnitt."
+msgstr "Die Kacheln kommen von ausserhalb dieser Installation; der Anbieter sieht den Kartenausschnitt."
+
+#: src/session/SessionMenu.tsx
+msgid "Die Sitzung wird endgültig gelöscht; der Arbeitsplatz beginnt danach leer."
+msgstr "Die Sitzung wird endgültig gelöscht; der Arbeitsplatz beginnt danach leer."
+
+#: src/session/SessionsDialog.tsx
+msgid "Die Sitzung wird endgültig gelöscht."
+msgstr "Die Sitzung wird endgültig gelöscht."
+
+#: src/session/format.ts
+msgid "Die Sitzung wurde mit Format {version} gespeichert; diese Version liest Format {STATE_VERSION}."
+msgstr "Die Sitzung wurde mit Format {version} gespeichert; diese Version liest Format {STATE_VERSION}."
+
 #: src/session/notice.ts
 msgid "Die Treffer sind dieselben."
 msgstr "Die Treffer sind dieselben."
@@ -192,13 +621,90 @@ msgstr "Die Treffer sind dieselben."
 msgid "Diese Abfrage wurde mit einem unbekannten Format gespeichert."
 msgstr "Diese Abfrage wurde mit einem unbekannten Format gespeichert."
 
+#: src/App.tsx
+msgid "Diese Seite gibt es nicht."
+msgstr "Diese Seite gibt es nicht."
+
+#: src/session/useSessionRoute.ts
+msgid "Diese Sitzung gibt es nicht oder nicht für dieses Konto."
+msgstr "Diese Sitzung gibt es nicht oder nicht für dieses Konto."
+
+#: src/session/SessionMenu.tsx
+msgid "Diese Sitzung löschen"
+msgstr "Diese Sitzung löschen"
+
+#: src/operations/OperationDialog.tsx
+msgid "Dieser Layer hat kein passendes Feld."
+msgstr "Dieser Layer hat kein passendes Feld."
+
+#: src/operations/OperationDialog.tsx
+msgid "Distanz"
+msgstr "Distanz"
+
+#: src/table/rows.ts
+msgid "Distanz {title}"
+msgstr "Distanz {title}"
+
+#: src/editor/EditorPanel.tsx
+msgid "Distanz in Metern"
+msgstr "Distanz in Metern"
+
+#: src/queries/ManageQueriesDialog.tsx
+#: src/session/SessionsDialog.tsx
+msgid "Duplizieren"
+msgstr "Duplizieren"
+
+#: src/queries/ManageQueriesDialog.tsx
+msgid "Eigene und geteilte Abfragen öffnen, umbenennen, teilen, kopieren oder löschen"
+msgstr "Eigene und geteilte Abfragen öffnen, umbenennen, teilen, kopieren oder löschen"
+
 #: src/auth/UserMenu.tsx
 msgid "Eigenes Passwort ändern"
 msgstr "Eigenes Passwort ändern"
 
+#: src/session/SessionsDialog.tsx
+msgid "Ein beteiligter Layer hat seit dem Speichern eine neue Fassung oder fehlt."
+msgstr "Ein beteiligter Layer hat seit dem Speichern eine neue Fassung oder fehlt."
+
+#: src/queries/SaveQueryDialog.tsx
+msgid "Eine eigene Abfrage „{trimmed}\" gibt es schon."
+msgstr "Eine eigene Abfrage „{trimmed}\" gibt es schon."
+
+#: src/workplace/QueryPanel.tsx
+msgid "Eine Fläche auf der Karte zeichnen"
+msgstr "Eine Fläche auf der Karte zeichnen"
+
+#: src/session/SaveAsDialog.tsx
+msgid "Eine Sitzung „{trimmed}\" gibt es schon."
+msgstr "Eine Sitzung „{trimmed}\" gibt es schon."
+
+#: src/operations/OperationDialog.tsx
+msgid "Einheit"
+msgstr "Einheit"
+
+#: src/table/TableDock.tsx
+msgid "Einklappen"
+msgstr "Einklappen"
+
+#: src/workplace/QueryPanel.tsx
+msgid "Einschränkung"
+msgstr "Einschränkung"
+
+#: src/workplace/QueryPanel.tsx
+msgid "Einschränkung aufheben"
+msgstr "Einschränkung aufheben"
+
+#: src/operations/OperationDialog.tsx
+msgid "Einzelfarbe"
+msgstr "Einzelfarbe"
+
 #: src/editor/describe.ts
 msgid "endet mit"
 msgstr "endet mit"
+
+#: src/workplace/LayerPanel.tsx
+msgid "Entfernen"
+msgstr "Entfernen"
 
 #: src/editor/describe.ts
 msgctxt "spatial"
@@ -209,6 +715,10 @@ msgstr "enthält"
 msgctxt "text"
 msgid "enthält"
 msgstr "enthält"
+
+#: src/workplace/LayerPanel.tsx
+msgid "Ergebnis"
+msgstr "Ergebnis"
 
 #: src/session/notice.ts
 msgid "Ergebnis weicht ab"
@@ -222,21 +732,197 @@ msgstr "Ergebnis weicht ab: {before} → {after}"
 msgid "Ergebnis wird geprüft …"
 msgstr "Ergebnis wird geprüft …"
 
+#: src/session/OpenNotice.tsx
+#: src/workplace/ResultSelect.tsx
+msgid "Ergebnis-Layer"
+msgstr "Ergebnis-Layer"
+
+#: src/queries/SaveQueryDialog.tsx
+msgid "Ergebnis-Layer und Bedingungen unter einem Namen speichern"
+msgstr "Ergebnis-Layer und Bedingungen unter einem Namen speichern"
+
+#: src/workplace/ResultSelect.tsx
+msgid "Ergebnis-Layer wechseln?"
+msgstr "Ergebnis-Layer wechseln?"
+
+#: src/session/SaveAsDialog.tsx
+msgid "Ergebnis-Stempel"
+msgstr "Ergebnis-Stempel"
+
+#: src/workplace/ResultSelect.tsx
+msgid "Ergebnis:"
+msgstr "Ergebnis:"
+
+#: src/session/OpenNotice.tsx
+msgid "Ergebnisprüfung"
+msgstr "Ergebnisprüfung"
+
+#: src/operations/OperationDialog.tsx
+msgid "Ergibt einen abgeleiteten Layer dieser Sitzung; er wird bei jedem Öffnen neu berechnet."
+msgstr "Ergibt einen abgeleiteten Layer dieser Sitzung; er wird bei jedem Öffnen neu berechnet."
+
+#: src/workplace/AddLayers.tsx
+msgid "Erscheint in der Attributtabelle, nicht auf der Karte"
+msgstr "Erscheint in der Attributtabelle, nicht auf der Karte"
+
+#: src/queries/SavedQueries.tsx
+msgid "Ersetzen"
+msgstr "Ersetzen"
+
+#: src/editor/EditorPanel.tsx
+msgid "Erst einen Ergebnis-Layer wählen."
+msgstr "Erst einen Ergebnis-Layer wählen."
+
+#: src/workplace/ResultSelect.tsx
+msgid "Erst einen Layer hinzufügen; er wird Ergebnis-Layer."
+msgstr "Erst einen Layer hinzufügen; er wird Ergebnis-Layer."
+
+#: src/table/TableDock.tsx
+msgid "Export · ab E5"
+msgstr "Export · ab E5"
+
+#: src/table/TableDock.tsx
+msgid "Export der Ergebnisdaten folgt in E5 (F-8.6)"
+msgstr "Export der Ergebnisdaten folgt in E5 (F-8.6)"
+
+#: src/table/TableDock.tsx
+msgid "Fachliche Namen aus dem Datenkatalog · Auswahl wird mit der Sitzung gespeichert"
+msgstr "Fachliche Namen aus dem Datenkatalog · Auswahl wird mit der Sitzung gespeichert"
+
+#: src/operations/OperationDialog.tsx
+msgid "Farbe"
+msgstr "Farbe"
+
+#: src/editor/EditorPanel.tsx
+#: src/operations/OperationDialog.tsx
+msgid "Feld"
+msgstr "Feld"
+
+#: src/editor/EditorPanel.tsx
+#: src/operations/OperationDialog.tsx
+msgid "Feld …"
+msgstr "Feld …"
+
+#: src/operations/OperationDialog.tsx
+msgid "Feld der Darstellung"
+msgstr "Feld der Darstellung"
+
 #: src/admin/wizard.ts
 msgid "Felder"
 msgstr "Felder"
+
+#: src/operations/OperationDialog.tsx
+msgid "Felder aus {rightTitle}"
+msgstr "Felder aus {rightTitle}"
+
+#: src/editor/EditorPanel.tsx
+msgid "Filter entfernen"
+msgstr "Filter entfernen"
+
+#: src/map/Measurement.tsx
+#: src/queries/part.ts
+#: src/workplace/QueryPanel.tsx
+msgid "Fläche"
+msgstr "Fläche"
+
+#: src/session/SaveAsDialog.tsx
+msgid "Fragestellung, Annahmen …"
+msgstr "Fragestellung, Annahmen …"
+
+#: src/operations/OperationDialog.tsx
+msgid "Funktion"
+msgstr "Funktion"
+
+#. Badge: group
+#: src/workplace/QueryPanel.tsx
+msgid "G"
+msgstr "G"
+
+#: src/queries/ManageQueriesDialog.tsx
+#: src/session/SessionsDialog.tsx
+msgid "Geändert"
+msgstr "Geändert"
+
+#: src/operations/OperationDialog.tsx
+msgid "Gebietslayer"
+msgstr "Gebietslayer"
+
+#: src/map/MapSearch.tsx
+msgid "Gemeinde, Haltestelle, Schule …"
+msgstr "Gemeinde, Haltestelle, Schule …"
 
 #: src/admin/wizard.ts
 msgid "Geobezug"
 msgstr "Geobezug"
 
+#: src/queries/SavedQueries.tsx
+msgid "Gespeichert"
+msgstr "Gespeichert"
+
+#: src/queries/SavedQueries.tsx
+msgid "Gespeichert · {resultTitle}"
+msgstr "Gespeichert · {resultTitle}"
+
+#: src/session/ui.ts
+msgid "gespeichert {dated}"
+msgstr "gespeichert {dated}"
+
+#: src/session/ui.ts
+msgid "gespeichert {time}"
+msgstr "gespeichert {time}"
+
+#: src/session/ui.ts
+msgid "gespeichert gestern"
+msgstr "gespeichert gestern"
+
+#: src/queries/SavedQueries.tsx
+msgid "Gespeichert werden Abfragen auf Katalog-Layern, nicht auf abgeleiteten."
+msgstr "Gespeichert werden Abfragen auf Katalog-Layern, nicht auf abgeleiteten."
+
 #: src/queries/actions.ts
 msgid "Gespeichert werden Abfragen auf Katalog-Layern; dieser Ergebnis-Layer ist abgeleitet."
 msgstr "Gespeichert werden Abfragen auf Katalog-Layern; dieser Ergebnis-Layer ist abgeleitet."
 
+#: src/queries/ManageQueriesDialog.tsx
+#: src/queries/SavedQueries.tsx
+msgid "Gespeicherte Abfragen"
+msgstr "Gespeicherte Abfragen"
+
+#: src/session/SessionsDialog.tsx
+msgid "Gespeicherte Sitzungen öffnen, umbenennen, duplizieren oder löschen"
+msgstr "Gespeicherte Sitzungen öffnen, umbenennen, duplizieren oder löschen"
+
 #: src/session/ui.ts
 msgid "gestern"
 msgstr "gestern"
+
+#: src/queries/ManageQueriesDialog.tsx
+msgid "Geteilt"
+msgstr "Geteilt"
+
+#: src/queries/SavedQueries.tsx
+msgid "geteilt von {owner}"
+msgstr "geteilt von {owner}"
+
+#: src/queries/SaveQueryDialog.tsx
+msgid "Geteilt: für alle Anwender lesbar (Ändern erzeugt bei ihnen eine Kopie)"
+msgstr "Geteilt: für alle Anwender lesbar (Ändern erzeugt bei ihnen eine Kopie)"
+
+#: src/queries/ManageQueriesDialog.tsx
+msgid "Geteilt: für alle Anwender sichtbar, die ihre Layer sehen — nur lesend, Ändern erzeugt eine Kopie."
+msgstr "Geteilt: für alle Anwender sichtbar, die ihre Layer sehen — nur lesend, Ändern erzeugt eine Kopie."
+
+#: src/operations/OperationDialog.tsx
+msgid "gleiche Intervalle"
+msgstr "gleiche Intervalle"
+
+#: src/operations/OperationDialog.tsx
+msgid "Gleichnamige Felder erhalten das Präfix „{prefix}\"."
+msgstr "Gleichnamige Felder erhalten das Präfix „{prefix}\"."
+
+#: src/editor/EditorPanel.tsx
+msgid "Gruppe"
+msgstr "Gruppe"
 
 #: src/editor/describe.ts
 msgid "Gruppe (ODER, {count})"
@@ -246,9 +932,53 @@ msgstr "Gruppe (ODER, {count})"
 msgid "Gruppe (UND, {count})"
 msgstr "Gruppe (UND, {count})"
 
+#: src/editor/EditorPanel.tsx
+msgid "Gruppe entfernen"
+msgstr "Gruppe entfernen"
+
+#: src/App.tsx
+msgid "Hauptnavigation"
+msgstr "Hauptnavigation"
+
+#: src/map/MapView.tsx
+msgid "Herauszoomen"
+msgstr "Herauszoomen"
+
 #: src/session/ui.ts
 msgid "heute {time}"
 msgstr "heute {time}"
+
+#: src/map/MapView.tsx
+msgid "Hineinzoomen"
+msgstr "Hineinzoomen"
+
+#: src/map/MapView.tsx
+msgid "Hintergrund extern"
+msgstr "Hintergrund extern"
+
+#: src/map/MapView.tsx
+msgid "Hintergrundkarte"
+msgstr "Hintergrundkarte"
+
+#: src/map/MapView.tsx
+msgid "Hintergrundkarte ein/aus"
+msgstr "Hintergrundkarte ein/aus"
+
+#: src/session/OpenNotice.tsx
+msgid "Hinweis schliessen"
+msgstr "Hinweis schliessen"
+
+#: src/workplace/AddLayers.tsx
+msgid "Hinzufügen"
+msgstr "Hinzufügen"
+
+#: src/table/TableDock.tsx
+msgid "Höhe der Tabelle"
+msgstr "Höhe der Tabelle"
+
+#: src/workplace/LayerPanel.tsx
+msgid "Im Datenkatalog öffnen"
+msgstr "Im Datenkatalog öffnen"
 
 #: src/editor/describe.ts
 msgid "ist eins von"
@@ -259,12 +989,112 @@ msgid "ist leer"
 msgstr "ist leer"
 
 #: src/editor/describe.ts
+#: src/editor/EditorPanel.tsx
+#: src/session/SaveAsDialog.tsx
 msgid "ja"
 msgstr "ja"
 
+#: src/operations/OperationDialog.tsx
+msgid "Je Gebiet aus"
+msgstr "Je Gebiet aus"
+
+#: src/operations/OperationDialog.tsx
+msgid "Join"
+msgstr "Join"
+
+#: src/workplace/LayerPanel.tsx
+msgid "Join …"
+msgstr "Join …"
+
+#: src/operations/OperationDialog.tsx
+msgid "Join anlegen"
+msgstr "Join anlegen"
+
+#: src/App.tsx
+#: src/map/MapView.tsx
+msgid "Karte"
+msgstr "Karte"
+
+#: src/session/SaveAsDialog.tsx
+msgid "Kartenausschnitt · Tabelle (Spalten, Sortierung)"
+msgstr "Kartenausschnitt · Tabelle (Spalten, Sortierung)"
+
+#: src/map/MapSearch.tsx
+msgid "Kartensuche"
+msgstr "Kartensuche"
+
+#: src/map/MapView.tsx
+msgid "Kartenwerkzeuge"
+msgstr "Kartenwerkzeuge"
+
+#: src/operations/OperationDialog.tsx
+msgid "Kategorien"
+msgstr "Kategorien"
+
 #: src/session/notice.ts
+#: src/session/SaveAsDialog.tsx
 msgid "kein Ergebnis-Layer"
 msgstr "kein Ergebnis-Layer"
+
+#: src/workplace/AddLayers.tsx
+msgid "Kein Layer passt."
+msgstr "Kein Layer passt."
+
+#: src/table/TableDock.tsx
+msgid "Kein Objekt im Kartenausschnitt."
+msgstr "Kein Objekt im Kartenausschnitt."
+
+#: src/session/SaveAsDialog.tsx
+msgid "keine"
+msgstr "keine"
+
+#: src/queries/ManageQueriesDialog.tsx
+msgid "Keine Abfrage passt."
+msgstr "Keine Abfrage passt."
+
+#: src/workplace/QueryPanel.tsx
+msgid "Keine Bedingung: alle Objekte sind Treffer."
+msgstr "Keine Bedingung: alle Objekte sind Treffer."
+
+#: src/map/MapView.tsx
+msgid "Keine Hintergrundkarte konfiguriert"
+msgstr "Keine Hintergrundkarte konfiguriert"
+
+#: src/workplace/AddLayers.tsx
+msgid "Keine Layer freigegeben."
+msgstr "Keine Layer freigegeben."
+
+#: src/table/TableDock.tsx
+msgid "Keine Objekte."
+msgstr "Keine Objekte."
+
+#: src/session/SessionsDialog.tsx
+msgid "Keine Sitzung passt."
+msgstr "Keine Sitzung passt."
+
+#: src/table/TableDock.tsx
+msgid "Keine Treffer."
+msgstr "Keine Treffer."
+
+#: src/operations/OperationDialog.tsx
+msgid "Kennzahl entfernen"
+msgstr "Kennzahl entfernen"
+
+#: src/operations/OperationDialog.tsx
+msgid "Kennzahlen"
+msgstr "Kennzahlen"
+
+#: src/operations/OperationDialog.tsx
+msgid "Klassen"
+msgstr "Klassen"
+
+#: src/workplace/Workplace.tsx
+msgid "Klassik"
+msgstr "Klassik"
+
+#: src/map/Measurement.tsx
+msgid "Klicken setzt Punkte, Doppelklick schliesst ab, Esc beginnt neu. Gemessen auf dem Ellipsoid (WGS84)."
+msgstr "Klicken setzt Punkte, Doppelklick schliesst ab, Esc beginnt neu. Gemessen auf dem Ellipsoid (WGS84)."
 
 #: src/admin/wizard.ts
 msgid "Koordinatensystem EPSG:{crs}"
@@ -273,6 +1103,24 @@ msgstr "Koordinatensystem EPSG:{crs}"
 #: src/admin/wizard.ts
 msgid "Koordinatensystem fehlt"
 msgstr "Koordinatensystem fehlt"
+
+#: src/components/ui.tsx
+#: src/table/TableDock.tsx
+msgid "Lädt …"
+msgstr "Lädt …"
+
+#: src/workplace/AddLayers.tsx
+#: src/workplace/LayerPanel.tsx
+msgid "Layer"
+msgstr "Layer"
+
+#: src/editor/EditorPanel.tsx
+msgid "Layer …"
+msgstr "Layer …"
+
+#: src/session/SaveAsDialog.tsx
+msgid "Layer · Reihenfolge · Sichtbarkeit · Deckkraft"
+msgstr "Layer · Reihenfolge · Sichtbarkeit · Deckkraft"
 
 #: src/session/notice.ts
 msgid "Layer „{layer}\" hat eine neue Fassung ({before} → {after})."
@@ -286,22 +1134,133 @@ msgstr "Layer „{layer}\" ist nicht mehr verfügbar."
 msgid "Layer „{name}\" ist nicht mehr verfügbar und wurde aus der Analyse genommen."
 msgstr "Layer „{name}\" ist nicht mehr verfügbar und wurde aus der Analyse genommen."
 
+#: src/editor/EditorPanel.tsx
+msgid "Layer des Bezugsobjekts"
+msgstr "Layer des Bezugsobjekts"
+
+#: src/workplace/AddLayers.tsx
+msgid "Layer hinzufügen"
+msgstr "Layer hinzufügen"
+
+#: src/workplace/AddLayers.tsx
+msgid "Layer suchen"
+msgstr "Layer suchen"
+
+#: src/map/MapView.tsx
+#: src/workplace/Workplace.tsx
+msgid "Legende"
+msgstr "Legende"
+
+#: src/map/MapView.tsx
+msgid "Legende ein/aus"
+msgstr "Legende ein/aus"
+
 #: src/editor/describe.ts
 msgid "liegt ausserhalb"
 msgstr "liegt ausserhalb"
 
 #: src/editor/describe.ts
+#: src/operations/OperationDialog.tsx
 msgid "liegt in"
 msgstr "liegt in"
+
+#: src/queries/ManageQueriesDialog.tsx
+#: src/session/SessionMenu.tsx
+#: src/session/SessionsDialog.tsx
+#: src/workplace/LayerPanel.tsx
+msgid "Löschen"
+msgstr "Löschen"
+
+#: src/operations/OperationDialog.tsx
+msgid "Maximum"
+msgstr "Maximum"
+
+#: src/map/Measurement.tsx
+msgid "Messart"
+msgstr "Messart"
+
+#: src/map/Measurement.tsx
+msgid "Messen"
+msgstr "Messen"
+
+#: src/map/Measurement.tsx
+msgid "Messen beenden"
+msgstr "Messen beenden"
+
+#: src/map/Measurement.tsx
+msgid "Messwert"
+msgstr "Messwert"
+
+#: src/operations/OperationDialog.tsx
+msgid "Methode"
+msgstr "Methode"
+
+#: src/editor/EditorPanel.tsx
+msgid "mindestens eine"
+msgstr "mindestens eine"
+
+#: src/operations/OperationDialog.tsx
+msgid "Minimum"
+msgstr "Minimum"
+
+#: src/session/OpenNotice.tsx
+msgid "Mit aktuellen Daten übernehmen"
+msgstr "Mit aktuellen Daten übernehmen"
+
+#: src/operations/OperationDialog.tsx
+msgid "Mittelwert"
+msgstr "Mittelwert"
 
 #: src/editor/describe.ts
 msgctxt "date"
 msgid "nach"
 msgstr "nach"
 
+#: src/workplace/LayerPanel.tsx
+msgid "Nach oben"
+msgstr "Nach oben"
+
+#: src/workplace/LayerPanel.tsx
+msgid "Nach unten"
+msgstr "Nach unten"
+
+#: src/operations/OperationDialog.tsx
+#: src/queries/ManageQueriesDialog.tsx
+#: src/queries/SaveQueryDialog.tsx
+#: src/session/SaveAsDialog.tsx
+#: src/session/SessionsDialog.tsx
+msgid "Name"
+msgstr "Name"
+
+#: src/operations/OperationDialog.tsx
+msgid "Name der Kennzahl"
+msgstr "Name der Kennzahl"
+
 #: src/editor/describe.ts
+#: src/editor/EditorPanel.tsx
 msgid "nein"
 msgstr "nein"
+
+#: src/queries/SavedQueries.tsx
+msgid "Neue Abfrage (leer)"
+msgstr "Neue Abfrage (leer)"
+
+#: src/workplace/AddLayers.tsx
+msgid "Neue Daten importieren"
+msgstr "Neue Daten importieren"
+
+#: src/session/SessionMenu.tsx
+msgid "Neue Sitzung"
+msgstr "Neue Sitzung"
+
+#: src/queries/ManageQueriesDialog.tsx
+#: src/session/SessionsDialog.tsx
+msgid "Neuer Name"
+msgstr "Neuer Name"
+
+#: src/editor/EditorPanel.tsx
+msgid "NICHT"
+msgstr "NICHT"
 
 #. Any condition, negated
 #: src/editor/describe.ts
@@ -313,21 +1272,142 @@ msgctxt "date"
 msgid "nicht am"
 msgstr "nicht am"
 
+#: src/queries/SavedQueries.tsx
+msgid "Nicht gespeichert"
+msgstr "Nicht gespeichert"
+
+#: src/map/MapSearch.tsx
+msgid "Nichts gefunden."
+msgstr "Nichts gefunden."
+
+#: src/queries/ManageQueriesDialog.tsx
+msgid "Noch keine Abfrage gespeichert."
+msgstr "Noch keine Abfrage gespeichert."
+
+#: src/workplace/LayerPanel.tsx
+msgid "Noch keine Layer. Über „+ Layer\" kommen sie aus dem Katalog."
+msgstr "Noch keine Layer. Über „+ Layer\" kommen sie aus dem Katalog."
+
+#: src/session/SessionsDialog.tsx
+msgid "Noch keine Sitzung gespeichert."
+msgstr "Noch keine Sitzung gespeichert."
+
+#: src/session/SaveAsDialog.tsx
+msgid "Notiz (optional)"
+msgstr "Notiz (optional)"
+
+#: src/table/TableDock.tsx
+msgid "nur aktueller Kartenausschnitt"
+msgstr "nur aktueller Kartenausschnitt"
+
+#: src/table/TableDock.tsx
+msgid "Nur der Kartenausschnitt ist geladen: der Layer hat mehr als {maxFeatures} Objekte."
+msgstr "Nur der Kartenausschnitt ist geladen: der Layer hat mehr als {maxFeatures} Objekte."
+
+#: src/operations/OperationDialog.tsx
+msgid "Nur gefilterte Objekte (Treffer der Abfrage)"
+msgstr "Nur gefilterte Objekte (Treffer der Abfrage)"
+
+#: src/workplace/QueryPanel.tsx
+msgid "Nur in:"
+msgstr "Nur in:"
+
+#: src/queries/ManageQueriesDialog.tsx
+msgid "Nur wer sie gespeichert hat, teilt sie."
+msgstr "Nur wer sie gespeichert hat, teilt sie."
+
 #: src/editor/describe.ts
 msgid "Objekt {fid}"
 msgstr "Objekt {fid}"
+
+#: src/editor/EditorPanel.tsx
+msgid "Objekt wählen"
+msgstr "Objekt wählen"
+
+#: src/operations/OperationDialog.tsx
+msgid "Objekte ohne Partner behalten"
+msgstr "Objekte ohne Partner behalten"
+
+#: src/editor/EditorPanel.tsx
+#: src/workplace/QueryPanel.tsx
+msgid "ODER"
+msgstr "ODER"
+
+#: src/session/SessionsDialog.tsx
+msgid "offen"
+msgstr "offen"
+
+#: src/queries/ManageQueriesDialog.tsx
+#: src/session/SessionsDialog.tsx
+msgid "Öffnen"
+msgstr "Öffnen"
+
+#: src/queries/useChooseQuery.ts
+msgid "Ohne {conditions}: ihr Layer ist nicht verfügbar."
+msgstr "Ohne {conditions}: ihr Layer ist nicht verfügbar."
+
+#: src/queries/SavedQueries.tsx
+msgid "OK"
+msgstr "OK"
+
+#: src/editor/EditorPanel.tsx
+msgid "Operator"
+msgstr "Operator"
 
 #: src/auth/UserMenu.tsx
 msgid "Passwort ändern"
 msgstr "Passwort ändern"
 
+#: src/workplace/Workplace.tsx
+msgid "Prompt · ab E2"
+msgstr "Prompt · ab E2"
+
 #: src/admin/wizard.ts
 msgid "Prüfen"
 msgstr "Prüfen"
 
+#: src/operations/OperationDialog.tsx
+msgid "Puffer"
+msgstr "Puffer"
+
+#: src/workplace/LayerPanel.tsx
+msgid "Puffer …"
+msgstr "Puffer …"
+
+#: src/operations/OperationDialog.tsx
+msgid "Puffer {distance} {unit} · {title}"
+msgstr "Puffer {distance} {unit} · {title}"
+
+#: src/operations/OperationDialog.tsx
+msgid "Puffer anlegen"
+msgstr "Puffer anlegen"
+
+#: src/operations/OperationDialog.tsx
+msgid "Quantile"
+msgstr "Quantile"
+
+#. Badge: spatial or reference condition (Raum)
+#: src/workplace/QueryPanel.tsx
+msgid "R"
+msgstr "R"
+
+#: src/editor/EditorPanel.tsx
+msgid "Raum"
+msgstr "Raum"
+
+#: src/table/TableDock.tsx
+msgid "Reine Anzeige: blendet Zeilen ausserhalb des Kartenausschnitts aus, ändert den Filter nicht."
+msgstr "Reine Anzeige: blendet Zeilen ausserhalb des Kartenausschnitts aus, ändert den Filter nicht."
+
 #: src/auth/UserMenu.tsx
+#: src/queries/ManageQueriesDialog.tsx
+#: src/session/SessionsDialog.tsx
 msgid "Schliessen"
 msgstr "Schliessen"
+
+#: src/operations/OperationDialog.tsx
+msgid "Schlüssel"
+msgstr "Schlüssel"
 
 #: src/admin/wizard.ts
 msgid "Schlüssel {key}"
@@ -337,26 +1417,289 @@ msgstr "Schlüssel {key}"
 msgid "Schlüssel {key}: {matched} / {total} zugeordnet"
 msgstr "Schlüssel {key}: {matched} / {total} zugeordnet"
 
+#: src/operations/OperationDialog.tsx
+msgid "Schlüssel im Layer"
+msgstr "Schlüssel im Layer"
+
+#: src/operations/OperationDialog.tsx
+msgid "Schlüssel in der Tabelle"
+msgstr "Schlüssel in der Tabelle"
+
 #: src/editor/describe.ts
+#: src/operations/OperationDialog.tsx
 msgid "schneidet"
 msgstr "schneidet"
+
+#: src/workplace/Workplace.tsx
+msgid "Seitenleiste"
+msgstr "Seitenleiste"
+
+#: src/queries/ManageQueriesDialog.tsx
+msgid "Sie ist geteilt und verschwindet auch für alle anderen."
+msgstr "Sie ist geteilt und verschwindet auch für alle anderen."
 
 #: src/session/notice.ts
 msgid "Sitzung nicht geöffnet"
 msgstr "Sitzung nicht geöffnet"
 
+#: src/session/SaveAsDialog.tsx
+msgid "Sitzung speichern"
+msgstr "Sitzung speichern"
+
+#: src/session/SessionsDialog.tsx
+msgid "Sitzungen"
+msgstr "Sitzungen"
+
+#: src/session/SessionsDialog.tsx
+msgid "Sitzungen suchen"
+msgstr "Sitzungen suchen"
+
+#: src/session/SessionMenu.tsx
+msgid "Sitzungsmenü"
+msgstr "Sitzungsmenü"
+
+#: src/table/TableDock.tsx
+msgid "Sortieren: ↓ / ↑ / aus · Umschalt für zweite Sortierung"
+msgstr "Sortieren: ↓ / ↑ / aus · Umschalt für zweite Sortierung"
+
+#: src/table/TableDock.tsx
+msgid "Spalten"
+msgstr "Spalten"
+
+#: src/queries/SavedQueries.tsx
+#: src/queries/SaveQueryDialog.tsx
+#: src/session/SaveAsDialog.tsx
+#: src/session/SessionMenu.tsx
+msgid "Speichern"
+msgstr "Speichern"
+
+#: src/session/SessionMenu.tsx
+msgid "Speichern fehlgeschlagen"
+msgstr "Speichern fehlgeschlagen"
+
+#: src/session/SessionDialogs.tsx
+msgid "Speichern und abmelden"
+msgstr "Speichern und abmelden"
+
+#: src/session/SessionDialogs.tsx
+msgid "Speichern und neu beginnen"
+msgstr "Speichern und neu beginnen"
+
+#: src/session/SessionDialogs.tsx
+msgid "Speichern und öffnen"
+msgstr "Speichern und öffnen"
+
+#: src/queries/SavedQueries.tsx
+#: src/session/SessionMenu.tsx
+msgid "Speichern unter …"
+msgstr "Speichern unter …"
+
+#: src/session/SessionMenu.tsx
+msgid "Speicherstand"
+msgstr "Speicherstand"
+
+#: src/session/OpenNotice.tsx
+msgid "Speichert die Sitzung mit dem heutigen Ergebnis als neuen Stempel."
+msgstr "Speichert die Sitzung mit dem heutigen Ergebnis als neuen Stempel."
+
+#: src/map/Measurement.tsx
+msgid "Strecke"
+msgstr "Strecke"
+
+#: src/map/MapSearch.tsx
+msgid "Suchbegriff"
+msgstr "Suchbegriff"
+
+#: src/map/MapSearch.tsx
+msgid "Suche schliessen"
+msgstr "Suche schliessen"
+
+#: src/map/MapSearch.tsx
+#: src/queries/ManageQueriesDialog.tsx
+#: src/session/SessionsDialog.tsx
+msgid "Suchen"
+msgstr "Suchen"
+
+#: src/map/MapSearch.tsx
+msgid "Sucht …"
+msgstr "Sucht …"
+
+#: src/operations/OperationDialog.tsx
+msgid "Summe"
+msgstr "Summe"
+
+#: src/operations/OperationDialog.tsx
+#: src/workplace/AddLayers.tsx
+msgid "Tabelle"
+msgstr "Tabelle"
+
+#: src/table/TableDock.tsx
+msgid "Tabelle einklappen"
+msgstr "Tabelle einklappen"
+
+#: src/workplace/LayerPanel.tsx
+msgid "Tabelle öffnen"
+msgstr "Tabelle öffnen"
+
+#: src/workplace/LayerPanel.tsx
+msgid "Tabelle, nur in der Attributtabelle"
+msgstr "Tabelle, nur in der Attributtabelle"
+
+#: src/table/TableDock.tsx
+msgid "Tabellen"
+msgstr "Tabellen"
+
+#: src/session/SessionsDialog.tsx
+msgid "Treffer"
+msgstr "Treffer"
+
+#: src/table/TableDock.tsx
+msgid "Treffer ({hitsShown})"
+msgstr "Treffer ({hitsShown})"
+
+#: src/editor/EditorPanel.tsx
+msgid "Treffer dieser Bedingung"
+msgstr "Treffer dieser Bedingung"
+
+#: src/editor/EditorPanel.tsx
+msgid "Treffer im Entwurf"
+msgstr "Treffer im Entwurf"
+
+#: src/operations/OperationDialog.tsx
+msgid "Trefferquote"
+msgstr "Trefferquote"
+
+#: src/workplace/QueryPanel.tsx
+msgid "Trefferzahl"
+msgstr "Trefferzahl"
+
+#: src/editor/EditorPanel.tsx
+#: src/operations/OperationDialog.tsx
+msgid "Übernehmen"
+msgstr "Übernehmen"
+
+#: src/queries/SaveQueryDialog.tsx
+#: src/session/SaveAsDialog.tsx
+msgid "Überschreiben"
+msgstr "Überschreiben"
+
+#: src/editor/EditorPanel.tsx
+msgctxt "around a feature"
+msgid "um"
+msgstr "um"
+
+#: src/queries/ManageQueriesDialog.tsx
+#: src/session/SessionsDialog.tsx
+msgid "Umbenennen"
+msgstr "Umbenennen"
+
+#: src/editor/EditorPanel.tsx
+#: src/workplace/QueryPanel.tsx
+msgid "UND"
+msgstr "UND"
+
+#: src/session/SessionMenu.tsx
+msgid "ungespeichert"
+msgstr "ungespeichert"
+
+#: src/session/SessionDialogs.tsx
+msgid "Ungespeicherte Änderungen"
+msgstr "Ungespeicherte Änderungen"
+
 #: src/admin/wizard.ts
 msgid "unverändert"
 msgstr "unverändert"
+
+#: src/editor/EditorPanel.tsx
+msgid "Verknüpfung"
+msgstr "Verknüpfung"
+
+#: src/queries/SavedQueries.tsx
+msgid "Verwalten …"
+msgstr "Verwalten …"
+
+#: src/editor/EditorPanel.tsx
+#: src/session/SessionDialogs.tsx
+msgid "Verwerfen"
+msgstr "Verwerfen"
+
+#: src/editor/EditorPanel.tsx
+msgid "Verwerfen und schliessen"
+msgstr "Verwerfen und schliessen"
+
+#: src/editor/EditorPanel.tsx
+msgid "von"
+msgstr "von"
 
 #: src/editor/describe.ts
 msgctxt "date"
 msgid "vor"
 msgstr "vor"
 
+#: src/workplace/ResultSelect.tsx
+msgid "Wechseln"
+msgstr "Wechseln"
+
+#: src/map/MapSearch.tsx
+msgid "weitere Treffer — genauer suchen"
+msgstr "weitere Treffer — genauer suchen"
+
+#: src/editor/EditorPanel.tsx
+msgid "Wert"
+msgstr "Wert"
+
+#: src/editor/EditorPanel.tsx
+msgid "Wert hinzufügen"
+msgstr "Wert hinzufügen"
+
+#: src/operations/OperationDialog.tsx
+msgid "Wie der Layer auf der Karte erscheint (F-4.8)."
+msgstr "Wie der Layer auf der Karte erscheint (F-4.8)."
+
 #: src/session/notice.ts
 msgid "Wiederhergestellt · {count}, identisch mit dem Speicherstand"
 msgstr "Wiederhergestellt · {count}, identisch mit dem Speicherstand"
+
+#: src/session/SaveAsDialog.tsx
+msgid "Wird gespeichert"
+msgstr "Wird gespeichert"
+
+#: src/editor/EditorPanel.tsx
+msgid "wo"
+msgstr "wo"
+
+#: src/table/TableDock.tsx
+msgid "Zeile {id} auswählen"
+msgstr "Zeile {id} auswählen"
+
+#: src/queries/SaveQueryDialog.tsx
+msgid "Ziel {title} · {conditions} Bedingungen"
+msgstr "Ziel {title} · {conditions} Bedingungen"
+
+#: src/queries/SaveQueryDialog.tsx
+msgid "Ziel {title} · {conditions} Bedingungen · mit Einschränkung"
+msgstr "Ziel {title} · {conditions} Bedingungen · mit Einschränkung"
+
+#: src/queries/ManageQueriesDialog.tsx
+#: src/session/SessionsDialog.tsx
+msgid "Ziel-Layer"
+msgstr "Ziel-Layer"
+
+#: src/workplace/ResultSelect.tsx
+msgid "Ziel-Layer wechseln setzt Attribut-Bedingungen zurück."
+msgstr "Ziel-Layer wechseln setzt Attribut-Bedingungen zurück."
+
+#: src/table/TableDock.tsx
+msgid "Zoomen"
+msgstr "Zoomen"
+
+#: src/session/SessionMenu.tsx
+msgid "Zuletzt"
+msgstr "Zuletzt"
+
+#: src/operations/OperationDialog.tsx
+msgid "Zuordnung"
+msgstr "Zuordnung"
 
 #: src/editor/describe.ts
 msgid "zwischen"

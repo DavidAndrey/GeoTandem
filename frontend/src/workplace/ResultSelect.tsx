@@ -1,5 +1,7 @@
 // "Ergebnis: Schulen ▾" (design B1, B2), with the confirmation of B13 when
 // attribute conditions would drop out.
+import { plural, t } from '@lingui/core/macro'
+import { Trans } from '@lingui/react/macro'
 import { useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { canBeResult } from '../analysis/query'
@@ -19,16 +21,18 @@ export function ResultSelect({ hint }: { hint?: boolean }) {
 
   if (candidates.length === 0)
     return (
-      <p className="text-muted text-sm">Erst einen Layer hinzufügen; er wird Ergebnis-Layer.</p>
+      <p className="text-muted text-sm">
+        <Trans>Erst einen Layer hinzufügen; er wird Ergebnis-Layer.</Trans>
+      </p>
     )
 
   return (
     <>
       <label className="flex flex-wrap items-center gap-2 text-sm">
-        Ergebnis:
+        <Trans>Ergebnis:</Trans>
         <select
           className="input flex-1"
-          aria-label="Ergebnis-Layer"
+          aria-label={t`Ergebnis-Layer`}
           value={analysis.result ?? ''}
           onChange={(e) =>
             attributeRows > 0 ? setPending(e.target.value) : setResult(e.target.value)
@@ -43,7 +47,7 @@ export function ResultSelect({ hint }: { hint?: boolean }) {
         </select>
         {hint && (
           <span className="text-muted w-full text-xs">
-            Ziel-Layer wechseln setzt Attribut-Bedingungen zurück.
+            <Trans>Ziel-Layer wechseln setzt Attribut-Bedingungen zurück.</Trans>
           </span>
         )}
       </label>
@@ -51,19 +55,19 @@ export function ResultSelect({ hint }: { hint?: boolean }) {
         <ConfirmDialog
           open
           onOpenChange={(open) => !open && setPending(null)}
-          title="Ergebnis-Layer wechseln?"
-          confirm="Wechseln"
+          title={t`Ergebnis-Layer wechseln?`}
+          confirm={t`Wechseln`}
           onConfirm={() => {
             setResult(pending)
             setPending(null)
           }}
         >
           <p>
-            {attributeRows === 1
-              ? 'Eine Attribut-Bedingung bezieht'
-              : `${attributeRows} Attribut-Bedingungen beziehen`}{' '}
-            sich auf die Felder des bisherigen Layers und {attributeRows === 1 ? 'fällt' : 'fallen'}{' '}
-            weg. Räumliche Bedingungen bleiben.
+            {plural(attributeRows, {
+              one: 'Eine Attribut-Bedingung bezieht sich auf die Felder des bisherigen Layers und fällt weg. Räumliche Bedingungen bleiben.',
+              other:
+                '# Attribut-Bedingungen beziehen sich auf die Felder des bisherigen Layers und fallen weg. Räumliche Bedingungen bleiben.',
+            })}
           </p>
         </ConfirmDialog>
       )}

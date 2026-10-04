@@ -1,5 +1,8 @@
 // The global query in the sidebar (design B1): result layer, compact tree,
 // "7 von 39", and the restriction "Nur in: Ausschnitt / Fläche" (F-4.3).
+import { hitsOf } from '../i18n/phrases'
+import { Trans } from '@lingui/react/macro'
+import { t } from '@lingui/core/macro'
 import { Pencil, X } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import type { Node } from '../analysis/model'
@@ -47,23 +50,25 @@ export function QueryPanel() {
     <section aria-labelledby="query-title">
       <div className="mb-1 flex items-center">
         <h2 id="query-title" className="label-caps flex-1">
-          Abfrage
+          <Trans>Abfrage</Trans>
         </h2>
         {counts.data && (
-          <span className="text-sm" aria-label="Trefferzahl">
-            {counts.data.hits} von {counts.data.total}
+          <span className="text-sm" aria-label={t`Trefferzahl`}>
+            {hitsOf(counts.data.hits, counts.data.total)}
           </span>
         )}
       </div>
       <ResultSelect />
       {result && (
-        <div className="card mt-2 p-2 text-sm" aria-label="Bedingungen (Übersicht)">
+        <div className="card mt-2 p-2 text-sm" aria-label={t`Bedingungen (Übersicht)`}>
           {analysis.tree.children.length === 0 ? (
-            <p className="text-muted text-xs">Keine Bedingung: alle Objekte sind Treffer.</p>
+            <p className="text-muted text-xs">
+              <Trans>Keine Bedingung: alle Objekte sind Treffer.</Trans>
+            </p>
           ) : (
             <>
               <span className="chip mb-1 text-[11px]">
-                {analysis.tree.op === 'and' ? 'UND' : 'ODER'}
+                {analysis.tree.op === 'and' ? t`UND` : t`ODER`}
               </span>
               <CompactTree
                 nodes={analysis.tree.children}
@@ -82,10 +87,10 @@ export function QueryPanel() {
                   addNode('root', newAttributeRow(fields[0]?.name ?? ''))
                 }}
               >
-                + Bedingung
+                <Trans>+ Bedingung</Trans>
               </button>
               <button type="button" className="text-accent-700" onClick={edit}>
-                Bearbeiten ›
+                <Trans>Bearbeiten ›</Trans>
               </button>
             </div>
           )}
@@ -94,9 +99,11 @@ export function QueryPanel() {
       {result && (
         <div
           className="mt-2 flex flex-wrap items-center gap-1.5 text-xs"
-          aria-label="Einschränkung"
+          aria-label={t`Einschränkung`}
         >
-          <span>Nur in:</span>
+          <span>
+            <Trans>Nur in:</Trans>
+          </span>
           <button
             type="button"
             className={`chip ${restriction?.kind === 'view' ? 'chip-active' : ''}`}
@@ -105,23 +112,23 @@ export function QueryPanel() {
             onClick={() =>
               setRestriction(restriction?.kind === 'view' || !bbox ? null : { kind: 'view', bbox })
             }
-            title="Der aktuelle Kartenausschnitt, festgehalten beim Klick"
+            title={t`Der aktuelle Kartenausschnitt, festgehalten beim Klick`}
           >
-            Ausschnitt
+            <Trans>Ausschnitt</Trans>
           </button>
           <button
             type="button"
             className={`chip ${restriction?.kind === 'shape' || drawing ? 'chip-active' : ''}`}
             aria-pressed={restriction?.kind === 'shape'}
             onClick={() => setDrawing(drawing ? null : 'polygon')}
-            title="Eine Fläche auf der Karte zeichnen"
+            title={t`Eine Fläche auf der Karte zeichnen`}
           >
-            Fläche <Pencil size={11} aria-hidden />
+            <Trans>Fläche</Trans> <Pencil size={11} aria-hidden />
           </button>
           {restriction && (
             <button
               type="button"
-              aria-label="Einschränkung aufheben"
+              aria-label={t`Einschränkung aufheben`}
               onClick={() => setRestriction(null)}
             >
               <X size={12} />
@@ -129,7 +136,7 @@ export function QueryPanel() {
           )}
           {drawing && (
             <span className="text-muted w-full">
-              Auf der Karte zeichnen; Doppelklick schliesst die Fläche.
+              <Trans>Auf der Karte zeichnen; Doppelklick schliesst die Fläche.</Trans>
             </span>
           )}
         </div>
@@ -154,7 +161,11 @@ function CompactTree({
         <li key={node.id} className="flex flex-col">
           <span className="flex items-baseline gap-1.5">
             <span className="text-muted w-3 text-[10px]">
-              {node.kind === 'attribute' ? 'A' : node.kind === 'group' ? 'G' : 'R'}
+              {node.kind === 'attribute'
+                ? t({ message: 'A', comment: 'Badge: attribute condition' })
+                : node.kind === 'group'
+                  ? t({ message: 'G', comment: 'Badge: group' })
+                  : t({ message: 'R', comment: 'Badge: spatial or reference condition (Raum)' })}
             </span>
             <span className="flex-1">{describe(node)}</span>
             {node.kind !== 'group' && (

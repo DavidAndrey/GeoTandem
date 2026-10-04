@@ -1,5 +1,8 @@
 // "Abfragen verwalten" (design C6): own and shared queries. Only the owner
 // renames, shares or deletes; anyone opens or copies (plan E1.7b, Q3).
+import { actionsFor, deleteTitle } from '../i18n/phrases'
+import { plural, t } from '@lingui/core/macro'
+import { Trans } from '@lingui/react/macro'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useAnalysis } from '../analysis/store'
@@ -18,8 +21,8 @@ export function ManageQueriesDialog() {
     <Modal
       open={dialog === 'manage'}
       onOpenChange={(next) => !next && close()}
-      title="Gespeicherte Abfragen"
-      description="Eigene und geteilte Abfragen öffnen, umbenennen, teilen, kopieren oder löschen"
+      title={t`Gespeicherte Abfragen`}
+      description={t`Eigene und geteilte Abfragen öffnen, umbenennen, teilen, kopieren oder löschen`}
       wide
     >
       {dialog === 'manage' && <QueryList onClose={close} />}
@@ -80,18 +83,20 @@ function QueryList({ onClose }: { onClose: () => void }) {
         <input
           className="input"
           type="search"
-          placeholder="Suchen"
-          aria-label="Abfragen suchen"
+          placeholder={t`Suchen`}
+          aria-label={t`Abfragen suchen`}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
         <select
           className="input"
-          aria-label="Ziel-Layer"
+          aria-label={t`Ziel-Layer`}
           value={layer}
           onChange={(e) => setLayer(e.target.value)}
         >
-          <option value="">Alle Ziel-Layer</option>
+          <option value="">
+            <Trans>Alle Ziel-Layer</Trans>
+          </option>
           {layers.map((name) => (
             <option key={name} value={name}>
               {title(name)}
@@ -105,19 +110,31 @@ function QueryList({ onClose }: { onClose: () => void }) {
         <ErrorNotice error={list.error} />
       ) : shown.length === 0 ? (
         <p className="text-muted">
-          {list.data.length ? 'Keine Abfrage passt.' : 'Noch keine Abfrage gespeichert.'}
+          {list.data.length ? t`Keine Abfrage passt.` : t`Noch keine Abfrage gespeichert.`}
         </p>
       ) : (
-        <table className="data-table w-full" aria-label="Gespeicherte Abfragen">
+        <table className="data-table w-full" aria-label={t`Gespeicherte Abfragen`}>
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Ziel-Layer</th>
-              <th>Bedingungen</th>
-              <th>Geändert</th>
-              <th>Geteilt</th>
               <th>
-                <span className="sr-only">Aktionen</span>
+                <Trans>Name</Trans>
+              </th>
+              <th>
+                <Trans>Ziel-Layer</Trans>
+              </th>
+              <th>
+                <Trans>Bedingungen</Trans>
+              </th>
+              <th>
+                <Trans>Geändert</Trans>
+              </th>
+              <th>
+                <Trans>Geteilt</Trans>
+              </th>
+              <th>
+                <span className="sr-only">
+                  <Trans>Aktionen</Trans>
+                </span>
               </th>
             </tr>
           </thead>
@@ -134,7 +151,7 @@ function QueryList({ onClose }: { onClose: () => void }) {
                     >
                       <input
                         className="input w-full"
-                        aria-label="Neuer Name"
+                        aria-label={t`Neuer Name`}
                         value={renaming.name}
                         maxLength={120}
                         autoFocus
@@ -162,24 +179,26 @@ function QueryList({ onClose }: { onClose: () => void }) {
                     aria-label={`${q.name} teilen`}
                     checked={q.shared}
                     disabled={!q.mine || patch.isPending}
-                    title={q.mine ? undefined : 'Nur wer sie gespeichert hat, teilt sie.'}
+                    title={q.mine ? undefined : t`Nur wer sie gespeichert hat, teilt sie.`}
                     onChange={(e) => patch.mutate({ id: q.id, shared: e.target.checked })}
                   />
                 </td>
                 <td className="text-right">
-                  <Menu label={`Aktionen für ${q.name}`}>
-                    <MenuItem onSelect={() => open(q)}>Öffnen</MenuItem>
+                  <Menu label={actionsFor(q.name)}>
+                    <MenuItem onSelect={() => open(q)}>
+                      <Trans>Öffnen</Trans>
+                    </MenuItem>
                     {q.mine && (
                       <MenuItem onSelect={() => setRenaming({ id: q.id, name: q.name })}>
-                        Umbenennen
+                        <Trans>Umbenennen</Trans>
                       </MenuItem>
                     )}
                     <MenuItem onSelect={() => duplicate.mutate(q.id)}>
-                      {q.mine ? 'Duplizieren' : 'Als eigene Kopie speichern'}
+                      {q.mine ? t`Duplizieren` : t`Als eigene Kopie speichern`}
                     </MenuItem>
                     {q.mine && (
                       <MenuItem danger onSelect={() => setDeleting(q)}>
-                        Löschen
+                        <Trans>Löschen</Trans>
                       </MenuItem>
                     )}
                   </Menu>
@@ -194,27 +213,33 @@ function QueryList({ onClose }: { onClose: () => void }) {
       )}
       <div className="flex items-end justify-between gap-4">
         <p className="text-muted text-xs">
-          Geteilt: für alle Anwender sichtbar, die ihre Layer sehen — nur lesend, Ändern erzeugt
-          eine Kopie.
+          <Trans>
+            Geteilt: für alle Anwender sichtbar, die ihre Layer sehen — nur lesend, Ändern erzeugt
+            eine Kopie.
+          </Trans>
         </p>
         <button type="button" className="btn" onClick={onClose}>
-          Schliessen
+          <Trans>Schliessen</Trans>
         </button>
       </div>
       {deleting && (
         <ConfirmDialog
           open
           onOpenChange={(next) => !next && setDeleting(null)}
-          title={`„${deleting.name}" löschen?`}
-          confirm="Löschen"
+          title={deleteTitle(deleting.name)}
+          confirm={t`Löschen`}
           busy={remove.isPending || usage.isPending}
           onConfirm={() => remove.mutate(deleting.id)}
         >
           <p>
             {usage.data?.sessions
-              ? `Die Abfrage wird in ${usage.data.sessions} ${usage.data.sessions === 1 ? 'Sitzung' : 'Sitzungen'} verwendet. Diese behalten ihre Bedingungen; nur der Name geht verloren.`
-              : 'Die Abfrage wird endgültig gelöscht.'}
-            {deleting.shared && ' Sie ist geteilt und verschwindet auch für alle anderen.'}
+              ? plural(usage.data.sessions, {
+                  one: 'Die Abfrage wird in # Sitzung verwendet. Diese behält ihre Bedingungen; nur der Name geht verloren.',
+                  other:
+                    'Die Abfrage wird in # Sitzungen verwendet. Diese behalten ihre Bedingungen; nur der Name geht verloren.',
+                })
+              : t`Die Abfrage wird endgültig gelöscht.`}
+            {deleting.shared && ' ' + t`Sie ist geteilt und verschwindet auch für alle anderen.`}
           </p>
         </ConfirmDialog>
       )}

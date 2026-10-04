@@ -24,12 +24,23 @@ export default defineConfig([
     ignores: ['src/**/*.test.*', 'src/test/**'],
     extends: [lingui.configs['flat/recommended']],
     rules: {
+      // A condition is one message of placeholders on purpose (plan E1.9, WP48).
+      'lingui/no-single-variables-to-translate': 'off',
       'lingui/no-unlocalized-strings': [
         'warn',
         {
           // Flagged: text with a capital or a space. Not: identifiers, keys,
-          // CSS classes, paths, symbols and numbers.
-          ignore: ['^[^A-ZÄÖÜ\\s]*$', '^[A-Z0-9_]+$'],
+          // class lists (lowercase with a dash), paths, symbols and numbers.
+          ignore: [
+            '^[^A-ZÄÖÜ\\s]*$',
+            '^[A-Z0-9_]+$',
+            '^[a-z]+([A-Z][a-z]*)+$',
+            '^(?=.*-)[a-z0-9:\\[\\]\\-/.%!_#()=> ]+$',
+            // Locale tags and the product name.
+            '^[a-z]{2}-[A-Z]{2}$',
+            '^GeoTandem$',
+            '^⌘',
+          ],
           ignoreNames: [
             {
               regex: {
@@ -42,12 +53,16 @@ export default defineConfig([
               },
             },
           ],
+          // Errors are not exempt: their message is shown (e.g. a saved query
+          // that cannot open).
           ignoreFunctions: [
-            'Error',
             'console.*',
             'navigate',
             'document.querySelector*',
             'URLSearchParams',
+            '*.includes',
+            '*.startsWith',
+            '*.pm.enableDraw',
           ],
         },
       ],

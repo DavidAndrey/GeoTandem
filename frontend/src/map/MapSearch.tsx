@@ -2,6 +2,8 @@
 // layer this account sees, through the engine like any other query — local,
 // case-insensitive by the shared text rules (F-2.14), nothing leaves the
 // installation. A hit is zoomed to and marked; on a shown layer it is selected.
+import { Trans } from '@lingui/react/macro'
+import { t } from '@lingui/core/macro'
 import { useQuery } from '@tanstack/react-query'
 import L from 'leaflet'
 import { Search, X } from 'lucide-react'
@@ -35,8 +37,8 @@ export function MapSearch() {
       <button
         type="button"
         className={toolClass}
-        title="Suchen"
-        aria-label="Suchen"
+        title={t`Suchen`}
+        aria-label={t`Suchen`}
         aria-expanded={open}
         onClick={() => {
           setOpen(!open)
@@ -94,15 +96,15 @@ function SearchPanel({ onClose }: { onClose: () => void }) {
   return (
     <div
       role="search"
-      aria-label="Kartensuche"
+      aria-label={t`Kartensuche`}
       className="card absolute top-0 right-full mr-2 flex w-80 flex-col gap-2 p-2 text-sm"
     >
       <div className="flex items-center gap-1">
         <input
           className="input flex-1"
           type="search"
-          aria-label="Suchbegriff"
-          placeholder="Gemeinde, Haltestelle, Schule …"
+          aria-label={t`Suchbegriff`}
+          placeholder={t`Gemeinde, Haltestelle, Schule …`}
           autoFocus
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -111,16 +113,20 @@ function SearchPanel({ onClose }: { onClose: () => void }) {
             if (e.key === 'Escape') onClose()
           }}
         />
-        <button type="button" aria-label="Suche schliessen" onClick={onClose}>
+        <button type="button" aria-label={t`Suche schliessen`} onClick={onClose}>
           <X size={15} />
         </button>
       </div>
       {debounced.length >= MIN_LENGTH && (
         <div className="max-h-80 overflow-auto">
           {results.isPending ? (
-            <p className="text-muted">Sucht …</p>
+            <p className="text-muted">
+              <Trans>Sucht …</Trans>
+            </p>
           ) : groups.length === 0 ? (
-            <p className="text-muted">Nichts gefunden.</p>
+            <p className="text-muted">
+              <Trans>Nichts gefunden.</Trans>
+            </p>
           ) : (
             groups.map((group) => (
               <section key={group.layer.name} aria-label={group.layer.title} className="mb-1">
@@ -139,7 +145,9 @@ function SearchPanel({ onClose }: { onClose: () => void }) {
                   ))}
                 </ul>
                 {group.more && (
-                  <p className="text-muted px-1 text-xs">weitere Treffer — genauer suchen</p>
+                  <p className="text-muted px-1 text-xs">
+                    <Trans>weitere Treffer — genauer suchen</Trans>
+                  </p>
                 )}
               </section>
             ))

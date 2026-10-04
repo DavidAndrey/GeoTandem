@@ -7,7 +7,9 @@ import { newSession, saveSession } from './actions'
 import { useSession } from './store'
 import { dateTimeFormat } from '../i18n/locale'
 
-export type Pending = { label: string; run: () => void }
+/** What waits behind the C5 question; the dialog words it ("Speichern und öffnen"). */
+export type GuardedAction = 'open' | 'new' | 'logout'
+export type Pending = { action: GuardedAction; run: () => void }
 
 interface SessionUi {
   dialog: 'saveAs' | 'list' | null
@@ -63,24 +65,38 @@ export const useUnsaved = () => useAnalysis(isUnsaved)
  * Runs ``run`` now, or after the C5 question when there are unsaved changes:
  * "Speichern und …", "Verwerfen", "Abbrechen".
  */
-export function guarded(label: string, run: () => void) {
+export function guarded(action: GuardedAction, run: () => void) {
   if (!isUnsaved(useAnalysis.getState())) run()
-  else useSessionUi.getState().setGuard({ label, run })
+  else useSessionUi.getState().setGuard({ action, run })
 }
 
 /** "heute 14:02", "gestern", "28.09." (design C3). The server writes UTC without a zone. */
-export function formatWhen(iso: string, now = new Date()): string {
+function when(iso: string, now: Date) {
   const date = new Date(/[zZ]|[+-]\d\d:\d\d$/.test(iso) ? iso : `${iso}Z`)
   const day = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
   const days = Math.round((day(now) - day(date)) / 86_400_000)
   const time = dateTimeFormat({ hour: '2-digit', minute: '2-digit' }).format(date)
-  if (days === 0) return t`heute ${time}`
-  if (days === 1) return t`gestern`
-  return dateTimeFormat({
+  const dated = dateTimeFormat({
     day: '2-digit',
     month: '2-digit',
     ...(date.getFullYear() === now.getFullYear() ? {} : { year: 'numeric' }),
   }).format(date)
+  return { days, time, dated }
+}
+
+export function formatWhen(iso: string, now = new Date()): string {
+  const { days, time, dated } = when(iso, now)
+  if (days === 0) return t`heute ${time}`
+  if (days === 1) return t`gestern`
+  return dated
+}
+
+/** The header's "gespeichert 14:02" (design C1): today by the time alone. */
+export function formatSaved(iso: string, now = new Date()): string {
+  const { days, time, dated } = when(iso, now)
+  if (days === 0) return t`gespeichert ${time}`
+  if (days === 1) return t`gespeichert gestern`
+  return t`gespeichert ${dated}`
 }
 
 export const sessionKeys = { list: ['sessions'] as const }

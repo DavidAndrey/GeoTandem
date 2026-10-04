@@ -1,5 +1,7 @@
 // "Gespeicherte Abfragen" in the sidebar (design B1): the query's name, and a
 // menu to save it, start anew or choose another — own or shared (plan E1.7b).
+import { Trans } from '@lingui/react/macro'
+import { t } from '@lingui/core/macro'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDown } from 'lucide-react'
 import { DropdownMenu } from 'radix-ui'
@@ -45,11 +47,12 @@ export function SavedQueries() {
     const index = list.data?.indexOf(q) ?? -1
     return index >= 0 ? counts.data?.counts[index] : undefined
   }
+  const resultTitle = part ? title(part.result) : ''
   const same = (list.data ?? []).filter((q) => q.result_layer === part?.result)
   const other = (list.data ?? []).filter((q) => q.result_layer !== part?.result)
   const cannotSave = part
     ? undefined
-    : 'Gespeichert werden Abfragen auf Katalog-Layern, nicht auf abgeleiteten.'
+    : t`Gespeichert werden Abfragen auf Katalog-Layern, nicht auf abgeleiteten.`
 
   const entry = (q: SavedQuerySummary, withLayer: boolean) => (
     <DropdownMenu.Item
@@ -62,7 +65,7 @@ export function SavedQueries() {
           {q.id === queryRef?.id && '✓ '}
           {q.name}
         </span>
-        {!q.mine && <span className="text-muted text-xs">geteilt von {q.owner}</span>}
+        {!q.mine && <SharedBy owner={q.owner} />}
       </span>
       <span className="flex items-center gap-2">
         {withLayer && <span className="chip text-[11px]">{title(q.result_layer)}</span>}
@@ -74,16 +77,21 @@ export function SavedQueries() {
   return (
     <section aria-labelledby="saved-queries-title">
       <h2 id="saved-queries-title" className="label-caps mb-1">
-        Gespeicherte Abfragen
+        <Trans>Gespeicherte Abfragen</Trans>
       </h2>
       <DropdownMenu.Root>
         <DropdownMenu.Trigger
           className="btn btn-primary w-full justify-between"
-          aria-label="Gespeicherte Abfragen"
+          aria-label={t`Gespeicherte Abfragen`}
         >
           <span className="truncate">
-            {queryRef ? queryRef.name : 'Nicht gespeichert'}
-            {changed && <span className="text-muted"> · geändert</span>}
+            {queryRef ? queryRef.name : t`Nicht gespeichert`}
+            {changed && (
+              <span className="text-muted">
+                {' '}
+                <Trans>· geändert</Trans>
+              </span>
+            )}
           </span>
           <ChevronDown size={14} aria-hidden />
         </DropdownMenu.Trigger>
@@ -98,8 +106,12 @@ export function SavedQueries() {
               title={cannotSave}
               onSelect={() => save.mutate()}
             >
-              Speichern
-              {queryRef && !queryRef.mine && <span className="text-muted text-xs">als Kopie</span>}
+              <Trans>Speichern</Trans>
+              {queryRef && !queryRef.mine && (
+                <span className="text-muted text-xs">
+                  <Trans>als Kopie</Trans>
+                </span>
+              )}
             </DropdownMenu.Item>
             <DropdownMenu.Item
               className={item}
@@ -107,39 +119,39 @@ export function SavedQueries() {
               title={cannotSave}
               onSelect={() => ui.open('saveAs')}
             >
-              Speichern unter …
+              <Trans>Speichern unter …</Trans>
             </DropdownMenu.Item>
             <DropdownMenu.Separator className="my-1 h-px bg-[var(--color-divider)]" />
             <DropdownMenu.Item className={item} disabled={!part} onSelect={newQuery}>
-              Neue Abfrage (leer)
+              <Trans>Neue Abfrage (leer)</Trans>
             </DropdownMenu.Item>
             {same.length > 0 && part && (
               <DropdownMenu.Label className="label-caps px-3 pt-2">
-                Gespeichert · {title(part.result)}
+                <Trans>Gespeichert · {resultTitle}</Trans>
               </DropdownMenu.Label>
             )}
             {same.map((q) => entry(q, false))}
             {other.length > 0 && (
               <DropdownMenu.Label className="label-caps px-3 pt-2">
-                {part ? 'Andere Ziel-Layer' : 'Gespeichert'}
+                {part ? t`Andere Ziel-Layer` : t`Gespeichert`}
               </DropdownMenu.Label>
             )}
             {other.map((q) => entry(q, true))}
             <DropdownMenu.Separator className="my-1 h-px bg-[var(--color-divider)]" />
             <DropdownMenu.Item className={item} onSelect={() => ui.open('manage')}>
-              Verwalten …
+              <Trans>Verwalten …</Trans>
             </DropdownMenu.Item>
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
       <p className="text-muted mt-1 text-xs">
-        Auswählen ersetzt die aktuelle Abfrage (bei Änderungen mit Rückfrage).
+        <Trans>Auswählen ersetzt die aktuelle Abfrage (bei Änderungen mit Rückfrage).</Trans>
       </p>
       {ui.message && (
         <p role="alert" className="mt-1 text-xs">
           {ui.message}{' '}
           <button type="button" className="text-accent-700" onClick={() => ui.setMessage(null)}>
-            OK
+            <Trans>OK</Trans>
           </button>
         </p>
       )}
@@ -150,22 +162,33 @@ export function SavedQueries() {
   )
 }
 
+function SharedBy({ owner }: { owner: string }) {
+  return (
+    <span className="text-muted text-xs">
+      <Trans>geteilt von {owner}</Trans>
+    </span>
+  )
+}
+
 function ReplaceQuestion() {
   const { pending, setPending } = useQueryUi()
   const open = useOpenQuery()
   if (!pending) return null
+  const name = pending.name
   return (
     <ConfirmDialog
       open
       onOpenChange={(next) => !next && setPending(null)}
-      title="Aktuelle Abfrage ersetzen?"
-      confirm="Ersetzen"
+      title={t`Aktuelle Abfrage ersetzen?`}
+      confirm={t`Ersetzen`}
       busy={open.isPending}
       onConfirm={() => open.mutate(pending.id)}
     >
       <p>
-        Die aktuelle Abfrage hat Änderungen, die in keiner gespeicherten Abfrage stehen. „
-        {pending.name}" ersetzt sie.
+        <Trans>
+          Die aktuelle Abfrage hat Änderungen, die in keiner gespeicherten Abfrage stehen. „{name}"
+          ersetzt sie.
+        </Trans>
       </p>
     </ConfirmDialog>
   )
