@@ -1,5 +1,6 @@
 """Accounts and login sessions (F-3.12; design A1, A2, A4)."""
 
+from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 
 import httpx
@@ -38,6 +39,19 @@ async def test_setup_creates_the_first_admin_once(anonymous: httpx.AsyncClient) 
     assert (await anonymous.get("/api/auth/setup")).json()["needs_setup"] is False
     again = await anonymous.post("/api/auth/setup", json={"username": "boss", "password": PASSWORD})
     assert (again.status_code, again.json()["code"]) == (409, "setup_closed")
+
+
+def test_only_one_of_simultaneous_setups_succeeds(backend: DataBackend) -> None:
+    def attempt(name: str) -> str:
+        try:
+            accounts.create(backend.engine, name, PASSWORD, "admin", first=True)
+        except AccountError as exc:
+            return exc.code
+        return "ok"
+
+    with ThreadPoolExecutor(4) as pool:
+        results = list(pool.map(attempt, ["anna", "bert", "carl", "dora"]))
+    assert sorted(results) == ["ok", "setup_closed", "setup_closed", "setup_closed"]
 
 
 async def test_setup_enforces_password_rules(anonymous: httpx.AsyncClient) -> None:

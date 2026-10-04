@@ -80,7 +80,10 @@ def create(
     *,
     display_name: str = "",
     must_change_password: bool = False,
+    first: bool = False,
 ) -> Account:
+    """``first``: only while no account exists — checked in the same transaction, so
+    of two setups at once only one succeeds (design A1)."""
     username = username.strip().lower()
     if not USERNAME.match(username):
         raise AccountError(
@@ -89,6 +92,8 @@ def create(
         )
     check_password(password)
     with Session(engine) as session, session.begin():
+        if first and session.scalar(select(func.count()).select_from(User)):
+            raise AccountError("setup_closed", "The application is already set up.")
         if session.scalar(select(User.id).where(User.username == username)):
             raise AccountError("username_taken", f"The username '{username}' is taken.")
         user = User(

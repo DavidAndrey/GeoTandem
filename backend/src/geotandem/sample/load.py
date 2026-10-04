@@ -14,10 +14,13 @@ from typing import Any
 
 from shapely.geometry import shape
 from shapely.geometry.base import BaseGeometry
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from geotandem.auth import visibility
 from geotandem.catalog import get_layer, list_layers
 from geotandem.data import AttributeSpec, DataBackend, NewLayer
+from geotandem.db.orm import ImportRun
 from geotandem.geo import reprojector
 from geotandem.importing import log as import_log
 from geotandem.sample import DATA_DIR
@@ -63,7 +66,9 @@ def load_sample(backend: DataBackend, directory: Path = DATA_DIR) -> list[str]:
     """Create missing sample layers; replace those from an older dataset version.
 
     Layers of an earlier sample dataset that the current one no longer has
-    (e.g. Tandemtal's ``bevoelkerung``) are removed.
+    (e.g. Tandemtal's ``bevoelkerung``) are removed. Only sample layers are ever
+    replaced or removed: a layer of the same name that an administrator imported
+    stays, and a sample layer they deleted is not loaded again.
     """
     manifest = read_manifest(directory)
     metadata = json.loads((directory / "metadata.json").read_text("utf-8"))
@@ -74,13 +79,22 @@ def load_sample(backend: DataBackend, directory: Path = DATA_DIR) -> list[str]:
             backend.drop_layer(info.name)
             log.info("sample dataset %s: removed obsolete layer %s", version, info.name)
     existing = set(backend.layer_names())
+    loaded_before = _loaded_before(backend)
     loaded = []
     for layer in metadata["layers"]:
         name = layer["name"]
         if name in existing:
-            if _version_of(backend, name) == version:
+            present = get_layer(backend.engine, name)
+            if present is None or not present.source.startswith(SAMPLE_PREFIX):
+                log.warning(
+                    "sample dataset %s: layer %s is not from the sample, kept", version, name
+                )
+                continue
+            if present.dataset_version == version:
                 continue
             backend.drop_layer(name)
+        elif name in loaded_before:
+            continue  # deleted by an administrator
         run_id = import_log.start(
             backend.engine,
             source_name=layer["file"],
@@ -113,6 +127,14 @@ def load_sample(backend: DataBackend, directory: Path = DATA_DIR) -> list[str]:
     return loaded
 
 
-def _version_of(backend: DataBackend, name: str) -> str | None:
-    info = get_layer(backend.engine, name)
-    return info.dataset_version if info else None
+def _loaded_before(backend: DataBackend) -> set[str]:
+    """Names of the layers some sample dataset has loaded, by the import log."""
+    with Session(backend.engine) as session:
+        runs = session.execute(
+            select(ImportRun.layer_name, ImportRun.decisions).where(ImportRun.status == "ok")
+        )
+        return {
+            name
+            for name, decisions in runs
+            if name and str(decisions.get("source", "")).startswith(SAMPLE_PREFIX)
+        }

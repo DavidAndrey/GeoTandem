@@ -119,3 +119,29 @@ def test_load_removes_layers_of_an_earlier_sample(backend: DataBackend) -> None:
     assert "bevoelkerung" not in backend.layer_names()
     info = get_layer(backend.engine, "schulen")
     assert info is not None and info.source == SOURCE
+
+
+def test_load_keeps_a_layer_of_the_same_name_from_an_import(backend: DataBackend) -> None:
+    backend.create_layer(
+        NewLayer(
+            name="schulen",
+            title="Unsere Schulen",
+            description="",
+            kind="table",
+            attributes=[AttributeSpec(name="nr", data_type="integer")],
+            rows=iter([(None, {"nr": 1})]),
+            source="file:schulen.csv",
+            dataset_version="import-1",
+        )
+    )
+    loaded = load_sample(backend)
+    assert "schulen" not in loaded
+    info = get_layer(backend.engine, "schulen")
+    assert info is not None and info.title == "Unsere Schulen"
+
+
+def test_load_does_not_bring_back_a_deleted_sample_layer(backend: DataBackend) -> None:
+    load_sample(backend)
+    backend.drop_layer("haltestellen")
+    assert load_sample(backend) == []
+    assert "haltestellen" not in backend.layer_names()

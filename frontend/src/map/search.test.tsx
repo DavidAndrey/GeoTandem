@@ -139,3 +139,19 @@ test('a hit in a shown layer is selected like a table row (B9)', async () => {
   )
   expect(useMapView.getState().found).toBeNull()
 })
+
+test('a found name is shown as text, never as markup', async () => {
+  backend()
+  renderAt('/', <App />)
+  await screen.findByRole('button', { name: 'Suchen' })
+  useMapView.getState().setFound({
+    geometry: { type: 'Point', coordinates: [7.45, 46.95] },
+    label: '<img src=x onerror=alert(1)>',
+  })
+  await waitFor(() =>
+    expect(document.querySelector('.leaflet-tooltip')).toHaveTextContent(
+      '<img src=x onerror=alert(1)>',
+    ),
+  )
+  expect(document.querySelector('.leaflet-tooltip img')).toBeNull()
+})

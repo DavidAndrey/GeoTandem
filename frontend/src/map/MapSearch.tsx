@@ -173,6 +173,10 @@ export function FoundOverlay() {
   const layer = useRef<L.GeoJSON | null>(null)
   useEffect(() => {
     if (!map || !found) return
+    // A text node, not a string: Leaflet would insert a string as HTML, and the
+    // label comes from imported data (as in popup.ts).
+    const label = document.createElement('span')
+    label.textContent = found.label
     layer.current = L.geoJSON(found.geometry, {
       interactive: false,
       style: () => markStyle('selected', 'shape'),
@@ -182,7 +186,7 @@ export function FoundOverlay() {
           L.circleMarker(latlng, { interactive: false, ...markStyle('selected', 'outline') }),
         ]),
     })
-      .bindTooltip(found.label, { permanent: true, direction: 'top', offset: [0, -14] })
+      .bindTooltip(label, { permanent: true, direction: 'top', offset: [0, -14] })
       .addTo(map)
     return () => {
       layer.current?.remove()

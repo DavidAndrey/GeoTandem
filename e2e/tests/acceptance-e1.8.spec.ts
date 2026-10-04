@@ -13,10 +13,41 @@ async function addLayers(page: Page, names: RegExp[]) {
   await picker.getByRole('button', { name: 'Hinzufügen' }).click()
 }
 
-test('search finds a name with an umlaut in any case, and zooms to it', async ({ page }) => {
+/** Opens the workplace and waits until its first view — fitted to the extent from
+ * the map config — has settled; returns the scale bar's label and width then. */
+async function openSettled(page: Page) {
+  const config = page.waitForResponse((r) => r.url().endsWith('/api/config/map'))
   await page.goto('/')
+  await config
+  const scale = page.getByRole('region', { name: 'Karte' }).locator('.leaflet-control-scale-line')
+  let last = ''
+  let settled = { label: '', width: 0 }
+  await expect
+    .poll(
+      async () => {
+        await page.waitForTimeout(400)
+        const label = (await scale.textContent()) ?? ''
+        const width = (await scale.boundingBox())?.width ?? 0
+        const now = `${label}|${width}`
+        const same = label !== '' && now === last
+        last = now
+        settled = { label, width }
+        return same
+      },
+      { timeout: 10_000 },
+    )
+    .toBe(true)
+  return settled
+}
+
+const toMeters = (text: string) => {
+  const [value, unit] = text.split(' ')
+  return Number(value) * (unit === 'km' ? 1000 : 1)
+}
+
+test('search finds a name with an umlaut in any case, and zooms to it', async ({ page }) => {
+  const before = await openSettled(page)
   const map = page.getByRole('region', { name: 'Karte' })
-  const before = await map.locator('.leaflet-control-scale-line').textContent()
   await page.getByRole('button', { name: 'Suchen' }).click()
   const search = page.getByRole('search', { name: 'Kartensuche' })
   // "änggi" finds "Änggisteibach": case-insensitive for every letter (WP39).
@@ -26,33 +57,17 @@ test('search finds a name with an umlaut in any case, and zooms to it', async ({
   await rivers.getByRole('button', { name: 'Änggisteibach' }).first().click()
   // Not on the map as a layer: marked with its name, and zoomed to.
   await expect(map.locator('.leaflet-tooltip')).toHaveText('Änggisteibach')
-  await expect(map.locator('.leaflet-control-scale-line')).not.toHaveText(before ?? '')
+  await expect(map.locator('.leaflet-control-scale-line')).not.toHaveText(before.label)
   await search.getByRole('button', { name: 'Suche schliessen' }).click()
   await expect(map.locator('.leaflet-tooltip')).toHaveCount(0)
 })
 
 test('a measured distance matches the map scale', async ({ page }) => {
-  await page.goto('/')
-  const map = page.getByRole('region', { name: 'Karte' })
-  const scale = map.locator('.leaflet-control-scale-line')
-  // The scale bar: a known number of pixels for a known distance — read once the
-  // first view has settled (it zooms to the layers when the catalog arrives).
-  let label = ''
-  await expect
-    .poll(
-      async () => {
-        const previous = label
-        await page.waitForTimeout(400)
-        label = (await scale.textContent()) ?? ''
-        return label !== '' && label === previous
-      },
-      { timeout: 10_000 },
-    )
-    .toBe(true)
-  const width = (await scale.boundingBox())?.width ?? 0
-  const [value, unit] = label.split(' ')
-  const meters = Number(value) * (unit === 'km' ? 1000 : 1)
+  // The scale bar: a known number of pixels for a known distance.
+  const { label, width } = await openSettled(page)
+  const meters = toMeters(label)
   expect(meters).toBeGreaterThan(0)
+  const map = page.getByRole('region', { name: 'Karte' })
 
   await page.getByRole('button', { name: 'Messen' }).click()
   const box = (await map.boundingBox()) ?? { x: 0, y: 0, width: 0, height: 0 }
@@ -61,11 +76,10 @@ test('a measured distance matches the map scale', async ({ page }) => {
   await page.mouse.click(x, y)
   await page.mouse.dblclick(x + width, y)
   const readout = page.getByRole('status', { name: 'Messwert' })
-  const shown = (await readout.textContent()) ?? ''
-  const [measured, measuredUnit] = shown.split(' ')
-  const measuredMeters = Number(measured) * (measuredUnit === 'km' ? 1000 : 1)
   // The scale is taken at the map's centre line; the geodesic agrees within 2 %.
-  expect(Math.abs(measuredMeters - meters) / meters).toBeLessThan(0.02)
+  await expect
+    .poll(async () => Math.abs(toMeters((await readout.textContent()) ?? '') - meters) / meters)
+    .toBeLessThan(0.02)
 
   // Escape clears the drawing, a second one ends measuring.
   await page.keyboard.press('Escape')
@@ -77,11 +91,17 @@ test('a table layer is read in the attribute table, never drawn', async ({ page 
   await page.goto('/')
   await addLayers(page, [/^Gemeinden$/, /^Gemeindedaten/])
   const panel = page.getByRole('region', { name: 'Layer' })
+  // Both rows are there, with their titles from the catalog: only the drawn one
+  // can be shown or hidden.
+  await expect(panel.getByRole('button', { name: /^Gemeindedaten/ })).toBeVisible()
+  await expect(panel.getByRole('button', { name: 'Gemeinden ausblenden' })).toBeVisible()
   await expect(panel.getByRole('button', { name: 'Gemeindedaten ausblenden' })).toHaveCount(0)
   await page.getByRole('button', { name: 'Attributtabelle', exact: true }).click()
   const dock = page.getByRole('region', { name: 'Attributtabelle' })
   await dock.getByRole('tab', { name: 'Gemeindedaten' }).click()
-  const table = dock.getByRole('table', { name: 'Attribute von Gemeindedaten' })
+  const table = dock.getByRole('table', {
+    name: 'Attribute von Gemeindedaten',
+  })
   await expect(table.locator('tbody tr[data-fid]').first()).toBeVisible()
   // Never the result layer: the municipalities stay it.
   await expect(dock.getByRole('tab', { name: /Gemeinden.*Ergebnis/ })).toBeVisible()
@@ -97,7 +117,11 @@ async function importDates(request: APIRequestContext, name: string) {
   ].join('\n')
   const staged = await request.post('/api/admin/imports', {
     multipart: {
-      file: { name: `${name}.csv`, mimeType: 'text/csv', buffer: Buffer.from(csv) },
+      file: {
+        name: `${name}.csv`,
+        mimeType: 'text/csv',
+        buffer: Buffer.from(csv),
+      },
     },
   })
   const { import_id } = await staged.json()

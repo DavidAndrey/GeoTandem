@@ -24,8 +24,11 @@ from pyproj import CRS
 from pyproj.exceptions import CRSError
 from shapely.geometry.base import BaseGeometry
 
+from geotandem import gdal
 from geotandem.data.interface import AttributeType
 from geotandem.importing.values import as_date, infer
+
+gdal.check(pyogrio.list_drivers(read=True))
 
 Format = Literal["geojson", "shapefile", "gpkg", "csv", "xlsx"]
 

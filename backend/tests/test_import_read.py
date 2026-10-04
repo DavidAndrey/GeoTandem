@@ -221,3 +221,29 @@ def test_unsupported_and_unreadable_files(tmp_path: Path) -> None:
     with pytest.raises(SourceError) as info:
         read_source(empty, empty.name)
     assert info.value.code == "empty"
+
+
+def test_files_that_point_elsewhere_are_not_followed(tmp_path: Path) -> None:
+    """GDAL picks a driver by content: a .geojson must not read other files (F-2.1)."""
+    secret = tmp_path / "secret.csv"
+    secret.write_text("geheim,wert\na,1\n", "utf-8")
+    vrt = tmp_path / "vrt.geojson"
+    vrt.write_text(
+        f'<OGRVRTDataSource><OGRVRTLayer name="secret"><SrcDataSource>{secret}'
+        "</SrcDataSource></OGRVRTLayer></OGRVRTDataSource>",
+        "utf-8",
+    )
+    pipeline = tmp_path / "pipeline.geojson"
+    pipeline.write_text(
+        json.dumps(
+            {
+                "type": "gdal_streamed_alg",
+                "command_line": f"gdal vector pipeline ! read {secret} ! write --of stream x",
+            }
+        ),
+        "utf-8",
+    )
+    for path in (vrt, pipeline):
+        with pytest.raises(SourceError) as info:
+            read_source(path, path.name)
+        assert info.value.code == "unreadable"

@@ -138,13 +138,19 @@ def setup(body: SetupRequest, response: Response, state: State) -> Account:
     """Create the first administrator; closed as soon as any account exists."""
     if accounts.has_accounts(state.backend.engine):
         raise SetupClosed("The application is already set up.")
-    account = accounts.create(
-        state.backend.engine,
-        body.username,
-        body.password,
-        "admin",
-        display_name=body.display_name,
-    )
+    try:
+        account = accounts.create(
+            state.backend.engine,
+            body.username,
+            body.password,
+            "admin",
+            display_name=body.display_name,
+            first=True,
+        )
+    except accounts.AccountError as exc:
+        if exc.code == "setup_closed":
+            raise SetupClosed(exc.message) from exc
+        raise
     if body.load_sample and not _sample_loaded(state):
         load_sample(state.backend)
     _sign_in(response, state, account)
