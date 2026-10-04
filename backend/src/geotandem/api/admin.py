@@ -18,14 +18,16 @@ from geotandem.api.auth import require_admin
 from geotandem.api.errors import ErrorBody, NotFound, Problem
 from geotandem.api.state import AppState, get_state
 from geotandem.auth import accounts, visibility
-from geotandem.auth.accounts import Account, AccountUpdate
+from geotandem.auth.accounts import Account, AccountUpdate, DisplayName
 from geotandem.auth.visibility import VisibilityRow
 from geotandem.catalog import (
+    MAX_TITLE,
     AttributeInfo,
     AttributeUpdate,
     LayerInfo,
     LayerProfile,
     LayerUpdate,
+    Title,
     get_layer,
     list_layers,
     profile,
@@ -180,7 +182,7 @@ IDENTIFIER = re.compile(r"^[a-z_][a-z0-9_]{0,62}$")
 class Duplicate(BaseModel):
     name: str | None = None
     """Identifier of the copy; "<name>_kopie" (numbered if taken) when empty."""
-    title: str | None = None
+    title: Title | None = None
     """Defaults to "<title> (Kopie)"."""
 
 
@@ -220,7 +222,8 @@ def duplicate_layer(name: str, body: Duplicate, state: State, user: Actor) -> La
         actor=user,
     )
     try:
-        count = state.backend.duplicate_layer(name, target, body.title or f"{source.title} (Kopie)")
+        title = body.title or f"{source.title[: MAX_TITLE - 8]} (Kopie)"
+        count = state.backend.duplicate_layer(name, target, title)
     except LayerExists:
         import_log.finish(
             engine,
@@ -371,7 +374,7 @@ def import_run(run_id: int, state: State) -> ImportRunInfo:
 
 class NewAccount(BaseModel):
     username: str
-    display_name: str = ""
+    display_name: DisplayName = ""
     role: Role = "user"
 
 

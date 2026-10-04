@@ -2,7 +2,7 @@
 
 from collections.abc import Collection
 from datetime import datetime
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import Engine, select
@@ -69,13 +69,29 @@ def get_layer(engine: Engine, name: str) -> LayerInfo | None:
 
 # --- curation (F-2.7 "Umbenennen", F-2.8) -------------------------------------
 
+# Every user receives these with each layer list, and the model with each layer
+# profile: bounded, so one edit cannot make them megabytes (security review #19).
+MAX_TITLE = 200
+"""Layer titles and attribute labels."""
+MAX_DESCRIPTION = 5000
+MAX_UNIT = 50
+MAX_CODES = 500
+"""Entries of a code list."""
+MAX_CODE = 500
+"""Characters of one code, and of its meaning."""
+
+Title = Annotated[str, Field(max_length=MAX_TITLE)]
+Description = Annotated[str, Field(max_length=MAX_DESCRIPTION)]
+Unit = Annotated[str, Field(max_length=MAX_UNIT)]
+Code = Annotated[str, Field(max_length=MAX_CODE)]
+
 
 class ValueDomain(BaseModel):
     """A range for numbers or a code list (code → meaning), F-2.8."""
 
     min: float | None = None
     max: float | None = None
-    codes: dict[str, str] | None = None
+    codes: Annotated[dict[Code, Code], Field(max_length=MAX_CODES)] | None = None
 
     @model_validator(mode="after")
     def _one_kind(self) -> "ValueDomain":
@@ -93,15 +109,15 @@ class ValueDomain(BaseModel):
 class LayerUpdate(BaseModel):
     """Curated layer fields. ``name`` never changes; renaming sets ``title`` (plan D1)."""
 
-    title: str = Field(default="", min_length=1)
-    description: str = ""
+    title: Title = Field(default="", min_length=1)
+    description: Description = ""
     for_model: bool = True
 
 
 class AttributeUpdate(BaseModel):
-    label: str = ""
-    description: str = ""
-    unit: str | None = None
+    label: Title = ""
+    description: Description = ""
+    unit: Unit | None = None
     value_domain: ValueDomain | None = None
     for_model: bool = True
 

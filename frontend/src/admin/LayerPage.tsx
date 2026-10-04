@@ -122,6 +122,7 @@ function DescriptionTab({ layer }: { layer: LayerInfo }) {
             className="input"
             value={title}
             required
+            maxLength={200}
             onChange={(e) => setTitle(e.target.value)}
           />
         </label>
@@ -132,6 +133,7 @@ function DescriptionTab({ layer }: { layer: LayerInfo }) {
           <textarea
             className="input min-h-28"
             value={description}
+            maxLength={5000}
             onChange={(e) => setDescription(e.target.value)}
           />
         </label>
@@ -308,6 +310,7 @@ export function AttributeRows({ layer, attribute }: { layer: string; attribute: 
             className="input w-full"
             aria-label={fieldLabels(attribute.name).label}
             value={label}
+            maxLength={200}
             onChange={(e) => setLabel(e.target.value)}
           />
         </td>
@@ -316,6 +319,7 @@ export function AttributeRows({ layer, attribute }: { layer: string; attribute: 
             className="input w-24"
             aria-label={fieldLabels(attribute.name).unit}
             value={unit}
+            maxLength={50}
             onChange={(e) => setUnit(e.target.value)}
           />
         </td>
@@ -350,6 +354,7 @@ export function AttributeRows({ layer, attribute }: { layer: string; attribute: 
                 <textarea
                   className="input min-h-16"
                   value={description}
+                  maxLength={5000}
                   onChange={(e) => setDescription(e.target.value)}
                 />
               </label>

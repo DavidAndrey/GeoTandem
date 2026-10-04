@@ -43,11 +43,12 @@ def test_requests_read_while_an_import_holds_the_write_lock(backend: DataBackend
     """Signed-in requests only read: they run beside a long write, not after it."""
     engine = backend.engine
     account = accounts.create(engine, "anna", PASSWORD, "user")
-    token = sessions.start(engine, account.id, timedelta(hours=8))
+    lifetime = sessions.Lifetime(timedelta(hours=8), timedelta(days=7))
+    token = sessions.start(engine, account.id, lifetime)
     with engine.connect() as writer, writer.begin():  # as create_layer holds it
         writer.execute(text("CREATE TABLE storing (x)"))
         reads = [
-            lambda: sessions.resolve(engine, token, timedelta(hours=8)),
+            lambda: sessions.resolve(engine, token, lifetime),
             lambda: visibility.visible_names(engine, "user"),
             lambda: list_layers(engine),
             lambda: accounts.has_accounts(engine),

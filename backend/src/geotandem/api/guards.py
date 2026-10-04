@@ -1,4 +1,4 @@
-"""Request guards the application keeps itself (security review #3, #4, #7, #8).
+"""Request guards the application keeps itself (security review #3, #4, #7, #8, #17).
 
 A reverse proxy may enforce the same (``compose.traefik.yaml``); these hold
 when it is missing, misconfigured or bypassed. Pure ASGI, so they see the
@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import json
 import secrets
-from datetime import timedelta
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -23,6 +22,7 @@ from starlette.requests import Request
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from geotandem import audit
+from geotandem.api import auth
 from geotandem.auth import sessions
 from geotandem.basemap import Basemap, resolve
 
@@ -136,9 +136,8 @@ class BodyLimit:
 def _is_admin(scope: Scope) -> bool:
     """As ``require_admin`` would decide; the route checks again after the body."""
     state = scope["app"].state.geotandem
-    token = Request(scope).cookies.get(sessions.COOKIE)
-    lifetime = timedelta(hours=state.settings.session_hours)
-    account = sessions.resolve(state.backend.engine, token, lifetime)
+    token = auth.login_token(Request(scope), state)
+    account = sessions.resolve(state.backend.engine, token, auth.lifetime(state))
     return account is not None and account.role == "admin" and not account.must_change_password
 
 
@@ -216,6 +215,7 @@ class SecurityHeaders:
             return
         settings = _settings(scope)
         docs = settings.api_docs and scope["path"].startswith(DOCS_PATHS)
+        api = scope["path"].startswith("/api/")
         nonce = scope[CSP_NONCE] = secrets.token_urlsafe(16)
 
         async def with_headers(message: Message) -> None:
@@ -229,6 +229,8 @@ class SecurityHeaders:
                     headers["Content-Security-Policy"] = self._policy(settings, nonce)
                 if scope.get("scheme") == "https":
                     headers["Strict-Transport-Security"] = "max-age=31536000"
+                if api:  # start passwords, analysis states, data (security review #17)
+                    headers["Cache-Control"] = "no-store"
             await send(message)
 
         await self.app(scope, receive, with_headers)

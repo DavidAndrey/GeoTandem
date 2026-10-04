@@ -1,13 +1,14 @@
 """What one query and one account may ask of the server (security review #5, #6)."""
 
 import math
+import re
 from typing import Any
 
 import anyio
 import httpx
 import pytest
 from fastapi import FastAPI
-from sqlalchemy import func, select
+from sqlalchemy import event, func, select
 from sqlalchemy.orm import Session
 
 from geotandem.api.slots import QueriesBusy, QuerySlots
@@ -215,13 +216,41 @@ async def test_saved_queries_per_account_are_capped(
     assert (copy.status_code, copy.json()["code"]) == (409, "too_many_saved_queries")
 
 
+async def test_listings_do_not_read_the_saved_states(
+    client: httpx.AsyncClient, backend_of_client: DataBackend
+) -> None:
+    """A state may have 1 MB; a listing of 100 decoded them all, a second of the
+    server's time for every request (security review #15)."""
+    state = {"drawn": "x" * 1000}
+    session = {"name": "eins", "state_version": 1, "state": state, "query": None}
+    saved = {"name": "eins", "state_version": 1, "state": state, "query": query()}
+    assert (await client.post("/api/sessions", json=session)).status_code == 201
+    assert (await client.post("/api/queries", json=saved)).status_code == 201
+
+    statements: list[str] = []
+
+    def record(_conn: Any, _cursor: Any, statement: str, *_: Any) -> None:
+        statements.append(statement)
+
+    event.listen(backend_of_client.engine, "before_cursor_execute", record)
+    try:
+        assert len((await client.get("/api/sessions")).json()) == 1
+        assert len((await client.get("/api/queries")).json()) == 1
+    finally:
+        event.remove(backend_of_client.engine, "before_cursor_execute", record)
+    listings = [s for s in statements if "FROM analysis_session" in s or "FROM saved_query" in s]
+    assert len(listings) == 2
+    for statement in listings:
+        assert not re.search(r"\b(analysis_session|saved_query)\.state\b", statement)
+
+
 def test_logins_per_account_are_capped(backend: DataBackend) -> None:
     from datetime import timedelta
 
     from geotandem.auth import accounts
 
     account = accounts.create(backend.engine, "anna", "korrekt-pferd-batterie", "user")
-    lifetime = timedelta(hours=1)
+    lifetime = sessions.Lifetime(timedelta(hours=1), timedelta(days=7))
     tokens = [sessions.start(backend.engine, account.id, lifetime) for _ in range(25)]
     with Session(backend.engine) as db:
         count = db.scalar(

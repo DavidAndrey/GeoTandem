@@ -312,6 +312,7 @@ function FileStep({
               <input
                 className="input"
                 value={state.title}
+                maxLength={200}
                 onChange={(e) => onChange({ title: e.target.value })}
               />
             </label>

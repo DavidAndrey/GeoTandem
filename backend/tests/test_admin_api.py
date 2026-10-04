@@ -8,6 +8,7 @@ import pytest
 from api_helpers import ADMIN_PASSWORD, SETUP_TOKEN
 from import_files import LV95, make_files
 
+from geotandem import catalog
 from geotandem.app import create_app
 from geotandem.config import Settings
 
@@ -53,6 +54,66 @@ async def test_upload_preview_commit(client: httpx.AsyncClient, files: dict[str,
     # The staged file is gone after a successful import.
     again = await client.post(f"/api/admin/imports/{body['import_id']}/commit", json={})
     assert (again.status_code, again.json()["code"]) == (404, "not_found")
+
+
+async def test_metadata_from_a_file_fits_the_curation_limits(
+    client: httpx.AsyncClient, tmp_path: Path
+) -> None:
+    """Title and labels taken from a file stay within what an edit may save, so the
+    layer page can save them back unchanged (security review #19)."""
+    header, long = "h" * 300, "w" * (catalog.MAX_CODE + 1)
+    rows = [f"E;N;{header};kurz"] + [
+        f"{2600000 + i};{1200000 + i};{long}{i % 2};{'ab'[i % 2]}" for i in range(6)
+    ]
+    path = tmp_path / ("t" * 240 + ".csv")
+    path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+    body = await staged(client, path)
+    assert len(body["preview"]["title"]) == catalog.MAX_TITLE
+    by_source = {c["source_name"]: c for c in body["preview"]["columns"]}
+    assert by_source[header]["value_domain"] is None  # codes too long to keep
+    assert by_source["kurz"]["value_domain"] == {"codes": {"a": "a", "b": "b"}}
+    geo = {"mode": "xy", "x": "E", "y": "N", "crs": LV95}
+    run = await client.post(f"/api/admin/imports/{body['import_id']}/commit", json={"geo": geo})
+    layer = (await client.get(f"/api/layers/{run.json()['layer_name']}")).json()
+    labels = [a["label"] for a in layer["attributes"]]
+    assert "h" * catalog.MAX_TITLE in labels
+
+    for attribute in layer["attributes"]:
+        response = await client.patch(
+            f"/api/admin/layers/{layer['name']}/attributes/{attribute['name']}",
+            json={k: attribute[k] for k in ("label", "description", "unit", "value_domain")},
+        )
+        assert response.status_code == 200, response.text
+    patched = await client.patch(
+        f"/api/admin/layers/{layer['name']}", json={"title": layer["title"]}
+    )
+    assert patched.status_code == 200
+
+
+@pytest.mark.parametrize(
+    ("path", "body"),
+    [
+        ("/api/admin/layers/schulen", {"title": "x" * (catalog.MAX_TITLE + 1)}),
+        ("/api/admin/layers/schulen", {"description": "x" * (catalog.MAX_DESCRIPTION + 1)}),
+        ("/api/admin/layers/schulen/attributes/name", {"label": "x" * (catalog.MAX_TITLE + 1)}),
+        ("/api/admin/layers/schulen/attributes/name", {"unit": "x" * (catalog.MAX_UNIT + 1)}),
+        (
+            "/api/admin/layers/schulen/attributes/name",
+            {"value_domain": {"codes": {str(i): "x" for i in range(catalog.MAX_CODES + 1)}}},
+        ),
+        (
+            "/api/admin/layers/schulen/attributes/name",
+            {"value_domain": {"codes": {"a": "x" * (catalog.MAX_CODE + 1)}}},
+        ),
+        ("/api/admin/users/admin", {"display_name": "x" * 121}),
+    ],
+)
+async def test_curated_texts_are_bounded(
+    client: httpx.AsyncClient, path: str, body: dict[str, Any]
+) -> None:
+    """Every user receives them with each layer list (security review #19)."""
+    response = await client.patch(path, json=body)
+    assert (response.status_code, response.json()["code"]) == (422, "schema_violation")
 
 
 async def test_key_proposal_uses_existing_layers(

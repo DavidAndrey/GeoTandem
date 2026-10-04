@@ -20,7 +20,7 @@ from typing import Annotated, Any
 
 from pydantic import BaseModel, Field, StringConstraints
 from sqlalchemy import Engine, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, defer
 
 from geotandem.catalog import list_layers
 from geotandem.data import DataBackend
@@ -221,6 +221,9 @@ def list_sessions(engine: Engine, owner: int, backend: DataBackend) -> list[Sess
         rows = db.scalars(
             select(AnalysisSession)
             .where(AnalysisSession.owner_id == owner)
+            # A summary has no state: 100 states of 1 MB are a second of decoding
+            # on every listing (security review #15).
+            .options(defer(AnalysisSession.state, raiseload=True))
             .order_by(AnalysisSession.updated_at.desc(), AnalysisSession.name)
         )
         return [_summary(row, versions) for row in rows]

@@ -15,6 +15,7 @@ import shapely
 from pydantic import BaseModel
 from pyproj import CRS, Transformer
 
+from geotandem.catalog import MAX_CODE, MAX_TITLE
 from geotandem.data.interface import AttributeType
 from geotandem.geo import WGS84, common_geometry_type
 from geotandem.importing.names import identifier, unique_identifiers
@@ -91,7 +92,7 @@ def build_preview(
     names = unique_identifiers([c.name for c in source.columns])
     # A GeoPackage layer name says more than the file name; an Excel sheet name rarely does.
     stem = source.options.sublayer if source.format in ("gpkg", "shapefile") else None
-    title = stem or PurePath(source.file_name).stem
+    title = (stem or PurePath(source.file_name).stem)[:MAX_TITLE]
     layer_name = unique_identifiers([title], taken=taken_layer_names, fallback="layer")[0]
     warnings = list(source.notes)
     errors: list[Message] = []
@@ -223,6 +224,7 @@ def propose_value_domain(
         data_type == "text"
         and 2 <= len(distinct) <= MAX_CODES
         and len(distinct) <= len(present) / 2
+        and all(len(v) <= MAX_CODE for v in distinct)  # as curation accepts it
     ):
         return {"codes": {v: v for v in sorted(distinct)}}
     return None

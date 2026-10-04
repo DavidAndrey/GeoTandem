@@ -73,6 +73,12 @@ class Settings(BaseSettings):
     session_hours: float = Field(
         default=12, gt=0, description="Login session lifetime, extended on use (F-3.12)."
     )
+    session_max_days: float = Field(
+        default=7,
+        gt=0,
+        description="Longest a login lasts from sign-in, however much it is used "
+        "(security review #16).",
+    )
     setup_token: SecretStr | None = Field(
         default=None,
         min_length=16,

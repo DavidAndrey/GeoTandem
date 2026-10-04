@@ -222,7 +222,8 @@ TOML-Datei, deren Pfad `GEOTANDEM_CONFIG_FILE` nennt (Umgebung geht vor Datei).
 | `GEOTANDEM_BASEMAP` | `none` (`make dev`: `swisstopo-grau`) | Hintergrundkarte: `none`, `swisstopo-grau`, `osm` oder eigene Kachel-URL mit `{z}/{x}/{y}`. Alles ausser `none` lässt den Browser Kacheln von aussen laden — der Anbieter sieht dann, welcher Kartenausschnitt betrachtet wird (F-9.1) |
 | `GEOTANDEM_BASEMAP_ATTRIBUTION` | leer | Quellenangabe zu einer eigenen Kachel-URL |
 | `GEOTANDEM_SESSION_HOURS` | `12` | Gültigkeit einer Anmeldung; verlängert sich bei Nutzung |
-| `GEOTANDEM_COOKIE_SECURE` | `false` | Sitzungscookie nur über HTTPS senden. Kommt eine Anfrage über HTTPS an, gilt das ohnehin, und die Antwort trägt HSTS |
+| `GEOTANDEM_SESSION_MAX_DAYS` | `7` | Längste Dauer einer Anmeldung ab dem Anmelden, auch bei laufender Nutzung |
+| `GEOTANDEM_COOKIE_SECURE` | `false` | Sitzungscookie nur über HTTPS senden. Kommt eine Anfrage über HTTPS an, gilt das ohnehin, und die Antwort trägt HSTS. Ein solches Cookie heisst `__Host-geotandem_session` und wird nur von diesem Host angenommen |
 | `GEOTANDEM_MAX_REQUEST_MB` | `2` | Grösster Anfragekörper; nur der Upload eines angemeldeten Administrators darf bis `MAX_IMPORT_MB` gehen. Die Grenze greift, bevor die Anwendung den Körper liest |
 | `GEOTANDEM_API_DOCS` | `false` (`make dev`: `true`) | `/docs`, `/redoc` und `/openapi.json` ausliefern; auf einer öffentlichen Instanz aus lassen |
 | `GEOTANDEM_SETUP_TOKEN` | leer | Einrichtungscode für das erste Konto, mindestens 16 Zeichen. Leer: jeder Start ohne Konto erzeugt einen und schreibt ihn ins Protokoll |

@@ -12,11 +12,11 @@ import threading
 from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session
 
@@ -27,6 +27,8 @@ from geotandem.db.spatialite import reading
 MIN_PASSWORD_LENGTH = password_policy.MIN_LENGTH
 MAX_PASSWORD_LENGTH = password_policy.MAX_LENGTH
 USERNAME = re.compile(r"^[a-z0-9][a-z0-9._-]{1,62}$")
+DisplayName = Annotated[str, Field(max_length=120)]
+"""Shown to others, e.g. as owner of a shared query; bounded (security review #19)."""
 
 _hasher = PasswordHasher()
 # Verified when the username is unknown, so a failed login takes as long
@@ -250,7 +252,7 @@ def revoke_sessions(session: Session, user_id: int) -> None:
 
 
 class AccountUpdate(BaseModel):
-    display_name: str | None = None
+    display_name: DisplayName | None = None
     role: Role | None = None
     status: Literal["active", "locked"] | None = None
 

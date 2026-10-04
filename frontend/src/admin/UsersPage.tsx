@@ -220,6 +220,7 @@ function NewAccountForm({
         <input
           className="input flex-1"
           value={displayName}
+          maxLength={120}
           onChange={(e) => setDisplayName(e.target.value)}
         />
       </label>

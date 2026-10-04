@@ -1541,10 +1541,7 @@ export interface components {
       description: string
       /** Unit */
       unit?: string | null
-      /** Value Domain */
-      value_domain?: {
-        [key: string]: unknown
-      } | null
+      value_domain?: components['schemas']['ValueDomain'] | null
       /**
        * For Model
        * @default true

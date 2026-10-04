@@ -15,7 +15,7 @@ from geotandem import audit
 from geotandem.api.errors import ErrorBody, Problem
 from geotandem.api.state import AppState, get_state
 from geotandem.auth import accounts, sessions, setup_token
-from geotandem.auth.accounts import MAX_PASSWORD_LENGTH, Account
+from geotandem.auth.accounts import MAX_PASSWORD_LENGTH, Account, DisplayName
 from geotandem.catalog import list_layers
 from geotandem.sample.load import SOURCE as SAMPLE_SOURCE
 from geotandem.sample.load import load_sample
@@ -74,14 +74,28 @@ class TooManyAttempts(Problem):
 # --- dependencies -------------------------------------------------------------
 
 
-def _lifetime(state: AppState) -> timedelta:
-    return timedelta(hours=state.settings.session_hours)
+def lifetime(state: AppState) -> sessions.Lifetime:
+    settings = state.settings
+    return sessions.Lifetime(
+        idle=timedelta(hours=settings.session_hours),
+        absolute=timedelta(days=settings.session_max_days),
+    )
+
+
+def _secure(request: Request, state: AppState) -> bool:
+    """Over HTTPS always: the setting must not be the only thing between the
+    cookie and plain HTTP (security review #4)."""
+    return state.settings.cookie_secure or request.url.scheme == "https"
+
+
+def login_token(request: Request, state: AppState) -> str | None:
+    """The login cookie's token. Over HTTPS only from the ``__Host-`` cookie, which
+    no other host can set (security review #18)."""
+    return request.cookies.get(sessions.cookie_name(_secure(request, state)))
 
 
 def signed_in(request: Request, state: State) -> Account | None:
-    return sessions.resolve(
-        state.backend.engine, request.cookies.get(sessions.COOKIE), _lifetime(state)
-    )
+    return sessions.resolve(state.backend.engine, login_token(request, state), lifetime(state))
 
 
 def require_session(account: Annotated[Account | None, Depends(signed_in)]) -> Account:
@@ -126,15 +140,14 @@ def _brake(state: AppState, address: str, username: str) -> None:
 
 
 def _sign_in(request: Request, response: Response, state: AppState, account: Account) -> None:
-    token = sessions.start(state.backend.engine, account.id, _lifetime(state))
+    token = sessions.start(state.backend.engine, account.id, lifetime(state))
+    secure = _secure(request, state)
     response.set_cookie(
-        sessions.COOKIE,
+        sessions.cookie_name(secure),
         token,
         httponly=True,
         samesite="strict",
-        # Over HTTPS always: the setting must not be the only thing between the
-        # cookie and plain HTTP (security review #4).
-        secure=state.settings.cookie_secure or request.url.scheme == "https",
+        secure=secure,
         path="/",
     )
 
@@ -157,7 +170,7 @@ class SetupRequest(BaseModel):
     token: Annotated[str, Field(max_length=256)]
     """From the installation: its log, or ``GEOTANDEM_SETUP_TOKEN`` (security review #1)."""
     username: Username
-    display_name: str = ""
+    display_name: DisplayName = ""
     password: Password
     load_sample: bool = True
 
@@ -247,9 +260,13 @@ def logout(
 ) -> Response:
     if account is not None:
         audit.event("sign_out", username=account.username)
-    sessions.end(state.backend.engine, request.cookies.get(sessions.COOKIE))
+    sessions.end(state.backend.engine, login_token(request, state))
     response = Response(status_code=204)
-    response.delete_cookie(sessions.COOKIE, path="/")
+    secure = _secure(request, state)
+    # With the attributes it was set with: a browser drops a __Host- cookie only so.
+    response.delete_cookie(
+        sessions.cookie_name(secure), path="/", secure=secure, httponly=True, samesite="strict"
+    )
     return response
 
 
@@ -278,5 +295,5 @@ def change_password(
         raise
     state.login_throttle.succeeded(address, account.username)
     audit.event("password_changed", username=account.username)
-    sessions.end_others(state.backend.engine, account.id, request.cookies.get(sessions.COOKIE))
+    sessions.end_others(state.backend.engine, account.id, login_token(request, state))
     return Response(status_code=204)

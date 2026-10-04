@@ -39,7 +39,12 @@ export function DuplicateLayerDialog({
           <span className="label-caps">
             <Trans>Titel</Trans>
           </span>
-          <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} />
+          <input
+            className="input"
+            value={title}
+            maxLength={200}
+            onChange={(e) => setTitle(e.target.value)}
+          />
         </label>
         <label className="flex flex-col gap-1">
           <span className="label-caps">

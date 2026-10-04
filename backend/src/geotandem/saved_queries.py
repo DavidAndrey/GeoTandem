@@ -16,7 +16,7 @@ from typing import Annotated, Any
 
 from pydantic import BaseModel, Field, StringConstraints
 from sqlalchemy import Engine, func, or_, select
-from sqlalchemy.orm import Session, contains_eager
+from sqlalchemy.orm import Session, contains_eager, defer
 
 from geotandem.data import DataBackend
 from geotandem.db.orm import AnalysisSession, SavedQuery
@@ -215,6 +215,7 @@ def list_queries(engine: Engine, viewer: int, backend: DataBackend) -> list[Save
             .where(or_(SavedQuery.owner_id == viewer, SavedQuery.shared.is_(True)))
             .join(SavedQuery.owner)
             .options(contains_eager(SavedQuery.owner))  # one query, not one per owner
+            .options(defer(SavedQuery.state, raiseload=True))  # security review #15
             .order_by(SavedQuery.name)
         )
         return [_summary(row, viewer) for row in rows if _readable(row, viewer, visible)]

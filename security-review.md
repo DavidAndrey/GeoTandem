@@ -386,3 +386,13 @@ response headers.
    dependencies and fails unless the route needs `require_account` (or
    `require_admin` under `/api/admin`), or is on an explicit list of public
    routes.
+
+### Status of #15–#19
+
+| # | Fixed |
+|---|---|
+| 15 | Session and saved-query listings no longer load `state` (`defer(…, raiseload=True)`: reading it in a listing raises). Tested on the SQL a listing sends. |
+| 16 | A login ends `GEOTANDEM_SESSION_MAX_DAYS` (7) after sign-in, however often it is used. Use extends the expiry up to that point only (`auth/sessions.Lifetime`). |
+| 17 | Every `/api/` answer carries `Cache-Control: no-store`. |
+| 18 | Over HTTPS the cookie is `__Host-geotandem_session`, and only that name is read. A planted `geotandem_session` is ignored (tested). Plain HTTP keeps `geotandem_session`. On the HTTPS demo, everyone signs in once more after the update. |
+| 19 | Display names up to 120 characters; layer titles and attribute labels 200; descriptions 5 000; units 50; code lists 500 entries of 500 characters. The same limits apply to the import wizard's decisions. Defaults taken from a file (title from the file name, label from the column header) are cut to fit, and code lists are proposed only when they fit, so imported metadata can always be saved back unchanged. The admin forms stop typing at the limits. |

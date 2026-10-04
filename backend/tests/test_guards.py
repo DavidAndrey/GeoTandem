@@ -145,7 +145,37 @@ async def test_over_https_the_cookie_is_secure_and_hsts_is_sent(app: FastAPI) ->
             assert response.status_code == 200
             assert response.headers["strict-transport-security"] == "max-age=31536000"
             cookie = response.headers["set-cookie"]
-            assert cookie.startswith(sessions.COOKIE) and "Secure" in cookie
+            # __Host-: no other host can plant this cookie (security review #18).
+            assert cookie.startswith(f"{sessions.SECURE_COOKIE}=") and "Secure" in cookie
+
+
+async def test_over_https_a_cookie_without_the_host_prefix_is_ignored(app: FastAPI) -> None:
+    """A sibling subdomain may set ``geotandem_session`` for the parent domain; over
+    HTTPS only the ``__Host-`` cookie counts (security review #18)."""
+    async with app.router.lifespan_context(app):
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="https://test") as client:
+            await client.post(
+                "/api/auth/setup",
+                json={
+                    "token": SETUP_TOKEN,
+                    "username": "admin",
+                    "password": ADMIN_PASSWORD,
+                    "load_sample": False,
+                },
+            )
+            token = client.cookies[sessions.SECURE_COOKIE]
+            assert (await client.get("/api/auth/me")).status_code == 200
+
+            client.cookies.clear()
+            client.cookies.set(sessions.COOKIE, token)  # as a planted cookie would arrive
+            assert (await client.get("/api/auth/me")).status_code == 401
+
+            client.cookies.clear()
+            client.cookies.set(sessions.SECURE_COOKIE, token)
+            response = await client.post("/api/auth/logout")
+            removal = response.headers["set-cookie"]
+            assert removal.startswith(f'{sessions.SECURE_COOKIE}=""') and "Secure" in removal
 
 
 async def test_over_plain_http_the_cookie_follows_the_setting(
@@ -157,6 +187,19 @@ async def test_over_plain_http_the_cookie_follows_the_setting(
         "/api/auth/login", json={"username": "admin", "password": ADMIN_PASSWORD}
     )
     assert "Secure" in response.headers["set-cookie"]
+
+
+async def test_api_answers_are_not_cached(client: httpx.AsyncClient) -> None:
+    """Start passwords, analysis states and data stay out of caches (security review #17)."""
+    created = await client.post("/api/admin/users", json={"username": "m.keller"})
+    assert "start_password" in created.json()
+    for response in [
+        created,
+        await client.get("/api/sessions"),
+        await client.get("/api/health"),
+        await client.get("/api/admin/nothing"),  # a refusal
+    ]:
+        assert response.headers["cache-control"] == "no-store"
 
 
 def test_the_policy_allows_images_from_the_tile_server_only() -> None:

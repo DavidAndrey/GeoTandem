@@ -33,7 +33,15 @@ from shapely.geometry import Point
 from shapely.geometry.base import BaseGeometry
 from sqlalchemy import select
 
-from geotandem.catalog import LayerInfo, list_layers
+from geotandem.catalog import (
+    MAX_TITLE,
+    Description,
+    LayerInfo,
+    Title,
+    Unit,
+    ValueDomain,
+    list_layers,
+)
 from geotandem.data import AttributeSpec, DataBackend, LayerExists, NewLayer
 from geotandem.geo import common_geometry_type, reprojector
 from geotandem.importing import log
@@ -82,11 +90,11 @@ class FieldDecision(BaseModel):
     name: str | None = None
     """Attribute identifier; the preview's proposal if empty."""
     include: bool = True
-    label: str | None = None
+    label: Title | None = None
     """Defaults to the source name."""
-    description: str = ""
-    unit: str | None = None
-    value_domain: dict[str, Any] | None = None
+    description: Description = ""
+    unit: Unit | None = None
+    value_domain: ValueDomain | None = None
     for_model: bool = True
 
 
@@ -99,8 +107,8 @@ class ImportDecisions(BaseModel):
     """Identifier of a new layer; the preview's proposal if empty."""
     replace: str | None = None
     """Name of an existing layer whose content is replaced (F-2.7 "Aktualisieren")."""
-    title: str | None = None
-    description: str = ""
+    title: Title | None = None
+    description: Description = ""
     for_model: bool = True
     fields: list[FieldDecision] | None = None
     """Per source column; columns not listed are imported as proposed."""
@@ -377,10 +385,10 @@ def _plan(
             AttributeSpec(
                 name=name,
                 data_type=proposal.data_type,
-                label=decision.label or proposal.source_name,
+                label=decision.label or proposal.source_name[:MAX_TITLE],
                 description=decision.description,
                 unit=decision.unit,
-                value_domain=decision.value_domain
+                value_domain=decision.value_domain.model_dump(exclude_none=True)
                 if decision.value_domain is not None
                 else proposal.value_domain,
                 for_model=decision.for_model,

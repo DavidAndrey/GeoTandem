@@ -184,7 +184,7 @@ def test_duplicate_username(backend: DataBackend) -> None:
 
 def test_session_expires_and_slides(backend: DataBackend) -> None:
     account = accounts.create(backend.engine, "m.keller", PASSWORD, "user")
-    lifetime = timedelta(hours=1)
+    lifetime = sessions.Lifetime(idle=timedelta(hours=1), absolute=timedelta(days=7))
     token = sessions.start(backend.engine, account.id, lifetime)
     with Session(backend.engine) as session:
         stored = session.scalar(select(AuthSession.token_hash))
@@ -204,3 +204,27 @@ def test_session_expires_and_slides(backend: DataBackend) -> None:
         session.scalars(select(AuthSession)).one().expires_at -= timedelta(hours=2)
     assert sessions.resolve(backend.engine, token, lifetime) is None
     assert sessions.resolve(backend.engine, "made-up", lifetime) is None
+
+
+def test_a_login_ends_after_its_absolute_lifetime_however_used(backend: DataBackend) -> None:
+    """A stolen cookie kept in use does not stay valid for ever (security review #16)."""
+    account = accounts.create(backend.engine, "m.keller", PASSWORD, "user")
+    lifetime = sessions.Lifetime(idle=timedelta(hours=1), absolute=timedelta(hours=8))
+    token = sessions.start(backend.engine, account.id, lifetime)
+
+    def signed_in_since(hours: float) -> None:
+        with Session(backend.engine) as session, session.begin():
+            login = session.scalars(select(AuthSession)).one()
+            login.created_at = sessions._now() - timedelta(hours=hours)
+            login.expires_at = sessions._now() + timedelta(minutes=1)  # just used
+
+    # Seven and a half hours in: use extends the expiry only up to the eighth hour.
+    signed_in_since(7.5)
+    assert sessions.resolve(backend.engine, token, lifetime) is not None
+    with Session(backend.engine) as session:
+        login = session.scalars(select(AuthSession)).one()
+        assert login.expires_at == login.created_at + lifetime.absolute
+
+    # Past the eighth hour: over, although used a minute ago.
+    signed_in_since(8.1)
+    assert sessions.resolve(backend.engine, token, lifetime) is None

@@ -4052,7 +4052,8 @@
           "display_name": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 120
               },
               {
                 "type": "null"
@@ -4628,18 +4629,21 @@
         "properties": {
           "label": {
             "type": "string",
+            "maxLength": 200,
             "title": "Label",
             "default": ""
           },
           "description": {
             "type": "string",
+            "maxLength": 5000,
             "title": "Description",
             "default": ""
           },
           "unit": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 50
               },
               {
                 "type": "null"
@@ -5587,7 +5591,8 @@
           "title": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 200
               },
               {
                 "type": "null"
@@ -5686,7 +5691,8 @@
           "label": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 200
               },
               {
                 "type": "null"
@@ -5696,13 +5702,15 @@
           },
           "description": {
             "type": "string",
+            "maxLength": 5000,
             "title": "Description",
             "default": ""
           },
           "unit": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 50
               },
               {
                 "type": "null"
@@ -5713,14 +5721,12 @@
           "value_domain": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/ValueDomain"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Value Domain"
+            ]
           },
           "for_model": {
             "type": "boolean",
@@ -5953,7 +5959,8 @@
           "title": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 200
               },
               {
                 "type": "null"
@@ -5963,6 +5970,7 @@
           },
           "description": {
             "type": "string",
+            "maxLength": 5000,
             "title": "Description",
             "default": ""
           },
@@ -6540,12 +6548,14 @@
         "properties": {
           "title": {
             "type": "string",
+            "maxLength": 200,
             "minLength": 1,
             "title": "Title",
             "default": ""
           },
           "description": {
             "type": "string",
+            "maxLength": 5000,
             "title": "Description",
             "default": ""
           },
@@ -6688,6 +6698,7 @@
           },
           "display_name": {
             "type": "string",
+            "maxLength": 120,
             "title": "Display Name",
             "default": ""
           },
@@ -8683,6 +8694,7 @@
           },
           "display_name": {
             "type": "string",
+            "maxLength": 120,
             "title": "Display Name",
             "default": ""
           },
@@ -9394,9 +9406,14 @@
             "anyOf": [
               {
                 "additionalProperties": {
-                  "type": "string"
+                  "type": "string",
+                  "maxLength": 500
                 },
-                "type": "object"
+                "propertyNames": {
+                  "maxLength": 500
+                },
+                "type": "object",
+                "maxProperties": 500
               },
               {
                 "type": "null"

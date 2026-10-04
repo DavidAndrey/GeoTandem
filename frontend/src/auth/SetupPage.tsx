@@ -96,6 +96,7 @@ export function SetupPage() {
           <input
             className="input"
             value={displayName}
+            maxLength={120}
             onChange={(e) => setDisplayName(e.target.value)}
           />
         </Field>
