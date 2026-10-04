@@ -322,3 +322,67 @@ or the log collector's.
 Still public on purpose: `/api/schema/query-object` (the published query
 format, F-10.3, nothing about the instance) and `GET /api/auth/setup`
 (whether setup is pending, which the sign-in page needs).
+
+## OWASP API Security Top 10 (2023)
+
+Date: 2026-10-04, after the fixes above. Scope: every HTTP route of the
+backend, checked against the ten risks of the
+[OWASP API Security Top 10, 2023 edition](https://owasp.org/API-Security/editions/2023/en/0x00-header/).
+Method: code reading, plus three checks against the running application
+code: every registered route listed with the authentication dependency it
+resolves to, the cost of decoding stored session states measured, and the
+foreign-key enforcement behind account deletion confirmed.
+
+**Overall:** no broken authorization found. All 57 routes require the access
+level they should. The new findings are smaller: one route that lets a
+signed-in user tie up the server, and some hardening of sessions and
+response headers.
+
+### Risk by risk
+
+| Risk | Result | Basis |
+|---|---|---|
+| **API1 Broken Object Level Authorization** | No finding | Analysis sessions are loaded only by `(id, owner)` and answer 404 to anyone else (`sessions._get`). Saved queries: owner, or shared *and* every layer the query uses is visible (`saved_queries._readable`); only the owner changes or deletes. Layers go through `LayerView`, which is the only way to reach a table: `compile.py` records every layer it resolves, and layer tables carry a prefix, so a query cannot reach `app_user` or `auth_session` even as administrator. Ids are random (`token_urlsafe(8)`, imports UUIDs). Deleting an account deletes its logins, sessions and saved queries (`PRAGMA foreign_keys = ON`, `ondelete="CASCADE"`), so a reused account id inherits nothing. `/api/queries/{id}/usage` counts sessions of every account but never says whose (design Q7). |
+| **API2 Broken Authentication** | #16, #18 | Covered by #1, #2, #4 and #12: setup token, sign-in throttle, bounded hashing, Argon2, 256-bit tokens stored as SHA-256, `HttpOnly` and `SameSite=Strict` cookie, logins ended on password change, reset and lock. Left: no absolute session lifetime (#16), no `__Host-` cookie prefix (#18). |
+| **API3 Broken Object Property Level Authorization** | #19, #20 | No mass assignment: every write takes an explicit Pydantic model (`AccountUpdate`, `LayerUpdate`, `SessionWrite`, …). Owner, id and timestamps never come from the body, and `role`/`status` only through the admin router. Responses are explicit models too: `Account` has no password hash, and validation errors do not echo the input. Left: text fields without a length limit (#19), and the upload file name shown to every user (#20). |
+| **API4 Unrestricted Resource Consumption** | #15 | Covered by #2, #3, #5, #6, #9 and #11. Left: listing sessions decodes every stored state, outside the query slots (#15). |
+| **API5 Broken Function Level Authorization** | No finding; #21 | Every route listed with what it depends on: 22 admin (one dependency on the `/api/admin` router), 25 for a signed-in account, 2 also with the start password (`/auth/me`, `/auth/password`), 6 public on purpose (`health`, `schema/query-object`, `auth/setup` GET and POST, `auth/login`, `auth/logout`). The body-size guard decides "administrator" with the same rules as `require_admin`. The tests do not check this list, though (#21). |
+| **API6 Unrestricted Access to Sensitive Business Flows** | No finding | No self-registration, no reset by e-mail, no payments. Accounts and passwords are an administrator's work, and setup happens once and needs the token. Shared queries are the one place where one user's content reaches others; at most 100 per account, read-only, and the owner's name is shown with each. Reading every visible feature page by page is the purpose of the application, not a misuse. |
+| **API7 Server Side Request Forgery** | No finding | The server fetches no URL at run time. The tile URL is operator configuration and only the browser fetches it. GDAL is limited to GeoJSON, Shapefile and GPKG (the network drivers `HTTP`, `WFS`, `OAPIF`, `CSW`, `OGR_VRT` and `GDALG` are skipped). It only ever opens a staged file at a server-chosen path, and `sublayer` must be one of the names GDAL listed for that file. SpatiaLite's file and network functions (`ImportWFS`, `BlobFromFile`, …) cannot be named: queries use a fixed set of operations, and `SPATIALITE_SECURITY` is not relaxed. |
+| **API8 Security Misconfiguration** | #17, #18 | Covered by #4, #7, #8 and #10: HSTS, CSP with nonce, `nosniff`, framing denied, origin check, API docs off, no `server` header, generic import errors. No CORS middleware, so only the instance's own origin can read answers. Container runs as non-root. Left: API answers carry no `Cache-Control` (#17). |
+| **API9 Improper Inventory Management** | #21 | One API version and one deployable, no old or debug endpoints. The OpenAPI document is generated from the code and committed (`frontend/openapi.json`; `test_api.py` fails if it drifts). Two Compose files, both documented. The list of public routes is known (API5) but not enforced by a test (#21). |
+| **API10 Unsafe Consumption of APIs** | No finding (watch for E2/E4) | No third-party API is called at run time. The sample dataset is downloaded only by `geotandem sample update` and pinned by SHA-256 in its manifest. Ahead: tool calling (E2) and the MCP server (E4) will treat model output as input. The registry already validates arguments against each tool's model (`Tool.call`) and runs tools under the caller's `LayerView` (`AppState.tool_context`). Layer and attribute descriptions and imported values will reach the model's context. Treat them as untrusted text that may carry instructions (indirect prompt injection), and keep tools read-only (F-9.5). |
+
+### New findings
+
+| # | Priority | Finding | Impact |
+|---|---|---|---|
+| 15 | **Medium (cloud)** | **Listing sessions decodes every session's full state.** `sessions.list_sessions` selects whole `AnalysisSession` rows, so SQLAlchemy reads and decodes the `state` JSON of each, although the summary never uses it. An account may hold 100 sessions of up to 1 MB each (#6). Measured: decoding 100 states of 0.84 MB takes about 1 s of CPU, holding the GIL. The route takes no query slot (#5) and has no rate limit. `saved_queries.list_queries` does the same for the state of every readable query (up to 200 kB each, from every account that shares). | One signed-in account can fill its 100 sessions once, then send `GET /api/sessions` in a loop from a few connections. Each request costs about 1 s of the single process's CPU, and the server stops answering everyone else. The query slots do not help, as this route is not a query. |
+| 16 | **Low** | **Logins have no absolute lifetime.** Expiry slides by `session_hours` (12 h) on every use (`auth/sessions.resolve`); `created_at` is stored but never checked. | A stolen session cookie that is used at least every 12 hours stays valid until the password is changed, or the account is locked or reset. |
+| 17 | **Low** | **API answers carry no `Cache-Control`.** Only `index.html` is sent with `no-store`. Answers that hold start passwords (`POST /api/admin/users`, `…/reset-password`), analysis states, account lists and data may be kept by the browser or an intermediate cache. | On a shared computer, data of a signed-out user may remain in the browser cache. Proxies will not cache these answers (the cookie and HTTPS prevent it), so the risk is small. |
+| 18 | **Low (cloud, depends on domain)** | **The session cookie has no `__Host-` prefix.** It is named `geotandem_session`, not `__Host-geotandem_session`. | In the shared-parent-domain setting of #8, a sibling subdomain can set a `geotandem_session` cookie for the parent domain. The victim's browser then sends the attacker's login, so the victim works in, and saves analyses to, the attacker's account. The origin check (#8) does not stop this, as no cross-site request is involved. |
+| 19 | **Low** | **Text fields without a length limit.** `display_name` (`NewAccount`, `AccountUpdate`, `SetupRequest`); `title` and `description` of `LayerUpdate`; `label`, `description`, `unit` and `value_domain.codes` of `AttributeUpdate`; `Duplicate.title`. They are bounded only by the 2 MB body limit (#3). Session and saved-query names and notes are bounded already. | Administrators only (setup also needs the token). A 2 MB layer title or code list is sent to every user with each `/api/layers` and shapes the layer profile meant for the model (`for_model`). This degrades the interface and, later, fills the model's context. |
+| 20 | **Info** | **Users see the upload file name.** `LayerInfo.source` is `file:<original name>` for imported layers and goes to every user who sees the layer. | File names sometimes say more than the layer's title (e.g. `kunden_intern_vertraulich.gpkg`). Minor. |
+| 21 | **Info** | **The access tests list routes by hand.** `test_access.py` covers 10 of the 22 admin routes and none of the routes that write sessions or saved queries. Today every route is guarded correctly (checked by listing them). | A new route added outside `/api/admin`, or without `CurrentAccount`, would not fail any test. |
+
+### Fixes
+
+1. **#15:** load only the summary columns in `list_sessions`, `last_opened`
+   and `list_queries`, e.g. `.options(defer(AnalysisSession.state))`. The
+   state is read only in `get`. A test that checks the list does not load
+   `state` keeps it that way.
+2. **#16:** also end a login `GEOTANDEM_SESSION_MAX_DAYS` (e.g. 7) after its
+   `created_at`, whatever its use.
+3. **#17:** `Cache-Control: no-store` on every `/api/` answer, in
+   `SecurityHeaders`.
+4. **#18:** name the cookie `__Host-geotandem_session` when it is `Secure`,
+   which it is over HTTPS (#4). Browsers then refuse it from another host
+   and without `Secure` and `Path=/`.
+5. **#19:** `max_length` on these fields, e.g. 120 for names and titles,
+   2 000 for descriptions, 1 000 entries in a code list.
+6. **#20:** show `source` to administrators only (`AdminLayerInfo`), or keep
+   only the format (`file:gpkg`).
+7. **#21:** a test that walks `app.routes`, resolves each route's
+   dependencies and fails unless the route needs `require_account` (or
+   `require_admin` under `/api/admin`), or is on an explicit list of public
+   routes.
