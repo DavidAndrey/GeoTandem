@@ -105,6 +105,7 @@ hole.
 | 4 | Fixed: `Secure` cookie and HSTS over HTTPS | TLS, HSTS |
 | 5 | Fixed: bounds on each query; queries running at once per account and in all | — |
 | 6 | Fixed: sessions, saved queries and logins per account capped | — |
+| 12 | Fixed: password policy (length, blocklists, patterns, names) | — |
 | 7 | Fixed: CSP with per-request nonce, `nosniff`, `X-Frame-Options`, `Referrer-Policy` | Same headers except CSP |
 | 8 | Fixed: changes from other origins refused | — |
 | 10 | Fixed: health says only ready or not, details for admins; API docs off by default; import errors without server details; no `server` header | — |
@@ -180,6 +181,29 @@ pydantic; the time limit itself (F-9.6) stays the way a slow query ends.
 
 Worst case per account is now about 100 MB of sessions; for many accounts,
 watch the size of `/data`.
+
+### #12: password policy (`auth/password_policy.py`)
+
+Agreed on 2026-10-04. Length over complexity, as NIST SP 800-63B and OWASP
+ASVS advise:
+
+| Rule | Decision |
+|---|---|
+| Length | at least 12 characters, at most 1024; any characters, spaces and umlauts included |
+| Composition | no rules about digits or special characters |
+| Common passwords | `data/common-passwords.txt` (10 000 entries, provided for the project, SHA-256 recorded) and `data/german-passwords.txt` (104 entries compiled by hand), compared in normalized form: case, umlauts, separators, leetspeak and digits or symbols at either end do not count |
+| Patterns | keyboard rows (QWERTZ and QWERTY), alphabet and digit sequences, repetitions, fewer than 5 distinct characters |
+| Names | must not contain the username, the display name (parts of 4 characters and more) or "geotandem" |
+| Applies to | setup, password change, `geotandem user create`; generated start passwords comply |
+| Existing passwords | valid until their next change |
+| Expiry | none |
+| Unicode | NFKC before hashing; hashes made before still sign in and are renewed |
+
+No external service is asked. The interface tells the reason in German
+(`password_common`, `password_pattern`, `password_contains_name`), the lists
+stay on the server. Measured: of the 10 000 common passwords only 10 have 12
+characters or more, so an exact comparison would catch almost nothing; the
+normalized one catches `P@ssw0rd2024!`, `Fussball1234!` or `Bern2024!!!!`.
 
 ### #2: sign-in throttle
 

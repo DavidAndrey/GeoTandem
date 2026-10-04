@@ -111,7 +111,7 @@ def test_a_password_changed_meanwhile_is_not_overwritten(backend: DataBackend) -
     accounts.create(backend.engine, "anna", PASSWORD, "user")
     account, start = accounts.reset_password(backend.engine, "anna")
     with pytest.raises(accounts.AccountError) as raised:
-        accounts.change_password(backend.engine, account.id, PASSWORD, "neues-passwort-1")
+        accounts.change_password(backend.engine, account.id, PASSWORD, "gurten-nebel-abend-2")
     assert raised.value.code == "wrong_password"
     assert accounts.authenticate(backend.engine, "anna", start) is not None
 
@@ -175,9 +175,9 @@ async def test_wrong_current_passwords_count_as_failed_sign_ins(
     assert (await login(anonymous, "admin", PASSWORD)).status_code == 200
     url = "/api/auth/password"
     for _ in range(10):
-        wrong = await anonymous.post(url, json={"current": WRONG, "new": "neues-passwort-1"})
+        wrong = await anonymous.post(url, json={"current": WRONG, "new": "gurten-nebel-abend-2"})
         assert wrong.json()["code"] == "wrong_password"
-    braked = await anonymous.post(url, json={"current": PASSWORD, "new": "neues-passwort-1"})
+    braked = await anonymous.post(url, json={"current": PASSWORD, "new": "gurten-nebel-abend-2"})
     assert braked.status_code == 429
 
 

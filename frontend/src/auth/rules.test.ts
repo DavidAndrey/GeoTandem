@@ -1,5 +1,6 @@
 import { expect, test } from 'vitest'
-import { passwordProblems, safeTarget } from './rules'
+import { ApiRequestError } from '../api/client'
+import { MIN_PASSWORD_LENGTH, passwordError, passwordProblems, safeTarget } from './rules'
 
 test.each([
   ['/admin/daten?reiter=felder', '/admin/daten?reiter=felder'],
@@ -22,4 +23,24 @@ test('password rules of design A4', () => {
     'Die Wiederholung stimmt nicht überein.',
   ])
   expect(passwordProblems('alt', 'neues-passwort', 'neues-passwort')).toEqual([])
+})
+
+test('the form asks for 12 characters before the server is asked', () => {
+  expect(MIN_PASSWORD_LENGTH).toBe(12)
+  expect(passwordProblems('alt', 'elf-zeichen', '')).toEqual([
+    'Das neue Passwort braucht mindestens 12 Zeichen.',
+  ])
+  expect(passwordProblems('alt', 'zwoelf-zeich', '')).toEqual([])
+})
+
+test("the server's password rules are told in German, other errors as they come", () => {
+  const refused = (code: string) =>
+    new ApiRequestError(400, { code, message: 'English text', details: {} })
+  expect((passwordError(refused('password_common')) as Error).message).toMatch(/zu verbreitet/)
+  expect((passwordError(refused('password_contains_name')) as Error).message).toMatch(
+    /Benutzernamen/,
+  )
+  const other = refused('wrong_password')
+  expect(passwordError(other)).toBe(other)
+  expect(passwordError(null)).toBeNull()
 })

@@ -12,7 +12,7 @@ const SETUP_TOKEN = process.env.E2E_SETUP_TOKEN ?? ''
 /** The first administrator on a fresh instance; on an existing one, set these to sign in. */
 export const ADMIN = {
   username: process.env.E2E_ADMIN_USER ?? 'admin',
-  password: process.env.E2E_ADMIN_PASSWORD ?? 'e2e-admin-passwort',
+  password: process.env.E2E_ADMIN_PASSWORD ?? 'e2e-aare-bruecke-morgen',
 }
 
 export default async function globalSetup(config: FullConfig) {

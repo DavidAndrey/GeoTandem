@@ -94,6 +94,15 @@ docker exec <container> geotandem user create m.keller --start-password  # Anwen
 docker exec <container> geotandem user reset-password m.keller          # neues Startpasswort
 ```
 
+**Passwortregeln** (gelten beim Setzen eines Passworts: Ersteinrichtung,
+Passwortwechsel, `geotandem user create`): mindestens 12 Zeichen, sonst keine
+Vorgaben zu Ziffern oder Sonderzeichen, kein Ablaufdatum. Abgelehnt werden
+verbreitete Passwörter, auch abgewandelt (`P@ssw0rd2024!`), Tastaturreihen,
+Folgen und Wiederholungen sowie Passwörter mit dem eigenen Benutzer- oder
+Anzeigenamen oder «geotandem». Die Listen liegen in
+`backend/src/geotandem/auth/data/` (siehe deren README); kein externer Dienst
+wird gefragt. Bestehende Passwörter gelten bis zum nächsten Wechsel weiter.
+
 Konten mit Startpasswort müssen es bei der ersten Anmeldung ändern. Anwender
 sehen nur freigegebene Layer: der Beispieldatensatz ist freigegeben, neu
 importierte Layer erst nach Freigabe unter *Administration › Sichtbarkeit*.

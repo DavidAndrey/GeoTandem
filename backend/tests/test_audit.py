@@ -95,8 +95,8 @@ async def test_own_password_and_sign_out_are_logged(
     client: httpx.AsyncClient, events: Events
 ) -> None:
     url = "/api/auth/password"
-    await client.post(url, json={"current": "falsch-falsch", "new": "neues-passwort-1"})
-    await client.post(url, json={"current": ADMIN_PASSWORD, "new": "neues-passwort-1"})
+    await client.post(url, json={"current": "falsch-falsch", "new": "gurten-nebel-abend-2"})
+    await client.post(url, json={"current": ADMIN_PASSWORD, "new": "gurten-nebel-abend-2"})
     await client.post("/api/auth/logout")
     assert [e["event"] for e in events] == [
         "password_change_failed",

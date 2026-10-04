@@ -11,7 +11,7 @@ const [baseURL, outDir] = process.argv.slice(2)
 if (!baseURL || !outDir) throw new Error('usage: filter-examples.mjs <baseURL> <outDir>')
 
 const DOC = new URL('../../docs/filters.md', import.meta.url)
-const ADMIN = { username: 'admin', password: 'doku-admin-passwort' }
+const ADMIN = { username: 'admin', password: 'doku-aare-nebel-abend' }
 const REGION = [7.11, 46.7, 7.71, 47.12]
 
 // --- the examples as the editor holds them (frontend/src/analysis/model.ts) ---------------

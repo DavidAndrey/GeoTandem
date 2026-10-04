@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { api } from '../api/client'
 import { ErrorNotice } from '../components/ui'
 import { Field } from './AccessCard'
-import { passwordProblems } from './rules'
+import { PASSWORD_HINT, passwordError, passwordProblems } from './rules'
 
 export function PasswordForm({ onDone, onCancel }: { onDone: () => void; onCancel?: () => void }) {
   const [current, setCurrent] = useState('')
@@ -41,9 +41,13 @@ export function PasswordForm({ onDone, onCancel }: { onDone: () => void; onCance
           autoComplete="new-password"
           required
           value={next}
+          aria-describedby="password-hint"
           onChange={(e) => setNext(e.target.value)}
         />
       </Field>
+      <p id="password-hint" className="text-muted -mt-2 mb-3 text-xs">
+        {PASSWORD_HINT}
+      </p>
       <Field label="Neues Passwort wiederholen">
         <input
           className="input"
@@ -61,7 +65,7 @@ export function PasswordForm({ onDone, onCancel }: { onDone: () => void; onCance
           ))}
         </ul>
       )}
-      <ErrorNotice error={change.error} />
+      <ErrorNotice error={passwordError(change.error)} />
       <div className="mt-2 flex gap-2">
         {onCancel && (
           <button type="button" className="btn" onClick={onCancel}>

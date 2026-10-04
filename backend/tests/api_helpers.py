@@ -2,7 +2,7 @@
 
 import httpx
 
-ADMIN_PASSWORD = "admin-passwort-1"
+ADMIN_PASSWORD = "aare-bruecke-morgen-1"
 SETUP_TOKEN = "test-setup-token-0123"
 """As GEOTANDEM_SETUP_TOKEN of the test instances (conftest ``app``)."""
 USER_PASSWORD = "nutzer-passwort-1"

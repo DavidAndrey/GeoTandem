@@ -87,8 +87,8 @@ test('the setup takes the token from the link in the log and sends it', async ()
   renderAt('/einrichtung#token=aus-dem-protokoll', <App />)
   const token = await screen.findByLabelText('Einrichtungscode')
   expect(token).toHaveValue('aus-dem-protokoll')
-  await userEvent.type(screen.getByLabelText('Passwort'), 'admin-passwort-1')
-  await userEvent.type(screen.getByLabelText('Passwort wiederholen'), 'admin-passwort-1')
+  await userEvent.type(screen.getByLabelText('Passwort'), 'aare-bruecke-morgen-1')
+  await userEvent.type(screen.getByLabelText('Passwort wiederholen'), 'aare-bruecke-morgen-1')
   await userEvent.click(screen.getByRole('button', { name: 'Einrichten' }))
   await vi.waitFor(() =>
     expect(calls.find((c) => c.key === 'POST /api/auth/setup')?.body).toMatchObject({
@@ -105,8 +105,8 @@ test('without the token the setup cannot be sent', async () => {
   })
   renderAt('/einrichtung', <App />)
   expect(await screen.findByLabelText('Einrichtungscode')).toHaveValue('')
-  await userEvent.type(screen.getByLabelText('Passwort'), 'admin-passwort-1')
-  await userEvent.type(screen.getByLabelText('Passwort wiederholen'), 'admin-passwort-1')
+  await userEvent.type(screen.getByLabelText('Passwort'), 'aare-bruecke-morgen-1')
+  await userEvent.type(screen.getByLabelText('Passwort wiederholen'), 'aare-bruecke-morgen-1')
   expect(screen.getByRole('button', { name: 'Einrichten' })).toBeDisabled()
 })
 

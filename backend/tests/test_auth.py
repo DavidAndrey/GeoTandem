@@ -121,21 +121,23 @@ async def test_locked_account_cannot_sign_in_and_loses_its_session(
 async def test_change_password(anonymous: httpx.AsyncClient) -> None:
     await set_up(anonymous)
     url = "/api/auth/password"
-    wrong = await anonymous.post(url, json={"current": "falsch-falsch", "new": "neues-passwort-1"})
+    wrong = await anonymous.post(
+        url, json={"current": "falsch-falsch", "new": "gurten-nebel-abend-2"}
+    )
     assert wrong.json()["code"] == "wrong_password"
     same = await anonymous.post(url, json={"current": PASSWORD, "new": PASSWORD})
     assert same.json()["code"] == "password_unchanged"
     short = await anonymous.post(url, json={"current": PASSWORD, "new": "kurz"})
     assert short.json()["code"] == "password_too_short"
     assert (
-        await anonymous.post(url, json={"current": PASSWORD, "new": "neues-passwort-1"})
+        await anonymous.post(url, json={"current": PASSWORD, "new": "gurten-nebel-abend-2"})
     ).status_code == 204
 
     anonymous.cookies.clear()
     old = await anonymous.post("/api/auth/login", json={"username": "admin", "password": PASSWORD})
     assert old.status_code == 401
     new = await anonymous.post(
-        "/api/auth/login", json={"username": "admin", "password": "neues-passwort-1"}
+        "/api/auth/login", json={"username": "admin", "password": "gurten-nebel-abend-2"}
     )
     assert new.status_code == 200
 
@@ -149,7 +151,7 @@ async def test_changing_the_password_ends_the_other_logins(
         await elsewhere.post("/api/auth/login", json={"username": "admin", "password": PASSWORD})
         assert (await elsewhere.get("/api/auth/me")).status_code == 200
         changed = await anonymous.post(
-            "/api/auth/password", json={"current": PASSWORD, "new": "neues-passwort-1"}
+            "/api/auth/password", json={"current": PASSWORD, "new": "gurten-nebel-abend-2"}
         )
         assert changed.status_code == 204
         assert (await elsewhere.get("/api/auth/me")).status_code == 401

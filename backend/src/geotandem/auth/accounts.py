@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 import secrets
 import threading
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from datetime import datetime
 from typing import Literal
@@ -20,12 +20,12 @@ from pydantic import BaseModel
 from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session
 
+from geotandem.auth import password_policy
 from geotandem.db.orm import AuthSession, Role, User
 from geotandem.db.spatialite import reading
 
-MIN_PASSWORD_LENGTH = 10
-MAX_PASSWORD_LENGTH = 1024
-"""Bounds the hashing work one request can ask for."""
+MIN_PASSWORD_LENGTH = password_policy.MIN_LENGTH
+MAX_PASSWORD_LENGTH = password_policy.MAX_LENGTH
 USERNAME = re.compile(r"^[a-z0-9][a-z0-9._-]{1,62}$")
 
 _hasher = PasswordHasher()
@@ -68,24 +68,21 @@ def _account(user: User) -> Account:
     return Account.model_validate(user, from_attributes=True)
 
 
-def check_password(password: str, old: str | None = None) -> None:
-    if len(password) < MIN_PASSWORD_LENGTH:
-        raise AccountError(
-            "password_too_short",
-            f"The password needs at least {MIN_PASSWORD_LENGTH} characters.",
-        )
-    if len(password) > MAX_PASSWORD_LENGTH:
-        raise AccountError(
-            "password_too_long",
-            f"The password may have at most {MAX_PASSWORD_LENGTH} characters.",
-        )
-    if old is not None and password == old:
+def check_password(password: str, old: str | None = None, names: Iterable[str] = ()) -> None:
+    """The password policy (``password_policy``) for a password about to be set."""
+    broken = password_policy.violation(password, names)
+    if broken is not None:
+        raise AccountError(*broken)
+    if old is not None and password_policy.prepare(password) == password_policy.prepare(old):
         raise AccountError("password_unchanged", "The new password must differ from the old one.")
 
 
 def generate_password() -> str:
-    """A start password for a new or reset account (design D9)."""
-    return secrets.token_urlsafe(12)
+    """A start password for a new or reset account (design D9); meets the policy."""
+    while True:
+        password = secrets.token_urlsafe(12)
+        if password_policy.violation(password) is None:
+            return password
 
 
 def has_accounts(engine: Engine) -> bool:
@@ -111,7 +108,7 @@ def create(
             "invalid_username",
             "Usernames have 2 to 63 characters: lower-case letters, digits, '.', '_' and '-'.",
         )
-    check_password(password)
+    check_password(password, names=(username, display_name))
     # Hashed before the transaction: waiting for a hashing slot must not hold the write lock.
     password_hash = _hash(password)
     with Session(engine) as session, session.begin():
@@ -142,12 +139,15 @@ def authenticate(engine: Engine, username: str, password: str) -> Account | None
         user = session.scalar(select(User).where(User.username == username.strip().lower()))
         found = None if user is None else (user.id, user.password_hash, user.status)
     if found is None:
-        _verify(_DUMMY_HASH, password)
+        _match(_DUMMY_HASH, password)
         return None
     user_id, password_hash, status = found
-    if not _verify(password_hash, password) or status != "active":
+    matched = _match(password_hash, password)
+    if matched is None or status != "active":
         return None
-    rehashed = _hash(password) if _hasher.check_needs_rehash(password_hash) else None
+    # Hashed before passwords were normalized (NFKC): hashed again in the normalized form.
+    renew = matched != password_policy.prepare(password)
+    rehashed = _hash(password) if renew or _hasher.check_needs_rehash(password_hash) else None
     with Session(engine) as session, session.begin():
         user = session.get(User, user_id)
         # Locked, deleted or given a new password while the hash was checked.
@@ -175,10 +175,11 @@ def change_password(engine: Engine, user_id: int, current: str, new: str) -> Non
     """Hashing happens outside the write transaction, as in ``authenticate``."""
     wrong = AccountError("wrong_password", "The current password is wrong.")
     with Session(reading(engine)) as session:
-        old_hash = session.get_one(User, user_id).password_hash
-    if not _verify(old_hash, current):
+        user = session.get_one(User, user_id)
+        old_hash, names = user.password_hash, (user.username, user.display_name)
+    if _match(old_hash, current) is None:
         raise wrong
-    check_password(new, old=current)
+    check_password(new, old=current, names=names)
     new_hash = _hash(new)
     with Session(engine) as session, session.begin():
         user = session.get_one(User, user_id)
@@ -218,15 +219,25 @@ def _hashing_slot() -> Iterator[None]:
 
 def _hash(password: str) -> str:
     with _hashing_slot():
-        return _hasher.hash(password)
+        return _hasher.hash(password_policy.prepare(password))
 
 
-def _verify(hashed: str, password: str) -> bool:
+def _match(hashed: str, password: str) -> str | None:
+    """The form of ``password`` that ``hashed`` was made from, or ``None``.
+
+    Normalized first (``password_policy.prepare``); as typed only for a hash made
+    before passwords were normalized, and only if the two differ.
+    """
+    prepared = password_policy.prepare(password)
+    candidates = [prepared] if prepared == password else [prepared, password]
     with _hashing_slot():
-        try:
-            return _hasher.verify(hashed, password)
-        except (VerificationError, InvalidHashError):
-            return False
+        for candidate in candidates:
+            try:
+                if _hasher.verify(hashed, candidate):
+                    return candidate
+            except (VerificationError, InvalidHashError):
+                continue
+    return None
 
 
 def revoke_sessions(session: Session, user_id: int) -> None:

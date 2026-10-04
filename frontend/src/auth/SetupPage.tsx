@@ -8,7 +8,7 @@ import { api } from '../api/client'
 import { useResetSession, useSetupStatus } from '../api/queries'
 import { ErrorNotice, Loading } from '../components/ui'
 import { AccessCard, Field } from './AccessCard'
-import { passwordProblems } from './rules'
+import { PASSWORD_HINT, passwordError, passwordProblems } from './rules'
 
 export function SetupPage() {
   const status = useSetupStatus()
@@ -99,10 +99,14 @@ export function SetupPage() {
             type="password"
             autoComplete="new-password"
             required
+            aria-describedby="password-hint"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
         </Field>
+        <p id="password-hint" className="text-muted -mt-2 mb-3 text-xs">
+          {PASSWORD_HINT}
+        </p>
         <Field label="Passwort wiederholen">
           <input
             className="input"
@@ -130,7 +134,7 @@ export function SetupPage() {
             Beispieldatensatz „Bern-Mittelland" laden
           </label>
         )}
-        <ErrorNotice error={setup.error} />
+        <ErrorNotice error={passwordError(setup.error)} />
         <button
           type="submit"
           className="btn btn-primary mt-2 w-full justify-center"
