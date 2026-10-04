@@ -18,7 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from geotandem.auth import visibility
-from geotandem.catalog import get_layer, list_layers
+from geotandem.catalog import LayerInfo, get_layer, list_layers
 from geotandem.data import AttributeSpec, DataBackend, NewLayer
 from geotandem.db.orm import ImportRun
 from geotandem.db.spatialite import reading
@@ -76,7 +76,7 @@ def load_sample(backend: DataBackend, directory: Path = DATA_DIR) -> list[str]:
     version = manifest["version"]
     current = {layer["name"] for layer in metadata["layers"]}
     for info in list_layers(backend.engine):
-        if info.source.startswith(SAMPLE_PREFIX) and info.name not in current:
+        if _from_sample(info) and info.name not in current:
             backend.drop_layer(info.name)
             log.info("sample dataset %s: removed obsolete layer %s", version, info.name)
     existing = set(backend.layer_names())
@@ -86,7 +86,7 @@ def load_sample(backend: DataBackend, directory: Path = DATA_DIR) -> list[str]:
         name = layer["name"]
         if name in existing:
             present = get_layer(backend.engine, name)
-            if present is None or not present.source.startswith(SAMPLE_PREFIX):
+            if present is None or not _from_sample(present):
                 log.warning(
                     "sample dataset %s: layer %s is not from the sample, kept", version, name
                 )
@@ -126,6 +126,10 @@ def load_sample(backend: DataBackend, directory: Path = DATA_DIR) -> list[str]:
     if loaded:
         log.info("sample dataset %s: loaded %s", version, ", ".join(loaded))
     return loaded
+
+
+def _from_sample(info: LayerInfo) -> bool:
+    return (info.source or "").startswith(SAMPLE_PREFIX)
 
 
 def _loaded_before(backend: DataBackend) -> set[str]:

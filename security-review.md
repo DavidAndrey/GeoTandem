@@ -387,7 +387,7 @@ response headers.
    `require_admin` under `/api/admin`), or is on an explicit list of public
    routes.
 
-### Status of #15–#19
+### Status of #15–#21
 
 | # | Fixed |
 |---|---|
@@ -396,3 +396,5 @@ response headers.
 | 17 | Every `/api/` answer carries `Cache-Control: no-store`. |
 | 18 | Over HTTPS the cookie is `__Host-geotandem_session`, and only that name is read. A planted `geotandem_session` is ignored (tested). Plain HTTP keeps `geotandem_session`. On the HTTPS demo, everyone signs in once more after the update. |
 | 19 | Display names up to 120 characters; layer titles and attribute labels 200; descriptions 5 000; units 50; code lists 500 entries of 500 characters. The same limits apply to the import wizard's decisions. Defaults taken from a file (title from the file name, label from the column header) are cut to fit, and code lists are proposed only when they fit, so imported metadata can always be saved back unchanged. The admin forms stop typing at the limits. |
+| 20 | `source` (e.g. `file:<uploaded name>`) is sent to administrators only; for anyone else `/api/layers` and `/api/layers/{name}` answer `null`. |
+| 21 | `test_every_route_requires_what_it_should` reads the routes from the application, checks it found every one in the OpenAPI document, and fails unless each needs an account, or an administrator under `/api/admin/`, or is on the written list of public and own-account routes. Tested to fail on a route whose guard was removed. |

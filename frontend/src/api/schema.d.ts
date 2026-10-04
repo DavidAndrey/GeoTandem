@@ -866,7 +866,7 @@ export interface components {
       /** Bbox Wgs84 */
       bbox_wgs84: number[] | null
       /** Source */
-      source: string
+      source: string | null
       /** Dataset Version */
       dataset_version: string | null
       /** For Model */
@@ -1836,7 +1836,7 @@ export interface components {
       /** Bbox Wgs84 */
       bbox_wgs84: number[] | null
       /** Source */
-      source: string
+      source: string | null
       /** Dataset Version */
       dataset_version: string | null
       /** For Model */

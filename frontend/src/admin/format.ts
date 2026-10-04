@@ -22,7 +22,9 @@ export function layerType(layer: Pick<LayerInfo, 'kind' | 'geometry_type'>): str
   return label ? i18n._(label) : t`Geometrie`
 }
 
-export function sourceLabel(source: string): string {
+/** `source` is null for anyone but an administrator (security review #20). */
+export function sourceLabel(source: string | null): string {
+  if (!source) return '–'
   if (source.startsWith('sample:')) return t`Beispieldaten`
   if (source.startsWith('file:')) return source.slice('file:'.length)
   return source || '–'

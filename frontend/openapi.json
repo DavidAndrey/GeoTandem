@@ -4147,7 +4147,14 @@
             "title": "Bbox Wgs84"
           },
           "source": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Source"
           },
           "dataset_version": {
@@ -6424,7 +6431,14 @@
             "title": "Bbox Wgs84"
           },
           "source": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Source"
           },
           "dataset_version": {

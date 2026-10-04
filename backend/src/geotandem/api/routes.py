@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from geotandem.api.auth import CurrentAccount
 from geotandem.api.errors import ErrorBody
 from geotandem.api.state import AppState, get_state
+from geotandem.auth.accounts import Account
 from geotandem.auth.visibility import view_for
 from geotandem.basemap import Basemap, resolve
 from geotandem.catalog import LayerInfo, get_layer, list_layers
@@ -77,17 +78,22 @@ def health(state: State) -> Health:
     return Health(status="degraded" if state.unsupported else "ok")
 
 
+def _for(account: Account, info: LayerInfo) -> LayerInfo:
+    """The upload's file name may say more than the layer's title (security review #20)."""
+    return info if account.role == "admin" else info.model_copy(update={"source": None})
+
+
 @router.get("/layers")
-def layers(backend: Visible) -> list[LayerInfo]:
-    return list_layers(backend.engine, only=backend.layer_names())
+def layers(backend: Visible, account: CurrentAccount) -> list[LayerInfo]:
+    return [_for(account, info) for info in list_layers(backend.engine, only=backend.layer_names())]
 
 
 @router.get("/layers/{name}", responses=ERRORS)
-def layer(name: str, backend: Visible) -> LayerInfo:
+def layer(name: str, backend: Visible, account: CurrentAccount) -> LayerInfo:
     info = get_layer(backend.engine, name) if name in backend.layer_names() else None
     if info is None:
         raise LayerNotFound(f"Unknown layer '{name}'.", layer=name)
-    return info
+    return _for(account, info)
 
 
 @router.post("/query", responses=ERRORS, dependencies=[QuerySlot])

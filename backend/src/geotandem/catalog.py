@@ -31,7 +31,9 @@ class LayerInfo(BaseModel):
     geometry_type: str | None
     feature_count: int
     bbox_wgs84: list[float] | None
-    source: str
+    source: str | None
+    """Where the layer came from, e.g. ``file:<uploaded name>``; for administrators only,
+    ``None`` for anyone else (security review #20)."""
     dataset_version: str | None
     for_model: bool
     created_at: datetime
