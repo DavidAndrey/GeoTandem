@@ -40,6 +40,7 @@ export default defineConfig([
             '^[a-z]{2}-[A-Z]{2}$',
             '^GeoTandem$',
             '^⌘',
+            '^EPSG:',
           ],
           ignoreNames: [
             {

@@ -1,10 +1,12 @@
 // Change the own password (design A4): at least 10 characters, not the old one.
+import { Trans } from '@lingui/react/macro'
+import { t } from '@lingui/core/macro'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { api } from '../api/client'
 import { ErrorNotice } from '../components/ui'
 import { Field } from './AccessCard'
-import { PASSWORD_HINT, passwordError, passwordProblems } from './rules'
+import { passwordError, passwordHint, passwordProblems } from './rules'
 
 export function PasswordForm({ onDone, onCancel }: { onDone: () => void; onCancel?: () => void }) {
   const [current, setCurrent] = useState('')
@@ -24,7 +26,7 @@ export function PasswordForm({ onDone, onCancel }: { onDone: () => void; onCance
         if (ready) change.mutate()
       }}
     >
-      <Field label="Aktuelles Passwort">
+      <Field label={t`Aktuelles Passwort`}>
         <input
           className="input"
           type="password"
@@ -34,7 +36,7 @@ export function PasswordForm({ onDone, onCancel }: { onDone: () => void; onCance
           onChange={(e) => setCurrent(e.target.value)}
         />
       </Field>
-      <Field label="Neues Passwort">
+      <Field label={t`Neues Passwort`}>
         <input
           className="input"
           type="password"
@@ -46,9 +48,9 @@ export function PasswordForm({ onDone, onCancel }: { onDone: () => void; onCance
         />
       </Field>
       <p id="password-hint" className="text-muted -mt-2 mb-3 text-xs">
-        {PASSWORD_HINT}
+        {passwordHint()}
       </p>
-      <Field label="Neues Passwort wiederholen">
+      <Field label={t`Neues Passwort wiederholen`}>
         <input
           className="input"
           type="password"
@@ -69,7 +71,7 @@ export function PasswordForm({ onDone, onCancel }: { onDone: () => void; onCance
       <div className="mt-2 flex gap-2">
         {onCancel && (
           <button type="button" className="btn" onClick={onCancel}>
-            Abbrechen
+            <Trans>Abbrechen</Trans>
           </button>
         )}
         <button
@@ -77,7 +79,7 @@ export function PasswordForm({ onDone, onCancel }: { onDone: () => void; onCance
           className="btn btn-primary ml-auto"
           disabled={!ready || change.isPending}
         >
-          Passwort ändern
+          <Trans>Passwort ändern</Trans>
         </button>
       </div>
     </form>

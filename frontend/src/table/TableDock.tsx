@@ -1,8 +1,9 @@
 // Attribute table docked under the map (F-8.2, design B8): one tab per
 // displayed layer, the result layer first. Reads the same cached queries as the
 // map (plan E1.6 D2), so table and map always show the same result.
+import { objectCount } from '../i18n/phrases'
 import { formatNumber } from '../i18n/locale'
-import { plural, t } from '@lingui/core/macro'
+import { t } from '@lingui/core/macro'
 import { Trans } from '@lingui/react/macro'
 import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Crosshair, GripVertical } from 'lucide-react'
 import { Popover } from 'radix-ui'
@@ -36,10 +37,6 @@ const OVERSCAN = 6
 /** One empty list, so the selection selector stays stable (a new [] would re-render forever). */
 const NONE: number[] = []
 
-const objectCount = (n: number) => {
-  const count = formatNumber(n)
-  return plural(n, { one: `${count} Objekt`, other: `${count} Objekte` })
-}
 const selectRow = (id: number) => t`Zeile ${id} auswählen`
 const zoomRow = (id: number) => t`Auf Zeile ${id} zoomen`
 const moveUp = (column: string) => t`${column} nach oben`

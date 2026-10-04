@@ -1,12 +1,15 @@
 // Import wizard (design D6, with D4 for a replace and D11 for failures):
 // 1 file · 2 geo-reference · 3 fields · 4 check. Warnings never block; the
 // backend decides and logs every attempt (F-2.10).
+import { objectCount } from '../i18n/phrases'
+import { Trans } from '@lingui/react/macro'
+import { plural, t } from '@lingui/core/macro'
 import { i18n } from '@lingui/core'
 import { useMutation } from '@tanstack/react-query'
 import { AlertTriangle, Check, ChevronRight, Circle, Upload } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
-import { api, type ImportRunInfo, type ReadOptions } from '../api/client'
+import { api, type ImportRunInfo, type Preview, type ReadOptions } from '../api/client'
 import { useAdminLayers, useInvalidateLayers, useLayer } from '../api/queries'
 import { ErrorNotice, StatusBadge } from '../components/ui'
 import {
@@ -22,7 +25,11 @@ import {
   type Step,
   type WizardState,
 } from './wizard'
+import { fieldLabels, importedText, recordCount, typeLabel } from './format'
+import { formatNumber } from '../i18n/locale'
 
+// Names of coordinate systems and encodings, the same in every language.
+/* eslint-disable lingui/no-unlocalized-strings */
 const COMMON_CRS = [
   { epsg: 2056, label: 'CH1903+ / LV95' },
   { epsg: 21781, label: 'CH1903 / LV03' },
@@ -30,6 +37,12 @@ const COMMON_CRS = [
   { epsg: 25832, label: 'ETRS89 / UTM 32N' },
   { epsg: 3857, label: 'Web Mercator' },
 ]
+const ENCODINGS = [
+  { value: 'utf-8-sig', label: 'UTF-8' },
+  { value: 'cp1252', label: 'Windows-1252' },
+  { value: 'iso-8859-1', label: 'ISO-8859-1' },
+]
+/* eslint-enable lingui/no-unlocalized-strings */
 
 export function ImportWizard() {
   const [params] = useSearchParams()
@@ -65,14 +78,14 @@ export function ImportWizard() {
 
   const done = result?.status === 'ok' || result?.status === 'warning'
   const update = (patch: Partial<WizardState>) => setState((s) => s && { ...s, ...patch })
-  const blocked = state ? problems(state, step) : ['Bitte eine Datei wählen.']
+  const blocked = state ? problems(state, step) : [t`Bitte eine Datei wählen.`]
 
   return (
     <section aria-labelledby="wizard-title" className="max-w-4xl">
       <h2 id="wizard-title" className="mb-2 text-2xl">
-        {replace ? 'Layer aktualisieren' : 'Daten importieren'}
+        {replace ? t`Layer aktualisieren` : t`Daten importieren`}
       </h2>
-      <ol className="mb-4 flex items-center gap-2" aria-label="Schritte">
+      <ol className="mb-4 flex items-center gap-2" aria-label={t`Schritte`}>
         {STEPS.map(({ step: s, label }, i) => (
           <li key={s} className="flex items-center gap-2">
             {i > 0 && <ChevronRight size={14} aria-hidden className="text-muted" />}
@@ -128,11 +141,11 @@ export function ImportWizard() {
                 onClick={() => cancel.mutate()}
                 disabled={cancel.isPending}
               >
-                Abbrechen
+                <Trans>Abbrechen</Trans>
               </button>
               {step > 1 && (
                 <button type="button" className="btn" onClick={() => setStep((step - 1) as Step)}>
-                  Zurück
+                  <Trans>Zurück</Trans>
                 </button>
               )}
               {step < 4 ? (
@@ -142,7 +155,7 @@ export function ImportWizard() {
                   disabled={blocked.length > 0}
                   onClick={() => setStep((step + 1) as Step)}
                 >
-                  Weiter
+                  <Trans>Weiter</Trans>
                 </button>
               ) : (
                 <button
@@ -151,7 +164,7 @@ export function ImportWizard() {
                   disabled={commit.isPending}
                   onClick={() => state && commit.mutate(state)}
                 >
-                  {state?.replace ? 'Ersetzen' : 'Übernehmen'}
+                  {state?.replace ? t`Ersetzen` : t`Übernehmen`}
                 </button>
               )}
             </div>
@@ -180,14 +193,19 @@ function FileStep({
   onChange: (patch: Partial<WizardState>) => void
 }) {
   const target = useLayer(replace ?? '')
+  const targetTitle = target.data?.title ?? replace
   const preview = state?.preview
   return (
     <div className="flex flex-col gap-4">
-      <h3 className="text-xl">Datei wählen</h3>
+      <h3 className="text-xl">
+        <Trans>Datei wählen</Trans>
+      </h3>
       {replace && (
         <p className="text-sm">
-          Ersetzt den Inhalt von <strong>{target.data?.title ?? replace}</strong>; Bezeichnungen und
-          Beschreibungen gleichnamiger Felder bleiben erhalten.
+          <Trans>
+            Ersetzt den Inhalt von <strong>{targetTitle}</strong>; Bezeichnungen und Beschreibungen
+            gleichnamiger Felder bleiben erhalten.
+          </Trans>
         </p>
       )}
       <label
@@ -201,13 +219,17 @@ function FileStep({
       >
         <Upload size={18} aria-hidden />
         <span>
-          Datei hierher ziehen oder <span className="text-accent-700 underline">auswählen</span>
+          <Trans>
+            Datei hierher ziehen oder <span className="text-accent-700 underline">auswählen</span>
+          </Trans>
         </span>
-        <span className="text-muted">CSV · Excel · GeoPackage · Shapefile (zip) · GeoJSON</span>
+        <span className="text-muted">
+          <Trans>CSV · Excel · GeoPackage · Shapefile (zip) · GeoJSON</Trans>
+        </span>
         <input
           type="file"
           className="sr-only"
-          aria-label="Importdatei"
+          aria-label={t`Importdatei`}
           accept=".csv,.txt,.xlsx,.gpkg,.zip,.geojson,.json"
           onChange={(e) => {
             const file = e.target.files?.[0]
@@ -215,22 +237,21 @@ function FileStep({
           }}
         />
       </label>
-      {uploading && <p className="text-muted text-sm">Datei wird gelesen …</p>}
+      {uploading && (
+        <p className="text-muted text-sm">
+          <Trans>Datei wird gelesen …</Trans>
+        </p>
+      )}
       {preview && state && (
         <>
           <div className="card bg-neutral-200 p-3 text-sm">
             <p className="font-semibold">{preview.file_name}</p>
-            <p className="text-muted">
-              {preview.record_count} Datensätze · {preview.columns.length} Spalten
-              {preview.geometry_type && ` · ${preview.geometry_type}`}
-              {preview.options.delimiter && ` · Trennzeichen „${preview.options.delimiter}"`}
-              {preview.options.encoding && ` · ${preview.options.encoding}`}
-            </p>
+            <p className="text-muted">{previewSummary(preview)}</p>
           </div>
           <div className="flex flex-wrap gap-4 text-sm">
             {preview.sublayers.length > 1 && (
               <label className="flex items-center gap-2">
-                {preview.format === 'xlsx' ? 'Tabellenblatt' : 'Layer in der Datei'}
+                {preview.format === 'xlsx' ? t`Tabellenblatt` : t`Layer in der Datei`}
                 <select
                   className="input"
                   value={preview.options.sublayer ?? ''}
@@ -245,28 +266,38 @@ function FileStep({
             {preview.format === 'csv' && (
               <>
                 <label className="flex items-center gap-2">
-                  Trennzeichen
+                  <Trans>Trennzeichen</Trans>
                   <select
                     className="input"
                     value={preview.options.delimiter ?? ','}
                     onChange={(e) => onOptions({ ...preview.options, delimiter: e.target.value })}
                   >
-                    <option value=",">Komma</option>
-                    <option value=";">Semikolon</option>
-                    <option value={'\t'}>Tabulator</option>
-                    <option value="|">Senkrechter Strich</option>
+                    <option value=",">
+                      <Trans>Komma</Trans>
+                    </option>
+                    <option value=";">
+                      <Trans>Semikolon</Trans>
+                    </option>
+                    <option value={'\t'}>
+                      <Trans>Tabulator</Trans>
+                    </option>
+                    <option value="|">
+                      <Trans>Senkrechter Strich</Trans>
+                    </option>
                   </select>
                 </label>
                 <label className="flex items-center gap-2">
-                  Kodierung
+                  <Trans>Kodierung</Trans>
                   <select
                     className="input"
                     value={preview.options.encoding ?? 'utf-8-sig'}
                     onChange={(e) => onOptions({ ...preview.options, encoding: e.target.value })}
                   >
-                    <option value="utf-8-sig">UTF-8</option>
-                    <option value="cp1252">Windows-1252</option>
-                    <option value="iso-8859-1">ISO-8859-1</option>
+                    {ENCODINGS.map((e) => (
+                      <option key={e.value} value={e.value}>
+                        {e.label}
+                      </option>
+                    ))}
                   </select>
                 </label>
               </>
@@ -274,7 +305,9 @@ function FileStep({
           </div>
           <div className="grid grid-cols-2 gap-4">
             <label className="flex flex-col gap-1">
-              <span className="label-caps">Bezeichnung</span>
+              <span className="label-caps">
+                <Trans>Bezeichnung</Trans>
+              </span>
               <input
                 className="input"
                 value={state.title}
@@ -283,7 +316,9 @@ function FileStep({
             </label>
             {!state.replace && (
               <label className="flex flex-col gap-1">
-                <span className="label-caps">Technischer Name</span>
+                <span className="label-caps">
+                  <Trans>Technischer Name</Trans>
+                </span>
                 <input
                   className="input font-mono"
                   value={state.layerName}
@@ -303,14 +338,16 @@ function SampleTable({ state }: { state: WizardState }) {
   const columns = state.preview.columns
   return (
     <div className="overflow-auto">
-      <p className="label-caps mb-1">Vorschau</p>
+      <p className="label-caps mb-1">
+        <Trans>Vorschau</Trans>
+      </p>
       <table className="data-table text-xs">
         <thead>
           <tr>
             {columns.map((c) => (
               <th key={c.name}>
                 {c.source_name}
-                <div className="text-muted font-normal">{c.data_type}</div>
+                <div className="text-muted font-normal">{typeLabel(c.data_type)}</div>
               </th>
             ))}
           </tr>
@@ -340,12 +377,12 @@ function CrsInput({
 }) {
   return (
     <label className="flex items-center gap-2 text-sm">
-      Koordinatensystem EPSG:
+      <Trans>Koordinatensystem EPSG:</Trans>
       <input
         className="input w-24"
         inputMode="numeric"
         list="common-crs"
-        aria-label="EPSG-Code"
+        aria-label={t`EPSG-Code`}
         value={value ?? ''}
         onChange={(e) => {
           const n = Number.parseInt(e.target.value, 10)
@@ -361,6 +398,23 @@ function CrsInput({
       </datalist>
       <span className="text-muted">{COMMON_CRS.find((c) => c.epsg === value)?.label ?? ''}</span>
     </label>
+  )
+}
+
+const toStep = (step: number) => t`→ Schritt ${step}`
+
+/** "Schulen: 120 Objekte → 124 Datensätze in der Datei. Felder: + typ" (design D4). */
+function replaceSummary(layer: string, features: number, records: number, changes: string) {
+  const objects = objectCount(features)
+  const read = recordCount(records)
+  return t`${layer}: ${objects} → ${read} in der Datei. Felder: ${changes}`
+}
+
+function CrsLabel({ label }: { label: string }) {
+  return (
+    <p className="text-muted text-xs">
+      <Trans>Die Datei nennt: {label}</Trans>
+    </p>
   )
 }
 
@@ -418,30 +472,34 @@ function GeoStep({ state, onGeo }: { state: WizardState; onGeo: (geo: Geo) => vo
 
   return (
     <div className="flex flex-col gap-3">
-      <h3 className="text-xl">Wie ist der Raumbezug angegeben?</h3>
+      <h3 className="text-xl">
+        <Trans>Wie ist der Raumbezug angegeben?</Trans>
+      </h3>
       {radio(
         'geometry',
         <>
-          Geometrie in der Datei{' '}
-          {!hasGeometry && <span className="text-muted">(nicht gefunden)</span>}
+          <Trans>Geometrie in der Datei</Trans>{' '}
+          {!hasGeometry && (
+            <span className="text-muted">
+              <Trans>(nicht gefunden)</Trans>
+            </span>
+          )}
         </>,
         !hasGeometry,
       )}
       {geo.mode === 'geometry' && (
         <div className="ml-6">
           <CrsInput value={geo.crs} onChange={(crs) => onGeo({ ...geo, crs })} />
-          {preview.crs_label && (
-            <p className="text-muted text-xs">Die Datei nennt: {preview.crs_label}</p>
-          )}
+          {preview.crs_label && <CrsLabel label={preview.crs_label} />}
         </div>
       )}
-      {radio('xy', 'Koordinatenspalten (X / Y)', hasGeometry)}
+      {radio('xy', t`Koordinatenspalten (X / Y)`, hasGeometry)}
       {geo.mode === 'xy' && (
         <div className="ml-6 flex flex-col gap-2 text-sm">
           <div className="flex gap-4">
             {(['x', 'y'] as const).map((axis) => (
               <label key={axis} className="flex items-center gap-2">
-                {axis.toUpperCase()}-Spalte
+                {axis === 'x' ? t`X-Spalte` : t`Y-Spalte`}
                 <select
                   className="input"
                   value={geo[axis]}
@@ -458,11 +516,11 @@ function GeoStep({ state, onGeo }: { state: WizardState; onGeo: (geo: Geo) => vo
           <CrsInput value={geo.crs} onChange={(crs) => onGeo({ ...geo, crs })} />
         </div>
       )}
-      {radio('key', 'Schlüssel auf vorhandenen Layer', hasGeometry)}
+      {radio('key', t`Schlüssel auf vorhandenen Layer`, hasGeometry)}
       {geo.mode === 'key' && (
         <div className="ml-6 flex flex-col gap-2 text-sm">
           <div className="flex items-center gap-2">
-            Spalte
+            <Trans>Spalte</Trans>
             <select
               className="input"
               value={geo.column}
@@ -476,7 +534,7 @@ function GeoStep({ state, onGeo }: { state: WizardState; onGeo: (geo: Geo) => vo
             =
             <select
               className="input"
-              aria-label="Ziel-Layer und Schlüssel"
+              aria-label={t`Ziel-Layer und Schlüssel`}
               value={geo.layer ? `${geo.layer}.${geo.attribute}` : ''}
               onChange={(e) => {
                 const [layer = '', attribute = ''] = e.target.value.split('.')
@@ -499,7 +557,7 @@ function GeoStep({ state, onGeo }: { state: WizardState; onGeo: (geo: Geo) => vo
             geo.column &&
             geo.layer && (
               <p className="text-muted">
-                Weniger als die Hälfte der Schlüssel findet einen Treffer.
+                <Trans>Weniger als die Hälfte der Schlüssel findet einen Treffer.</Trans>
               </p>
             )
           )}
@@ -522,16 +580,30 @@ function FieldsStep({
     onFields(state.fields.map((f, j) => (j === i ? { ...f, ...patch } : f)))
   return (
     <div>
-      <h3 className="mb-2 text-xl">Felder beschreiben</h3>
+      <h3 className="mb-2 text-xl">
+        <Trans>Felder beschreiben</Trans>
+      </h3>
       <table className="data-table">
         <thead>
           <tr>
-            <th>Übernehmen</th>
-            <th>Spalte</th>
-            <th>Feldname</th>
-            <th>Bezeichnung</th>
-            <th>Einheit</th>
-            <th>Für Modell</th>
+            <th>
+              <Trans>Übernehmen</Trans>
+            </th>
+            <th>
+              <Trans>Spalte</Trans>
+            </th>
+            <th>
+              <Trans>Feldname</Trans>
+            </th>
+            <th>
+              <Trans>Bezeichnung</Trans>
+            </th>
+            <th>
+              <Trans>Einheit</Trans>
+            </th>
+            <th>
+              <Trans>Für Modell</Trans>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -540,19 +612,19 @@ function FieldsStep({
               <td>
                 <input
                   type="checkbox"
-                  aria-label={`${field.source_name} übernehmen`}
+                  aria-label={fieldLabels(field.source_name).include}
                   checked={field.include}
                   onChange={(e) => set(i, { include: e.target.checked })}
                 />
               </td>
               <td>
                 {field.source_name}
-                <div className="text-muted text-xs">{field.data_type}</div>
+                <div className="text-muted text-xs">{typeLabel(field.data_type)}</div>
               </td>
               <td>
                 <input
                   className="input w-36 font-mono"
-                  aria-label={`Feldname ${field.source_name}`}
+                  aria-label={fieldLabels(field.source_name).name}
                   value={field.name}
                   onChange={(e) => set(i, { name: e.target.value })}
                 />
@@ -560,7 +632,7 @@ function FieldsStep({
               <td>
                 <input
                   className="input w-full"
-                  aria-label={`Bezeichnung ${field.source_name}`}
+                  aria-label={fieldLabels(field.source_name).label}
                   value={field.label}
                   onChange={(e) => set(i, { label: e.target.value })}
                 />
@@ -568,7 +640,7 @@ function FieldsStep({
               <td>
                 <input
                   className="input w-20"
-                  aria-label={`Einheit ${field.source_name}`}
+                  aria-label={fieldLabels(field.source_name).unit}
                   value={field.unit}
                   onChange={(e) => set(i, { unit: e.target.value })}
                 />
@@ -576,7 +648,7 @@ function FieldsStep({
               <td>
                 <input
                   type="checkbox"
-                  aria-label={`${field.source_name} für Modell`}
+                  aria-label={fieldLabels(field.source_name).forModel}
                   checked={field.for_model}
                   onChange={(e) => set(i, { for_model: e.target.checked })}
                 />
@@ -589,12 +661,28 @@ function FieldsStep({
   )
 }
 
+/** "120 Datensätze · 6 Spalten · Point · Trennzeichen „;" · UTF-8" (design D6). */
+function previewSummary(preview: Preview): string {
+  const columns = formatNumber(preview.columns.length)
+  const delimiter = preview.options.delimiter
+  return [
+    recordCount(preview.record_count),
+    plural(preview.columns.length, { one: `${columns} Spalte`, other: `${columns} Spalten` }),
+    preview.geometry_type,
+    delimiter && t`Trennzeichen „${delimiter}"`,
+    preview.options.encoding,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+}
+
 // --- step 4 -------------------------------------------------------------------
 
-const CHECK_ICONS = {
-  ok: <Check size={14} aria-label="erledigt" />,
-  warning: <AlertTriangle size={14} className="text-accent-700" aria-label="Warnung" />,
-  todo: <Circle size={12} aria-label="offen" />,
+function checkIcon(kind: 'ok' | 'warning' | 'todo') {
+  if (kind === 'ok') return <Check size={14} aria-label={t`erledigt`} />
+  if (kind === 'warning')
+    return <AlertTriangle size={14} className="text-accent-700" aria-label={t`Warnung`} />
+  return <Circle size={12} aria-label={t`offen`} />
 }
 
 function CheckStep({
@@ -609,11 +697,13 @@ function CheckStep({
   const target = useLayer(state.replace ?? '')
   return (
     <div className="flex flex-col gap-3">
-      <h3 className="text-xl">Prüfen und übernehmen</h3>
+      <h3 className="text-xl">
+        <Trans>Prüfen und übernehmen</Trans>
+      </h3>
       <ul className="flex flex-col gap-1.5">
         {checks(state).map((check, i) => (
           <li key={i} className="flex items-center gap-2 text-sm">
-            {CHECK_ICONS[check.kind]}
+            {checkIcon(check.kind)}
             <span>{check.text}</span>
             {check.step && check.kind !== 'ok' && (
               <button
@@ -621,7 +711,7 @@ function CheckStep({
                 className="btn ml-auto text-sm"
                 onClick={() => onJump(check.step as Step)}
               >
-                → Schritt {check.step}
+                {toStep(check.step)}
               </button>
             )}
           </li>
@@ -629,13 +719,18 @@ function CheckStep({
       </ul>
       {state.replace && target.data && (
         <div className="card bg-neutral-200 p-3 text-sm">
-          <p className="label-caps">Aktualisieren</p>
+          <p className="label-caps">
+            <Trans>Aktualisieren</Trans>
+          </p>
           <p>
-            {target.data.title}: {target.data.feature_count} Objekte → {state.preview.record_count}{' '}
-            Datensätze in der Datei. Felder:{' '}
-            {fieldChanges(
-              target.data.attributes.map((a) => a.name),
-              state.fields.filter((f) => f.include).map((f) => f.name),
+            {replaceSummary(
+              target.data.title,
+              target.data.feature_count,
+              state.preview.record_count,
+              fieldChanges(
+                target.data.attributes.map((a) => a.name),
+                state.fields.filter((f) => f.include).map((f) => f.name),
+              ),
             )}
           </p>
         </div>
@@ -646,7 +741,7 @@ function CheckStep({
           checked={state.forModel}
           onChange={(e) => onChange({ forModel: e.target.checked })}
         />
-        Für das Modell sichtbar (wirkt ab E2)
+        <Trans>Für das Modell sichtbar (wirkt ab E2)</Trans>
       </label>
     </div>
   )
@@ -656,20 +751,26 @@ function CheckStep({
 
 function FailedRun({ run }: { run: ImportRunInfo }) {
   if (run.status !== 'failed') return null
+  const id = run.id
+  const logPath = `/admin/protokoll/${id}`
   return (
     <div role="alert" className="border-danger mt-4 rounded-[var(--radius-md)] border p-3 text-sm">
-      <p className="text-danger font-semibold">Import fehlgeschlagen — nichts wurde übernommen.</p>
+      <p className="text-danger font-semibold">
+        <Trans>Import fehlgeschlagen — nichts wurde übernommen.</Trans>
+      </p>
       <ul className="list-disc pl-5">
         {run.errors.map((e) => (
           <li key={e.code}>{e.message}</li>
         ))}
       </ul>
       <p className="text-muted mt-1">
-        Der Versuch ist protokolliert (
-        <Link to={`/admin/protokoll/${run.id}`} className="text-accent-700">
-          Vorgang {run.id}
-        </Link>
-        ). Entscheidungen korrigieren und erneut übernehmen.
+        <Trans>
+          Der Versuch ist protokolliert (
+          <Link to={logPath} className="text-accent-700">
+            Vorgang {id}
+          </Link>
+          ). Entscheidungen korrigieren und erneut übernehmen.
+        </Trans>
       </p>
     </div>
   )
@@ -679,12 +780,9 @@ function Finished({ run }: { run: ImportRunInfo }) {
   return (
     <div className="flex flex-col gap-3" role="status">
       <h3 className="flex items-center gap-2 text-xl">
-        Import abgeschlossen <StatusBadge status={run.status} />
+        <Trans>Import abgeschlossen</Trans> <StatusBadge status={run.status} />
       </h3>
-      <p>
-        {run.imported_count} von {run.read_count} Datensätzen übernommen
-        {run.rejected_count > 0 && `, ${run.rejected_count} verworfen`}.
-      </p>
+      <p>{importedText(run)}.</p>
       {run.warnings.length > 0 && (
         <ul className="list-disc pl-5 text-sm">
           {run.warnings.map((w, i) => (
@@ -694,13 +792,13 @@ function Finished({ run }: { run: ImportRunInfo }) {
       )}
       <div className="flex gap-2">
         <Link to={`/admin/daten/${run.layer_name}`} className="btn btn-primary">
-          Layer öffnen
+          <Trans>Layer öffnen</Trans>
         </Link>
         <Link to={`/admin/protokoll/${run.id}`} className="btn">
-          Zum Protokoll
+          <Trans>Zum Protokoll</Trans>
         </Link>
         <Link to="/admin/daten" className="btn">
-          Zum Katalog
+          <Trans>Zum Katalog</Trans>
         </Link>
       </div>
     </div>

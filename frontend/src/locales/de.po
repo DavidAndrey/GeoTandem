@@ -35,6 +35,10 @@ msgstr "„{name}\" löschen?"
 msgid "„{refName}\" gehört jemand anderem; gespeichert wird eine eigene Kopie."
 msgstr "„{refName}\" gehört jemand anderem; gespeichert wird eine eigene Kopie."
 
+#: src/admin/DuplicateLayerDialog.tsx
+msgid "„{title}\" duplizieren"
+msgstr "„{title}\" duplizieren"
+
 #: src/workplace/LayerPanel.tsx
 msgid "„{title}\" entfernen?"
 msgstr "„{title}\" entfernen?"
@@ -46,6 +50,19 @@ msgstr "„Daten neu\": ein beteiligter Layer wurde seit dem Speichern aktualisi
 #: src/table/TableDock.tsx
 msgid "(Ergebnis)"
 msgstr "(Ergebnis)"
+
+#: src/admin/ImportWizard.tsx
+msgid "(nicht gefunden)"
+msgstr "(nicht gefunden)"
+
+#: src/admin/UsersPage.tsx
+msgid "(Sie)"
+msgstr "(Sie)"
+
+#. placeholder {0}: preview.columns.length
+#: src/admin/ImportWizard.tsx
+msgid "{0, plural, one {{columns} Spalte} other {{columns} Spalten}}"
+msgstr "{0, plural, one {{columns} Spalte} other {{columns} Spalten}}"
 
 #. placeholder {0}: usage.data.sessions
 #: src/queries/ManageQueriesDialog.tsx
@@ -93,6 +110,22 @@ msgstr "{field} {op} {value}"
 msgid "{field} {op} {values}"
 msgstr "{field} {op} {values}"
 
+#: src/admin/format.ts
+msgid "{field} für Modell"
+msgstr "{field} für Modell"
+
+#: src/admin/format.ts
+msgid "{field} übernehmen"
+msgstr "{field} übernehmen"
+
+#: src/admin/format.ts
+msgid "{imported} von {read} Datensätzen übernommen"
+msgstr "{imported} von {read} Datensätzen übernommen"
+
+#: src/admin/format.ts
+msgid "{imported} von {read} Datensätzen übernommen, {rejected} verworfen"
+msgstr "{imported} von {read} Datensätzen übernommen, {rejected} verworfen"
+
 #: src/editor/describe.ts
 msgid "{km} km"
 msgstr "{km} km"
@@ -100,6 +133,18 @@ msgstr "{km} km"
 #: src/components/ui.tsx
 msgid "{label}: {value} von {max}"
 msgstr "{label}: {value} von {max}"
+
+#: src/admin/VisibilityPage.tsx
+msgid "{layer} für Administrator"
+msgstr "{layer} für Administrator"
+
+#: src/admin/VisibilityPage.tsx
+msgid "{layer} für Anwender"
+msgstr "{layer} für Anwender"
+
+#: src/admin/ImportWizard.tsx
+msgid "{layer}: {objects} → {read} in der Datei. Felder: {changes}"
+msgstr "{layer}: {objects} → {read} in der Datei. Felder: {changes}"
 
 #: src/editor/describe.ts
 msgid "{m} m"
@@ -113,7 +158,11 @@ msgstr "{matched} / {total} Objekte finden einen Partner"
 msgid "{n, plural, one {{count} Datensatz gelesen} other {{count} Datensätze gelesen}}"
 msgstr "{n, plural, one {{count} Datensatz gelesen} other {{count} Datensätze gelesen}}"
 
-#: src/table/TableDock.tsx
+#: src/admin/format.ts
+msgid "{n, plural, one {{count} Datensatz} other {{count} Datensätze}}"
+msgstr "{n, plural, one {{count} Datensatz} other {{count} Datensätze}}"
+
+#: src/i18n/phrases.ts
 msgid "{n, plural, one {{count} Objekt} other {{count} Objekte}}"
 msgstr "{n, plural, one {{count} Objekt} other {{count} Objekte}}"
 
@@ -142,6 +191,10 @@ msgstr "{title} · Treffer"
 msgid "{title} · übrige"
 msgstr "{title} · übrige"
 
+#: src/admin/DuplicateLayerDialog.tsx
+msgid "{title} (Kopie)"
+msgstr "{title} (Kopie)"
+
 #: src/workplace/LayerPanel.tsx
 msgid "{title} ausblenden"
 msgstr "{title} ausblenden"
@@ -153,6 +206,10 @@ msgstr "{title} einblenden"
 #: src/admin/wizard.ts
 msgid "{unlabelled, plural, one {# Feld ohne Bezeichnung} other {# Felder ohne Bezeichnung}}"
 msgstr "{unlabelled, plural, one {# Feld ohne Bezeichnung} other {# Felder ohne Bezeichnung}}"
+
+#: src/admin/ImportWizard.tsx
+msgid "→ Schritt {step}"
+msgstr "→ Schritt {step}"
 
 #: src/workplace/QueryPanel.tsx
 msgid "+ Bedingung"
@@ -196,6 +253,14 @@ msgctxt "date"
 msgid "ab"
 msgstr "ab"
 
+#: src/admin/AdminLayout.tsx
+msgid "ab {stage}"
+msgstr "ab {stage}"
+
+#: src/admin/DuplicateLayerDialog.tsx
+#: src/admin/ImportWizard.tsx
+#: src/admin/UsersPage.tsx
+#: src/auth/PasswordForm.tsx
 #: src/components/ui.tsx
 #: src/operations/OperationDialog.tsx
 #: src/queries/SaveQueryDialog.tsx
@@ -229,6 +294,14 @@ msgstr "Abfrage-Editor"
 msgid "Abfragen suchen"
 msgstr "Abfragen suchen"
 
+#: src/admin/SystemPage.tsx
+msgid "Abfrageschema"
+msgstr "Abfrageschema"
+
+#: src/admin/format.ts
+msgid "abgebrochen"
+msgstr "abgebrochen"
+
 #: src/workplace/LayerPanel.tsx
 msgid "Abgeleitet · Sitzung"
 msgstr "Abgeleitet · Sitzung"
@@ -241,13 +314,23 @@ msgstr "Abgeleitete Layer (als Rezept)"
 msgid "Abgestufte Grösse"
 msgstr "Abgestufte Grösse"
 
+#: src/admin/ImportRunPage.tsx
+msgid "Ablauf"
+msgstr "Ablauf"
+
 #: src/auth/UserMenu.tsx
 msgid "Abmelden"
 msgstr "Abmelden"
 
+#: src/admin/AdminLayout.tsx
 #: src/App.tsx
 msgid "Administration"
 msgstr "Administration"
+
+#: src/admin/VisibilityPage.tsx
+#: src/auth/rules.ts
+msgid "Administrator"
+msgstr "Administrator"
 
 #: src/operations/OperationDialog.tsx
 msgid "Aggregieren"
@@ -257,6 +340,8 @@ msgstr "Aggregieren"
 msgid "Aggregieren …"
 msgstr "Aggregieren …"
 
+#: src/admin/CatalogPage.tsx
+#: src/admin/UsersPage.tsx
 #: src/queries/ManageQueriesDialog.tsx
 #: src/session/SessionsDialog.tsx
 msgid "Aktionen"
@@ -270,13 +355,39 @@ msgstr "Aktionen für {name}"
 msgid "Aktionen für {title}"
 msgstr "Aktionen für {title}"
 
+#: src/admin/UsersPage.tsx
+msgid "aktiv"
+msgstr "aktiv"
+
 #: src/workplace/Workplace.tsx
 msgid "Aktive Bedingung: {shown} {layer}"
 msgstr "Aktive Bedingung: {shown} {layer}"
 
+#: src/admin/CatalogPage.tsx
+#: src/admin/ImportWizard.tsx
+#: src/admin/LayerPage.tsx
+msgid "Aktualisieren"
+msgstr "Aktualisieren"
+
+#: src/admin/ImportLogPage.tsx
+msgid "Aktualisierung"
+msgstr "Aktualisierung"
+
 #: src/queries/SavedQueries.tsx
 msgid "Aktuelle Abfrage ersetzen?"
 msgstr "Aktuelle Abfrage ersetzen?"
+
+#: src/auth/PasswordForm.tsx
+msgid "Aktuelles Passwort"
+msgstr "Aktuelles Passwort"
+
+#: src/admin/ImportLogPage.tsx
+msgid "alle"
+msgstr "alle"
+
+#: src/admin/CatalogPage.tsx
+msgid "Alle"
+msgstr "Alle"
 
 #: src/table/TableDock.tsx
 msgid "Alle ({allShown})"
@@ -336,6 +447,19 @@ msgstr "Andere Ziel-Layer"
 msgid "Anderen Ergebnis-Layer wählen"
 msgstr "Anderen Ergebnis-Layer wählen"
 
+#: src/admin/UsersPage.tsx
+msgid "Anlegen"
+msgstr "Anlegen"
+
+#: src/auth/LoginPage.tsx
+msgid "Anmelden"
+msgstr "Anmelden"
+
+#: src/admin/VisibilityPage.tsx
+#: src/auth/rules.ts
+msgid "Anwender"
+msgstr "Anwender"
+
 #: src/operations/OperationDialog.tsx
 msgid "Anzahl"
 msgstr "Anzahl"
@@ -347,6 +471,10 @@ msgstr "Anzahl Klassen"
 #: src/table/TableDock.tsx
 msgid "Anzeige"
 msgstr "Anzeige"
+
+#: src/auth/SetupPage.tsx
+msgid "Anzeigename"
+msgstr "Anzeigename"
 
 #: src/workplace/Workplace.tsx
 msgid "Arbeitsweise"
@@ -401,6 +529,10 @@ msgstr "Auf Objekt zoomen"
 msgid "Auf Zeile {id} zoomen"
 msgstr "Auf Zeile {id} zoomen"
 
+#: src/admin/LayerPage.tsx
+msgid "Aufklappen"
+msgstr "Aufklappen"
+
 #: src/workplace/LayerPanel.tsx
 msgid "Aus Analyse entfernen"
 msgstr "Aus Analyse entfernen"
@@ -416,6 +548,10 @@ msgstr "Ausschnitt"
 #: src/queries/SavedQueries.tsx
 msgid "Auswählen ersetzt die aktuelle Abfrage (bei Änderungen mit Rückfrage)."
 msgstr "Auswählen ersetzt die aktuelle Abfrage (bei Änderungen mit Rückfrage)."
+
+#: src/admin/SystemPage.tsx
+msgid "Backend nicht erreichbar: {error}"
+msgstr "Backend nicht erreichbar: {error}"
 
 #: src/workplace/QueryPanel.tsx
 msgid "Bearbeiten ›"
@@ -454,13 +590,64 @@ msgstr "beginnt mit"
 msgid "bei {feature} ({layer})"
 msgstr "bei {feature} ({layer})"
 
+#: src/admin/format.ts
+msgid "Beispieldaten"
+msgstr "Beispieldaten"
+
+#: src/admin/SystemPage.tsx
+msgid "Beispieldatensatz"
+msgstr "Beispieldatensatz"
+
+#: src/auth/SetupPage.tsx
+msgid "Beispieldatensatz „Bern-Mittelland\" laden"
+msgstr "Beispieldatensatz „Bern-Mittelland\" laden"
+
+#: src/admin/AdminLayout.tsx
+#: src/admin/UsersPage.tsx
+msgid "Benutzer"
+msgstr "Benutzer"
+
 #: src/auth/UserMenu.tsx
 msgid "Benutzermenü"
 msgstr "Benutzermenü"
 
+#: src/auth/LoginPage.tsx
+#: src/auth/SetupPage.tsx
+msgid "Benutzername"
+msgstr "Benutzername"
+
 #: src/table/TableDock.tsx
 msgid "berechnet"
 msgstr "berechnet"
+
+#: src/admin/SystemPage.tsx
+msgid "Bereit"
+msgstr "Bereit"
+
+#: src/admin/LayerPage.tsx
+msgid "Beschreibung"
+msgstr "Beschreibung"
+
+#: src/admin/LayerPage.tsx
+msgid "Beschreibung für Mensch und Modell"
+msgstr "Beschreibung für Mensch und Modell"
+
+#: src/admin/AdminLayout.tsx
+msgid "Betrieb"
+msgstr "Betrieb"
+
+#: src/admin/AdminLayout.tsx
+msgid "Bewertung"
+msgstr "Bewertung"
+
+#: src/admin/ImportWizard.tsx
+#: src/admin/LayerPage.tsx
+msgid "Bezeichnung"
+msgstr "Bezeichnung"
+
+#: src/admin/format.ts
+msgid "Bezeichnung {field}"
+msgstr "Bezeichnung {field}"
 
 #: src/editor/EditorPanel.tsx
 msgid "Beziehung"
@@ -483,6 +670,7 @@ msgctxt "date"
 msgid "bis"
 msgstr "bis"
 
+#: src/admin/LayerPage.tsx
 #: src/editor/EditorPanel.tsx
 msgctxt "range"
 msgid "bis"
@@ -492,6 +680,10 @@ msgstr "bis"
 msgid "Bitte das Koordinatensystem der Spalten wählen."
 msgstr "Bitte das Koordinatensystem der Spalten wählen."
 
+#: src/admin/ImportWizard.tsx
+msgid "Bitte eine Datei wählen."
+msgstr "Bitte eine Datei wählen."
+
 #: src/admin/wizard.ts
 msgid "Bitte Schlüsselspalte und Ziel-Layer wählen."
 msgstr "Bitte Schlüsselspalte und Ziel-Layer wählen."
@@ -499,6 +691,14 @@ msgstr "Bitte Schlüsselspalte und Ziel-Layer wählen."
 #: src/admin/wizard.ts
 msgid "Bitte X- und Y-Spalte wählen."
 msgstr "Bitte X- und Y-Spalte wählen."
+
+#: src/admin/LayerPage.tsx
+msgid "Codeliste (je Zeile „Code = Bedeutung\")"
+msgstr "Codeliste (je Zeile „Code = Bedeutung\")"
+
+#: src/admin/ImportWizard.tsx
+msgid "CSV · Excel · GeoPackage · Shapefile (zip) · GeoJSON"
+msgstr "CSV · Excel · GeoPackage · Shapefile (zip) · GeoJSON"
 
 #. Keyboard shortcut (German keyboards: Strg+S)
 #: src/session/SessionMenu.tsx
@@ -513,21 +713,91 @@ msgstr "Darstellung"
 msgid "Darstellung …"
 msgstr "Darstellung …"
 
+#: src/admin/UsersPage.tsx
+msgid "Das Konto und seine Anmeldungen werden entfernt. Das Importprotokoll behält den Namen."
+msgstr "Das Konto und seine Anmeldungen werden entfernt. Das Importprotokoll behält den Namen."
+
 #: src/admin/wizard.ts
 msgid "Das Koordinatensystem ist nicht erkannt; bitte wählen."
 msgstr "Das Koordinatensystem ist nicht erkannt; bitte wählen."
+
+#: src/auth/rules.ts
+msgid "Das neue Passwort braucht mindestens {MIN_PASSWORD_LENGTH} Zeichen."
+msgstr "Das neue Passwort braucht mindestens {MIN_PASSWORD_LENGTH} Zeichen."
+
+#: src/auth/rules.ts
+msgid "Das neue Passwort muss sich vom alten unterscheiden."
+msgstr "Das neue Passwort muss sich vom alten unterscheiden."
+
+#: src/auth/rules.ts
+msgid "Das Passwort braucht mindestens {MIN_PASSWORD_LENGTH} Zeichen."
+msgstr "Das Passwort braucht mindestens {MIN_PASSWORD_LENGTH} Zeichen."
+
+#: src/auth/rules.ts
+msgid "Das Passwort darf weder den Benutzernamen noch den Anzeigenamen noch «GeoTandem» enthalten."
+msgstr "Das Passwort darf weder den Benutzernamen noch den Anzeigenamen noch «GeoTandem» enthalten."
+
+#: src/auth/rules.ts
+msgid "Das Passwort ist eine Tastaturreihe, eine Folge oder eine Wiederholung und leicht zu erraten."
+msgstr "Das Passwort ist eine Tastaturreihe, eine Folge oder eine Wiederholung und leicht zu erraten."
 
 #: src/auth/UserMenu.tsx
 msgid "Das Passwort ist geändert."
 msgstr "Das Passwort ist geändert."
 
+#: src/auth/rules.ts
+msgid "Das Passwort ist zu lang."
+msgstr "Das Passwort ist zu lang."
+
+#: src/admin/UsersPage.tsx
+msgid "Das Startpasswort wird erzeugt und einmal angezeigt; es muss bei der ersten Anmeldung geändert werden."
+msgstr "Das Startpasswort wird erzeugt und einmal angezeigt; es muss bei der ersten Anmeldung geändert werden."
+
 #: src/admin/wizard.ts
 msgid "Datei"
 msgstr "Datei"
 
+#: src/admin/ImportRunPage.tsx
+msgid "Datei gelesen"
+msgstr "Datei gelesen"
+
+#: src/admin/ImportWizard.tsx
+msgid "Datei hierher ziehen oder <0>auswählen</0>"
+msgstr "Datei hierher ziehen oder <0>auswählen</0>"
+
+#: src/admin/ImportWizard.tsx
+msgid "Datei wählen"
+msgstr "Datei wählen"
+
+#: src/admin/ImportWizard.tsx
+msgid "Datei wird gelesen …"
+msgstr "Datei wird gelesen …"
+
+#: src/admin/AdminLayout.tsx
+msgid "Daten"
+msgstr "Daten"
+
+#: src/admin/ImportWizard.tsx
+msgid "Daten importieren"
+msgstr "Daten importieren"
+
 #: src/session/SessionsDialog.tsx
 msgid "Daten neu"
 msgstr "Daten neu"
+
+#: src/admin/AdminLayout.tsx
+#: src/admin/CatalogPage.tsx
+#: src/admin/LayerPage.tsx
+msgid "Datenkatalog"
+msgstr "Datenkatalog"
+
+#: src/admin/SystemPage.tsx
+msgid "Datenkern"
+msgstr "Datenkern"
+
+#: src/admin/format.ts
+msgid "Datum"
+msgstr "Datum"
 
 #: src/workplace/LayerPanel.tsx
 msgid "Deckkraft"
@@ -553,6 +823,10 @@ msgstr "Der Ergebnis-Layer fehlt"
 msgid "Der gespeicherte Zustand ergibt nicht mehr genau die gespeicherte Abfrage."
 msgstr "Der gespeicherte Zustand ergibt nicht mehr genau die gespeicherte Abfrage."
 
+#: src/admin/CatalogPage.tsx
+msgid "Der Katalog ist leer."
+msgstr "Der Katalog ist leer."
+
 #: src/admin/wizard.ts
 msgid "Der Layer braucht eine Bezeichnung."
 msgstr "Der Layer braucht eine Bezeichnung."
@@ -560,6 +834,10 @@ msgstr "Der Layer braucht eine Bezeichnung."
 #: src/workplace/LayerPanel.tsx
 msgid "Der Layer ist Ergebnis-Layer; die Abfrage hat danach kein Ergebnis mehr."
 msgstr "Der Layer ist Ergebnis-Layer; die Abfrage hat danach kein Ergebnis mehr."
+
+#: src/admin/DeleteLayerDialog.tsx
+msgid "Der Layer und seine {count} Objekte werden endgültig entfernt. Abfragen, die ihn verwenden, laufen danach nicht mehr."
+msgstr "Der Layer und seine {count} Objekte werden endgültig entfernt. Abfragen, die ihn verwenden, laufen danach nicht mehr."
 
 #: src/workplace/LayerPanel.tsx
 msgid "Der Layer wird in einer Bedingung verwendet; die Bedingung wirkt weiter, der Layer wird nur nicht mehr angezeigt."
@@ -569,6 +847,18 @@ msgstr "Der Layer wird in einer Bedingung verwendet; die Bedingung wirkt weiter,
 msgid "Der Layername besteht aus Kleinbuchstaben, Ziffern und einzelnen Unterstrichen und beginnt mit einem Buchstaben."
 msgstr "Der Layername besteht aus Kleinbuchstaben, Ziffern und einzelnen Unterstrichen und beginnt mit einem Buchstaben."
 
+#: src/admin/UsersPage.tsx
+msgid "Der letzte aktive Administrator lässt sich weder sperren, herabstufen noch löschen."
+msgstr "Der letzte aktive Administrator lässt sich weder sperren, herabstufen noch löschen."
+
+#: src/admin/ImportWizard.tsx
+msgid "Der Versuch ist protokolliert (<0>Vorgang {id}</0>). Entscheidungen korrigieren und erneut übernehmen."
+msgstr "Der Versuch ist protokolliert (<0>Vorgang {id}</0>). Entscheidungen korrigieren und erneut übernehmen."
+
+#: src/admin/format.ts
+msgid "Details zu {field}"
+msgstr "Details zu {field}"
+
 #: src/session/notice.ts
 msgid "Die Abfrage kann nicht ausgeführt werden. Karte und übrige Layer sind geöffnet."
 msgstr "Die Abfrage kann nicht ausgeführt werden. Karte und übrige Layer sind geöffnet."
@@ -576,6 +866,10 @@ msgstr "Die Abfrage kann nicht ausgeführt werden. Karte und übrige Layer sind 
 #: src/queries/ManageQueriesDialog.tsx
 msgid "Die Abfrage wird endgültig gelöscht."
 msgstr "Die Abfrage wird endgültig gelöscht."
+
+#: src/auth/guards.tsx
+msgid "Die Administration steht nur Administratoren offen."
+msgstr "Die Administration steht nur Administratoren offen."
 
 #: src/queries/SavedQueries.tsx
 msgid "Die aktuelle Abfrage hat Änderungen, die in keiner gespeicherten Abfrage stehen. „{name}\" ersetzt sie."
@@ -589,6 +883,10 @@ msgstr "Die Analyse hat Änderungen, die noch nicht gespeichert sind."
 msgid "Die Datei enthält keine Geometrien."
 msgstr "Die Datei enthält keine Geometrien."
 
+#: src/admin/ImportWizard.tsx
+msgid "Die Datei nennt: {label}"
+msgstr "Die Datei nennt: {label}"
+
 #: src/session/notice.ts
 msgid "Die gespeicherte Abfrage läuft nicht mehr: {error}"
 msgstr "Die gespeicherte Abfrage läuft nicht mehr: {error}"
@@ -600,6 +898,10 @@ msgstr "Die gespeicherte Sitzung ist unvollständig."
 #: src/map/MapView.tsx
 msgid "Die Kacheln kommen von ausserhalb dieser Installation; der Anbieter sieht den Kartenausschnitt."
 msgstr "Die Kacheln kommen von ausserhalb dieser Installation; der Anbieter sieht den Kartenausschnitt."
+
+#: src/admin/DuplicateLayerDialog.tsx
+msgid "Die Kopie übernimmt Daten, Feldbeschreibungen und die Sichtbarkeit; sie wird im Importprotokoll vermerkt."
+msgstr "Die Kopie übernimmt Daten, Feldbeschreibungen und die Sichtbarkeit; sie wird im Importprotokoll vermerkt."
 
 #: src/session/SessionMenu.tsx
 msgid "Die Sitzung wird endgültig gelöscht; der Arbeitsplatz beginnt danach leer."
@@ -616,6 +918,10 @@ msgstr "Die Sitzung wurde mit Format {version} gespeichert; diese Version liest 
 #: src/session/notice.ts
 msgid "Die Treffer sind dieselben."
 msgstr "Die Treffer sind dieselben."
+
+#: src/auth/rules.ts
+msgid "Die Wiederholung stimmt nicht überein."
+msgstr "Die Wiederholung stimmt nicht überein."
 
 #: src/queries/actions.ts
 msgid "Diese Abfrage wurde mit einem unbekannten Format gespeichert."
@@ -637,6 +943,14 @@ msgstr "Diese Sitzung löschen"
 msgid "Dieser Layer hat kein passendes Feld."
 msgstr "Dieser Layer hat kein passendes Feld."
 
+#: src/admin/LayerPage.tsx
+msgid "Dieser Layer ist für das Modell nicht sichtbar."
+msgstr "Dieser Layer ist für das Modell nicht sichtbar."
+
+#: src/auth/rules.ts
+msgid "Dieses Passwort ist zu verbreitet: Es gehört zu den ersten, die ausprobiert werden, auch mit angehängten Zahlen oder Zeichen."
+msgstr "Dieses Passwort ist zu verbreitet: Es gehört zu den ersten, die ausprobiert werden, auch mit angehängten Zahlen oder Zeichen."
+
 #: src/operations/OperationDialog.tsx
 msgid "Distanz"
 msgstr "Distanz"
@@ -649,6 +963,8 @@ msgstr "Distanz {title}"
 msgid "Distanz in Metern"
 msgstr "Distanz in Metern"
 
+#: src/admin/CatalogPage.tsx
+#: src/admin/DuplicateLayerDialog.tsx
 #: src/queries/ManageQueriesDialog.tsx
 #: src/session/SessionsDialog.tsx
 msgid "Duplizieren"
@@ -678,13 +994,31 @@ msgstr "Eine Fläche auf der Karte zeichnen"
 msgid "Eine Sitzung „{trimmed}\" gibt es schon."
 msgstr "Eine Sitzung „{trimmed}\" gibt es schon."
 
+#: src/admin/SystemPage.tsx
+msgid "Eingeschränkt"
+msgstr "Eingeschränkt"
+
+#: src/admin/ImportWizard.tsx
+#: src/admin/LayerPage.tsx
 #: src/operations/OperationDialog.tsx
 msgid "Einheit"
 msgstr "Einheit"
 
+#: src/admin/format.ts
+msgid "Einheit {field}"
+msgstr "Einheit {field}"
+
 #: src/table/TableDock.tsx
 msgid "Einklappen"
 msgstr "Einklappen"
+
+#: src/auth/SetupPage.tsx
+msgid "Einrichten"
+msgstr "Einrichten"
+
+#: src/auth/SetupPage.tsx
+msgid "Einrichtungscode"
+msgstr "Einrichtungscode"
 
 #: src/workplace/QueryPanel.tsx
 msgid "Einschränkung"
@@ -702,6 +1036,10 @@ msgstr "Einzelfarbe"
 msgid "endet mit"
 msgstr "endet mit"
 
+#: src/admin/DeleteLayerDialog.tsx
+msgid "Endgültig löschen"
+msgstr "Endgültig löschen"
+
 #: src/workplace/LayerPanel.tsx
 msgid "Entfernen"
 msgstr "Entfernen"
@@ -716,6 +1054,27 @@ msgctxt "text"
 msgid "enthält"
 msgstr "enthält"
 
+#: src/admin/ImportRunPage.tsx
+msgid "Entscheidungen geprüft"
+msgstr "Entscheidungen geprüft"
+
+#: src/admin/ImportRunPage.tsx
+msgid "Entscheidungen im Assistenten"
+msgstr "Entscheidungen im Assistenten"
+
+#: src/admin/UsersPage.tsx
+msgid "Entsperren"
+msgstr "Entsperren"
+
+#: src/admin/ImportWizard.tsx
+msgid "EPSG-Code"
+msgstr "EPSG-Code"
+
+#: src/admin/format.ts
+msgid "erfolgreich"
+msgstr "erfolgreich"
+
+#: src/admin/ImportLogPage.tsx
 #: src/workplace/LayerPanel.tsx
 msgid "Ergebnis"
 msgstr "Ergebnis"
@@ -761,13 +1120,26 @@ msgstr "Ergebnisprüfung"
 msgid "Ergibt einen abgeleiteten Layer dieser Sitzung; er wird bei jedem Öffnen neu berechnet."
 msgstr "Ergibt einen abgeleiteten Layer dieser Sitzung; er wird bei jedem Öffnen neu berechnet."
 
+#: src/admin/ImportWizard.tsx
+msgid "erledigt"
+msgstr "erledigt"
+
+#: src/admin/ImportRunPage.tsx
+msgid "Erneut importieren"
+msgstr "Erneut importieren"
+
 #: src/workplace/AddLayers.tsx
 msgid "Erscheint in der Attributtabelle, nicht auf der Karte"
 msgstr "Erscheint in der Attributtabelle, nicht auf der Karte"
 
+#: src/admin/ImportWizard.tsx
 #: src/queries/SavedQueries.tsx
 msgid "Ersetzen"
 msgstr "Ersetzen"
+
+#: src/admin/ImportWizard.tsx
+msgid "Ersetzt den Inhalt von <0>{targetTitle}</0>; Bezeichnungen und Beschreibungen gleichnamiger Felder bleiben erhalten."
+msgstr "Ersetzt den Inhalt von <0>{targetTitle}</0>; Bezeichnungen und Beschreibungen gleichnamiger Felder bleiben erhalten."
 
 #: src/editor/EditorPanel.tsx
 msgid "Erst einen Ergebnis-Layer wählen."
@@ -776,6 +1148,18 @@ msgstr "Erst einen Ergebnis-Layer wählen."
 #: src/workplace/ResultSelect.tsx
 msgid "Erst einen Layer hinzufügen; er wird Ergebnis-Layer."
 msgstr "Erst einen Layer hinzufügen; er wird Ergebnis-Layer."
+
+#: src/admin/VisibilityPage.tsx
+msgid "erst nach Freigabe"
+msgstr "erst nach Freigabe"
+
+#: src/admin/LayerPage.tsx
+msgid "Erste Objekte"
+msgstr "Erste Objekte"
+
+#: src/auth/SetupPage.tsx
+msgid "Ersteinrichtung"
+msgstr "Ersteinrichtung"
 
 #: src/table/TableDock.tsx
 msgid "Export · ab E5"
@@ -793,6 +1177,19 @@ msgstr "Fachliche Namen aus dem Datenkatalog · Auswahl wird mit der Sitzung ges
 msgid "Farbe"
 msgstr "Farbe"
 
+#: src/admin/LayerPage.tsx
+msgid "Fassung"
+msgstr "Fassung"
+
+#: src/admin/ImportRunPage.tsx
+msgid "Fehler"
+msgstr "Fehler"
+
+#: src/admin/format.ts
+msgid "fehlgeschlagen"
+msgstr "fehlgeschlagen"
+
+#: src/admin/LayerPage.tsx
 #: src/editor/EditorPanel.tsx
 #: src/operations/OperationDialog.tsx
 msgid "Feld"
@@ -807,6 +1204,7 @@ msgstr "Feld …"
 msgid "Feld der Darstellung"
 msgstr "Feld der Darstellung"
 
+#: src/admin/LayerPage.tsx
 #: src/admin/wizard.ts
 msgid "Felder"
 msgstr "Felder"
@@ -814,6 +1212,18 @@ msgstr "Felder"
 #: src/operations/OperationDialog.tsx
 msgid "Felder aus {rightTitle}"
 msgstr "Felder aus {rightTitle}"
+
+#: src/admin/ImportWizard.tsx
+msgid "Felder beschreiben"
+msgstr "Felder beschreiben"
+
+#: src/admin/ImportWizard.tsx
+msgid "Feldname"
+msgstr "Feldname"
+
+#: src/admin/format.ts
+msgid "Feldname {field}"
+msgstr "Feldname {field}"
 
 #: src/editor/EditorPanel.tsx
 msgid "Filter entfernen"
@@ -825,6 +1235,11 @@ msgstr "Filter entfernen"
 msgid "Fläche"
 msgstr "Fläche"
 
+#: src/admin/format.ts
+msgctxt "geometry"
+msgid "Fläche"
+msgstr "Fläche"
+
 #: src/session/SaveAsDialog.tsx
 msgid "Fragestellung, Annahmen …"
 msgstr "Fragestellung, Annahmen …"
@@ -833,10 +1248,29 @@ msgstr "Fragestellung, Annahmen …"
 msgid "Funktion"
 msgstr "Funktion"
 
+#: src/admin/LayerPage.tsx
+msgid "Für Anwender sichtbar"
+msgstr "Für Anwender sichtbar"
+
+#: src/admin/ImportWizard.tsx
+#: src/admin/LayerPage.tsx
+msgid "Für das Modell sichtbar (wirkt ab E2)"
+msgstr "Für das Modell sichtbar (wirkt ab E2)"
+
+#: src/admin/CatalogPage.tsx
+#: src/admin/ImportWizard.tsx
+#: src/admin/LayerPage.tsx
+msgid "Für Modell"
+msgstr "Für Modell"
+
 #. Badge: group
 #: src/workplace/QueryPanel.tsx
 msgid "G"
 msgstr "G"
+
+#: src/admin/format.ts
+msgid "Ganzzahl"
+msgstr "Ganzzahl"
 
 #: src/queries/ManageQueriesDialog.tsx
 #: src/session/SessionsDialog.tsx
@@ -854,6 +1288,19 @@ msgstr "Gemeinde, Haltestelle, Schule …"
 #: src/admin/wizard.ts
 msgid "Geobezug"
 msgstr "Geobezug"
+
+#: src/admin/format.ts
+#: src/admin/LayerPage.tsx
+msgid "Geometrie"
+msgstr "Geometrie"
+
+#: src/admin/ImportWizard.tsx
+msgid "Geometrie in der Datei"
+msgstr "Geometrie in der Datei"
+
+#: src/admin/ImportRunPage.tsx
+msgid "Geometrien gebildet"
+msgstr "Geometrien gebildet"
 
 #: src/queries/SavedQueries.tsx
 msgid "Gespeichert"
@@ -883,6 +1330,10 @@ msgstr "Gespeichert werden Abfragen auf Katalog-Layern, nicht auf abgeleiteten."
 msgid "Gespeichert werden Abfragen auf Katalog-Layern; dieser Ergebnis-Layer ist abgeleitet."
 msgstr "Gespeichert werden Abfragen auf Katalog-Layern; dieser Ergebnis-Layer ist abgeleitet."
 
+#: src/admin/LayerPage.tsx
+msgid "Gespeichert."
+msgstr "Gespeichert."
+
 #: src/queries/ManageQueriesDialog.tsx
 #: src/queries/SavedQueries.tsx
 msgid "Gespeicherte Abfragen"
@@ -891,6 +1342,10 @@ msgstr "Gespeicherte Abfragen"
 #: src/session/SessionsDialog.tsx
 msgid "Gespeicherte Sitzungen öffnen, umbenennen, duplizieren oder löschen"
 msgstr "Gespeicherte Sitzungen öffnen, umbenennen, duplizieren oder löschen"
+
+#: src/admin/UsersPage.tsx
+msgid "gesperrt"
+msgstr "gesperrt"
 
 #: src/session/ui.ts
 msgid "gestern"
@@ -912,6 +1367,10 @@ msgstr "Geteilt: für alle Anwender lesbar (Ändern erzeugt bei ihnen eine Kopie
 msgid "Geteilt: für alle Anwender sichtbar, die ihre Layer sehen — nur lesend, Ändern erzeugt eine Kopie."
 msgstr "Geteilt: für alle Anwender sichtbar, die ihre Layer sehen — nur lesend, Ändern erzeugt eine Kopie."
 
+#: src/admin/VisibilityPage.tsx
+msgid "Gilt für neu importierte Layer; ein aktualisierter Layer behält seine Sichtbarkeit. Administratoren sehen alle Layer."
+msgstr "Gilt für neu importierte Layer; ein aktualisierter Layer behält seine Sichtbarkeit. Administratoren sehen alle Layer."
+
 #: src/operations/OperationDialog.tsx
 msgid "gleiche Intervalle"
 msgstr "gleiche Intervalle"
@@ -919,6 +1378,10 @@ msgstr "gleiche Intervalle"
 #: src/operations/OperationDialog.tsx
 msgid "Gleichnamige Felder erhalten das Präfix „{prefix}\"."
 msgstr "Gleichnamige Felder erhalten das Präfix „{prefix}\"."
+
+#: src/admin/ImportRunPage.tsx
+msgid "Grund"
+msgstr "Grund"
 
 #: src/editor/EditorPanel.tsx
 msgid "Gruppe"
@@ -976,9 +1439,42 @@ msgstr "Hinzufügen"
 msgid "Höhe der Tabelle"
 msgstr "Höhe der Tabelle"
 
+#: src/admin/ImportRunPage.tsx
+msgid "Im Assistenten abgebrochen."
+msgstr "Im Assistenten abgebrochen."
+
 #: src/workplace/LayerPanel.tsx
 msgid "Im Datenkatalog öffnen"
 msgstr "Im Datenkatalog öffnen"
+
+#: src/admin/ImportRunPage.tsx
+msgid "Import · {source}"
+msgstr "Import · {source}"
+
+#: src/admin/ImportWizard.tsx
+msgid "Import abgeschlossen"
+msgstr "Import abgeschlossen"
+
+#: src/admin/ImportWizard.tsx
+msgid "Import fehlgeschlagen — nichts wurde übernommen."
+msgstr "Import fehlgeschlagen — nichts wurde übernommen."
+
+#: src/admin/ImportWizard.tsx
+msgid "Importdatei"
+msgstr "Importdatei"
+
+#: src/admin/CatalogPage.tsx
+msgid "Importieren"
+msgstr "Importieren"
+
+#: src/admin/AdminLayout.tsx
+#: src/admin/ImportLogPage.tsx
+msgid "Importprotokoll"
+msgstr "Importprotokoll"
+
+#: src/admin/SystemPage.tsx
+msgid "Internes CRS"
+msgstr "Internes CRS"
 
 #: src/editor/describe.ts
 msgid "ist eins von"
@@ -988,11 +1484,16 @@ msgstr "ist eins von"
 msgid "ist leer"
 msgstr "ist leer"
 
+#: src/admin/CatalogPage.tsx
 #: src/editor/describe.ts
 #: src/editor/EditorPanel.tsx
 #: src/session/SaveAsDialog.tsx
 msgid "ja"
 msgstr "ja"
+
+#: src/admin/format.ts
+msgid "Ja/Nein"
+msgstr "Ja/Nein"
 
 #: src/operations/OperationDialog.tsx
 msgid "Je Gebiet aus"
@@ -1036,6 +1537,11 @@ msgstr "Kategorien"
 msgid "kein Ergebnis-Layer"
 msgstr "kein Ergebnis-Layer"
 
+#: src/auth/LoginPage.tsx
+msgid "Kein Konto oder Passwort vergessen? Bitte an den Administrator wenden."
+msgstr "Kein Konto oder Passwort vergessen? Bitte an den Administrator wenden."
+
+#: src/admin/CatalogPage.tsx
 #: src/workplace/AddLayers.tsx
 msgid "Kein Layer passt."
 msgstr "Kein Layer passt."
@@ -1059,6 +1565,10 @@ msgstr "Keine Bedingung: alle Objekte sind Treffer."
 #: src/map/MapView.tsx
 msgid "Keine Hintergrundkarte konfiguriert"
 msgstr "Keine Hintergrundkarte konfiguriert"
+
+#: src/admin/ImportLogPage.tsx
+msgid "Keine Importe."
+msgstr "Keine Importe."
 
 #: src/workplace/AddLayers.tsx
 msgid "Keine Layer freigegeben."
@@ -1096,6 +1606,30 @@ msgstr "Klassik"
 msgid "Klicken setzt Punkte, Doppelklick schliesst ab, Esc beginnt neu. Gemessen auf dem Ellipsoid (WGS84)."
 msgstr "Klicken setzt Punkte, Doppelklick schliesst ab, Esc beginnt neu. Gemessen auf dem Ellipsoid (WGS84)."
 
+#: src/admin/ImportWizard.tsx
+msgid "Kodierung"
+msgstr "Kodierung"
+
+#: src/admin/ImportWizard.tsx
+msgid "Komma"
+msgstr "Komma"
+
+#: src/admin/UsersPage.tsx
+msgid "Konto"
+msgstr "Konto"
+
+#: src/admin/UsersPage.tsx
+msgid "Konto „{username}\" löschen?"
+msgstr "Konto „{username}\" löschen?"
+
+#: src/admin/ImportWizard.tsx
+msgid "Koordinatenspalten (X / Y)"
+msgstr "Koordinatenspalten (X / Y)"
+
+#: src/admin/ImportWizard.tsx
+msgid "Koordinatensystem EPSG:"
+msgstr "Koordinatensystem EPSG:"
+
 #: src/admin/wizard.ts
 msgid "Koordinatensystem EPSG:{crs}"
 msgstr "Koordinatensystem EPSG:{crs}"
@@ -1104,11 +1638,22 @@ msgstr "Koordinatensystem EPSG:{crs}"
 msgid "Koordinatensystem fehlt"
 msgstr "Koordinatensystem fehlt"
 
+#: src/admin/DuplicateLayerDialog.tsx
+msgid "Kopie eines Layers mit Daten, Metadaten und Sichtbarkeit"
+msgstr "Kopie eines Layers mit Daten, Metadaten und Sichtbarkeit"
+
 #: src/components/ui.tsx
 #: src/table/TableDock.tsx
 msgid "Lädt …"
 msgstr "Lädt …"
 
+#: src/admin/format.ts
+msgid "läuft"
+msgstr "läuft"
+
+#: src/admin/CatalogPage.tsx
+#: src/admin/ImportLogPage.tsx
+#: src/admin/VisibilityPage.tsx
 #: src/workplace/AddLayers.tsx
 #: src/workplace/LayerPanel.tsx
 msgid "Layer"
@@ -1134,6 +1679,14 @@ msgstr "Layer „{layer}\" ist nicht mehr verfügbar."
 msgid "Layer „{name}\" ist nicht mehr verfügbar und wurde aus der Analyse genommen."
 msgstr "Layer „{name}\" ist nicht mehr verfügbar und wurde aus der Analyse genommen."
 
+#: src/admin/ImportLogPage.tsx
+msgid "Layer {layer}"
+msgstr "Layer {layer}"
+
+#: src/admin/ImportWizard.tsx
+msgid "Layer aktualisieren"
+msgstr "Layer aktualisieren"
+
 #: src/editor/EditorPanel.tsx
 msgid "Layer des Bezugsobjekts"
 msgstr "Layer des Bezugsobjekts"
@@ -1142,9 +1695,26 @@ msgstr "Layer des Bezugsobjekts"
 msgid "Layer hinzufügen"
 msgstr "Layer hinzufügen"
 
+#: src/admin/ImportWizard.tsx
+msgid "Layer in der Datei"
+msgstr "Layer in der Datei"
+
+#: src/admin/ImportWizard.tsx
+msgid "Layer öffnen"
+msgstr "Layer öffnen"
+
+#: src/admin/CatalogPage.tsx
 #: src/workplace/AddLayers.tsx
 msgid "Layer suchen"
 msgstr "Layer suchen"
+
+#: src/admin/ImportRunPage.tsx
+msgid "Layer und Raumindex angelegt"
+msgstr "Layer und Raumindex angelegt"
+
+#: src/admin/LayerPage.tsx
+msgid "Layer-Detail"
+msgstr "Layer-Detail"
 
 #: src/map/MapView.tsx
 #: src/workplace/Workplace.tsx
@@ -1155,6 +1725,14 @@ msgstr "Legende"
 msgid "Legende ein/aus"
 msgstr "Legende ein/aus"
 
+#: src/admin/UsersPage.tsx
+msgid "Letzte Anmeldung"
+msgstr "Letzte Anmeldung"
+
+#: src/admin/CatalogPage.tsx
+msgid "Letzter Import"
+msgstr "Letzter Import"
+
 #: src/editor/describe.ts
 msgid "liegt ausserhalb"
 msgstr "liegt ausserhalb"
@@ -1164,6 +1742,13 @@ msgstr "liegt ausserhalb"
 msgid "liegt in"
 msgstr "liegt in"
 
+#: src/admin/format.ts
+msgid "Linie"
+msgstr "Linie"
+
+#: src/admin/CatalogPage.tsx
+#: src/admin/LayerPage.tsx
+#: src/admin/UsersPage.tsx
 #: src/queries/ManageQueriesDialog.tsx
 #: src/session/SessionMenu.tsx
 #: src/session/SessionsDialog.tsx
@@ -1174,6 +1759,10 @@ msgstr "Löschen"
 #: src/operations/OperationDialog.tsx
 msgid "Maximum"
 msgstr "Maximum"
+
+#: src/admin/format.ts
+msgid "Maximum {field}"
+msgstr "Maximum {field}"
 
 #: src/map/Measurement.tsx
 msgid "Messart"
@@ -1191,9 +1780,17 @@ msgstr "Messen beenden"
 msgid "Messwert"
 msgstr "Messwert"
 
+#: src/admin/CatalogPage.tsx
+msgid "Metadaten"
+msgstr "Metadaten"
+
 #: src/operations/OperationDialog.tsx
 msgid "Methode"
 msgstr "Methode"
+
+#: src/auth/rules.ts
+msgid "Mindestens {MIN_PASSWORD_LENGTH} Zeichen, Sonderzeichen sind nicht nötig. Ein Satz aus mehreren Wörtern ist sicher und gut zu merken."
+msgstr "Mindestens {MIN_PASSWORD_LENGTH} Zeichen, Sonderzeichen sind nicht nötig. Ein Satz aus mehreren Wörtern ist sicher und gut zu merken."
 
 #: src/editor/EditorPanel.tsx
 msgid "mindestens eine"
@@ -1203,13 +1800,25 @@ msgstr "mindestens eine"
 msgid "Minimum"
 msgstr "Minimum"
 
+#: src/admin/format.ts
+msgid "Minimum {field}"
+msgstr "Minimum {field}"
+
 #: src/session/OpenNotice.tsx
 msgid "Mit aktuellen Daten übernehmen"
 msgstr "Mit aktuellen Daten übernehmen"
 
+#: src/admin/format.ts
+msgid "mit Warnungen"
+msgstr "mit Warnungen"
+
 #: src/operations/OperationDialog.tsx
 msgid "Mittelwert"
 msgstr "Mittelwert"
+
+#: src/admin/AdminLayout.tsx
+msgid "Modelle"
+msgstr "Modelle"
 
 #: src/editor/describe.ts
 msgctxt "date"
@@ -1224,6 +1833,8 @@ msgstr "Nach oben"
 msgid "Nach unten"
 msgstr "Nach unten"
 
+#: src/admin/LayerPage.tsx
+#: src/admin/UsersPage.tsx
 #: src/operations/OperationDialog.tsx
 #: src/queries/ManageQueriesDialog.tsx
 #: src/queries/SaveQueryDialog.tsx
@@ -1232,14 +1843,23 @@ msgstr "Nach unten"
 msgid "Name"
 msgstr "Name"
 
+#: src/admin/DuplicateLayerDialog.tsx
+msgid "Name (optional)"
+msgstr "Name (optional)"
+
 #: src/operations/OperationDialog.tsx
 msgid "Name der Kennzahl"
 msgstr "Name der Kennzahl"
 
+#: src/admin/CatalogPage.tsx
 #: src/editor/describe.ts
 #: src/editor/EditorPanel.tsx
 msgid "nein"
 msgstr "nein"
+
+#: src/admin/ImportLogPage.tsx
+msgid "Neu"
+msgstr "Neu"
 
 #: src/queries/SavedQueries.tsx
 msgid "Neue Abfrage (leer)"
@@ -1249,6 +1869,10 @@ msgstr "Neue Abfrage (leer)"
 msgid "Neue Daten importieren"
 msgstr "Neue Daten importieren"
 
+#: src/admin/VisibilityPage.tsx
+msgid "Neue Layer für Anwender"
+msgstr "Neue Layer für Anwender"
+
 #: src/session/SessionMenu.tsx
 msgid "Neue Sitzung"
 msgstr "Neue Sitzung"
@@ -1257,6 +1881,18 @@ msgstr "Neue Sitzung"
 #: src/session/SessionsDialog.tsx
 msgid "Neuer Name"
 msgstr "Neuer Name"
+
+#: src/admin/UsersPage.tsx
+msgid "Neues Konto"
+msgstr "Neues Konto"
+
+#: src/auth/PasswordForm.tsx
+msgid "Neues Passwort"
+msgstr "Neues Passwort"
+
+#: src/auth/PasswordForm.tsx
+msgid "Neues Passwort wiederholen"
+msgstr "Neues Passwort wiederholen"
 
 #: src/editor/EditorPanel.tsx
 msgid "NICHT"
@@ -1279,6 +1915,10 @@ msgstr "Nicht gespeichert"
 #: src/map/MapSearch.tsx
 msgid "Nichts gefunden."
 msgstr "Nichts gefunden."
+
+#: src/auth/SetupPage.tsx
+msgid "Noch gibt es kein Konto. Das erste Konto wird Administrator und legt weitere Konten an."
+msgstr "Noch gibt es kein Konto. Das erste Konto wird Administrator und legt weitere Konten an."
 
 #: src/queries/ManageQueriesDialog.tsx
 msgid "Noch keine Abfrage gespeichert."
@@ -1324,6 +1964,10 @@ msgstr "Objekt {fid}"
 msgid "Objekt wählen"
 msgstr "Objekt wählen"
 
+#: src/admin/CatalogPage.tsx
+msgid "Objekte"
+msgstr "Objekte"
+
 #: src/operations/OperationDialog.tsx
 msgid "Objekte ohne Partner behalten"
 msgstr "Objekte ohne Partner behalten"
@@ -1333,10 +1977,12 @@ msgstr "Objekte ohne Partner behalten"
 msgid "ODER"
 msgstr "ODER"
 
+#: src/admin/ImportWizard.tsx
 #: src/session/SessionsDialog.tsx
 msgid "offen"
 msgstr "offen"
 
+#: src/admin/CatalogPage.tsx
 #: src/queries/ManageQueriesDialog.tsx
 #: src/session/SessionsDialog.tsx
 msgid "Öffnen"
@@ -1354,9 +2000,27 @@ msgstr "OK"
 msgid "Operator"
 msgstr "Operator"
 
+#: src/auth/LoginPage.tsx
+#: src/auth/SetupPage.tsx
+msgid "Passwort"
+msgstr "Passwort"
+
+#: src/auth/PasswordForm.tsx
 #: src/auth/UserMenu.tsx
 msgid "Passwort ändern"
 msgstr "Passwort ändern"
+
+#: src/auth/PasswordPage.tsx
+msgid "Passwort festlegen"
+msgstr "Passwort festlegen"
+
+#: src/auth/SetupPage.tsx
+msgid "Passwort wiederholen"
+msgstr "Passwort wiederholen"
+
+#: src/admin/UsersPage.tsx
+msgid "Passwort zurücksetzen"
+msgstr "Passwort zurücksetzen"
 
 #: src/workplace/Workplace.tsx
 msgid "Prompt · ab E2"
@@ -1365,6 +2029,10 @@ msgstr "Prompt · ab E2"
 #: src/admin/wizard.ts
 msgid "Prüfen"
 msgstr "Prüfen"
+
+#: src/admin/ImportWizard.tsx
+msgid "Prüfen und übernehmen"
+msgstr "Prüfen und übernehmen"
 
 #: src/operations/OperationDialog.tsx
 msgid "Puffer"
@@ -1382,9 +2050,20 @@ msgstr "Puffer {distance} {unit} · {title}"
 msgid "Puffer anlegen"
 msgstr "Puffer anlegen"
 
+#: src/admin/format.ts
+msgid "Punkt"
+msgstr "Punkt"
+
 #: src/operations/OperationDialog.tsx
 msgid "Quantile"
 msgstr "Quantile"
+
+#: src/admin/CatalogPage.tsx
+#: src/admin/ImportLogPage.tsx
+#: src/admin/ImportRunPage.tsx
+#: src/admin/LayerPage.tsx
+msgid "Quelle"
+msgstr "Quelle"
 
 #. Badge: spatial or reference condition (Raum)
 #: src/workplace/QueryPanel.tsx
@@ -1398,6 +2077,14 @@ msgstr "Raum"
 #: src/table/TableDock.tsx
 msgid "Reine Anzeige: blendet Zeilen ausserhalb des Kartenausschnitts aus, ändert den Filter nicht."
 msgstr "Reine Anzeige: blendet Zeilen ausserhalb des Kartenausschnitts aus, ändert den Filter nicht."
+
+#: src/admin/UsersPage.tsx
+msgid "Rolle"
+msgstr "Rolle"
+
+#: src/admin/UsersPage.tsx
+msgid "Rolle: {label}"
+msgstr "Rolle: {label}"
 
 #: src/auth/UserMenu.tsx
 #: src/queries/ManageQueriesDialog.tsx
@@ -1417,6 +2104,14 @@ msgstr "Schlüssel {key}"
 msgid "Schlüssel {key}: {matched} / {total} zugeordnet"
 msgstr "Schlüssel {key}: {matched} / {total} zugeordnet"
 
+#: src/admin/LayerPage.tsx
+msgid "Schlüssel auf <0>{target}</0>"
+msgstr "Schlüssel auf <0>{target}</0>"
+
+#: src/admin/ImportWizard.tsx
+msgid "Schlüssel auf vorhandenen Layer"
+msgstr "Schlüssel auf vorhandenen Layer"
+
 #: src/operations/OperationDialog.tsx
 msgid "Schlüssel im Layer"
 msgstr "Schlüssel im Layer"
@@ -1430,9 +2125,30 @@ msgstr "Schlüssel in der Tabelle"
 msgid "schneidet"
 msgstr "schneidet"
 
+#: src/admin/ImportWizard.tsx
+msgid "Schritte"
+msgstr "Schritte"
+
 #: src/workplace/Workplace.tsx
 msgid "Seitenleiste"
 msgstr "Seitenleiste"
+
+#: src/admin/ImportWizard.tsx
+msgid "Semikolon"
+msgstr "Semikolon"
+
+#: src/admin/ImportWizard.tsx
+msgid "Senkrechter Strich"
+msgstr "Senkrechter Strich"
+
+#: src/admin/AdminLayout.tsx
+#: src/admin/VisibilityPage.tsx
+msgid "Sichtbarkeit"
+msgstr "Sichtbarkeit"
+
+#: src/auth/PasswordPage.tsx
+msgid "Sie haben sich mit einem Startpasswort angemeldet. Bitte legen Sie jetzt ein eigenes fest."
+msgstr "Sie haben sich mit einem Startpasswort angemeldet. Bitte legen Sie jetzt ein eigenes fest."
 
 #: src/queries/ManageQueriesDialog.tsx
 msgid "Sie ist geteilt und verschwindet auch für alle anderen."
@@ -1458,14 +2174,27 @@ msgstr "Sitzungen suchen"
 msgid "Sitzungsmenü"
 msgstr "Sitzungsmenü"
 
+#: src/admin/VisibilityPage.tsx
+msgid "sofort sichtbar"
+msgstr "sofort sichtbar"
+
 #: src/table/TableDock.tsx
 msgid "Sortieren: ↓ / ↑ / aus · Umschalt für zweite Sortierung"
 msgstr "Sortieren: ↓ / ↑ / aus · Umschalt für zweite Sortierung"
+
+#: src/admin/ImportWizard.tsx
+msgid "Spalte"
+msgstr "Spalte"
 
 #: src/table/TableDock.tsx
 msgid "Spalten"
 msgstr "Spalten"
 
+#: src/admin/AdminLayout.tsx
+msgid "Später"
+msgstr "Später"
+
+#: src/admin/LayerPage.tsx
 #: src/queries/SavedQueries.tsx
 #: src/queries/SaveQueryDialog.tsx
 #: src/session/SaveAsDialog.tsx
@@ -1502,6 +2231,41 @@ msgstr "Speicherstand"
 msgid "Speichert die Sitzung mit dem heutigen Ergebnis als neuen Stempel."
 msgstr "Speichert die Sitzung mit dem heutigen Ergebnis als neuen Stempel."
 
+#: src/admin/UsersPage.tsx
+msgid "Sperren"
+msgstr "Sperren"
+
+#: src/admin/CatalogPage.tsx
+#: src/admin/LayerPage.tsx
+msgid "Stand"
+msgstr "Stand"
+
+#: src/admin/UsersPage.tsx
+msgid "Startpasswort"
+msgstr "Startpasswort"
+
+#: src/admin/UsersPage.tsx
+msgid "Startpasswort für <0>{username}</0>:"
+msgstr "Startpasswort für <0>{username}</0>:"
+
+#: src/admin/UsersPage.tsx
+msgid "Startpasswort offen"
+msgstr "Startpasswort offen"
+
+#: src/admin/ImportLogPage.tsx
+#: src/admin/SystemPage.tsx
+#: src/admin/UsersPage.tsx
+msgid "Status"
+msgstr "Status"
+
+#: src/admin/LayerPage.tsx
+msgid "Steckbrief für das Modell (F-2.9)"
+msgstr "Steckbrief für das Modell (F-2.9)"
+
+#: src/auth/SetupPage.tsx
+msgid "Steht beim ersten Start im Protokoll der Installation (<0>docker logs</0>) oder ist dort als <1>GEOTANDEM_SETUP_TOKEN</1> gesetzt."
+msgstr "Steht beim ersten Start im Protokoll der Installation (<0>docker logs</0>) oder ist dort als <1>GEOTANDEM_SETUP_TOKEN</1> gesetzt."
+
 #: src/map/Measurement.tsx
 msgid "Strecke"
 msgstr "Strecke"
@@ -1528,6 +2292,15 @@ msgstr "Sucht …"
 msgid "Summe"
 msgstr "Summe"
 
+#: src/admin/AdminLayout.tsx
+msgid "System"
+msgstr "System"
+
+#: src/admin/SystemPage.tsx
+msgid "Systemstatus"
+msgstr "Systemstatus"
+
+#: src/admin/format.ts
 #: src/operations/OperationDialog.tsx
 #: src/workplace/AddLayers.tsx
 msgid "Tabelle"
@@ -1548,6 +2321,26 @@ msgstr "Tabelle, nur in der Attributtabelle"
 #: src/table/TableDock.tsx
 msgid "Tabellen"
 msgstr "Tabellen"
+
+#: src/admin/ImportWizard.tsx
+msgid "Tabellenblatt"
+msgstr "Tabellenblatt"
+
+#: src/admin/ImportWizard.tsx
+msgid "Tabulator"
+msgstr "Tabulator"
+
+#: src/admin/ImportWizard.tsx
+msgid "Technischer Name"
+msgstr "Technischer Name"
+
+#: src/admin/format.ts
+msgid "Text"
+msgstr "Text"
+
+#: src/admin/DuplicateLayerDialog.tsx
+msgid "Titel"
+msgstr "Titel"
 
 #: src/session/SessionsDialog.tsx
 msgid "Treffer"
@@ -1573,10 +2366,28 @@ msgstr "Trefferquote"
 msgid "Trefferzahl"
 msgstr "Trefferzahl"
 
+#: src/admin/ImportWizard.tsx
+msgid "Trennzeichen"
+msgstr "Trennzeichen"
+
+#: src/admin/ImportWizard.tsx
+msgid "Trennzeichen „{delimiter}\""
+msgstr "Trennzeichen „{delimiter}\""
+
+#: src/admin/CatalogPage.tsx
+#: src/admin/LayerPage.tsx
+msgid "Typ"
+msgstr "Typ"
+
+#: src/admin/ImportWizard.tsx
 #: src/editor/EditorPanel.tsx
 #: src/operations/OperationDialog.tsx
 msgid "Übernehmen"
 msgstr "Übernehmen"
+
+#: src/admin/ImportLogPage.tsx
+msgid "Übernommen"
+msgstr "Übernommen"
 
 #: src/queries/SaveQueryDialog.tsx
 #: src/session/SaveAsDialog.tsx
@@ -1610,9 +2421,21 @@ msgstr "Ungespeicherte Änderungen"
 msgid "unverändert"
 msgstr "unverändert"
 
+#: src/admin/CatalogPage.tsx
+msgid "Unvollständig"
+msgstr "Unvollständig"
+
+#: src/admin/SystemPage.tsx
+msgid "Verbinde …"
+msgstr "Verbinde …"
+
 #: src/editor/EditorPanel.tsx
 msgid "Verknüpfung"
 msgstr "Verknüpfung"
+
+#: src/admin/UsersPage.tsx
+msgid "Verstanden"
+msgstr "Verstanden"
 
 #: src/queries/SavedQueries.tsx
 msgid "Verwalten …"
@@ -1631,18 +2454,45 @@ msgstr "Verwerfen und schliessen"
 msgid "von"
 msgstr "von"
 
+#: src/admin/ImportLogPage.tsx
+#: src/admin/ImportRunPage.tsx
+msgid "Von"
+msgstr "Von"
+
 #: src/editor/describe.ts
 msgctxt "date"
 msgid "vor"
 msgstr "vor"
 
+#: src/admin/ImportLogPage.tsx
+msgid "Vorgang"
+msgstr "Vorgang"
+
+#: src/admin/ImportWizard.tsx
+#: src/admin/LayerPage.tsx
+msgid "Vorschau"
+msgstr "Vorschau"
+
+#: src/admin/ImportRunPage.tsx
+#: src/admin/ImportWizard.tsx
+msgid "Warnung"
+msgstr "Warnung"
+
 #: src/workplace/ResultSelect.tsx
 msgid "Wechseln"
 msgstr "Wechseln"
 
+#: src/admin/ImportWizard.tsx
+msgid "Weiter"
+msgstr "Weiter"
+
 #: src/map/MapSearch.tsx
 msgid "weitere Treffer — genauer suchen"
 msgstr "weitere Treffer — genauer suchen"
+
+#: src/admin/ImportWizard.tsx
+msgid "Weniger als die Hälfte der Schlüssel findet einen Treffer."
+msgstr "Weniger als die Hälfte der Schlüssel findet einen Treffer."
 
 #: src/editor/EditorPanel.tsx
 msgid "Wert"
@@ -1652,9 +2502,17 @@ msgstr "Wert"
 msgid "Wert hinzufügen"
 msgstr "Wert hinzufügen"
 
+#: src/admin/LayerPage.tsx
+msgid "Wertebereich"
+msgstr "Wertebereich"
+
 #: src/operations/OperationDialog.tsx
 msgid "Wie der Layer auf der Karte erscheint (F-4.8)."
 msgstr "Wie der Layer auf der Karte erscheint (F-4.8)."
+
+#: src/admin/ImportWizard.tsx
+msgid "Wie ist der Raumbezug angegeben?"
+msgstr "Wie ist der Raumbezug angegeben?"
 
 #: src/session/notice.ts
 msgid "Wiederhergestellt · {count}, identisch mit dem Speicherstand"
@@ -1664,13 +2522,46 @@ msgstr "Wiederhergestellt · {count}, identisch mit dem Speicherstand"
 msgid "Wird gespeichert"
 msgstr "Wird gespeichert"
 
+#: src/admin/UsersPage.tsx
+msgid "Wird nur jetzt angezeigt. Bitte sicher weitergeben; es muss bei der ersten Anmeldung geändert werden."
+msgstr "Wird nur jetzt angezeigt. Bitte sicher weitergeben; es muss bei der ersten Anmeldung geändert werden."
+
 #: src/editor/EditorPanel.tsx
 msgid "wo"
 msgstr "wo"
 
+#: src/admin/ImportWizard.tsx
+msgid "X-Spalte"
+msgstr "X-Spalte"
+
+#: src/admin/ImportWizard.tsx
+msgid "Y-Spalte"
+msgstr "Y-Spalte"
+
+#: src/admin/format.ts
+msgid "Zahl"
+msgstr "Zahl"
+
+#: src/admin/ImportRunPage.tsx
+msgid "Zeile"
+msgstr "Zeile"
+
 #: src/table/TableDock.tsx
 msgid "Zeile {id} auswählen"
 msgstr "Zeile {id} auswählen"
+
+#: src/admin/ImportRunPage.tsx
+msgid "Zeilen"
+msgstr "Zeilen"
+
+#: src/admin/ImportLogPage.tsx
+#: src/admin/ImportRunPage.tsx
+msgid "Zeitpunkt"
+msgstr "Zeitpunkt"
+
+#: src/admin/ImportRunPage.tsx
+msgid "Ziel"
+msgstr "Ziel"
 
 #: src/queries/SaveQueryDialog.tsx
 msgid "Ziel {title} · {conditions} Bedingungen"
@@ -1685,6 +2576,10 @@ msgstr "Ziel {title} · {conditions} Bedingungen · mit Einschränkung"
 msgid "Ziel-Layer"
 msgstr "Ziel-Layer"
 
+#: src/admin/ImportWizard.tsx
+msgid "Ziel-Layer und Schlüssel"
+msgstr "Ziel-Layer und Schlüssel"
+
 #: src/workplace/ResultSelect.tsx
 msgid "Ziel-Layer wechseln setzt Attribut-Bedingungen zurück."
 msgstr "Ziel-Layer wechseln setzt Attribut-Bedingungen zurück."
@@ -1693,13 +2588,29 @@ msgstr "Ziel-Layer wechseln setzt Attribut-Bedingungen zurück."
 msgid "Zoomen"
 msgstr "Zoomen"
 
+#: src/admin/AdminLayout.tsx
+msgid "Zugang"
+msgstr "Zugang"
+
 #: src/session/SessionMenu.tsx
 msgid "Zuletzt"
 msgstr "Zuletzt"
 
+#: src/admin/ImportWizard.tsx
+msgid "Zum Katalog"
+msgstr "Zum Katalog"
+
+#: src/admin/ImportWizard.tsx
+msgid "Zum Protokoll"
+msgstr "Zum Protokoll"
+
 #: src/operations/OperationDialog.tsx
 msgid "Zuordnung"
 msgstr "Zuordnung"
+
+#: src/admin/ImportWizard.tsx
+msgid "Zurück"
+msgstr "Zurück"
 
 #: src/editor/describe.ts
 msgid "zwischen"

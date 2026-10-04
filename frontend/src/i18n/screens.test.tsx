@@ -14,7 +14,7 @@ import { layer, signedIn } from '../test/fixtures'
 import { activate } from './i18n'
 import { messages } from '../locales/pseudo.po'
 import { fakeApi, renderAt } from '../test/render'
-import { unmarked } from '../test/pseudo'
+import { strays as findStrays } from '../test/pseudo'
 
 beforeEach(() => {
   useAnalysis.getState().reset()
@@ -44,33 +44,7 @@ const DATA = [
   'm.keller',
   'C3',
 ]
-// Leaflet draws its own controls (scale bar, credits); they are not ours.
-const SKIP = 'script, style, .leaflet-control-container'
-// Unit symbols are the same in every language.
-const UNIT = /^\s*(m|km|m²|ha|km²|%)\s*$/
-
-/** Every visible text and label of the page outside the catalog and the data. */
-function strays(): string[] {
-  const found = new Set<string>()
-  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
-  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    const element = node.parentElement
-    if (!element || element.closest(SKIP) || UNIT.test(node.textContent ?? '')) continue
-    // React may split one message into several text nodes; judge the element's text.
-    const text = element.textContent ?? ''
-    if (unmarked(text, DATA)) found.add(text.trim())
-  }
-  for (const element of Array.from(
-    document.body.querySelectorAll('[aria-label], [title], [placeholder]'),
-  )) {
-    if (element.closest(SKIP)) continue
-    for (const name of ['aria-label', 'title', 'placeholder']) {
-      const value = element.getAttribute(name)
-      if (value && unmarked(value, DATA)) found.add(`${name}="${value}"`)
-    }
-  }
-  return [...found]
-}
+const strays = () => findStrays(DATA)
 
 function backend() {
   return fakeApi({

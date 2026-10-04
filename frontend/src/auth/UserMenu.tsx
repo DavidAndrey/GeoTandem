@@ -10,7 +10,7 @@ import { useResetSession } from '../api/queries'
 import { newSession } from '../session/actions'
 import { guarded, useSessionUi } from '../session/ui'
 import { PasswordForm } from './PasswordForm'
-import { ROLE_LABELS } from './rules'
+import { roleLabel } from './rules'
 
 export function UserMenu({ account }: { account: Account }) {
   const { t } = useLingui()
@@ -44,7 +44,7 @@ export function UserMenu({ account }: { account: Account }) {
           >
             <div className="border-divider border-b px-3 pb-1 text-sm">
               <div>{account.username}</div>
-              <div className="text-muted text-xs">{ROLE_LABELS[account.role]}</div>
+              <div className="text-muted text-xs">{roleLabel(account.role)}</div>
             </div>
             <DropdownMenu.Item
               className="cursor-pointer px-3 py-1 text-sm outline-none data-[highlighted]:bg-neutral-200"

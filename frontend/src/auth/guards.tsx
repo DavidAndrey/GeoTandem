@@ -1,5 +1,6 @@
 // Route guards (E1.4). They decide what to show; the backend decides what is
 // allowed (F-3.1) — a guard that is bypassed only reaches a 401 or 403.
+import { Trans } from '@lingui/react/macro'
 import { useEffect, type ReactNode } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router'
 import { useMe, useSetupStatus } from '../api/queries'
@@ -38,7 +39,7 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
   if (me.data?.role !== 'admin')
     return (
       <p role="alert" className="text-sm">
-        Die Administration steht nur Administratoren offen.
+        <Trans>Die Administration steht nur Administratoren offen.</Trans>
       </p>
     )
   return children

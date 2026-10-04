@@ -1,9 +1,14 @@
 // "Duplizieren" in the catalog (design D2): a copy of data, metadata and
 // visibility under a new name; the server proposes one if left empty.
+import { Trans } from '@lingui/react/macro'
+import { t } from '@lingui/core/macro'
 import { useState, type FormEvent } from 'react'
 import type { AdminLayerInfo } from '../api/client'
 import { useDuplicateLayer } from '../api/queries'
 import { ErrorNotice, Modal } from '../components/ui'
+
+const copyOf = (title: string) => t`${title} (Kopie)`
+const duplicateTitle = (title: string) => t`„${title}" duplizieren`
 
 export function DuplicateLayerDialog({
   layer,
@@ -12,7 +17,7 @@ export function DuplicateLayerDialog({
   layer: AdminLayerInfo
   onClose: (copy?: string) => void
 }) {
-  const [title, setTitle] = useState(`${layer.title} (Kopie)`)
+  const [title, setTitle] = useState(() => copyOf(layer.title))
   const [name, setName] = useState('')
   const duplicate = useDuplicateLayer()
   const submit = (event: FormEvent) => {
@@ -26,16 +31,20 @@ export function DuplicateLayerDialog({
     <Modal
       open
       onOpenChange={(open) => !open && onClose()}
-      title={`„${layer.title}" duplizieren`}
-      description="Kopie eines Layers mit Daten, Metadaten und Sichtbarkeit"
+      title={duplicateTitle(layer.title)}
+      description={t`Kopie eines Layers mit Daten, Metadaten und Sichtbarkeit`}
     >
       <form onSubmit={submit} className="flex flex-col gap-3 text-sm">
         <label className="flex flex-col gap-1">
-          <span className="label-caps">Titel</span>
+          <span className="label-caps">
+            <Trans>Titel</Trans>
+          </span>
           <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="label-caps">Name (optional)</span>
+          <span className="label-caps">
+            <Trans>Name (optional)</Trans>
+          </span>
           <input
             className="input font-mono"
             value={name}
@@ -44,16 +53,18 @@ export function DuplicateLayerDialog({
           />
         </label>
         <p className="text-muted">
-          Die Kopie übernimmt Daten, Feldbeschreibungen und die Sichtbarkeit; sie wird im
-          Importprotokoll vermerkt.
+          <Trans>
+            Die Kopie übernimmt Daten, Feldbeschreibungen und die Sichtbarkeit; sie wird im
+            Importprotokoll vermerkt.
+          </Trans>
         </p>
         <ErrorNotice error={duplicate.error} />
         <div className="flex gap-2">
           <button type="submit" className="btn btn-primary" disabled={duplicate.isPending}>
-            Duplizieren
+            <Trans>Duplizieren</Trans>
           </button>
           <button type="button" className="btn" onClick={() => onClose()}>
-            Abbrechen
+            <Trans>Abbrechen</Trans>
           </button>
         </div>
       </form>

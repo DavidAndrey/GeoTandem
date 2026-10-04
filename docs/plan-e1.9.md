@@ -100,6 +100,7 @@ The language of prompts and model explanations is decided in E2.
 
 - `admin/`, `auth/`: as WP49.
 - Tests: as WP49.
+- **Built 2026-10-04.**
 
 ### WP51 — Back-end rejections by code (L6)
 
@@ -202,6 +203,23 @@ independent of WP49/50 and may move forward if the back end is free.
   layout of the row, which is a design question for that language.
 - **Addresses stay German (WP49).** `/sitzung/…`, `/anmelden`,
   `/admin/daten` are paths, not text; they are not translated.
+- **Label tables become descriptors (WP50).** Roles, import statuses, field
+  types, geometry kinds, import steps and the admin navigation were
+  constants of translated strings, evaluated once at import time, before a
+  language is active. They are `msg` descriptors now, read through small
+  functions (`roleLabel`, `statusLabel`, `typeLabel`) where they are shown.
+  The wizard showed raw field types ("integer") and now shows the same
+  words as the layer page.
+- **Names stay names (WP50).** Coordinate systems ("CH1903+ / LV95"),
+  encodings ("Windows-1252"), `docker logs`, `GEOTANDEM_SETUP_TOKEN`, MCP
+  and the stage codes are not messages; the lint rule is told so where they
+  are defined.
+- **The admin screens are checked in pseudo too (WP50).**
+  `src/i18n/admin-screens.test.tsx` renders every admin page, each layer
+  tab, the import wizard through all four steps, sign-in, setup and the
+  password page. A word inside a nested element of a message (`<Trans>…
+  <span>auswählen</span></Trans>`) is pseudo text without brackets of its
+  own; the check counts words without any plain ASCII letter as pseudo.
 
 ## 6 Adding a language later
 

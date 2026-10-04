@@ -1,4 +1,6 @@
 // Sign-in (design A2). No self-registration, no password e-mail.
+import { Trans } from '@lingui/react/macro'
+import { t } from '@lingui/core/macro'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router'
@@ -29,14 +31,14 @@ export function LoginPage() {
   if (me.data && !login.isPending && !login.isSuccess) return <Navigate to={target} replace />
 
   return (
-    <AccessCard title="Anmelden">
+    <AccessCard title={t`Anmelden`}>
       <form
         onSubmit={(e) => {
           e.preventDefault()
           login.mutate()
         }}
       >
-        <Field label="Benutzername">
+        <Field label={t`Benutzername`}>
           <input
             className="input"
             autoComplete="username"
@@ -46,7 +48,7 @@ export function LoginPage() {
             onChange={(e) => setUsername(e.target.value)}
           />
         </Field>
-        <Field label="Passwort">
+        <Field label={t`Passwort`}>
           <input
             className="input"
             type="password"
@@ -62,10 +64,10 @@ export function LoginPage() {
           className="btn btn-primary mt-2 w-full justify-center"
           disabled={login.isPending}
         >
-          Anmelden
+          <Trans>Anmelden</Trans>
         </button>
         <p className="text-muted mt-4 text-xs">
-          Kein Konto oder Passwort vergessen? Bitte an den Administrator wenden.
+          <Trans>Kein Konto oder Passwort vergessen? Bitte an den Administrator wenden.</Trans>
         </p>
       </form>
     </AccessCard>

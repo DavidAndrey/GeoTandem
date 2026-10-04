@@ -1,4 +1,7 @@
 // Data catalog with import status (design D2, F-2.7).
+import { actionsFor } from '../i18n/phrases'
+import { Trans } from '@lingui/react/macro'
+import { t } from '@lingui/core/macro'
 import { Plus } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
@@ -30,13 +33,13 @@ export function CatalogPage() {
     <section aria-labelledby="catalog-title">
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <h2 id="catalog-title" className="text-2xl">
-          Datenkatalog
+          <Trans>Datenkatalog</Trans>
         </h2>
         <input
           type="search"
           className="input w-56"
-          placeholder="Layer suchen"
-          aria-label="Layer suchen"
+          placeholder={t`Layer suchen`}
+          aria-label={t`Layer suchen`}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -48,11 +51,11 @@ export function CatalogPage() {
             aria-pressed={filter === value}
             onClick={() => setFilter(value)}
           >
-            {value === 'all' ? 'Alle' : 'Unvollständig'}
+            {value === 'all' ? t`Alle` : t`Unvollständig`}
           </button>
         ))}
         <Link to="/admin/daten/import" className="btn btn-primary ml-auto">
-          <Plus size={14} aria-hidden /> Importieren
+          <Plus size={14} aria-hidden /> <Trans>Importieren</Trans>
         </Link>
       </div>
 
@@ -62,16 +65,34 @@ export function CatalogPage() {
         <table className="data-table">
           <thead>
             <tr>
-              <th>Layer</th>
-              <th>Typ</th>
-              <th>Quelle</th>
-              <th>Stand</th>
-              <th className="text-right">Objekte</th>
-              <th>Metadaten</th>
-              <th>Für Modell</th>
-              <th>Letzter Import</th>
               <th>
-                <span className="sr-only">Aktionen</span>
+                <Trans>Layer</Trans>
+              </th>
+              <th>
+                <Trans>Typ</Trans>
+              </th>
+              <th>
+                <Trans>Quelle</Trans>
+              </th>
+              <th>
+                <Trans>Stand</Trans>
+              </th>
+              <th className="text-right">
+                <Trans>Objekte</Trans>
+              </th>
+              <th>
+                <Trans>Metadaten</Trans>
+              </th>
+              <th>
+                <Trans>Für Modell</Trans>
+              </th>
+              <th>
+                <Trans>Letzter Import</Trans>
+              </th>
+              <th>
+                <span className="sr-only">
+                  <Trans>Aktionen</Trans>
+                </span>
               </th>
             </tr>
           </thead>
@@ -89,9 +110,9 @@ export function CatalogPage() {
                 <td>{formatDate(layer.updated_at ?? layer.created_at)}</td>
                 <td className="text-right">{layer.feature_count}</td>
                 <td>
-                  <Dots value={completeness(layer)} label="Metadaten" />
+                  <Dots value={completeness(layer)} label={t`Metadaten`} />
                 </td>
-                <td>{layer.for_model ? 'ja' : 'nein'}</td>
+                <td>{layer.for_model ? t`ja` : t`nein`}</td>
                 <td>
                   {layer.last_import ? (
                     <Link to={`/admin/protokoll/${layer.last_import.id}`}>
@@ -102,16 +123,18 @@ export function CatalogPage() {
                   )}
                 </td>
                 <td className="text-right">
-                  <Menu label={`Aktionen für ${layer.title}`}>
+                  <Menu label={actionsFor(layer.title)}>
                     <MenuItem onSelect={() => navigate(`/admin/daten/${layer.name}`)}>
-                      Öffnen
+                      <Trans>Öffnen</Trans>
                     </MenuItem>
                     <MenuItem onSelect={() => navigate(`/admin/daten/import?ziel=${layer.name}`)}>
-                      Aktualisieren
+                      <Trans>Aktualisieren</Trans>
                     </MenuItem>
-                    <MenuItem onSelect={() => setDuplicating(layer)}>Duplizieren</MenuItem>
+                    <MenuItem onSelect={() => setDuplicating(layer)}>
+                      <Trans>Duplizieren</Trans>
+                    </MenuItem>
                     <MenuItem danger onSelect={() => setDeleting(layer)}>
-                      Löschen
+                      <Trans>Löschen</Trans>
                     </MenuItem>
                   </Menu>
                 </td>
@@ -120,7 +143,7 @@ export function CatalogPage() {
             {shown.length === 0 && (
               <tr>
                 <td colSpan={9} className="text-muted py-4 text-center">
-                  {layers.data.length === 0 ? 'Der Katalog ist leer.' : 'Kein Layer passt.'}
+                  {layers.data.length === 0 ? t`Der Katalog ist leer.` : t`Kein Layer passt.`}
                 </td>
               </tr>
             )}

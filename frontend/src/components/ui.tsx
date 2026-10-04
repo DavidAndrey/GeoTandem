@@ -5,7 +5,7 @@ import { AlertTriangle, Check, Circle, Loader, MoreHorizontal, X } from 'lucide-
 import { AlertDialog, Dialog, DropdownMenu } from 'radix-ui'
 import type { ReactNode } from 'react'
 import { ApiRequestError, type ImportStatus } from '../api/client'
-import { STATUS_LABELS } from '../admin/format'
+import { statusLabel } from '../admin/format'
 
 export function ErrorNotice({ error }: { error: unknown }) {
   if (!error) return null
@@ -48,7 +48,7 @@ export function StatusBadge({ status }: { status: ImportStatus }) {
   return (
     <span className={tone}>
       {STATUS_ICONS[status]}
-      {STATUS_LABELS[status]}
+      {statusLabel(status)}
     </span>
   )
 }

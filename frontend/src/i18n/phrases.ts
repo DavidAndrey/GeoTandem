@@ -1,5 +1,5 @@
 // Phrases several views share, so the catalog has them once (plan E1.9).
-import { t } from '@lingui/core/macro'
+import { plural, t } from '@lingui/core/macro'
 import { formatNumber } from './locale'
 
 /** The ⋯ menu of a row or layer. */
@@ -13,4 +13,10 @@ export function hitsOf(hits: number, total: number) {
   const shown = formatNumber(hits)
   const all = formatNumber(total)
   return t`${shown} von ${all}`
+}
+
+/** "1 Objekt", "1'200 Objekte". */
+export function objectCount(n: number) {
+  const count = formatNumber(n)
+  return plural(n, { one: `${count} Objekt`, other: `${count} Objekte` })
 }
