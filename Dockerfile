@@ -1,7 +1,7 @@
 # One image, one process, one port (F-9.7). Default: SpatiaLite file in /data,
 # no database service (F-2.12). PostGIS is selected via GEOTANDEM_DATABASE_URL (P.4).
 
-FROM node:24-slim AS frontend
+FROM node:26-slim AS frontend
 WORKDIR /app/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
