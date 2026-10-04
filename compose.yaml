@@ -1,0 +1,29 @@
+# The same single container as `docker run` (F-9.7), with its settings in one place.
+# No database service: SpatiaLite file in the volume (F-2.12). PostGIS joins in P.4.
+#
+#   docker compose up -d --build
+#   GEOTANDEM_PORT=8080 GEOTANDEM_BASEMAP=swisstopo-grau docker compose up -d
+
+services:
+  geotandem:
+    build: .
+    image: geotandem
+    restart: unless-stopped
+    ports:
+      - "${GEOTANDEM_PORT:-8000}:8000"
+    volumes:
+      - geotandem-data:/data
+    environment:
+      # Variables of the README's "Konfiguration"; unset ones keep the image defaults.
+      GEOTANDEM_BASEMAP: ${GEOTANDEM_BASEMAP:-none}
+      GEOTANDEM_BASEMAP_ATTRIBUTION: ${GEOTANDEM_BASEMAP_ATTRIBUTION:-}
+      GEOTANDEM_COOKIE_SECURE: ${GEOTANDEM_COOKIE_SECURE:-false}
+      GEOTANDEM_SESSION_HOURS: ${GEOTANDEM_SESSION_HOURS:-12}
+      GEOTANDEM_MAX_FEATURES: ${GEOTANDEM_MAX_FEATURES:-10000}
+      GEOTANDEM_QUERY_TIMEOUT_S: ${GEOTANDEM_QUERY_TIMEOUT_S:-10}
+      GEOTANDEM_MAX_IMPORT_MB: ${GEOTANDEM_MAX_IMPORT_MB:-200}
+
+volumes:
+  # Named as in the README, so `docker run`, the backup command and Compose share the data.
+  geotandem-data:
+    name: geotandem-data

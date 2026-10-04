@@ -5,10 +5,24 @@ steht in [anforderungen.md](anforderungen.md), warum in [vision.md](vision.md),
 in welcher Reihenfolge in [etappen.md](etappen.md), womit in
 [tech-stack.md](tech-stack.md). Die Begriffe stehen in [CONTEXT.md](CONTEXT.md).
 
-Stand: Etappe E1.1 bis E1.4 — Gerüst; Sperrpunkt (Abfrageobjekt-Schema v0,
-Ausführungsmaschine, Werkzeug-Registry, HTTP-Schnittstelle); Import und
-Layer-Verwaltung; Anmeldung, Rollen und Sichtbarkeit. Plan der letzten beiden:
-[docs/plan-e1.3-e1.4.md](docs/plan-e1.3-e1.4.md).
+Stand: **Etappe E1 abgeschlossen** (Modus A, ohne LLM), E2 noch nicht begonnen.
+Die Anwendung kann:
+
+- Vektordaten und Tabellen importieren, Layer verwalten, Metadaten pflegen
+  (E1.3); Anmeldung, Rollen Administrator/Anwender, Sichtbarkeit je Layer (E1.4)
+- Karte und Klassik-Bedienung: Attribut- und Raumfilter, räumliche
+  Verknüpfung, Puffer, Join, Aggregation, Symbolisierung (E1.5); jede
+  Bedienhandlung ist ein Abfrageobjekt nach Schema v2
+- Attributtabelle mit Sortierung, Spaltenwahl und Hervorhebung zur Karte (E1.6)
+- Sitzungen speichern und mit Ergebnis-Prüfung wieder öffnen (E1.7);
+  Abfragen speichern und mit allen teilen (E1.7b)
+- gleiche Ergebnisse auf jedem Backend, Datumsattribute, Layer duplizieren,
+  Kartensuche, Distanz- und Flächenmessung (E1.8)
+
+Pläne und Befunde je Etappe liegen in [docs/](docs/) (`plan-e1.*.md`); wie
+Bedingungen, Einschränkung und Abfrageobjekt zusammenhängen, steht in
+[docs/filters.md](docs/filters.md), der Ablauf aus Sicht der Nutzer in
+[docs/user-journey.md](docs/user-journey.md).
 
 ## Starten (ein Befehl, kein Datenbankdienst)
 
@@ -18,24 +32,62 @@ docker run -p 8000:8000 -v geotandem-data:/data geotandem
 ```
 
 Beim ersten Start entsteht `/data/geotandem.sqlite`, das Schema wird migriert
-und der Beispieldatensatz „Bern-Mittelland" geladen. Danach: <http://localhost:8000>.
+und der Beispieldatensatz «Bern-Mittelland» geladen. Danach: <http://localhost:8000>.
+Ein Neustart auf demselben Volume behält die Daten und lädt den Beispieldatensatz
+nicht noch einmal. `make docker` und `make docker-run` tun dasselbe (der Container dort mit `--rm`).
+
+Das Image enthält Backend und gebautes Frontend in einem Prozess auf Port 8000.
+Es läuft als Benutzer `geotandem` (UID 10001), der nur `/data` beschreiben
+darf, und meldet seinen Zustand über `/api/health` (`docker ps` zeigt
+`healthy`). Die Hintergrundkarte ist standardmässig aus; mit
+`-e GEOTANDEM_BASEMAP=swisstopo-grau` lädt der Browser Kacheln von swisstopo
+(siehe [Konfiguration](#konfiguration)).
+
+### Mit Docker Compose
+
+[compose.yaml](compose.yaml) beschreibt denselben einzelnen Container, mit
+Neustart nach einem Absturz oder Reboot (`restart: unless-stopped`) und den
+Einstellungen an einem Ort:
+
+```sh
+docker compose up -d --build   # bauen und im Hintergrund starten
+docker compose logs -f         # Protokoll
+docker compose down            # stoppen; die Daten bleiben im Volume
+```
+
+Port und Einstellungen kommen aus der Umgebung oder aus einer Datei `.env`
+neben `compose.yaml`, zum Beispiel:
+
+```sh
+GEOTANDEM_PORT=8080
+GEOTANDEM_BASEMAP=swisstopo-grau
+```
+
+`GEOTANDEM_PORT` (Standard `8000`) ist der Port auf dem Host; die übrigen
+Variablen stehen unter [Konfiguration](#konfiguration). Das Volume heisst wie
+oben `geotandem-data`: `docker run` und Compose arbeiten also auf denselben
+Daten, und die [Sicherung](#sicherung-f-98) gilt unverändert. Nicht beide
+gleichzeitig starten. Befehle im Container: `docker compose exec geotandem
+geotandem user create …`.
 
 **Erstes Konto.** Solange kein Konto existiert, führt die Anwendung auf die
 Ersteinrichtung: Das erste Konto wird Administrator und legt weitere an
 (Rollen Administrator und Anwender, F-3.12). Bis dahin ist die Einrichtung für
-jeden offen, der die Adresse erreicht — die Instanz also erst nach außen
+jeden offen, der die Adresse erreicht — die Instanz also erst nach aussen
 öffnen, wenn das erste Konto steht. Ohne Browser geht es auch so:
 
 ```sh
-docker exec -it <container> geotandem user create admin --role admin
-docker exec <container> geotandem user reset-password m.keller   # Startpasswort
+docker exec -it <container> geotandem user create admin --role admin   # fragt nach dem Passwort
+docker exec <container> geotandem user create m.keller --start-password  # Anwender, Startpasswort
+docker exec <container> geotandem user reset-password m.keller          # neues Startpasswort
 ```
 
 Konten mit Startpasswort müssen es bei der ersten Anmeldung ändern. Anwender
 sehen nur freigegebene Layer: der Beispieldatensatz ist freigegeben, neu
 importierte Layer erst nach Freigabe unter *Administration › Sichtbarkeit*.
 
-Eine Abfrage von Hand (die Schnittstelle verlangt eine Anmeldung):
+Eine Abfrage von Hand (die Schnittstelle verlangt eine Anmeldung, ein Konto
+mit Startpasswort muss es zuerst über `POST /api/auth/password` ändern):
 
 ```sh
 curl -c jar -X POST localhost:8000/api/auth/login -H 'content-type: application/json' \
@@ -57,7 +109,13 @@ make lint test # ruff, mypy, pytest, ESLint, Vitest, Drift-Prüfungen
 make e2e       # Playwright gegen eine laufende Instanz (E2E_BASE_URL;
                # auf einer schon eingerichteten Instanz E2E_ADMIN_USER/_PASSWORD)
 make gate      # alles zusammen, so wie es ausgeliefert wird (siehe unten)
+make instance  # eigene Testinstanz aus HEAD auf 127.0.0.1:8060, Daten bleiben
+               # (INSTANCE_REF, INSTANCE_PORT; instance-logs, -stop, -reset)
+make doc-screenshots  # Bilder für docs/filters.md neu, prüft die Trefferzahlen
 ```
+
+`make instance` baut aus einem Commit (`git archive`), nicht aus dem
+Arbeitsverzeichnis, unter eigenem Image-Tag, Container und Volume.
 
 ### Beispieldatensatz
 
@@ -65,7 +123,7 @@ Echte offene Daten des Kantons Bern für den Verwaltungskreis Bern-Mittelland
 (74 Gemeinden): Gemeinden, Gewässer, Strassen, Volksschulen, ÖV-Haltestellen
 und eine Tabelle Gemeindedaten (Einwohner, Steueranlage). Quelle: Amt für
 Geoinformation des Kantons Bern (AGI), über opendata.swiss, Nutzungsbedingung
-„terms_open". Die aufbereiteten Dateien liegen im Repository
+«terms_open». Die aufbereiteten Dateien liegen im Repository
 (`backend/src/geotandem/sample/data`) und im Image; eine Instanz braucht dafür
 kein Netz.
 
@@ -94,7 +152,7 @@ aus ihrer einzigen Quelle erzeugt; Tests schlagen fehl, wenn sie abweichen:
 
 | Artefakt | Quelle |
 |---|---|
-| `schema/query-object/v0.json` | `packages/query` (Pydantic-Modelle) |
+| `schema/query-object/v0.json` bis `v2.json` | `packages/query` (Pydantic-Modelle) |
 | `frontend/openapi.json`, `frontend/src/api/schema.d.ts` | FastAPI-Routen |
 | `backend/src/geotandem/sample/data/` | `backend/src/geotandem/sample/generate.py` |
 
@@ -121,6 +179,7 @@ TOML-Datei, deren Pfad `GEOTANDEM_CONFIG_FILE` nennt (Umgebung geht vor Datei).
 | `GEOTANDEM_COOKIE_SECURE` | `false` | Sitzungscookie nur über HTTPS senden; hinter TLS auf `true` setzen |
 | `GEOTANDEM_LOAD_SAMPLE_DATA` | `false` (Container: `true`) | Beispieldatensatz beim Start laden |
 | `GEOTANDEM_SPATIALITE_LIBRARY` | `mod_spatialite` | Name oder Pfad der SpatiaLite-Erweiterung |
+| `GEOTANDEM_FRONTEND_DIR` | leer (Container: `/app/frontend/dist`) | Gebautes Frontend, unter `/` ausgeliefert; in der Entwicklung liefert Vite es aus |
 
 ## Sicherung (F-9.8)
 
@@ -147,10 +206,15 @@ dasselbe ist.
 packages/query/   Abfrageobjekt-Schema (hängt nur von Pydantic ab)
 backend/          Anwendung: config, db (Migrationen), data (Zugriffsschicht,
                   Dialekt-Adapter, Layer-Ansicht), engine (Ausführungsmaschine),
-                  tools (Registry), importing (Import und Protokoll), auth
-                  (Konten, Sitzungen, Sichtbarkeit), api (HTTP), sample
-                  (Beispieldatensatz)
-frontend/         Vite + React + TypeScript
-e2e/              Playwright
+                  tools (Registry), catalog (Layer-Katalog), importing (Import
+                  und Protokoll), gdal (erlaubte Importformate), auth (Konten,
+                  Anmeldungen, Sichtbarkeit), sessions und saved_queries
+                  (Sitzungen, gespeicherte Abfragen), basemap, api (HTTP),
+                  sample (Beispieldatensatz)
+frontend/         Vite + React + TypeScript, Leaflet
+e2e/              Playwright, auch die Abnahmetests je Etappe
 schema/           Versionierte Schema-Artefakte
+design/e1/        Gestaltungsreferenz der Oberfläche (B-, C-, D-Kennungen)
+docs/             Pläne je Etappe, Filter-Dokumentation, User Journey
+scripts/          gate.sh, doc-screenshots.sh
 ```

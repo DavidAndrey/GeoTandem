@@ -9,3 +9,4 @@ frontend/dist
 e2e
 data
 *.sqlite
+.env
