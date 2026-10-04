@@ -9,6 +9,7 @@ from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, selectinload
 
 from geotandem.db.orm import Layer, LayerAttribute
+from geotandem.db.spatialite import reading
 
 
 class AttributeInfo(BaseModel):
@@ -54,12 +55,12 @@ def list_layers(engine: Engine, only: Collection[str] | None = None) -> list[Lay
     stmt = select(Layer).options(selectinload(Layer.attributes)).order_by(Layer.name)
     if only is not None:
         stmt = stmt.where(Layer.name.in_(list(only)))
-    with Session(engine) as session:
+    with Session(reading(engine)) as session:
         return [_info(layer) for layer in session.scalars(stmt)]
 
 
 def get_layer(engine: Engine, name: str) -> LayerInfo | None:
-    with Session(engine) as session:
+    with Session(reading(engine)) as session:
         layer = session.scalar(
             select(Layer).options(selectinload(Layer.attributes)).where(Layer.name == name)
         )

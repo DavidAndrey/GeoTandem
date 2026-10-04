@@ -18,6 +18,7 @@ from geotandem.auth.accounts import Account
 from geotandem.data import DataBackend
 from geotandem.data.view import LayerView
 from geotandem.db.orm import AppMeta, Layer, LayerVisibility, Role
+from geotandem.db.spatialite import reading
 
 NEW_LAYERS_VISIBLE = "new_layers_visible"
 """Instance setting: new layers released for users at once (design D10)."""
@@ -33,7 +34,7 @@ class VisibilityRow(BaseModel):
 
 
 def visible_names(engine: Engine, role: Role) -> frozenset[str]:
-    with Session(engine) as session:
+    with Session(reading(engine)) as session:
         if role == "admin":
             return frozenset(session.scalars(select(Layer.name)))
         return frozenset(
@@ -51,7 +52,7 @@ def view_for(backend: DataBackend, account: Account) -> DataBackend:
 
 
 def matrix(engine: Engine) -> list[VisibilityRow]:
-    with Session(engine) as session:
+    with Session(reading(engine)) as session:
         released = {
             (layer_id, role)
             for layer_id, role in session.execute(
@@ -93,7 +94,7 @@ def release(engine: Engine, layers: Iterable[str], role: Role = "user") -> None:
 
 def new_layers_visible(engine: Engine) -> bool:
     """Whether a new layer is released at once; by default it waits for release (plan D6)."""
-    with Session(engine) as session:
+    with Session(reading(engine)) as session:
         value = session.scalar(select(AppMeta.value).where(AppMeta.key == NEW_LAYERS_VISIBLE))
         return value == "true"
 

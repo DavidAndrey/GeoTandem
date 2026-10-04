@@ -21,6 +21,7 @@ from geotandem.auth import visibility
 from geotandem.catalog import get_layer, list_layers
 from geotandem.data import AttributeSpec, DataBackend, NewLayer
 from geotandem.db.orm import ImportRun
+from geotandem.db.spatialite import reading
 from geotandem.geo import reprojector
 from geotandem.importing import log as import_log
 from geotandem.sample import DATA_DIR
@@ -129,7 +130,7 @@ def load_sample(backend: DataBackend, directory: Path = DATA_DIR) -> list[str]:
 
 def _loaded_before(backend: DataBackend) -> set[str]:
     """Names of the layers some sample dataset has loaded, by the import log."""
-    with Session(backend.engine) as session:
+    with Session(reading(backend.engine)) as session:
         runs = session.execute(
             select(ImportRun.layer_name, ImportRun.decisions).where(ImportRun.status == "ok")
         )

@@ -2,7 +2,7 @@
 // question (design C2, C3, C5). One host renders them (SessionDialogs).
 import { create } from 'zustand'
 import { useAnalysis } from '../analysis/store'
-import { saveSession } from './actions'
+import { newSession, saveSession } from './actions'
 import { useSession } from './store'
 
 export type Pending = { label: string; run: () => void }
@@ -15,10 +15,13 @@ interface SessionUi {
   guard: Pending | null
   /** Landed once in the last session after sign-in (design A2, plan D7). */
   landed: boolean
+  /** The account the analysis in memory belongs to. */
+  owner: number | null
   openDialog: (dialog: 'saveAs' | 'list', afterSave?: () => void) => void
   close: () => void
   setGuard: (guard: Pending | null) => void
   setLanded: (landed: boolean) => void
+  setOwner: (owner: number | null) => void
 }
 
 export const useSessionUi = create<SessionUi>()((set) => ({
@@ -26,11 +29,28 @@ export const useSessionUi = create<SessionUi>()((set) => ({
   afterSave: null,
   guard: null,
   landed: false,
+  owner: null,
   openDialog: (dialog, afterSave) => set({ dialog, afterSave: afterSave ?? null }),
   close: () => set({ dialog: null, afterSave: null }),
   setGuard: (guard) => set({ guard }),
   setLanded: (landed) => set({ landed }),
+  setOwner: (owner) => set({ owner }),
 }))
+
+/**
+ * The analysis in memory belongs to one account: another one signing in (e.g.
+ * after the session ran out on a shared PC) starts empty and lands in its own
+ * last session (design A2); the same one keeps its unsaved work.
+ */
+export function signedInAs(account: number) {
+  const ui = useSessionUi.getState()
+  if (ui.owner === account) return
+  if (ui.owner !== null) {
+    newSession()
+    ui.setLanded(false)
+  }
+  ui.setOwner(account)
+}
 
 /** Unsaved: any change except moving the map, and an open editor draft (plan D8). */
 export const isUnsaved = (s: { dirty: boolean; draft: unknown }) => s.dirty || s.draft !== null

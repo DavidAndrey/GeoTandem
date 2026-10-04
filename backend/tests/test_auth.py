@@ -5,6 +5,7 @@ from datetime import timedelta
 
 import httpx
 import pytest
+from fastapi import FastAPI
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
@@ -135,6 +136,22 @@ async def test_change_password(anonymous: httpx.AsyncClient) -> None:
         "/api/auth/login", json={"username": "admin", "password": "neues-passwort-1"}
     )
     assert new.status_code == 200
+
+
+async def test_changing_the_password_ends_the_other_logins(
+    anonymous: httpx.AsyncClient, app: FastAPI
+) -> None:
+    await set_up(anonymous)
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as elsewhere:
+        await elsewhere.post("/api/auth/login", json={"username": "admin", "password": PASSWORD})
+        assert (await elsewhere.get("/api/auth/me")).status_code == 200
+        changed = await anonymous.post(
+            "/api/auth/password", json={"current": PASSWORD, "new": "neues-passwort-1"}
+        )
+        assert changed.status_code == 204
+        assert (await elsewhere.get("/api/auth/me")).status_code == 401
+    assert (await anonymous.get("/api/auth/me")).status_code == 200
 
 
 # --- accounts and sessions without HTTP ---------------------------------------

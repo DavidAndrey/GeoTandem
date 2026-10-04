@@ -6,6 +6,9 @@ test.each([
   [null, '/'],
   ['https://evil.example', '/'],
   ['//evil.example/x', '/'],
+  ['/\\evil.example', '/'],
+  ['/\t/evil.example', '/'],
+  ['/sitzung/s1#karte', '/sitzung/s1#karte'],
 ])('sign-in target %s → %s', (target, expected) => {
   expect(safeTarget(target)).toBe(expected)
 })

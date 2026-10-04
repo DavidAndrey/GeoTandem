@@ -18,6 +18,7 @@ from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session
 
 from geotandem.db.orm import AuthSession, Role, User
+from geotandem.db.spatialite import reading
 
 MIN_PASSWORD_LENGTH = 10
 USERNAME = re.compile(r"^[a-z0-9][a-z0-9._-]{1,62}$")
@@ -68,7 +69,7 @@ def generate_password() -> str:
 
 
 def has_accounts(engine: Engine) -> bool:
-    with Session(engine) as session:
+    with Session(reading(engine)) as session:
         return bool(session.scalar(select(func.count()).select_from(User)))
 
 
@@ -146,7 +147,7 @@ def reset_password(engine: Engine, username: str) -> str:
 
 
 def get(engine: Engine, user_id: int) -> Account | None:
-    with Session(engine) as session:
+    with Session(reading(engine)) as session:
         user = session.get(User, user_id)
         return _account(user) if user else None
 
@@ -174,7 +175,7 @@ class AccountUpdate(BaseModel):
 
 
 def list_accounts(engine: Engine) -> list[Account]:
-    with Session(engine) as session:
+    with Session(reading(engine)) as session:
         return [_account(u) for u in session.scalars(select(User).order_by(User.username))]
 
 

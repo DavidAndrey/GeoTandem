@@ -19,7 +19,14 @@ export function passwordProblems(current: string, next: string, repeat: string):
   return problems
 }
 
-/** Only paths inside the application: an open redirect would be a phishing aid. */
+/**
+ * Only paths inside the application: an open redirect would be a phishing aid.
+ * Parsed as the browser would, which also reads "/\evil.example" or "/\t/evil.example"
+ * as another host.
+ */
 export function safeTarget(target: string | null): string {
-  return target && target.startsWith('/') && !target.startsWith('//') ? target : '/'
+  if (!target?.startsWith('/')) return '/'
+  const base = 'http://geotandem.invalid'
+  const url = new URL(target, base)
+  return url.origin === base ? url.pathname + url.search + url.hash : '/'
 }

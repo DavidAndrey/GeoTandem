@@ -54,7 +54,7 @@ from geotandem.data.interface import (
     TextMode,
 )
 from geotandem.db.orm import Layer, LayerAttribute
-from geotandem.db.spatialite import READ_ONLY
+from geotandem.db.spatialite import READ_ONLY, reading
 from geotandem.geo import common_geometry_type
 
 TABLE_PREFIX = "lyr_"
@@ -193,7 +193,7 @@ class SpatiaLiteBackend:
     # --- layers ----------------------------------------------------------------
 
     def layer_names(self) -> list[str]:
-        with Session(self.engine) as session:
+        with Session(reading(self.engine)) as session:
             return list(session.scalars(select(Layer.name).order_by(Layer.name)))
 
     def layer_table(self, name: str) -> Table:
@@ -201,7 +201,7 @@ class SpatiaLiteBackend:
             cached = self._metadata.tables.get(TABLE_PREFIX + name)
             if cached is not None:
                 return cached
-            with Session(self.engine) as session:
+            with Session(reading(self.engine)) as session:
                 layer = session.scalar(select(Layer).where(Layer.name == name))
                 if layer is None:
                     raise KeyError(name)

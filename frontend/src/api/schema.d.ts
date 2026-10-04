@@ -569,7 +569,10 @@ export interface paths {
     }
     get?: never
     put?: never
-    /** Change Password */
+    /**
+     * Change Password
+     * @description A changed password signs out every other login, e.g. one with a stolen cookie.
+     */
     post: operations['change_password_api_auth_password_post']
     delete?: never
     options?: never

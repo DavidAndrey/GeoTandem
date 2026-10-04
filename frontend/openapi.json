@@ -2366,6 +2366,7 @@
           "auth"
         ],
         "summary": "Change Password",
+        "description": "A changed password signs out every other login, e.g. one with a stolen cookie.",
         "operationId": "change_password_api_auth_password_post",
         "requestBody": {
           "content": {

@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { App } from '../App'
 import { useAnalysis } from '../analysis/store'
-import { layer, signedIn } from '../test/fixtures'
+import { account, layer, signedIn } from '../test/fixtures'
 import { fakeApi, renderAt } from '../test/render'
 import { newSession } from './actions'
 import { STATE_VERSION } from './format'
@@ -90,7 +90,7 @@ function backend(routes: Parameters<typeof fakeApi>[0] = {}) {
 
 beforeEach(() => {
   newSession()
-  useSessionUi.setState({ landed: false, dialog: null, guard: null })
+  useSessionUi.setState({ landed: false, dialog: null, guard: null, owner: null })
 })
 afterEach(() => vi.unstubAllGlobals())
 
@@ -179,6 +179,57 @@ test('after sign-in the workplace lands in the last session and checks it (desig
   expect(await screen.findByRole('status', { name: 'Ergebnisprüfung' })).toHaveTextContent(
     'Wiederhergestellt · 10 Treffer, identisch mit dem Speicherstand',
   )
+})
+
+/** Signed out until the login form is sent, then account 1. */
+function signingIn() {
+  let signedInYet = false
+  return {
+    'GET /api/auth/me': () =>
+      signedInYet
+        ? new Response(JSON.stringify(account()))
+        : new Response('{"code":"not_authenticated","message":"Please sign in."}', {
+            status: 401,
+          }),
+    'POST /api/auth/login': () => {
+      signedInYet = true
+      return account()
+    },
+  }
+}
+
+async function signIn() {
+  renderAt('/anmelden', <App />)
+  await userEvent.type(await screen.findByLabelText('Benutzername'), 'admin')
+  await userEvent.type(screen.getByLabelText('Passwort'), 'passwort')
+  await userEvent.click(screen.getByRole('button', { name: 'Anmelden' }))
+}
+
+test('another account signing in starts empty and lands in its own session (design A2)', async () => {
+  // Account 7 worked here until its session ran out; account 1 signs in.
+  useAnalysis.getState().addLayer('schulen')
+  useSessionUi.setState({ landed: true, owner: 7 })
+  backend({
+    ...signingIn(),
+    'GET /api/sessions/last': detail('s1', 'Vorführung'),
+    'GET /api/sessions/s1': detail('s1', 'Vorführung'),
+    'POST /api/sessions/s1/check': check,
+  })
+  await signIn()
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Sitzungsmenü' })).toHaveTextContent('Vorführung'),
+  )
+  expect(useSessionUi.getState().owner).toBe(1)
+})
+
+test('the same account signing in again keeps its unsaved work', async () => {
+  useAnalysis.getState().addLayer('schulen')
+  useSessionUi.setState({ landed: true, owner: 1 })
+  backend(signingIn())
+  await signIn()
+  await screen.findByRole('button', { name: 'Sitzungsmenü' })
+  expect(useAnalysis.getState().dirty).toBe(true)
+  expect(useAnalysis.getState().layers).toHaveLength(1)
 })
 
 test('the list opens, renames and flags new data (design C3)', async () => {

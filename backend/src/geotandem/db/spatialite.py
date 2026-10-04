@@ -12,6 +12,12 @@ READ_ONLY = "geotandem_read_only"
 """Execution option for connections that never write; they need no write lock."""
 
 
+def reading(engine: Engine) -> Engine:
+    """``engine`` for transactions that only read: they begin DEFERRED and so run
+    beside a writer (e.g. an import storing its rows) instead of waiting for it."""
+    return engine.execution_options(**{READ_ONLY: True})
+
+
 def attach(engine: Engine, library: str) -> None:
     """Load SpatiaLite on every new connection; initialise metadata on a new file.
 
@@ -24,8 +30,9 @@ def attach(engine: Engine, library: str) -> None:
     That BEGIN is IMMEDIATE: our write transactions read first, and two
     deferred transactions upgrading to a write lock deadlock, which SQLite
     answers with "database is locked" at once instead of waiting. Only
-    connections marked ``READ_ONLY`` (the analysis queries) begin DEFERRED.
-    WAL lets those readers run beside a writer without blocking either.
+    connections marked ``READ_ONLY`` (the analysis queries, and the plain reads
+    through ``reading``) begin DEFERRED. WAL lets those readers run beside a
+    writer without blocking either.
     """
 
     @event.listens_for(engine, "connect")

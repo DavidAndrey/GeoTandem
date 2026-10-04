@@ -22,6 +22,7 @@ export function UserMenu({ account }: { account: Account }) {
       // The next account starts empty and lands in its own last session.
       newSession()
       useSessionUi.getState().setLanded(false)
+      useSessionUi.getState().setOwner(null)
       await resetSession()
       navigate('/anmelden', { replace: true })
     },

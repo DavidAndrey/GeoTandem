@@ -20,9 +20,9 @@ class AppState:
     def limits(self) -> Limits:
         return Limits(self.settings.max_features, self.settings.query_timeout_s)
 
-    @property
-    def tool_context(self) -> ToolContext:
-        return ToolContext(self.backend, self.limits, frozenset(self.unsupported))
+    def tool_context(self, view: DataBackend) -> ToolContext:
+        """Tools run as the account calling them: ``view`` is its ``view_for`` (F-2.7)."""
+        return ToolContext(view, self.limits, frozenset(self.unsupported))
 
 
 def get_state(request: Request) -> AppState:

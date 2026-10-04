@@ -25,6 +25,7 @@ from sqlalchemy.orm import Session
 from geotandem.catalog import list_layers
 from geotandem.data import DataBackend
 from geotandem.db.orm import AnalysisSession
+from geotandem.db.spatialite import reading
 from geotandem.engine import QueryError, ResultStamp
 from geotandem_query import QueryObject, query_hash
 
@@ -214,7 +215,7 @@ def _apply(row: AnalysisSession, body: SessionWrite, stamp: ResultStamp | None) 
 
 def list_sessions(engine: Engine, owner: int, backend: DataBackend) -> list[SessionSummary]:
     versions = _versions(backend)
-    with Session(engine, expire_on_commit=False) as db:
+    with Session(reading(engine), expire_on_commit=False) as db:
         rows = db.scalars(
             select(AnalysisSession)
             .where(AnalysisSession.owner_id == owner)
@@ -225,14 +226,14 @@ def list_sessions(engine: Engine, owner: int, backend: DataBackend) -> list[Sess
 
 def get(engine: Engine, owner: int, session_id: str, backend: DataBackend) -> SessionDetail:
     versions = _versions(backend)
-    with Session(engine, expire_on_commit=False) as db:
+    with Session(reading(engine), expire_on_commit=False) as db:
         return _detail(_get(db, owner, session_id), versions)
 
 
 def last_opened(engine: Engine, owner: int, backend: DataBackend) -> SessionDetail | None:
     """The session to land in after sign-in (design A2, plan D7)."""
     versions = _versions(backend)
-    with Session(engine, expire_on_commit=False) as db:
+    with Session(reading(engine), expire_on_commit=False) as db:
         row = db.scalar(
             select(AnalysisSession)
             .where(AnalysisSession.owner_id == owner)

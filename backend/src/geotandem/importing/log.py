@@ -14,6 +14,7 @@ from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session
 
 from geotandem.db.orm import ImportRun
+from geotandem.db.spatialite import reading
 from geotandem.importing.read import Message
 
 REJECTED_SAMPLE_LIMIT = 1000
@@ -118,7 +119,7 @@ def finish(
 
 
 def get(engine: Engine, run_id: int) -> ImportRunInfo | None:
-    with Session(engine) as session:
+    with Session(reading(engine)) as session:
         run = session.get(ImportRun, run_id)
         return _info(run) if run else None
 
@@ -135,7 +136,7 @@ def recent(
         stmt = stmt.where(ImportRun.status == status)
     if layer_name is not None:
         stmt = stmt.where(ImportRun.layer_name == layer_name)
-    with Session(engine) as session:
+    with Session(reading(engine)) as session:
         return [
             ImportRunSummary.model_validate(r, from_attributes=True) for r in session.scalars(stmt)
         ]
@@ -148,7 +149,7 @@ def last_per_layer(engine: Engine) -> dict[str, ImportRunSummary]:
         .where(ImportRun.layer_name.is_not(None), ImportRun.status != "running")
         .group_by(ImportRun.layer_name)
     )
-    with Session(engine) as session:
+    with Session(reading(engine)) as session:
         runs = session.scalars(select(ImportRun).where(ImportRun.id.in_(latest)))
         return {
             r.layer_name: ImportRunSummary.model_validate(r, from_attributes=True)

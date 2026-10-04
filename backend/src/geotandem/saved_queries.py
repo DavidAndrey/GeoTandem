@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 
 from geotandem.data import DataBackend
 from geotandem.db.orm import AnalysisSession, SavedQuery, User
+from geotandem.db.spatialite import reading
 from geotandem_query import QueryObject
 from geotandem_query import models as m
 
@@ -208,7 +209,7 @@ def _free_name(db: Session, owner: int, name: str) -> str:
 
 def list_queries(engine: Engine, viewer: int, backend: DataBackend) -> list[SavedQuerySummary]:
     visible = set(backend.layer_names())
-    with Session(engine) as db:
+    with Session(reading(engine)) as db:
         rows = db.scalars(
             select(SavedQuery)
             .where(or_(SavedQuery.owner_id == viewer, SavedQuery.shared.is_(True)))
@@ -220,7 +221,7 @@ def list_queries(engine: Engine, viewer: int, backend: DataBackend) -> list[Save
 
 def get(engine: Engine, viewer: int, query_id: str, backend: DataBackend) -> SavedQueryDetail:
     visible = set(backend.layer_names())
-    with Session(engine) as db:
+    with Session(reading(engine)) as db:
         return _detail(_get(db, query_id, viewer, visible), viewer)
 
 
@@ -315,7 +316,7 @@ def duplicate(
 def usage(engine: Engine, viewer: int, query_id: str, backend: DataBackend) -> Usage:
     """How many sessions — of any account — refer to it; a count, never whose (Q7)."""
     visible = set(backend.layer_names())
-    with Session(engine) as db:
+    with Session(reading(engine)) as db:
         _get(db, query_id, viewer, visible)
         count = db.scalar(
             select(func.count())

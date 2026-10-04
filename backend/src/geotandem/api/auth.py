@@ -181,6 +181,10 @@ def me(account: CurrentSession) -> Account:
 
 
 @router.post("/password", status_code=204, responses=ERRORS)
-def change_password(body: PasswordChange, account: CurrentSession, state: State) -> Response:
+def change_password(
+    body: PasswordChange, request: Request, account: CurrentSession, state: State
+) -> Response:
+    """A changed password signs out every other login, e.g. one with a stolen cookie."""
     accounts.change_password(state.backend.engine, account.id, body.current, body.new)
+    sessions.end_others(state.backend.engine, account.id, request.cookies.get(sessions.COOKIE))
     return Response(status_code=204)
