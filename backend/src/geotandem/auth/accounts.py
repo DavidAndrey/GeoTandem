@@ -37,7 +37,9 @@ _DUMMY_HASH = _hasher.hash(secrets.token_hex(16))
 
 MAX_HASHING = 4
 """Password checks at once. Each takes Argon2's memory (64 MB by default), so a
-flood of sign-ins queues here instead of exhausting the server (review #2)."""
+flood of sign-ins queues here instead of exhausting the server (review #2).
+Sign-in, setup and password change wait for a slot before they take a worker
+thread (``api.slots.HashingSlots``, review #23); other callers wait here."""
 HASHING_WAIT_S = 10.0
 _hashing = threading.BoundedSemaphore(MAX_HASHING)
 
@@ -159,6 +161,12 @@ def authenticate(engine: Engine, username: str, password: str) -> Account | None
             user.password_hash = rehashed
         user.last_login_at = session.scalar(select(func.current_timestamp()))
         return _account(user)
+
+
+def exists(engine: Engine, username: str) -> bool:
+    with Session(reading(engine)) as session:
+        found = session.scalar(select(User.id).where(User.username == username.strip().lower()))
+        return found is not None
 
 
 def failure_reason(engine: Engine, username: str) -> str:

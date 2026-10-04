@@ -5,6 +5,7 @@ SameSite=Strict cookie, which a cross-site request never carries.
 """
 
 import math
+from collections.abc import AsyncIterator
 from datetime import timedelta
 from typing import Annotated, Any
 
@@ -14,8 +15,9 @@ from pydantic import BaseModel, Field
 from geotandem import audit
 from geotandem.api.errors import ErrorBody, Problem
 from geotandem.api.state import AppState, get_state
-from geotandem.auth import accounts, sessions, setup_token
+from geotandem.auth import accounts, device, sessions, setup_token
 from geotandem.auth.accounts import MAX_PASSWORD_LENGTH, Account, DisplayName
+from geotandem.auth.throttle import Attempt, Braked
 from geotandem.catalog import list_layers
 from geotandem.sample.load import SOURCE as SAMPLE_SOURCE
 from geotandem.sample.load import load_sample
@@ -123,20 +125,48 @@ CurrentAccount = Annotated[Account, Depends(require_account)]
 CurrentSession = Annotated[Account, Depends(require_session)]
 
 
+async def hashing_slot(state: State) -> AsyncIterator[None]:
+    """Wait for a password check on no worker thread (security review #23)."""
+    async with state.hashing_slots.hold():
+        yield
+
+
+HashingSlot = Depends(hashing_slot, scope="function")
+"""For routes that check or hash a password; released as soon as the route returns."""
+
+
 def _address(request: Request) -> str:
     """The client as uvicorn sees it; behind a proxy only if ``FORWARDED_ALLOW_IPS`` trusts it."""
     return request.client.host if request.client else "unknown"
 
 
-def _brake(state: AppState, address: str, username: str) -> None:
-    """Refuse before any password is checked while the throttle says so (review #2)."""
-    wait = state.login_throttle.retry_after(address, username)
-    if wait is not None:
-        refusal = TooManyAttempts(wait)
+def _attempt(
+    state: AppState, address: str, username: str, *, typed: bool = False, known_device: bool
+) -> Attempt:
+    """Refuse before any password is checked while the throttle says so (review #2),
+    or count this attempt right away (review #24).
+
+    ``typed``: the username as the client sent it, which may be a password typed
+    one field too early. Logged only if such an account exists (review #26).
+    ``known_device``: the client has signed in to this username before (review #27).
+    """
+    try:
+        return state.login_throttle.attempt(address, username, known_device=known_device)
+    except Braked as exc:
+        refusal = TooManyAttempts(exc.retry_after_s)
+        known = not typed or accounts.exists(state.backend.engine, username)
         audit.event(
-            "sign_in_throttled", username=username, retry_after_s=refusal.details["retry_after_s"]
+            "sign_in_throttled",
+            **({"username": username} if known else {}),
+            limit=exc.limit,
+            retry_after_s=refusal.details["retry_after_s"],
         )
-        raise refusal
+        raise refusal from None
+
+
+def _known_device(request: Request, state: AppState, username: str) -> bool:
+    cookie = request.cookies.get(device.cookie_name(_secure(request, state)))
+    return state.devices.knows(cookie, username)
 
 
 def _sign_in(request: Request, response: Response, state: AppState, account: Account) -> None:
@@ -145,6 +175,16 @@ def _sign_in(request: Request, response: Response, state: AppState, account: Acc
     response.set_cookie(
         sessions.cookie_name(secure),
         token,
+        httponly=True,
+        samesite="strict",
+        secure=secure,
+        path="/",
+    )
+    # Not paced when its username is flooded from elsewhere (review #27); kept on sign-out.
+    response.set_cookie(
+        device.cookie_name(secure),
+        state.devices.issue(account.username),
+        max_age=device.MAX_AGE_S,
         httponly=True,
         samesite="strict",
         secure=secure,
@@ -197,7 +237,7 @@ def setup_status(state: State) -> SetupStatus:
     )
 
 
-@router.post("/setup", responses=ERRORS)
+@router.post("/setup", responses=ERRORS, dependencies=[HashingSlot])
 def setup(body: SetupRequest, request: Request, response: Response, state: State) -> Account:
     """Create the first administrator; closed as soon as any account exists.
 
@@ -207,14 +247,14 @@ def setup(body: SetupRequest, request: Request, response: Response, state: State
     if accounts.has_accounts(state.backend.engine):
         raise SetupClosed("The application is already set up.")
     address = _address(request)
-    _brake(state, address, setup_token.THROTTLE_KEY)
-    if not setup_token.matches(state.setup_token, body.token):
-        state.login_throttle.failed(address, setup_token.THROTTLE_KEY)
-        audit.event("setup_token_rejected")
-        raise SetupTokenInvalid(
-            "The setup token is wrong. It is in the log of the installation, "
-            "or set as GEOTANDEM_SETUP_TOKEN."
-        )
+    with _attempt(state, address, setup_token.THROTTLE_KEY, known_device=False) as attempt:
+        if not setup_token.matches(state.setup_token, body.token):
+            attempt.failed()
+            audit.event("setup_token_rejected")
+            raise SetupTokenInvalid(
+                "The setup token is wrong. It is in the log of the installation, "
+                "or set as GEOTANDEM_SETUP_TOKEN."
+            )
     try:
         account = accounts.create(
             state.backend.engine,
@@ -236,19 +276,23 @@ def setup(body: SetupRequest, request: Request, response: Response, state: State
     return account
 
 
-@router.post("/login", responses=ERRORS)
+@router.post("/login", responses=ERRORS, dependencies=[HashingSlot])
 def login(body: Credentials, request: Request, response: Response, state: State) -> Account:
     """Repeated failures are braked per username and client address (review #2)."""
-    address = _address(request)
-    _brake(state, address, body.username)
-    account = accounts.authenticate(state.backend.engine, body.username, body.password)
-    if account is None:
-        state.login_throttle.failed(address, body.username)
-        # The log says why; the answer does not, so it hints at no account.
-        reason = accounts.failure_reason(state.backend.engine, body.username)
-        audit.event("sign_in_failed", username=body.username, reason=reason)
-        raise NotAuthenticated("Username or password is wrong, or the account is locked.")
-    state.login_throttle.succeeded(address, body.username)
+    known_device = _known_device(request, state, body.username)
+    with _attempt(
+        state, _address(request), body.username, typed=True, known_device=known_device
+    ) as attempt:
+        account = accounts.authenticate(state.backend.engine, body.username, body.password)
+        if account is None:
+            attempt.failed()
+            # The log says why; the answer does not, so it hints at no account. An
+            # unknown username may be a password in the wrong field: not logged (#26).
+            reason = accounts.failure_reason(state.backend.engine, body.username)
+            named = {} if reason == "unknown_user" else {"username": body.username}
+            audit.event("sign_in_failed", **named, reason=reason)
+            raise NotAuthenticated("Username or password is wrong, or the account is locked.")
+        attempt.succeeded()
     audit.event("sign_in", username=account.username)
     _sign_in(request, response, state, account)
     return account
@@ -277,23 +321,28 @@ def me(account: CurrentSession) -> Account:
 
 @router.post("/password", status_code=204, responses=ERRORS)
 def change_password(
-    body: PasswordChange, request: Request, account: CurrentSession, state: State
+    body: PasswordChange,
+    request: Request,
+    account: CurrentSession,
+    _slot: Annotated[None, HashingSlot],  # after the session: a stranger waits for none
+    state: State,
 ) -> Response:
     """A changed password signs out every other login, e.g. one with a stolen cookie.
 
     Wrong current passwords count like failed sign-ins: a stolen cookie must
     not become a way to guess the password (review #2).
     """
-    address = _address(request)
-    _brake(state, address, account.username)
-    try:
-        accounts.change_password(state.backend.engine, account.id, body.current, body.new)
-    except accounts.AccountError as exc:
-        if exc.code == "wrong_password":
-            state.login_throttle.failed(address, account.username)
-            audit.event("password_change_failed", username=account.username)
-        raise
-    state.login_throttle.succeeded(address, account.username)
+    # Signed in already: not paced for guesses at the username from elsewhere.
+    with _attempt(state, _address(request), account.username, known_device=True) as attempt:
+        try:
+            accounts.change_password(state.backend.engine, account.id, body.current, body.new)
+        except accounts.AccountError as exc:
+            # Any other refusal is about the new password: not a guess, not counted.
+            if exc.code == "wrong_password":
+                attempt.failed()
+                audit.event("password_change_failed", username=account.username)
+            raise
+        attempt.succeeded()
     audit.event("password_changed", username=account.username)
     sessions.end_others(state.backend.engine, account.id, login_token(request, state))
     return Response(status_code=204)

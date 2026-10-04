@@ -20,9 +20,10 @@ from geotandem.api.guards import (
     SameOrigin,
     SecurityHeaders,
 )
-from geotandem.api.slots import QuerySlots
+from geotandem.api.slots import HashingSlots, QuerySlots
 from geotandem.api.state import AppState
 from geotandem.auth import accounts, setup_token
+from geotandem.auth.device import Devices
 from geotandem.auth.throttle import LoginThrottle
 from geotandem.config import Settings, get_settings
 from geotandem.data.spatialite import SpatiaLiteBackend
@@ -50,15 +51,29 @@ def start(settings: Settings) -> AppState:
         load_sample(backend)
     staging = Staging(settings.staging_dir)
     staging.cleanup()
-    throttle = LoginThrottle(settings.login_failures, settings.login_failures_per_address)
+    throttle = LoginThrottle(
+        settings.login_failures,
+        settings.login_failures_per_address,
+        settings.login_failures_per_username,
+    )
     slots = QuerySlots(
         settings.max_running_queries_per_account,
         settings.max_running_queries,
         wait_s=settings.query_timeout_s,
     )
+    hashing = HashingSlots(accounts.MAX_HASHING, accounts.HASHING_WAIT_S)
     token = None if accounts.has_accounts(engine) else setup_token.issue(settings)
     return AppState(
-        settings, backend, unsupported, default_registry(), staging, throttle, slots, token
+        settings,
+        backend,
+        unsupported,
+        default_registry(),
+        staging,
+        throttle,
+        slots,
+        hashing,
+        Devices(),
+        token,
     )
 
 

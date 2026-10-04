@@ -96,6 +96,13 @@ class Settings(BaseSettings):
         ge=1,
         description="Failed sign-ins per client address in 15 minutes, whatever the username.",
     )
+    login_failures_per_username: int = Field(
+        default=20,
+        ge=1,
+        description="Failed sign-ins per username in 15 minutes from all addresses together; "
+        "beyond, one password check every 30 seconds for that username, except from "
+        "browsers that have signed in to it before (security review #27).",
+    )
     cookie_secure: bool = Field(
         default=False,
         description="Send the session cookie over HTTPS only. Requests that arrive over "

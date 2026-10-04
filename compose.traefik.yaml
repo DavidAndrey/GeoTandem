@@ -68,6 +68,8 @@ services:
       traefik.http.middlewares.geotandem-auth-rate.ratelimit.average: "30"
       traefik.http.middlewares.geotandem-auth-rate.ratelimit.period: 1m
       traefik.http.middlewares.geotandem-auth-rate.ratelimit.burst: "15"
+      # An IPv6 client by its /64, as the app counts it (review #22): one customer has them all.
+      traefik.http.middlewares.geotandem-auth-rate.ratelimit.sourceCriterion.ipStrategy.ipv6Subnet: "64"
       traefik.http.middlewares.geotandem-setup-from.ipallowlist.sourcerange: ${GEOTANDEM_SETUP_FROM:-127.0.0.1/32}
 
       # Security headers (review #4, #7), a second time: the app sets them too,

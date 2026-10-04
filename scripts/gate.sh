@@ -39,8 +39,11 @@ make lint
 step "test"
 make test
 
+step "known vulnerabilities in dependencies"
+make audit
+
 step "image"
-docker build -t "$image" .
+docker build --pull -t "$image" .
 
 step "first start on an empty volume"
 docker run -d --name "$name" -p 127.0.0.1::8000 -v "$volume:/data" "$image" >/dev/null

@@ -398,3 +398,101 @@ response headers.
 | 19 | Display names up to 120 characters; layer titles and attribute labels 200; descriptions 5 000; units 50; code lists 500 entries of 500 characters. The same limits apply to the import wizard's decisions. Defaults taken from a file (title from the file name, label from the column header) are cut to fit, and code lists are proposed only when they fit, so imported metadata can always be saved back unchanged. The admin forms stop typing at the limits. |
 | 20 | `source` (e.g. `file:<uploaded name>`) is sent to administrators only; for anyone else `/api/layers` and `/api/layers/{name}` answer `null`. |
 | 21 | `test_every_route_requires_what_it_should` reads the routes from the application, checks it found every one in the OpenAPI document, and fails unless each needs an account, or an administrator under `/api/admin/`, or is on the written list of public and own-account routes. Tested to fail on a route whose guard was removed. |
+
+## OWASP Top 10 (2025)
+
+Date: 2026-10-04, after #1–#19. Scope: the risks of the
+[OWASP Top 10, 2025 edition](https://top10.owasp.org/2025/) that the API
+list above does not already cover: the supply chain, cryptography, injection
+beyond SQL, integrity of software and data, logging and alerting, and how
+errors are handled. Method: code reading; `pip-audit` on the 95 locked
+runtime packages (`uv export --no-dev`) and `npm audit` on `frontend/` and
+`e2e/`; one Argon2 check timed (43 ms on the development machine); the
+worker thread pool read from anyio (40 threads).
+
+**Overall:** no broken access control, injection or weak cryptography found.
+The new findings are in the sign-in throttle: it counts each IPv6 address on
+its own, and it can be outrun by parallel requests. Waiting sign-ins also hold
+worker threads. The supply chain is locked but not watched.
+
+### Risk by risk
+
+| Risk | Result | Basis |
+|---|---|---|
+| **A01 Broken Access Control** | No finding | Covered by API1, API3, API5 and #21. Server-side request forgery, now part of A01, as API7: the server fetches no URL. |
+| **A02 Security Misconfiguration** | No finding | Covered by API8 (#4, #7, #8, #10, #17). `compose.yaml` publishes on every interface on purpose (#1, "Not changed"). |
+| **A03 Software Supply Chain Failures** | #25 | Locked: `uv.lock` with hashes and `uv sync --frozen`; `package-lock.json` with integrity hashes and `npm ci`; the sample dataset pinned by SHA-256 and checked on load. Today: `pip-audit` finds nothing; `npm audit --omit=dev` finds nothing. With dev dependencies, `braces` (GHSA-vfj7-8cjw-p6xm, via `@lingui/cli` and `eslint-plugin-lingui`) is a denial of service on glob patterns the build itself writes, so it cannot be reached. Left: nothing checks this regularly (#25). |
+| **A04 Cryptographic Failures** | No finding | Argon2 (argon2-cffi defaults, RFC 9106) for passwords; session tokens of 256 bits from `secrets`, stored as SHA-256, which is enough for random tokens of that length; setup token of 144 bits compared with `compare_digest`; start passwords of 96 bits; ids from `secrets` and `uuid4`. No home-made cryptography, no MD5/SHA-1, no keys in the code. In transit: HTTPS at Traefik (TLS 1.2 or later by default), HSTS, `Secure` and `__Host-` cookie (#4, #18), `Cache-Control: no-store` (#17). At rest the SQLite file is not encrypted; it holds hashes only, and protecting `/data` and its backups is the host's job. |
+| **A05 Injection** | No finding | SQL as noted at the top. `text_match` escapes `GLOB` and `LIKE` wildcards (`autoescape=True`), so `%`, `_` and `*` match themselves. No HTML sink in the frontend (no `innerHTML`, `dangerouslySetInnerHTML`, `eval`), and a CSP with no inline scripts (#7). The security log is written as JSON (#13). No shell, no `subprocess`. No data export, so no formula injection in CSV or Excel. File paths are chosen by the server (`Staging.path` takes only alphanumeric ids). Ahead: prompt injection through layer descriptions and values (API10). |
+| **A06 Insecure Design** | #22, #23 | The design-level limits are in place (#2, #5, #6, #9). The throttle's notion of "one client" does not hold for IPv6 (#22), and its waiting holds threads (#23). |
+| **A07 Authentication Failures** | #22, #24 | Covered by API2 (#1, #2, #12, #16, #18). Left: the throttle keys (#22) and a race in it (#24). |
+| **A08 Software or Data Integrity Failures** | No finding | No plugins, no auto-update, no scripts from a CDN (CSP `script-src 'self'`; Swagger UI only with `GEOTANDEM_API_DOCS`). Client data is only ever JSON, validated by Pydantic; stored queries of sessions and saved queries are validated again by `QueryObject` when read. The one `pickle`: the import child sends its result to the server through `multiprocessing`. A child taken over through a parser bug could send a crafted result, but it already runs as the same user with write access to `/data`, so this adds nothing to what #9 accepts. |
+| **A09 Security Logging and Alerting Failures** | #26 | Covered by #13: sign-ins, refusals, account and layer changes, as JSON, without secrets. No alerting in the application; it belongs to the log collector. Left: a password typed into the username field is logged (#26). |
+| **A10 Mishandling of Exceptional Conditions** | #24 | Fails closed: a database error in the body guard (`_is_admin`) or session check ends in a 500, never in letting the request through. Unexpected errors get Starlette's plain `Internal Server Error`, with no traceback (`debug` is off); import and copy entries are closed as `failed` before the error goes on (`run.py`, `admin.py`); writes roll back with their transaction. Validation errors name the field, not the value sent. Left: a check-then-act race (#24). |
+
+### New findings
+
+| # | Priority | Finding | Impact |
+|---|---|---|---|
+| 22 | **Medium (cloud, if reachable over IPv6)** | **The sign-in throttle counts each IPv6 address on its own.** `auth/throttle.py` keys on `request.client.host` as is. One IPv6 customer usually has a whole /64 (2⁶⁴ addresses), often more. Traefik's `ratelimit` also keys on the full address by default. There is no limit per username across addresses (accepted in #2 for spread-out guessing, which needed many machines then). | One attacker with an IPv6 /64 gets a fresh limit with every address: unlimited guesses at one username, bounded only by the four hashing slots, so about 90 a second at 43 ms per check (fewer on a small VM). The password policy (#12) makes success unlikely, but this is the guessing #2 meant to stop. It also feeds #23. |
+| 23 | **Medium (cloud)** | **Sign-ins waiting for a hashing slot hold a worker thread.** `login`, `setup` and `change_password` are plain `def` routes, so each runs on one of anyio's 40 worker threads, and waits there for up to 10 s in `_hashing.acquire` (`auth/accounts.py`). So are 54 of the 55 API routes. | About 40 sign-in requests at once, sustained (4 a second, each waiting 10 s), take every worker thread. The whole API then stalls for everyone, signed-in users included, while the event loop still accepts requests. No account is needed. Per address the throttle stops this after 50 failures, so it needs about 70 addresses per 15 minutes, which #22 makes free. Query slots (#5) avoid this by waiting in the event loop. |
+| 24 | **Low** | **The throttle can be outrun by parallel requests.** `_brake` checks the count before the password is hashed; `failed` adds to it only afterwards. Requests already past the check all go ahead. | With 40 requests in flight at once, about 50 guesses per username and address get through in 15 minutes instead of 10; about 25 behind Traefik (burst 15). The same applies to the per-address limit, to wrong current passwords in `/api/auth/password`, and to setup tokens (harmless at 144 bits). |
+| 25 | **Low** | **Nothing watches the dependencies.** No CI, no Dependabot or Renovate, no audit in `make gate`. Base images by tag (`node:24-slim`, `python:3.14-slim`, `uv:0.12.10`), not by digest. No SBOM. GDAL, PROJ and SQLite come inside the `pyogrio`/`pyproj` wheels (pinned below 0.14 and 4) or from Debian (`libsqlite3-mod-spatialite`). `pip-audit` does not see their advisories. | A known flaw in a parser that reads uploaded files (#9) stays in the image until someone happens to update. Today's audit is clean, but it is a snapshot. |
+| 26 | **Info** | **A password typed into the username field is logged.** `sign_in_failed` records `username` as sent (up to 64 characters), with `reason: unknown_user`. | A user who types their password one field too early leaves it in the security log, in plain text. Whoever reads the log (the operator, a log service) learns it. A common way passwords end up in logs (CWE-532). |
+
+### Fixes
+
+1. **#22:** in `LoginThrottle`, key an IPv6 client by its /64 (`ipaddress.ip_network(f"{host}/64", strict=False)`), IPv4 by its address. In `compose.traefik.yaml`, set the rate limit's `sourceCriterion.ipStrategy.ipv6Subnet: 64` (check that the Traefik version in use supports it). Consider a third, wider limit per username across all addresses that slows sign-in rather than blocking it (e.g. at most one check per second per username), so it cannot be used to lock someone out.
+2. **#23:** take the hashing slot in the event loop before the route takes a thread: an `asyncio.Semaphore` dependency (as `api/slots.py` does for queries) on `login`, `setup` and `password`, with the same 10 s wait and `503 busy`. Waiting then costs no thread.
+3. **#24:** reserve before hashing. `LoginThrottle.attempt(address, username)` checks and records the attempt in one locked step, and `succeeded` removes it again. Parallel requests then count from the first one.
+4. **#25:** add `pip-audit` (on `uv export --no-dev`) and `npm audit --omit=dev` to `make gate`. Bump base images by digest on a schedule, or let Renovate do it. Rebuild the image when GDAL, PROJ or SQLite publish a security fix. Optionally keep an SBOM of each image (`docker buildx build --sbom=true`).
+5. **#26:** log the username of a failed sign-in only if the account exists. For `unknown_user`, log a short hash or just the length, which still shows a spray of guesses.
+
+### Status of #22–#23
+
+| # | App | Traefik (`compose.traefik.yaml`) |
+|---|---|---|
+| 22 | The sign-in throttle counts an IPv6 client by its /64 (`auth/throttle.client`), and an IPv4 address written as IPv6 (`::ffff:192.0.2.1`) as itself. The security log keeps the full address. | The sign-in rate limit groups IPv6 by /64 (`ipStrategy.ipv6Subnet`) |
+| 23 | Sign-in, setup and password change wait for a password check in the event loop (`api/slots.HashingSlots`, 4 at once, `503 busy` after 10 s), on no worker thread. A password change takes its slot only once its session is checked. Measured before: with the hashing slots taken, 60 waiting sign-ins held a plain `GET` for 5 s; now it answers at once (tested). | — |
+
+Not changed: there is no limit per username across all addresses, so guessing spread over many IPv4 addresses or many /64s is still slowed only by the hashing limit (#2). The measurement above also showed the race of #24, with 40 wrong guesses let through instead of 10; fixed below.
+
+### Status of #24–#26
+
+| # | Fixed |
+|---|---|
+| 24 | The throttle checks and counts an attempt in one locked step (`LoginThrottle.attempt`), as a failure from the start. A success takes it back from the address's count and clears its username's; an attempt that tested no password (busy, or a new password that breaks a rule) is taken back whole. Sign-in, setup token and password change all go through it. Tested: 60 wrong sign-ins at once with 40 hashing slots get ten `401` and fifty `429`. |
+| 25 | `make audit` runs `pip-audit` on the locked runtime packages and `npm audit --omit=dev` on the frontend; `make gate` runs it. Images are built with `--pull`, so a rebuild picks up fixes to the base images. `.github/dependabot.yml` watches the uv, npm and Docker dependencies and proposes updates (security advisories at once, the rest weekly). |
+| 26 | A failed or throttled sign-in names the username in the log only if an account by that name exists. An unknown name may be a password typed into the wrong field (tested). Failures by address still show a spray of guesses. |
+
+Not changed for #25: base images stay pinned by tag, not by digest. A digest would also freeze their security fixes, and without CI nobody would move it on. `pip-audit` still does not see GDAL, PROJ and SQLite inside the wheels, nor the Debian packages of the image; an image scanner (e.g. `docker scout cves geotandem`) covers those, and needs an account or a separate tool.
+
+### #27: guesses at one username from many addresses
+
+Agreed on 2026-10-04, as the open point after #22: guessing spread over many
+IPv4 addresses or many /64s was slowed only by the hashing limit.
+
+- **Counted per username across all addresses** (`auth/throttle.py`), default
+  20 failures in 15 minutes (`GEOTANDEM_LOGIN_FAILURES_PER_USERNAME`). Past
+  that, sign-in is not refused but paced: one password check every 30 seconds
+  for that username; others get `429 too_many_attempts` with the seconds to
+  wait. The security log names the limit (`sign_in_throttled`, `limit:
+  username`). A success takes back only its own attempt, so it does not reset
+  the count for the guessers.
+- **The owner is not paced** (`auth/device.py`). A browser that signs in gets
+  a device cookie (`geotandem_device`, over HTTPS `__Host-geotandem_device`;
+  HttpOnly, SameSite=Strict, 180 days, kept on sign-out). It holds a random
+  nonce and an HMAC over it and the username, so it tells nothing to whoever
+  reads it, and counts only for that username. With it, sign-in skips the pace.
+  The limits per address still apply. A password change is not paced either:
+  whoever makes it is signed in already.
+- **Tested:** wrong guesses at `admin` from 20 IPv6 /64s pass, the 21st is
+  paced, and the owner's browser still signs in at once; with the cookie
+  ignored, the same test fails.
+
+Limits: the key lives in memory, like the counts, so after a restart a browser
+is paced again until its next sign-in. A browser that has never signed in to
+the account (a new device) shares the pace with the guessers while a flood
+lasts. One browser remembers one username, the last it signed in as. At one
+check per 30 s, a sustained flood gets about 2 900 guesses a day at one
+username, against a password policy (#12) that refuses common and short ones.

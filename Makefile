@@ -1,4 +1,4 @@
-.PHONY: install dev test lint gen sample-update docker docker-run e2e gate doc-screenshots \
+.PHONY: install dev test lint audit gen sample-update docker docker-run e2e gate doc-screenshots \
         instance instance-stop instance-logs instance-reset
 
 install:
@@ -20,6 +20,15 @@ test:
 	uv run pytest
 	cd frontend && npm test && npm run check:api && npm run i18n:check
 
+# Known vulnerabilities in what the image ships (security review #25). Asks the
+# advisory databases (network), so not part of `test`. Not covered: GDAL, PROJ and
+# SQLite inside the pyogrio/pyproj wheels, and the Debian packages of the image.
+audit:
+	@tmp=$$(mktemp) && trap 'rm -f "$$tmp"' EXIT \
+		&& uv export --frozen --no-dev --package geotandem --no-emit-workspace --quiet -o "$$tmp" \
+		&& uvx pip-audit@2.10.1 --disable-pip -r "$$tmp"
+	cd frontend && npm audit --omit=dev
+
 # Regenerate every derived artefact from its single source.
 gen:
 	uv run geotandem schema export
@@ -32,8 +41,9 @@ gen:
 sample-update:
 	uv run geotandem sample update
 
+# --pull: base images by tag, so a rebuild brings their security fixes (review #25).
 docker:
-	docker build -t geotandem .
+	docker build --pull -t geotandem .
 
 e2e:
 	cd e2e && npx playwright test
@@ -60,7 +70,7 @@ INSTANCE_BASEMAP ?= swisstopo-grau
 INSTANCE         := geotandem-instance
 
 instance:
-	git archive --format=tar $(INSTANCE_REF) | docker build -t geotandem:instance -
+	git archive --format=tar $(INSTANCE_REF) | docker build --pull -t geotandem:instance -
 	docker rm -f $(INSTANCE) >/dev/null 2>&1 || true
 	docker run -d --name $(INSTANCE) --restart unless-stopped \
 		-p 127.0.0.1:$(INSTANCE_PORT):8000 -v $(INSTANCE)-data:/data \

@@ -2,7 +2,8 @@ from dataclasses import dataclass
 
 from fastapi import Request
 
-from geotandem.api.slots import QuerySlots
+from geotandem.api.slots import HashingSlots, QuerySlots
+from geotandem.auth.device import Devices
 from geotandem.auth.throttle import LoginThrottle
 from geotandem.config import Settings
 from geotandem.data import DataBackend, Limits, Op
@@ -20,6 +21,8 @@ class AppState:
     staging: Staging
     login_throttle: LoginThrottle
     query_slots: QuerySlots
+    hashing_slots: HashingSlots
+    devices: Devices
     setup_token: str | None = None
     """While no account exists: what setup asks for (auth.setup_token)."""
 

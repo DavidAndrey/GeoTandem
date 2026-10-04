@@ -130,6 +130,7 @@ make install   # Python 3.14 und Node-Abhängigkeiten
 make dev       # Backend auf :8000 mit ./data, lädt Beispieldaten
 cd frontend && npm run dev   # Frontend auf :5173, leitet /api an :8000 weiter
 make lint test # ruff, mypy, pytest, ESLint, Vitest, Drift-Prüfungen
+make audit     # bekannte Schwachstellen in den ausgelieferten Abhängigkeiten (Netz)
 make e2e       # Playwright gegen eine laufende Instanz (E2E_BASE_URL;
                # auf einer schon eingerichteten Instanz E2E_ADMIN_USER/_PASSWORD)
 make gate      # alles zusammen, so wie es ausgeliefert wird (siehe unten)
@@ -179,8 +180,8 @@ Repository. Die Fassung ist das Downloaddatum (`bern-mittelland-JJJJ-MM-TT`),
 Testergebnisse: danach `GEOTANDEM_UPDATE_GOLDEN=1 uv run pytest -k golden` und
 die festen Zahlen in Tests und Playwright prüfen.
 
-`make gate` ist die Abnahme jedes Arbeitspakets: `lint` und `test`, dann das
-Container-Image, dessen erster Start auf einem leeren Datenträger, Playwright
+`make gate` ist die Abnahme jedes Arbeitspakets: `lint`, `test` und `audit`, dann das
+Container-Image (mit den aktuellen Basis-Images), dessen erster Start auf einem leeren Datenträger, Playwright
 gegen diesen Container, ein Neustart auf demselben Datenträger (Daten bleiben,
 kein zweites Laden des Beispieldatensatzes) und Playwright ein zweites Mal auf
 den Daten des ersten Durchlaufs. Container und Datenträger
@@ -229,6 +230,7 @@ TOML-Datei, deren Pfad `GEOTANDEM_CONFIG_FILE` nennt (Umgebung geht vor Datei).
 | `GEOTANDEM_SETUP_TOKEN` | leer | Einrichtungscode für das erste Konto, mindestens 16 Zeichen. Leer: jeder Start ohne Konto erzeugt einen und schreibt ihn ins Protokoll |
 | `GEOTANDEM_LOGIN_FAILURES` | `10` | Fehlgeschlagene Anmeldungen je Benutzername und Absenderadresse in 15 Minuten; danach antwortet die Anmeldung `429` mit `Retry-After`, auch auf das richtige Passwort |
 | `GEOTANDEM_LOGIN_FAILURES_PER_ADDRESS` | `50` | Dasselbe je Absenderadresse, gleich welcher Benutzername |
+| `GEOTANDEM_LOGIN_FAILURES_PER_USERNAME` | `20` | Fehlgeschlagene Anmeldungen je Benutzername von allen Adressen zusammen; danach höchstens eine Passwortprüfung alle 30 Sekunden für diesen Namen, ausser aus einem Browser, der sich schon einmal so angemeldet hat |
 | `GEOTANDEM_LOAD_SAMPLE_DATA` | `false` (Container: `true`) | Beispieldatensatz beim Start laden |
 | `GEOTANDEM_SPATIALITE_LIBRARY` | `mod_spatialite` | Name oder Pfad der SpatiaLite-Erweiterung |
 | `GEOTANDEM_FRONTEND_DIR` | leer (Container: `/app/frontend/dist`) | Gebautes Frontend, unter `/` ausgeliefert; in der Entwicklung liefert Vite es aus |
@@ -251,8 +253,13 @@ Sitzungstoken stehen nie darin. Auswerten etwa mit
 **Hinter einem Reverse-Proxy** muss uvicorn dessen Adresse vertrauen
 (`FORWARDED_ALLOW_IPS`, ohne Präfix, z. B. `-e FORWARDED_ALLOW_IPS=172.18.0.2`),
 sonst scheinen alle Anfragen vom Proxy zu kommen und teilen sich die Grenze
-`GEOTANDEM_LOGIN_FAILURES_PER_ADDRESS`. Die Zähler liegen im Speicher und
-beginnen nach einem Neustart von vorn. Weitere Befunde und Massnahmen:
+`GEOTANDEM_LOGIN_FAILURES_PER_ADDRESS`. IPv6-Adressen zählen je /64. Einen
+Browser, der sich erfolgreich angemeldet hat, erkennt die Anwendung an einem
+eigenen Cookie (`geotandem_device`, über HTTPS `__Host-geotandem_device`, 180
+Tage, bleibt beim Abmelden) wieder: Wird sein Benutzername von anderswo mit
+Versuchen überflutet, meldet er sich trotzdem ohne Wartezeit an. Die Zähler und
+der Schlüssel dieses Cookies liegen im Speicher und beginnen nach einem
+Neustart von vorn. Weitere Befunde und Massnahmen:
 [security-review.md](security-review.md).
 
 ## Sicherung (F-9.8)

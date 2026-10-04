@@ -64,8 +64,9 @@ async def test_sign_ins_are_logged_with_the_reason_of_a_failure(
     assert (await login(client, "admin", ADMIN_PASSWORD)).status_code == 200
 
     failed = named(events, "sign_in_failed")
-    assert [(e["username"], e["reason"]) for e in failed] == [
-        ("niemand", "unknown_user"),
+    # An unknown username may be a password typed one field too early (review #26).
+    assert [(e.get("username"), e["reason"]) for e in failed] == [
+        (None, "unknown_user"),
         ("admin", "wrong_password"),
         ("m.keller", "account_locked"),
     ]
@@ -89,6 +90,17 @@ async def test_throttled_sign_ins_are_logged(client: httpx.AsyncClient, events: 
     [throttled] = named(events, "sign_in_throttled")
     assert throttled["username"] == "admin"
     assert throttled["retry_after_s"] == 900
+
+
+async def test_a_password_in_the_username_field_is_not_logged(
+    client: httpx.AsyncClient, events: Events
+) -> None:
+    """Typed one field too early, a password must not end up in the log (review #26)."""
+    client.cookies.clear()
+    for _ in range(11):  # failed, then throttled
+        await login(client, ADMIN_PASSWORD, "admin")
+    assert {e["event"] for e in events} == {"sign_in_failed", "sign_in_throttled"}
+    assert ADMIN_PASSWORD not in json.dumps(events)
 
 
 async def test_own_password_and_sign_out_are_logged(
