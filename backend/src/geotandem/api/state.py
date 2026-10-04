@@ -6,6 +6,7 @@ from geotandem.api.slots import QuerySlots
 from geotandem.auth.throttle import LoginThrottle
 from geotandem.config import Settings
 from geotandem.data import DataBackend, Limits, Op
+from geotandem.importing.isolation import ReadLimits
 from geotandem.importing.staging import Staging
 from geotandem.tools import ToolContext, ToolRegistry
 
@@ -21,6 +22,17 @@ class AppState:
     query_slots: QuerySlots
     setup_token: str | None = None
     """While no account exists: what setup asks for (auth.setup_token)."""
+
+    @property
+    def read_limits(self) -> ReadLimits:
+        """How an import file is read, in a process of its own (security review #9)."""
+        s = self.settings
+        return ReadLimits(
+            memory_mb=s.import_memory_mb,
+            cpu_s=s.import_timeout_s,
+            wall_s=s.import_timeout_s * 1.2,
+            unpacked_mb=s.max_import_unpacked_mb,
+        )
 
     @property
     def limits(self) -> Limits:

@@ -105,6 +105,8 @@ hole.
 | 4 | Fixed: `Secure` cookie and HSTS over HTTPS | TLS, HSTS |
 | 5 | Fixed: bounds on each query; queries running at once per account and in all | — |
 | 6 | Fixed: sessions, saved queries and logins per account capped | — |
+| 9 | Fixed: archives checked before parsing; Excel XML through defusedxml; files read in a limited process of their own | — |
+| 11 | Fixed: expired uploads removed before every new one; at most 20 waiting | — |
 | 12 | Fixed: password policy (length, blocklists, patterns, names) | — |
 | 7 | Fixed: CSP with per-request nonce, `nosniff`, `X-Frame-Options`, `Referrer-Policy` | Same headers except CSP |
 | 8 | Fixed: changes from other origins refused | — |
@@ -181,6 +183,36 @@ pydantic; the time limit itself (F-9.6) stays the way a slow query ends.
 
 Worst case per account is now about 100 MB of sessions; for many accounts,
 watch the size of `/data`.
+
+### #9: import files (`importing/archive.py`, `importing/isolation.py`)
+
+- **Archives first.** A zipped shapefile or an Excel workbook is checked in
+  plain Python before GDAL or openpyxl see it: at most 1 000 entries, none
+  encrypted, no archive inside, and at most `GEOTANDEM_MAX_IMPORT_UNPACKED_MB`
+  (1000 MB) unpacked. Counted by unpacking, not from the headers: an entry
+  whose header understates its size fails its checksum and is refused.
+- **XML**: openpyxl parses through `defusedxml` (now a dependency), so an
+  Excel file with XML entities ("billion laughs", external entities) is
+  refused; tested down to the `EntitiesForbidden` it raises.
+- **A process of its own.** The file is read in a child process forked from
+  a small server that has imported the readers once (`forkserver`): address
+  space `GEOTANDEM_IMPORT_MEMORY_MB` (4096; the libraries alone take about
+  1.4 GB of virtual memory, 115 MB resident), CPU time
+  `GEOTANDEM_IMPORT_TIMEOUT_S` (300 s), and a wall-clock limit on top. Out of
+  memory, out of time, or a crash in GDAL or SQLite: the child ends, the
+  wizard says the file cannot be read, the server goes on. The GDAL driver
+  restriction holds in the child (tested).
+
+Not changed: the child runs as the same user, so it is no sandbox against
+code execution through a parser bug; that would need a separate user or
+namespaces, beyond this application. Imports remain administrators' work.
+
+### #11: uploads left waiting (`importing/staging.py`)
+
+Uploads older than 24 hours are removed at start, as before, and now also
+before every new upload; at most 20 wait at once (`409
+too_many_pending_imports` beyond, the wizard tells to import or cancel one).
+Abandoned uploads can no longer pile up on a long-running instance.
 
 ### #12: password policy (`auth/password_policy.py`)
 

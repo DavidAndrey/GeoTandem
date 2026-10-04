@@ -37,6 +37,7 @@ from geotandem.catalog import LayerInfo, list_layers
 from geotandem.data import AttributeSpec, DataBackend, LayerExists, NewLayer
 from geotandem.geo import common_geometry_type, reprojector
 from geotandem.importing import log
+from geotandem.importing.isolation import ReadLimits, read_isolated
 from geotandem.importing.log import ImportRunInfo, RejectedRow, Step
 from geotandem.importing.names import RESERVED, identifier
 from geotandem.importing.preview import Preview, build_preview, key_text
@@ -46,7 +47,6 @@ from geotandem.importing.read import (
     Source,
     SourceError,
     detect_format,
-    read_source,
 )
 
 
@@ -156,8 +156,14 @@ def _unique_columns(backend: DataBackend, info: LayerInfo) -> dict[str, set[str]
     return unique
 
 
-def preview_file(path: Path, file_name: str, options: ReadOptions, backend: DataBackend) -> Preview:
-    source = read_source(path, file_name, options)
+def preview_file(
+    path: Path,
+    file_name: str,
+    options: ReadOptions,
+    backend: DataBackend,
+    limits: ReadLimits | None = None,
+) -> Preview:
+    source = read_isolated(path, file_name, options, limits or ReadLimits())
     return build_preview(
         source,
         backend.internal_srid,
@@ -172,6 +178,7 @@ def run_import(
     decisions: ImportDecisions,
     backend: DataBackend,
     actor: str | None = None,
+    limits: ReadLimits | None = None,
 ) -> ImportRunInfo:
     """Import ``path``; always returns the log entry, also for a blocked attempt."""
     mode: log.ImportMode = "replace" if decisions.replace else "create"
@@ -188,7 +195,7 @@ def run_import(
     source: Source | None = None
     try:
         with _timed(steps, "read"):
-            source = read_source(path, file_name, decisions.options)
+            source = read_isolated(path, file_name, decisions.options, limits or ReadLimits())
             preview = build_preview(
                 source, backend.internal_srid, taken_layer_names=backend.layer_names()
             )

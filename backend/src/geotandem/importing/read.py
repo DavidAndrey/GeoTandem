@@ -27,6 +27,7 @@ from shapely.geometry.base import BaseGeometry
 
 from geotandem import gdal
 from geotandem.data.interface import AttributeType
+from geotandem.importing import archive
 from geotandem.importing.values import as_date, infer
 
 gdal.check(pyogrio.list_drivers(read=True))
@@ -52,6 +53,9 @@ FORMAT_NAMES: dict[Format, str] = {
 }
 
 log = logging.getLogger(__name__)
+ARCHIVES: frozenset[Format] = frozenset({"shapefile", "xlsx"})
+"""Formats that are zip archives, checked before they are parsed (security review #9)."""
+MAX_UNPACKED = 1000 * 1024 * 1024
 DELIMITERS = ",;\t|"
 _SNIFF_BYTES = 64 * 1024
 
@@ -152,9 +156,21 @@ def detect_format(file_name: str) -> Format:
     return FORMATS[suffix]
 
 
-def read_source(path: Path, file_name: str, options: ReadOptions | None = None) -> Source:
+def read_source(
+    path: Path,
+    file_name: str,
+    options: ReadOptions | None = None,
+    max_unpacked: int = MAX_UNPACKED,
+) -> Source:
     options = options or ReadOptions()
     fmt = detect_format(file_name)
+    if fmt in ARCHIVES:
+        refused = archive.problem(path, max_unpacked, allow_nested=False)
+        if refused is not None:
+            code, message = refused
+            if code == "unreadable":  # told like any file that cannot be read
+                raise _unreadable(file_name, fmt, ValueError(message))
+            raise SourceError(code, message, file=file_name)
     if fmt in VECTOR_FORMATS:
         return _read_vector(path, file_name, fmt, options)
     if fmt == "csv":

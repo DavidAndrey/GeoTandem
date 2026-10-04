@@ -197,7 +197,10 @@ TOML-Datei, deren Pfad `GEOTANDEM_CONFIG_FILE` nennt (Umgebung geht vor Datei).
 | `GEOTANDEM_MAX_RUNNING_QUERIES_PER_ACCOUNT` | `3` | Dasselbe je Konto, damit ein Konto nicht alle belegt |
 | `GEOTANDEM_MAX_SESSIONS_PER_ACCOUNT` | `100` | Gespeicherte Sitzungen je Konto |
 | `GEOTANDEM_MAX_SAVED_QUERIES_PER_ACCOUNT` | `100` | Gespeicherte Abfragen je Konto |
-| `GEOTANDEM_MAX_IMPORT_MB` | `200` | Grösste angenommene Importdatei; Uploads warten in `DATA_DIR/staging` höchstens 24 h auf ihre Übernahme |
+| `GEOTANDEM_MAX_IMPORT_MB` | `200` | Grösste angenommene Importdatei; Uploads warten in `DATA_DIR/staging` höchstens 24 h auf ihre Übernahme, höchstens 20 zugleich |
+| `GEOTANDEM_MAX_IMPORT_UNPACKED_MB` | `1000` | Worauf ein gezipptes Shapefile oder eine Excel-Datei entpackt höchstens wachsen darf; geprüft, bevor sie gelesen wird |
+| `GEOTANDEM_IMPORT_MEMORY_MB` | `4096` | Adressraum des eigenen Prozesses, der eine Importdatei liest (die Bibliotheken allein belegen etwa 1,4 GB davon) |
+| `GEOTANDEM_IMPORT_TIMEOUT_S` | `300` | Rechenzeit zum Lesen einer Importdatei |
 | `GEOTANDEM_BASEMAP` | `none` (`make dev`: `swisstopo-grau`) | Hintergrundkarte: `none`, `swisstopo-grau`, `osm` oder eigene Kachel-URL mit `{z}/{x}/{y}`. Alles ausser `none` lässt den Browser Kacheln von aussen laden — der Anbieter sieht dann, welcher Kartenausschnitt betrachtet wird (F-9.1) |
 | `GEOTANDEM_BASEMAP_ATTRIBUTION` | leer | Quellenangabe zu einer eigenen Kachel-URL |
 | `GEOTANDEM_SESSION_HOURS` | `12` | Gültigkeit einer Anmeldung; verlängert sich bei Nutzung |

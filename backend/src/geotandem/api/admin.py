@@ -38,7 +38,7 @@ from geotandem.importing import Message, Preview, ReadOptions, SourceError
 from geotandem.importing import log as import_log
 from geotandem.importing.log import ImportRunInfo, ImportRunSummary, ImportStatus
 from geotandem.importing.run import ImportDecisions, abort, preview_file, run_import
-from geotandem.importing.staging import UnknownUpload, UploadTooLarge
+from geotandem.importing.staging import TooManyPending, UnknownUpload, UploadTooLarge
 from geotandem.sample.load import dataset_version
 from geotandem_query import SCHEMA_VERSION
 
@@ -54,6 +54,11 @@ ERRORS: dict[int | str, dict[str, Any]] = {
 class TooLarge(Problem):
     status = 413
     code = "upload_too_large"
+
+
+class PendingImports(Problem):
+    status = 409
+    code = "too_many_pending_imports"
 
 
 class SourceProblem(Problem):
@@ -273,11 +278,17 @@ async def upload(state: State, file: Annotated[UploadFile, File()], user: Actor)
             f"The file exceeds {state.settings.max_import_mb} MB.",
             max_mb=state.settings.max_import_mb,
         ) from None
+    except TooManyPending as exc:
+        raise PendingImports(
+            f"{exc.args[0]} uploads are waiting for their import already; "
+            "import or cancel one first.",
+            max=exc.args[0],
+        ) from None
     audit.event("import_uploaded", username=user, file=file.filename, import_id=import_id)
     path = state.staging.path(import_id)
     try:
         preview = await run_in_threadpool(
-            preview_file, path, path.name, ReadOptions(), state.backend
+            preview_file, path, path.name, ReadOptions(), state.backend, state.read_limits
         )
     except SourceError as exc:
         state.staging.delete(import_id)
@@ -290,7 +301,7 @@ def repreview(import_id: str, body: ReadOptions, state: State) -> Preview:
     """Read again with other options: encoding, delimiter, sheet or layer (design D11)."""
     path = _staged(state, import_id)
     try:
-        return preview_file(path, path.name, body, state.backend)
+        return preview_file(path, path.name, body, state.backend, state.read_limits)
     except SourceError as exc:
         raise _source_problem(exc) from None
 
@@ -303,7 +314,7 @@ def commit(import_id: str, body: ImportDecisions, state: State, user: Actor) -> 
     so the decisions can be corrected and committed again.
     """
     path = _staged(state, import_id)
-    run = run_import(path, path.name, body, state.backend, actor=user)
+    run = run_import(path, path.name, body, state.backend, actor=user, limits=state.read_limits)
     audit.event(
         "import_committed",
         username=user,

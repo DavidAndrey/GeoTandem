@@ -2,7 +2,9 @@
 
 One directory per upload under ``<data_dir>/staging/<id>/``, holding the file
 under its original name. An upload lives until it is imported, aborted, or
-older than ``MAX_AGE`` at the next start.
+older than ``MAX_AGE``: removed at the next start and before every new upload,
+so abandoned uploads cannot pile up on a long-running instance; at most
+``max_pending`` wait at once (security review #11).
 """
 
 from __future__ import annotations
@@ -14,6 +16,7 @@ from pathlib import Path, PurePath
 from typing import BinaryIO
 
 MAX_AGE_S = 24 * 3600
+MAX_PENDING = 20
 _CHUNK = 1024 * 1024
 
 
@@ -21,16 +24,27 @@ class UploadTooLarge(Exception):
     pass
 
 
+class TooManyPending(Exception):
+    """``max_pending`` uploads are waiting for their decisions already."""
+
+
 class UnknownUpload(KeyError):
     pass
 
 
 class Staging:
-    def __init__(self, root: Path) -> None:
+    def __init__(self, root: Path, max_pending: int = MAX_PENDING) -> None:
         self.root = root
+        self.max_pending = max_pending
+
+    def pending(self) -> int:
+        return sum(1 for d in self.root.iterdir() if d.is_dir()) if self.root.is_dir() else 0
 
     def save(self, file_name: str, data: BinaryIO, max_bytes: int) -> str:
-        """Copy an upload into staging; refuse it beyond ``max_bytes``."""
+        """Copy an upload into staging; refuse it beyond ``max_bytes`` or ``max_pending``."""
+        self.cleanup()
+        if self.pending() >= self.max_pending:
+            raise TooManyPending(self.max_pending)
         name = PurePath(file_name.replace("\\", "/")).name
         if name in ("", ".", ".."):  # "a/.." keeps ".." as its last part
             name = "upload"

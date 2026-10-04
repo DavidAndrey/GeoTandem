@@ -51,6 +51,20 @@ class Settings(BaseSettings):
         default=100, ge=1, description="Saved queries per account (review #6)."
     )
     max_import_mb: int = Field(default=200, ge=1, description="Largest accepted upload (E1.3).")
+    max_import_unpacked_mb: int = Field(
+        default=1000,
+        ge=1,
+        description="What a zipped shapefile or an Excel workbook may unpack to (review #9).",
+    )
+    import_memory_mb: int = Field(
+        default=4096,
+        ge=1024,
+        description="Address space of the process that reads an import file (review #9); "
+        "the libraries alone take about 1.4 GB of it.",
+    )
+    import_timeout_s: int = Field(
+        default=300, ge=10, description="CPU time to read an import file (review #9)."
+    )
     max_request_mb: float = Field(
         default=2,
         gt=0,
