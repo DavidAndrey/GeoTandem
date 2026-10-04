@@ -98,6 +98,9 @@ test('a shared query is read by others, copied when changed, and deleted with no
   const ask = a.getByRole('alertdialog')
   await expect(ask).toContainText('in 1 Sitzung verwendet')
   await ask.getByRole('button', { name: 'Löschen' }).click()
+  // The question stays until the server has deleted. Until then it hides the table
+  // from the accessibility tree, so the next line would pass at once and race on.
+  await expect(ask).toBeHidden()
   await expect(table.getByText(NAME)).toBeHidden()
 
   // The session keeps its conditions: it still reopens identical.

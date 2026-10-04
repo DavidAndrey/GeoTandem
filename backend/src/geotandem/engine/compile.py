@@ -30,6 +30,7 @@ from sqlalchemy import (
 )
 
 from geotandem.data import DataBackend, Op
+from geotandem.engine import complexity
 from geotandem.engine.errors import (
     QueryError,
     UnknownAttribute,
@@ -498,4 +499,6 @@ def _iso_date(value: Any) -> date | None:
 def compile_query(
     q: m.QueryObject, backend: DataBackend, max_features: int, unsupported: Iterable[Op] = ()
 ) -> Compiled:
+    """Every way a query runs or is checked comes through here, so do the bounds."""
+    complexity.check(q)
     return Compiler(backend, unsupported).compile(q, max_features)

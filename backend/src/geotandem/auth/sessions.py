@@ -20,6 +20,8 @@ from geotandem.db.spatialite import reading
 
 COOKIE = "geotandem_session"
 _REFRESH = timedelta(minutes=1)
+MAX_LOGINS = 20
+"""Logins kept per account; a new one beyond ends the oldest (security review #6)."""
 
 
 def _now() -> datetime:
@@ -38,6 +40,15 @@ def start(engine: Engine, user_id: int, lifetime: timedelta) -> str:
         session.add(
             AuthSession(token_hash=_digest(token), user_id=user_id, expires_at=_now() + lifetime)
         )
+        session.flush()
+        # Sliding expiry: the login used least recently expires first.
+        surplus = (
+            select(AuthSession.token_hash)
+            .where(AuthSession.user_id == user_id)
+            .order_by(AuthSession.expires_at.desc())
+            .offset(MAX_LOGINS)
+        )
+        session.execute(delete(AuthSession).where(AuthSession.token_hash.in_(surplus)))
     return token
 
 

@@ -1,6 +1,7 @@
 """HTTP interface v0 (E1.2). Contract for the frontend; types are generated from it."""
 
 import time
+from collections.abc import AsyncIterator
 from dataclasses import replace
 from typing import Annotated, Any, Literal
 
@@ -37,6 +38,16 @@ def visible_backend(state: State, account: CurrentAccount) -> DataBackend:
 
 
 Visible = Annotated[DataBackend, Depends(visible_backend)]
+
+
+async def query_slot(state: State, account: CurrentAccount) -> AsyncIterator[None]:
+    """Run only with a free slot of the account and of the instance (security review #5)."""
+    async with state.query_slots.hold(account.id):
+        yield
+
+
+QuerySlot = Depends(query_slot, scope="function")
+"""For routes that execute a query; released as soon as the route returns."""
 
 ERRORS: dict[int | str, dict[str, Any]] = {
     status: {"model": ErrorBody} for status in (400, 404, 413, 422, 504)
@@ -79,7 +90,7 @@ def layer(name: str, backend: Visible) -> LayerInfo:
     return info
 
 
-@router.post("/query", responses=ERRORS)
+@router.post("/query", responses=ERRORS, dependencies=[QuerySlot])
 def query(body: QueryObject, state: State, backend: Visible) -> QueryResult:
     """Run a query object (F-8.9); the result carries its query and provenance."""
     return run_query(body, backend, state.limits, state.unsupported)
@@ -97,7 +108,7 @@ class Counts(BaseModel):
     """In the order of ``queries``."""
 
 
-@router.post("/query/count", responses=ERRORS)
+@router.post("/query/count", responses=ERRORS, dependencies=[QuerySlot])
 def count(body: CountRequest, state: State, backend: Visible) -> Counts:
     """Count the features of several queries at once, e.g. one per condition (design B2).
 
@@ -132,7 +143,7 @@ class Ids(BaseModel):
     """Sorted."""
 
 
-@router.post("/query/ids", responses=ERRORS)
+@router.post("/query/ids", responses=ERRORS, dependencies=[QuerySlot])
 def ids(body: QueryObject, state: State, backend: Visible) -> Ids:
     """The ids of the features a query returns, for marking hits (design B9).
 

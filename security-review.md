@@ -103,6 +103,8 @@ hole.
 | 2 | Fixed: sign-in throttle, bounded hashing | Rate limit on sign-in and password change |
 | 3 | Fixed: body limit before the body is read | `buffering` limits |
 | 4 | Fixed: `Secure` cookie and HSTS over HTTPS | TLS, HSTS |
+| 5 | Fixed: bounds on each query; queries running at once per account and in all | — |
+| 6 | Fixed: sessions, saved queries and logins per account capped | — |
 | 7 | Fixed: CSP with per-request nonce, `nosniff`, `X-Frame-Options`, `Referrer-Policy` | Same headers except CSP |
 | 8 | Fixed: changes from other origins refused | — |
 | 10 | Fixed: health says only ready or not, details for admins; API docs off by default; import errors without server details; no `server` header | — |
@@ -134,6 +136,50 @@ in which the browser reports a CSP violation, and `make gate` passes.
 Not changed: `docker run -p 8000:8000` still publishes on every interface.
 With the token, reaching the address no longer allows a takeover; that the
 instance is reachable from the LAN at all is intended for a demonstrator.
+
+### #5: expensive queries (`engine/complexity.py`, `api/slots.py`)
+
+- **Bounds on each query**, checked in `compile_query`, so for running,
+  counting, ids, validation, session stamps and saved queries alike; beyond
+  one, `400 query_too_complex` names it (`details.limit`, `max`, `found`):
+
+  | Bound | Max |
+  |---|---|
+  | conditions in the whole query (nested, in relations and columns) | 200 |
+  | nesting depth | 20 |
+  | values in one `in` list / in all conditions | 1 000 / 5 000 |
+  | vertices of drawn geometries | 10 000 |
+  | `text_match` text | 500 characters |
+  | buffer and distances | 1 000 km |
+  | computed columns | 10 |
+  | entries in `select`, `order_by`, join `fields`, `area_fields`, `metrics` | 100 |
+
+  Far above anything the interface builds. Measured before: a list of
+  150 000 values was a 500 (beyond SQLite's limit of variables); a drawn
+  polygon that fits in 2 MB (about 45 000 vertices) took 0.8 s to check
+  before the time limit even started.
+- **Queries running at once**: each running query holds a slot of its
+  account (3) and of the instance (8). Further queries wait in the event loop,
+  on no worker thread, for at most the time limit, then get `503 busy` with
+  `Retry-After`, recorded as `queries_busy`. Applies to `/api/query`,
+  `/query/count`, `/query/ids` and the session routes that stamp a result;
+  `/query/validate` runs nothing and needs no slot.
+
+Not changed: nesting deeper than about 500 levels was already refused by
+pydantic; the time limit itself (F-9.6) stays the way a slow query ends.
+
+### #6: storage per account
+
+- At most 100 saved sessions (1 MB of state each) and 100 saved queries per
+  account; beyond, creating or duplicating answers `409 too_many_sessions` /
+  `too_many_saved_queries`. Counted in the adding transaction (`BEGIN
+  IMMEDIATE`), so two saves at once cannot both pass.
+- At most 20 logins per account: a new one ends the one used least recently.
+- Request bodies are bounded since #3, so the size check no longer follows an
+  unbounded parse.
+
+Worst case per account is now about 100 MB of sessions; for many accounts,
+watch the size of `/data`.
 
 ### #2: sign-in throttle
 

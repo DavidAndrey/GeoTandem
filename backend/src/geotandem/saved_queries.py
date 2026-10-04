@@ -226,12 +226,28 @@ def get(engine: Engine, viewer: int, query_id: str, backend: DataBackend) -> Sav
         return _detail(_get(db, query_id, viewer, visible), viewer)
 
 
+def _ensure_room(db: Session, owner: int, limit: int) -> None:
+    """At most ``limit`` saved queries per account (security review #6); counted in the
+    adding transaction, as for sessions."""
+    count = db.scalar(
+        select(func.count()).select_from(SavedQuery).where(SavedQuery.owner_id == owner)
+    )
+    if count is not None and count >= limit:
+        raise SavedQueryError(
+            409,
+            "too_many_saved_queries",
+            f"You have {count} saved queries, the most allowed. Delete one first.",
+            max=limit,
+        )
+
+
 def create(
-    engine: Engine, owner: int, body: SavedQueryWrite, layers: list[str]
+    engine: Engine, owner: int, body: SavedQueryWrite, layers: list[str], *, limit: int
 ) -> SavedQueryDetail:
     """``layers`` come from compiling ``body.query`` under the owner's view."""
     _check(body)
     with Session(engine, expire_on_commit=False) as db:
+        _ensure_room(db, owner, limit)
         _ensure_free(db, owner, body.name)
         row = SavedQuery(
             id=secrets.token_urlsafe(8),
@@ -292,12 +308,13 @@ def patch(
 
 
 def duplicate(
-    engine: Engine, viewer: int, query_id: str, backend: DataBackend
+    engine: Engine, viewer: int, query_id: str, backend: DataBackend, *, limit: int
 ) -> SavedQuerySummary:
     """A private copy for the viewer, of an own or a shared query (design C6)."""
     visible = set(backend.layer_names())
     with Session(engine, expire_on_commit=False) as db:
         source = _get(db, query_id, viewer, visible)
+        _ensure_room(db, viewer, limit)
         copy = SavedQuery(
             id=secrets.token_urlsafe(8),
             owner_id=viewer,

@@ -38,6 +38,18 @@ class Settings(BaseSettings):
     )
     max_features: int = Field(default=10_000, ge=1, description="Result size limit (F-9.6).")
     query_timeout_s: float = Field(default=10.0, gt=0, description="Query run time limit (F-9.6).")
+    max_running_queries: int = Field(
+        default=8, ge=1, description="Queries running at once in all (security review #5)."
+    )
+    max_running_queries_per_account: int = Field(
+        default=3, ge=1, description="Queries running at once per account (security review #5)."
+    )
+    max_sessions_per_account: int = Field(
+        default=100, ge=1, description="Saved analysis sessions per account (review #6)."
+    )
+    max_saved_queries_per_account: int = Field(
+        default=100, ge=1, description="Saved queries per account (review #6)."
+    )
     max_import_mb: int = Field(default=200, ge=1, description="Largest accepted upload (E1.3).")
     max_request_mb: float = Field(
         default=2,

@@ -20,6 +20,7 @@ from geotandem.api.guards import (
     SameOrigin,
     SecurityHeaders,
 )
+from geotandem.api.slots import QuerySlots
 from geotandem.api.state import AppState
 from geotandem.auth import accounts, setup_token
 from geotandem.auth.throttle import LoginThrottle
@@ -50,8 +51,15 @@ def start(settings: Settings) -> AppState:
     staging = Staging(settings.staging_dir)
     staging.cleanup()
     throttle = LoginThrottle(settings.login_failures, settings.login_failures_per_address)
+    slots = QuerySlots(
+        settings.max_running_queries_per_account,
+        settings.max_running_queries,
+        wait_s=settings.query_timeout_s,
+    )
     token = None if accounts.has_accounts(engine) else setup_token.issue(settings)
-    return AppState(settings, backend, unsupported, default_registry(), staging, throttle, token)
+    return AppState(
+        settings, backend, unsupported, default_registry(), staging, throttle, slots, token
+    )
 
 
 class SinglePageApp(StaticFiles):

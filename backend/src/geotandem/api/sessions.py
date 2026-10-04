@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, Response
 
 from geotandem import sessions
 from geotandem.api.auth import CurrentAccount
-from geotandem.api.routes import ERRORS, State, Visible
+from geotandem.api.routes import ERRORS, QuerySlot, State, Visible
 from geotandem.engine import ResultStamp, stamp_query
 from geotandem.sessions import (
     Check,
@@ -48,12 +48,19 @@ def list_sessions(account: CurrentAccount, state: State, backend: Visible) -> li
     return sessions.list_sessions(state.backend.engine, account.id, backend)
 
 
-@router.post("", status_code=201, responses=SESSION_ERRORS)
+@router.post("", status_code=201, responses=SESSION_ERRORS, dependencies=[QuerySlot])
 def create(
     body: SessionWrite, account: CurrentAccount, state: State, backend: Visible, stamp: Stamper
 ) -> SessionDetail:
     """Save the analysis as a new session ("Speichern unter", design C2)."""
-    return sessions.create(state.backend.engine, account.id, body, _stamp(body, stamp), backend)
+    return sessions.create(
+        state.backend.engine,
+        account.id,
+        body,
+        _stamp(body, stamp),
+        backend,
+        limit=state.settings.max_sessions_per_account,
+    )
 
 
 @router.get("/last")
@@ -67,7 +74,7 @@ def get(session_id: str, account: CurrentAccount, state: State, backend: Visible
     return sessions.get(state.backend.engine, account.id, session_id, backend)
 
 
-@router.put("/{session_id}", responses=SESSION_ERRORS)
+@router.put("/{session_id}", responses=SESSION_ERRORS, dependencies=[QuerySlot])
 def save(
     session_id: str,
     body: SessionWrite,
@@ -102,10 +109,16 @@ def delete(session_id: str, account: CurrentAccount, state: State) -> Response:
 def duplicate(
     session_id: str, account: CurrentAccount, state: State, backend: Visible
 ) -> SessionSummary:
-    return sessions.duplicate(state.backend.engine, account.id, session_id, backend)
+    return sessions.duplicate(
+        state.backend.engine,
+        account.id,
+        session_id,
+        backend,
+        limit=state.settings.max_sessions_per_account,
+    )
 
 
-@router.post("/{session_id}/check", responses=ERRORS)
+@router.post("/{session_id}/check", responses=ERRORS, dependencies=[QuerySlot])
 def check(
     session_id: str,
     account: CurrentAccount,

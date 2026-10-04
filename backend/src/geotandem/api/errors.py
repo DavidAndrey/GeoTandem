@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from geotandem import audit
+from geotandem.api.slots import QueriesBusy
 from geotandem.auth.accounts import AccountError, HashingBusy
 from geotandem.engine import QueryError
 from geotandem.saved_queries import SavedQueryError
@@ -67,6 +68,12 @@ def install(app: FastAPI) -> None:
         # Many sign-ins at once (security review #2): the client may simply try again.
         message = "Too many sign-ins at the same time. Please try again shortly."
         audit.event("hashing_busy")
+        return _body(503, "busy", message, {"Retry-After": "5"})
+
+    @app.exception_handler(QueriesBusy)
+    async def _queries_busy(_: Request, exc: QueriesBusy) -> JSONResponse:
+        audit.event("queries_busy")
+        message = "Too many queries are running at the same time. Please try again shortly."
         return _body(503, "busy", message, {"Retry-After": "5"})
 
     @app.exception_handler(SessionError)

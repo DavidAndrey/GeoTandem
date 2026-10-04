@@ -40,7 +40,8 @@ def create(
     body: SavedQueryWrite, account: CurrentAccount, state: State, backend: Visible
 ) -> SavedQueryDetail:
     layers = _layers(body, state, backend)
-    return saved_queries.create(state.backend.engine, account.id, body, layers)
+    limit = state.settings.max_saved_queries_per_account
+    return saved_queries.create(state.backend.engine, account.id, body, layers, limit=limit)
 
 
 @router.get("/{query_id}", responses=ERRORS)
@@ -77,7 +78,8 @@ def patch(
 def duplicate(
     query_id: str, account: CurrentAccount, state: State, backend: Visible
 ) -> SavedQuerySummary:
-    return saved_queries.duplicate(state.backend.engine, account.id, query_id, backend)
+    limit = state.settings.max_saved_queries_per_account
+    return saved_queries.duplicate(state.backend.engine, account.id, query_id, backend, limit=limit)
 
 
 @router.get("/{query_id}/usage", responses=ERRORS)

@@ -243,15 +243,36 @@ def last_opened(engine: Engine, owner: int, backend: DataBackend) -> SessionDeta
         return _detail(row, versions) if row else None
 
 
+def _ensure_room(db: Session, owner: int, limit: int) -> None:
+    """At most ``limit`` sessions per account, so no one fills the disk (security review #6).
+
+    Counted in the transaction that adds, which begins IMMEDIATE: two saves at
+    once cannot both pass.
+    """
+    count = db.scalar(
+        select(func.count()).select_from(AnalysisSession).where(AnalysisSession.owner_id == owner)
+    )
+    if count is not None and count >= limit:
+        raise SessionError(
+            409,
+            "too_many_sessions",
+            f"You have {count} saved sessions, the most allowed. Delete one first.",
+            max=limit,
+        )
+
+
 def create(
     engine: Engine,
     owner: int,
     body: SessionWrite,
     stamp: ResultStamp | None,
     backend: DataBackend,
+    *,
+    limit: int,
 ) -> SessionDetail:
     versions = _versions(backend)
     with Session(engine, expire_on_commit=False) as db:
+        _ensure_room(db, owner, limit)
         _ensure_free(db, owner, body.name)
         row = AnalysisSession(id=secrets.token_urlsafe(8), owner_id=owner, opened_at=_now())
         _apply(row, body, stamp)
@@ -294,10 +315,13 @@ def rename(
         return _summary(row, versions)
 
 
-def duplicate(engine: Engine, owner: int, session_id: str, backend: DataBackend) -> SessionSummary:
+def duplicate(
+    engine: Engine, owner: int, session_id: str, backend: DataBackend, *, limit: int
+) -> SessionSummary:
     versions = _versions(backend)
     with Session(engine, expire_on_commit=False) as db:
         source = _get(db, owner, session_id)
+        _ensure_room(db, owner, limit)
         taken = set(
             db.scalars(select(AnalysisSession.name).where(AnalysisSession.owner_id == owner))
         )
