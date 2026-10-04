@@ -4,6 +4,7 @@ import { create } from 'zustand'
 import { useAnalysis } from '../analysis/store'
 import { newSession, saveSession } from './actions'
 import { useSession } from './store'
+import { dateTimeFormat } from '../i18n/locale'
 
 export type Pending = { label: string; run: () => void }
 
@@ -71,14 +72,14 @@ export function formatWhen(iso: string, now = new Date()): string {
   const date = new Date(/[zZ]|[+-]\d\d:\d\d$/.test(iso) ? iso : `${iso}Z`)
   const day = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
   const days = Math.round((day(now) - day(date)) / 86_400_000)
-  const time = date.toLocaleTimeString('de-CH', { hour: '2-digit', minute: '2-digit' })
+  const time = dateTimeFormat({ hour: '2-digit', minute: '2-digit' }).format(date)
   if (days === 0) return `heute ${time}`
   if (days === 1) return 'gestern'
-  return date.toLocaleDateString('de-CH', {
+  return dateTimeFormat({
     day: '2-digit',
     month: '2-digit',
     ...(date.getFullYear() === now.getFullYear() ? {} : { year: 'numeric' }),
-  })
+  }).format(date)
 }
 
 export const sessionKeys = { list: ['sessions'] as const }

@@ -10,6 +10,7 @@ import { formatWhen } from '../session/ui'
 import { conditionLabel } from './part'
 import { useChooseQuery } from './useChooseQuery'
 import { queryKeys, useQueryUi } from './ui'
+import { lowerText } from '../i18n/locale'
 
 export function ManageQueriesDialog() {
   const { dialog, close } = useQueryUi()
@@ -63,12 +64,10 @@ function QueryList({ onClose }: { onClose: () => void }) {
     },
   })
   const title = (name: string) => catalog.data?.find((l) => l.name === name)?.title ?? name
-  const needle = search.trim().toLocaleLowerCase('de-CH')
+  const needle = lowerText(search.trim())
   const layers = [...new Set((list.data ?? []).map((q) => q.result_layer))]
   const shown = (list.data ?? []).filter(
-    (q) =>
-      (!needle || q.name.toLocaleLowerCase('de-CH').includes(needle)) &&
-      (!layer || q.result_layer === layer),
+    (q) => (!needle || lowerText(q.name).includes(needle)) && (!layer || q.result_layer === layer),
   )
   const open = (q: SavedQuerySummary) => {
     onClose()

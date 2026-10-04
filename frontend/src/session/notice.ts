@@ -2,6 +2,7 @@
 // component only shows it.
 import { describe } from '../editor/describe'
 import type { OpenReport } from './store'
+import { formatNumber } from '../i18n/locale'
 
 export interface Notice {
   tone: 'pending' | 'ok' | 'warn' | 'error'
@@ -15,7 +16,7 @@ export interface Notice {
   autoClose: boolean
 }
 
-const hits = (n: number) => `${n.toLocaleString('de-CH')} Treffer`
+const hits = (n: number) => `${formatNumber(n)} Treffer`
 
 export function noticeOf(report: OpenReport, title: (layer: string) => string): Notice {
   const base = { lines: [], adopt: false, chooseResult: false, autoClose: false }

@@ -5,6 +5,7 @@ import { resultLayer, type ExplainColumn } from '../analysis/query'
 import type { LayerInfo, QueryResult } from '../api/client'
 import type { BBox } from '../map/view'
 import { panelOrder } from '../workplace/layerInfo'
+import { collator } from '../i18n/locale'
 
 type Feature = QueryResult['features'][number]
 
@@ -61,18 +62,17 @@ export function extent(coordinates: unknown): BBox | null {
 
 const overlaps = (a: BBox, b: BBox) => a[0] <= b[2] && b[0] <= a[2] && a[1] <= b[3] && b[1] <= a[3]
 
-const collator = new Intl.Collator('de-CH', { numeric: true, sensitivity: 'base' })
-
 const empty = (v: unknown) => v === null || v === undefined || v === ''
 
-function compare(a: unknown, b: unknown): number {
+function compare(a: unknown, b: unknown, text: Intl.Collator): number {
   if (typeof a === 'number' && typeof b === 'number') return a - b
   if (typeof a === 'boolean' && typeof b === 'boolean') return Number(a) - Number(b)
-  return collator.compare(String(a), String(b))
+  return text.compare(String(a), String(b))
 }
 
 /** Multi-key sort; empty values last in either direction, fid as the final key (F-8.9). */
 export function sortRows(rows: Row[], sort: SortKey[]): Row[] {
+  const text = collator({ numeric: true, sensitivity: 'base' })
   return [...rows].sort((x, y) => {
     for (const { attr, dir } of sort) {
       const a = x.properties[attr]
@@ -81,7 +81,7 @@ export function sortRows(rows: Row[], sort: SortKey[]): Row[] {
         if (empty(a) && empty(b)) continue
         return empty(a) ? 1 : -1
       }
-      const order = compare(a, b)
+      const order = compare(a, b, text)
       if (order !== 0) return dir === 'asc' ? order : -order
     }
     return x.id - y.id

@@ -8,6 +8,7 @@ import { ConfirmDialog, ErrorNotice, Loading, Menu, MenuItem, Modal } from '../c
 import { newSession } from './actions'
 import { useSession } from './store'
 import { formatWhen, guarded, sessionKeys, useSessionUi } from './ui'
+import { lowerText } from '../i18n/locale'
 
 export function SessionsDialog() {
   const { dialog, close } = useSessionUi()
@@ -61,10 +62,8 @@ function SessionList({ onClose }: { onClose: () => void }) {
   }
   const title = (layer: string | null) =>
     layer ? (catalog.data?.find((l) => l.name === layer)?.title ?? layer) : '–'
-  const needle = search.trim().toLocaleLowerCase('de-CH')
-  const shown = (sessions.data ?? []).filter(
-    (s) => !needle || s.name.toLocaleLowerCase('de-CH').includes(needle),
-  )
+  const needle = lowerText(search.trim())
+  const shown = (sessions.data ?? []).filter((s) => !needle || lowerText(s.name).includes(needle))
 
   return (
     <div className="flex flex-col gap-3 text-sm">

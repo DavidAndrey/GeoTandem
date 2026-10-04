@@ -6,6 +6,7 @@ import { Link, useParams } from 'react-router'
 import { useImportRun } from '../api/queries'
 import { ErrorNotice, Loading, StatusBadge } from '../components/ui'
 import { formatDateTime } from './format'
+import { formatNumber } from '../i18n/locale'
 
 const STEP_LABELS: Record<string, string> = {
   read: 'Datei gelesen',
@@ -14,8 +15,7 @@ const STEP_LABELS: Record<string, string> = {
   store: 'Layer und Raumindex angelegt',
 }
 
-const seconds = (ms: number) =>
-  `${(ms / 1000).toLocaleString('de-CH', { maximumFractionDigits: 1 })} s`
+const seconds = (ms: number) => `${formatNumber(ms / 1000, { maximumFractionDigits: 1 })} s`
 
 export function ImportRunPage() {
   const id = Number(useParams().id)

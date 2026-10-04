@@ -8,6 +8,7 @@ import type {
   SpatialRow,
 } from '../analysis/model'
 import type { AttributeInfo } from '../api/client'
+import { formatIsoDate, formatNumber } from '../i18n/locale'
 
 export type FieldType = AttributeInfo['data_type']
 
@@ -39,12 +40,6 @@ const DATE_OPERATORS: Partial<Record<AttributeOperator, string>> = {
 export const operatorLabel = (op: AttributeOperator, type: FieldType | undefined) =>
   (type === 'date' ? DATE_OPERATORS[op] : undefined) ?? ATTRIBUTE_OPERATORS[op]
 
-/** "2024-03-01" → "01.03.2024". */
-export function formatDate(iso: string): string {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso)
-  return match ? `${match[3]}.${match[2]}.${match[1]}` : iso
-}
-
 /** Operators by field type (design B2: "die Operatoren richten sich nach dem Feldtyp"). */
 export function operatorsFor(type: FieldType | undefined): AttributeOperator[] {
   switch (type) {
@@ -73,7 +68,7 @@ export const needsDistance = (operator: SpatialOperator) =>
   operator === 'near' || operator === 'far'
 
 export function formatScalar(value: unknown): string {
-  if (typeof value === 'number') return value.toLocaleString('de-CH')
+  if (typeof value === 'number') return formatNumber(value)
   if (typeof value === 'boolean') return value ? 'ja' : 'nein'
   return String(value ?? '')
 }
@@ -81,8 +76,8 @@ export function formatScalar(value: unknown): string {
 export function formatDistance(meters: number | null): string {
   if (meters === null) return '…'
   return meters >= 1000 && meters % 100 === 0
-    ? `${(meters / 1000).toLocaleString('de-CH')} km`
-    : `${meters.toLocaleString('de-CH')} m`
+    ? `${formatNumber(meters / 1000)} km`
+    : `${formatNumber(meters)} m`
 }
 
 type Labels = {
@@ -97,7 +92,7 @@ export function describeAttribute(row: AttributeRow, labels: Labels): string {
   const type = row.attr ? labels.type?.(row.attr) : undefined
   const op = operatorLabel(row.operator, type)
   const show = (v: unknown) =>
-    type === 'date' && typeof v === 'string' ? formatDate(v) : formatScalar(v)
+    type === 'date' && typeof v === 'string' ? formatIsoDate(v) : formatScalar(v)
   let value = ''
   if (row.operator === 'between') value = `${show(row.min ?? '…')} – ${show(row.max ?? '…')}`
   else if (row.operator === 'in') value = row.values.length ? row.values.map(show).join(', ') : '…'

@@ -2,6 +2,7 @@
 // ellipsoid, with Karney's algorithms (GeographicLib). Pure; nothing here
 // touches data, so no backend is involved and F-2.14 does not arise.
 import { Geodesic } from 'geographiclib-geodesic'
+import { formatNumber } from '../i18n/locale'
 
 /** [latitude, longitude] in degrees. */
 export type LatLng = [number, number]
@@ -26,7 +27,7 @@ export function areaOf(points: LatLng[]): { area: number; perimeter: number } {
 }
 
 const number = (value: number, digits: number) =>
-  value.toLocaleString('de-CH', { minimumFractionDigits: digits, maximumFractionDigits: digits })
+  formatNumber(value, { minimumFractionDigits: digits, maximumFractionDigits: digits })
 
 /** "850 m", "12.35 km" (Swiss number format). */
 export function formatLength(meters: number): string {

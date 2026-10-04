@@ -73,6 +73,7 @@ The language of prompts and model explanations is decided in E2.
   `parseNumber`.
 - Tests: format and parse round trip for `de-CH` and `fr-CH`, so that L5 is
   proven before French exists.
+- **Built 2026-10-04.**
 
 ### WP48 — Sentence builders as messages
 
@@ -147,6 +148,13 @@ independent of WP49/50 and may move forward if the back end is free.
   nested glob patterns, no fix released. Both are build tools fed with the
   repository's own patterns; nothing of it reaches the browser. Accepted;
   to be re-checked when a fix is out.
+- **Number fields parse themselves (WP47).** Every numeric field but one is
+  `type="number"`: the browser reads it in its own locale and hands over
+  `1234.5`. L5 is needed only where numbers are typed as text, the value
+  list of "ist eins von"; its chips now show numbers in the locale's form.
+- **ICU's Swiss group mark changed (WP47).** Current ICU writes de-CH as
+  `1'234.5` (ASCII apostrophe), older versions `1’234.5`; fr-CH uses a
+  narrow no-break space. `parseNumber` accepts all three.
 
 ## 6 Adding a language later
 

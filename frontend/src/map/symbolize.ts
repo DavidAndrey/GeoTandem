@@ -4,6 +4,7 @@
 import { create } from 'zustand'
 import type { Symbology } from '../analysis/model'
 import { PALETTE } from './style'
+import { formatNumber } from '../i18n/locale'
 
 export interface Symbol {
   color: string
@@ -68,7 +69,7 @@ export function breaks(
   return bounds.filter((b, i) => i === 0 || b !== bounds[i - 1])
 }
 
-const fmt = (n: number) => n.toLocaleString('de-CH', { maximumFractionDigits: 2 })
+const fmt = (n: number) => formatNumber(n, { maximumFractionDigits: 2 })
 
 export function symbolizer(
   symbology: Symbology | null,

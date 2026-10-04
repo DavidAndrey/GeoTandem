@@ -1,5 +1,6 @@
 // Display helpers for the administration area. Pure, so they are unit-tested.
 import type { AttributeInfo, ImportStatus, LayerInfo } from '../api/client'
+import { dateTimeFormat } from '../i18n/locale'
 
 const GEOMETRY_LABELS: Record<string, string> = {
   Point: 'Punkt',
@@ -21,14 +22,8 @@ export function sourceLabel(source: string): string {
   return source || '–'
 }
 
-const DATE = new Intl.DateTimeFormat('de-CH', { day: '2-digit', month: '2-digit', year: 'numeric' })
-const DATE_TIME = new Intl.DateTimeFormat('de-CH', {
-  day: '2-digit',
-  month: '2-digit',
-  year: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit',
-})
+const DATE = { day: '2-digit', month: '2-digit', year: 'numeric' } as const
+const DATE_TIME = { ...DATE, hour: '2-digit', minute: '2-digit' } as const
 
 /** The backend sends naive UTC timestamps (SQLite CURRENT_TIMESTAMP). */
 function parse(timestamp: string): Date {
@@ -36,10 +31,10 @@ function parse(timestamp: string): Date {
 }
 
 export const formatDate = (timestamp: string | null | undefined) =>
-  timestamp ? DATE.format(parse(timestamp)) : '–'
+  timestamp ? dateTimeFormat(DATE).format(parse(timestamp)) : '–'
 
 export const formatDateTime = (timestamp: string | null | undefined) =>
-  timestamp ? DATE_TIME.format(parse(timestamp)) : '–'
+  timestamp ? dateTimeFormat(DATE_TIME).format(parse(timestamp)) : '–'
 
 export const STATUS_LABELS: Record<ImportStatus, string> = {
   running: 'läuft',

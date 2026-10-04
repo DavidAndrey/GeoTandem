@@ -2,7 +2,7 @@
 // Built from DOM nodes with textContent: values come from imported files and
 // must never be interpreted as HTML.
 import type { LayerInfo } from '../api/client'
-import { formatDate } from '../editor/describe'
+import { formatIsoDate, formatNumber } from '../i18n/locale'
 
 export function formatValue(
   value: unknown,
@@ -10,10 +10,10 @@ export function formatValue(
   type?: string,
 ): string {
   if (value === null || value === undefined || value === '') return '–'
-  if (type === 'date' && typeof value === 'string') return formatDate(value)
+  if (type === 'date' && typeof value === 'string') return formatIsoDate(value)
   const text =
     typeof value === 'number'
-      ? value.toLocaleString('de-CH', { maximumFractionDigits: 2 })
+      ? formatNumber(value, { maximumFractionDigits: 2 })
       : typeof value === 'boolean'
         ? value
           ? 'ja'

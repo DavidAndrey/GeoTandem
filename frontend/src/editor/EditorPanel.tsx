@@ -22,9 +22,16 @@ import { useLayers } from '../api/queries'
 import { ErrorNotice } from '../components/ui'
 import { useMapView } from '../map/view'
 import { ResultSelect } from '../workplace/ResultSelect'
-import { operatorLabel, needsDistance, operatorsFor, SPATIAL_OPERATORS } from './describe'
+import {
+  formatScalar,
+  needsDistance,
+  operatorLabel,
+  operatorsFor,
+  SPATIAL_OPERATORS,
+} from './describe'
 import { catalogFields, fieldsOf, type Field } from './fields'
 import { useCounts } from './useCounts'
+import { parseNumber } from '../i18n/locale'
 
 export function EditorPanel() {
   const analysis = useAnalysis(useShallow(currentAnalysis))
@@ -244,8 +251,7 @@ function RowEditor({
 function parseValue(text: string, field: Field | undefined): Scalar | null {
   if (text === '') return null
   if (field?.type === 'integer' || field?.type === 'real') {
-    const n = Number(text.replace(',', '.'))
-    return Number.isFinite(n) ? n : null
+    return parseNumber(text)
   }
   return text
 }
@@ -389,7 +395,7 @@ function ValueList({
     <span className="flex flex-wrap items-center gap-1">
       {row.values.map((v) => (
         <span key={String(v)} className="chip chip-active text-xs">
-          {String(v)}
+          {formatScalar(v)}
           <button
             type="button"
             aria-label={`${String(v)} entfernen`}
