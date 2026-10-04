@@ -7,6 +7,7 @@ from typing import Any
 import httpx
 import pytest
 from api_helpers import ADMIN_PASSWORD, USER_PASSWORD, sign_in, sign_in_as
+from fastapi import FastAPI
 from import_files import make_files
 
 
@@ -126,6 +127,16 @@ async def test_bad_duplicate_names(
     response = await client.post("/api/admin/layers/schulen/duplicate", json=body)
     assert response.status_code == status, response.text
     assert response.json()["code"] == code
+
+
+async def test_no_free_copy_name_asks_for_one(
+    client: httpx.AsyncClient, app: FastAPI, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    backend = app.state.geotandem.backend
+    copies = ["schulen_kopie", *(f"schulen_kopie{i}" for i in range(2, 100))]
+    monkeypatch.setattr(backend, "layer_names", lambda: ["schulen", *copies])
+    response = await client.post("/api/admin/layers/schulen/duplicate", json={})
+    assert (response.status_code, response.json()["code"]) == (409, "layer_exists")
 
 
 async def test_only_administrators_duplicate(client: httpx.AsyncClient) -> None:

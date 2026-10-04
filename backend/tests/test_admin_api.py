@@ -107,6 +107,10 @@ async def test_unreadable_upload(client: httpx.AsyncClient, tmp_path: Path) -> N
     unsupported = tmp_path / "plan.dxf"
     unsupported.write_bytes(b"0")
     assert (await upload(client, unsupported)).json()["details"]["reason"] == "unsupported_format"
+    # A name that is only a path step: kept as "upload", which has no format.
+    for name in ("..", "a/.."):
+        response = await client.post("/api/admin/imports", files={"file": (name, b"x")})
+        assert response.json()["details"]["reason"] == "unsupported_format", name
 
 
 async def test_upload_size_limit(tmp_path: Path) -> None:
@@ -163,6 +167,29 @@ async def test_rename_and_curate(client: httpx.AsyncClient) -> None:
 async def test_invalid_value_domain(client: httpx.AsyncClient, body: dict[str, Any]) -> None:
     response = await client.patch("/api/admin/layers/schulen/attributes/standorte", json=body)
     assert (response.status_code, response.json()["code"]) == (422, "schema_violation")
+
+
+@pytest.mark.parametrize(
+    ("url", "body"),
+    [
+        ("/api/admin/layers/schulen", {"title": None}),
+        ("/api/admin/layers/schulen", {"for_model": None}),
+        ("/api/admin/layers/schulen/attributes/standorte", {"label": None}),
+    ],
+)
+async def test_null_for_a_field_every_layer_has(
+    client: httpx.AsyncClient, url: str, body: dict[str, Any]
+) -> None:
+    response = await client.patch(url, json=body)
+    assert (response.status_code, response.json()["code"]) == (422, "schema_violation")
+
+
+async def test_null_clears_unit_and_value_domain(client: httpx.AsyncClient) -> None:
+    url = "/api/admin/layers/schulen/attributes/standorte"
+    await client.patch(url, json={"unit": "m", "value_domain": {"min": 0, "max": 9}})
+    response = await client.patch(url, json={"unit": None, "value_domain": None})
+    assert response.status_code == 200, response.text
+    assert (response.json()["unit"], response.json()["value_domain"]) == (None, None)
 
 
 async def test_unknown_layer_and_attribute(client: httpx.AsyncClient) -> None:

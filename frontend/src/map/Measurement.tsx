@@ -4,7 +4,7 @@ import L from 'leaflet'
 import { Ruler, X } from 'lucide-react'
 import { useEffect, useMemo, useReducer } from 'react'
 import { useLeafletMap } from './leaflet'
-import { areaOf, formatArea, formatLength, lengthOf, type LatLng } from './measure'
+import { areaOf, formatArea, formatLength, lengthOf, reduceDrawing, type LatLng } from './measure'
 import { toolClass } from './MapView'
 import { useMapView } from './view'
 
@@ -12,7 +12,8 @@ const INK = '#201f1d'
 
 /** ⟷ in the toolbar: starts and ends measuring. */
 export function MeasureToggle() {
-  const { measuring, setMeasuring } = useMapView()
+  const measuring = useMapView((s) => s.measuring)
+  const setMeasuring = useMapView((s) => s.setMeasuring)
   return (
     <button
       type="button"
@@ -27,38 +28,6 @@ export function MeasureToggle() {
   )
 }
 
-interface Drawing {
-  points: LatLng[]
-  cursor: LatLng | null
-  /** A double click finished it; the next click starts a new one. */
-  done: boolean
-  /** Escape on an empty drawing ends measuring. */
-  exit: boolean
-}
-
-type Action =
-  | { type: 'add'; point: LatLng }
-  | { type: 'move'; point: LatLng }
-  | { type: 'finish' }
-  | { type: 'escape' }
-
-function reduce(state: Drawing, action: Action): Drawing {
-  switch (action.type) {
-    case 'add':
-      return {
-        ...state,
-        points: state.done ? [action.point] : [...state.points, action.point],
-        done: false,
-      }
-    case 'move':
-      return { ...state, cursor: action.point }
-    case 'finish':
-      return { ...state, done: true }
-    case 'escape':
-      return { ...state, points: [], done: false, exit: state.points.length === 0 }
-  }
-}
-
 /** The measurement on the map and its readout; lives inside the map. */
 export function Measurement() {
   const measuring = useMapView((s) => s.measuring)
@@ -69,7 +38,7 @@ export function Measurement() {
 function Measuring({ mode }: { mode: 'line' | 'area' }) {
   const map = useLeafletMap()
   const setMeasuring = useMapView((s) => s.setMeasuring)
-  const [state, dispatch] = useReducer(reduce, {
+  const [state, dispatch] = useReducer(reduceDrawing, {
     points: [],
     cursor: null,
     done: false,

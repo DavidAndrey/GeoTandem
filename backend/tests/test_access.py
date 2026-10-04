@@ -259,7 +259,11 @@ async def test_locking_ends_the_session(client: httpx.AsyncClient, app: Any) -> 
 async def test_reset_password(client: httpx.AsyncClient) -> None:
     await sign_in_as(client, "m.keller")
     await sign_in(client, "admin", ADMIN_PASSWORD)
-    reset = (await client.post("/api/admin/users/m.keller/reset-password")).json()
+    # The name as typed, with a stray space: the account is found all the same.
+    response = await client.post("/api/admin/users/%20M.Keller/reset-password")
+    assert response.status_code == 200, response.text
+    reset = response.json()
+    assert reset["account"]["username"] == "m.keller"
     assert reset["account"]["must_change_password"] is True
     client.cookies.clear()
     old = await client.post(

@@ -86,20 +86,24 @@ class ValueDomain(BaseModel):
         return self
 
 
+# Only fields sent are applied (``exclude_unset``); null only where it means
+# "none" (no unit, no value domain), not for the fields every layer has.
+
+
 class LayerUpdate(BaseModel):
     """Curated layer fields. ``name`` never changes; renaming sets ``title`` (plan D1)."""
 
-    title: str | None = Field(default=None, min_length=1)
-    description: str | None = None
-    for_model: bool | None = None
+    title: str = Field(default="", min_length=1)
+    description: str = ""
+    for_model: bool = True
 
 
 class AttributeUpdate(BaseModel):
-    label: str | None = None
-    description: str | None = None
+    label: str = ""
+    description: str = ""
     unit: str | None = None
     value_domain: ValueDomain | None = None
-    for_model: bool | None = None
+    for_model: bool = True
 
 
 def update_layer(engine: Engine, name: str, update: LayerUpdate) -> LayerInfo | None:

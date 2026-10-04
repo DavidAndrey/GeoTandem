@@ -4446,26 +4446,14 @@
       "AttributeUpdate": {
         "properties": {
           "label": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Label"
+            "type": "string",
+            "title": "Label",
+            "default": ""
           },
           "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
+            "type": "string",
+            "title": "Description",
+            "default": ""
           },
           "unit": {
             "anyOf": [
@@ -4489,15 +4477,9 @@
             ]
           },
           "for_model": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "For Model"
+            "type": "boolean",
+            "title": "For Model",
+            "default": true
           }
         },
         "type": "object",
@@ -6368,38 +6350,20 @@
       "LayerUpdate": {
         "properties": {
           "title": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Title"
+            "type": "string",
+            "minLength": 1,
+            "title": "Title",
+            "default": ""
           },
           "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
+            "type": "string",
+            "title": "Description",
+            "default": ""
           },
           "for_model": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "For Model"
+            "type": "boolean",
+            "title": "For Model",
+            "default": true
           }
         },
         "type": "object",
@@ -7542,7 +7506,9 @@
           "delimiter": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 1,
+                "minLength": 1
               },
               {
                 "type": "null"

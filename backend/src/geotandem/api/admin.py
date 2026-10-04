@@ -142,10 +142,15 @@ def duplicate_layer(name: str, body: Duplicate, state: State, user: Actor) -> La
     engine = state.backend.engine
     taken = set(state.backend.layer_names())
     target = body.name or next(
-        n
-        for n in (f"{name[:57]}_kopie", *(f"{name[:55]}_kopie{i}" for i in range(2, 100)))
-        if n not in taken
+        (
+            n
+            for n in (f"{name[:57]}_kopie", *(f"{name[:55]}_kopie{i}" for i in range(2, 100)))
+            if n not in taken
+        ),
+        None,
     )
+    if target is None:
+        raise LayerNameTaken(f"Every copy name of '{name}' is taken; please give one.", layer=name)
     if not IDENTIFIER.match(target):
         raise Problem(f"'{target}' is not a valid layer name.", name=target)
     run_id = import_log.start(
@@ -166,6 +171,15 @@ def duplicate_layer(name: str, body: Duplicate, state: State, user: Actor) -> La
             errors=[Message(code="layer_exists", message=f"Layer '{target}' exists already.")],
         )
         raise LayerNameTaken(f"Layer '{target}' exists already.", layer=target) from None
+    except Exception:
+        # The entry must not stay "running"; the error goes on to the server log.
+        import_log.finish(
+            engine,
+            run_id,
+            status="failed",
+            errors=[Message(code="internal_error", message="The copy stopped unexpectedly.")],
+        )
+        raise
     visibility.copy_visibility(engine, name, target)
     import_log.finish(engine, run_id, status="ok", read_count=count, imported_count=count)
     return _layer(state, target)
@@ -320,10 +334,7 @@ def update_user(username: str, body: AccountUpdate, state: State) -> Account:
 
 @router.post("/users/{username}/reset-password", responses=ERRORS)
 def reset_password(username: str, state: State) -> StartPassword:
-    password = accounts.reset_password(state.backend.engine, username)
-    account = next(
-        a for a in accounts.list_accounts(state.backend.engine) if a.username == username.lower()
-    )
+    account, password = accounts.reset_password(state.backend.engine, username)
     return StartPassword(account=account, start_password=password)
 
 

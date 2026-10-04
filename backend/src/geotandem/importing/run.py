@@ -206,6 +206,18 @@ def run_import(
             warnings=source.notes if source else [],
             steps=steps,
         )
+    except Exception:
+        # Not the file's fault: the entry must not stay "running" (design D7);
+        # the error itself goes on to the server log.
+        log.finish(
+            backend.engine,
+            run_id,
+            status="failed",
+            read_count=source.record_count if source else 0,
+            errors=[Message(code="internal_error", message="The import stopped unexpectedly.")],
+            steps=steps,
+        )
+        raise
     # The preview's hint about a missing geo-reference only helps the wizard
     # before deciding; here the decision has been made and checked (_plan).
     hints = {"no_geo_reference_found"}

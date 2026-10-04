@@ -19,7 +19,7 @@ import openpyxl
 import pyogrio
 import pyogrio.raw
 import shapely
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pyproj import CRS
 from pyproj.exceptions import CRSError
 from shapely.geometry.base import BaseGeometry
@@ -53,8 +53,8 @@ class ReadOptions(BaseModel):
     """GeoPackage layer, shapefile inside the zip, or Excel sheet."""
     encoding: str | None = None
     """Text encoding of a CSV file or a shapefile without ``.cpg``."""
-    delimiter: str | None = None
-    """CSV field delimiter."""
+    delimiter: str | None = Field(default=None, min_length=1, max_length=1)
+    """CSV field delimiter, one character."""
 
 
 class Message(BaseModel):
@@ -171,8 +171,11 @@ def _read_vector(path: Path, file_name: str, fmt: Format, options: ReadOptions) 
 
     notes: list[Message] = []
     columns = []
+    names, repeated = _distinct([str(name) for name in meta["fields"]])
+    if repeated:
+        notes.append(_duplicate_header(repeated))
     for name, ogr_type, subtype, data in zip(
-        meta["fields"], meta["ogr_types"], meta["ogr_subtypes"], fields, strict=True
+        names, meta["ogr_types"], meta["ogr_subtypes"], fields, strict=True
     ):
         data_type, values, as_text = _ogr_column(ogr_type, subtype, data)
         columns.append(Column(str(name), data_type, values))
@@ -258,6 +261,9 @@ def _table(
         raise SourceError("empty", "The file contains no rows.")
     header = [str(h).strip() if h is not None else "" for h in rows[0]]
     header = [h or f"spalte_{i + 1}" for i, h in enumerate(header)]
+    header, repeated = _distinct(header)
+    if repeated:
+        notes.append(_duplicate_header(repeated))
     body = rows[1:]
     ragged = sum(1 for r in body if len(r) != len(header))
     if ragged:
@@ -295,6 +301,35 @@ def _table(
         columns=columns,
         geometries=None,
         notes=notes,
+    )
+
+
+def _distinct(header: list[str]) -> tuple[list[str], list[str]]:
+    """Each column a name of its own, the file's where it can: "Name", "Name (2)".
+
+    Decisions name a column by it, so two alike would be one column twice.
+    """
+    taken = set(header)
+    seen: set[str] = set()
+    names, repeated = [], []
+    for name in header:
+        unique, n = name, 1
+        # Not a name the file gives another column further on either.
+        while unique in seen or (unique != name and unique in taken):
+            n += 1
+            unique = f"{name} ({n})"
+        seen.add(unique)
+        names.append(unique)
+        if unique != name:
+            repeated.append(name)
+    return names, sorted(set(repeated))
+
+
+def _duplicate_header(repeated: list[str]) -> Message:
+    return Message(
+        code="duplicate_header",
+        message=f"Columns named alike are told apart by a number: {', '.join(repeated)}.",
+        count=len(repeated),
     )
 
 

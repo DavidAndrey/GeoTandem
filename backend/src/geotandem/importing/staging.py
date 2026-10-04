@@ -31,7 +31,9 @@ class Staging:
 
     def save(self, file_name: str, data: BinaryIO, max_bytes: int) -> str:
         """Copy an upload into staging; refuse it beyond ``max_bytes``."""
-        name = PurePath(file_name.replace("\\", "/")).name or "upload"
+        name = PurePath(file_name.replace("\\", "/")).name
+        if name in ("", ".", ".."):  # "a/.." keeps ".." as its last part
+            name = "upload"
         upload_id = uuid.uuid4().hex
         directory = self.root / upload_id
         directory.mkdir(parents=True)

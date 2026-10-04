@@ -59,7 +59,9 @@ export function fromSaved(version: number, state: unknown): SavedState {
     !Array.isArray(state.layers) ||
     !isObject(state.tree) ||
     state.tree.kind !== 'group' ||
-    !isObject(state.table)
+    !isObject(state.table) ||
+    !isObject(state.table.columns) ||
+    !isObject(state.table.sort)
   )
     throw new SessionFormatError('Die gespeicherte Sitzung ist unvollständig.')
   return {

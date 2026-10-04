@@ -14,7 +14,9 @@ import {
 export const keys = {
   health: ['health'] as const,
   layers: ['admin', 'layers'] as const,
-  layer: (name: string) => ['layer', name] as const,
+  // Under 'one': a layer may be named "list" (['layer', 'list'] is the catalog).
+  layerList: ['layer', 'list'] as const,
+  layer: (name: string) => ['layer', 'one', name] as const,
   profile: (name: string) => ['admin', 'profile', name] as const,
   rows: (name: string) => ['rows', name] as const,
   importLog: (filter: object) => ['admin', 'import-log', filter] as const,
@@ -91,7 +93,7 @@ export const useMapConfig = () =>
   useQuery({ queryKey: ['map-config'], queryFn: api.mapConfig, staleTime: Infinity })
 
 /** The layers the signed-in account may see (F-2.7). */
-const layerList = { queryKey: ['layer', 'list'], queryFn: api.layers }
+const layerList = { queryKey: keys.layerList, queryFn: api.layers }
 
 export const useLayers = () => useQuery(layerList)
 
@@ -172,7 +174,7 @@ export function useDuplicateLayer() {
       Promise.all([
         client.invalidateQueries({ queryKey: keys.layers }),
         client.invalidateQueries({ queryKey: keys.visibility }),
-        client.invalidateQueries({ queryKey: ['layer', 'list'] }),
+        client.invalidateQueries({ queryKey: keys.layerList }),
       ]),
   })
 }

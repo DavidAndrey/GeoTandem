@@ -244,6 +244,47 @@ def test_excluded_fields_are_not_imported(backend: DataBackend, files: dict[str,
     ]
 
 
+def test_columns_named_alike_keep_their_own_values(backend: DataBackend, tmp_path: Path) -> None:
+    table = tmp_path / "doppelt.csv"
+    table.write_text(
+        "Name;Wert;Name;E;N\nAare;1;Fluss;2600000;1200000\nGürbe;2;Bach;2601000;1200000\n",
+        "utf-8",
+    )
+    run = run_import(
+        table,
+        table.name,
+        ImportDecisions(
+            geo=XYReference(x="E", y="N", crs=LV95),
+            fields=[FieldDecision(source_name="Name (2)", label="Art")],
+        ),
+        backend,
+    )
+    assert run.status == "warning"
+    assert "duplicate_header" in [w.code for w in run.warnings]
+    info = get_layer(backend.engine, "doppelt")
+    assert info is not None
+    assert [(a.name, a.label) for a in info.attributes][:3] == [
+        ("name", "Name"),
+        ("wert", "Wert"),
+        ("name_2", "Art"),
+    ]
+    rows = backend.execute(select(backend.layer_table("doppelt")), LIMITS)
+    assert [(r["name"], r["name_2"]) for r in rows] == [("Aare", "Fluss"), ("Gürbe", "Bach")]
+
+
+def test_an_unexpected_error_still_ends_the_log_entry(
+    backend: DataBackend, files: dict[str, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def fails(_: object) -> int:
+        raise RuntimeError("database is locked")
+
+    monkeypatch.setattr(backend, "create_layer", fails)
+    with pytest.raises(RuntimeError):
+        imported(backend, files, "schulen.geojson", layer_name="schulen_neu")
+    last = log.recent(backend.engine)[0]
+    assert (last.status, last.layer_name) == ("failed", "schulen_neu")
+
+
 def test_unreadable_file_is_logged(backend: DataBackend, tmp_path: Path) -> None:
     broken = tmp_path / "kaputt.gpkg"
     broken.write_bytes(b"nope")

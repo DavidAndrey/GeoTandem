@@ -40,3 +40,43 @@ export function formatArea(squareMeters: number): string {
   if (squareMeters < 1_000_000) return `${number(squareMeters / 10_000, 2)} ha`
   return `${number(squareMeters / 1_000_000, squareMeters < 100_000_000 ? 2 : 1)} km²`
 }
+
+// --- drawing ----------------------------------------------------------------
+
+export interface Drawing {
+  points: LatLng[]
+  cursor: LatLng | null
+  /** A double click finished it; the next click starts a new one. */
+  done: boolean
+  /** Escape on an empty drawing ends measuring. */
+  exit: boolean
+}
+
+export type DrawingAction =
+  | { type: 'add'; point: LatLng }
+  | { type: 'move'; point: LatLng }
+  | { type: 'finish' }
+  | { type: 'escape' }
+
+/** Clicks, pointer moves, double click and Escape while measuring. */
+export function reduceDrawing(state: Drawing, action: DrawingAction): Drawing {
+  switch (action.type) {
+    case 'add': {
+      // A double click to finish also clicks twice at the same spot: one point.
+      const last = state.points.at(-1)
+      if (!state.done && last && last[0] === action.point[0] && last[1] === action.point[1])
+        return state
+      return {
+        ...state,
+        points: state.done ? [action.point] : [...state.points, action.point],
+        done: false,
+      }
+    }
+    case 'move':
+      return { ...state, cursor: action.point }
+    case 'finish':
+      return { ...state, done: true }
+    case 'escape':
+      return { ...state, points: [], done: false, exit: state.points.length === 0 }
+  }
+}

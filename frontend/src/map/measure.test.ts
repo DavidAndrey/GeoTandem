@@ -1,5 +1,13 @@
 import { expect, test } from 'vitest'
-import { areaOf, formatArea, formatLength, lengthOf } from './measure'
+import {
+  areaOf,
+  formatArea,
+  formatLength,
+  lengthOf,
+  reduceDrawing,
+  type Drawing,
+  type DrawingAction,
+} from './measure'
 
 // Reference values from PROJ's geodesic (pyproj.Geod, WGS84), an independent implementation.
 
@@ -52,4 +60,21 @@ test('values read in the Swiss format with a fitting unit', () => {
   expect(formatArea(1_250_000_000)).toBe(
     `${(1250).toLocaleString('de-CH', { minimumFractionDigits: 1 })} km²`,
   )
+})
+
+test('a double click to finish adds its point once', () => {
+  const start: Drawing = { points: [], cursor: null, done: false, exit: false }
+  const a: [number, number] = [46.9, 7.4]
+  const b: [number, number] = [46.95, 7.45]
+  // The browser sends click, click, dblclick at B.
+  const clicks: DrawingAction[] = [
+    { type: 'add', point: a },
+    { type: 'add', point: b },
+    { type: 'add', point: b },
+    { type: 'finish' },
+  ]
+  const end = clicks.reduce(reduceDrawing, start)
+  expect(end).toMatchObject({ points: [a, b], done: true })
+  // After finishing, a click at the same spot starts a new drawing there.
+  expect(reduceDrawing(end, { type: 'add', point: b }).points).toEqual([b])
 })

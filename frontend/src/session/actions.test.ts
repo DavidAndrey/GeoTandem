@@ -150,3 +150,51 @@ test('an unknown format opens nothing and says so', async () => {
   expect(useSession.getState().current).toBeNull()
   expect(useSession.getState().report?.error).toMatch(/Format 99/)
 })
+
+test('a session opened after another wins, even when the first loads last', async () => {
+  build()
+  const saved = useAnalysis.getState()
+  const state = (layer: string) => ({
+    layers: saved.layers.filter((l) => l.id === layer),
+    result: layer,
+    tree: saved.tree,
+    restriction: null,
+    table: saved.table,
+    view: null,
+  })
+  newSession()
+  let answerFirst: (r: Response) => void = () => {}
+  const json = (body: unknown) => new Response(JSON.stringify(body))
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((input: string) => {
+      if (input.endsWith('/api/sessions/s1'))
+        return new Promise<Response>((resolve) => (answerFirst = resolve))
+      if (input.endsWith('/api/sessions/s2'))
+        return Promise.resolve(json(detail({ id: 's2', name: 'Zweite', state: state('strassen') })))
+      return Promise.resolve(json({ identical: true, saved: stamp, current: stamp }))
+    }),
+  )
+  const first = openSession('s1', new Set(['schulen', 'strassen']))
+  await openSession('s2', new Set(['schulen', 'strassen']))
+  answerFirst(json(detail({ id: 's1', state: state('schulen') })))
+  await first
+  expect(useSession.getState().current?.id).toBe('s2')
+  expect(useAnalysis.getState().layers.map((l) => l.id)).toEqual(['strassen'])
+})
+
+test('a state without table columns is refused like any incomplete one', async () => {
+  build()
+  const saved = useAnalysis.getState()
+  const state = {
+    layers: saved.layers,
+    result: saved.result,
+    tree: saved.tree,
+    restriction: null,
+    table: { tab: null, mode: 'all' },
+    view: null,
+  }
+  fakeApi({})
+  await openSession(detail({ state }), new Set(['schulen']))
+  expect(useSession.getState().report?.error).toBe('Die gespeicherte Sitzung ist unvollständig.')
+})

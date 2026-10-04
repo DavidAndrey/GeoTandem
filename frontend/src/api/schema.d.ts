@@ -984,15 +984,24 @@ export interface components {
     }
     /** AttributeUpdate */
     AttributeUpdate: {
-      /** Label */
-      label?: string | null
-      /** Description */
-      description?: string | null
+      /**
+       * Label
+       * @default
+       */
+      label: string
+      /**
+       * Description
+       * @default
+       */
+      description: string
       /** Unit */
       unit?: string | null
       value_domain?: components['schemas']['ValueDomain'] | null
-      /** For Model */
-      for_model?: boolean | null
+      /**
+       * For Model
+       * @default true
+       */
+      for_model: boolean
     }
     /**
      * BBox
@@ -1813,12 +1822,21 @@ export interface components {
      * @description Curated layer fields. ``name`` never changes; renaming sets ``title`` (plan D1).
      */
     LayerUpdate: {
-      /** Title */
-      title?: string | null
-      /** Description */
-      description?: string | null
-      /** For Model */
-      for_model?: boolean | null
+      /**
+       * Title
+       * @default
+       */
+      title: string
+      /**
+       * Description
+       * @default
+       */
+      description: string
+      /**
+       * For Model
+       * @default true
+       */
+      for_model: boolean
     }
     /** MapConfig */
     MapConfig: {

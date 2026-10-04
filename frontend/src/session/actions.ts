@@ -81,7 +81,11 @@ export async function saveSessionAs(
 }
 
 /** "Neue Sitzung": an empty analysis, no session. */
+/** Counts opens and new sessions: an open overtaken while it loads gives way. */
+let latest = 0
+
 export function newSession() {
+  latest += 1
   useAnalysis.getState().reset()
   useSelection.getState().clear()
   useSession.getState().setCurrent(null)
@@ -97,7 +101,9 @@ export async function openSession(
   idOrDetail: string | SessionDetail,
   available: Set<string>,
 ): Promise<void> {
+  const ticket = ++latest
   const detail = typeof idOrDetail === 'string' ? await api.sessions.get(idOrDetail) : idOrDetail
+  if (ticket !== latest) return
   const { setCurrent, setReport } = useSession.getState()
   let removed = NONE_REMOVED
   try {

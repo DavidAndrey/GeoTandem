@@ -135,7 +135,7 @@ def change_password(engine: Engine, user_id: int, current: str, new: str) -> Non
         user.must_change_password = False
 
 
-def reset_password(engine: Engine, username: str) -> str:
+def reset_password(engine: Engine, username: str) -> tuple[Account, str]:
     """Set a generated start password the user must change; end their sessions (design D9)."""
     password = generate_password()
     with Session(engine) as session, session.begin():
@@ -143,7 +143,7 @@ def reset_password(engine: Engine, username: str) -> str:
         user.password_hash = _hasher.hash(password)
         user.must_change_password = True
         revoke_sessions(session, user.id)
-    return password
+        return _account(user), password
 
 
 def get(engine: Engine, user_id: int) -> Account | None:

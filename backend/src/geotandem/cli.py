@@ -99,7 +99,7 @@ def _user_reset(args: argparse.Namespace) -> None:
     from geotandem.auth import accounts
 
     try:
-        password = accounts.reset_password(_engine(), args.username)
+        _, password = accounts.reset_password(_engine(), args.username)
     except accounts.AccountError as exc:
         raise SystemExit(exc.message) from None
     print(f"start password: {password}  (to be changed at next sign-in)")
