@@ -303,7 +303,13 @@ Kompilierung geschehen beim Bauen, die Meldungen folgen ICU MessageFormat
 (Platzhalter, Plural). Zahlen, Daten und Sortierung richten sich nach einer
 zentralen Formatierungs-Locale (`de-CH`), nicht nach Literalen im Code.
 Ablehnungen des Backends übersetzt das Frontend über ihren Code; der englische
-Text der Antwort bleibt für Protokoll, API-Clients und das Modell (F-5.9).
+Text der Antwort bleibt für Protokoll, API-Clients und das Modell (F-5.9). Alle Codes stehen
+in `geotandem/codes.py`; ein Test liest den Quelltext dagegen, und die
+Oberfläche erhält sie als `frontend/error-codes.json` wie die OpenAPI-
+Beschreibung. Geprüft wird die Grundlage ohne zweite Sprache: Eine
+Lint-Regel weist Text ausserhalb des Katalogs ab, und Bildschirmtests sowie ein
+Abnahmetest zeigen jede Ansicht in einer Pseudo-Sprache (⟦Ƥśēũďō⟧), in der alles
+Unübersetzte auffällt.
 
 Lingui-Makros brauchen kein Babel: Das Vite-Plugin übersetzt sie nativ
 (`macroTransform`), was `@vitejs/plugin-react` 6 ohne Babel entgegenkommt.

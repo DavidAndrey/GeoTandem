@@ -149,3 +149,25 @@ Daten des Kantons Bern (AGI, opendata.swiss), aufbereitet durch
 wird nur auf Anfrage. Er löst die synthetische Region „Tandemtal" ab.
 Er ist das Fundament aller Tests und Bewertungsläufe; seine Fassung steht in
 `manifest.json`.
+
+**Meldungskatalog** (`frontend/src/locales/<sprache>.po`) — Alle Texte der
+Oberfläche als Meldungen; der deutsche Text ist zugleich ihr Schlüssel
+(F-10.6, E1.9). Eine Meldung ist ein ganzer Satz mit Platzhaltern
+(`„{name}" löschen?`) und, wo gezählt wird, Pluralformen; Satzteile werden nie
+im Code zusammengesetzt. Ausgangssprache und vorerst einzige Sprache ist
+Deutsch.
+
+**Formatierungs-Locale** — Wie Zahlen, Daten und Textreihenfolge geschrieben
+werden: die Sprache in ihrer Schweizer Form (`de` → `de-CH`, später `fr-CH`,
+`it-CH`), an einer Stelle (`i18n/locale.ts`), nie als Literal im Code.
+
+**Pseudo-Locale** (`?lang=pseudo`) — Eine Prüfsprache: jede Meldung erscheint
+akzentuiert, um ein Drittel verlängert und in ⟦…⟧. Was ohne Klammern bleibt
+und keine Daten sind, ist am Katalog vorbei in die Oberfläche gelangt; die
+Bildschirmtests und ein Abnahmetest prüfen das.
+
+**Code** (`code`) — Der stabile Schlüssel jeder Ablehnung und jedes
+Importbefunds, mit seinen Werten in `details`. Die Oberfläche formuliert ihn
+in der Sprache der Anwender; der englische `message` dient Protokoll und
+API-Clients. Alle Codes stehen in `geotandem/codes.py` (E1.9) und gelangen als
+`frontend/error-codes.json` in die Oberfläche.

@@ -20,6 +20,8 @@ export default defineConfig([
   },
   {
     // Every visible text goes through the catalog (plan E1.9). Tests read German.
+    // The rule misses titles and lowercase single words; src/i18n/*screens.test.tsx
+    // render the views in pseudo and catch those.
     files: ['src/**/*.{ts,tsx}'],
     ignores: ['src/**/*.test.*', 'src/test/**'],
     extends: [lingui.configs['flat/recommended']],
@@ -27,7 +29,7 @@ export default defineConfig([
       // A condition is one message of placeholders on purpose (plan E1.9, WP48).
       'lingui/no-single-variables-to-translate': 'off',
       'lingui/no-unlocalized-strings': [
-        'warn',
+        'error',
         {
           // Flagged: text with a capital or a space. Not: identifiers, keys,
           // class lists (lowercase with a dash), paths, symbols and numbers.

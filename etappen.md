@@ -73,7 +73,7 @@ konfigurierte LLM-Anbindung (F-4.11).
 > Container neu und findet die Sitzung danach mit identischem Ergebnis wieder
 > ([docs/plan-e1.7.md](docs/plan-e1.7.md)).
 >
-> **E1.9 vor E2 eingeschoben (2026-10-04): Grundlage der Mehrsprachigkeit.**
+> **E1.9 vor E2 eingeschoben und umgesetzt (2026-10-04): Grundlage der Mehrsprachigkeit.**
 > Alle Texte der Oberfläche stehen in einem Meldungskatalog (vorerst nur
 > Deutsch), Zahlen und Daten folgen einer zentralen Formatierungs-Locale, und
 > Ablehnungen des Backends erscheinen über ihren Code. Damit entsteht jede

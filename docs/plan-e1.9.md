@@ -1,6 +1,6 @@
 # Plan E1.9 — Grundlage der Mehrsprachigkeit
 
-> Stand: 2026-10-04 · **geplant (WP46–WP52)** · Bezug:
+> Stand: 2026-10-04 · **umgesetzt (WP46–WP52)** · Bezug:
 > [anforderungen.md](../anforderungen.md) (F-10.6, F-5.9), [etappen.md 3](../etappen.md),
 > [tech-stack.md 4.6](../tech-stack.md)
 >
@@ -121,6 +121,7 @@ The language of prompts and model explanations is decided in E2.
 - End-to-end: the reference question of E1 answered in `pseudo` (L8).
 - Docs: CONTEXT (Meldungskatalog, Formatierungs-Locale), tech-stack 4.6
   (as built), README (how to add a language), section 5 below.
+- **Built 2026-10-04.**
 
 ## 4 Order
 
@@ -221,7 +222,7 @@ independent of WP49/50 and may move forward if the back end is free.
   password page. A word inside a nested element of a message (`<Trans>…
   <span>auswählen</span></Trans>`) is pseudo text without brackets of its
   own; the check counts words without any plain ASCII letter as pseudo.
-- **The registry, as built (WP51).** `geotandem/codes.py` lists 99 codes
+- **The registry, as built (WP51).** `geotandem/codes.py` lists 90 codes
   with a line of English each; `geotandem codes export` writes
   `frontend/error-codes.json` (`make gen`), a back-end test compares the two
   like `openapi.json`. `tests/test_codes.py` reads the source for every code
@@ -252,6 +253,19 @@ independent of WP49/50 and may move forward if the back end is free.
   not know yet shows the back end's English rather than nothing. The
   reasons in the table of rejected rows were codes shown as they are; they
   are worded too.
+
+- **The end-to-end pass sees what the fakes cannot (WP52).**
+  `e2e/tests/pseudo.spec.ts` builds the reference question in German, saves
+  it, reopens the page with `?lang=pseudo` and checks the restored workplace,
+  the opening notice and the admin catalog and log against the real data,
+  with the pseudo catalog loaded under the real Content-Security-Policy.
+  Views that need clicks to reach (dialogs, the table, the operations) stay
+  with the unit screen tests: their buttons have no German name to find in
+  pseudo. Text the back end owns (layer titles, labels, values) is taken
+  from `/api/layers`, not listed by hand.
+- **The rule is an error now (WP52).** `no-unlocalized-strings` fails the
+  lint on any new text outside the catalog. What it cannot see is left to
+  the screen tests, as found in WP49.
 
 ## 6 Adding a language later
 

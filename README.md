@@ -18,6 +18,9 @@ Die Anwendung kann:
   Abfragen speichern und mit allen teilen (E1.7b)
 - gleiche Ergebnisse auf jedem Backend, Datumsattribute, Layer duplizieren,
   Kartensuche, Distanz- und Flächenmessung (E1.8)
+- jeder Text der Oberfläche in einem Meldungskatalog, Zahlen und Daten in einer
+  zentralen Schweizer Form, Ablehnungen des Backends nach Code formuliert:
+  bereit für weitere Sprachen, vorerst Deutsch (E1.9)
 
 Pläne und Befunde je Etappe liegen in [docs/](docs/) (`plan-e1.*.md`); wie
 Bedingungen, Einschränkung und Abfrageobjekt zusammenhängen, steht in
@@ -137,6 +140,21 @@ make doc-screenshots  # Bilder für docs/filters.md neu, prüft die Trefferzahle
 
 `make instance` baut aus einem Commit (`git archive`), nicht aus dem
 Arbeitsverzeichnis, unter eigenem Image-Tag, Container und Volume.
+
+### Sprachen
+
+Die Oberfläche spricht Deutsch; jeder Text steht im Meldungskatalog
+`frontend/src/locales/de.po` (Lingui, siehe
+[docs/plan-e1.9.md](docs/plan-e1.9.md)). Im Code bleibt der deutsche Text
+stehen (`` t`Sitzung speichern` ``, `<Trans>…</Trans>`); `npm run i18n:extract`
+übernimmt neue Meldungen in den Katalog, `make test` prüft, dass er aktuell ist.
+Mit `?lang=pseudo` zeigt die Oberfläche jede Meldung als ⟦Ƥśēũďō⟧-Text, so dass
+fest eingebaute Texte und zu knappe Layouts auffallen; `?lang=de` schaltet zurück.
+
+Eine weitere Sprache, etwa Französisch: `fr` in `frontend/lingui.config.ts`
+ergänzen, `npm run i18n:extract`, `src/locales/fr.po` übersetzen, die Sprache in
+`src/i18n/i18n.ts` wählbar machen. Ablehnungen des Backends kommen als Code
+(`frontend/error-codes.json`) und werden in `src/i18n/errors.ts` formuliert.
 
 ### Beispieldatensatz
 
