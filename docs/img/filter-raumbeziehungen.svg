@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 470" width="660" height="470" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" role="img" aria-labelledby="t d">
+  <title id="t">Raumbedingungen im Vergleich</title>
+  <desc id="d">Sechs Raumbedingungen des Abfrage-Editors. Blau gefüllt: Treffer; hohl: kein Treffer; grau: Objekte des Bezugs-Layers.</desc>
+  <defs>
+    <style>
+      .card { fill: #ffffff; stroke: #e5e7eb; }
+      .panel { fill: #f8fafc; stroke: #e2e8f0; }
+      .ref { fill: #d1d5db; stroke: #6b7280; stroke-width: 1.5; }
+      .refline { fill: none; stroke: #6b7280; stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }
+      .corridor { fill: none; stroke: #d1d5db; stroke-opacity: 0.7; stroke-width: 50; stroke-linejoin: round; stroke-linecap: round; }
+      .hit { fill: #2563eb; stroke: #1e3a8a; stroke-width: 1.5; }
+      .miss { fill: #ffffff; stroke: #64748b; stroke-width: 1.5; stroke-dasharray: 3 2; }
+      .title { font-size: 13px; font-weight: 600; fill: #0f172a; }
+      .sub { font-size: 11px; fill: #475569; font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; }
+      .note { font-size: 10px; fill: #475569; }
+      .legend { font-size: 11px; fill: #334155; }
+    </style>
+    <!-- Shared scene for the three area relations: one area of the reference layer,
+         four small areas of the result layer (two inside, one outside, one on the border). -->
+    <clipPath id="clip"><rect width="200" height="150" rx="6"/></clipPath>
+    <path id="area" d="M30,25 L150,20 L170,90 L120,130 L35,115 Z"/>
+  </defs>
+
+  <rect class="card" x="0.5" y="0.5" width="659" height="469" rx="10"/>
+
+  <!-- 1 liegt in -->
+  <g transform="translate(20,20)">
+    <rect class="panel" width="200" height="150" rx="6"/>
+    <use href="#area" class="ref"/>
+    <rect class="hit" x="55" y="45" width="18" height="18"/>
+    <rect class="hit" x="95" y="75" width="18" height="18"/>
+    <rect class="miss" x="168" y="18" width="18" height="18"/>
+    <rect class="miss" x="138" y="96" width="32" height="26"/>
+    <text class="title" x="0" y="170">liegt in</text>
+    <text class="sub" x="0" y="185">related · within</text>
+  </g>
+
+  <!-- 2 liegt ausserhalb -->
+  <g transform="translate(230,20)">
+    <rect class="panel" width="200" height="150" rx="6"/>
+    <use href="#area" class="ref"/>
+    <rect class="miss" x="55" y="45" width="18" height="18"/>
+    <rect class="miss" x="95" y="75" width="18" height="18"/>
+    <rect class="hit" x="168" y="18" width="18" height="18"/>
+    <rect class="hit" x="138" y="96" width="32" height="26"/>
+    <text class="title" x="0" y="170">liegt ausserhalb</text>
+    <text class="sub" x="0" y="185">not(related · within)</text>
+  </g>
+
+  <!-- 3 schneidet -->
+  <g transform="translate(440,20)">
+    <rect class="panel" width="200" height="150" rx="6"/>
+    <use href="#area" class="ref"/>
+    <rect class="hit" x="55" y="45" width="18" height="18"/>
+    <rect class="hit" x="95" y="75" width="18" height="18"/>
+    <rect class="miss" x="168" y="18" width="18" height="18"/>
+    <rect class="hit" x="138" y="96" width="32" height="26"/>
+    <text class="title" x="0" y="170">schneidet</text>
+    <text class="sub" x="0" y="185">related · intersects</text>
+  </g>
+
+  <!-- 4 enthält: result areas, reference points -->
+  <g transform="translate(20,225)">
+    <rect class="panel" width="200" height="150" rx="6"/>
+    <path class="hit" d="M20,25 L95,20 L100,125 L25,130 Z"/>
+    <path class="miss" d="M110,25 L185,30 L180,125 L105,120 Z"/>
+    <circle class="ref" cx="58" cy="60" r="6"/>
+    <circle class="ref" cx="70" cy="100" r="6"/>
+    <circle class="ref" cx="192" cy="140" r="6"/>
+    <text class="title" x="0" y="170">enthält</text>
+    <text class="sub" x="0" y="185">related · contains</text>
+  </g>
+
+  <!-- 5 ≤ Distanz zu -->
+  <g transform="translate(230,225)">
+    <rect class="panel" width="200" height="150" rx="6"/>
+    <path class="corridor" clip-path="url(#clip)" d="M10,115 L70,70 L130,105 L190,45"/>
+    <path class="refline" d="M10,115 L70,70 L130,105 L190,45"/>
+    <line x1="70" y1="70" x2="70" y2="45" stroke="#334155" stroke-width="1"/>
+    <text class="note" x="74" y="56">d</text>
+    <circle class="hit" cx="72" cy="88" r="6"/>
+    <circle class="hit" cx="132" cy="88" r="6"/>
+    <circle class="miss" cx="40" cy="40" r="6"/>
+    <circle class="miss" cx="165" cy="125" r="6"/>
+    <text class="title" x="0" y="170"><tspan font-weight="400">≤</tspan> Distanz zu</text>
+    <text class="sub" x="0" y="185">related · dwithin d</text>
+  </g>
+
+  <!-- 6 > Distanz zu -->
+  <g transform="translate(440,225)">
+    <rect class="panel" width="200" height="150" rx="6"/>
+    <path class="corridor" clip-path="url(#clip)" d="M10,115 L70,70 L130,105 L190,45"/>
+    <path class="refline" d="M10,115 L70,70 L130,105 L190,45"/>
+    <line x1="70" y1="70" x2="70" y2="45" stroke="#334155" stroke-width="1"/>
+    <text class="note" x="74" y="56">d</text>
+    <circle class="miss" cx="72" cy="88" r="6"/>
+    <circle class="miss" cx="132" cy="88" r="6"/>
+    <circle class="hit" cx="40" cy="40" r="6"/>
+    <circle class="hit" cx="165" cy="125" r="6"/>
+    <text class="title" x="0" y="170">&gt; Distanz zu</text>
+    <text class="sub" x="0" y="185">not(related · dwithin d)</text>
+  </g>
+
+  <!-- legend -->
+  <g transform="translate(20,435)">
+    <rect class="hit" x="0" y="0" width="14" height="14"/>
+    <text class="legend" x="20" y="11">Treffer (Ergebnis-Layer)</text>
+    <rect class="miss" x="180" y="0" width="14" height="14"/>
+    <text class="legend" x="200" y="11">kein Treffer</text>
+    <rect class="ref" x="300" y="0" width="14" height="14"/>
+    <text class="legend" x="320" y="11">Bezugs-Layer der Bedingung</text>
+  </g>
+</svg>

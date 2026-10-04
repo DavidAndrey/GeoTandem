@@ -1,4 +1,4 @@
-.PHONY: install dev test lint gen sample-update docker docker-run e2e gate \
+.PHONY: install dev test lint gen sample-update docker docker-run e2e gate doc-screenshots \
         instance instance-stop instance-logs instance-reset
 
 install:
@@ -43,6 +43,11 @@ docker-run:
 # lint + test + image + first start, Playwright and restart against the container.
 gate:
 	scripts/gate.sh
+
+# Screenshots of the examples in docs/filters.md, from the working tree on a
+# throwaway instance. Rerun when the editor or the examples change.
+doc-screenshots:
+	scripts/doc-screenshots.sh
 
 # A personal instance for manual testing, kept apart from agents and other apps:
 # built from a committed ref (never the working tree others may be editing), its
