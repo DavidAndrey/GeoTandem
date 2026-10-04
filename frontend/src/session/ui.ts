@@ -1,5 +1,6 @@
 // Which session dialog is open, and what waits behind the unsaved-changes
 // question (design C2, C3, C5). One host renders them (SessionDialogs).
+import { t } from '@lingui/core/macro'
 import { create } from 'zustand'
 import { useAnalysis } from '../analysis/store'
 import { newSession, saveSession } from './actions'
@@ -73,8 +74,8 @@ export function formatWhen(iso: string, now = new Date()): string {
   const day = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
   const days = Math.round((day(now) - day(date)) / 86_400_000)
   const time = dateTimeFormat({ hour: '2-digit', minute: '2-digit' }).format(date)
-  if (days === 0) return `heute ${time}`
-  if (days === 1) return 'gestern'
+  if (days === 0) return t`heute ${time}`
+  if (days === 1) return t`gestern`
   return dateTimeFormat({
     day: '2-digit',
     month: '2-digit',

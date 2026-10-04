@@ -1,13 +1,16 @@
 // State of the import wizard (design D6) and its translation into the
 // backend's ImportDecisions. Pure: the components only render and dispatch.
+import type { MessageDescriptor } from '@lingui/core'
+import { msg, plural, t } from '@lingui/core/macro'
 import type { FieldDecision, ImportDecisions, Preview } from '../api/client'
+import { formatNumber } from '../i18n/locale'
 
 export type Step = 1 | 2 | 3 | 4
-export const STEPS: { step: Step; label: string }[] = [
-  { step: 1, label: 'Datei' },
-  { step: 2, label: 'Geobezug' },
-  { step: 3, label: 'Felder' },
-  { step: 4, label: 'Prüfen' },
+export const STEPS: { step: Step; label: MessageDescriptor }[] = [
+  { step: 1, label: msg`Datei` },
+  { step: 2, label: msg`Geobezug` },
+  { step: 3, label: msg`Felder` },
+  { step: 4, label: msg`Prüfen` },
 ]
 
 export type Geo =
@@ -102,30 +105,30 @@ export function problems(state: WizardState, step: Step): string[] {
   if (step === 1) {
     if (!state.replace && !isIdentifier(state.layerName))
       found.push(
-        'Der Layername besteht aus Kleinbuchstaben, Ziffern und einzelnen Unterstrichen und beginnt mit einem Buchstaben.',
+        t`Der Layername besteht aus Kleinbuchstaben, Ziffern und einzelnen Unterstrichen und beginnt mit einem Buchstaben.`,
       )
-    if (!state.title.trim()) found.push('Der Layer braucht eine Bezeichnung.')
+    if (!state.title.trim()) found.push(t`Der Layer braucht eine Bezeichnung.`)
   }
   if (step === 2) {
     const geo = state.geo
     if (geo.mode === 'geometry') {
-      if (state.preview.geometry_type === null) found.push('Die Datei enthält keine Geometrien.')
-      if (geo.crs === null) found.push('Das Koordinatensystem ist nicht erkannt; bitte wählen.')
+      if (state.preview.geometry_type === null) found.push(t`Die Datei enthält keine Geometrien.`)
+      if (geo.crs === null) found.push(t`Das Koordinatensystem ist nicht erkannt; bitte wählen.`)
     } else if (geo.mode === 'xy') {
-      if (!geo.x || !geo.y) found.push('Bitte X- und Y-Spalte wählen.')
-      if (geo.crs === null) found.push('Bitte das Koordinatensystem der Spalten wählen.')
+      if (!geo.x || !geo.y) found.push(t`Bitte X- und Y-Spalte wählen.`)
+      if (geo.crs === null) found.push(t`Bitte das Koordinatensystem der Spalten wählen.`)
     } else if (!geo.column || !geo.layer || !geo.attribute) {
-      found.push('Bitte Schlüsselspalte und Ziel-Layer wählen.')
+      found.push(t`Bitte Schlüsselspalte und Ziel-Layer wählen.`)
     }
   }
   if (step === 3) {
     const included = state.fields.filter((f) => f.include)
     const seen = new Set<string>()
-    for (const field of included) {
-      if (!isIdentifier(field.name)) found.push(`„${field.name}" ist kein gültiger Feldname.`)
-      else if (RESERVED.has(field.name)) found.push(`„${field.name}" ist reserviert.`)
-      else if (seen.has(field.name)) found.push(`„${field.name}" kommt mehrfach vor.`)
-      seen.add(field.name)
+    for (const { name } of included) {
+      if (!isIdentifier(name)) found.push(t`„${name}" ist kein gültiger Feldname.`)
+      else if (RESERVED.has(name)) found.push(t`„${name}" ist reserviert.`)
+      else if (seen.has(name)) found.push(t`„${name}" kommt mehrfach vor.`)
+      seen.add(name)
     }
   }
   return found
@@ -140,6 +143,11 @@ export interface Check {
   step?: Step
 }
 
+const records = (n: number) => {
+  const count = formatNumber(n)
+  return plural(n, { one: `${count} Datensatz gelesen`, other: `${count} Datensätze gelesen` })
+}
+
 /** The summary of step 4 (design D6 "Prüfen"): ✓ done, ⚠ warning, ○ to do. */
 export function checks(state: WizardState): Check[] {
   const { preview, geo } = state
@@ -149,17 +157,22 @@ export function checks(state: WizardState): Check[] {
     const proposal = preview.keys.find(
       (k) => k.column === geo.column && k.layer === geo.layer && k.attribute === geo.attribute,
     )
+    const key = `${geo.column} → ${geo.layer}.${geo.attribute}`
+    let text = t`Schlüssel ${key}`
+    if (proposal) {
+      const matched = formatNumber(proposal.matched)
+      const total = formatNumber(proposal.total)
+      text = t`Schlüssel ${key}: ${matched} / ${total} zugeordnet`
+    }
     result.push({
       kind: proposal && proposal.matched === proposal.total ? 'ok' : 'warning',
-      text: proposal
-        ? `Schlüssel ${geo.column} → ${geo.layer}.${geo.attribute}: ${proposal.matched} / ${proposal.total} zugeordnet`
-        : `Schlüssel ${geo.column} → ${geo.layer}.${geo.attribute}`,
+      text,
       step: 2,
     })
   } else if (crs !== null) {
-    result.push({ kind: 'ok', text: `Koordinatensystem EPSG:${crs}`, step: 2 })
+    result.push({ kind: 'ok', text: t`Koordinatensystem EPSG:${crs}`, step: 2 })
   } else {
-    result.push({ kind: 'todo', text: 'Koordinatensystem fehlt', step: 2 })
+    result.push({ kind: 'todo', text: t`Koordinatensystem fehlt`, step: 2 })
   }
   for (const message of preview.warnings) {
     result.push({ kind: 'warning', text: message.message })
@@ -172,11 +185,14 @@ export function checks(state: WizardState): Check[] {
   if (unlabelled)
     result.push({
       kind: 'todo',
-      text: `${unlabelled} ${unlabelled === 1 ? 'Feld' : 'Felder'} ohne Bezeichnung`,
+      text: plural(unlabelled, {
+        one: '# Feld ohne Bezeichnung',
+        other: '# Felder ohne Bezeichnung',
+      }),
       step: 3,
     })
   if (!preview.warnings.length && !preview.errors.length)
-    result.push({ kind: 'ok', text: `${preview.record_count} Datensätze gelesen` })
+    result.push({ kind: 'ok', text: records(preview.record_count) })
   return result
 }
 
@@ -216,5 +232,5 @@ export function fieldChanges(before: string[], after: string[]): string {
     added.length ? `+ ${added.join(', ')}` : '',
     removed.length ? `− ${removed.join(', ')}` : '',
   ].filter(Boolean)
-  return parts.length ? parts.join(' · ') : 'unverändert'
+  return parts.length ? parts.join(' · ') : t`unverändert`
 }

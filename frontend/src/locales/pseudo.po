@@ -7,26 +7,357 @@ msgstr ""
 "X-Generator: @lingui/cli\n"
 "Language: pseudo\n"
 
+#: src/admin/wizard.ts
+msgid "„{name}\" ist kein gültiger Feldname."
+msgstr ""
+
+#: src/admin/wizard.ts
+msgid "„{name}\" ist reserviert."
+msgstr ""
+
+#: src/admin/wizard.ts
+msgid "„{name}\" kommt mehrfach vor."
+msgstr ""
+
+#. Spatial condition, then the attribute filter on its layer
+#: src/editor/describe.ts
+msgid "{condition} ({filter})"
+msgstr ""
+
+#. Attribute condition: field, operator, value(s). Reorder as the language needs.
+#: src/editor/describe.ts
+msgid "{field} {op}"
+msgstr ""
+
+#. Attribute condition: field, operator, value(s). Reorder as the language needs.
+#: src/editor/describe.ts
+msgid "{field} {op} {min} – {max}"
+msgstr ""
+
+#. Attribute condition: field, operator, value(s). Reorder as the language needs.
+#: src/editor/describe.ts
+msgid "{field} {op} {value}"
+msgstr ""
+
+#. Attribute condition: field, operator, value(s). Reorder as the language needs.
+#: src/editor/describe.ts
+msgid "{field} {op} {values}"
+msgstr ""
+
+#: src/editor/describe.ts
+msgid "{km} km"
+msgstr ""
+
+#: src/editor/describe.ts
+msgid "{m} m"
+msgstr ""
+
+#: src/admin/wizard.ts
+msgid "{n, plural, one {{count} Datensatz gelesen} other {{count} Datensätze gelesen}}"
+msgstr ""
+
+#: src/session/notice.ts
+msgid "{n, plural, one {{count} Treffer} other {{count} Treffer}}"
+msgstr ""
+
+#. Spatial condition: relation ("liegt in"), layer
+#: src/editor/describe.ts
+msgid "{op} {layer}"
+msgstr ""
+
+#: src/admin/wizard.ts
+msgid "{unlabelled, plural, one {# Feld ohne Bezeichnung} other {# Felder ohne Bezeichnung}}"
+msgstr ""
+
+#: src/editor/describe.ts
+msgid "> {distance} zu {layer}"
+msgstr ""
+
+#: src/editor/describe.ts
+msgid "> Distanz zu"
+msgstr ""
+
+#: src/editor/describe.ts
+msgid "≤ {distance} um {feature} ({layer})"
+msgstr ""
+
+#: src/editor/describe.ts
+msgid "≤ {distance} zu {layer}"
+msgstr ""
+
+#: src/editor/describe.ts
+msgid "≤ Distanz zu"
+msgstr ""
+
+#: src/editor/describe.ts
+msgctxt "date"
+msgid "ab"
+msgstr ""
+
+#: src/session/notice.ts
+msgid "Abfrage und Rezepte sind unverändert."
+msgstr ""
+
 #: src/auth/UserMenu.tsx
 msgid "Abmelden"
+msgstr ""
+
+#: src/editor/describe.ts
+msgctxt "date"
+msgid "am"
+msgstr ""
+
+#: src/session/notice.ts
+msgid "Bedingung „{condition}\" entfernt: ihr Layer fehlt."
+msgstr ""
+
+#: src/editor/describe.ts
+msgid "beginnt mit"
+msgstr ""
+
+#: src/editor/describe.ts
+msgid "bei {feature} ({layer})"
 msgstr ""
 
 #: src/auth/UserMenu.tsx
 msgid "Benutzermenü"
 msgstr ""
 
+#: src/editor/describe.ts
+msgctxt "date"
+msgid "bis"
+msgstr ""
+
+#: src/admin/wizard.ts
+msgid "Bitte das Koordinatensystem der Spalten wählen."
+msgstr ""
+
+#: src/admin/wizard.ts
+msgid "Bitte Schlüsselspalte und Ziel-Layer wählen."
+msgstr ""
+
+#: src/admin/wizard.ts
+msgid "Bitte X- und Y-Spalte wählen."
+msgstr ""
+
+#: src/admin/wizard.ts
+msgid "Das Koordinatensystem ist nicht erkannt; bitte wählen."
+msgstr ""
+
 #: src/auth/UserMenu.tsx
 msgid "Das Passwort ist geändert."
+msgstr ""
+
+#: src/admin/wizard.ts
+msgid "Datei"
+msgstr ""
+
+#: src/queries/actions.ts
+msgid "Der Ergebnis-Layer „{result}\" ist nicht verfügbar."
+msgstr ""
+
+#: src/session/notice.ts
+msgid "Der Ergebnis-Layer fehlt"
+msgstr ""
+
+#: src/session/notice.ts
+msgid "Der gespeicherte Zustand ergibt nicht mehr genau die gespeicherte Abfrage."
+msgstr ""
+
+#: src/admin/wizard.ts
+msgid "Der Layer braucht eine Bezeichnung."
+msgstr ""
+
+#: src/admin/wizard.ts
+msgid "Der Layername besteht aus Kleinbuchstaben, Ziffern und einzelnen Unterstrichen und beginnt mit einem Buchstaben."
+msgstr ""
+
+#: src/session/notice.ts
+msgid "Die Abfrage kann nicht ausgeführt werden. Karte und übrige Layer sind geöffnet."
+msgstr ""
+
+#: src/admin/wizard.ts
+msgid "Die Datei enthält keine Geometrien."
+msgstr ""
+
+#: src/session/notice.ts
+msgid "Die gespeicherte Abfrage läuft nicht mehr: {error}"
+msgstr ""
+
+#: src/session/notice.ts
+msgid "Die Treffer sind dieselben."
+msgstr ""
+
+#: src/queries/actions.ts
+msgid "Diese Abfrage wurde mit einem unbekannten Format gespeichert."
 msgstr ""
 
 #: src/auth/UserMenu.tsx
 msgid "Eigenes Passwort ändern"
 msgstr ""
 
+#: src/editor/describe.ts
+msgid "endet mit"
+msgstr ""
+
+#: src/editor/describe.ts
+msgctxt "spatial"
+msgid "enthält"
+msgstr ""
+
+#: src/editor/describe.ts
+msgctxt "text"
+msgid "enthält"
+msgstr ""
+
+#: src/session/notice.ts
+msgid "Ergebnis weicht ab"
+msgstr ""
+
+#: src/session/notice.ts
+msgid "Ergebnis weicht ab: {before} → {after}"
+msgstr ""
+
+#: src/session/notice.ts
+msgid "Ergebnis wird geprüft …"
+msgstr ""
+
+#: src/admin/wizard.ts
+msgid "Felder"
+msgstr ""
+
+#: src/admin/wizard.ts
+msgid "Geobezug"
+msgstr ""
+
+#: src/queries/actions.ts
+msgid "Gespeichert werden Abfragen auf Katalog-Layern; dieser Ergebnis-Layer ist abgeleitet."
+msgstr ""
+
+#: src/session/ui.ts
+msgid "gestern"
+msgstr ""
+
+#: src/editor/describe.ts
+msgid "Gruppe (ODER, {count})"
+msgstr ""
+
+#: src/editor/describe.ts
+msgid "Gruppe (UND, {count})"
+msgstr ""
+
+#: src/session/ui.ts
+msgid "heute {time}"
+msgstr ""
+
+#: src/editor/describe.ts
+msgid "ist eins von"
+msgstr ""
+
+#: src/editor/describe.ts
+msgid "ist leer"
+msgstr ""
+
+#: src/editor/describe.ts
+msgid "ja"
+msgstr ""
+
+#: src/session/notice.ts
+msgid "kein Ergebnis-Layer"
+msgstr ""
+
+#: src/admin/wizard.ts
+msgid "Koordinatensystem EPSG:{crs}"
+msgstr ""
+
+#: src/admin/wizard.ts
+msgid "Koordinatensystem fehlt"
+msgstr ""
+
+#: src/session/notice.ts
+msgid "Layer „{layer}\" hat eine neue Fassung ({before} → {after})."
+msgstr ""
+
+#: src/session/notice.ts
+msgid "Layer „{layer}\" ist nicht mehr verfügbar."
+msgstr ""
+
+#: src/session/notice.ts
+msgid "Layer „{name}\" ist nicht mehr verfügbar und wurde aus der Analyse genommen."
+msgstr ""
+
+#: src/editor/describe.ts
+msgid "liegt ausserhalb"
+msgstr ""
+
+#: src/editor/describe.ts
+msgid "liegt in"
+msgstr ""
+
+#: src/editor/describe.ts
+msgctxt "date"
+msgid "nach"
+msgstr ""
+
+#: src/editor/describe.ts
+msgid "nein"
+msgstr ""
+
+#. Any condition, negated
+#: src/editor/describe.ts
+msgid "nicht {condition}"
+msgstr ""
+
+#: src/editor/describe.ts
+msgctxt "date"
+msgid "nicht am"
+msgstr ""
+
+#: src/editor/describe.ts
+msgid "Objekt {fid}"
+msgstr ""
+
 #: src/auth/UserMenu.tsx
 msgid "Passwort ändern"
 msgstr ""
 
+#: src/admin/wizard.ts
+msgid "Prüfen"
+msgstr ""
+
 #: src/auth/UserMenu.tsx
 msgid "Schliessen"
+msgstr ""
+
+#: src/admin/wizard.ts
+msgid "Schlüssel {key}"
+msgstr ""
+
+#: src/admin/wizard.ts
+msgid "Schlüssel {key}: {matched} / {total} zugeordnet"
+msgstr ""
+
+#: src/editor/describe.ts
+msgid "schneidet"
+msgstr ""
+
+#: src/session/notice.ts
+msgid "Sitzung nicht geöffnet"
+msgstr ""
+
+#: src/admin/wizard.ts
+msgid "unverändert"
+msgstr ""
+
+#: src/editor/describe.ts
+msgctxt "date"
+msgid "vor"
+msgstr ""
+
+#: src/session/notice.ts
+msgid "Wiederhergestellt · {count}, identisch mit dem Speicherstand"
+msgstr ""
+
+#: src/editor/describe.ts
+msgid "zwischen"
 msgstr ""

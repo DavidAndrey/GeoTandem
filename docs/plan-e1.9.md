@@ -86,6 +86,7 @@ The language of prompts and model explanations is decided in E2.
   are shown.
 - Tests: existing ones unchanged in content; one test per builder in
   `pseudo`, which shows that no fragment is joined outside a message.
+- **Built 2026-10-04.**
 
 ### WP49 — User area
 
@@ -155,6 +156,24 @@ independent of WP49/50 and may move forward if the back end is free.
 - **ICU's Swiss group mark changed (WP47).** Current ICU writes de-CH as
   `1'234.5` (ASCII apostrophe), older versions `1’234.5`; fr-CH uses a
   narrow no-break space. `parseNumber` accepts all three.
+- **A condition is one message, its operator another (WP48).** "Schulstufe
+  ist eins von primar" is the message `{field} {op} {values}` with the
+  operator as its own message: the editor lists the operators anyway, and a
+  language can still reorder the sentence. A translator's comment says so in
+  the catalog. Negation (`nicht {condition}`) and a spatial filter
+  (`{condition} ({filter})`) wrap whole conditions, never fragments.
+- **Counts format before they are counted (WP48).** ICU's `#` in a plural
+  formats with the bare language (`de`, `1.234`), not the region; plurals
+  therefore embed the number formatted by L4 and use the count only to
+  choose the form.
+- **Text built outside React follows the language at the time it is built
+  (WP48).** Builders read the global `i18n`; nothing re-renders them on a
+  change of language. With one language and `pseudo` chosen on page load
+  that is enough; a switcher (section 6) reloads the page.
+- **The pseudo check found nothing joined (WP48).** `src/test/pseudo.ts`
+  removes everything bracketed and the data a test names; any letter left
+  is a fragment outside the catalog. Back-end messages still count as data
+  until WP51.
 
 ## 6 Adding a language later
 
@@ -163,7 +182,7 @@ What remains for French (and then Italian, English) once E1.9 is built:
 1. `fr` in `lingui.config.ts`, `npm run i18n:extract`, translate
    `fr.po` (with a GIS glossary: couche, tampon, jointure spatiale, commune …).
 2. A language switcher and where the choice is kept (browser or account),
-   a decision of its own; the sign-in page needs a language before any account.
+   a decision of its own; the sign-in page needs a language before any account. Switching reloads the page (WP48).
 3. `i18n:check` with `--strict` for `fr`, so missing messages fail the gate.
 4. A layout pass in the real language; `pseudo` has caught most of it.
 5. Open then, not now: translated sample data and metadata, the language of

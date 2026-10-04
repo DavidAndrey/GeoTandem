@@ -1,4 +1,5 @@
 // Saving, opening and starting queries (design B1, C6; plan E1.7b).
+import { t } from '@lingui/core/macro'
 import type { QueryRef } from '../analysis/model'
 import { emptyTree, resultQuery } from '../analysis/query'
 import { useAnalysis } from '../analysis/store'
@@ -30,7 +31,7 @@ function body(name: string, shared: boolean) {
   const query = resultQuery(analysis)
   if (!part || !query)
     throw new CannotSave(
-      'Gespeichert werden Abfragen auf Katalog-Layern; dieser Ergebnis-Layer ist abgeleitet.',
+      t`Gespeichert werden Abfragen auf Katalog-Layern; dieser Ergebnis-Layer ist abgeleitet.`,
     )
   return { name, shared, state_version: QUERY_STATE_VERSION, state: { ...part }, query }
 }
@@ -75,9 +76,10 @@ export async function saveQuery(): Promise<boolean> {
 export async function openQuery(id: string, available: Set<string>): Promise<string[]> {
   const detail = await api.queries.get(id)
   const part = partFrom(detail.state_version, detail.state)
-  if (!part) throw new Error('Diese Abfrage wurde mit einem unbekannten Format gespeichert.')
+  if (!part) throw new Error(t`Diese Abfrage wurde mit einem unbekannten Format gespeichert.`)
   const fitted = fitQuery(part, available)
-  if (!fitted) throw new Error(`Der Ergebnis-Layer „${part.result}" ist nicht verfügbar.`)
+  const result = part.result
+  if (!fitted) throw new Error(t`Der Ergebnis-Layer „${result}" ist nicht verfügbar.`)
   // Rows left out make it differ from the saved part, so it shows as "geändert".
   useAnalysis.getState().applyQuery(fitted.part, refOf(detail))
   const labels = { field: (n: string) => n, layer: (n: string) => n }

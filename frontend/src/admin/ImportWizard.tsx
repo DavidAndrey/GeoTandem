@@ -1,6 +1,7 @@
 // Import wizard (design D6, with D4 for a replace and D11 for failures):
 // 1 file · 2 geo-reference · 3 fields · 4 check. Warnings never block; the
 // backend decides and logs every attempt (F-2.10).
+import { i18n } from '@lingui/core'
 import { useMutation } from '@tanstack/react-query'
 import { AlertTriangle, Check, ChevronRight, Circle, Upload } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
@@ -83,7 +84,7 @@ export function ImportWizard() {
               onClick={() => setStep(s)}
             >
               {s < step && <Check size={12} aria-hidden />}
-              {s} {label}
+              {s} {i18n._(label)}
             </button>
           </li>
         ))}

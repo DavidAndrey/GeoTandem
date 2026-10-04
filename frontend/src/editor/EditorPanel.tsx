@@ -27,7 +27,8 @@ import {
   needsDistance,
   operatorLabel,
   operatorsFor,
-  SPATIAL_OPERATORS,
+  SPATIAL_OPERATOR_LIST,
+  spatialLabel,
 } from './describe'
 import { catalogFields, fieldsOf, type Field } from './fields'
 import { useCounts } from './useCounts'
@@ -489,9 +490,9 @@ function SpatialEditor({ row, catalog }: { row: SpatialRow; catalog: LayerInfo[]
         value={row.operator}
         onChange={(e) => change({ operator: e.target.value as SpatialOperator })}
       >
-        {Object.entries(SPATIAL_OPERATORS).map(([op, label]) => (
+        {SPATIAL_OPERATOR_LIST.map((op) => (
           <option key={op} value={op}>
-            {label}
+            {spatialLabel(op)}
           </option>
         ))}
       </select>
