@@ -1,4 +1,5 @@
 import js from '@eslint/js'
+import lingui from 'eslint-plugin-lingui'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
@@ -16,5 +17,40 @@ export default defineConfig([
       reactRefresh.configs.vite,
     ],
     languageOptions: { globals: globals.browser },
+  },
+  {
+    // Every visible text goes through the catalog (plan E1.9). Tests read German.
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/**/*.test.*', 'src/test/**'],
+    extends: [lingui.configs['flat/recommended']],
+    rules: {
+      'lingui/no-unlocalized-strings': [
+        'warn',
+        {
+          // Flagged: text with a capital or a space. Not: identifiers, keys,
+          // CSS classes, paths, symbols and numbers.
+          ignore: ['^[^A-ZÄÖÜ\\s]*$', '^[A-Z0-9_]+$'],
+          ignoreNames: [
+            {
+              regex: {
+                pattern: '^(className|key|to|id|type|role|name|href|src|path|method|mode)$',
+              },
+            },
+            {
+              regex: {
+                pattern: '^(aria-hidden|data-.*|htmlFor|autoComplete|inputMode|align|side)$',
+              },
+            },
+          ],
+          ignoreFunctions: [
+            'Error',
+            'console.*',
+            'navigate',
+            'document.querySelector*',
+            'URLSearchParams',
+          ],
+        },
+      ],
+    },
   },
 ])

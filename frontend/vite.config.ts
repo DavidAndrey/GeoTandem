@@ -1,10 +1,12 @@
 /// <reference types="vitest/config" />
+import { lingui } from '@lingui/vite-plugin'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  // Lingui's macros run natively, no Babel (plan E1.9, L3).
+  plugins: [lingui({ macroTransform: true }), react(), tailwindcss()],
   // The server puts a fresh nonce in place of this on every page load; the
   // Content-Security-Policy admits only styles carrying it (api/guards.py).
   html: { cspNonce: '__GEOTANDEM_CSP_NONCE__' },

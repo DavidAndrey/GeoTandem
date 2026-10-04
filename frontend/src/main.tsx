@@ -1,3 +1,5 @@
+import { i18n } from '@lingui/core'
+import { I18nProvider } from '@lingui/react'
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { setNonce } from 'get-nonce'
 import { StrictMode } from 'react'
@@ -6,6 +8,7 @@ import { BrowserRouter } from 'react-router'
 import { App } from './App'
 import { ApiRequestError } from './api/client'
 import { keys } from './api/queries'
+import { setupI18n } from './i18n/i18n'
 import './index.css'
 
 const root = document.getElementById('root')
@@ -35,12 +38,16 @@ const queryClient: QueryClient = new QueryClient({
   },
 })
 
-createRoot(root).render(
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    </QueryClientProvider>
-  </StrictMode>,
+void setupI18n(window.location.search).then(() =>
+  createRoot(root).render(
+    <StrictMode>
+      <I18nProvider i18n={i18n}>
+        <QueryClientProvider client={queryClient}>
+          <BrowserRouter>
+            <App />
+          </BrowserRouter>
+        </QueryClientProvider>
+      </I18nProvider>
+    </StrictMode>,
+  ),
 )

@@ -1,3 +1,5 @@
+import { i18n } from '@lingui/core'
+import { I18nProvider } from '@lingui/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render } from '@testing-library/react'
 import type { ReactNode } from 'react'
@@ -7,9 +9,11 @@ import { vi } from 'vitest'
 export function renderAt(path: string, ui: ReactNode) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
-    <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[path]}>{ui}</MemoryRouter>
-    </QueryClientProvider>,
+    <I18nProvider i18n={i18n}>
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={[path]}>{ui}</MemoryRouter>
+      </QueryClientProvider>
+    </I18nProvider>,
   )
 }
 

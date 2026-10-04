@@ -83,7 +83,7 @@ nennt, worauf gebaut wird; die Sperrdateien aus E1.1 sind massgeblich.
 | Leaflet-Geoman (free) | 2.20 | **2.x** | Zeichnen von Rechteck und Polygon (F-4.3), MIT |
 | geographiclib-geodesic | 2.2 | **2.x** | Messen von Strecke und Fläche auf dem Ellipsoid (E1.8), Karneys Referenzimplementierung, MIT, ohne Abhängigkeiten |
 | Zustand | 5.0 | **5** | Analysezustand (4.4), MIT |
-| Lingui | 6.9 | **6** | Meldungskatalog (4.6), MIT; Makros über Babel (`@rolldown/plugin-babel`) |
+| Lingui | 6.9 | **6** | Meldungskatalog (4.6), MIT; Makros nativ übersetzt, ohne Babel |
 | Testing Library (React) | 16.3 | **16** | |
 | Playwright | 1.63 | **1.x** | |
 | TypeScript | 7.0 | **5.9** | entschieden in E1.1, siehe 4.5 |
@@ -305,10 +305,10 @@ zentralen Formatierungs-Locale (`de-CH`), nicht nach Literalen im Code.
 Ablehnungen des Backends übersetzt das Frontend über ihren Code; der englische
 Text der Antwort bleibt für Protokoll, API-Clients und das Modell (F-5.9).
 
-Preis der Wahl: Lingui-Makros brauchen Babel, das `@vitejs/plugin-react` 6
-nicht mehr mitbringt; es kommt über `@rolldown/plugin-babel` nur für das Makro
-zurück. Erweist sich das in WP46 als untragbar, bleibt Lingui ohne Makros oder
-i18next.
+Lingui-Makros brauchen kein Babel: Das Vite-Plugin übersetzt sie nativ
+(`macroTransform`), was `@vitejs/plugin-react` 6 ohne Babel entgegenkommt.
+Die Grundlage kostet rund 3 kB (gzip) und wenige Zehntelsekunden beim Bauen
+([docs/plan-e1.9.md 5](docs/plan-e1.9.md)).
 
 ## 5 Tests
 

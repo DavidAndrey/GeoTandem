@@ -1,4 +1,5 @@
 // Header user menu: name and role, own password (design A4), sign-out.
+import { Trans, useLingui } from '@lingui/react/macro'
 import { useMutation } from '@tanstack/react-query'
 import { ChevronDown } from 'lucide-react'
 import { Dialog, DropdownMenu } from 'radix-ui'
@@ -12,6 +13,7 @@ import { PasswordForm } from './PasswordForm'
 import { ROLE_LABELS } from './rules'
 
 export function UserMenu({ account }: { account: Account }) {
+  const { t } = useLingui()
   const navigate = useNavigate()
   const resetSession = useResetSession()
   const [changing, setChanging] = useState(false)
@@ -31,7 +33,7 @@ export function UserMenu({ account }: { account: Account }) {
   return (
     <>
       <DropdownMenu.Root>
-        <DropdownMenu.Trigger className="btn border-transparent" aria-label="Benutzermenü">
+        <DropdownMenu.Trigger className="btn border-transparent" aria-label={t`Benutzermenü`}>
           {account.display_name || account.username}
           <ChevronDown size={14} aria-hidden />
         </DropdownMenu.Trigger>
@@ -51,13 +53,13 @@ export function UserMenu({ account }: { account: Account }) {
                 setChanging(true)
               }}
             >
-              Passwort ändern
+              <Trans>Passwort ändern</Trans>
             </DropdownMenu.Item>
             <DropdownMenu.Item
               className="cursor-pointer px-3 py-1 text-sm outline-none data-[highlighted]:bg-neutral-200"
               onSelect={() => guarded('abmelden', () => logout.mutate())}
             >
-              Abmelden
+              <Trans>Abmelden</Trans>
             </DropdownMenu.Item>
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
@@ -66,13 +68,19 @@ export function UserMenu({ account }: { account: Account }) {
         <Dialog.Portal>
           <Dialog.Overlay className="bg-ink/30 fixed inset-0 z-40" />
           <Dialog.Content className="card fixed top-1/4 left-1/2 z-50 w-96 max-w-[calc(100vw-2rem)] -translate-x-1/2 p-5 shadow-[var(--shadow-md)]">
-            <Dialog.Title className="mb-3 text-xl">Passwort ändern</Dialog.Title>
-            <Dialog.Description className="sr-only">Eigenes Passwort ändern</Dialog.Description>
+            <Dialog.Title className="mb-3 text-xl">
+              <Trans>Passwort ändern</Trans>
+            </Dialog.Title>
+            <Dialog.Description className="sr-only">
+              <Trans>Eigenes Passwort ändern</Trans>
+            </Dialog.Description>
             {changed ? (
               <div role="status">
-                <p className="mb-3 text-sm">Das Passwort ist geändert.</p>
+                <p className="mb-3 text-sm">
+                  <Trans>Das Passwort ist geändert.</Trans>
+                </p>
                 <button type="button" className="btn" onClick={() => setChanging(false)}>
-                  Schliessen
+                  <Trans>Schliessen</Trans>
                 </button>
               </div>
             ) : (
