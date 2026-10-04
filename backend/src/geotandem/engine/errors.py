@@ -35,3 +35,39 @@ class ResultTooLarge(QueryError):
 class QueryTimedOut(QueryError):
     status = 504
     code = "query_timeout"
+
+
+# Causes the interface can run into, each with its own code so the interface
+# and the model can tell them apart (plan E1.9, L6).
+
+
+class InvalidQueryGeometry(QueryError):
+    """A geometry in the query (a drawn area) is malformed or invalid."""
+
+    code = "invalid_query_geometry"
+
+
+class NameClash(QueryError):
+    """A joined, computed or aggregated attribute takes a name already used."""
+
+    code = "name_clash"
+
+
+class KeyTypeMismatch(QueryError):
+    """Join keys of different types."""
+
+    code = "key_type_mismatch"
+
+
+class AttributeNotText(QueryError):
+    code = "attribute_not_text"
+
+
+class AttributeNotNumeric(QueryError):
+    code = "attribute_not_numeric"
+
+
+class WrongValueType(QueryError):
+    """A condition's value does not fit the attribute's type."""
+
+    code = "wrong_value_type"

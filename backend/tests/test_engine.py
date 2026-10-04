@@ -255,28 +255,28 @@ def _rounded(properties: dict[str, Any]) -> dict[str, Any]:
         (
             {"source": "schulen", "where": {"op": "compare", "attr": "standorte", "cmp": "gt",
                                             "value": "viele"}},
-            "invalid_query", "holds int values",
+            "wrong_value_type", "holds int values",
         ),
         (
             {"source": "schulen", "where": {"op": "text_match", "attr": "standorte", "text": "1"}},
-            "invalid_query", "needs a text attribute",
+            "attribute_not_text", "needs a text attribute",
         ),
         ({"source": "gemeindedaten", "buffer": {"distance_m": 5}}, "unsupported_operation",
          "table layer"),
         (
             {"source": "schulen", "aggregate": {"by_layer": "gemeinden", "metrics": [
                 {"fn": "sum", "attr": "typ", "as": "x"}]}},
-            "invalid_query", "not numeric",
+            "attribute_not_numeric", "not numeric",
         ),
         (
             {"source": "gemeinden", "attribute_join": {"layer": "gemeindedaten",
              "left_key": "gem_nr", "right_key": "gem_nr", "fields": ["gem_nr"]}},
-            "invalid_query", "set 'prefix'",
+            "name_clash", "set 'prefix'",
         ),
         (
             {"source": "schulen", "where": {"op": "geometry", "geometry": {
                 "type": "Polygon", "coordinates": [BOWTIE]}}},
-            "invalid_query", "Invalid geometry",
+            "invalid_query_geometry", "Invalid geometry",
         ),
     ],
 )  # fmt: skip
@@ -550,13 +550,13 @@ def test_columns_after_aggregate_use_the_area(sample: DataBackend) -> None:
 @pytest.mark.parametrize(
     ("columns", "code", "fragment"),
     [
-        ([{"fn": "distance_to", "name": "name", "layer": "strassen"}], "invalid_query", "clashes"),
+        ([{"fn": "distance_to", "name": "name", "layer": "strassen"}], "name_clash", "clashes"),
         (
             [
                 {"fn": "distance_to", "name": "d", "layer": "strassen"},
                 {"fn": "distance_to", "name": "d", "layer": "gemeinden"},
             ],
-            "invalid_query",
+            "name_clash",
             "clashes",
         ),
         (

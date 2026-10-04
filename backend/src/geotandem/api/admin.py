@@ -184,6 +184,10 @@ class Duplicate(BaseModel):
     """Defaults to "<title> (Kopie)"."""
 
 
+class InvalidLayerName(Problem):
+    code = "invalid_layer_name"
+
+
 class LayerNameTaken(Problem):
     status = 409
     code = "layer_exists"
@@ -206,7 +210,7 @@ def duplicate_layer(name: str, body: Duplicate, state: State, user: Actor) -> La
     if target is None:
         raise LayerNameTaken(f"Every copy name of '{name}' is taken; please give one.", layer=name)
     if not IDENTIFIER.match(target):
-        raise Problem(f"'{target}' is not a valid layer name.", name=target)
+        raise InvalidLayerName(f"'{target}' is not a valid layer name.", name=target)
     run_id = import_log.start(
         engine,
         source_name=name,

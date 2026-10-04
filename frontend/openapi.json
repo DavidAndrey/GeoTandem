@@ -4926,6 +4926,24 @@
             "title": "Error",
             "description": "Why the query no longer runs."
           },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code",
+            "description": "The error's stable code."
+          },
+          "error_details": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Error Details",
+            "description": "The error's values."
+          },
           "state_matches": {
             "anyOf": [
               {
@@ -6611,6 +6629,12 @@
               }
             ],
             "title": "Count"
+          },
+          "details": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Details",
+            "description": "Further values the message names, by key."
           }
         },
         "type": "object",

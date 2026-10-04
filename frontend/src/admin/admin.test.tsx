@@ -113,7 +113,13 @@ test('a failed commit is shown and the wizard stays open', async () => {
       id: 8,
       status: 'failed',
       layer_name: null,
-      errors: [{ code: 'layer_exists', message: "A layer 'messstellen' already exists." }],
+      errors: [
+        {
+          code: 'layer_exists',
+          message: "A layer 'messstellen' already exists.",
+          details: { layer: 'messstellen' },
+        },
+      ],
       warnings: [],
     },
   })
@@ -128,7 +134,7 @@ test('a failed commit is shown and the wizard stays open', async () => {
 
   const alert = await screen.findByRole('alert')
   expect(alert).toHaveTextContent('Import fehlgeschlagen')
-  expect(alert).toHaveTextContent("A layer 'messstellen' already exists.")
+  expect(alert).toHaveTextContent('Einen Layer „messstellen" gibt es schon.')
   expect(screen.getByRole('button', { name: 'Übernehmen' })).toBeEnabled()
 })
 

@@ -97,6 +97,8 @@ class Check(BaseModel):
     changed_layers: list[str] = Field(description="Layers with a new dataset version.")
     missing_layers: list[str] = Field(description="Layers deleted or no longer visible.")
     error: str | None = Field(default=None, description="Why the query no longer runs.")
+    error_code: str | None = Field(default=None, description="The error's stable code.")
+    error_details: dict[str, Any] = Field(default_factory=dict, description="The error's values.")
     state_matches: bool | None = Field(
         default=None,
         description="The query rebuilt from the saved state is the saved query; "
@@ -420,6 +422,8 @@ def _compare(
             changed_layers=changed,
             missing_layers=[],
             error=exc.message,
+            error_code=exc.code,
+            error_details=exc.details,
         )
     identical = saved is not None and (
         (saved.count, saved.ids_hash) == (current.count, current.ids_hash)

@@ -6,7 +6,7 @@ import { useState } from 'react'
 import { api } from '../api/client'
 import { ErrorNotice } from '../components/ui'
 import { Field } from './AccessCard'
-import { passwordError, passwordHint, passwordProblems } from './rules'
+import { passwordHint, passwordProblems } from './rules'
 
 export function PasswordForm({ onDone, onCancel }: { onDone: () => void; onCancel?: () => void }) {
   const [current, setCurrent] = useState('')
@@ -67,7 +67,7 @@ export function PasswordForm({ onDone, onCancel }: { onDone: () => void; onCance
           ))}
         </ul>
       )}
-      <ErrorNotice error={passwordError(change.error)} />
+      <ErrorNotice error={change.error} />
       <div className="mt-2 flex gap-2">
         {onCancel && (
           <button type="button" className="btn" onClick={onCancel}>

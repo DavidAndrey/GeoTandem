@@ -461,7 +461,13 @@ Typ sie haben und wer sie sehen darf, prüft der Datenkern
 |---|---|---|
 | `unknown_layer` | 400 | Layer fehlt **oder ist für das Konto verborgen** (die Meldung nennt die verfügbaren) |
 | `unknown_attribute` | 400 | Attribut fehlt (die Meldung nennt die verfügbaren) |
-| `invalid_query` | 400 | falscher Werttyp (`"abc"` für eine Zahl, Datum nicht als ISO-Text), `text_match` auf Nicht-Text, ungültige GeoJSON-Geometrie, Namenskonflikte bei Join oder Spalten |
+| `wrong_value_type` | 400 | falscher Werttyp (`"abc"` für eine Zahl, Datum nicht als ISO-Text) |
+| `attribute_not_text` | 400 | `text_match` auf einem Attribut, das kein Text ist |
+| `attribute_not_numeric` | 400 | Kennzahl (Summe, Mittel …) über ein Attribut, das keine Zahl ist |
+| `invalid_query_geometry` | 400 | ungültige oder fehlerhafte GeoJSON-Geometrie, z. B. eine sich selbst schneidende Fläche |
+| `name_clash` | 400 | Namenskonflikt bei Join (`prefix` setzen), berechneter Spalte oder Kennzahl |
+| `key_type_mismatch` | 400 | Join-Schlüssel verschiedenen Typs (Text gegen Zahl) |
+| `invalid_query` | 400 | jede andere Abfrage, die so nicht laufen kann |
 | `unsupported_operation` | 400 | Raumbedingung auf einem Tabellen-Layer, oder das Backend kann die Operation nicht |
 | `result_too_large` | 413 | mehr als `max_features` Objekte |
 | `query_timeout` | 504 | länger als `query_timeout_s` |

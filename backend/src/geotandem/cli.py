@@ -58,6 +58,12 @@ def _openapi_export(_: argparse.Namespace) -> None:
     print(openapi_document(), end="")
 
 
+def _codes_export(_: argparse.Namespace) -> None:
+    from geotandem.codes import export
+
+    print(export(), end="")
+
+
 def _migrate(_: argparse.Namespace) -> None:
     from geotandem.db.bootstrap import bootstrap
 
@@ -128,6 +134,11 @@ def main(argv: list[str] | None = None) -> None:
     openapi = commands.add_parser("openapi").add_subparsers(required=True)
     openapi.add_parser("export", help="print the OpenAPI description").set_defaults(
         func=_openapi_export
+    )
+
+    codes = commands.add_parser("codes").add_subparsers(required=True)
+    codes.add_parser("export", help="print every error and message code").set_defaults(
+        func=_codes_export
     )
 
     migrate = commands.add_parser("migrate", help="create or upgrade the data core")

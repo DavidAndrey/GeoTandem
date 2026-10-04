@@ -1172,6 +1172,18 @@ export interface components {
        */
       error?: string | null
       /**
+       * Error Code
+       * @description The error's stable code.
+       */
+      error_code?: string | null
+      /**
+       * Error Details
+       * @description The error's values.
+       */
+      error_details?: {
+        [key: string]: unknown
+      }
+      /**
        * State Matches
        * @description The query rebuilt from the saved state is the saved query; null when none was sent.
        */
@@ -1907,6 +1919,13 @@ export interface components {
       column?: string | null
       /** Count */
       count?: number | null
+      /**
+       * Details
+       * @description Further values the message names, by key.
+       */
+      details?: {
+        [key: string]: unknown
+      }
     }
     /**
      * NearFeature

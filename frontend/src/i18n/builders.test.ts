@@ -105,10 +105,9 @@ group('import wizard', () => {
     inPseudo(() => {
       for (const step of [1, 2, 3] as const)
         for (const text of problems(state, step)) expect(unmarked(text, data)).toBe('')
-      // Back-end messages are data until WP51 translates them by code.
-      const backend = state.preview.warnings.map((w) => w.message)
+      // Back-end findings too: they are worded from their code (WP51).
       for (const s of [state, keyed, initialState('id', vectorPreview())])
-        for (const c of checks(s)) expect(unmarked(c.text, [...data, ...backend])).toBe('')
+        for (const c of checks(s)) expect(unmarked(c.text, data)).toBe('')
       expect(unmarked(fieldChanges(['a'], ['a']))).toBe('')
     })
   })

@@ -231,7 +231,7 @@ def run_import(
             run_id,
             status="failed",
             read_count=source.record_count if source else 0,
-            errors=[Message(code=exc.code, message=exc.message)],
+            errors=[Message(code=exc.code, message=exc.message, details=exc.details)],
             warnings=source.notes if source else [],
             steps=steps,
         )
@@ -299,13 +299,19 @@ def _plan(
     existing = set(backend.layer_names())
     if decisions.replace:
         if decisions.replace not in existing:
-            raise ImportBlocked("unknown_layer", f"There is no layer '{decisions.replace}'.")
+            raise ImportBlocked(
+                "unknown_layer",
+                f"There is no layer '{decisions.replace}'.",
+                layer=decisions.replace,
+            )
         layer_name = decisions.replace
     else:
         layer_name = decisions.layer_name or preview.layer_name
         _check_identifier(layer_name, "layer name")
         if layer_name in existing:
-            raise ImportBlocked("layer_exists", f"A layer '{layer_name}' already exists.")
+            raise ImportBlocked(
+                "layer_exists", f"A layer '{layer_name}' already exists.", layer=layer_name
+            )
 
     source_crs: int | None = None
     if isinstance(geo, GeometryReference):
@@ -322,18 +328,24 @@ def _plan(
             column = _source_column(source, name)
             if column.data_type not in ("integer", "real"):
                 raise ImportBlocked(
-                    "coordinates_not_numeric", f"Column '{name}' does not hold numbers."
+                    "coordinates_not_numeric",
+                    f"Column '{name}' does not hold numbers.",
+                    column=name,
                 )
     else:
         _source_column(source, geo.column)
         try:
             target = backend.layer_table(geo.layer)
         except KeyError:
-            raise ImportBlocked("unknown_layer", f"There is no layer '{geo.layer}'.") from None
+            raise ImportBlocked(
+                "unknown_layer", f"There is no layer '{geo.layer}'.", layer=geo.layer
+            ) from None
         if "geom" not in target.c or geo.attribute not in target.c:
             raise ImportBlocked(
                 "invalid_key_target",
                 f"'{geo.layer}.{geo.attribute}' is not an attribute of a geometry layer.",
+                layer=geo.layer,
+                attribute=geo.attribute,
             )
     if source_crs is not None:
         _check_crs(source_crs)
@@ -341,7 +353,11 @@ def _plan(
     by_source = {d.source_name: d for d in decisions.fields or []}
     unknown = set(by_source) - {c.source_name for c in preview.columns}
     if unknown:
-        raise ImportBlocked("unknown_column", f"Unknown columns: {', '.join(sorted(unknown))}.")
+        raise ImportBlocked(
+            "unknown_column",
+            f"Unknown columns: {', '.join(sorted(unknown))}.",
+            columns=sorted(unknown),
+        )
     attributes: list[AttributeSpec] = []
     columns: list[str] = []
     for proposal in preview.columns:
@@ -351,7 +367,9 @@ def _plan(
         name = decision.name or proposal.name
         _check_identifier(name, "attribute name")
         if name in RESERVED or name in {a.name for a in attributes}:
-            raise ImportBlocked("duplicate_attribute", f"Attribute name '{name}' is taken.")
+            raise ImportBlocked(
+                "duplicate_attribute", f"Attribute name '{name}' is taken.", name=name
+            )
         references = None
         if isinstance(geo, KeyReference) and proposal.source_name == geo.column:
             references = f"{geo.layer}.{geo.attribute}"
@@ -384,7 +402,9 @@ def _source_column(source: Source, name: str) -> Any:
     try:
         return source.column(name)
     except KeyError:
-        raise ImportBlocked("unknown_column", f"The file has no column '{name}'.") from None
+        raise ImportBlocked(
+            "unknown_column", f"The file has no column '{name}'.", columns=[name]
+        ) from None
 
 
 def _check_identifier(name: str, what: str) -> None:
@@ -393,6 +413,7 @@ def _check_identifier(name: str, what: str) -> None:
             "invalid_name",
             f"'{name}' is not a valid {what}: lower-case letters, digits and underscores, "
             "not starting with a digit.",
+            name=name,
         )
 
 
@@ -400,7 +421,7 @@ def _check_crs(epsg: int) -> None:
     try:
         CRS.from_epsg(epsg)
     except CRSError:
-        raise ImportBlocked("crs_unknown", f"EPSG:{epsg} is not a known CRS.") from None
+        raise ImportBlocked("crs_unknown", f"EPSG:{epsg} is not a known CRS.", epsg=epsg) from None
 
 
 # --- rows ---------------------------------------------------------------------
@@ -513,6 +534,7 @@ def _key_lookup(
                 message=f"{ambiguous} key values occur more than once in '{geo.layer}'; "
                 "the first feature is used.",
                 count=ambiguous,
+                details={"layer": geo.layer},
             )
         )
     keys = source.column(geo.column).values

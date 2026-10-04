@@ -1,6 +1,7 @@
 // Import wizard (design D6, with D4 for a replace and D11 for failures):
 // 1 file · 2 geo-reference · 3 fields · 4 check. Warnings never block; the
 // backend decides and logs every attempt (F-2.10).
+import { messageText } from '../i18n/errors'
 import { objectCount } from '../i18n/phrases'
 import { Trans } from '@lingui/react/macro'
 import { plural, t } from '@lingui/core/macro'
@@ -760,7 +761,7 @@ function FailedRun({ run }: { run: ImportRunInfo }) {
       </p>
       <ul className="list-disc pl-5">
         {run.errors.map((e) => (
-          <li key={e.code}>{e.message}</li>
+          <li key={e.code}>{messageText(e)}</li>
         ))}
       </ul>
       <p className="text-muted mt-1">
@@ -786,7 +787,7 @@ function Finished({ run }: { run: ImportRunInfo }) {
       {run.warnings.length > 0 && (
         <ul className="list-disc pl-5 text-sm">
           {run.warnings.map((w, i) => (
-            <li key={i}>{w.message}</li>
+            <li key={i}>{messageText(w)}</li>
           ))}
         </ul>
       )}

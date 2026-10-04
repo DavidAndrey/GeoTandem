@@ -1,5 +1,6 @@
 // One import attempt (design D8): who, what, how long, what went wrong, and
 // the decisions taken in the wizard.
+import { messageText, rejectReason } from '../i18n/errors'
 import { i18n, type MessageDescriptor } from '@lingui/core'
 import { Trans } from '@lingui/react/macro'
 import { msg, t } from '@lingui/core/macro'
@@ -99,7 +100,7 @@ export function ImportRunPage() {
             {r.warnings.map((w, i) => (
               <li key={`w${i}`} className="flex items-center gap-2">
                 <AlertTriangle size={14} className="text-accent-700" aria-label={t`Warnung`} />
-                {w.message}
+                {messageText(w)}
                 {w.code === 'rejected_rows' && r.rejected_sample.length > 0 && (
                   <button
                     type="button"
@@ -115,7 +116,7 @@ export function ImportRunPage() {
             {r.errors.map((e, i) => (
               <li key={`e${i}`} className="text-danger flex items-center gap-2">
                 <X size={14} aria-label={t`Fehler`} />
-                {e.message}
+                {messageText(e)}
               </li>
             ))}
             {r.status === 'aborted' && (
@@ -152,7 +153,7 @@ export function ImportRunPage() {
                 {r.rejected_sample.map((row) => (
                   <tr key={row.row}>
                     <td>{row.row}</td>
-                    <td>{row.reason}</td>
+                    <td>{rejectReason(row.reason)}</td>
                     {rowColumns.map((c) => (
                       <td key={c}>{String(row.values[c] ?? '')}</td>
                     ))}

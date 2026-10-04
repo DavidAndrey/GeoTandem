@@ -136,7 +136,7 @@ test('signing in with a start password leads to the mandatory password page', as
   expect(screen.queryByRole('button', { name: 'Abbrechen' })).not.toBeInTheDocument()
 })
 
-test('a failed sign-in shows the server message', async () => {
+test('a failed sign-in says why, worded from its code (plan E1.9, L6)', async () => {
   fakeApi({
     'GET /api/auth/me': unauthorized,
     'GET /api/auth/setup': { needs_setup: false, sample_loaded: true },
@@ -150,5 +150,7 @@ test('a failed sign-in shows the server message', async () => {
   await userEvent.type(await screen.findByLabelText('Benutzername'), 'x')
   await userEvent.type(screen.getByLabelText('Passwort'), 'y')
   await userEvent.click(screen.getByRole('button', { name: 'Anmelden' }))
-  expect(await screen.findByRole('alert')).toHaveTextContent('Username or password is wrong')
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Benutzername oder Passwort stimmt nicht',
+  )
 })

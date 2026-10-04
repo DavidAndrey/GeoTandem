@@ -1,5 +1,6 @@
 // State of the import wizard (design D6) and its translation into the
 // backend's ImportDecisions. Pure: the components only render and dispatch.
+import { messageText } from '../i18n/errors'
 import type { MessageDescriptor } from '@lingui/core'
 import { msg, plural, t } from '@lingui/core/macro'
 import type { FieldDecision, ImportDecisions, Preview } from '../api/client'
@@ -175,11 +176,15 @@ export function checks(state: WizardState): Check[] {
     result.push({ kind: 'todo', text: t`Koordinatensystem fehlt`, step: 2 })
   }
   for (const message of preview.warnings) {
-    result.push({ kind: 'warning', text: message.message })
+    result.push({ kind: 'warning', text: messageText(message) })
   }
   for (const message of preview.errors) {
     if (message.code === 'crs_unknown' && crs !== null) continue
-    result.push({ kind: 'todo', text: message.message, step: message.code === 'no_rows' ? 1 : 2 })
+    result.push({
+      kind: 'todo',
+      text: messageText(message),
+      step: message.code === 'no_rows' ? 1 : 2,
+    })
   }
   const unlabelled = state.fields.filter((f) => f.include && !f.label.trim()).length
   if (unlabelled)

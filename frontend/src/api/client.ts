@@ -1,5 +1,6 @@
 // Typed access to the HTTP interface. Types come from the backend's OpenAPI
 // description (`npm run gen:api`); never write them by hand (tech-stack 4.5).
+import { errorText } from '../i18n/errors'
 import type { components } from './schema'
 
 export type Schemas = components['schemas']
@@ -43,7 +44,8 @@ export class ApiRequestError extends Error {
   readonly body: ApiError | undefined
 
   constructor(status: number, body: ApiError | undefined) {
-    super(body?.message ?? `HTTP ${status}`)
+    // In the user's language from the code (plan E1.9, L6); the English stays in body.
+    super(body?.code ? errorText(body.code, body.details, body.message) : `HTTP ${status}`)
     this.status = status
     this.body = body
   }

@@ -24,6 +24,7 @@ test:
 gen:
 	uv run geotandem schema export
 	uv run geotandem openapi export > frontend/openapi.json
+	uv run geotandem codes export > frontend/error-codes.json
 	cd frontend && npm run gen:api
 
 # Only on request: downloads the sources of the sample dataset (network, ~100 MB)

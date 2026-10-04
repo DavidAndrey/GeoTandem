@@ -113,6 +113,7 @@ The language of prompts and model explanations is decided in E2.
   dialogs. Import warnings and errors through the same path.
 - Tests: back end, every raised code is in the registry; front end, every
   registry code has a message; the API contract test for the split codes.
+- **Built 2026-10-04.**
 
 ### WP52 — Guard and docs
 
@@ -220,6 +221,37 @@ independent of WP49/50 and may move forward if the back end is free.
   password page. A word inside a nested element of a message (`<Trans>…
   <span>auswählen</span></Trans>`) is pseudo text without brackets of its
   own; the check counts words without any plain ASCII letter as pseudo.
+- **The registry, as built (WP51).** `geotandem/codes.py` lists 99 codes
+  with a line of English each; `geotandem codes export` writes
+  `frontend/error-codes.json` (`make gen`), a back-end test compares the two
+  like `openapi.json`. `tests/test_codes.py` reads the source for every code
+  literal (class attribute, keyword, code followed by its message, the
+  reason of a rejected row) and fails on one not registered, and on a
+  registered one no longer raised. Detail keys are not part of the registry:
+  each message reads the details it knows and words the rest generally.
+- **Six causes left `invalid_query` (WP51).** Value of the wrong type,
+  `text_match` on non-text, metric over non-numbers, a drawn area that is
+  invalid, a name taken by a join, column or metric, and join keys of
+  different types now have codes of their own (`wrong_value_type`,
+  `attribute_not_text`, `attribute_not_numeric`, `invalid_query_geometry`,
+  `name_clash`, `key_type_mismatch`); `invalid_query` stays for the rest.
+  A layer name that is no identifier is `invalid_layer_name`, no longer the
+  generic `bad_request`. [docs/filters.md](filters.md) 3.5 lists them.
+- **Findings carry their values (WP51).** Import messages had numbers and
+  names only inside the English text. `Message` gained `details` (columns
+  of a duplicate header, the target layer of ambiguous keys, the type of a
+  column stored as text); a refused import keeps its error's details; the
+  blocked decisions name their layer, column or EPSG code. Times of day
+  stored as text are `times_as_text`, no longer a second meaning of
+  `stored_as_text`. The session check sends `error_code` and
+  `error_details` beside its English `error`.
+- **One place turns a code into words (WP51).** `ApiRequestError` takes its
+  message from `errorText(code, details)`, so every view that shows
+  `error.message` reads German without knowing about codes; the password
+  rules the access pages kept themselves are gone. A code the interface does
+  not know yet shows the back end's English rather than nothing. The
+  reasons in the table of rejected rows were codes shown as they are; they
+  are worded too.
 
 ## 6 Adding a language later
 

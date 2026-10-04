@@ -78,6 +78,9 @@ class Message(BaseModel):
     message: str
     column: str | None = None
     count: int | None = None
+    details: dict[str, Any] = Field(
+        default_factory=dict, description="Further values the message names, by key."
+    )
 
 
 def _unreadable(file_name: str, fmt: Format, exc: Exception) -> SourceError:
@@ -200,7 +203,10 @@ def _read_vector(path: Path, file_name: str, fmt: Format, options: ReadOptions) 
     sublayer = options.sublayer or sublayers[0]
     if sublayer not in sublayers:
         raise SourceError(
-            "unknown_sublayer", f"The file has no layer '{sublayer}'.", sublayers=sublayers
+            "unknown_sublayer",
+            f"The file has no layer '{sublayer}'.",
+            sublayer=sublayer,
+            sublayers=sublayers,
         )
     try:
         meta, _, wkb, fields = pyogrio.raw.read(target, layer=sublayer, encoding=options.encoding)
@@ -223,6 +229,7 @@ def _read_vector(path: Path, file_name: str, fmt: Format, options: ReadOptions) 
                     code="stored_as_text",
                     message=f"Column '{name}' ({ogr_type}) is stored as text.",
                     column=str(name),
+                    details={"source_type": ogr_type},
                 )
             )
     if wkb is not None:
@@ -326,7 +333,7 @@ def _table(
         if dates:
             notes.append(
                 Message(
-                    code="stored_as_text",
+                    code="times_as_text",
                     message=f"Column '{name}' contains times of day; they are stored as text.",
                     column=name,
                 )
@@ -368,6 +375,7 @@ def _duplicate_header(repeated: list[str]) -> Message:
         code="duplicate_header",
         message=f"Columns named alike are told apart by a number: {', '.join(repeated)}.",
         count=len(repeated),
+        details={"columns": repeated},
     )
 
 
@@ -417,7 +425,10 @@ def _read_xlsx(path: Path, file_name: str, options: ReadOptions) -> Source:
         sheet = options.sublayer or sheets[0]
         if sheet not in sheets:
             raise SourceError(
-                "unknown_sublayer", f"The workbook has no sheet '{sheet}'.", sublayers=sheets
+                "unknown_sublayer",
+                f"The workbook has no sheet '{sheet}'.",
+                sublayer=sheet,
+                sublayers=sheets,
             )
         rows = list(workbook[sheet].iter_rows(values_only=True))
     finally:

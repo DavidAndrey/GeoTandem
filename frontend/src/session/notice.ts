@@ -1,5 +1,6 @@
 // What opening a session found, in words (design C4, C8). Pure: the notice
 // component only shows it.
+import { errorText } from '../i18n/errors'
 import { plural, t } from '@lingui/core/macro'
 import { describe } from '../editor/describe'
 import type { OpenReport } from './store'
@@ -66,7 +67,9 @@ export function noticeOf(report: OpenReport, title: (layer: string) => string): 
       lines.push(t`Layer „${layer}" ist nicht mehr verfügbar.`)
     }
   if (check.error) {
-    const error = check.error
+    const error = check.error_code
+      ? errorText(check.error_code, check.error_details, check.error)
+      : check.error
     lines.push(t`Die gespeicherte Abfrage läuft nicht mehr: ${error}`)
   }
   if (check.state_matches === false && removed.rows.length === 0 && removed.layers.length === 0)

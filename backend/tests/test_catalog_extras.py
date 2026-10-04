@@ -118,7 +118,7 @@ async def test_a_duplicate_copies_data_metadata_and_visibility(client: httpx.Asy
     ("body", "status", "code"),
     [
         ({"name": "gemeinden"}, 409, "layer_exists"),
-        ({"name": "Nicht Gültig"}, 400, "bad_request"),
+        ({"name": "Nicht Gültig"}, 400, "invalid_layer_name"),
     ],
 )
 async def test_bad_duplicate_names(

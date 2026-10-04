@@ -4,17 +4,13 @@ import { t } from '@lingui/core/macro'
 import { AlertTriangle, Check, Circle, Loader, MoreHorizontal, X } from 'lucide-react'
 import { AlertDialog, Dialog, DropdownMenu } from 'radix-ui'
 import type { ReactNode } from 'react'
-import { ApiRequestError, type ImportStatus } from '../api/client'
+import type { ImportStatus } from '../api/client'
 import { statusLabel } from '../admin/format'
 
 export function ErrorNotice({ error }: { error: unknown }) {
   if (!error) return null
-  const message =
-    error instanceof ApiRequestError
-      ? (error.body?.message ?? error.message)
-      : error instanceof Error
-        ? error.message
-        : String(error)
+  // An ApiRequestError's message is already in words from its code (plan E1.9, L6).
+  const message = error instanceof Error ? error.message : String(error)
   return (
     <p role="alert" className="text-danger my-2 text-sm">
       {message}

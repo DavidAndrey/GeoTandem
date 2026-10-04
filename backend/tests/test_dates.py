@@ -133,5 +133,5 @@ def test_anything_but_an_iso_date_is_refused(dated: DataBackend, value: Any) -> 
     where = {"op": "compare", "attr": "stichtag", "cmp": "eq", "value": value}
     with pytest.raises(QueryError) as info:
         nrs(dated, {"where": where})
-    assert info.value.code == "invalid_query"
+    assert info.value.code == "wrong_value_type"
     assert "ISO text" in info.value.message

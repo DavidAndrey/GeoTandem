@@ -15,9 +15,25 @@ msgstr " (Tabelle)"
 msgid "· geändert"
 msgstr "· geändert"
 
+#: src/i18n/errors.ts
+msgid "„{layer}.{attribute}\" ist kein Feld eines Layers mit Geometrie."
+msgstr "„{layer}.{attribute}\" ist kein Feld eines Layers mit Geometrie."
+
+#: src/i18n/errors.ts
+msgid "„{name}\" gibt es nicht (mehr)."
+msgstr "„{name}\" gibt es nicht (mehr)."
+
 #: src/admin/wizard.ts
 msgid "„{name}\" ist kein gültiger Feldname."
 msgstr "„{name}\" ist kein gültiger Feldname."
+
+#: src/i18n/errors.ts
+msgid "„{name}\" ist kein gültiger Layername."
+msgstr "„{name}\" ist kein gültiger Layername."
+
+#: src/i18n/errors.ts
+msgid "„{name}\" ist kein gültiger Name: Kleinbuchstaben, Ziffern und Unterstriche, am Anfang keine Ziffer."
+msgstr "„{name}\" ist kein gültiger Name: Kleinbuchstaben, Ziffern und Unterstriche, am Anfang keine Ziffer."
 
 #: src/admin/wizard.ts
 msgid "„{name}\" ist reserviert."
@@ -158,17 +174,45 @@ msgstr "{matched} / {total} Objekte finden einen Partner"
 msgid "{n, plural, one {{count} Datensatz gelesen} other {{count} Datensätze gelesen}}"
 msgstr "{n, plural, one {{count} Datensatz gelesen} other {{count} Datensätze gelesen}}"
 
+#: src/i18n/errors.ts
+msgid "{n, plural, one {{count} Datensatz hat keine Geometrie und wird nicht importiert.} other {{count} Datensätze haben keine Geometrie und werden nicht importiert.}}"
+msgstr "{n, plural, one {{count} Datensatz hat keine Geometrie und wird nicht importiert.} other {{count} Datensätze haben keine Geometrie und werden nicht importiert.}}"
+
+#: src/i18n/errors.ts
+msgid "{n, plural, one {{count} Datensatz wurde nicht importiert.} other {{count} Datensätze wurden nicht importiert.}}"
+msgstr "{n, plural, one {{count} Datensatz wurde nicht importiert.} other {{count} Datensätze wurden nicht importiert.}}"
+
 #: src/admin/format.ts
 msgid "{n, plural, one {{count} Datensatz} other {{count} Datensätze}}"
 msgstr "{n, plural, one {{count} Datensatz} other {{count} Datensätze}}"
+
+#: src/i18n/errors.ts
+msgid "{n, plural, one {{count} Geometrie ist ungültig und wird repariert.} other {{count} Geometrien sind ungültig und werden repariert.}}"
+msgstr "{n, plural, one {{count} Geometrie ist ungültig und wird repariert.} other {{count} Geometrien sind ungültig und werden repariert.}}"
+
+#: src/i18n/errors.ts
+msgid "{n, plural, one {{count} Geometrie wurde repariert.} other {{count} Geometrien wurden repariert.}}"
+msgstr "{n, plural, one {{count} Geometrie wurde repariert.} other {{count} Geometrien wurden repariert.}}"
 
 #: src/i18n/phrases.ts
 msgid "{n, plural, one {{count} Objekt} other {{count} Objekte}}"
 msgstr "{n, plural, one {{count} Objekt} other {{count} Objekte}}"
 
+#: src/i18n/errors.ts
+msgid "{n, plural, one {{count} Schlüsselwert kommt in „{layer}\" mehrfach vor; das erste Objekt gilt.} other {{count} Schlüsselwerte kommen in „{layer}\" mehrfach vor; das erste Objekt gilt.}}"
+msgstr "{n, plural, one {{count} Schlüsselwert kommt in „{layer}\" mehrfach vor; das erste Objekt gilt.} other {{count} Schlüsselwerte kommen in „{layer}\" mehrfach vor; das erste Objekt gilt.}}"
+
 #: src/session/notice.ts
 msgid "{n, plural, one {{count} Treffer} other {{count} Treffer}}"
 msgstr "{n, plural, one {{count} Treffer} other {{count} Treffer}}"
+
+#: src/i18n/errors.ts
+msgid "{n, plural, one {{count} Zeile hat eine andere Anzahl Felder als die Kopfzeile.} other {{count} Zeilen haben eine andere Anzahl Felder als die Kopfzeile.}}"
+msgstr "{n, plural, one {{count} Zeile hat eine andere Anzahl Felder als die Kopfzeile.} other {{count} Zeilen haben eine andere Anzahl Felder als die Kopfzeile.}}"
+
+#: src/i18n/errors.ts
+msgid "{n, plural, one {{count} Zeile wiederholt einen Schlüssel; sie teilt dessen Geometrie.} other {{count} Zeilen wiederholen einen Schlüssel; sie teilen dessen Geometrie.}}"
+msgstr "{n, plural, one {{count} Zeile wiederholt einen Schlüssel; sie teilt dessen Geometrie.} other {{count} Zeilen wiederholen einen Schlüssel; sie teilen dessen Geometrie.}}"
 
 #. Spatial condition: relation ("liegt in"), layer
 #: src/editor/describe.ts
@@ -447,6 +491,10 @@ msgstr "Andere Ziel-Layer"
 msgid "Anderen Ergebnis-Layer wählen"
 msgstr "Anderen Ergebnis-Layer wählen"
 
+#: src/i18n/errors.ts
+msgid "Anfragen von anderen Seiten werden nicht angenommen."
+msgstr "Anfragen von anderen Seiten werden nicht angenommen."
+
 #: src/admin/UsersPage.tsx
 msgid "Anlegen"
 msgstr "Anlegen"
@@ -616,6 +664,10 @@ msgstr "Benutzermenü"
 msgid "Benutzername"
 msgstr "Benutzername"
 
+#: src/i18n/errors.ts
+msgid "Benutzername oder Passwort stimmt nicht, das Konto ist gesperrt, oder die Anmeldung ist abgelaufen."
+msgstr "Benutzername oder Passwort stimmt nicht, das Konto ist gesperrt, oder die Anmeldung ist abgelaufen."
+
 #: src/table/TableDock.tsx
 msgid "berechnet"
 msgstr "berechnet"
@@ -692,6 +744,10 @@ msgstr "Bitte Schlüsselspalte und Ziel-Layer wählen."
 msgid "Bitte X- und Y-Spalte wählen."
 msgstr "Bitte X- und Y-Spalte wählen."
 
+#: src/i18n/errors.ts
+msgid "Bitte zuerst das Startpasswort ändern."
+msgstr "Bitte zuerst das Startpasswort ändern."
+
 #: src/admin/LayerPage.tsx
 msgid "Codeliste (je Zeile „Code = Bedeutung\")"
 msgstr "Codeliste (je Zeile „Code = Bedeutung\")"
@@ -705,6 +761,10 @@ msgstr "CSV · Excel · GeoPackage · Shapefile (zip) · GeoJSON"
 msgid "Ctrl+S"
 msgstr "Ctrl+S"
 
+#: src/i18n/errors.ts
+msgid "Dafür braucht es die Rolle Administrator."
+msgstr "Dafür braucht es die Rolle Administrator."
+
 #: src/operations/OperationDialog.tsx
 msgid "Darstellung"
 msgstr "Darstellung"
@@ -712,6 +772,50 @@ msgstr "Darstellung"
 #: src/workplace/LayerPanel.tsx
 msgid "Darstellung …"
 msgstr "Darstellung …"
+
+#: src/i18n/errors.ts
+msgid "Das aktuelle Passwort stimmt nicht."
+msgstr "Das aktuelle Passwort stimmt nicht."
+
+#: src/i18n/errors.ts
+msgid "Das Archiv enthält ein weiteres Archiv; bitte dieses zuerst entpacken."
+msgstr "Das Archiv enthält ein weiteres Archiv; bitte dieses zuerst entpacken."
+
+#: src/i18n/errors.ts
+msgid "Das Archiv enthält zu viele Dateien."
+msgstr "Das Archiv enthält zu viele Dateien."
+
+#: src/i18n/errors.ts
+msgid "Das Archiv ist entpackt grösser als erlaubt."
+msgstr "Das Archiv ist entpackt grösser als erlaubt."
+
+#: src/i18n/errors.ts
+msgid "Das Archiv ist verschlüsselt und kann nicht gelesen werden."
+msgstr "Das Archiv ist verschlüsselt und kann nicht gelesen werden."
+
+#: src/i18n/errors.ts
+msgid "Das Ergebnis hat mehr als {max} Objekte. Bitte die Abfrage enger fassen."
+msgstr "Das Ergebnis hat mehr als {max} Objekte. Bitte die Abfrage enger fassen."
+
+#: src/i18n/errors.ts
+msgid "Das Feld „{attribute}\" erwartet ein Datum."
+msgstr "Das Feld „{attribute}\" erwartet ein Datum."
+
+#: src/i18n/errors.ts
+msgid "Das Feld „{attribute}\" gibt es nicht."
+msgstr "Das Feld „{attribute}\" gibt es nicht."
+
+#: src/i18n/errors.ts
+msgid "Das Feld „{attribute}\" ist kein Text."
+msgstr "Das Feld „{attribute}\" ist kein Text."
+
+#: src/i18n/errors.ts
+msgid "Das Feld „{attribute}\" ist keine Zahl."
+msgstr "Das Feld „{attribute}\" ist keine Zahl."
+
+#: src/i18n/errors.ts
+msgid "Das Gesuchte gibt es nicht (mehr)."
+msgstr "Das Gesuchte gibt es nicht (mehr)."
 
 #: src/admin/UsersPage.tsx
 msgid "Das Konto und seine Anmeldungen werden entfernt. Das Importprotokoll behält den Namen."
@@ -721,23 +825,32 @@ msgstr "Das Konto und seine Anmeldungen werden entfernt. Das Importprotokoll beh
 msgid "Das Koordinatensystem ist nicht erkannt; bitte wählen."
 msgstr "Das Koordinatensystem ist nicht erkannt; bitte wählen."
 
+#: src/i18n/errors.ts
+msgid "Das Koordinatensystem ist nicht erkennbar; bitte wählen."
+msgstr "Das Koordinatensystem ist nicht erkennbar; bitte wählen."
+
+#: src/i18n/errors.ts
+msgid "Das Lesen der Datei hat zu lange gedauert und wurde abgebrochen."
+msgstr "Das Lesen der Datei hat zu lange gedauert und wurde abgebrochen."
+
 #: src/auth/rules.ts
 msgid "Das neue Passwort braucht mindestens {MIN_PASSWORD_LENGTH} Zeichen."
 msgstr "Das neue Passwort braucht mindestens {MIN_PASSWORD_LENGTH} Zeichen."
 
 #: src/auth/rules.ts
+#: src/i18n/errors.ts
 msgid "Das neue Passwort muss sich vom alten unterscheiden."
 msgstr "Das neue Passwort muss sich vom alten unterscheiden."
 
-#: src/auth/rules.ts
-msgid "Das Passwort braucht mindestens {MIN_PASSWORD_LENGTH} Zeichen."
-msgstr "Das Passwort braucht mindestens {MIN_PASSWORD_LENGTH} Zeichen."
+#: src/i18n/errors.ts
+msgid "Das Passwort braucht mindestens {min} Zeichen."
+msgstr "Das Passwort braucht mindestens {min} Zeichen."
 
-#: src/auth/rules.ts
+#: src/i18n/errors.ts
 msgid "Das Passwort darf weder den Benutzernamen noch den Anzeigenamen noch «GeoTandem» enthalten."
 msgstr "Das Passwort darf weder den Benutzernamen noch den Anzeigenamen noch «GeoTandem» enthalten."
 
-#: src/auth/rules.ts
+#: src/i18n/errors.ts
 msgid "Das Passwort ist eine Tastaturreihe, eine Folge oder eine Wiederholung und leicht zu erraten."
 msgstr "Das Passwort ist eine Tastaturreihe, eine Folge oder eine Wiederholung und leicht zu erraten."
 
@@ -745,7 +858,7 @@ msgstr "Das Passwort ist eine Tastaturreihe, eine Folge oder eine Wiederholung u
 msgid "Das Passwort ist geändert."
 msgstr "Das Passwort ist geändert."
 
-#: src/auth/rules.ts
+#: src/i18n/errors.ts
 msgid "Das Passwort ist zu lang."
 msgstr "Das Passwort ist zu lang."
 
@@ -807,9 +920,21 @@ msgstr "Deckkraft"
 msgid "Deckkraft {title}"
 msgstr "Deckkraft {title}"
 
+#: src/i18n/errors.ts
+msgid "Den Feldnamen „{name}\" gibt es zweimal."
+msgstr "Den Feldnamen „{name}\" gibt es zweimal."
+
+#: src/i18n/errors.ts
+msgid "Den Layer „{layer}\" gibt es nicht oder er ist nicht sichtbar."
+msgstr "Den Layer „{layer}\" gibt es nicht oder er ist nicht sichtbar."
+
 #: src/workplace/QueryPanel.tsx
 msgid "Der aktuelle Kartenausschnitt, festgehalten beim Klick"
 msgstr "Der aktuelle Kartenausschnitt, festgehalten beim Klick"
+
+#: src/i18n/errors.ts
+msgid "Der Einrichtungscode stimmt nicht."
+msgstr "Der Einrichtungscode stimmt nicht."
 
 #: src/queries/actions.ts
 msgid "Der Ergebnis-Layer „{result}\" ist nicht verfügbar."
@@ -847,21 +972,53 @@ msgstr "Der Layer wird in einer Bedingung verwendet; die Bedingung wirkt weiter,
 msgid "Der Layername besteht aus Kleinbuchstaben, Ziffern und einzelnen Unterstrichen und beginnt mit einem Buchstaben."
 msgstr "Der Layername besteht aus Kleinbuchstaben, Ziffern und einzelnen Unterstrichen und beginnt mit einem Buchstaben."
 
+#: src/i18n/errors.ts
+msgid "Der letzte aktive Administrator kann nicht herabgestuft, gesperrt oder gelöscht werden."
+msgstr "Der letzte aktive Administrator kann nicht herabgestuft, gesperrt oder gelöscht werden."
+
 #: src/admin/UsersPage.tsx
 msgid "Der letzte aktive Administrator lässt sich weder sperren, herabstufen noch löschen."
 msgstr "Der letzte aktive Administrator lässt sich weder sperren, herabstufen noch löschen."
+
+#: src/i18n/errors.ts
+msgid "Der Name „{attribute}\" ist schon vergeben; bitte einen anderen Namen oder ein Präfix wählen."
+msgstr "Der Name „{attribute}\" ist schon vergeben; bitte einen anderen Namen oder ein Präfix wählen."
+
+#: src/i18n/errors.ts
+msgid "Der Stand ist zu gross, um gespeichert zu werden."
+msgstr "Der Stand ist zu gross, um gespeichert zu werden."
 
 #: src/admin/ImportWizard.tsx
 msgid "Der Versuch ist protokolliert (<0>Vorgang {id}</0>). Entscheidungen korrigieren und erneut übernehmen."
 msgstr "Der Versuch ist protokolliert (<0>Vorgang {id}</0>). Entscheidungen korrigieren und erneut übernehmen."
 
+#: src/i18n/errors.ts
+msgid "Der Vorgang wurde unerwartet abgebrochen."
+msgstr "Der Vorgang wurde unerwartet abgebrochen."
+
+#: src/i18n/errors.ts
+msgid "Der Wert passt nicht zum Feld „{attribute}\"."
+msgstr "Der Wert passt nicht zum Feld „{attribute}\"."
+
 #: src/admin/format.ts
 msgid "Details zu {field}"
 msgstr "Details zu {field}"
 
+#: src/i18n/errors.ts
+msgid "Die Abfrage hat zu lange gedauert und wurde abgebrochen."
+msgstr "Die Abfrage hat zu lange gedauert und wurde abgebrochen."
+
+#: src/i18n/errors.ts
+msgid "Die Abfrage ist zu umfangreich."
+msgstr "Die Abfrage ist zu umfangreich."
+
 #: src/session/notice.ts
 msgid "Die Abfrage kann nicht ausgeführt werden. Karte und übrige Layer sind geöffnet."
 msgstr "Die Abfrage kann nicht ausgeführt werden. Karte und übrige Layer sind geöffnet."
+
+#: src/i18n/errors.ts
+msgid "Die Abfrage kann so nicht ausgeführt werden."
+msgstr "Die Abfrage kann so nicht ausgeführt werden."
 
 #: src/queries/ManageQueriesDialog.tsx
 msgid "Die Abfrage wird endgültig gelöscht."
@@ -879,9 +1036,77 @@ msgstr "Die aktuelle Abfrage hat Änderungen, die in keiner gespeicherten Abfrag
 msgid "Die Analyse hat Änderungen, die noch nicht gespeichert sind."
 msgstr "Die Analyse hat Änderungen, die noch nicht gespeichert sind."
 
+#: src/i18n/errors.ts
+msgid "Die Anfrage hat nicht die erwartete Form."
+msgstr "Die Anfrage hat nicht die erwartete Form."
+
+#: src/i18n/errors.ts
+msgid "Die Anfrage ist grösser als {mb} MB."
+msgstr "Die Anfrage ist grösser als {mb} MB."
+
+#: src/i18n/errors.ts
+msgid "Die Anfrage wurde abgelehnt."
+msgstr "Die Anfrage wurde abgelehnt."
+
+#: src/i18n/errors.ts
+msgid "Die Anwendung ist bereits eingerichtet."
+msgstr "Die Anwendung ist bereits eingerichtet."
+
+#: src/i18n/errors.ts
+msgid "Die Anwendung wurde während des Imports beendet."
+msgstr "Die Anwendung wurde während des Imports beendet."
+
+#: src/i18n/errors.ts
+msgid "Die beiden Schlüssel sind verschiedenen Typs (Text und Zahl)."
+msgstr "Die beiden Schlüssel sind verschiedenen Typs (Text und Zahl)."
+
+#: src/i18n/errors.ts
+msgid "Die Datei braucht zum Lesen mehr Speicher, als ein Import haben darf."
+msgstr "Die Datei braucht zum Lesen mehr Speicher, als ein Import haben darf."
+
+#: src/i18n/errors.ts
+msgid "Die Datei enthält keine Datensätze."
+msgstr "Die Datei enthält keine Datensätze."
+
 #: src/admin/wizard.ts
 msgid "Die Datei enthält keine Geometrien."
 msgstr "Die Datei enthält keine Geometrien."
+
+#: src/i18n/errors.ts
+msgid "Die Datei enthält keine Zeilen."
+msgstr "Die Datei enthält keine Zeilen."
+
+#: src/i18n/errors.ts
+msgid "Die Datei enthält keinen Layer."
+msgstr "Die Datei enthält keinen Layer."
+
+#: src/i18n/errors.ts
+msgid "Die Datei hat keinen Layer und kein Tabellenblatt „{sublayer}\"."
+msgstr "Die Datei hat keinen Layer und kein Tabellenblatt „{sublayer}\"."
+
+#: src/i18n/errors.ts
+msgid "Die Datei ist beschädigt oder hat ein anderes Format."
+msgstr "Die Datei ist beschädigt oder hat ein anderes Format."
+
+#: src/i18n/errors.ts
+msgid "Die Datei ist grösser als {mb} MB."
+msgstr "Die Datei ist grösser als {mb} MB."
+
+#: src/i18n/errors.ts
+msgid "Die Datei ist nicht UTF-8; sie wurde als Windows-1252 gelesen."
+msgstr "Die Datei ist nicht UTF-8; sie wurde als Windows-1252 gelesen."
+
+#: src/i18n/errors.ts
+msgid "Die Datei kann so nicht gelesen werden."
+msgstr "Die Datei kann so nicht gelesen werden."
+
+#: src/i18n/errors.ts
+msgid "Die Datei lässt sich mit dieser Kodierung nicht lesen."
+msgstr "Die Datei lässt sich mit dieser Kodierung nicht lesen."
+
+#: src/i18n/errors.ts
+msgid "Die Datei mischt Geometrietypen; der Layer erhält einen allgemeinen Geometrietyp."
+msgstr "Die Datei mischt Geometrietypen; der Layer erhält einen allgemeinen Geometrietyp."
 
 #: src/admin/ImportWizard.tsx
 msgid "Die Datei nennt: {label}"
@@ -894,6 +1119,10 @@ msgstr "Die gespeicherte Abfrage läuft nicht mehr: {error}"
 #: src/session/format.ts
 msgid "Die gespeicherte Sitzung ist unvollständig."
 msgstr "Die gespeicherte Sitzung ist unvollständig."
+
+#: src/i18n/errors.ts
+msgid "Die gezeichnete Fläche ist ungültig, zum Beispiel weil sie sich selbst schneidet."
+msgstr "Die gezeichnete Fläche ist ungültig, zum Beispiel weil sie sich selbst schneidet."
 
 #: src/map/MapView.tsx
 msgid "Die Kacheln kommen von ausserhalb dieser Installation; der Anbieter sieht den Kartenausschnitt."
@@ -915,6 +1144,18 @@ msgstr "Die Sitzung wird endgültig gelöscht."
 msgid "Die Sitzung wurde mit Format {version} gespeichert; diese Version liest Format {STATE_VERSION}."
 msgstr "Die Sitzung wurde mit Format {version} gespeichert; diese Version liest Format {STATE_VERSION}."
 
+#: src/i18n/errors.ts
+msgid "Die Spalte „{column}\" enthält keine Zahlen."
+msgstr "Die Spalte „{column}\" enthält keine Zahlen."
+
+#: src/i18n/errors.ts
+msgid "Die Spalte „{column}\" enthält Uhrzeiten; sie werden als Text gespeichert."
+msgstr "Die Spalte „{column}\" enthält Uhrzeiten; sie werden als Text gespeichert."
+
+#: src/i18n/errors.ts
+msgid "Die Spalte „{column}\" wird als Text gespeichert."
+msgstr "Die Spalte „{column}\" wird als Text gespeichert."
+
 #: src/session/notice.ts
 msgid "Die Treffer sind dieselben."
 msgstr "Die Treffer sind dieselben."
@@ -926,6 +1167,10 @@ msgstr "Die Wiederholung stimmt nicht überein."
 #: src/queries/actions.ts
 msgid "Diese Abfrage wurde mit einem unbekannten Format gespeichert."
 msgstr "Diese Abfrage wurde mit einem unbekannten Format gespeichert."
+
+#: src/i18n/errors.ts
+msgid "Diese Operation geht hier nicht."
+msgstr "Diese Operation geht hier nicht."
 
 #: src/App.tsx
 msgid "Diese Seite gibt es nicht."
@@ -939,6 +1184,18 @@ msgstr "Diese Sitzung gibt es nicht oder nicht für dieses Konto."
 msgid "Diese Sitzung löschen"
 msgstr "Diese Sitzung löschen"
 
+#: src/i18n/errors.ts
+msgid "Diesen Benutzernamen gibt es schon."
+msgstr "Diesen Benutzernamen gibt es schon."
+
+#: src/i18n/errors.ts
+msgid "Diesen Layernamen gibt es schon."
+msgstr "Diesen Layernamen gibt es schon."
+
+#: src/i18n/errors.ts
+msgid "Diesen Namen gibt es schon."
+msgstr "Diesen Namen gibt es schon."
+
 #: src/operations/OperationDialog.tsx
 msgid "Dieser Layer hat kein passendes Feld."
 msgstr "Dieser Layer hat kein passendes Feld."
@@ -947,9 +1204,21 @@ msgstr "Dieser Layer hat kein passendes Feld."
 msgid "Dieser Layer ist für das Modell nicht sichtbar."
 msgstr "Dieser Layer ist für das Modell nicht sichtbar."
 
-#: src/auth/rules.ts
+#: src/i18n/errors.ts
+msgid "Dieses Format wird nicht unterstützt. Möglich sind GeoJSON, Shapefile (als ZIP), GeoPackage, CSV und Excel."
+msgstr "Dieses Format wird nicht unterstützt. Möglich sind GeoJSON, Shapefile (als ZIP), GeoPackage, CSV und Excel."
+
+#: src/i18n/errors.ts
+msgid "Dieses Konto gibt es nicht."
+msgstr "Dieses Konto gibt es nicht."
+
+#: src/i18n/errors.ts
 msgid "Dieses Passwort ist zu verbreitet: Es gehört zu den ersten, die ausprobiert werden, auch mit angehängten Zahlen oder Zeichen."
 msgstr "Dieses Passwort ist zu verbreitet: Es gehört zu den ersten, die ausprobiert werden, auch mit angehängten Zahlen oder Zeichen."
+
+#: src/i18n/errors.ts
+msgid "Dieses Werkzeug gibt es nicht."
+msgstr "Dieses Werkzeug gibt es nicht."
 
 #: src/operations/OperationDialog.tsx
 msgid "Distanz"
@@ -978,9 +1247,17 @@ msgstr "Eigene und geteilte Abfragen öffnen, umbenennen, teilen, kopieren oder 
 msgid "Eigenes Passwort ändern"
 msgstr "Eigenes Passwort ändern"
 
+#: src/i18n/errors.ts
+msgid "Ein Benutzername hat 2 bis 63 Zeichen: Kleinbuchstaben, Ziffern, „.\", „_\" und „-\"."
+msgstr "Ein Benutzername hat 2 bis 63 Zeichen: Kleinbuchstaben, Ziffern, „.\", „_\" und „-\"."
+
 #: src/session/SessionsDialog.tsx
 msgid "Ein beteiligter Layer hat seit dem Speichern eine neue Fassung oder fehlt."
 msgstr "Ein beteiligter Layer hat seit dem Speichern eine neue Fassung oder fehlt."
+
+#: src/i18n/errors.ts
+msgid "Ein Layer fehlt oder ist nicht sichtbar."
+msgstr "Ein Layer fehlt oder ist nicht sichtbar."
 
 #: src/queries/SaveQueryDialog.tsx
 msgid "Eine eigene Abfrage „{trimmed}\" gibt es schon."
@@ -990,9 +1267,25 @@ msgstr "Eine eigene Abfrage „{trimmed}\" gibt es schon."
 msgid "Eine Fläche auf der Karte zeichnen"
 msgstr "Eine Fläche auf der Karte zeichnen"
 
+#: src/i18n/errors.ts
+msgid "Eine gespeicherte Abfrage enthält Bedingungen auf einem Katalog-Layer; Puffer, Join und Aggregation gehören zu abgeleiteten Layern."
+msgstr "Eine gespeicherte Abfrage enthält Bedingungen auf einem Katalog-Layer; Puffer, Join und Aggregation gehören zu abgeleiteten Layern."
+
+#: src/i18n/errors.ts
+msgid "Eine geteilte Abfrage ändert nur, wer sie gespeichert hat; bitte als eigene Kopie speichern."
+msgstr "Eine geteilte Abfrage ändert nur, wer sie gespeichert hat; bitte als eigene Kopie speichern."
+
 #: src/session/SaveAsDialog.tsx
 msgid "Eine Sitzung „{trimmed}\" gibt es schon."
 msgstr "Eine Sitzung „{trimmed}\" gibt es schon."
+
+#: src/i18n/errors.ts
+msgid "Eine Tabelle braucht Koordinatenspalten oder einen Schlüssel."
+msgstr "Eine Tabelle braucht Koordinatenspalten oder einen Schlüssel."
+
+#: src/i18n/errors.ts
+msgid "Einen Layer „{layer}\" gibt es schon."
+msgstr "Einen Layer „{layer}\" gibt es schon."
 
 #: src/admin/SystemPage.tsx
 msgid "Eingeschränkt"
@@ -1161,6 +1454,18 @@ msgstr "Erste Objekte"
 msgid "Ersteinrichtung"
 msgstr "Ersteinrichtung"
 
+#: src/i18n/errors.ts
+msgid "Es sind schon so viele Abfragen gespeichert wie erlaubt. Bitte zuerst eine löschen."
+msgstr "Es sind schon so viele Abfragen gespeichert wie erlaubt. Bitte zuerst eine löschen."
+
+#: src/i18n/errors.ts
+msgid "Es sind schon so viele Sitzungen gespeichert wie erlaubt. Bitte zuerst eine löschen."
+msgstr "Es sind schon so viele Sitzungen gespeichert wie erlaubt. Bitte zuerst eine löschen."
+
+#: src/i18n/errors.ts
+msgid "Es wurde nur eine Spalte gefunden; vielleicht stimmt das Trennzeichen nicht."
+msgstr "Es wurde nur eine Spalte gefunden; vielleicht stimmt das Trennzeichen nicht."
+
 #: src/table/TableDock.tsx
 msgid "Export · ab E5"
 msgstr "Export · ab E5"
@@ -1302,6 +1607,10 @@ msgstr "Geometrie in der Datei"
 msgid "Geometrien gebildet"
 msgstr "Geometrien gebildet"
 
+#: src/i18n/errors.ts
+msgid "Gerade sind zu viele Anfragen gleichzeitig unterwegs. Bitte gleich nochmals versuchen."
+msgstr "Gerade sind zu viele Anfragen gleichzeitig unterwegs. Bitte gleich nochmals versuchen."
+
 #: src/queries/SavedQueries.tsx
 msgid "Gespeichert"
 msgstr "Gespeichert"
@@ -1370,6 +1679,10 @@ msgstr "Geteilt: für alle Anwender sichtbar, die ihre Layer sehen — nur lesen
 #: src/admin/VisibilityPage.tsx
 msgid "Gilt für neu importierte Layer; ein aktualisierter Layer behält seine Sichtbarkeit. Administratoren sehen alle Layer."
 msgstr "Gilt für neu importierte Layer; ein aktualisierter Layer behält seine Sichtbarkeit. Administratoren sehen alle Layer."
+
+#: src/i18n/errors.ts
+msgid "Gleich benannte Spalten werden mit einer Nummer unterschieden: {columns}."
+msgstr "Gleich benannte Spalten werden mit einer Nummer unterschieden: {columns}."
 
 #: src/operations/OperationDialog.tsx
 msgid "gleiche Intervalle"
@@ -1532,6 +1845,10 @@ msgstr "Kartenwerkzeuge"
 msgid "Kategorien"
 msgstr "Kategorien"
 
+#: src/i18n/errors.ts
+msgid "Kein Datensatz hat eine Geometrie."
+msgstr "Kein Datensatz hat eine Geometrie."
+
 #: src/session/notice.ts
 #: src/session/SaveAsDialog.tsx
 msgid "kein Ergebnis-Layer"
@@ -1550,6 +1867,10 @@ msgstr "Kein Layer passt."
 msgid "Kein Objekt im Kartenausschnitt."
 msgstr "Kein Objekt im Kartenausschnitt."
 
+#: src/i18n/errors.ts
+msgid "kein Schlüsselwert"
+msgstr "kein Schlüsselwert"
+
 #: src/session/SaveAsDialog.tsx
 msgid "keine"
 msgstr "keine"
@@ -1562,6 +1883,10 @@ msgstr "Keine Abfrage passt."
 msgid "Keine Bedingung: alle Objekte sind Treffer."
 msgstr "Keine Bedingung: alle Objekte sind Treffer."
 
+#: src/i18n/errors.ts
+msgid "keine Geometrie"
+msgstr "keine Geometrie"
+
 #: src/map/MapView.tsx
 msgid "Keine Hintergrundkarte konfiguriert"
 msgstr "Keine Hintergrundkarte konfiguriert"
@@ -1569,6 +1894,10 @@ msgstr "Keine Hintergrundkarte konfiguriert"
 #: src/admin/ImportLogPage.tsx
 msgid "Keine Importe."
 msgstr "Keine Importe."
+
+#: src/i18n/errors.ts
+msgid "keine Koordinaten"
+msgstr "keine Koordinaten"
 
 #: src/workplace/AddLayers.tsx
 msgid "Keine Layer freigegeben."
@@ -1585,6 +1914,10 @@ msgstr "Keine Sitzung passt."
 #: src/table/TableDock.tsx
 msgid "Keine Treffer."
 msgstr "Keine Treffer."
+
+#: src/i18n/errors.ts
+msgid "Keinem Datensatz lässt sich eine Geometrie zuordnen."
+msgstr "Keinem Datensatz lässt sich eine Geometrie zuordnen."
 
 #: src/operations/OperationDialog.tsx
 msgid "Kennzahl entfernen"
@@ -1621,6 +1954,10 @@ msgstr "Konto"
 #: src/admin/UsersPage.tsx
 msgid "Konto „{username}\" löschen?"
 msgstr "Konto „{username}\" löschen?"
+
+#: src/i18n/errors.ts
+msgid "Koordinaten ausserhalb des Koordinatensystems"
+msgstr "Koordinaten ausserhalb des Koordinatensystems"
 
 #: src/admin/ImportWizard.tsx
 msgid "Koordinatenspalten (X / Y)"
@@ -2120,6 +2457,10 @@ msgstr "Schlüssel im Layer"
 msgid "Schlüssel in der Tabelle"
 msgstr "Schlüssel in der Tabelle"
 
+#: src/i18n/errors.ts
+msgid "Schlüssel ohne Treffer im Ziel-Layer"
+msgstr "Schlüssel ohne Treffer im Ziel-Layer"
+
 #: src/editor/describe.ts
 #: src/operations/OperationDialog.tsx
 msgid "schneidet"
@@ -2404,10 +2745,18 @@ msgstr "um"
 msgid "Umbenennen"
 msgstr "Umbenennen"
 
+#: src/i18n/errors.ts
+msgid "Unbekannte Spalten: {columns}."
+msgstr "Unbekannte Spalten: {columns}."
+
 #: src/editor/EditorPanel.tsx
 #: src/workplace/QueryPanel.tsx
 msgid "UND"
 msgstr "UND"
+
+#: src/i18n/errors.ts
+msgid "Unerwarteter Fehler ({code})."
+msgstr "Unerwarteter Fehler ({code})."
 
 #: src/session/SessionMenu.tsx
 msgid "ungespeichert"
@@ -2416,6 +2765,10 @@ msgstr "ungespeichert"
 #: src/session/SessionDialogs.tsx
 msgid "Ungespeicherte Änderungen"
 msgstr "Ungespeicherte Änderungen"
+
+#: src/i18n/errors.ts
+msgid "ungültige Geometrie"
+msgstr "ungültige Geometrie"
 
 #: src/admin/wizard.ts
 msgid "unverändert"
@@ -2481,6 +2834,10 @@ msgstr "Warnung"
 #: src/workplace/ResultSelect.tsx
 msgid "Wechseln"
 msgstr "Wechseln"
+
+#: src/i18n/errors.ts
+msgid "Weder Koordinatenspalten noch ein passender Gebietsschlüssel wurden erkannt; bitte den Raumbezug wählen."
+msgstr "Weder Koordinatenspalten noch ein passender Gebietsschlüssel wurden erkannt; bitte den Raumbezug wählen."
 
 #: src/admin/ImportWizard.tsx
 msgid "Weiter"
@@ -2587,6 +2944,14 @@ msgstr "Ziel-Layer wechseln setzt Attribut-Bedingungen zurück."
 #: src/table/TableDock.tsx
 msgid "Zoomen"
 msgstr "Zoomen"
+
+#: src/i18n/errors.ts
+msgid "Zu viele fehlgeschlagene Anmeldungen. Bitte etwas warten und dann nochmals versuchen."
+msgstr "Zu viele fehlgeschlagene Anmeldungen. Bitte etwas warten und dann nochmals versuchen."
+
+#: src/i18n/errors.ts
+msgid "Zu viele hochgeladene Dateien warten auf ihren Import. Bitte zuerst einen abschliessen."
+msgstr "Zu viele hochgeladene Dateien warten auf ihren Import. Bitte zuerst einen abschliessen."
 
 #: src/admin/AdminLayout.tsx
 msgid "Zugang"

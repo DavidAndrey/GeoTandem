@@ -45,8 +45,6 @@ const run = {
   rejected_sample: [],
 }
 const DATA = [
-  // A back-end message, English until WP51 translates it by code.
-  'Read as Windows-1252.',
   'MCP',
   'E2',
   'E3',

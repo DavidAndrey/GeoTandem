@@ -32,10 +32,15 @@ from sqlalchemy import (
 from geotandem.data import DataBackend, Op
 from geotandem.engine import complexity
 from geotandem.engine.errors import (
-    QueryError,
+    AttributeNotNumeric,
+    AttributeNotText,
+    InvalidQueryGeometry,
+    KeyTypeMismatch,
+    NameClash,
     UnknownAttribute,
     UnknownLayer,
     UnsupportedOperation,
+    WrongValueType,
 )
 from geotandem_query import models as m
 
@@ -149,9 +154,10 @@ class Compiler:
         try:
             geom = shape(data)
         except (ValueError, TypeError, IndexError, shapely.errors.GEOSException) as exc:
-            raise QueryError(f"Malformed GeoJSON geometry: {exc}") from None
+            raise InvalidQueryGeometry(f"Malformed GeoJSON geometry: {exc}") from None
         if not geom.is_valid:
-            raise QueryError(f"Invalid geometry: {shapely.is_valid_reason(geom)}")
+            reason = shapely.is_valid_reason(geom)
+            raise InvalidQueryGeometry(f"Invalid geometry: {reason}", reason=reason)
         d = self.dialect
         return d.transform(d.from_geojson(json.dumps(data), WGS84), self.srid)
 
@@ -187,7 +193,7 @@ class Compiler:
                 self.use(Op.ATTRIBUTE_FILTER)
                 col = scope.attr(c.attr)
                 if _python_type(col) is not str:
-                    raise QueryError(
+                    raise AttributeNotText(
                         f"'text_match' needs a text attribute; '{c.attr}' is not.",
                         attribute=c.attr,
                     )
@@ -236,7 +242,7 @@ class Compiler:
         if None not in kinds and kinds[0] != kinds[1]:
             # SQLite would match text "101" with the number 101, PostgreSQL would not:
             # refused on every backend (F-2.14).
-            raise QueryError(
+            raise KeyTypeMismatch(
                 f"Join keys differ in type: '{join.left_key}' is {kinds[0]}, "
                 f"'{join.right_key}' of '{join.layer}' is {kinds[1]}.",
                 left_key=join.left_key,
@@ -245,7 +251,7 @@ class Compiler:
         for name in join.fields:
             target = (join.prefix or "") + name
             if target in src.columns:
-                raise QueryError(
+                raise NameClash(
                     f"Joined attribute '{target}' clashes with an attribute of "
                     f"'{src.layer}'; set 'prefix'.",
                     attribute=target,
@@ -287,7 +293,7 @@ class Compiler:
         d = self.dialect
         for column in columns:
             if column.name in namespace:
-                raise QueryError(
+                raise NameClash(
                     f"Computed column '{column.name}' clashes with another result attribute.",
                     attribute=column.name,
                 )
@@ -372,7 +378,7 @@ class Compiler:
             namespace[name] = area.attr(name)
         for metric in agg.metrics:
             if metric.as_ in namespace:
-                raise QueryError(
+                raise NameClash(
                     f"Metric name '{metric.as_}' clashes with another result attribute.",
                     attribute=metric.as_,
                 )
@@ -456,7 +462,7 @@ def _kind(col: ColumnElement[Any]) -> str | None:
 
 def _check_numeric(scope: Scope, name: str, col: ColumnElement[Any]) -> None:
     if _python_type(col) not in (int, float):
-        raise QueryError(
+        raise AttributeNotNumeric(
             f"Metric attribute '{name}' of '{scope.layer}' is not numeric.", attribute=name
         )
 
@@ -478,7 +484,7 @@ def _check_values(scope: Scope, name: str, col: ColumnElement[Any], values: list
             checked.append(value)
         if not ok:
             hint = " as ISO text, e.g. '2024-03-01'" if expected is date else ""
-            raise QueryError(
+            raise WrongValueType(
                 f"Attribute '{name}' of '{scope.layer}' holds {expected.__name__} values{hint}; "
                 f"got {value!r}.",
                 attribute=name,

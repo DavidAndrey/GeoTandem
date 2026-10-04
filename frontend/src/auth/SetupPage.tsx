@@ -10,7 +10,7 @@ import { api } from '../api/client'
 import { useResetSession, useSetupStatus } from '../api/queries'
 import { ErrorNotice, Loading } from '../components/ui'
 import { AccessCard, Field } from './AccessCard'
-import { passwordError, passwordHint, passwordProblems } from './rules'
+import { passwordHint, passwordProblems } from './rules'
 
 export function SetupPage() {
   const status = useSetupStatus()
@@ -140,7 +140,7 @@ export function SetupPage() {
             <Trans>Beispieldatensatz „Bern-Mittelland" laden</Trans>
           </label>
         )}
-        <ErrorNotice error={passwordError(setup.error)} />
+        <ErrorNotice error={setup.error} />
         <button
           type="submit"
           className="btn btn-primary mt-2 w-full justify-center"

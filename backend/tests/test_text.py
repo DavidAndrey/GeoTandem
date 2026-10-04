@@ -183,5 +183,5 @@ def test_join_keys_of_different_type_are_refused(names: DataBackend) -> None:
     }
     with pytest.raises(QueryError) as info:
         found(names, join)
-    assert info.value.code == "invalid_query"
+    assert info.value.code == "key_type_mismatch"
     assert "differ in type" in info.value.message
