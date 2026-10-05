@@ -61,7 +61,8 @@ docker compose down            # stoppen; die Daten bleiben im Volume
 ```
 
 Port und Einstellungen kommen aus der Umgebung oder aus einer Datei `.env`
-neben `compose.yaml`, zum Beispiel:
+neben `compose.yaml`. Vorlage mit allen Variablen und ihren Standardwerten,
+auch denen für Traefik: `cp .env.example .env`. Zum Beispiel:
 
 ```sh
 GEOTANDEM_PORT=8080
