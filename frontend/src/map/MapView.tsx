@@ -71,6 +71,9 @@ export function MapView({
     const tiles = L.tileLayer(basemap.url, {
       attribution: basemap.attribution,
       maxZoom: basemap.max_zoom,
+      // The page's Referrer-Policy (same-origin) would send none; tile.openstreetmap.org
+      // blocks tiles without one. The origin alone identifies the site, no path leaks.
+      referrerPolicy: 'strict-origin',
     }).addTo(map)
     return () => {
       tiles.remove()
