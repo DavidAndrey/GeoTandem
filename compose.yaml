@@ -8,11 +8,13 @@ services:
   geotandem:
     build: .
     image: geotandem
+    container_name: geo
     restart: unless-stopped
+    user: "1000:1000"
     ports:
       - "${GEOTANDEM_PORT:-8000}:8000"
     volumes:
-      - geotandem-data:/data
+      - ./data:/data
     environment:
       # Variables of the README's "Konfiguration"; unset ones keep the image defaults.
       GEOTANDEM_BASEMAP: ${GEOTANDEM_BASEMAP:-none}
@@ -30,8 +32,3 @@ services:
       GEOTANDEM_MAX_FEATURES: ${GEOTANDEM_MAX_FEATURES:-10000}
       GEOTANDEM_QUERY_TIMEOUT_S: ${GEOTANDEM_QUERY_TIMEOUT_S:-10}
       GEOTANDEM_MAX_IMPORT_MB: ${GEOTANDEM_MAX_IMPORT_MB:-200}
-
-volumes:
-  # Named as in the README, so `docker run`, the backup command and Compose share the data.
-  geotandem-data:
-    name: geotandem-data
