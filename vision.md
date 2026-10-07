@@ -75,9 +75,10 @@ vom Administrator vorkonfiguriert und — je nach Freigabe — vom Anwender im R
 dieser Vorgaben angepasst. Zu jeder Stufe hinterlegt der Administrator einen
 eigenen System-Prompt, der das Verhalten des Modells auf dieser Stufe prägt.
 
-Die konkrete Stufeneinteilung ist eine **bewusst offene Designfrage** dieses
-Demonstrators (siehe Abschnitt 8). Die Anwendung soll sie erproben, nicht
-vorwegnehmen.
+Die Stufeneinteilung war eine bewusst offene Designfrage; E2.0 hat sie als
+Setzung für den Bau entschieden (Abschnitt 8.1): ein **konfigurierbarer Rahmen
+je Operationsklasse**, der jede der drei Optionen ausdrücken kann. Die Anwendung
+erprobt diese Setzung, statt sie zu umgehen.
 
 ### 4.3 Nachvollziehbarkeit als Grundprinzip
 
@@ -202,12 +203,13 @@ Zuschnitt der Etappen, Arbeitspakete und Abnahmekriterien stehen in
 
 ## 8 Offene Designfragen
 
-Diese Fragen sind absichtlich nicht entschieden — sie zu beantworten ist ein Ziel
-des Demonstrators.
+Diese Fragen sind absichtlich nicht vorab entschieden — sie zu beantworten ist
+ein Ziel des Demonstrators. Entschiedene Fragen bleiben mit ihrer Entscheidung
+stehen.
 
-### 8.1 Wie werden die HITL-Stufen geschnitten? *(Kernfrage)*
+### 8.1 Wie werden die HITL-Stufen geschnitten? *(Kernfrage, entschieden in E2.0)*
 
-Drei Kandidaten stehen zur Diskussion:
+Drei Kandidaten standen zur Diskussion:
 
 **Option A — vierstufig, global.**
 `Assistenz` (Modell erklärt und schlägt vor, der Anwender klickt selbst) →
@@ -228,6 +230,28 @@ und nicht an der Sitzung — dafür erklärungsbedürftiger in der Konfiguration
 *Entscheidungskriterien:* Verständlichkeit für den Anwender, Aufwand der
 Administration, Übertragbarkeit auf den MCP-Server-Pfad (dort gibt es keine
 eigene Oberfläche für Rückfragen), Aussagekraft für die Demonstration.
+
+**Entscheidung (E2.0, 2026-10-07):** keine der drei Optionen, sondern ein
+Rahmen, der jede von ihnen ausdrücken kann
+([docs/plan-e2.0-e2.2.md 2.1](docs/plan-e2.0-e2.2.md)):
+
+- Der Administrator legt **1 bis 4 Stufen der Modellunterstützung** fest, jede
+  mit Bezeichnung, Beschreibung und eigenem System-Prompt. Die Reihenfolge
+  dient nur der Anzeige; keine Stufe ist „höher" als eine andere.
+- Je Stufe gilt eine **Matrix über die Operationsklassen** (`catalog`, `query`,
+  `spatial`, `derive`, `display`; später `export`, `external`), Zelle für Zelle
+  `aus` (abgewiesen), `Freigabe` (Dialog vor der Ausführung) oder `auto`
+  (sofort, sichtbar und rücknehmbar). Das Risiko hängt an der Operation, wie
+  Option C es verlangt.
+- Berührt eine Abfrage mehrere Klassen, gilt die **strengste Zelle**. Eine Stufe
+  mit allen Klassen `aus` ist erlaubt: Das Modell erklärt und schlägt vor, der
+  Anwender übernimmt von Hand.
+- Je Stufe entscheidet der Administrator, ob Anwender sie wählen dürfen; genau
+  eine wählbare Stufe ist voreingestellt. Ausgeliefert werden *Assistenz* (alles
+  `aus`), *Prüfen* (alles `Freigabe`, voreingestellt) und *Automatisch* (alles
+  `auto`, nicht wählbar).
+- Durchgesetzt wird im Backend, bei jeder Modellaktion (F-6.7). Weil die Klassen
+  an den Werkzeugen hängen, erbt der MCP-Pfad (E4) dieselben Regeln.
 
 ### 8.2 Weitere offene Punkte
 

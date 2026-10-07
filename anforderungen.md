@@ -1,6 +1,6 @@
 # GeoTandem — Anforderungen
 
-> Status: Entwurf v0.3 · Stand: 2026-09-30 · Bezug: [vision.md](vision.md),
+> Status: Entwurf v0.4 · Stand: 2026-10-07 · Bezug: [vision.md](vision.md),
 > [etappen.md](etappen.md)
 >
 > Kompakte Feature-Liste für den Demonstrator. Die Kennungen (F-x.y) dienen der
@@ -90,14 +90,18 @@
   und extern (Cloud-APIs) — mit Kennzeichnung, welche Daten die Instanz verlassen
   dürfen.
 - **F-3.4** Verbindungstest je Anbindung.
-- **F-3.5** Definition der HITL-Stufen samt Bezeichnung, Beschreibung und
-  erlaubtem Verhalten. *Der konkrete Schnitt der Stufen ist offen — siehe
-  [vision.md, Abschnitt 8.1](vision.md).*
+- **F-3.5** Definition von 1 bis 4 Stufen der Modellunterstützung (HITL-Stufen)
+  samt Bezeichnung, Beschreibung und Reihenfolge der Anzeige. *Schnitt
+  entschieden in E2.0 — siehe [vision.md, Abschnitt 8.1](vision.md).*
 - **F-3.6** Je HITL-Stufe ein eigener, frei editierbarer System-Prompt.
-- **F-3.7** Freigabe von Werkzeugen je HITL-Stufe: welche GIS-Operationen auf
-  welcher Stufe ohne Rückfrage ausgeführt werden dürfen.
+- **F-3.7** Je HITL-Stufe und Operationsklasse die Festlegung `aus`
+  (abgewiesen), `Freigabe` (Rückfrage vor der Ausführung) oder `auto` (Ausführung
+  ohne Rückfrage, sichtbar und rücknehmbar). Jedes Werkzeug und jeder Teil eines
+  Abfrageobjekts gehört genau einer Operationsklasse an; berührt eine Abfrage
+  mehrere, gilt die strengste Festlegung.
 - **F-3.8** Festlegung, welche HITL-Stufen der Anwender selbst wählen darf und
-  welche Stufe voreingestellt ist.
+  welche Stufe voreingestellt ist; die voreingestellte muss wählbar sein.
+  Administratoren dürfen jede Stufe verwenden.
 - **F-3.9** Konfiguration von Grenzwerten: maximale Ergebnismenge, Laufzeit je
   Abfrage, Anzahl Modellschritte je Anfrage.
 - **F-3.10** Verwaltung externer MCP-Server (Client-Rolle): Registrierung,
@@ -331,11 +335,12 @@ Entscheidung noch aussteht ([vision.md, Abschnitt 8](vision.md)):
 *Bereits entschieden:* Die Grenze zwischen deklarativem Abfrageobjekt und
 Werkzeugaufruf wird nicht vom System gezogen — beide Arbeitsweisen sind dauerhaft
 verfügbar und der Anwender wählt (F-5.4 bis F-5.8,
-[vision.md, Abschnitt 4.4](vision.md)).
+[vision.md, Abschnitt 4.4](vision.md)). Der Schnitt der HITL-Stufen ist ein
+konfigurierbarer Rahmen je Operationsklasse (F-3.5, F-3.7, F-3.8,
+[vision.md, Abschnitt 8.1](vision.md)).
 
 | Anforderung | Offene Entscheidung |
 |---|---|
-| F-3.5, F-3.7, F-3.8 | Schnitt der HITL-Stufen: global vierstufig, global dreistufig oder je Operationsklasse |
 | F-7.7 | Durchsetzung der Freigabestufen ohne eigene Oberfläche beim MCP-Server-Zugang |
 | F-5.13 | Verhalten bei Mehrdeutigkeit: Rückfrage, Annahme mit Kennzeichnung oder Varianten zur Auswahl |
 | F-5.14 | Form der Rückmeldung, wenn die gewählte Arbeitsweise nicht ausreicht |

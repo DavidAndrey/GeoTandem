@@ -1,6 +1,6 @@
 # GeoTandem — Etappen
 
-> Status: Entwurf v0.3 · Stand: 2026-09-30 · Bezug: [vision.md](vision.md),
+> Status: Entwurf v0.4 · Stand: 2026-10-07 · Bezug: [vision.md](vision.md),
 > [anforderungen.md](anforderungen.md)
 >
 > *Was* gebaut wird, steht in den Anforderungen; *warum*, in der Vision. Dieses
@@ -32,7 +32,7 @@ E2 Modus B.
 - **Der Beispieldatensatz (F-10.5) entsteht in E1.1**, nicht am Ende. Jedes
   spätere Paket braucht etwas, wogegen es prüfen kann.
 - **Domänenbegriffe stehen in einer `CONTEXT.md`** im Repository — Layer,
-  Abfrageobjekt, Werkzeug, HITL-Stufe, Sitzung, Analysezustand —, damit
+  Abfrageobjekt, Werkzeug, Stufe, Sitzung, Analysezustand —, damit
   implementierende Agents dieselbe Sprache verwenden wie diese Dokumente.
 - **Kein stiller Umfangszuwachs.** Was nicht in den Anforderungen steht, wird
   nicht gebaut. Fehlt etwas, wird die Lücke gemeldet, statt sie zu erfinden.
@@ -87,13 +87,21 @@ menschlicher Kontrolle.
 
 | Paket | Inhalt | F-Bezug | Fertig wenn |
 |---|---|---|---|
-| **E2.0** | Entscheidung zum Schnitt der HITL-Stufen als Setzung für den Bau (Option A, B oder C aus [vision.md 8.1](vision.md)) | F-3.5 | Die Stufen sind benannt, beschrieben und in ihrem erlaubten Verhalten festgelegt |
-| **E2.1** | Verwaltung der LLM-Anbindungen, Verbindungstest, interne Abstraktion der Modellanbindung, Anbindungswahl durch den Anwender, verschlüsselte Ablage der Zugangsdaten | F-3.2–F-3.4, F-5.3, F-7.1, F-7.3, F-9.2 | Ein lokales Modell ist angebunden, der Verbindungstest läuft grün und die Anwendung arbeitet ohne ausgehende Internetverbindung (F-9.1) |
+| **E2.0** | *Entschieden (2026-10-07):* Stufen der Modellunterstützung als Rahmen je Operationsklasse ([vision.md 8.1](vision.md)); gespeichert, geprüft, ausgeliefert und im Adminbereich gepflegt | F-3.5–F-3.8 | Die Stufen sind benannt, beschrieben und in ihrem erlaubten Verhalten festgelegt |
+| **E2.1** | Verwaltung der LLM-Anbindungen, lokal und extern, Verbindungstest, interne Abstraktion der Modellanbindung, Wahl von Anbindung und Stufe durch den Anwender, verschlüsselte Ablage der Zugangsdaten, Kennzeichnung externer Anbindungen und ihrer Datenfreigabe | F-3.2–F-3.4, F-5.2, F-5.3, F-7.1–F-7.3, F-9.2–F-9.4 | Ein lokales Modell ist angebunden, der Verbindungstest läuft grün und die Anwendung arbeitet ohne ausgehende Internetverbindung (F-9.1) |
 | **E2.2** | Layer-Steckbrief als Modellkontext, begrenzt auf sichtbare Layer | F-2.9, F-5.10 | Das Modell kennt Layer und Attribute, ohne Geodaten-Inhalte zu sehen (F-9.3) |
 | **E2.3** | Direktabfrage: Prompt → Abfrageobjekt nach E1.2, Schemavalidierung, Abweisung ungültiger Abfragen, lesbare Anzeige, Erläuterung der Interpretation | F-5.1, F-5.5, F-5.9, F-5.11, F-5.12, F-9.5 | Ein Prompt erzeugt dasselbe Abfrageobjekt, das in E1 von Hand gebaut wurde; schreibende Operationen sind auf diesem Pfad ausgeschlossen |
-| **E2.4** | HITL-Stufen: System-Prompt je Stufe, Werkzeug-Freigaben, Stufenwahl im freigegebenen Rahmen, Freigabedialog, Änderungsanzeige, Rücknahme, Abbruch, Protokollierung, Durchsetzung im Backend | F-3.6–F-3.8, F-5.2, F-6.1–F-6.9 | Eine Stufe ohne Freigabepflicht und eine mit Freigabepflicht verhalten sich nachweislich unterschiedlich, und die Regel greift auch an der Oberfläche vorbei |
+| **E2.4** | HITL-Stufen in Kraft: Durchsetzung der Stufe bei jeder Modellaktion, Freigabedialog, Änderungsanzeige, Rücknahme, Abbruch, Protokollierung | F-6.1–F-6.9 | Eine Stufe ohne Freigabepflicht und eine mit Freigabepflicht verhalten sich nachweislich unterschiedlich, und die Regel greift auch an der Oberfläche vorbei |
 | **E2.5** | Werkzeugkette: mehrstufige Bearbeitung über Tool Calling, sichtbare Zwischenergebnisse, Schrittanzeige, serverseitige Grenzwerte | F-3.9, F-5.4, F-5.6–F-5.8, F-6.5, F-7.4, F-9.6 | Dieselbe Fragestellung ist über beide Arbeitsweisen lösbar, beide münden in denselben Analysezustand, und Herleitung, Schrittzahl und Ergebnis sind nebeneinander einsehbar |
 | **E2.6** | Übergänge A↔B, Dialogverlauf mit Kontextbezug, Mehrdeutigkeit, Rückmeldung bei unpassender Arbeitsweise, Fehlerfälle ohne Zustandsverlust | F-5.13–F-5.18 | Eine vom Modell erzeugte Abfrage lässt sich von Hand weiterbearbeiten und umgekehrt |
+
+> **E2.0 entschieden, E2.0–E2.2 geplant (2026-10-07):** Stufen, Anbindungen
+> und Layer-Steckbrief entstehen nach [docs/plan-e2.0-e2.2.md](docs/plan-e2.0-e2.2.md).
+> Externe Modell-APIs samt Kennzeichnung und Datenfreigabe (F-7.2, F-9.3,
+> F-9.4) rücken von „nach E6" in E2.1; durchgesetzt wird die Datenfreigabe mit
+> der Werkzeugkette (E2.5). Konfiguration von System-Prompt, Matrix und
+> Wählbarkeit der Stufen (F-3.6–F-3.8) wandert von E2.4 nach E2.0, die Wahl
+> durch den Anwender (F-5.2) nach E2.1; E2.4 setzt die Stufen durch.
 
 **Vorführung E2:** Ein Anwender ohne GIS-Vorkenntnisse beantwortet die
 Fragestellung aus E1 per Prompt; ein zweiter Durchlauf zeigt einen Fall, in dem
@@ -199,9 +207,6 @@ Migration" wird doch ein Umbau.
 
 Nicht Teil der sechs Etappen, sinnvoll erst danach:
 
-- Externe Modell-APIs samt Kennzeichnung und Freigabe der Datenweitergabe
-  (F-7.2, F-9.3, F-9.4) — der lokale Betrieb ist der Normalfall und muss zuerst
-  tragen.
 - Mehrsprachige Oberfläche (F-10.6): Französisch, dann Italienisch und
   Englisch, samt Sprachwahl. Die Grundlage dafür entsteht in E1.9.
 - Export und Import der HITL- und Prompt-Konfiguration zum Vergleich von
@@ -215,8 +220,10 @@ entschieden:
 
 1. ~~**Benutzerverwaltung in E1.4** beschränkt sich auf lokale Konten mit den zwei
    Rollen — keine Gruppen, kein SSO.~~ So gebaut (2026-10-03).
-2. **E2.0 setzt den HITL-Schnitt fest**, statt ihn offenzuhalten; der
-   Demonstrator prüft die Setzung anschliessend, statt sie zu umgehen.
+2. ~~**E2.0 setzt den HITL-Schnitt fest**, statt ihn offenzuhalten; der
+   Demonstrator prüft die Setzung anschliessend, statt sie zu umgehen.~~ So
+   entschieden (2026-10-07): ein Rahmen je Operationsklasse, der die Optionen
+   A, B und C ausdrücken kann ([vision.md 8.1](vision.md)).
 3. **E6 setzt E2 voraus, nicht E4.** Die Client-Rolle wirkt im LLM-Modus; sie
    liesse sich auch vor der Server-Rolle bauen. Die Reihenfolge E4 vor E6 ist
    gewählt, weil die Server-Rolle das aufschlussreichere Stück ist

@@ -103,8 +103,49 @@ Bauabschnitt.
 **Arbeitsweise** — Im Modus B: **Direktabfrage** (ein Abfrageobjekt) oder
 **Werkzeugkette** (mehrere Werkzeugaufrufe).
 
-**HITL-Stufe** — Grad der menschlichen Kontrolle über Modellaktionen. Der
-Schnitt der Stufen wird in E2.0 festgelegt.
+**Stufe** (`Level`, Oberfläche: *Stufe der Modellunterstützung*) — Was das
+Modell im Modus B ohne Rückfrage tun darf (HITL, [vision.md 8.1](vision.md)).
+Der Administrator legt 1 bis 4 Stufen fest, jede mit Bezeichnung,
+Beschreibung, System-Prompt und je Operationsklasse einer Festlegung: `off`
+(abgewiesen), `approve` (Freigabedialog vor der Ausführung) oder `auto` (sofort,
+sichtbar und rücknehmbar). Die Reihenfolge dient nur der Anzeige. Genau eine
+wählbare Stufe ist voreingestellt; verschwindet die gewählte Stufe eines Kontos
+oder wird sie unwählbar, gilt die voreingestellte. Nicht „Modus": das Wort
+gehört Modus A / Modus B.
+
+**Operationsklasse** (`OpClass`) — Die Risikoklasse einer Operation, im Code
+festgelegt: `catalog` (Layer auflisten und beschreiben), `query` (Filter,
+Einschränkung, Auswahl, Sortierung, Ausgabe), `spatial` (Raumbeziehungen,
+Bezugsobjekt, berechnete Spalten), `derive` (Join, Puffer, Aggregation),
+`display` (Symbolisierung); `export` kommt mit E5, `external` mit E6. Jedes
+Werkzeug und jeder Teil eines Abfrageobjekts gehört genau einer Klasse an;
+berührt eine Abfrage mehrere, gilt die **strengste Festlegung** der aktiven
+Stufe. Schreibende Operationen sind keine Klasse: Der Modellpfad kennt sie nicht
+(F-9.5).
+
+**Anbindung** (`llm_connection`) — Ein Modell hinter einer OpenAI-kompatiblen
+Schnittstelle: Adresse, Modellname, optional verschlüsselter Zugangsschlüssel,
+Parameter (F-3.2). **Lokal** oder **extern** ergibt sich aus dem Host, nicht aus
+einem Häkchen: `127.0.0.1`, `::1`, `localhost`, `host.docker.internal` und die
+Namen in `GEOTANDEM_LLM_LOCAL_HOSTS` sind lokal, jeder andere Host extern. Der
+Administrator kann eine lokale Anbindung als extern markieren, nie umgekehrt.
+Eine externe Anbindung trägt überall, wo sie gewählt oder aktiv ist, einen
+sichtbaren Hinweis mit ihrem Host (F-9.4).
+
+**Datenfreigabe** — Ob eine Anbindung Geodaten-*Inhalte* erhalten darf (F-3.3,
+F-9.3). Ohne sie erhält das Modell nur Metadaten, Schema und seine eigenen
+Abfrageobjekte; der Prompt-Text selbst geht immer hinaus. Voreingestellt an für
+lokale, aus für externe Anbindungen; für externe nur mit ausdrücklicher
+Bestätigung einzuschalten.
+
+**Layer-Steckbrief** (`profile`, F-2.9) — Was das Modell über die Layer weiss:
+**nur Metadaten** — Namen, Titel, Beschreibung, Art, Geometrietyp und je
+Attribut Name, Typ, Bezeichnung, Beschreibung, Einheit, Wertebereich bzw.
+Codeliste und Bezug. Nichts aus den Zeilen berechnet, also keine Objektanzahl,
+keine Ausdehnung, keine vorkommenden Werte; eine vom Administrator bestätigte
+Codeliste gilt als Metadatum. Beschränkt auf die Layer, die das Konto sieht und
+die für das Modell freigegeben sind; kanonisch geordnet, versioniert und per
+SHA-256 gehasht.
 
 **Sitzung** (`analysis_session`) — Ein benannt gespeicherter Analysezustand
 (F-4.10), ab E1.7: der Zustand als versioniertes JSON (Layer, Bedingungen,
