@@ -1,4 +1,5 @@
-"""Administration interface (F-3.1): import and layer management (E1.3).
+"""Administration interface (F-3.1): import and layer management (E1.3),
+accounts and visibility (E1.4), levels of model support (E2.0).
 
 Every route that changes geodata, the catalog or accounts lives here, under
 one router, so a single dependency guards all of them (E1.4, plan D5). What a
@@ -41,6 +42,7 @@ from geotandem.importing import log as import_log
 from geotandem.importing.log import ImportRunInfo, ImportRunSummary, ImportStatus
 from geotandem.importing.run import ImportDecisions, abort, preview_file, run_import
 from geotandem.importing.staging import TooManyPending, UnknownUpload, UploadTooLarge
+from geotandem.levels import Level, UnknownLevel, load_levels, save_levels
 from geotandem.sample.load import dataset_version
 from geotandem_query import SCHEMA_VERSION
 
@@ -474,3 +476,35 @@ def set_visibility(body: VisibilityChange, state: State, user: Actor) -> list[Vi
         visible=body.visible,
     )
     return visibility.matrix(state.backend.engine)
+
+
+# --- levels of model support (vision 8.1, plan E2.0) ------------------------------
+
+
+class LevelSet(BaseModel):
+    """Every level in display order; saved as a whole, so its rules hold together (H7)."""
+
+    levels: list[Level]
+
+
+@router.get("/levels")
+def get_levels(state: State) -> LevelSet:
+    return LevelSet(levels=load_levels(state.backend.engine))
+
+
+@router.put("/levels", responses=ERRORS)
+def put_levels(body: LevelSet, state: State, user: Actor) -> LevelSet:
+    before = {level.id for level in load_levels(state.backend.engine)}
+    try:
+        levels = save_levels(state.backend.engine, body.levels)
+    except UnknownLevel as exc:
+        raise NotFound(f"Unknown level {exc.level_id}.", level=exc.level_id) from None
+    after = {level.id for level in levels}
+    audit.event(
+        "levels_changed",
+        username=user,
+        levels=[level.id for level in levels],
+        created=sorted(i for i in after - before if i is not None),
+        deleted=sorted(i for i in before - after if i is not None),
+    )
+    return LevelSet(levels=levels)

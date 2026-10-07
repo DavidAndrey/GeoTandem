@@ -1,12 +1,14 @@
+import logging
 import shutil
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
 
 import httpx
 import pytest
-from api_helpers import ADMIN_PASSWORD, SETUP_TOKEN
+from api_helpers import ADMIN_PASSWORD, SETUP_TOKEN, Events
 from fastapi import FastAPI
 
+from geotandem import audit
 from geotandem.app import create_app
 from geotandem.config import Settings
 from geotandem.data.interface import DataBackend
@@ -118,3 +120,21 @@ def backend_of_client(anonymous: httpx.AsyncClient, app: FastAPI) -> DataBackend
     """The data core behind ``client``, for arranging state the API cannot reach."""
     backend: DataBackend = app.state.geotandem.backend
     return backend
+
+
+@pytest.fixture
+def events() -> Iterator[Events]:
+    """What the security log records, as dicts: the event's name plus its fields."""
+    found: Events = []
+
+    class Collect(logging.Handler):
+        def emit(self, record: logging.LogRecord) -> None:
+            found.append({"event": record.getMessage(), **record.audit})  # type: ignore[attr-defined]
+
+    handler = Collect()
+    audit.log.addHandler(handler)
+    level = audit.log.level
+    audit.log.setLevel(logging.INFO)
+    yield found
+    audit.log.removeHandler(handler)
+    audit.log.setLevel(level)

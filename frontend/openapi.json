@@ -2203,6 +2203,116 @@
         }
       }
     },
+    "/api/admin/levels": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Get Levels",
+        "operationId": "get_levels_api_admin_levels_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LevelSet"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Put Levels",
+        "operationId": "put_levels_api_admin_levels_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LevelSet"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LevelSet"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Content Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/auth/setup": {
       "get": {
         "tags": [
@@ -4882,6 +4992,15 @@
         ],
         "title": "Categorized"
       },
+      "CellMode": {
+        "type": "string",
+        "enum": [
+          "off",
+          "approve",
+          "auto"
+        ],
+        "title": "CellMode"
+      },
       "Check": {
         "properties": {
           "identical": {
@@ -6582,6 +6701,83 @@
         "type": "object",
         "title": "LayerUpdate",
         "description": "Curated layer fields. ``name`` never changes; renaming sets ``title`` (plan D1)."
+      },
+      "Level": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Description",
+            "default": ""
+          },
+          "system_prompt": {
+            "type": "string",
+            "maxLength": 8000,
+            "title": "System Prompt",
+            "default": ""
+          },
+          "selectable": {
+            "type": "boolean",
+            "title": "Selectable",
+            "default": false
+          },
+          "is_default": {
+            "type": "boolean",
+            "title": "Is Default",
+            "default": false
+          },
+          "matrix": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CellMode"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/OpClass"
+            },
+            "type": "object",
+            "title": "Matrix"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "matrix"
+        ],
+        "title": "Level",
+        "description": "One level. In a set, the list order is the display order (H1)."
+      },
+      "LevelSet": {
+        "properties": {
+          "levels": {
+            "items": {
+              "$ref": "#/components/schemas/Level"
+            },
+            "type": "array",
+            "title": "Levels"
+          }
+        },
+        "type": "object",
+        "required": [
+          "levels"
+        ],
+        "title": "LevelSet",
+        "description": "Every level in display order; saved as a whole, so its rules hold together (H7)."
       },
       "MapConfig": {
         "properties": {

@@ -13,7 +13,7 @@ from geotandem.levels.model import (
     strictest,
     validate_levels,
 )
-from geotandem.levels.store import load_levels
+from geotandem.levels.store import UnknownLevel, load_levels, save_levels
 
 __all__ = [
     "MAX_LEVELS",
@@ -23,9 +23,11 @@ __all__ = [
     "Level",
     "LevelError",
     "OpClass",
+    "UnknownLevel",
     "classify",
     "load_levels",
     "resolve_level",
+    "save_levels",
     "strictest",
     "validate_levels",
 ]

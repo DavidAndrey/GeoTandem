@@ -19,6 +19,18 @@ msgstr ""
 msgid "„{layer}.{attribute}\" ist kein Feld eines Layers mit Geometrie."
 msgstr ""
 
+#: src/admin/LevelsPage.tsx
+msgid "„{level}\" entfernen"
+msgstr ""
+
+#: src/admin/LevelsPage.tsx
+msgid "„{level}\" nach links"
+msgstr ""
+
+#: src/admin/LevelsPage.tsx
+msgid "„{level}\" nach rechts"
+msgstr ""
+
 #: src/i18n/errors.ts
 msgid "„{name}\" gibt es nicht (mehr)."
 msgstr ""
@@ -144,6 +156,10 @@ msgstr ""
 
 #: src/editor/describe.ts
 msgid "{km} km"
+msgstr ""
+
+#: src/admin/LevelsPage.tsx
+msgid "{label} – {level}"
 msgstr ""
 
 #: src/components/ui.tsx
@@ -336,6 +352,10 @@ msgstr ""
 
 #: src/queries/ManageQueriesDialog.tsx
 msgid "Abfragen suchen"
+msgstr ""
+
+#: src/admin/LevelsPage.tsx
+msgid "Abfragen und filtern"
 msgstr ""
 
 #: src/admin/SystemPage.tsx
@@ -581,6 +601,10 @@ msgstr ""
 msgid "Aufklappen"
 msgstr ""
 
+#: src/admin/LevelsPage.tsx
+msgid "aus"
+msgstr ""
+
 #: src/workplace/LayerPanel.tsx
 msgid "Aus Analyse entfernen"
 msgstr ""
@@ -595,6 +619,10 @@ msgstr ""
 
 #: src/queries/SavedQueries.tsx
 msgid "Auswählen ersetzt die aktuelle Abfrage (bei Änderungen mit Rückfrage)."
+msgstr ""
+
+#: src/admin/LevelsPage.tsx
+msgid "automatisch"
 msgstr ""
 
 #: src/admin/SystemPage.tsx
@@ -677,6 +705,7 @@ msgid "Bereit"
 msgstr ""
 
 #: src/admin/LayerPage.tsx
+#: src/admin/LevelsPage.tsx
 msgid "Beschreibung"
 msgstr ""
 
@@ -765,6 +794,7 @@ msgstr ""
 msgid "Dafür braucht es die Rolle Administrator."
 msgstr ""
 
+#: src/admin/LevelsPage.tsx
 #: src/operations/OperationDialog.tsx
 msgid "Darstellung"
 msgstr ""
@@ -1251,6 +1281,10 @@ msgstr ""
 msgid "Eigenes Passwort ändern"
 msgstr ""
 
+#: src/admin/LevelsPage.tsx
+msgid "Eigenschaft"
+msgstr ""
+
 #: src/i18n/errors.ts
 msgid "Ein Benutzername hat 2 bis 63 Zeichen: Kleinbuchstaben, Ziffern, „.\", „_\" und „-\"."
 msgstr ""
@@ -1265,6 +1299,10 @@ msgstr ""
 
 #: src/queries/SaveQueryDialog.tsx
 msgid "Eine eigene Abfrage „{trimmed}\" gibt es schon."
+msgstr ""
+
+#: src/admin/LevelsPage.tsx
+msgid "Eine entfernte Stufe gilt für niemanden mehr: Wer sie gewählt hatte, arbeitet auf der voreingestellten."
 msgstr ""
 
 #: src/workplace/QueryPanel.tsx
@@ -1565,6 +1603,10 @@ msgstr ""
 msgid "Für Anwender sichtbar"
 msgstr ""
 
+#: src/admin/LevelsPage.tsx
+msgid "Für Anwender wählbar"
+msgstr ""
+
 #: src/admin/ImportWizard.tsx
 #: src/admin/LayerPage.tsx
 msgid "Für das Modell sichtbar (wirkt ab E2)"
@@ -1824,6 +1866,10 @@ msgstr ""
 msgid "Je Gebiet aus"
 msgstr ""
 
+#: src/admin/LevelsPage.tsx
+msgid "Je Stufe und Art der Operation: aus (abgewiesen), mit Freigabe (der Anwender bestätigt vorher) oder automatisch (läuft sofort, sichtbar und rücknehmbar). Berührt eine Abfrage mehrere Arten, gilt die strengste. Administratoren dürfen jede Stufe verwenden."
+msgstr ""
+
 #: src/operations/OperationDialog.tsx
 msgid "Join"
 msgstr ""
@@ -2036,6 +2082,10 @@ msgstr ""
 msgid "Layer aktualisieren"
 msgstr ""
 
+#: src/admin/LevelsPage.tsx
+msgid "Layer auflisten und beschreiben"
+msgstr ""
+
 #: src/editor/EditorPanel.tsx
 msgid "Layer des Bezugsobjekts"
 msgstr ""
@@ -2157,12 +2207,20 @@ msgstr ""
 msgid "Mit aktuellen Daten übernehmen"
 msgstr ""
 
+#: src/admin/LevelsPage.tsx
+msgid "mit Freigabe"
+msgstr ""
+
 #: src/admin/format.ts
 msgid "mit Warnungen"
 msgstr ""
 
 #: src/operations/OperationDialog.tsx
 msgid "Mittelwert"
+msgstr ""
+
+#: src/admin/AdminLayout.tsx
+msgid "Modell"
 msgstr ""
 
 #: src/admin/AdminLayout.tsx
@@ -2183,6 +2241,7 @@ msgid "Nach unten"
 msgstr ""
 
 #: src/admin/LayerPage.tsx
+#: src/admin/LevelsPage.tsx
 #: src/admin/UsersPage.tsx
 #: src/operations/OperationDialog.tsx
 #: src/queries/ManageQueriesDialog.tsx
@@ -2224,6 +2283,10 @@ msgstr ""
 
 #: src/session/SessionMenu.tsx
 msgid "Neue Sitzung"
+msgstr ""
+
+#: src/admin/LevelsPage.tsx
+msgid "Neue Stufe"
 msgstr ""
 
 #: src/queries/ManageQueriesDialog.tsx
@@ -2399,6 +2462,10 @@ msgstr ""
 msgid "Puffer anlegen"
 msgstr ""
 
+#: src/admin/LevelsPage.tsx
+msgid "Puffer, Join, Aggregation"
+msgstr ""
+
 #: src/admin/format.ts
 msgid "Punkt"
 msgstr ""
@@ -2421,6 +2488,10 @@ msgstr ""
 
 #: src/editor/EditorPanel.tsx
 msgid "Raum"
+msgstr ""
+
+#: src/admin/LevelsPage.tsx
+msgid "Räumliche Beziehungen"
 msgstr ""
 
 #: src/table/TableDock.tsx
@@ -2548,6 +2619,7 @@ msgid "Später"
 msgstr ""
 
 #: src/admin/LayerPage.tsx
+#: src/admin/LevelsPage.tsx
 #: src/queries/SavedQueries.tsx
 #: src/queries/SaveQueryDialog.tsx
 #: src/session/SaveAsDialog.tsx
@@ -2623,6 +2695,19 @@ msgstr ""
 msgid "Strecke"
 msgstr ""
 
+#: src/admin/LevelsPage.tsx
+msgid "Stufe"
+msgstr ""
+
+#: src/admin/AdminLayout.tsx
+#: src/admin/LevelsPage.tsx
+msgid "Stufen"
+msgstr ""
+
+#: src/admin/LevelsPage.tsx
+msgid "Stufen der Modellunterstützung"
+msgstr ""
+
 #: src/map/MapSearch.tsx
 msgid "Suchbegriff"
 msgstr ""
@@ -2647,6 +2732,10 @@ msgstr ""
 
 #: src/admin/AdminLayout.tsx
 msgid "System"
+msgstr ""
+
+#: src/admin/LevelsPage.tsx
+msgid "System-Prompt"
 msgstr ""
 
 #: src/admin/SystemPage.tsx
@@ -2806,6 +2895,7 @@ msgstr ""
 msgid "Verwalten …"
 msgstr ""
 
+#: src/admin/LevelsPage.tsx
 #: src/editor/EditorPanel.tsx
 #: src/session/SessionDialogs.tsx
 msgid "Verwerfen"
@@ -2829,6 +2919,10 @@ msgctxt "date"
 msgid "vor"
 msgstr ""
 
+#: src/admin/LevelsPage.tsx
+msgid "Voreingestellt"
+msgstr ""
+
 #: src/admin/ImportLogPage.tsx
 msgid "Vorgang"
 msgstr ""
@@ -2841,6 +2935,10 @@ msgstr ""
 #: src/admin/ImportRunPage.tsx
 #: src/admin/ImportWizard.tsx
 msgid "Warnung"
+msgstr ""
+
+#: src/admin/LevelsPage.tsx
+msgid "Was das Modell darf"
 msgstr ""
 
 #: src/workplace/ResultSelect.tsx

@@ -2,12 +2,11 @@
 
 import json
 import logging
-from collections.abc import Iterator
 from typing import Any
 
 import httpx
 import pytest
-from api_helpers import ADMIN_PASSWORD, SETUP_TOKEN, USER_PASSWORD, sign_in_as
+from api_helpers import ADMIN_PASSWORD, SETUP_TOKEN, USER_PASSWORD, Events, sign_in_as
 from fastapi import FastAPI
 from sqlalchemy import update
 from sqlalchemy.orm import Session
@@ -16,26 +15,6 @@ from geotandem import audit
 from geotandem.cli import main
 from geotandem.data import DataBackend
 from geotandem.db.orm import User
-
-Events = list[dict[str, Any]]
-
-
-@pytest.fixture
-def events() -> Iterator[Events]:
-    """What the security log records, as dicts: the event's name plus its fields."""
-    found: Events = []
-
-    class Collect(logging.Handler):
-        def emit(self, record: logging.LogRecord) -> None:
-            found.append({"event": record.getMessage(), **record.audit})  # type: ignore[attr-defined]
-
-    handler = Collect()
-    audit.log.addHandler(handler)
-    level = audit.log.level
-    audit.log.setLevel(logging.INFO)
-    yield found
-    audit.log.removeHandler(handler)
-    audit.log.setLevel(level)
 
 
 def named(events: Events, name: str) -> list[dict[str, Any]]:

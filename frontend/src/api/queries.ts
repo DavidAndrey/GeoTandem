@@ -25,6 +25,7 @@ export const keys = {
   users: ['admin', 'users'] as const,
   visibility: ['admin', 'visibility'] as const,
   visibilityDefault: ['admin', 'visibility', 'default'] as const,
+  levels: ['admin', 'levels'] as const,
 }
 
 /** The signed-in account, or ``null`` when nobody is signed in. */
@@ -173,5 +174,16 @@ export function useDuplicateLayer() {
         client.invalidateQueries({ queryKey: keys.visibility }),
         client.invalidateQueries({ queryKey: keys.layerList }),
       ]),
+  })
+}
+
+/** The levels of model support (plan E2.0), edited and saved as a whole set. */
+export const useLevels = () => useQuery({ queryKey: keys.levels, queryFn: api.admin.levels })
+
+export function useSaveLevels() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: api.admin.saveLevels,
+    onSuccess: (data) => client.setQueryData(keys.levels, data),
   })
 }

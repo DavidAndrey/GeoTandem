@@ -528,6 +528,24 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/admin/levels': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Get Levels */
+    get: operations['get_levels_api_admin_levels_get']
+    /** Put Levels */
+    put: operations['put_levels_api_admin_levels_put']
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/auth/setup': {
     parameters: {
       query?: never
@@ -1144,6 +1162,11 @@ export interface components {
         [key: string]: string
       }
     }
+    /**
+     * CellMode
+     * @enum {string}
+     */
+    CellMode: 'off' | 'approve' | 'auto'
     /**
      * Check
      * @description The saved stamp against the current data (design C4, C8).
@@ -1894,6 +1917,48 @@ export interface components {
        * @default true
        */
       for_model: boolean
+    }
+    /**
+     * Level
+     * @description One level. In a set, the list order is the display order (H1).
+     */
+    Level: {
+      /** Id */
+      id?: number | null
+      /** Name */
+      name: string
+      /**
+       * Description
+       * @default
+       */
+      description: string
+      /**
+       * System Prompt
+       * @default
+       */
+      system_prompt: string
+      /**
+       * Selectable
+       * @default false
+       */
+      selectable: boolean
+      /**
+       * Is Default
+       * @default false
+       */
+      is_default: boolean
+      /** Matrix */
+      matrix: {
+        [key: string]: components['schemas']['CellMode']
+      }
+    }
+    /**
+     * LevelSet
+     * @description Every level in display order; saved as a whole, so its rules hold together (H7).
+     */
+    LevelSet: {
+      /** Levels */
+      levels: components['schemas']['Level'][]
     }
     /** MapConfig */
     MapConfig: {
@@ -4976,6 +5041,104 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  get_levels_api_admin_levels_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['LevelSet']
+        }
+      }
+    }
+  }
+  put_levels_api_admin_levels_put: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['LevelSet']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['LevelSet']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Content Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
         }
       }
     }

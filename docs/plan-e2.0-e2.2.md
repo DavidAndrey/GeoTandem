@@ -191,8 +191,8 @@ flowchart LR
 - Admin page *Stufen*: one column per level, rows per class, a three-state
   control per cell; name, description, prompt, selectable, default; move left
   and right. Refusals by code (`level_count`, `default_not_selectable`, …).
-- Component tests and an end-to-end test that a non-selectable level cannot
-  be chosen through the API.
+- Component tests; an end-to-end test that an edited set survives a reload
+  and that only administrators reach it.
 
 ### WP56 — The model seam (C1–C3, C9, C10, C15)
 
@@ -229,6 +229,8 @@ flowchart LR
 
 - `GET/PUT /api/llm/options` gains the selectable levels and the account's
   choice of level (C14).
+- End-to-end test that a non-selectable level cannot be chosen through the
+  API (moved here from WP55 with the choice itself).
 - Workplace header: chosen connection with external badge, chosen level
   (F-6.1); a picker for both within the admin's frame. The prompt box is E2.3.
 - F-9.1 test: with only local connections configured, a transport that fails

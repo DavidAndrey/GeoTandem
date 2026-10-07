@@ -1,11 +1,16 @@
 """Helpers for tests that talk HTTP as different accounts."""
 
+from typing import Any
+
 import httpx
 
 ADMIN_PASSWORD = "aare-bruecke-morgen-1"
 SETUP_TOKEN = "test-setup-token-0123"
 """As GEOTANDEM_SETUP_TOKEN of the test instances (conftest ``app``)."""
 USER_PASSWORD = "nutzer-passwort-1"
+
+Events = list[dict[str, Any]]
+"""What the security log recorded (fixture ``events``): each event's name plus its fields."""
 
 
 async def sign_in_as(

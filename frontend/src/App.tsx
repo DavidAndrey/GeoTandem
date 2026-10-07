@@ -8,6 +8,7 @@ import { ImportLogPage } from './admin/ImportLogPage'
 import { ImportRunPage } from './admin/ImportRunPage'
 import { ImportWizard } from './admin/ImportWizard'
 import { LayerPage } from './admin/LayerPage'
+import { LevelsPage } from './admin/LevelsPage'
 import { SystemPage } from './admin/SystemPage'
 import { UsersPage } from './admin/UsersPage'
 import { VisibilityPage } from './admin/VisibilityPage'
@@ -120,6 +121,7 @@ export function App() {
               <Route path="protokoll/:id" element={<ImportRunPage />} />
               <Route path="benutzer" element={<UsersPage />} />
               <Route path="sichtbarkeit" element={<VisibilityPage />} />
+              <Route path="stufen" element={<LevelsPage />} />
               <Route path="system" element={<SystemPage />} />
             </Route>
             <Route path="*" element={<NotFound />} />

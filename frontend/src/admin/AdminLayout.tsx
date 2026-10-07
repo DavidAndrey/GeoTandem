@@ -21,6 +21,10 @@ const groups = (): Group[] => [
     ],
   },
   {
+    title: t`Modell`,
+    links: [{ to: '/admin/stufen', label: t`Stufen` }],
+  },
+  {
     title: t`Betrieb`,
     links: [{ to: '/admin/system', label: t`System` }],
   },

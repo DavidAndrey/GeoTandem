@@ -28,6 +28,9 @@ export type SetupStatus = Schemas['SetupStatus']
 export type StartPassword = Schemas['StartPassword']
 export type AccountUpdate = Schemas['AccountUpdate']
 export type VisibilityRow = Schemas['VisibilityRow']
+export type Level = Schemas['Level']
+export type OpClass = Schemas['OpClass']
+export type CellMode = Schemas['CellMode']
 export type MapConfig = Schemas['MapConfig']
 export type QueryObject = Schemas['QueryObject-Input']
 export type SessionSummary = Schemas['SessionSummary']
@@ -193,5 +196,8 @@ export const api = {
         '/api/admin/visibility',
         json('PUT', { layer, role: 'user', visible }),
       ),
+    levels: () => request<Schemas['LevelSet']>('/api/admin/levels'),
+    saveLevels: (levels: Level[]) =>
+      request<Schemas['LevelSet']>('/api/admin/levels', json('PUT', { levels })),
   },
 }
