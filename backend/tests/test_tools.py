@@ -4,8 +4,9 @@ from pydantic import ValidationError
 from geotandem.catalog import LayerInfo
 from geotandem.data import DataBackend, Limits
 from geotandem.engine import QueryError, QueryResult
-from geotandem.tools import ToolContext, UnknownTool, default_registry
-from geotandem.tools.builtin import LayerList
+from geotandem.levels import OpClass
+from geotandem.tools import Tool, ToolContext, ToolRegistry, UnknownTool, default_registry
+from geotandem.tools.builtin import LayerList, NoArguments
 
 
 @pytest.fixture
@@ -20,6 +21,29 @@ def test_registry_describes_tools_with_json_schemas() -> None:
     assert run_query.effect == "state"
     # The query-object schema is embedded, not re-described (single source).
     assert "QueryObject" in run_query.input_schema["$defs"]
+
+
+def test_every_tool_declares_its_operation_class() -> None:
+    classes = {d.name: d.op_class for d in default_registry().describe()}
+    assert classes == {
+        "list_layers": OpClass.CATALOG,
+        "describe_layer": OpClass.CATALOG,
+        "run_query": OpClass.QUERY,
+    }
+
+
+def test_a_tool_without_a_class_is_refused() -> None:
+    tool = Tool(
+        name="unclassified",
+        description="",
+        input_model=NoArguments,
+        output_model=NoArguments,
+        effect="read",
+        op_class=None,  # type: ignore[arg-type]
+        handler=lambda _, args: args,
+    )
+    with pytest.raises(ValueError, match="no operation class"):
+        ToolRegistry().register(tool)
 
 
 def test_list_and_describe_layers(context: ToolContext) -> None:

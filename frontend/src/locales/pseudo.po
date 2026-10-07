@@ -1160,6 +1160,10 @@ msgstr ""
 msgid "Die Treffer sind dieselben."
 msgstr ""
 
+#: src/i18n/errors.ts
+msgid "Die voreingestellte Stufe „{name}\" muss für Anwender wählbar sein."
+msgstr ""
+
 #: src/auth/rules.ts
 msgid "Die Wiederholung stimmt nicht überein."
 msgstr ""
@@ -1455,6 +1459,10 @@ msgid "Ersteinrichtung"
 msgstr ""
 
 #: src/i18n/errors.ts
+msgid "Es braucht mindestens {min} und höchstens {max} Stufen."
+msgstr ""
+
+#: src/i18n/errors.ts
 msgid "Es sind schon so viele Abfragen gespeichert wie erlaubt. Bitte zuerst eine löschen."
 msgstr ""
 
@@ -1588,6 +1596,10 @@ msgstr ""
 
 #: src/map/MapSearch.tsx
 msgid "Gemeinde, Haltestelle, Schule …"
+msgstr ""
+
+#: src/i18n/errors.ts
+msgid "Genau eine Stufe muss voreingestellt sein."
 msgstr ""
 
 #: src/admin/wizard.ts
@@ -2975,6 +2987,10 @@ msgstr ""
 
 #: src/admin/ImportWizard.tsx
 msgid "Zurück"
+msgstr ""
+
+#: src/i18n/errors.ts
+msgid "Zwei Stufen heissen „{name}\"; jede braucht einen eigenen Namen."
 msgstr ""
 
 #: src/editor/describe.ts

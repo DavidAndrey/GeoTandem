@@ -1160,6 +1160,10 @@ msgstr "Die Spalte „{column}\" wird als Text gespeichert."
 msgid "Die Treffer sind dieselben."
 msgstr "Die Treffer sind dieselben."
 
+#: src/i18n/errors.ts
+msgid "Die voreingestellte Stufe „{name}\" muss für Anwender wählbar sein."
+msgstr "Die voreingestellte Stufe „{name}\" muss für Anwender wählbar sein."
+
 #: src/auth/rules.ts
 msgid "Die Wiederholung stimmt nicht überein."
 msgstr "Die Wiederholung stimmt nicht überein."
@@ -1455,6 +1459,10 @@ msgid "Ersteinrichtung"
 msgstr "Ersteinrichtung"
 
 #: src/i18n/errors.ts
+msgid "Es braucht mindestens {min} und höchstens {max} Stufen."
+msgstr "Es braucht mindestens {min} und höchstens {max} Stufen."
+
+#: src/i18n/errors.ts
 msgid "Es sind schon so viele Abfragen gespeichert wie erlaubt. Bitte zuerst eine löschen."
 msgstr "Es sind schon so viele Abfragen gespeichert wie erlaubt. Bitte zuerst eine löschen."
 
@@ -1589,6 +1597,10 @@ msgstr "Gebietslayer"
 #: src/map/MapSearch.tsx
 msgid "Gemeinde, Haltestelle, Schule …"
 msgstr "Gemeinde, Haltestelle, Schule …"
+
+#: src/i18n/errors.ts
+msgid "Genau eine Stufe muss voreingestellt sein."
+msgstr "Genau eine Stufe muss voreingestellt sein."
 
 #: src/admin/wizard.ts
 msgid "Geobezug"
@@ -2976,6 +2988,10 @@ msgstr "Zuordnung"
 #: src/admin/ImportWizard.tsx
 msgid "Zurück"
 msgstr "Zurück"
+
+#: src/i18n/errors.ts
+msgid "Zwei Stufen heissen „{name}\"; jede braucht einen eigenen Namen."
+msgstr "Zwei Stufen heissen „{name}\"; jede braucht einen eigenen Namen."
 
 #: src/editor/describe.ts
 msgid "zwischen"

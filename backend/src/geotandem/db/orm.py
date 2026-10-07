@@ -120,6 +120,8 @@ class User(Base):
     must_change_password: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[datetime] = mapped_column(server_default=func.current_timestamp())
     last_login_at: Mapped[datetime | None]
+    level_id: Mapped[int | None] = mapped_column(ForeignKey("level.id", ondelete="SET NULL"))
+    """The chosen level of model support; none or gone means the default (plan E2.0, H7)."""
 
 
 class AuthSession(Base):
@@ -195,6 +197,34 @@ class SavedQuery(Base):
     updated_at: Mapped[datetime] = mapped_column(server_default=func.current_timestamp())
 
     owner: Mapped[User] = relationship()
+
+
+class Level(Base):
+    """A level of model support (vision 8.1, plan E2.0); ``position`` only orders the display."""
+
+    __tablename__ = "level"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(60))
+    description: Mapped[str] = mapped_column(default="")
+    system_prompt: Mapped[str] = mapped_column(default="")
+    position: Mapped[int]
+    selectable: Mapped[bool]
+    is_default: Mapped[bool]
+
+    permissions: Mapped[list[LevelPermission]] = relationship(cascade="all, delete-orphan")
+
+
+class LevelPermission(Base):
+    """One cell of a level's matrix: operation class by ``off`` / ``approve`` / ``auto``."""
+
+    __tablename__ = "level_permission"
+
+    level_id: Mapped[int] = mapped_column(
+        ForeignKey("level.id", ondelete="CASCADE"), primary_key=True
+    )
+    op_class: Mapped[str] = mapped_column(String(16), primary_key=True)
+    mode: Mapped[str] = mapped_column(String(16))
 
 
 class AppMeta(Base):

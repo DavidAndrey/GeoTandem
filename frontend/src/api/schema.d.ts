@@ -2024,6 +2024,13 @@ export interface components {
       | 'buffer'
       | 'spatial_relation'
       | 'aggregate'
+    /**
+     * OpClass
+     * @description What an operation does, fixed in code (H2). ``export`` joins with E5,
+     *     ``external`` with E6; writes are no class, the model path has none (F-9.5).
+     * @enum {string}
+     */
+    OpClass: 'catalog' | 'query' | 'spatial' | 'derive' | 'display'
     /** Or */
     'Or-Input': {
       /**
@@ -2855,6 +2862,7 @@ export interface components {
        * @enum {string}
        */
       effect: 'read' | 'state'
+      op_class: components['schemas']['OpClass']
       /** Input Schema */
       input_schema: {
         [key: string]: unknown

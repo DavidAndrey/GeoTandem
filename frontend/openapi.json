@@ -6867,6 +6867,18 @@
         "title": "Op",
         "description": "Registered operations; each needs certain logical dialect functions (F-2.14)."
       },
+      "OpClass": {
+        "type": "string",
+        "enum": [
+          "catalog",
+          "query",
+          "spatial",
+          "derive",
+          "display"
+        ],
+        "title": "OpClass",
+        "description": "What an operation does, fixed in code (H2). ``export`` joins with E5,\n``external`` with E6; writes are no class, the model path has none (F-9.5)."
+      },
       "Or-Input": {
         "properties": {
           "op": {
@@ -8916,6 +8928,9 @@
             ],
             "title": "Effect"
           },
+          "op_class": {
+            "$ref": "#/components/schemas/OpClass"
+          },
           "input_schema": {
             "additionalProperties": true,
             "type": "object",
@@ -8932,6 +8947,7 @@
           "name",
           "description",
           "effect",
+          "op_class",
           "input_schema",
           "output_schema"
         ],

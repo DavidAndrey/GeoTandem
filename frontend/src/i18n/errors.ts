@@ -114,6 +114,21 @@ const MESSAGES: Record<string, Words> = {
     t`Eine gespeicherte Abfrage enthält Bedingungen auf einem Katalog-Layer; Puffer, Join und Aggregation gehören zu abgeleiteten Layern.`,
   not_owner: () =>
     t`Eine geteilte Abfrage ändert nur, wer sie gespeichert hat; bitte als eigene Kopie speichern.`,
+  // Levels of model support
+  level_count: (d) => {
+    const min = number(d.min)
+    const max = number(d.max)
+    return t`Es braucht mindestens ${min} und höchstens ${max} Stufen.`
+  },
+  level_name_taken: (d) => {
+    const name = text(d.name)
+    return t`Zwei Stufen heissen „${name}"; jede braucht einen eigenen Namen.`
+  },
+  default_level_count: () => t`Genau eine Stufe muss voreingestellt sein.`,
+  default_not_selectable: (d) => {
+    const name = text(d.name)
+    return t`Die voreingestellte Stufe „${name}" muss für Anwender wählbar sein.`
+  },
   // Import: refusals
   unreadable_source: () => t`Die Datei kann so nicht gelesen werden.`,
   too_many_pending_imports: () =>

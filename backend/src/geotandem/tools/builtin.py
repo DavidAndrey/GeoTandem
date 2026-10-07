@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from geotandem.catalog import LayerInfo, get_layer, list_layers
 from geotandem.engine import QueryResult, run_query
 from geotandem.engine.errors import UnknownLayer
+from geotandem.levels import OpClass
 from geotandem.tools.registry import Tool, ToolContext, ToolRegistry
 from geotandem_query import QueryObject
 
@@ -65,6 +66,7 @@ def default_registry() -> ToolRegistry:
             input_model=NoArguments,
             output_model=LayerList,
             effect="read",
+            op_class=OpClass.CATALOG,
             handler=_list_layers,
         )
     )
@@ -75,6 +77,7 @@ def default_registry() -> ToolRegistry:
             input_model=LayerName,
             output_model=LayerInfo,
             effect="read",
+            op_class=OpClass.CATALOG,
             handler=_describe_layer,
         )
     )
@@ -85,6 +88,7 @@ def default_registry() -> ToolRegistry:
             input_model=RunQueryArguments,
             output_model=QueryResult,
             effect="state",
+            op_class=OpClass.QUERY,
             handler=_run_query,
         )
     )

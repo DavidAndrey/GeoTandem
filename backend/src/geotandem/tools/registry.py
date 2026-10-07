@@ -1,8 +1,9 @@
 """Registry of GIS tools (F-10.2).
 
 A tool is described once — name, description, Pydantic input and output
-models, effect — and from that single description the classic UI, tool
-calling (E2, F-7.4) and the MCP server (E4, F-7.5) are served.
+models, effect, operation class — and from that single description the
+classic UI, tool calling (E2, F-7.4) and the MCP server (E4, F-7.5) are
+served.
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ from typing import Any, Literal
 from pydantic import BaseModel
 
 from geotandem.data import DataBackend, Limits, Op
+from geotandem.levels import OpClass
 
 Effect = Literal["read", "state"]
 """``read`` returns information; ``state`` produces a new analysis state.
@@ -33,6 +35,7 @@ class ToolDescription(BaseModel):
     name: str
     description: str
     effect: Effect
+    op_class: OpClass
     input_schema: dict[str, Any]
     output_schema: dict[str, Any]
 
@@ -44,6 +47,9 @@ class Tool[I: BaseModel, O: BaseModel]:
     input_model: type[I]
     output_model: type[O]
     effect: Effect
+    op_class: OpClass
+    """What the level's matrix decides for this tool (plan E2.0, H2). A tool whose
+    arguments hold a query object adds the classes of its parts (``classify``)."""
     handler: Callable[[ToolContext, I], O]
 
     def describe(self) -> ToolDescription:
@@ -51,6 +57,7 @@ class Tool[I: BaseModel, O: BaseModel]:
             name=self.name,
             description=self.description,
             effect=self.effect,
+            op_class=self.op_class,
             input_schema=self.input_model.model_json_schema(by_alias=True),
             output_schema=self.output_model.model_json_schema(by_alias=True),
         )
@@ -71,6 +78,9 @@ class ToolRegistry:
     def register(self, tool: Tool[Any, Any]) -> None:
         if tool.name in self._tools:
             raise ValueError(f"tool '{tool.name}' is already registered")
+        if not isinstance(tool.op_class, OpClass):
+            # A class the backend cannot recognise cannot be enforced (F-6.7).
+            raise ValueError(f"tool '{tool.name}' declares no operation class")
         self._tools[tool.name] = tool
 
     def get(self, name: str) -> Tool[Any, Any]:

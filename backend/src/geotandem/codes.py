@@ -58,6 +58,11 @@ CODES: dict[str, str] = {
     "too_many_saved_queries": "The account has the most saved queries allowed.",
     "conditions_only": "A saved query holds conditions on a catalog layer only.",
     "not_owner": "Only the owner changes a shared query.",
+    # Levels of model support
+    "level_count": "There must be details.min to details.max levels.",
+    "level_name_taken": "Two levels share the name details.name.",
+    "default_level_count": "Exactly one level must be the default.",
+    "default_not_selectable": "The default level must be selectable by users.",
     # Import: refusals (details.reason of unreadable_source) and the run
     "unreadable_source": "The file cannot be read as given; details.reason says why.",
     "too_many_pending_imports": "Too many uploaded files wait for their import.",
