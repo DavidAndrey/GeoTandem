@@ -49,11 +49,14 @@ step "first start on an empty volume"
 docker run -d --name "$name" -p 127.0.0.1::8000 -v "$volume:/data" "$image" >/dev/null
 wait_healthy
 port=$(docker port "$name" 8000/tcp | head -n1 | sed 's/.*://')
-docker logs "$name" 2>&1 | grep -q "sample dataset" \
+# Logs into a variable first: with pipefail, `docker logs | grep -q` fails when
+# grep stops at the first match and docker logs dies writing the rest.
+logs=$(docker logs "$name" 2>&1)
+grep -q "sample dataset" <<<"$logs" \
   || { echo "sample dataset was not loaded on first start" >&2; exit 1; }
 
 # As an operator would: the setup token from the first start's log (security review #1).
-token=$(docker logs "$name" 2>&1 | grep -o 'Setup token: [A-Za-z0-9_-]*' | head -n1 | cut -d' ' -f3)
+token=$(grep -o 'Setup token: [A-Za-z0-9_-]*' <<<"$logs" | head -n1 | cut -d' ' -f3)
 [ -n "$token" ] || { echo "no setup token in the log of the first start" >&2; exit 1; }
 
 step "playwright against http://127.0.0.1:$port"
@@ -63,11 +66,12 @@ step "restart on the same volume"
 since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 docker restart "$name" >/dev/null
 wait_healthy
-if docker logs --since "$since" "$name" 2>&1 | grep -q "sample dataset"; then
+logs=$(docker logs --since "$since" "$name" 2>&1)
+if grep -q "sample dataset" <<<"$logs"; then
   echo "sample dataset was loaded again after restart" >&2
   exit 1
 fi
-if docker logs --since "$since" "$name" 2>&1 | grep -q "Setup token"; then
+if grep -q "Setup token" <<<"$logs"; then
   echo "a set-up instance still offers a setup token" >&2
   exit 1
 fi
