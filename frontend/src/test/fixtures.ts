@@ -9,6 +9,7 @@ export function attribute(patch: Partial<AttributeInfo> = {}): AttributeInfo {
     description: '',
     unit: null,
     value_domain: null,
+    value_domain_confirmed: true,
     for_model: true,
     references: null,
     ...patch,

@@ -63,6 +63,8 @@ class LayerAttribute(Base):
     description: Mapped[str] = mapped_column(default="")
     unit: Mapped[str | None]
     value_domain: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    value_domain_confirmed: Mapped[bool] = mapped_column(server_default=true())
+    """A domain proposed from the data reaches the model only once confirmed (S2)."""
     for_model: Mapped[bool] = mapped_column(server_default=true())
     references: Mapped[str | None] = mapped_column(String(127))
     """``layer.attribute`` this attribute is a key to, e.g. from a key-join import (F-2.9)."""

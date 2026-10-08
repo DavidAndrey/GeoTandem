@@ -20,7 +20,7 @@ from geotandem.api.errors import ErrorBody, NotFound, Problem
 from geotandem.api.state import AppState, get_state
 from geotandem.auth import accounts, visibility
 from geotandem.auth.accounts import Account, AccountUpdate, DisplayName
-from geotandem.auth.visibility import VisibilityRow
+from geotandem.auth.visibility import VisibilityRow, view_for
 from geotandem.catalog import (
     MAX_TITLE,
     AttributeInfo,
@@ -28,9 +28,11 @@ from geotandem.catalog import (
     LayerInfo,
     LayerProfile,
     LayerUpdate,
+    ModelProfile,
     Title,
     get_layer,
     list_layers,
+    model_profile,
     profile,
     update_attribute,
     update_layer,
@@ -598,3 +600,19 @@ def delete_llm_connection(connection_id: int, state: State, user: Actor) -> Resp
     state.connections.delete(connection_id)
     audit.event("llm_connection_changed", username=user, action="deleted", id=connection_id)
     return Response(status_code=204)
+
+
+# --- what the model sees (plan E2.2, S6) ------------------------------------------
+
+
+@router.get("/llm/profile", responses=ERRORS)
+def account_profile(account: str, state: State) -> ModelProfile:
+    """The layer profile a model would get for ``account``: only what that account
+    sees and the administrator released for the model (F-9.3, F-5.10)."""
+    found = next(
+        (a for a in accounts.list_accounts(state.backend.engine) if a.username == account), None
+    )
+    if found is None:
+        raise NotFound(f"Unknown account '{account}'.", account=account)
+    view = view_for(state.backend, found)
+    return model_profile(state.backend.engine, view.layer_names())

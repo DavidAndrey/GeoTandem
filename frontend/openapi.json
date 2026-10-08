@@ -2898,6 +2898,99 @@
         }
       }
     },
+    "/api/admin/llm/profile": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Account Profile",
+        "description": "The layer profile a model would get for ``account``: only what that account\nsees and the administrator released for the model (F-9.3, F-5.10).",
+        "operationId": "account_profile_api_admin_llm_profile_get",
+        "parameters": [
+          {
+            "name": "account",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Account"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelProfile"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
     "/api/auth/setup": {
       "get": {
         "tags": [
@@ -5231,6 +5324,10 @@
             ],
             "title": "Value Domain"
           },
+          "value_domain_confirmed": {
+            "type": "boolean",
+            "title": "Value Domain Confirmed"
+          },
           "for_model": {
             "type": "boolean",
             "title": "For Model"
@@ -5255,6 +5352,7 @@
           "description",
           "unit",
           "value_domain",
+          "value_domain_confirmed",
           "for_model",
           "references"
         ],
@@ -8091,10 +8189,6 @@
             ],
             "title": "Geometry Type"
           },
-          "feature_count": {
-            "type": "integer",
-            "title": "Feature Count"
-          },
           "attributes": {
             "items": {
               "$ref": "#/components/schemas/AttributeProfile"
@@ -8108,11 +8202,10 @@
           "name",
           "title",
           "kind",
-          "feature_count",
           "attributes"
         ],
         "title": "LayerProfile",
-        "description": "What the model learns about a layer: structure and meaning, never content (F-9.3).\n\nDerived from the metadata (F-2.8); only layers and attributes marked\n``for_model``. E2.2 limits it to the layers visible to the user."
+        "description": "What the model learns about a layer: structure and meaning, never content (F-9.3).\n\nMetadata only (S1): nothing computed from the rows, so no feature count, no\nextent, no distinct values. A value domain counts only once confirmed (S2).\nOnly layers and attributes marked ``for_model``."
       },
       "LayerUpdate": {
         "properties": {
@@ -8329,6 +8422,38 @@
         ],
         "title": "Message",
         "description": "A finding about the source; ``code`` is stable, ``message`` explains it."
+      },
+      "ModelProfile": {
+        "properties": {
+          "profile_version": {
+            "type": "integer",
+            "title": "Profile Version",
+            "default": 1
+          },
+          "layers": {
+            "items": {
+              "$ref": "#/components/schemas/LayerProfile"
+            },
+            "type": "array",
+            "title": "Layers"
+          },
+          "hash": {
+            "type": "string",
+            "title": "Hash"
+          },
+          "size_chars": {
+            "type": "integer",
+            "title": "Size Chars"
+          }
+        },
+        "type": "object",
+        "required": [
+          "layers",
+          "hash",
+          "size_chars"
+        ],
+        "title": "ModelProfile",
+        "description": "Every layer an account's model may know of, in canonical form (S3, S4).\n\n``hash`` is SHA-256 over the canonical JSON of ``profile_version`` and\n``layers``: two calls with the same hash asked about the same world (E3)."
       },
       "NearFeature": {
         "properties": {

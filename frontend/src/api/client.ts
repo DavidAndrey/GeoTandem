@@ -39,6 +39,7 @@ export type CheckResult = Schemas['CheckResult']
 export type CheckStep = Schemas['CheckStep']
 export type Effort = NonNullable<ConnectionWrite['reasoning_effort']>
 export type LLMOptions = Schemas['LLMOptions']
+export type ModelProfile = Schemas['ModelProfile']
 export type LLMChoice = Schemas['Choice']
 export type MapConfig = Schemas['MapConfig']
 export type QueryObject = Schemas['QueryObject-Input']
@@ -212,6 +213,8 @@ export const api = {
     levels: () => request<Schemas['LevelSet']>('/api/admin/levels'),
     saveLevels: (levels: Level[]) =>
       request<Schemas['LevelSet']>('/api/admin/levels', json('PUT', { levels })),
+    modelProfile: (account: string) =>
+      request<ModelProfile>(`/api/admin/llm/profile?account=${enc(account)}`),
     connections: () => request<ConnectionInfo[]>('/api/admin/llm/connections'),
     createConnection: (body: ConnectionWrite) =>
       request<ConnectionInfo>('/api/admin/llm/connections', json('POST', body)),

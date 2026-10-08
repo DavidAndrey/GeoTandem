@@ -391,6 +391,8 @@ def _plan(
                 value_domain=decision.value_domain.model_dump(exclude_none=True)
                 if decision.value_domain is not None
                 else proposal.value_domain,
+                # Proposed from the rows: kept for the editor, not for the model (S2).
+                value_domain_confirmed=decision.value_domain is not None,
                 for_model=decision.for_model,
                 references=references,
             )

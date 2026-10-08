@@ -28,6 +28,7 @@ export const keys = {
   levels: ['admin', 'levels'] as const,
   connections: ['admin', 'llm', 'connections'] as const,
   llmOptions: ['llm', 'options'] as const,
+  modelProfile: (account: string) => ['admin', 'model-profile', account] as const,
 }
 
 /** The signed-in account, or ``null`` when nobody is signed in. */
@@ -219,3 +220,11 @@ export function useChooseLLM() {
     onSuccess: (data) => client.setQueryData(keys.llmOptions, data),
   })
 }
+
+/** The layer profile a model would get for an account (plan E2.2, S6). */
+export const useModelProfile = (account: string) =>
+  useQuery({
+    queryKey: keys.modelProfile(account),
+    queryFn: () => api.admin.modelProfile(account),
+    enabled: account !== '',
+  })

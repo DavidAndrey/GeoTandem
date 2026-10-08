@@ -10,6 +10,7 @@ import { ImportRunPage } from './admin/ImportRunPage'
 import { ImportWizard } from './admin/ImportWizard'
 import { LayerPage } from './admin/LayerPage'
 import { LevelsPage } from './admin/LevelsPage'
+import { ProfilePage } from './admin/ProfilePage'
 import { SystemPage } from './admin/SystemPage'
 import { UsersPage } from './admin/UsersPage'
 import { VisibilityPage } from './admin/VisibilityPage'
@@ -128,6 +129,7 @@ export function App() {
               <Route path="sichtbarkeit" element={<VisibilityPage />} />
               <Route path="stufen" element={<LevelsPage />} />
               <Route path="modelle" element={<ConnectionsPage />} />
+              <Route path="steckbrief" element={<ProfilePage />} />
               <Route path="system" element={<SystemPage />} />
             </Route>
             <Route path="*" element={<NotFound />} />

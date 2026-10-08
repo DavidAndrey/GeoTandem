@@ -659,6 +659,12 @@ function FieldsStep({
           ))}
         </tbody>
       </table>
+      <p className="text-muted mt-2 text-xs">
+        <Trans>
+          Wertebereiche und Codelisten schlägt der Import aus den Daten vor. Das Modell sieht sie
+          erst, wenn Sie sie im Layer bestätigen; eine bestätigte Codeliste erreicht das Modell.
+        </Trans>
+      </p>
     </div>
   )
 }

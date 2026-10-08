@@ -55,6 +55,8 @@ class AttributeSpec:
     description: str = ""
     unit: str | None = None
     value_domain: dict[str, Any] | None = None
+    value_domain_confirmed: bool = True
+    """False for a domain proposed from the data and not yet confirmed (plan E2.2, S2)."""
     for_model: bool = True
     references: str | None = None
     """``layer.attribute`` this attribute is a key to (F-2.9)."""

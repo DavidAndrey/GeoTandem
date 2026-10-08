@@ -100,6 +100,7 @@ export const fieldLabels = (field: string) => ({
   details: t`Details zu ${field}`,
   min: t`Minimum ${field}`,
   max: t`Maximum ${field}`,
+  confirmDomain: t`Vorschlag für ${field} bestätigen`,
 })
 
 /** "1 Datensatz", "1'200 Datensätze". */

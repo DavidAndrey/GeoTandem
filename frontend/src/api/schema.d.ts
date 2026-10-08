@@ -626,6 +626,27 @@ export interface paths {
     patch: operations['update_llm_connection_api_admin_llm_connections__connection_id__patch']
     trace?: never
   }
+  '/api/admin/llm/profile': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Account Profile
+     * @description The layer profile a model would get for ``account``: only what that account
+     *     sees and the administrator released for the model (F-9.3, F-5.10).
+     */
+    get: operations['account_profile_api_admin_llm_profile_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/auth/setup': {
     parameters: {
       query?: never
@@ -1097,6 +1118,8 @@ export interface components {
       value_domain: {
         [key: string]: unknown
       } | null
+      /** Value Domain Confirmed */
+      value_domain_confirmed: boolean
       /** For Model */
       for_model: boolean
       /** References */
@@ -2263,8 +2286,9 @@ export interface components {
      * LayerProfile
      * @description What the model learns about a layer: structure and meaning, never content (F-9.3).
      *
-     *     Derived from the metadata (F-2.8); only layers and attributes marked
-     *     ``for_model``. E2.2 limits it to the layers visible to the user.
+     *     Metadata only (S1): nothing computed from the rows, so no feature count, no
+     *     extent, no distinct values. A value domain counts only once confirmed (S2).
+     *     Only layers and attributes marked ``for_model``.
      */
     LayerProfile: {
       /** Name */
@@ -2277,8 +2301,6 @@ export interface components {
       kind: string
       /** Geometry Type */
       geometry_type?: string | null
-      /** Feature Count */
-      feature_count: number
       /** Attributes */
       attributes: components['schemas']['AttributeProfile'][]
     }
@@ -2384,6 +2406,26 @@ export interface components {
       details?: {
         [key: string]: unknown
       }
+    }
+    /**
+     * ModelProfile
+     * @description Every layer an account's model may know of, in canonical form (S3, S4).
+     *
+     *     ``hash`` is SHA-256 over the canonical JSON of ``profile_version`` and
+     *     ``layers``: two calls with the same hash asked about the same world (E3).
+     */
+    ModelProfile: {
+      /**
+       * Profile Version
+       * @default 1
+       */
+      profile_version: number
+      /** Layers */
+      layers: components['schemas']['LayerProfile'][]
+      /** Hash */
+      hash: string
+      /** Size Chars */
+      size_chars: number
     }
     /**
      * NearFeature
@@ -6003,6 +6045,82 @@ export interface operations {
       }
       /** @description Conflict */
       409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Content Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  account_profile_api_admin_llm_profile_get: {
+    parameters: {
+      query: {
+        account: string
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ModelProfile']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
         headers: {
           [name: string]: unknown
         }

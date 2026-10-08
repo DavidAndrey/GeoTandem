@@ -4,7 +4,7 @@ expressible as one query object (F-5.7)."""
 
 from pydantic import BaseModel, Field
 
-from geotandem.catalog import LayerInfo, get_layer, list_layers
+from geotandem.catalog import LayerProfile, model_profile
 from geotandem.engine import QueryResult, run_query
 from geotandem.engine.errors import UnknownLayer
 from geotandem.levels import OpClass
@@ -17,11 +17,13 @@ class NoArguments(BaseModel):
 
 
 class LayerSummary(BaseModel):
+    """A layer as the model first meets it: no counts, nothing from the rows (S1)."""
+
     name: str
     title: str
+    description: str | None
     kind: str
     geometry_type: str | None
-    feature_count: int
 
 
 class LayerList(BaseModel):
@@ -36,21 +38,31 @@ class RunQueryArguments(BaseModel):
     query: QueryObject
 
 
+def _profiles(context: ToolContext) -> list[LayerProfile]:
+    """The layer profile of the account the tools run as (plan E2.2, S3)."""
+    return model_profile(context.backend.engine, context.backend.layer_names()).layers
+
+
 def _list_layers(context: ToolContext, _: NoArguments) -> LayerList:
     return LayerList(
         layers=[
-            LayerSummary.model_validate(info.model_dump())
-            for info in list_layers(context.backend.engine, only=context.backend.layer_names())
+            LayerSummary(
+                name=p.name,
+                title=p.title,
+                description=p.description,
+                kind=p.kind,
+                geometry_type=p.geometry_type,
+            )
+            for p in _profiles(context)
         ]
     )
 
 
-def _describe_layer(context: ToolContext, args: LayerName) -> LayerInfo:
-    visible = args.layer in context.backend.layer_names()
-    info = get_layer(context.backend.engine, args.layer) if visible else None
-    if info is None:
+def _describe_layer(context: ToolContext, args: LayerName) -> LayerProfile:
+    found = next((p for p in _profiles(context) if p.name == args.layer), None)
+    if found is None:
         raise UnknownLayer(f"Unknown layer '{args.layer}'.", layer=args.layer)
-    return info
+    return found
 
 
 def _run_query(context: ToolContext, args: RunQueryArguments) -> QueryResult:
@@ -62,7 +74,7 @@ def default_registry() -> ToolRegistry:
     registry.register(
         Tool(
             name="list_layers",
-            description="List all layers with kind, geometry type and feature count.",
+            description="List the layers you may use, with title, kind and geometry type.",
             input_model=NoArguments,
             output_model=LayerList,
             effect="read",
@@ -75,7 +87,7 @@ def default_registry() -> ToolRegistry:
             name="describe_layer",
             description="Describe one layer: attributes with label, type, unit and value domain.",
             input_model=LayerName,
-            output_model=LayerInfo,
+            output_model=LayerProfile,
             effect="read",
             op_class=OpClass.CATALOG,
             handler=_describe_layer,

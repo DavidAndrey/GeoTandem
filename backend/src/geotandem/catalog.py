@@ -1,5 +1,7 @@
 """The layer registry (F-2.7, F-2.8) as API-ready models, and its curation."""
 
+import hashlib
+import json
 from collections.abc import Collection
 from datetime import datetime
 from typing import Annotated, Any, Literal
@@ -19,6 +21,9 @@ class AttributeInfo(BaseModel):
     description: str
     unit: str | None
     value_domain: dict[str, Any] | None
+    value_domain_confirmed: bool
+    """False: proposed from the data at import, not yet confirmed; the model does not
+    see it (plan E2.2, S2). Saving the attribute's value domain confirms it."""
     for_model: bool
     references: str | None
 
@@ -152,11 +157,15 @@ def update_attribute(
             if key == "unit" and value == "":
                 value = None
             setattr(row, key, value)
+        if "value_domain" in update.model_fields_set:
+            row.value_domain_confirmed = True  # the administrator saw and kept it (S2)
         session.flush()
         return AttributeInfo.model_validate(row, from_attributes=True)
 
 
-# --- layer profile (F-2.9) ----------------------------------------------------
+# --- layer profile (F-2.9, plan E2.2) --------------------------------------------
+
+PROFILE_VERSION = 1
 
 
 class AttributeProfile(BaseModel):
@@ -173,8 +182,9 @@ class AttributeProfile(BaseModel):
 class LayerProfile(BaseModel):
     """What the model learns about a layer: structure and meaning, never content (F-9.3).
 
-    Derived from the metadata (F-2.8); only layers and attributes marked
-    ``for_model``. E2.2 limits it to the layers visible to the user.
+    Metadata only (S1): nothing computed from the rows, so no feature count, no
+    extent, no distinct values. A value domain counts only once confirmed (S2).
+    Only layers and attributes marked ``for_model``.
     """
 
     name: str
@@ -182,8 +192,21 @@ class LayerProfile(BaseModel):
     description: str | None = None
     kind: str
     geometry_type: str | None = None
-    feature_count: int
     attributes: list[AttributeProfile]
+
+
+class ModelProfile(BaseModel):
+    """Every layer an account's model may know of, in canonical form (S3, S4).
+
+    ``hash`` is SHA-256 over the canonical JSON of ``profile_version`` and
+    ``layers``: two calls with the same hash asked about the same world (E3).
+    """
+
+    profile_version: int = PROFILE_VERSION
+    layers: list[LayerProfile]
+    hash: str
+    size_chars: int
+    """Characters of the canonical form, as the model receives it."""
 
 
 def profile(layer: LayerInfo) -> LayerProfile | None:
@@ -193,7 +216,7 @@ def profile(layer: LayerInfo) -> LayerProfile | None:
     for a in layer.attributes:
         if not a.for_model:
             continue
-        domain = a.value_domain or {}
+        domain = (a.value_domain or {}) if a.value_domain_confirmed else {}
         has_range = "min" in domain and "max" in domain
         attributes.append(
             AttributeProfile(
@@ -213,6 +236,34 @@ def profile(layer: LayerInfo) -> LayerProfile | None:
         description=layer.description or None,
         kind=layer.kind,
         geometry_type=layer.geometry_type,
-        feature_count=layer.feature_count,
         attributes=attributes,
+    )
+
+
+def _canonical(data: Any) -> str:
+    """Stable JSON: sorted keys, no spaces."""
+    return json.dumps(data, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def model_profile(engine: Engine, visible: Collection[str]) -> ModelProfile:
+    """The profile for an account that sees ``visible`` (S3): layers for the model
+    and visible, attributes for the model; a reference kept only when its target
+    is in the same profile, so no hidden layer is named."""
+    layers = [p for p in map(profile, list_layers(engine, only=visible)) if p is not None]
+    present = {(p.name, a.name) for p in layers for a in p.attributes}
+    for p in layers:
+        for a in p.attributes:
+            if a.references is not None:
+                target = tuple(a.references.split(".", 1))
+                if target not in present:
+                    a.references = None
+    body = {
+        "profile_version": PROFILE_VERSION,
+        "layers": [p.model_dump(exclude_none=True) for p in layers],
+    }
+    text = _canonical(body)
+    return ModelProfile(
+        layers=layers,
+        hash=hashlib.sha256(text.encode()).hexdigest(),
+        size_chars=len(text),
     )

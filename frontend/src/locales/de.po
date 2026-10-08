@@ -11,6 +11,10 @@ msgstr ""
 msgid " (Tabelle)"
 msgstr " (Tabelle)"
 
+#: src/admin/ProfilePage.tsx
+msgid "– wählen –"
+msgstr "– wählen –"
+
 #: src/queries/SavedQueries.tsx
 msgid "· geändert"
 msgstr "· geändert"
@@ -194,6 +198,10 @@ msgstr "{layer} für Anwender"
 msgid "{layer}: {objects} → {read} in der Datei. Felder: {changes}"
 msgstr "{layer}: {objects} → {read} in der Datei. Felder: {changes}"
 
+#: src/admin/ProfilePage.tsx
+msgid "{low} bis {high}"
+msgstr "{low} bis {high}"
+
 #: src/editor/describe.ts
 msgid "{m} m"
 msgstr "{m} m"
@@ -258,6 +266,10 @@ msgstr "{s} s"
 #: src/i18n/phrases.ts
 msgid "{shown} von {all}"
 msgstr "{shown} von {all}"
+
+#: src/admin/ProfilePage.tsx
+msgid "{size} Zeichen"
+msgstr "{size} Zeichen"
 
 #: src/map/Measurement.tsx
 msgid "{surface} · Umfang {length}"
@@ -523,6 +535,10 @@ msgstr "Als Ergebnis-Layer"
 #: src/admin/ConnectionsPage.tsx
 msgid "Als extern behandeln, obwohl der Host lokal ist"
 msgstr "Als extern behandeln, obwohl der Host lokal ist"
+
+#: src/admin/ProfilePage.tsx
+msgid "Als JSON"
+msgstr "Als JSON"
 
 #: src/queries/SavedQueries.tsx
 msgid "als Kopie"
@@ -791,6 +807,7 @@ msgstr "Bewertung"
 
 #: src/admin/ImportWizard.tsx
 #: src/admin/LayerPage.tsx
+#: src/admin/ProfilePage.tsx
 msgid "Bezeichnung"
 msgstr "Bezeichnung"
 
@@ -802,6 +819,7 @@ msgstr "Bezeichnung {field}"
 msgid "Beziehung"
 msgstr "Beziehung"
 
+#: src/admin/ProfilePage.tsx
 #: src/editor/EditorPanel.tsx
 msgid "Bezug"
 msgstr "Bezug"
@@ -848,6 +866,10 @@ msgstr "Bitte zuerst das Startpasswort ändern."
 #: src/admin/ConnectionsPage.tsx
 msgid "Budget für den Layer-Steckbrief; wird nicht gesendet."
 msgstr "Budget für den Layer-Steckbrief; wird nicht gesendet."
+
+#: src/admin/ProfilePage.tsx
+msgid "Codeliste ({count})"
+msgstr "Codeliste ({count})"
 
 #: src/admin/LayerPage.tsx
 msgid "Codeliste (je Zeile „Code = Bedeutung\")"
@@ -1121,6 +1143,10 @@ msgstr "Der Layer und seine {count} Objekte werden endgültig entfernt. Abfragen
 #: src/workplace/LayerPanel.tsx
 msgid "Der Layer wird in einer Bedingung verwendet; die Bedingung wirkt weiter, der Layer wird nur nicht mehr angezeigt."
 msgstr "Der Layer wird in einer Bedingung verwendet; die Bedingung wirkt weiter, der Layer wird nur nicht mehr angezeigt."
+
+#: src/admin/ProfilePage.tsx
+msgid "Der Layer-Steckbrief, den ein Modell für ein Konto erhält: nur Metadaten, nur Layer, die das Konto sieht und die für das Modell freigegeben sind. Keine Objektzahlen, keine Ausdehnung, keine Werte aus den Daten ausser bestätigten Codelisten."
+msgstr "Der Layer-Steckbrief, den ein Modell für ein Konto erhält: nur Metadaten, nur Layer, die das Konto sieht und die für das Modell freigegeben sind. Keine Objektzahlen, keine Ausdehnung, keine Werte aus den Daten ausser bestätigten Codelisten."
 
 #: src/admin/wizard.ts
 msgid "Der Layername besteht aus Kleinbuchstaben, Ziffern und einzelnen Unterstrichen und beginnt mit einem Buchstaben."
@@ -1503,6 +1529,7 @@ msgstr "Eingeschränkt"
 
 #: src/admin/ImportWizard.tsx
 #: src/admin/LayerPage.tsx
+#: src/admin/ProfilePage.tsx
 #: src/operations/OperationDialog.tsx
 msgid "Einheit"
 msgstr "Einheit"
@@ -1734,6 +1761,7 @@ msgid "fehlgeschlagen"
 msgstr "fehlgeschlagen"
 
 #: src/admin/LayerPage.tsx
+#: src/admin/ProfilePage.tsx
 #: src/editor/EditorPanel.tsx
 #: src/operations/OperationDialog.tsx
 msgid "Feld"
@@ -1820,6 +1848,10 @@ msgstr "Für Anwender wählbar"
 #: src/admin/LayerPage.tsx
 msgid "Für das Modell sichtbar (wirkt ab E2)"
 msgstr "Für das Modell sichtbar (wirkt ab E2)"
+
+#: src/admin/ProfilePage.tsx
+msgid "Für dieses Konto kennt das Modell keinen Layer."
+msgstr "Für dieses Konto kennt das Modell keinen Layer."
 
 #: src/admin/CatalogPage.tsx
 #: src/admin/ImportWizard.tsx
@@ -1954,6 +1986,10 @@ msgstr "gleiche Intervalle"
 #: src/operations/OperationDialog.tsx
 msgid "Gleichnamige Felder erhalten das Präfix „{prefix}\"."
 msgstr "Gleichnamige Felder erhalten das Präfix „{prefix}\"."
+
+#: src/admin/ProfilePage.tsx
+msgid "Grösse"
+msgstr "Grösse"
 
 #: src/admin/ImportRunPage.tsx
 msgid "Grund"
@@ -2242,6 +2278,7 @@ msgstr "Komma"
 msgid "Kontextlänge"
 msgstr "Kontextlänge"
 
+#: src/admin/ProfilePage.tsx
 #: src/admin/UsersPage.tsx
 msgid "Konto"
 msgstr "Konto"
@@ -2285,6 +2322,7 @@ msgstr "läuft"
 
 #: src/admin/CatalogPage.tsx
 #: src/admin/ImportLogPage.tsx
+#: src/admin/ProfilePage.tsx
 #: src/admin/VisibilityPage.tsx
 #: src/workplace/AddLayers.tsx
 #: src/workplace/LayerPanel.tsx
@@ -2763,6 +2801,10 @@ msgstr "Prüfen"
 msgid "Prüfen und übernehmen"
 msgstr "Prüfen und übernehmen"
 
+#: src/admin/ProfilePage.tsx
+msgid "Prüfsumme"
+msgstr "Prüfsumme"
+
 #: src/operations/OperationDialog.tsx
 msgid "Puffer"
 msgstr "Puffer"
@@ -3164,6 +3206,7 @@ msgstr "Trennzeichen „{delimiter}\""
 
 #: src/admin/CatalogPage.tsx
 #: src/admin/LayerPage.tsx
+#: src/admin/ProfilePage.tsx
 msgid "Typ"
 msgstr "Typ"
 
@@ -3307,6 +3350,10 @@ msgstr "Vorgang"
 msgid "Vorschau"
 msgstr "Vorschau"
 
+#: src/admin/format.ts
+msgid "Vorschlag für {field} bestätigen"
+msgstr "Vorschlag für {field} bestätigen"
+
 #: src/admin/ImportRunPage.tsx
 #: src/admin/ImportWizard.tsx
 msgid "Warnung"
@@ -3315,6 +3362,11 @@ msgstr "Warnung"
 #: src/admin/LevelsPage.tsx
 msgid "Was das Modell darf"
 msgstr "Was das Modell darf"
+
+#: src/admin/AdminLayout.tsx
+#: src/admin/ProfilePage.tsx
+msgid "Was das Modell sieht"
+msgstr "Was das Modell sieht"
 
 #: src/workplace/ResultSelect.tsx
 msgid "Wechseln"
@@ -3353,8 +3405,17 @@ msgid "Wert hinzufügen"
 msgstr "Wert hinzufügen"
 
 #: src/admin/LayerPage.tsx
+#: src/admin/ProfilePage.tsx
 msgid "Wertebereich"
 msgstr "Wertebereich"
+
+#: src/admin/LayerPage.tsx
+msgid "Wertebereich bzw. Codeliste stammen aus den Daten des Imports. Das Modell sieht sie erst, wenn Sie sie bestätigen oder ändern."
+msgstr "Wertebereich bzw. Codeliste stammen aus den Daten des Imports. Das Modell sieht sie erst, wenn Sie sie bestätigen oder ändern."
+
+#: src/admin/ImportWizard.tsx
+msgid "Wertebereiche und Codelisten schlägt der Import aus den Daten vor. Das Modell sieht sie erst, wenn Sie sie im Layer bestätigen; eine bestätigte Codeliste erreicht das Modell."
+msgstr "Wertebereiche und Codelisten schlägt der Import aus den Daten vor. Das Modell sieht sie erst, wenn Sie sie im Layer bestätigen; eine bestätigte Codeliste erreicht das Modell."
 
 #: src/operations/OperationDialog.tsx
 msgid "Wie der Layer auf der Karte erscheint (F-4.8)."

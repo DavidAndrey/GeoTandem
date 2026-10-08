@@ -269,6 +269,8 @@ export function AttributeRows({ layer, attribute }: { layer: string; attribute: 
   const [min, setMin] = useState(domain.min !== undefined ? String(domain.min) : '')
   const [max, setMax] = useState(domain.max !== undefined ? String(domain.max) : '')
   const [codes, setCodes] = useState(formatCodes(domain.codes as Record<string, string>))
+  const proposed = attribute.value_domain !== null && !attribute.value_domain_confirmed
+  const [confirm, setConfirm] = useState(false)
 
   const valueDomain = numeric
     ? min === '' && max === ''
@@ -281,10 +283,26 @@ export function AttributeRows({ layer, attribute }: { layer: string; attribute: 
         })()
       : null
 
+  // The domain is sent only when changed or confirmed: saving a label must not
+  // confirm a proposal from the data the administrator has not looked at (S2).
+  const stored = numeric
+    ? 'min' in domain || 'max' in domain
+      ? { min: domain.min ?? null, max: domain.max ?? null }
+      : null
+    : domain.codes
+      ? { codes: domain.codes }
+      : null
+  const domainChanged = JSON.stringify(valueDomain) !== JSON.stringify(stored)
   const save = () =>
     update.mutate({
       attribute: attribute.name,
-      body: { label, unit, for_model: forModel, description, value_domain: valueDomain },
+      body: {
+        label,
+        unit,
+        for_model: forModel,
+        description,
+        ...(domainChanged || confirm ? { value_domain: valueDomain } : {}),
+      },
     })
 
   return (
@@ -398,6 +416,24 @@ export function AttributeRows({ layer, attribute }: { layer: string; attribute: 
                 <p className="text-sm">
                   <KeyReference target={attribute.references} />
                 </p>
+              )}
+              {proposed && (
+                <div className="col-span-2 text-sm">
+                  <p className="text-muted">
+                    <Trans>
+                      Wertebereich bzw. Codeliste stammen aus den Daten des Imports. Das Modell
+                      sieht sie erst, wenn Sie sie bestätigen oder ändern.
+                    </Trans>
+                  </p>
+                  <label className="mt-1 flex items-center gap-1.5">
+                    <input
+                      type="checkbox"
+                      checked={confirm}
+                      onChange={(e) => setConfirm(e.target.checked)}
+                    />
+                    {fieldLabels(attribute.name).confirmDomain}
+                  </label>
+                </div>
               )}
             </div>
             <ErrorNotice error={update.error} />

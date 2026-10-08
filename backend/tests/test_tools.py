@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from geotandem.catalog import LayerInfo
+from geotandem.catalog import LayerProfile
 from geotandem.data import DataBackend, Limits
 from geotandem.engine import QueryError, QueryResult
 from geotandem.levels import OpClass
@@ -54,7 +54,7 @@ def test_list_and_describe_layers(context: ToolContext) -> None:
         "gemeindedaten", "gemeinden", "gewaesser", "haltestellen", "schulen", "strassen",
     ]  # fmt: skip
     info = registry.get("describe_layer").call(context, {"layer": "schulen"})
-    assert isinstance(info, LayerInfo)
+    assert isinstance(info, LayerProfile)
     assert info.attributes[-1].label == "Anzahl Schulhäuser"
 
 

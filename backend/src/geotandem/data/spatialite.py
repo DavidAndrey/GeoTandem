@@ -270,6 +270,7 @@ class SpatiaLiteBackend:
                     description=a.description,
                     unit=a.unit,
                     value_domain=a.value_domain,
+                    value_domain_confirmed=a.value_domain_confirmed,
                     for_model=a.for_model,
                     references=a.references,
                 )
@@ -467,6 +468,7 @@ def _attribute(spec: AttributeSpec, position: int) -> LayerAttribute:
         description=spec.description,
         unit=spec.unit,
         value_domain=spec.value_domain,
+        value_domain_confirmed=spec.value_domain_confirmed,
         for_model=spec.for_model,
         references=spec.references,
     )
