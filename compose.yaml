@@ -3,6 +3,8 @@
 #
 #   docker compose up -d --build
 #   GEOTANDEM_PORT=8080 GEOTANDEM_BASEMAP=swisstopo-grau docker compose up -d
+#
+# The network `llm` must exist (see the end of this file).
 
 services:
   geotandem:
@@ -15,8 +17,10 @@ services:
       - "${GEOTANDEM_PORT:-8000}:8000"
     volumes:
       - ./data:/data
-    # An Ollama next to the container is http://host.docker.internal:11434/v1
-    # (README, "Modellanbindungen"); on Linux this name needs the gateway entry.
+    # Ollama as a container is http://ollama:11434/v1 on the shared network `llm`;
+    # a native Ollama is http://host.docker.internal:11434/v1, and on Linux that
+    # name needs the gateway entry (docs/ollama.md).
+    networks: [default, llm]
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
@@ -36,4 +40,10 @@ services:
       GEOTANDEM_MAX_FEATURES: ${GEOTANDEM_MAX_FEATURES:-10000}
       GEOTANDEM_QUERY_TIMEOUT_S: ${GEOTANDEM_QUERY_TIMEOUT_S:-10}
       GEOTANDEM_MAX_IMPORT_MB: ${GEOTANDEM_MAX_IMPORT_MB:-200}
-      GEOTANDEM_LLM_LOCAL_HOSTS: ${GEOTANDEM_LLM_LOCAL_HOSTS:-}
+      GEOTANDEM_LLM_LOCAL_HOSTS: ${GEOTANDEM_LLM_LOCAL_HOSTS:-ollama}
+
+networks:
+  # Created by the Ollama project (docs/ollama.md), which has to be started first.
+  # Without Ollama as a container: `docker network create llm`.
+  llm:
+    external: true
