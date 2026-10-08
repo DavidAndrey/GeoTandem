@@ -45,10 +45,11 @@ ignore_missing_imports = true
 exclude = ["/migrations/"]
 
 [[tool.mypy.overrides]]
-module = ["geotandem_query.*", "geotandem.data.*", "geotandem.engine.*"]
+module = ["geotandem_query.*", "geotandem.data.*", "geotandem.engine.*", "geotandem.llm.*"]
 strict = true
 
 [tool.pytest.ini_options]
 testpaths = ["packages/query/tests", "backend/tests"]
-addopts = "-q"
+addopts = "-q -m 'not llm'"
+markers = ["llm: needs a real model endpoint; opt-in with -m llm (plan WP56)"]
 asyncio_mode = "auto"

@@ -666,6 +666,10 @@ msgstr "beginnt mit"
 msgid "bei {feature} ({layer})"
 msgstr "bei {feature} ({layer})"
 
+#: src/i18n/errors.ts
+msgid "Beim Modell ist ein Fehler aufgetreten."
+msgstr "Beim Modell ist ein Fehler aufgetreten."
+
 #: src/admin/format.ts
 msgid "Beispieldaten"
 msgstr "Beispieldaten"
@@ -863,6 +867,22 @@ msgstr "Das Koordinatensystem ist nicht erkennbar; bitte wählen."
 msgid "Das Lesen der Datei hat zu lange gedauert und wurde abgebrochen."
 msgstr "Das Lesen der Datei hat zu lange gedauert und wurde abgebrochen."
 
+#: src/i18n/errors.ts
+msgid "Das Modell hat die Anfrage abgelehnt."
+msgstr "Das Modell hat die Anfrage abgelehnt."
+
+#: src/i18n/errors.ts
+msgid "Das Modell hat nicht rechtzeitig geantwortet."
+msgstr "Das Modell hat nicht rechtzeitig geantwortet."
+
+#: src/i18n/errors.ts
+msgid "Das Modell ist nicht erreichbar."
+msgstr "Das Modell ist nicht erreichbar."
+
+#: src/i18n/errors.ts
+msgid "Das Modell nimmt gerade keine weiteren Anfragen an."
+msgstr "Das Modell nimmt gerade keine weiteren Anfragen an."
+
 #: src/auth/rules.ts
 msgid "Das neue Passwort braucht mindestens {MIN_PASSWORD_LENGTH} Zeichen."
 msgstr "Das neue Passwort braucht mindestens {MIN_PASSWORD_LENGTH} Zeichen."
@@ -1030,6 +1050,10 @@ msgstr "Der Vorgang wurde unerwartet abgebrochen."
 msgid "Der Wert passt nicht zum Feld „{attribute}\"."
 msgstr "Der Wert passt nicht zum Feld „{attribute}\"."
 
+#: src/i18n/errors.ts
+msgid "Der Zugangsschlüssel wurde abgelehnt."
+msgstr "Der Zugangsschlüssel wurde abgelehnt."
+
 #: src/admin/format.ts
 msgid "Details zu {field}"
 msgstr "Details zu {field}"
@@ -1058,6 +1082,14 @@ msgstr "Die Abfrage wird endgültig gelöscht."
 msgid "Die Administration steht nur Administratoren offen."
 msgstr "Die Administration steht nur Administratoren offen."
 
+#: src/i18n/errors.ts
+msgid "Die Adresse leitet weiter; Weiterleitungen werden nicht befolgt. Bitte die endgültige Adresse eintragen."
+msgstr "Die Adresse leitet weiter; Weiterleitungen werden nicht befolgt. Bitte die endgültige Adresse eintragen."
+
+#: src/i18n/errors.ts
+msgid "Die Adresse muss mit http:// oder https:// beginnen, einen Host nennen und darf keine Zugangsdaten enthalten."
+msgstr "Die Adresse muss mit http:// oder https:// beginnen, einen Host nennen und darf keine Zugangsdaten enthalten."
+
 #: src/queries/SavedQueries.tsx
 msgid "Die aktuelle Abfrage hat Änderungen, die in keiner gespeicherten Abfrage stehen. „{name}\" ersetzt sie."
 msgstr "Die aktuelle Abfrage hat Änderungen, die in keiner gespeicherten Abfrage stehen. „{name}\" ersetzt sie."
@@ -1077,6 +1109,10 @@ msgstr "Die Anfrage ist grösser als {mb} MB."
 #: src/i18n/errors.ts
 msgid "Die Anfrage wurde abgelehnt."
 msgstr "Die Anfrage wurde abgelehnt."
+
+#: src/i18n/errors.ts
+msgid "Die Antwort des Modells hat nicht die erwartete Form."
+msgstr "Die Antwort des Modells hat nicht die erwartete Form."
 
 #: src/i18n/errors.ts
 msgid "Die Anwendung ist bereits eingerichtet."
@@ -1201,6 +1237,10 @@ msgstr "Die Wiederholung stimmt nicht überein."
 #: src/queries/actions.ts
 msgid "Diese Abfrage wurde mit einem unbekannten Format gespeichert."
 msgstr "Diese Abfrage wurde mit einem unbekannten Format gespeichert."
+
+#: src/i18n/errors.ts
+msgid "Diese Adresse oder dieses Modell gibt es dort nicht."
+msgstr "Diese Adresse oder dieses Modell gibt es dort nicht."
 
 #: src/i18n/errors.ts
 msgid "Diese Operation geht hier nicht."

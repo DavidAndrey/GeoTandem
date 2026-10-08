@@ -129,6 +129,19 @@ const MESSAGES: Record<string, Words> = {
     const name = text(d.name)
     return t`Die voreingestellte Stufe „${name}" muss für Anwender wählbar sein.`
   },
+  // Model connections
+  llm_invalid_url: () =>
+    t`Die Adresse muss mit http:// oder https:// beginnen, einen Host nennen und darf keine Zugangsdaten enthalten.`,
+  llm_unreachable: () => t`Das Modell ist nicht erreichbar.`,
+  llm_timeout: () => t`Das Modell hat nicht rechtzeitig geantwortet.`,
+  llm_redirect: () =>
+    t`Die Adresse leitet weiter; Weiterleitungen werden nicht befolgt. Bitte die endgültige Adresse eintragen.`,
+  llm_unauthorized: () => t`Der Zugangsschlüssel wurde abgelehnt.`,
+  llm_not_found: () => t`Diese Adresse oder dieses Modell gibt es dort nicht.`,
+  llm_rate_limited: () => t`Das Modell nimmt gerade keine weiteren Anfragen an.`,
+  llm_server_error: () => t`Beim Modell ist ein Fehler aufgetreten.`,
+  llm_rejected: () => t`Das Modell hat die Anfrage abgelehnt.`,
+  llm_bad_response: () => t`Die Antwort des Modells hat nicht die erwartete Form.`,
   // Import: refusals
   unreadable_source: () => t`Die Datei kann so nicht gelesen werden.`,
   too_many_pending_imports: () =>

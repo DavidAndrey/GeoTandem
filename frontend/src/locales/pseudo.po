@@ -666,6 +666,10 @@ msgstr ""
 msgid "bei {feature} ({layer})"
 msgstr ""
 
+#: src/i18n/errors.ts
+msgid "Beim Modell ist ein Fehler aufgetreten."
+msgstr ""
+
 #: src/admin/format.ts
 msgid "Beispieldaten"
 msgstr ""
@@ -863,6 +867,22 @@ msgstr ""
 msgid "Das Lesen der Datei hat zu lange gedauert und wurde abgebrochen."
 msgstr ""
 
+#: src/i18n/errors.ts
+msgid "Das Modell hat die Anfrage abgelehnt."
+msgstr ""
+
+#: src/i18n/errors.ts
+msgid "Das Modell hat nicht rechtzeitig geantwortet."
+msgstr ""
+
+#: src/i18n/errors.ts
+msgid "Das Modell ist nicht erreichbar."
+msgstr ""
+
+#: src/i18n/errors.ts
+msgid "Das Modell nimmt gerade keine weiteren Anfragen an."
+msgstr ""
+
 #: src/auth/rules.ts
 msgid "Das neue Passwort braucht mindestens {MIN_PASSWORD_LENGTH} Zeichen."
 msgstr ""
@@ -1030,6 +1050,10 @@ msgstr ""
 msgid "Der Wert passt nicht zum Feld „{attribute}\"."
 msgstr ""
 
+#: src/i18n/errors.ts
+msgid "Der Zugangsschlüssel wurde abgelehnt."
+msgstr ""
+
 #: src/admin/format.ts
 msgid "Details zu {field}"
 msgstr ""
@@ -1058,6 +1082,14 @@ msgstr ""
 msgid "Die Administration steht nur Administratoren offen."
 msgstr ""
 
+#: src/i18n/errors.ts
+msgid "Die Adresse leitet weiter; Weiterleitungen werden nicht befolgt. Bitte die endgültige Adresse eintragen."
+msgstr ""
+
+#: src/i18n/errors.ts
+msgid "Die Adresse muss mit http:// oder https:// beginnen, einen Host nennen und darf keine Zugangsdaten enthalten."
+msgstr ""
+
 #: src/queries/SavedQueries.tsx
 msgid "Die aktuelle Abfrage hat Änderungen, die in keiner gespeicherten Abfrage stehen. „{name}\" ersetzt sie."
 msgstr ""
@@ -1076,6 +1108,10 @@ msgstr ""
 
 #: src/i18n/errors.ts
 msgid "Die Anfrage wurde abgelehnt."
+msgstr ""
+
+#: src/i18n/errors.ts
+msgid "Die Antwort des Modells hat nicht die erwartete Form."
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -1200,6 +1236,10 @@ msgstr ""
 
 #: src/queries/actions.ts
 msgid "Diese Abfrage wurde mit einem unbekannten Format gespeichert."
+msgstr ""
+
+#: src/i18n/errors.ts
+msgid "Diese Adresse oder dieses Modell gibt es dort nicht."
 msgstr ""
 
 #: src/i18n/errors.ts

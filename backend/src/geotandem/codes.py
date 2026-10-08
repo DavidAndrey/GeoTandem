@@ -63,6 +63,17 @@ CODES: dict[str, str] = {
     "level_name_taken": "Two levels share the name details.name.",
     "default_level_count": "Exactly one level must be the default.",
     "default_not_selectable": "The default level must be selectable by users.",
+    # Model connections: why a call brought no answer (details.cause, verbatim)
+    "llm_invalid_url": "The base URL is not http(s) with a host, or carries credentials.",
+    "llm_unreachable": "The model endpoint could not be reached.",
+    "llm_timeout": "The model did not answer within the timeout.",
+    "llm_redirect": "The endpoint redirected; redirects are not followed.",
+    "llm_unauthorized": "The endpoint refused the credentials.",
+    "llm_not_found": "The endpoint or the model does not exist.",
+    "llm_rate_limited": "The endpoint limits requests; retried and gave up.",
+    "llm_server_error": "The endpoint failed (HTTP 5xx).",
+    "llm_rejected": "The endpoint rejected the request (HTTP 4xx).",
+    "llm_bad_response": "The endpoint's answer is not a valid response.",
     # Import: refusals (details.reason of unreadable_source) and the run
     "unreadable_source": "The file cannot be read as given; details.reason says why.",
     "too_many_pending_imports": "Too many uploaded files wait for their import.",

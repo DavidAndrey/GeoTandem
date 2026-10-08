@@ -19,6 +19,8 @@ dependencies = [
     "python-multipart>=0.0.20",
     "argon2-cffi>=25.1",
     "defusedxml>=0.7",
+    "openai>=3.26,<4",
+    "httpx2>=2.13,<3",
 ]
 
 [project.scripts]
