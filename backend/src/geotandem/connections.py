@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field, SecretStr, StringConstraints
 from sqlalchemy import Engine, select, update
 from sqlalchemy.orm import Session
 
+from geotandem.connection_check import CheckResult
 from geotandem.db.orm import LLMConnection, User
 from geotandem.db.spatialite import reading
 from geotandem.llm import Effort, Endpoint, LLMError, Locality, classify_host, host_of
@@ -40,10 +41,9 @@ class ConnectionProblem(Exception):
         self.details = details
 
 
-class ConnectionWrite(BaseModel):
-    """A new connection (C4). Unset defaults follow from local or external."""
+class CallParameters(BaseModel):
+    """How to call the model (C4): what an ``Endpoint`` is built from."""
 
-    name: Name
     base_url: BaseUrl
     model: ModelName
     api_key: ApiKey | None = None
@@ -53,13 +53,24 @@ class ConnectionWrite(BaseModel):
     reasoning_effort: Effort | None = Field(
         default=None, description="Unset: 'none' for a local connection, 'default' else (C10)."
     )
+    marked_external: bool = False
+
+
+def default_effort(local: bool) -> Effort:
+    """Thinking off where it costs local time, the provider's own choice else (C10)."""
+    return "none" if local else "default"
+
+
+class ConnectionWrite(CallParameters):
+    """A new connection (C4). Unset defaults follow from local or external."""
+
+    name: Name
     context_length: ContextLength | None = None
     enabled: bool = False
     is_default: bool = False
     may_receive_data: bool | None = Field(
         default=None, description="Unset: on for a local connection, off else (C6)."
     )
-    marked_external: bool = False
     confirm_data_release: bool = Field(
         default=False,
         description="Required to let an external connection receive data contents (C6).",
@@ -89,22 +100,14 @@ NULLABLE = frozenset({"api_key", "seed", "context_length"})
 """Patch fields where ``null`` is a value, not "unchanged"."""
 
 
-class ConnectionDraft(BaseModel):
+class ConnectionDraft(CallParameters):
     """What the connection test needs, before or without saving (C12).
 
     Editing a saved connection without retyping its key: name it in
     ``connection_id`` and the stored key is used.
     """
 
-    base_url: BaseUrl
-    model: ModelName
-    api_key: ApiKey | None = None
     connection_id: int | None = None
-    temperature: Temperature = 0
-    seed: int | None = 42
-    timeout_s: Timeout = 120
-    reasoning_effort: Effort | None = None
-    marked_external: bool = False
 
 
 class ConnectionInfo(BaseModel):
@@ -127,7 +130,7 @@ class ConnectionInfo(BaseModel):
     is_default: bool
     may_receive_data: bool
     marked_external: bool
-    last_test: dict[str, Any] | None
+    last_test: CheckResult | None
     created_at: datetime
     updated_at: datetime
 
@@ -164,14 +167,19 @@ class Connections:
         derived = classify_host(row.base_url, self.local_hosts)
         return "external" if row.marked_external or derived == "external" else "local"
 
-    def _readable(self, row: LLMConnection) -> bool:
-        if row.api_key is None:
-            return True
+    def is_local(self, base_url: str, marked_external: bool) -> bool:
+        """Local by host and not marked external; an invalid URL counts as external."""
         try:
-            self.vault.decrypt(row.api_key)
-        except CredentialsUnreadable:
+            return classify_host(base_url, self.local_hosts) == "local" and not marked_external
+        except LLMError:
             return False
-        return True
+
+    @staticmethod
+    def _row(session: Session, connection_id: int) -> LLMConnection:
+        row = session.get(LLMConnection, connection_id)
+        if row is None:
+            raise ConnectionProblem(404, "not_found", "Unknown connection.", id=connection_id)
+        return row
 
     def _info(self, row: LLMConnection) -> ConnectionInfo:
         return ConnectionInfo(
@@ -182,7 +190,7 @@ class Connections:
             locality=self.locality(row),
             model=row.model,
             has_api_key=row.api_key is not None,
-            credentials_unreadable=not self._readable(row),
+            credentials_unreadable=self._key(row)[1],
             temperature=row.temperature,
             seed=row.seed,
             timeout_s=row.timeout_s,
@@ -207,69 +215,52 @@ class Connections:
             row = session.get(LLMConnection, connection_id)
             return self._info(row) if row else None
 
-    def endpoint(self, connection_id: int) -> Endpoint:
-        """The parameters for a call, the key decrypted (C8). Raises
-        ``CredentialsUnreadable`` when the key cannot be opened."""
-        with Session(reading(self.engine)) as session:
-            row = session.get(LLMConnection, connection_id)
-            if row is None:
-                raise ConnectionProblem(404, "not_found", "Unknown connection.", id=connection_id)
-            return Endpoint(
-                base_url=row.base_url,
-                model=row.model,
-                api_key=self.vault.decrypt(row.api_key) if row.api_key else None,
-                temperature=row.temperature,
-                seed=row.seed,
-                timeout_s=row.timeout_s,
-                reasoning_effort=row.reasoning_effort,  # type: ignore[arg-type]
-            )
-
-    def _key(self, row: LLMConnection | None) -> tuple[str | None, bool]:
+    def _key(self, row: LLMConnection) -> tuple[str | None, bool]:
         """The stored key decrypted, and whether it could not be."""
-        if row is None or row.api_key is None:
+        if row.api_key is None:
             return None, False
         try:
             return self.vault.decrypt(row.api_key), False
         except CredentialsUnreadable:
             return None, True
 
+    def endpoint(self, connection_id: int) -> Endpoint:
+        """The parameters for a call, the key decrypted (C8). Raises
+        ``CredentialsUnreadable`` when the key cannot be opened."""
+        with Session(reading(self.engine)) as session:
+            row = self._row(session, connection_id)
+            return self._endpoint(row, self.vault.decrypt(row.api_key) if row.api_key else None)
+
+    @staticmethod
+    def _endpoint(row: LLMConnection, key: str | None) -> Endpoint:
+        return Endpoint(
+            base_url=row.base_url,
+            model=row.model,
+            api_key=key,
+            temperature=row.temperature,
+            seed=row.seed,
+            timeout_s=row.timeout_s,
+            reasoning_effort=row.reasoning_effort,  # type: ignore[arg-type]
+        )
+
     def for_test(self, connection_id: int) -> tuple[Endpoint, bool]:
         """A saved connection's endpoint for the test; an unreadable key is
         reported, not raised, so the test can say which step it breaks."""
         with Session(reading(self.engine)) as session:
-            row = session.get(LLMConnection, connection_id)
-            if row is None:
-                raise ConnectionProblem(404, "not_found", "Unknown connection.", id=connection_id)
+            row = self._row(session, connection_id)
             key, unreadable = self._key(row)
-            endpoint = Endpoint(
-                base_url=row.base_url,
-                model=row.model,
-                api_key=key,
-                temperature=row.temperature,
-                seed=row.seed,
-                timeout_s=row.timeout_s,
-                reasoning_effort=row.reasoning_effort,  # type: ignore[arg-type]
-            )
-        return endpoint, unreadable
+            return self._endpoint(row, key), unreadable
 
     def draft_for_test(self, draft: ConnectionDraft) -> tuple[Endpoint, bool]:
         key: str | None = draft.api_key.get_secret_value() if draft.api_key else None
         unreadable = False
         if key is None and draft.connection_id is not None:
             with Session(reading(self.engine)) as session:
-                row = session.get(LLMConnection, draft.connection_id)
-                if row is None:
-                    raise ConnectionProblem(
-                        404, "not_found", "Unknown connection.", id=draft.connection_id
-                    )
-                key, unreadable = self._key(row)
-        effort = draft.reasoning_effort
-        if effort is None:
-            try:
-                local = classify_host(draft.base_url, self.local_hosts) == "local"
-            except LLMError:
-                local = False  # the test's first step reports the URL
-            effort = "none" if local and not draft.marked_external else "default"
+                key, unreadable = self._key(self._row(session, draft.connection_id))
+        # An invalid URL takes the external default; the test's first step reports it.
+        effort = draft.reasoning_effort or default_effort(
+            self.is_local(draft.base_url, draft.marked_external)
+        )
         endpoint = Endpoint(
             base_url=draft.base_url,
             model=draft.model,
@@ -281,13 +272,13 @@ class Connections:
         )
         return endpoint, unreadable
 
-    def record_test(self, connection_id: int, result: dict[str, Any]) -> None:
+    def record_test(self, connection_id: int, result: CheckResult) -> None:
         """Keep the latest test with the connection (C12); the list shows it."""
         with Session(self.engine) as session, session.begin():
             session.execute(
                 update(LLMConnection)
                 .where(LLMConnection.id == connection_id)
-                .values(last_test=result)
+                .values(last_test=result.model_dump(mode="json"))
             )
 
     # --- writing -----------------------------------------------------------------
@@ -365,8 +356,7 @@ class Connections:
 
     def create(self, body: ConnectionWrite) -> ConnectionInfo:
         self._check_url(body.base_url)
-        local = classify_host(body.base_url, self.local_hosts) == "local"
-        local = local and not body.marked_external
+        local = self.is_local(body.base_url, body.marked_external)
         row = LLMConnection(
             name=body.name,
             base_url=body.base_url,
@@ -375,7 +365,7 @@ class Connections:
             temperature=body.temperature,
             seed=body.seed,
             timeout_s=body.timeout_s,
-            reasoning_effort=body.reasoning_effort or ("none" if local else "default"),
+            reasoning_effort=body.reasoning_effort or default_effort(local),
             context_length=body.context_length,
             enabled=body.enabled,
             is_default=body.is_default,
@@ -397,9 +387,7 @@ class Connections:
         """The connection after the patch, and the names of the fields that changed."""
         sent = patch.model_fields_set - {"confirm_data_release"}
         with Session(self.engine) as session, session.begin():
-            row = session.get(LLMConnection, connection_id)
-            if row is None:
-                raise ConnectionProblem(404, "not_found", "Unknown connection.", id=connection_id)
+            row = self._row(session, connection_id)
             released_before = row.may_receive_data and self.locality(row) == "external"
             had_default = self._had_default(session)
             changed: list[str] = []
@@ -426,9 +414,7 @@ class Connections:
     def delete(self, connection_id: int) -> None:
         """Accounts that chose it fall back to the default (C17, ON DELETE SET NULL)."""
         with Session(self.engine) as session, session.begin():
-            row = session.get(LLMConnection, connection_id)
-            if row is None:
-                raise ConnectionProblem(404, "not_found", "Unknown connection.", id=connection_id)
+            row = self._row(session, connection_id)
             had_default = self._had_default(session)
             session.delete(row)
             self._settle_default(session, None, had_default)

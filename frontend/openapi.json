@@ -6197,17 +6197,6 @@
             ],
             "title": "Api Key"
           },
-          "connection_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Connection Id"
-          },
           "temperature": {
             "type": "number",
             "maximum": 2.0,
@@ -6250,12 +6239,24 @@
                 "type": "null"
               }
             ],
-            "title": "Reasoning Effort"
+            "title": "Reasoning Effort",
+            "description": "Unset: 'none' for a local connection, 'default' else (C10)."
           },
           "marked_external": {
             "type": "boolean",
             "title": "Marked External",
             "default": false
+          },
+          "connection_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection Id"
           }
         },
         "type": "object",
@@ -6364,14 +6365,12 @@
           "last_test": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/CheckResult"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Last Test"
+            ]
           },
           "created_at": {
             "type": "string",
@@ -6632,12 +6631,6 @@
       },
       "ConnectionWrite": {
         "properties": {
-          "name": {
-            "type": "string",
-            "maxLength": 60,
-            "minLength": 1,
-            "title": "Name"
-          },
           "base_url": {
             "type": "string",
             "maxLength": 500,
@@ -6710,6 +6703,17 @@
             "title": "Reasoning Effort",
             "description": "Unset: 'none' for a local connection, 'default' else (C10)."
           },
+          "marked_external": {
+            "type": "boolean",
+            "title": "Marked External",
+            "default": false
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Name"
+          },
           "context_length": {
             "anyOf": [
               {
@@ -6745,11 +6749,6 @@
             "title": "May Receive Data",
             "description": "Unset: on for a local connection, off else (C6)."
           },
-          "marked_external": {
-            "type": "boolean",
-            "title": "Marked External",
-            "default": false
-          },
           "confirm_data_release": {
             "type": "boolean",
             "title": "Confirm Data Release",
@@ -6759,9 +6758,9 @@
         },
         "type": "object",
         "required": [
-          "name",
           "base_url",
-          "model"
+          "model",
+          "name"
         ],
         "title": "ConnectionWrite",
         "description": "A new connection (C4). Unset defaults follow from local or external."

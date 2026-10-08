@@ -186,16 +186,16 @@ class OpenAICompatClient:
         schema_name: str = "answer",
         tools: Sequence[ToolSpec] = (),
     ) -> Completion:
-        e = self.endpoint
+        endpoint = self.endpoint
         request: dict[str, Any] = {
-            "model": e.model,
+            "model": endpoint.model,
             "messages": [_wire(m) for m in messages],
-            "temperature": e.temperature,
+            "temperature": endpoint.temperature,
         }
-        if e.seed is not None:
-            request["seed"] = e.seed
-        if e.reasoning_effort != "default":
-            request["reasoning_effort"] = e.reasoning_effort
+        if endpoint.seed is not None:
+            request["seed"] = endpoint.seed
+        if endpoint.reasoning_effort != "default":
+            request["reasoning_effort"] = endpoint.reasoning_effort
         if schema is not None:
             request["response_format"] = {
                 "type": "json_schema",
@@ -220,7 +220,12 @@ class OpenAICompatClient:
                 lambda: self._sdk.chat.completions.create(**request)
             )
         except LLMError as exc:
-            log.info("llm call failed: model=%s code=%s retries=%d", e.model, exc.code, exc.retries)
+            log.info(
+                "llm call failed: model=%s code=%s retries=%d",
+                endpoint.model,
+                exc.code,
+                exc.retries,
+            )
             raise
         latency_ms = round((time.monotonic() - started) * 1000)
 
@@ -253,7 +258,7 @@ class OpenAICompatClient:
         log.info(
             "llm call: model=%s latency_ms=%d prompt_tokens=%s completion_tokens=%s "
             "tool_calls=%d parsed=%s retries=%d",
-            e.model,
+            endpoint.model,
             latency_ms,
             completion.prompt_tokens,
             completion.completion_tokens,

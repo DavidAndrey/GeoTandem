@@ -532,7 +532,7 @@ def llm_connections(state: State) -> list[ConnectionInfo]:
 
 
 def _check(
-    state: AppState, user: str, endpoint: Endpoint, unreadable: bool, id: int | None
+    state: AppState, user: str, endpoint: Endpoint, unreadable: bool, connection_id: int | None
 ) -> CheckResult:
     """Admin-only, it still dials an admin-entered URL into the network: every
     test is a security event (C13)."""
@@ -541,7 +541,7 @@ def _check(
     audit.event(
         "llm_connection_tested",
         username=user,
-        id=id,
+        id=connection_id,
         host=next((s.details.get("host") for s in result.steps if s.name == "url"), None),
         ok=result.ok,
         step=failed.name if failed else None,
@@ -562,7 +562,7 @@ def test_llm_connection(connection_id: int, state: State, user: Actor) -> CheckR
     """Test a saved connection and keep the result with it (C12)."""
     endpoint, unreadable = state.connections.for_test(connection_id)
     result = _check(state, user, endpoint, unreadable, connection_id)
-    state.connections.record_test(connection_id, result.model_dump(mode="json"))
+    state.connections.record_test(connection_id, result)
     return result
 
 

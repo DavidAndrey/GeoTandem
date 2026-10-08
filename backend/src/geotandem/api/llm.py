@@ -12,7 +12,7 @@ from geotandem.api.auth import CurrentAccount
 from geotandem.api.errors import ErrorBody
 from geotandem.api.state import AppState, get_state
 from geotandem.auth.accounts import Account
-from geotandem.connections import ConnectionOption
+from geotandem.connections import ConnectionChoice
 from geotandem.levels import active_level, choose_level, chosen_level_id, load_levels
 
 router = APIRouter(prefix="/api/llm", tags=["llm"])
@@ -29,13 +29,7 @@ class LevelOption(BaseModel):
     """False only in an administrator's list: users never see such a level (H6)."""
 
 
-class LLMOptions(BaseModel):
-    connections: list[ConnectionOption]
-    """Enabled connections; none when the administrator has set none up (C18)."""
-    chosen_connection_id: int | None
-    """The account's stored choice, even while that connection is disabled (C17)."""
-    active_connection_id: int | None
-    """What a model action would use now: the choice if enabled, else the default."""
+class LLMOptions(ConnectionChoice):
     levels: list[LevelOption]
     """The levels open to the account: the selectable ones, for administrators all."""
     chosen_level_id: int | None

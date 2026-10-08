@@ -1494,8 +1494,6 @@ export interface components {
       model: string
       /** Api Key */
       api_key?: string | null
-      /** Connection Id */
-      connection_id?: number | null
       /**
        * Temperature
        * @default 0
@@ -1511,13 +1509,18 @@ export interface components {
        * @default 120
        */
       timeout_s: number
-      /** Reasoning Effort */
+      /**
+       * Reasoning Effort
+       * @description Unset: 'none' for a local connection, 'default' else (C10).
+       */
       reasoning_effort?: ('default' | 'none' | 'low' | 'medium' | 'high') | null
       /**
        * Marked External
        * @default false
        */
       marked_external: boolean
+      /** Connection Id */
+      connection_id?: number | null
     }
     /** ConnectionInfo */
     ConnectionInfo: {
@@ -1561,10 +1564,7 @@ export interface components {
       may_receive_data: boolean
       /** Marked External */
       marked_external: boolean
-      /** Last Test */
-      last_test: {
-        [key: string]: unknown
-      } | null
+      last_test: components['schemas']['CheckResult'] | null
       /**
        * Created At
        * Format: date-time
@@ -1639,8 +1639,6 @@ export interface components {
      * @description A new connection (C4). Unset defaults follow from local or external.
      */
     ConnectionWrite: {
-      /** Name */
-      name: string
       /** Base Url */
       base_url: string
       /** Model */
@@ -1667,6 +1665,13 @@ export interface components {
        * @description Unset: 'none' for a local connection, 'default' else (C10).
        */
       reasoning_effort?: ('default' | 'none' | 'low' | 'medium' | 'high') | null
+      /**
+       * Marked External
+       * @default false
+       */
+      marked_external: boolean
+      /** Name */
+      name: string
       /** Context Length */
       context_length?: number | null
       /**
@@ -1684,11 +1689,6 @@ export interface components {
        * @description Unset: on for a local connection, off else (C6).
        */
       may_receive_data?: boolean | null
-      /**
-       * Marked External
-       * @default false
-       */
-      marked_external: boolean
       /**
        * Confirm Data Release
        * @description Required to let an external connection receive data contents (C6).

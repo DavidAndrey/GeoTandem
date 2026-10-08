@@ -205,7 +205,7 @@ export function useConnectionChange<T, R>(change: (args: T) => Promise<R>) {
     // The account's options show enabled connections: they change too.
     onSuccess: () =>
       client
-        .invalidateQueries({ queryKey: ['admin', 'llm'] })
+        .invalidateQueries({ queryKey: keys.connections })
         .then(() => client.invalidateQueries({ queryKey: keys.llmOptions })),
   })
 }

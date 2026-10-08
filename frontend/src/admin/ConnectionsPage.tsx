@@ -497,7 +497,7 @@ const deleteTitle = (name: string) => t`Anbindung „${name}" löschen?`
 const testTitle = (name: string) => t`Verbindungstest „${name}"`
 
 function LastTest({ connection }: { connection: ConnectionInfo }) {
-  const last = connection.last_test as CheckResult | null
+  const last = connection.last_test
   if (!last) return <span className="text-muted">–</span>
   const when = formatDateTime(last.tested_at)
   return (
