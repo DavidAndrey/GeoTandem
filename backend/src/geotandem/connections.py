@@ -3,7 +3,9 @@
 Local or external is derived from the host on every read (C5), never
 stored, so a changed ``GEOTANDEM_LLM_LOCAL_HOSTS`` takes effect at once.
 The API key is write-only: stored encrypted (C8), reported as
-``has_api_key``, decrypted only to build an ``Endpoint`` for a call.
+``has_api_key``, decrypted only to build an ``Endpoint`` for a call. It is
+bound to the address it was saved with: no test and no edit sends it to
+another one, else the key would be readable at a host of the admin's choice.
 """
 
 from collections.abc import Sequence
@@ -104,7 +106,7 @@ class ConnectionDraft(CallParameters):
     """What the connection test needs, before or without saving (C12).
 
     Editing a saved connection without retyping its key: name it in
-    ``connection_id`` and the stored key is used.
+    ``connection_id`` and the stored key is used, at its own address only.
     """
 
     connection_id: int | None = None
@@ -173,6 +175,17 @@ class Connections:
             return classify_host(base_url, self.local_hosts) == "local" and not marked_external
         except LLMError:
             return False
+
+    @staticmethod
+    def _key_stays(row: LLMConnection, base_url: str) -> None:
+        """The stored key goes to the address it was saved with, nowhere else (C8)."""
+        if row.api_key is not None and base_url != row.base_url:
+            raise ConnectionProblem(
+                400,
+                "api_key_bound_to_url",
+                "The stored API key goes only to its own address; enter it again.",
+                name=row.name,
+            )
 
     @staticmethod
     def _row(session: Session, connection_id: int) -> LLMConnection:
@@ -256,7 +269,9 @@ class Connections:
         unreadable = False
         if key is None and draft.connection_id is not None:
             with Session(reading(self.engine)) as session:
-                key, unreadable = self._key(self._row(session, draft.connection_id))
+                row = self._row(session, draft.connection_id)
+                self._key_stays(row, draft.base_url)
+                key, unreadable = self._key(row)
         # An invalid URL takes the external default; the test's first step reports it.
         effort = draft.reasoning_effort or default_effort(
             self.is_local(draft.base_url, draft.marked_external)
@@ -388,6 +403,8 @@ class Connections:
         sent = patch.model_fields_set - {"confirm_data_release"}
         with Session(self.engine) as session, session.begin():
             row = self._row(session, connection_id)
+            if "api_key" not in sent and patch.base_url is not None:
+                self._key_stays(row, patch.base_url)
             released_before = row.may_receive_data and self.locality(row) == "external"
             had_default = self._had_default(session)
             changed: list[str] = []

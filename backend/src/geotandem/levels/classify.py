@@ -7,7 +7,7 @@ unclassified operation.
 
 from collections.abc import Iterator
 
-from geotandem.levels.model import OpClass
+from geotandem.levels.model import CellMode, Level, LevelError, OpClass, strictest
 from geotandem_query import (
     And,
     Condition,
@@ -71,10 +71,11 @@ def _conditions(condition: Condition | None) -> Iterator[Condition]:
         yield from _conditions(condition.where)
 
 
-def classify(query: QueryObject) -> frozenset[OpClass]:
-    """Every class the query touches; the strictest cell among them governs (H4)."""
-    classes = {
-        op_class
+def classify_parts(query: QueryObject) -> dict[str, OpClass]:
+    """Every part the query uses, by name (field, condition ``op`` or column
+    ``fn``), with its class; the order is the schema's."""
+    parts = {
+        field: op_class
         for field, op_class in FIELD_CLASS.items()
         if getattr(query, field) not in (None, [])
     }
@@ -82,8 +83,29 @@ def classify(query: QueryObject) -> frozenset[OpClass]:
     if query.spatial_relation is not None:
         nested.append(query.spatial_relation.where)
     for column in query.columns:
-        classes.add(COLUMN_CLASS[column.fn])
+        parts[column.fn] = COLUMN_CLASS[column.fn]
         nested.append(column.where)
     for root in nested:
-        classes.update(CONDITION_CLASS[c.op] for c in _conditions(root))
-    return frozenset(classes)
+        parts.update((c.op, CONDITION_CLASS[c.op]) for c in _conditions(root))
+    return parts
+
+
+def classify(query: QueryObject) -> frozenset[OpClass]:
+    """Every class the query touches; the strictest cell among them governs (H4)."""
+    return frozenset(classify_parts(query).values())
+
+
+def allowed(level: Level, query: QueryObject) -> CellMode:
+    """The cell that governs the query on ``level``: ``approve`` or ``auto``. A part
+    whose class is ``off`` refuses the whole, and the refusal names it (H4)."""
+    parts = classify_parts(query)
+    for part, op_class in parts.items():
+        if level.matrix[op_class] is CellMode.OFF:
+            raise LevelError(
+                "class_not_allowed",
+                f"The level '{level.name}' does not allow '{part}' ({op_class}).",
+                part=part,
+                op_class=op_class.value,
+                level=level.name,
+            )
+    return strictest(level, parts.values())

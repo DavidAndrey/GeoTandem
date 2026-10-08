@@ -12,7 +12,9 @@ from geotandem.levels import (
     Level,
     LevelError,
     OpClass,
+    allowed,
     classify,
+    classify_parts,
     load_levels,
     resolve_level,
     strictest,
@@ -217,3 +219,27 @@ def test_the_shipped_levels(settings: Settings) -> None:
     ]
     assert all(lv.description and lv.system_prompt.startswith("Du bist") for lv in levels)
     assert set(levels[0].matrix) == set(ALL)
+
+
+def test_parts_are_named_with_their_class() -> None:
+    query = q(where={"op": "and", "args": [GEMEINDE, RELATED]}, buffer={"distance_m": 100})
+    assert classify_parts(query) == {
+        "schema_version": OpClass.QUERY,
+        "source": OpClass.QUERY,
+        "where": OpClass.QUERY,
+        "buffer": OpClass.DERIVE,
+        "and": OpClass.QUERY,
+        "compare": OpClass.QUERY,
+        "related": OpClass.SPATIAL,
+        "output": OpClass.QUERY,
+    }
+
+
+def test_a_part_that_is_off_refuses_the_whole_and_is_named() -> None:
+    mixed = level("Gemischt", CellMode.AUTO, spatial=CellMode.APPROVE, derive=CellMode.OFF)
+    assert allowed(mixed, q(where=GEMEINDE)) == CellMode.AUTO
+    assert allowed(mixed, q(where=RELATED)) == CellMode.APPROVE
+    with pytest.raises(LevelError) as refused:
+        allowed(mixed, q(where=RELATED, buffer={"distance_m": 100}))
+    assert refused.value.code == "class_not_allowed"
+    assert refused.value.details == {"part": "buffer", "op_class": "derive", "level": "Gemischt"}

@@ -119,13 +119,14 @@ def run_check(
 
         match = next((m for m in offered if m.id == endpoint.model), None)
         if match is None:
-            names = sorted(m.id for m in offered)[:20]
+            # Not which ones it does offer: the listing is a response body from
+            # an admin-entered address, possibly inside the network (C13).
             steps.append(
                 CheckStep(
                     name="model",
                     status="failed",
                     code="llm_model_missing",
-                    details={"model": endpoint.model, "offered": names},
+                    details={"model": endpoint.model},
                 )
             )
             return finish()

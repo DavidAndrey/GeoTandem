@@ -657,6 +657,10 @@ msgstr ""
 msgid "Auf der Karte zeichnen; Doppelklick schliesst die Fläche."
 msgstr ""
 
+#: src/i18n/errors.ts
+msgid "Auf der Stufe „{level}\" ist „{part}\" nicht erlaubt."
+msgstr ""
+
 #: src/workplace/LayerPanel.tsx
 msgid "Auf Layer zoomen"
 msgstr ""
@@ -962,7 +966,7 @@ msgid "Das Lesen der Datei hat zu lange gedauert und wurde abgebrochen."
 msgstr ""
 
 #: src/i18n/errors.ts
-msgid "Das Modell „{model}\" wird dort nicht angeboten. Angeboten: {offered}."
+msgid "Das Modell „{model}\" wird dort nicht angeboten."
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -1114,6 +1118,10 @@ msgstr ""
 
 #: src/session/notice.ts
 msgid "Der Ergebnis-Layer fehlt"
+msgstr ""
+
+#: src/i18n/errors.ts
+msgid "Der gespeicherte Zugangsschlüssel geht nur an die bisherige Adresse. Für eine neue Adresse bitte den Schlüssel neu eintragen oder entfernen."
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -2590,6 +2598,10 @@ msgstr ""
 
 #: src/queries/SavedQueries.tsx
 msgid "Neue Abfrage (leer)"
+msgstr ""
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Neue Adresse: den Schlüssel neu eintragen oder entfernen. Der gespeicherte geht nur an die bisherige."
 msgstr ""
 
 #: src/admin/ConnectionsPage.tsx

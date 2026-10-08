@@ -1485,7 +1485,7 @@ export interface components {
      * @description What the connection test needs, before or without saving (C12).
      *
      *     Editing a saved connection without retyping its key: name it in
-     *     ``connection_id`` and the stored key is used.
+     *     ``connection_id`` and the stored key is used, at its own address only.
      */
     ConnectionDraft: {
       /** Base Url */

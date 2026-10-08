@@ -104,6 +104,18 @@ async def test_a_key_from_another_secret_key_is_reported(
         state(app).endpoint(created["id"])
 
 
+async def test_a_new_address_needs_the_key_again(client: httpx.AsyncClient, app: FastAPI) -> None:
+    created = await create(client, "Cloud", **EXTERNAL, api_key=KEY)
+    moved = {"base_url": "https://llm.example.org/v1"}
+    await refused(await patch(client, created["id"], **moved), "api_key_bound_to_url")
+    assert state(app).endpoint(created["id"]).base_url == EXTERNAL["base_url"]
+
+    retyped = await patch(client, created["id"], **moved, api_key=KEY + "-neu")
+    assert retyped.status_code == 200 and retyped.json()["has_api_key"] is True
+    keyless = await create(client, "Lokal")
+    assert (await patch(client, keyless["id"], base_url="http://localhost:8080/v1")).is_success
+
+
 # --- local or external, data release, effort (C5, C6, C10) -----------------------
 
 

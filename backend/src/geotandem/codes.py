@@ -64,6 +64,7 @@ CODES: dict[str, str] = {
     "default_level_count": "Exactly one level must be the default.",
     "default_not_selectable": "The default level must be selectable by users.",
     "level_not_available": "The level does not exist or users may not choose it.",
+    "class_not_allowed": "The level does not allow a part of the action (details.part).",
     # Model connections: administration and choice
     "connection_name_taken": "A connection of that name exists (details.name).",
     "default_not_enabled": "The default connection must be enabled for users.",
@@ -71,6 +72,7 @@ CODES: dict[str, str] = {
     "data_release_unconfirmed": "Data contents to an external connection need confirmation.",
     "connection_not_available": "The connection is not offered: unknown or disabled.",
     "credentials_unreadable": "A stored API key cannot be opened with this secret.key.",
+    "api_key_bound_to_url": "The stored API key goes only to its own address (C8).",
     # Model connections: why a call brought no answer (details.cause, verbatim)
     "llm_invalid_url": "The base URL is not http(s) with a host, or carries credentials.",
     "llm_unreachable": "The model endpoint could not be reached.",
@@ -83,7 +85,7 @@ CODES: dict[str, str] = {
     "llm_rejected": "The endpoint rejected the request (HTTP 4xx).",
     "llm_bad_response": "The endpoint's answer is not a valid response.",
     # Connection test: what a reachable endpoint cannot do (C12)
-    "llm_model_missing": "The endpoint does not offer the model (details.offered).",
+    "llm_model_missing": "The endpoint does not offer the model (details.model).",
     "llm_schema_unsupported": "The answer to a JSON-schema request did not fit the schema.",
     "llm_tools_unsupported": "The model did not call the offered tool.",
     # Import: refusals (details.reason of unreadable_source) and the run

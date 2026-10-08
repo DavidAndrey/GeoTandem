@@ -174,6 +174,14 @@ const fromConnection = (c: ConnectionInfo): Form => ({
   marked_external: c.marked_external,
 })
 
+const hostOf = (url: string) => {
+  try {
+    return new URL(url).hostname
+  } catch {
+    return ''
+  }
+}
+
 const optionalNumber = (value: string) => (value.trim() === '' ? null : Number(value))
 
 /** The fields both a saved connection and a draft test share. */
@@ -271,9 +279,14 @@ function ConnectionForm({
       : api.admin.createConnection(createBody(form)),
   )
   const test = useConnectionChange(() => api.admin.testDraft(draftBody(form, connection)))
-  const external = connection?.locality === 'external' || form.marked_external
-  const releasing = external && form.may_receive_data && !connection?.may_receive_data
-  const host = connection?.host ?? ''
+  // A new address may be external: only the back end knows the local hosts.
+  const moved = connection !== undefined && form.base_url.trim() !== connection.base_url
+  const external = connection?.locality === 'external' || form.marked_external || moved
+  const releasedBefore = connection?.locality === 'external' && connection.may_receive_data
+  const releasing = external && form.may_receive_data && !releasedBefore
+  const host = hostOf(form.base_url.trim())
+  // The stored key goes to its own address only (C8).
+  const keyNeeded = !!connection?.has_api_key && moved && !form.remove_key
 
   return (
     <form
@@ -333,15 +346,18 @@ function ConnectionForm({
           )
         }
         hint={
-          connection?.has_api_key
-            ? t`Ein Schlüssel ist gespeichert. Leer lassen, um ihn zu behalten.`
-            : t`Wird verschlüsselt gespeichert und nie wieder angezeigt.`
+          keyNeeded
+            ? t`Neue Adresse: den Schlüssel neu eintragen oder entfernen. Der gespeicherte geht nur an die bisherige.`
+            : connection?.has_api_key
+              ? t`Ein Schlüssel ist gespeichert. Leer lassen, um ihn zu behalten.`
+              : t`Wird verschlüsselt gespeichert und nie wieder angezeigt.`
         }
       >
         <input
           className="input w-full font-mono"
           type="password"
           autoComplete="off"
+          required={keyNeeded}
           value={form.api_key}
           onChange={(e) => set({ api_key: e.target.value })}
         />

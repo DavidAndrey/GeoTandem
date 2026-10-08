@@ -130,6 +130,11 @@ const MESSAGES: Record<string, Words> = {
     return t`Die voreingestellte Stufe „${name}" muss für Anwender wählbar sein.`
   },
   level_not_available: () => t`Diese Stufe steht nicht zur Wahl.`,
+  class_not_allowed: (d) => {
+    const level = text(d.level)
+    const part = text(d.part)
+    return t`Auf der Stufe „${level}" ist „${part}" nicht erlaubt.`
+  },
   // Model connections
   connection_name_taken: (d) => {
     const name = text(d.name)
@@ -141,6 +146,8 @@ const MESSAGES: Record<string, Words> = {
   data_release_unconfirmed: () =>
     t`Datenfreigabe an eine externe Anbindung braucht eine ausdrückliche Bestätigung.`,
   connection_not_available: () => t`Diese Anbindung steht nicht zur Wahl.`,
+  api_key_bound_to_url: () =>
+    t`Der gespeicherte Zugangsschlüssel geht nur an die bisherige Adresse. Für eine neue Adresse bitte den Schlüssel neu eintragen oder entfernen.`,
   credentials_unreadable: () =>
     t`Der gespeicherte Zugangsschlüssel lässt sich nicht mehr öffnen (secret.key fehlt oder wurde ersetzt). Bitte neu eintragen.`,
   llm_invalid_url: () =>
@@ -157,8 +164,7 @@ const MESSAGES: Record<string, Words> = {
   llm_bad_response: () => t`Die Antwort des Modells hat nicht die erwartete Form.`,
   llm_model_missing: (d) => {
     const model = text(d.model)
-    const offered = list(d.offered) || '–'
-    return t`Das Modell „${model}" wird dort nicht angeboten. Angeboten: ${offered}.`
+    return t`Das Modell „${model}" wird dort nicht angeboten.`
   },
   llm_schema_unsupported: () =>
     t`Das Modell liefert keine Antwort im verlangten JSON-Schema; für Direktabfragen ist es so nicht geeignet.`,

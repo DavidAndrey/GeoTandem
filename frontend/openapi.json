@@ -6265,7 +6265,7 @@
           "model"
         ],
         "title": "ConnectionDraft",
-        "description": "What the connection test needs, before or without saving (C12).\n\nEditing a saved connection without retyping its key: name it in\n``connection_id`` and the stored key is used."
+        "description": "What the connection test needs, before or without saving (C12).\n\nEditing a saved connection without retyping its key: name it in\n``connection_id`` and the stored key is used, at its own address only."
       },
       "ConnectionInfo": {
         "properties": {

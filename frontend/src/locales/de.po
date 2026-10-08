@@ -657,6 +657,10 @@ msgstr "auf der Karte klicken …"
 msgid "Auf der Karte zeichnen; Doppelklick schliesst die Fläche."
 msgstr "Auf der Karte zeichnen; Doppelklick schliesst die Fläche."
 
+#: src/i18n/errors.ts
+msgid "Auf der Stufe „{level}\" ist „{part}\" nicht erlaubt."
+msgstr "Auf der Stufe „{level}\" ist „{part}\" nicht erlaubt."
+
 #: src/workplace/LayerPanel.tsx
 msgid "Auf Layer zoomen"
 msgstr "Auf Layer zoomen"
@@ -962,8 +966,8 @@ msgid "Das Lesen der Datei hat zu lange gedauert und wurde abgebrochen."
 msgstr "Das Lesen der Datei hat zu lange gedauert und wurde abgebrochen."
 
 #: src/i18n/errors.ts
-msgid "Das Modell „{model}\" wird dort nicht angeboten. Angeboten: {offered}."
-msgstr "Das Modell „{model}\" wird dort nicht angeboten. Angeboten: {offered}."
+msgid "Das Modell „{model}\" wird dort nicht angeboten."
+msgstr "Das Modell „{model}\" wird dort nicht angeboten."
 
 #: src/i18n/errors.ts
 msgid "Das Modell hat die Anfrage abgelehnt."
@@ -1115,6 +1119,10 @@ msgstr "Der Ergebnis-Layer „{result}\" ist nicht verfügbar."
 #: src/session/notice.ts
 msgid "Der Ergebnis-Layer fehlt"
 msgstr "Der Ergebnis-Layer fehlt"
+
+#: src/i18n/errors.ts
+msgid "Der gespeicherte Zugangsschlüssel geht nur an die bisherige Adresse. Für eine neue Adresse bitte den Schlüssel neu eintragen oder entfernen."
+msgstr "Der gespeicherte Zugangsschlüssel geht nur an die bisherige Adresse. Für eine neue Adresse bitte den Schlüssel neu eintragen oder entfernen."
 
 #: src/i18n/errors.ts
 msgid "Der gespeicherte Zugangsschlüssel lässt sich nicht mehr öffnen (secret.key fehlt oder wurde ersetzt). Bitte neu eintragen."
@@ -2591,6 +2599,10 @@ msgstr "Neu"
 #: src/queries/SavedQueries.tsx
 msgid "Neue Abfrage (leer)"
 msgstr "Neue Abfrage (leer)"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Neue Adresse: den Schlüssel neu eintragen oder entfernen. Der gespeicherte geht nur an die bisherige."
+msgstr "Neue Adresse: den Schlüssel neu eintragen oder entfernen. Der gespeicherte geht nur an die bisherige."
 
 #: src/admin/ConnectionsPage.tsx
 msgid "Neue Anbindung"

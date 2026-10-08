@@ -1,5 +1,6 @@
 {
   "ambiguous_key_target": "Key values occur more than once in the target layer.",
+  "api_key_bound_to_url": "The stored API key goes only to its own address (C8).",
   "archive_encrypted": "The archive is encrypted.",
   "archive_nested": "The archive contains another archive.",
   "archive_too_large": "The archive unpacks to more than allowed.",
@@ -8,6 +9,7 @@
   "attribute_not_text": "A text condition on an attribute that is not text.",
   "bad_request": "The request is not acceptable as sent.",
   "busy": "Too many requests of this kind at once; try again shortly.",
+  "class_not_allowed": "The level does not allow a part of the action (details.part).",
   "conditions_only": "A saved query holds conditions on a catalog layer only.",
   "connection_name_taken": "A connection of that name exists (details.name).",
   "connection_not_available": "The connection is not offered: unknown or disabled.",
@@ -44,7 +46,7 @@
   "level_not_available": "The level does not exist or users may not choose it.",
   "llm_bad_response": "The endpoint's answer is not a valid response.",
   "llm_invalid_url": "The base URL is not http(s) with a host, or carries credentials.",
-  "llm_model_missing": "The endpoint does not offer the model (details.offered).",
+  "llm_model_missing": "The endpoint does not offer the model (details.model).",
   "llm_not_found": "The endpoint or the model does not exist.",
   "llm_rate_limited": "The endpoint limits requests; retried and gave up.",
   "llm_redirect": "The endpoint redirected; redirects are not followed.",

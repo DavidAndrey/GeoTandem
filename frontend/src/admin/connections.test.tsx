@@ -58,7 +58,7 @@ const failedCheck: CheckResult = {
       name: 'model',
       status: 'failed',
       code: 'llm_model_missing',
-      details: { model: 'qwen9', offered: ['qwen3:8b', 'gemma3:4b'] },
+      details: { model: 'qwen9' },
     },
     { name: 'server', status: 'skipped', details: {} },
     { name: 'json_schema', status: 'skipped', details: {} },
@@ -168,6 +168,48 @@ test('data release to an external connection asks for confirmation naming the ho
   })
 })
 
+test('a local connection moved to a new address asks for confirmation naming it', async () => {
+  const calls = fakeApi({
+    ...signedIn(),
+    [`GET ${URL}`]: [connection()],
+    [`PATCH ${URL}/1`]: connection(),
+  })
+  renderAt('/admin/modelle', <App />)
+
+  await openMenu('Ollama')
+  await userEvent.click(screen.getByRole('menuitem', { name: 'Bearbeiten' }))
+  const address = screen.getByLabelText('Adresse')
+  await userEvent.clear(address)
+  await userEvent.type(address, 'https://llm.example.org/v1')
+  await userEvent.click(
+    screen.getByLabelText('Ich bestätige: Dateninhalte dürfen an llm.example.org gehen.'),
+  )
+  await userEvent.click(screen.getByRole('button', { name: 'Speichern' }))
+
+  await vi.waitFor(() => expect(bodiesOf(calls, `PATCH ${URL}/1`)).toHaveLength(1))
+  expect(bodiesOf(calls, `PATCH ${URL}/1`)[0]).toEqual({
+    base_url: 'https://llm.example.org/v1',
+    confirm_data_release: true,
+  })
+})
+
+test('a new address needs the key again: the stored one stays with the old', async () => {
+  fakeApi({ ...signedIn(), [`GET ${URL}`]: [cloud] })
+  renderAt('/admin/modelle', <App />)
+
+  await openMenu('Cloud')
+  await userEvent.click(screen.getByRole('menuitem', { name: 'Bearbeiten' }))
+  const form = screen.getByRole('form', { name: 'Anbindung bearbeiten' })
+  expect(within(form).getByLabelText('API-Schlüssel')).not.toBeRequired()
+  const address = within(form).getByLabelText('Adresse')
+  await userEvent.clear(address)
+  await userEvent.type(address, 'https://llm.example.org/v1')
+  expect(within(form).getByText(/Neue Adresse: den Schlüssel neu eintragen/)).toBeInTheDocument()
+  expect(within(form).getByLabelText('API-Schlüssel')).toBeRequired()
+  await userEvent.click(within(form).getByLabelText('Schlüssel entfernen'))
+  expect(within(form).getByLabelText('API-Schlüssel')).not.toBeRequired()
+})
+
 test('a draft is tested with the stored key and its steps are worded by code', async () => {
   const calls = fakeApi({
     ...signedIn(),
@@ -183,9 +225,7 @@ test('a draft is tested with the stored key and its steps are worded by code', a
   const result = await screen.findByRole('region', { name: 'Ergebnis des Verbindungstests' })
   expect(within(result).getByText('Verbindungstest nicht bestanden')).toBeInTheDocument()
   expect(
-    within(result).getByText(
-      'Das Modell „qwen9" wird dort nicht angeboten. Angeboten: „qwen3:8b", „gemma3:4b".',
-    ),
+    within(result).getByText('Das Modell „qwen9" wird dort nicht angeboten.'),
   ).toBeInTheDocument()
   expect(within(result).getByText('2 Modelle angeboten')).toBeInTheDocument()
   expect(bodiesOf(calls, `POST ${URL}/test`)[0]).toMatchObject({ connection_id: 2 })

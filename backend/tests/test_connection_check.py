@@ -163,10 +163,11 @@ def test_a_reachable_step_after_401_is_still_ok() -> None:
     assert ("reachable", "ok", None) in outline(check(stub))
 
 
-def test_a_missing_model_names_what_is_offered() -> None:
+def test_a_missing_model_does_not_echo_what_is_offered() -> None:
     result = check(OllamaStub(), replace(ENDPOINT, model="llama9:70b"))
     model = next(s for s in result.steps if s.name == "model")
-    assert model.details == {"model": "llama9:70b", "offered": ["qwen3:8b"]}
+    assert model.details == {"model": "llama9:70b"}
+    assert "qwen3:8b" not in result.model_dump_json()
 
 
 def test_an_unreadable_key_breaks_authorisation() -> None:
@@ -242,3 +243,16 @@ async def test_a_draft_of_a_saved_connection_reuses_its_key(
 async def test_only_administrators_test(client: httpx.AsyncClient) -> None:
     await sign_in_as(client, "m.keller")
     assert (await client.post(f"{URL}/test", json=LOCAL)).status_code == 403
+
+
+async def test_a_stored_key_goes_to_its_own_address_only(
+    client: httpx.AsyncClient, app: FastAPI
+) -> None:
+    body = {"name": "Cloud", **LOCAL, "api_key": "sk-gespeichert"}
+    created = (await client.post(URL, json=body)).json()
+    stub = OllamaStub(answers=list(GOOD))
+    use_stub(app, stub)
+    elsewhere = {**LOCAL, "base_url": "http://localhost:8080/v1", "connection_id": created["id"]}
+    response = await client.post(f"{URL}/test", json=elsewhere)
+    assert (response.status_code, response.json()["code"]) == (400, "api_key_bound_to_url")
+    assert stub.seen == []
