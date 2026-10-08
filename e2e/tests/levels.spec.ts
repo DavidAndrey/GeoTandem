@@ -15,7 +15,13 @@ test('an edited cell is saved and survives a reload', async ({ page, request }) 
     const cell = page.getByLabel('Darstellung – Assistenz')
     await expect(cell).toHaveValue('off')
     await cell.selectOption('auto')
+    // Wait for the save itself: the button is disabled while it is still in flight,
+    // and a reload then can overtake it.
+    const saved = page.waitForResponse(
+      (r) => r.url().endsWith('/api/admin/levels') && r.request().method() === 'PUT',
+    )
     await page.getByRole('button', { name: 'Speichern' }).click()
+    expect((await saved).ok()).toBe(true)
     await expect(page.getByRole('button', { name: 'Speichern' })).toBeDisabled()
 
     await page.reload()
