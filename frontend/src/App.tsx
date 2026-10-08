@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { NavLink, Navigate, Outlet, Route, Routes, useLocation, useParams } from 'react-router'
 import { AdminLayout } from './admin/AdminLayout'
 import { CatalogPage } from './admin/CatalogPage'
+import { ConnectionsPage } from './admin/ConnectionsPage'
 import { ImportLogPage } from './admin/ImportLogPage'
 import { ImportRunPage } from './admin/ImportRunPage'
 import { ImportWizard } from './admin/ImportWizard'
@@ -122,6 +123,7 @@ export function App() {
               <Route path="benutzer" element={<UsersPage />} />
               <Route path="sichtbarkeit" element={<VisibilityPage />} />
               <Route path="stufen" element={<LevelsPage />} />
+              <Route path="modelle" element={<ConnectionsPage />} />
               <Route path="system" element={<SystemPage />} />
             </Route>
             <Route path="*" element={<NotFound />} />

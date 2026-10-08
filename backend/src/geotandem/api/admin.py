@@ -35,7 +35,13 @@ from geotandem.catalog import (
     update_attribute,
     update_layer,
 )
-from geotandem.connections import ConnectionInfo, ConnectionPatch, ConnectionWrite
+from geotandem.connection_check import CheckResult, run_check
+from geotandem.connections import (
+    ConnectionDraft,
+    ConnectionInfo,
+    ConnectionPatch,
+    ConnectionWrite,
+)
 from geotandem.data import LayerExists, Op
 from geotandem.db.orm import Role
 from geotandem.importing import Message, Preview, ReadOptions, SourceError
@@ -44,6 +50,7 @@ from geotandem.importing.log import ImportRunInfo, ImportRunSummary, ImportStatu
 from geotandem.importing.run import ImportDecisions, abort, preview_file, run_import
 from geotandem.importing.staging import TooManyPending, UnknownUpload, UploadTooLarge
 from geotandem.levels import Level, UnknownLevel, load_levels, save_levels
+from geotandem.llm import Endpoint
 from geotandem.sample.load import dataset_version
 from geotandem_query import SCHEMA_VERSION
 
@@ -520,6 +527,41 @@ _CONNECTION_ERRORS = {**ERRORS, 409: ERRORS[400]}
 def llm_connections(state: State) -> list[ConnectionInfo]:
     """Every connection; the API key never leaves, ``has_api_key`` says whether one is set."""
     return state.connections.all()
+
+
+def _check(
+    state: AppState, user: str, endpoint: Endpoint, unreadable: bool, id: int | None
+) -> CheckResult:
+    """Admin-only, it still dials an admin-entered URL into the network: every
+    test is a security event (C13)."""
+    result = run_check(endpoint, state.client_factory, credentials_unreadable=unreadable)
+    failed = next((s for s in result.steps if s.status == "failed"), None)
+    audit.event(
+        "llm_connection_tested",
+        username=user,
+        id=id,
+        host=next((s.details.get("host") for s in result.steps if s.name == "url"), None),
+        ok=result.ok,
+        step=failed.name if failed else None,
+        code=failed.code if failed else None,
+    )
+    return result
+
+
+@router.post("/llm/connections/test", responses=ERRORS)
+def test_llm_draft(body: ConnectionDraft, state: State, user: Actor) -> CheckResult:
+    """Test before saving; the result is not kept. Always 200: failures are steps."""
+    endpoint, unreadable = state.connections.draft_for_test(body)
+    return _check(state, user, endpoint, unreadable, body.connection_id)
+
+
+@router.post("/llm/connections/{connection_id}/test", responses=ERRORS)
+def test_llm_connection(connection_id: int, state: State, user: Actor) -> CheckResult:
+    """Test a saved connection and keep the result with it (C12)."""
+    endpoint, unreadable = state.connections.for_test(connection_id)
+    result = _check(state, user, endpoint, unreadable, connection_id)
+    state.connections.record_test(connection_id, result.model_dump(mode="json"))
+    return result
 
 
 @router.get("/llm/connections/{connection_id}", responses=ERRORS)

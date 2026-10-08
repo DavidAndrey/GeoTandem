@@ -31,6 +31,13 @@ export type VisibilityRow = Schemas['VisibilityRow']
 export type Level = Schemas['Level']
 export type OpClass = Schemas['OpClass']
 export type CellMode = Schemas['CellMode']
+export type ConnectionInfo = Schemas['ConnectionInfo']
+export type ConnectionWrite = Schemas['ConnectionWrite']
+export type ConnectionPatch = Schemas['ConnectionPatch']
+export type ConnectionDraft = Schemas['ConnectionDraft']
+export type CheckResult = Schemas['CheckResult']
+export type CheckStep = Schemas['CheckStep']
+export type Effort = NonNullable<ConnectionWrite['reasoning_effort']>
 export type MapConfig = Schemas['MapConfig']
 export type QueryObject = Schemas['QueryObject-Input']
 export type SessionSummary = Schemas['SessionSummary']
@@ -199,5 +206,16 @@ export const api = {
     levels: () => request<Schemas['LevelSet']>('/api/admin/levels'),
     saveLevels: (levels: Level[]) =>
       request<Schemas['LevelSet']>('/api/admin/levels', json('PUT', { levels })),
+    connections: () => request<ConnectionInfo[]>('/api/admin/llm/connections'),
+    createConnection: (body: ConnectionWrite) =>
+      request<ConnectionInfo>('/api/admin/llm/connections', json('POST', body)),
+    updateConnection: (id: number, body: ConnectionPatch) =>
+      request<ConnectionInfo>(`/api/admin/llm/connections/${id}`, json('PATCH', body)),
+    deleteConnection: (id: number) =>
+      request<undefined>(`/api/admin/llm/connections/${id}`, { method: 'DELETE' }),
+    testConnection: (id: number) =>
+      request<CheckResult>(`/api/admin/llm/connections/${id}/test`, { method: 'POST' }),
+    testDraft: (body: ConnectionDraft) =>
+      request<CheckResult>('/api/admin/llm/connections/test', json('POST', body)),
   },
 }

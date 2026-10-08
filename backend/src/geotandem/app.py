@@ -31,6 +31,7 @@ from geotandem.data.spatialite import SpatiaLiteBackend
 from geotandem.db.bootstrap import bootstrap
 from geotandem.importing import log as import_log
 from geotandem.importing.staging import Staging
+from geotandem.llm.openai_compat import OpenAICompatClient
 from geotandem.sample.load import load_sample
 from geotandem.tools import default_registry
 from geotandem.vault import Vault
@@ -76,6 +77,7 @@ def start(settings: Settings) -> AppState:
         hashing,
         Devices(),
         Connections(engine, Vault.open(settings.data_dir), settings.local_hosts),
+        OpenAICompatClient,
         token,
     )
 

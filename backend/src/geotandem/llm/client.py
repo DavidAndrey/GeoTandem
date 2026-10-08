@@ -5,7 +5,7 @@ that knows a concrete protocol. This module uses the standard library and
 pydantic, nothing else, so a service or a test never needs the SDK.
 """
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol
 
@@ -124,3 +124,11 @@ class LLMClient(Protocol):
     def server_version(self) -> str | None:
         """Ollama's version when the endpoint is an Ollama, else ``None`` (C3)."""
         ...
+
+    def close(self) -> None:
+        """Release the connection pool; a client is built per use (C8)."""
+        ...
+
+
+ClientFactory = Callable[[Endpoint], LLMClient]
+"""How the application builds a client; tests put a stub behind it."""

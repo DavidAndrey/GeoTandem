@@ -567,6 +567,46 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/admin/llm/connections/test': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Test Llm Draft
+     * @description Test before saving; the result is not kept. Always 200: failures are steps.
+     */
+    post: operations['test_llm_draft_api_admin_llm_connections_test_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/admin/llm/connections/{connection_id}/test': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Test Llm Connection
+     * @description Test a saved connection and keep the result with it (C12).
+     */
+    post: operations['test_llm_connection_api_admin_llm_connections__connection_id__test_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/admin/llm/connections/{connection_id}': {
     parameters: {
       query?: never
@@ -1288,6 +1328,42 @@ export interface components {
        */
       has_result: boolean
     }
+    /** CheckResult */
+    CheckResult: {
+      /** Ok */
+      ok: boolean
+      /**
+       * Tested At
+       * Format: date-time
+       */
+      tested_at: string
+      /** Steps */
+      steps: components['schemas']['CheckStep'][]
+    }
+    /** CheckStep */
+    CheckStep: {
+      /**
+       * Name
+       * @enum {string}
+       */
+      name: 'url' | 'reachable' | 'authorised' | 'model' | 'server' | 'json_schema' | 'tool_call'
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: 'ok' | 'failed' | 'skipped'
+      /** Code */
+      code?: string | null
+      /** Cause */
+      cause?: string | null
+      /**
+       * Details
+       * @default {}
+       */
+      details: {
+        [key: string]: unknown
+      }
+    }
     /** Choice */
     Choice: {
       /**
@@ -1375,6 +1451,45 @@ export interface components {
       spatial: number
       /** Restriction */
       restriction: boolean
+    }
+    /**
+     * ConnectionDraft
+     * @description What the connection test needs, before or without saving (C12).
+     *
+     *     Editing a saved connection without retyping its key: name it in
+     *     ``connection_id`` and the stored key is used.
+     */
+    ConnectionDraft: {
+      /** Base Url */
+      base_url: string
+      /** Model */
+      model: string
+      /** Api Key */
+      api_key?: string | null
+      /** Connection Id */
+      connection_id?: number | null
+      /**
+       * Temperature
+       * @default 0
+       */
+      temperature: number
+      /**
+       * Seed
+       * @default 42
+       */
+      seed: number | null
+      /**
+       * Timeout S
+       * @default 120
+       */
+      timeout_s: number
+      /** Reasoning Effort */
+      reasoning_effort?: ('default' | 'none' | 'low' | 'medium' | 'high') | null
+      /**
+       * Marked External
+       * @default false
+       */
+      marked_external: boolean
     }
     /** ConnectionInfo */
     ConnectionInfo: {
@@ -5442,6 +5557,160 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['ConnectionInfo']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Content Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  test_llm_draft_api_admin_llm_connections_test_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ConnectionDraft']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CheckResult']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Content Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  test_llm_connection_api_admin_llm_connections__connection_id__test_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        connection_id: number
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CheckResult']
         }
       }
       /** @description Bad Request */

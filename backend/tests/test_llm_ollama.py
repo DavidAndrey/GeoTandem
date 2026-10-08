@@ -9,6 +9,7 @@ import os
 
 import pytest
 
+from geotandem.connection_check import run_check
 from geotandem.llm import Endpoint, Message, ToolSpec
 from geotandem.llm.openai_compat import OpenAICompatClient
 
@@ -61,3 +62,11 @@ def test_a_tool_is_called(llm: OpenAICompatClient) -> None:
     assert [(c.name, c.parsed) for c in answer.tool_calls] == [
         ("describe_layer", {"layer": "schulen"})
     ]
+
+
+def test_the_connection_test_is_green() -> None:
+    if not MODEL:
+        pytest.skip("GEOTANDEM_TEST_LLM_MODEL is not set")
+    endpoint = Endpoint(base_url=URL, model=MODEL, reasoning_effort="none")
+    result = run_check(endpoint, OpenAICompatClient)
+    assert result.ok, [(s.name, s.status, s.code, s.cause) for s in result.steps]

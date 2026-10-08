@@ -22,7 +22,10 @@ const groups = (): Group[] => [
   },
   {
     title: t`Modell`,
-    links: [{ to: '/admin/stufen', label: t`Stufen` }],
+    links: [
+      { to: '/admin/modelle', label: t`Modellanbindungen` },
+      { to: '/admin/stufen', label: t`Stufen` },
+    ],
   },
   {
     title: t`Betrieb`,
@@ -31,7 +34,6 @@ const groups = (): Group[] => [
   {
     title: t`Später`,
     links: [
-      { label: t`Modelle`, from: 'E2' },
       { label: t`Bewertung`, from: 'E3' },
       { label: 'MCP', from: 'E4' },
     ],

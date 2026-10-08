@@ -89,6 +89,24 @@ NULLABLE = frozenset({"api_key", "seed", "context_length"})
 """Patch fields where ``null`` is a value, not "unchanged"."""
 
 
+class ConnectionDraft(BaseModel):
+    """What the connection test needs, before or without saving (C12).
+
+    Editing a saved connection without retyping its key: name it in
+    ``connection_id`` and the stored key is used.
+    """
+
+    base_url: BaseUrl
+    model: ModelName
+    api_key: ApiKey | None = None
+    connection_id: int | None = None
+    temperature: Temperature = 0
+    seed: int | None = 42
+    timeout_s: Timeout = 120
+    reasoning_effort: Effort | None = None
+    marked_external: bool = False
+
+
 class ConnectionInfo(BaseModel):
     id: int
     name: str
@@ -208,6 +226,72 @@ class Connections:
                 seed=row.seed,
                 timeout_s=row.timeout_s,
                 reasoning_effort=row.reasoning_effort,  # type: ignore[arg-type]
+            )
+
+    def _key(self, row: LLMConnection | None) -> tuple[str | None, bool]:
+        """The stored key decrypted, and whether it could not be."""
+        if row is None or row.api_key is None:
+            return None, False
+        try:
+            return self.vault.decrypt(row.api_key), False
+        except CredentialsUnreadable:
+            return None, True
+
+    def for_test(self, connection_id: int) -> tuple[Endpoint, bool]:
+        """A saved connection's endpoint for the test; an unreadable key is
+        reported, not raised, so the test can say which step it breaks."""
+        with Session(reading(self.engine)) as session:
+            row = session.get(LLMConnection, connection_id)
+            if row is None:
+                raise ConnectionProblem(404, "not_found", "Unknown connection.", id=connection_id)
+            key, unreadable = self._key(row)
+            endpoint = Endpoint(
+                base_url=row.base_url,
+                model=row.model,
+                api_key=key,
+                temperature=row.temperature,
+                seed=row.seed,
+                timeout_s=row.timeout_s,
+                reasoning_effort=row.reasoning_effort,  # type: ignore[arg-type]
+            )
+        return endpoint, unreadable
+
+    def draft_for_test(self, draft: ConnectionDraft) -> tuple[Endpoint, bool]:
+        key: str | None = draft.api_key.get_secret_value() if draft.api_key else None
+        unreadable = False
+        if key is None and draft.connection_id is not None:
+            with Session(reading(self.engine)) as session:
+                row = session.get(LLMConnection, draft.connection_id)
+                if row is None:
+                    raise ConnectionProblem(
+                        404, "not_found", "Unknown connection.", id=draft.connection_id
+                    )
+                key, unreadable = self._key(row)
+        effort = draft.reasoning_effort
+        if effort is None:
+            try:
+                local = classify_host(draft.base_url, self.local_hosts) == "local"
+            except LLMError:
+                local = False  # the test's first step reports the URL
+            effort = "none" if local and not draft.marked_external else "default"
+        endpoint = Endpoint(
+            base_url=draft.base_url,
+            model=draft.model,
+            api_key=key,
+            temperature=draft.temperature,
+            seed=draft.seed,
+            timeout_s=draft.timeout_s,
+            reasoning_effort=effort,
+        )
+        return endpoint, unreadable
+
+    def record_test(self, connection_id: int, result: dict[str, Any]) -> None:
+        """Keep the latest test with the connection (C12); the list shows it."""
+        with Session(self.engine) as session, session.begin():
+            session.execute(
+                update(LLMConnection)
+                .where(LLMConnection.id == connection_id)
+                .values(last_test=result)
             )
 
     # --- writing -----------------------------------------------------------------

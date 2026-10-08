@@ -64,6 +64,8 @@ class OllamaStub:
     )
     version: str | None = "0.12.3"
     """``None``: not an Ollama, ``/api/*`` answers 404 (e.g. vLLM)."""
+    models_answer: httpx2.Response | Exception | None = None
+    """Instead of the model list: a failure of ``/v1/models``."""
     seen: list[Seen] = field(default_factory=list)
 
     def chat_requests(self) -> list[Seen]:
@@ -76,6 +78,10 @@ class OllamaStub:
         body = json.loads(request.content) if request.content else None
         path = request.url.path
         self.seen.append(Seen(request.method, path, dict(request.headers), body))
+        if path == "/v1/models" and self.models_answer is not None:
+            if isinstance(self.models_answer, Exception):
+                raise self.models_answer
+            return self.models_answer
         if path == "/v1/models":
             data = [
                 {"id": m, "object": "model", "created": 0, "owned_by": "library"}

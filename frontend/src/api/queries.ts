@@ -26,6 +26,7 @@ export const keys = {
   visibility: ['admin', 'visibility'] as const,
   visibilityDefault: ['admin', 'visibility', 'default'] as const,
   levels: ['admin', 'levels'] as const,
+  connections: ['admin', 'llm', 'connections'] as const,
 }
 
 /** The signed-in account, or ``null`` when nobody is signed in. */
@@ -185,5 +186,17 @@ export function useSaveLevels() {
   return useMutation({
     mutationFn: api.admin.saveLevels,
     onSuccess: (data) => client.setQueryData(keys.levels, data),
+  })
+}
+
+/** Model connections (plan E2.1); every change refreshes the list. */
+export const useConnections = () =>
+  useQuery({ queryKey: keys.connections, queryFn: api.admin.connections })
+
+export function useConnectionChange<T, R>(change: (args: T) => Promise<R>) {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: change,
+    onSuccess: () => client.invalidateQueries({ queryKey: keys.connections }),
   })
 }

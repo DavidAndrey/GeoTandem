@@ -154,6 +154,15 @@ const MESSAGES: Record<string, Words> = {
   llm_server_error: () => t`Beim Modell ist ein Fehler aufgetreten.`,
   llm_rejected: () => t`Das Modell hat die Anfrage abgelehnt.`,
   llm_bad_response: () => t`Die Antwort des Modells hat nicht die erwartete Form.`,
+  llm_model_missing: (d) => {
+    const model = text(d.model)
+    const offered = list(d.offered) || '–'
+    return t`Das Modell „${model}" wird dort nicht angeboten. Angeboten: ${offered}.`
+  },
+  llm_schema_unsupported: () =>
+    t`Das Modell liefert keine Antwort im verlangten JSON-Schema; für Direktabfragen ist es so nicht geeignet.`,
+  llm_tools_unsupported: () =>
+    t`Das Modell ruft keine Werkzeuge auf; für Werkzeugketten ist es so nicht geeignet.`,
   // Import: refusals
   unreadable_source: () => t`Die Datei kann so nicht gelesen werden.`,
   too_many_pending_imports: () =>

@@ -45,3 +45,6 @@ class FakeLLMClient:
 
     def server_version(self) -> str | None:
         return self.version
+
+    def close(self) -> None:
+        pass

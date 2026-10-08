@@ -118,6 +118,14 @@ msgstr "{condition} ({filter})"
 msgid "{conditions} Bed."
 msgstr "{conditions} Bed."
 
+#: src/admin/ConnectionsPage.tsx
+msgid "{count, plural, one {# Modell angeboten} other {# Modelle angeboten}}"
+msgstr "{count, plural, one {# Modell angeboten} other {# Modelle angeboten}}"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "{digest} · {gb} GB"
+msgstr "{digest} · {gb} GB"
+
 #. Attribute condition: field, operator, value(s). Reorder as the language needs.
 #: src/editor/describe.ts
 msgid "{field} {op}"
@@ -235,6 +243,10 @@ msgstr "{n, plural, one {{count} Zeile wiederholt einen Schlüssel; sie teilt de
 msgid "{op} {layer}"
 msgstr "{op} {layer}"
 
+#: src/admin/ConnectionsPage.tsx
+msgid "{s} s"
+msgstr "{s} s"
+
 #: src/i18n/phrases.ts
 msgid "{shown} von {all}"
 msgstr "{shown} von {all}"
@@ -317,6 +329,7 @@ msgstr "ab"
 msgid "ab {stage}"
 msgstr "ab {stage}"
 
+#: src/admin/ConnectionsPage.tsx
 #: src/admin/DuplicateLayerDialog.tsx
 #: src/admin/ImportWizard.tsx
 #: src/admin/UsersPage.tsx
@@ -396,6 +409,14 @@ msgstr "Administration"
 msgid "Administrator"
 msgstr "Administrator"
 
+#: src/admin/ConnectionsPage.tsx
+msgid "Adresse"
+msgstr "Adresse"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Adresse gültig"
+msgstr "Adresse gültig"
+
 #: src/operations/OperationDialog.tsx
 msgid "Aggregieren"
 msgstr "Aggregieren"
@@ -405,6 +426,7 @@ msgid "Aggregieren …"
 msgstr "Aggregieren …"
 
 #: src/admin/CatalogPage.tsx
+#: src/admin/ConnectionsPage.tsx
 #: src/admin/UsersPage.tsx
 #: src/queries/ManageQueriesDialog.tsx
 #: src/session/SessionsDialog.tsx
@@ -490,6 +512,10 @@ msgstr "Als eigene Kopie speichern"
 msgid "Als Ergebnis-Layer"
 msgstr "Als Ergebnis-Layer"
 
+#: src/admin/ConnectionsPage.tsx
+msgid "Als extern behandeln, obwohl der Host lokal ist"
+msgstr "Als extern behandeln, obwohl der Host lokal ist"
+
 #: src/queries/SavedQueries.tsx
 msgid "als Kopie"
 msgstr "als Kopie"
@@ -502,6 +528,18 @@ msgstr "am"
 #: src/session/SaveAsDialog.tsx
 msgid "Analyse unter einem Namen speichern"
 msgstr "Analyse unter einem Namen speichern"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Anbindung"
+msgstr "Anbindung"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Anbindung „{name}\" löschen?"
+msgstr "Anbindung „{name}\" löschen?"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Anbindung bearbeiten"
+msgstr "Anbindung bearbeiten"
 
 #: src/queries/SavedQueries.tsx
 msgid "Andere Ziel-Layer"
@@ -522,6 +560,10 @@ msgstr "Anlegen"
 #: src/auth/LoginPage.tsx
 msgid "Anmelden"
 msgstr "Anmelden"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Antwort nach JSON-Schema"
+msgstr "Antwort nach JSON-Schema"
 
 #: src/admin/VisibilityPage.tsx
 #: src/auth/rules.ts
@@ -544,10 +586,15 @@ msgstr "Anzeige"
 msgid "Anzeigename"
 msgstr "Anzeigename"
 
+#: src/admin/ConnectionsPage.tsx
+msgid "API-Schlüssel"
+msgstr "API-Schlüssel"
+
 #: src/workplace/Workplace.tsx
 msgid "Arbeitsweise"
 msgstr "Arbeitsweise"
 
+#: src/admin/ConnectionsPage.tsx
 #: src/operations/OperationDialog.tsx
 msgid "Art"
 msgstr "Art"
@@ -628,6 +675,10 @@ msgstr "automatisch"
 #: src/admin/SystemPage.tsx
 msgid "Backend nicht erreichbar: {error}"
 msgstr "Backend nicht erreichbar: {error}"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Bearbeiten"
+msgstr "Bearbeiten"
 
 #: src/workplace/QueryPanel.tsx
 msgid "Bearbeiten ›"
@@ -717,6 +768,10 @@ msgstr "Beschreibung"
 msgid "Beschreibung für Mensch und Modell"
 msgstr "Beschreibung für Mensch und Modell"
 
+#: src/admin/ConnectionsPage.tsx
+msgid "bestanden"
+msgstr "bestanden"
+
 #: src/admin/AdminLayout.tsx
 msgid "Betrieb"
 msgstr "Betrieb"
@@ -781,6 +836,10 @@ msgstr "Bitte X- und Y-Spalte wählen."
 msgid "Bitte zuerst das Startpasswort ändern."
 msgstr "Bitte zuerst das Startpasswort ändern."
 
+#: src/admin/ConnectionsPage.tsx
+msgid "Budget für den Layer-Steckbrief; wird nicht gesendet."
+msgstr "Budget für den Layer-Steckbrief; wird nicht gesendet."
+
 #: src/admin/LayerPage.tsx
 msgid "Codeliste (je Zeile „Code = Bedeutung\")"
 msgstr "Codeliste (je Zeile „Code = Bedeutung\")"
@@ -797,6 +856,10 @@ msgstr "Ctrl+S"
 #: src/i18n/errors.ts
 msgid "Dafür braucht es die Rolle Administrator."
 msgstr "Dafür braucht es die Rolle Administrator."
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Darf Dateninhalte erhalten (sonst nur Metadaten)"
+msgstr "Darf Dateninhalte erhalten (sonst nur Metadaten)"
 
 #: src/admin/LevelsPage.tsx
 #: src/operations/OperationDialog.tsx
@@ -868,6 +931,10 @@ msgid "Das Lesen der Datei hat zu lange gedauert und wurde abgebrochen."
 msgstr "Das Lesen der Datei hat zu lange gedauert und wurde abgebrochen."
 
 #: src/i18n/errors.ts
+msgid "Das Modell „{model}\" wird dort nicht angeboten. Angeboten: {offered}."
+msgstr "Das Modell „{model}\" wird dort nicht angeboten. Angeboten: {offered}."
+
+#: src/i18n/errors.ts
 msgid "Das Modell hat die Anfrage abgelehnt."
 msgstr "Das Modell hat die Anfrage abgelehnt."
 
@@ -880,8 +947,16 @@ msgid "Das Modell ist nicht erreichbar."
 msgstr "Das Modell ist nicht erreichbar."
 
 #: src/i18n/errors.ts
+msgid "Das Modell liefert keine Antwort im verlangten JSON-Schema; für Direktabfragen ist es so nicht geeignet."
+msgstr "Das Modell liefert keine Antwort im verlangten JSON-Schema; für Direktabfragen ist es so nicht geeignet."
+
+#: src/i18n/errors.ts
 msgid "Das Modell nimmt gerade keine weiteren Anfragen an."
 msgstr "Das Modell nimmt gerade keine weiteren Anfragen an."
+
+#: src/i18n/errors.ts
+msgid "Das Modell ruft keine Werkzeuge auf; für Werkzeugketten ist es so nicht geeignet."
+msgstr "Das Modell ruft keine Werkzeuge auf; für Werkzeugketten ist es so nicht geeignet."
 
 #: src/auth/rules.ts
 msgid "Das neue Passwort braucht mindestens {MIN_PASSWORD_LENGTH} Zeichen."
@@ -952,6 +1027,10 @@ msgstr "Daten neu"
 msgid "Datenfreigabe an eine externe Anbindung braucht eine ausdrückliche Bestätigung."
 msgstr "Datenfreigabe an eine externe Anbindung braucht eine ausdrückliche Bestätigung."
 
+#: src/admin/ConnectionsPage.tsx
+msgid "Dateninhalte"
+msgstr "Dateninhalte"
+
 #: src/admin/AdminLayout.tsx
 #: src/admin/CatalogPage.tsx
 #: src/admin/LayerPage.tsx
@@ -974,6 +1053,10 @@ msgstr "Deckkraft"
 msgid "Deckkraft {title}"
 msgstr "Deckkraft {title}"
 
+#: src/admin/ConnectionsPage.tsx
+msgid "default (nichts senden)"
+msgstr "default (nichts senden)"
+
 #: src/i18n/errors.ts
 msgid "Den Feldnamen „{name}\" gibt es zweimal."
 msgstr "Den Feldnamen „{name}\" gibt es zweimal."
@@ -981,6 +1064,10 @@ msgstr "Den Feldnamen „{name}\" gibt es zweimal."
 #: src/i18n/errors.ts
 msgid "Den Layer „{layer}\" gibt es nicht oder er ist nicht sichtbar."
 msgstr "Den Layer „{layer}\" gibt es nicht oder er ist nicht sichtbar."
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Denkaufwand"
+msgstr "Denkaufwand"
 
 #: src/workplace/QueryPanel.tsx
 msgid "Der aktuelle Kartenausschnitt, festgehalten beim Klick"
@@ -1045,6 +1132,10 @@ msgstr "Der Name „{attribute}\" ist schon vergeben; bitte einen anderen Namen 
 #: src/i18n/errors.ts
 msgid "Der Stand ist zu gross, um gespeichert zu werden."
 msgstr "Der Stand ist zu gross, um gespeichert zu werden."
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Der Text der Anfrage geht in jedem Fall an das Modell."
+msgstr "Der Text der Anfrage geht in jedem Fall an das Modell."
 
 #: src/admin/ImportWizard.tsx
 msgid "Der Versuch ist protokolliert (<0>Vorgang {id}</0>). Entscheidungen korrigieren und erneut übernehmen."
@@ -1353,6 +1444,10 @@ msgstr "Ein beteiligter Layer hat seit dem Speichern eine neue Fassung oder fehl
 msgid "Ein Layer fehlt oder ist nicht sichtbar."
 msgstr "Ein Layer fehlt oder ist nicht sichtbar."
 
+#: src/admin/ConnectionsPage.tsx
+msgid "Ein Schlüssel ist gespeichert. Leer lassen, um ihn zu behalten."
+msgstr "Ein Schlüssel ist gespeichert. Leer lassen, um ihn zu behalten."
+
 #: src/i18n/errors.ts
 msgid "Eine Anbindung „{name}\" gibt es schon."
 msgstr "Eine Anbindung „{name}\" gibt es schon."
@@ -1474,6 +1569,10 @@ msgstr "erfolgreich"
 msgid "Ergebnis"
 msgstr "Ergebnis"
 
+#: src/admin/ConnectionsPage.tsx
+msgid "Ergebnis des Verbindungstests"
+msgstr "Ergebnis des Verbindungstests"
+
 #: src/session/notice.ts
 msgid "Ergebnis weicht ab"
 msgstr "Ergebnis weicht ab"
@@ -1515,6 +1614,10 @@ msgstr "Ergebnisprüfung"
 msgid "Ergibt einen abgeleiteten Layer dieser Sitzung; er wird bei jedem Öffnen neu berechnet."
 msgstr "Ergibt einen abgeleiteten Layer dieser Sitzung; er wird bei jedem Öffnen neu berechnet."
 
+#: src/admin/ConnectionsPage.tsx
+msgid "erlaubt"
+msgstr "erlaubt"
+
 #: src/admin/ImportWizard.tsx
 msgid "erledigt"
 msgstr "erledigt"
@@ -1522,6 +1625,10 @@ msgstr "erledigt"
 #: src/admin/ImportRunPage.tsx
 msgid "Erneut importieren"
 msgstr "Erneut importieren"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Erreichbar"
+msgstr "Erreichbar"
 
 #: src/workplace/AddLayers.tsx
 msgid "Erscheint in der Attributtabelle, nicht auf der Karte"
@@ -1580,6 +1687,14 @@ msgstr "Export · ab E5"
 msgid "Export der Ergebnisdaten folgt in E5 (F-8.6)"
 msgstr "Export der Ergebnisdaten folgt in E5 (F-8.6)"
 
+#: src/components/LocalityBadge.tsx
+msgid "extern · {host}"
+msgstr "extern · {host}"
+
+#: src/components/LocalityBadge.tsx
+msgid "Extern: Anfragen gehen an {host}"
+msgstr "Extern: Anfragen gehen an {host}"
+
 #: src/table/TableDock.tsx
 msgid "Fachliche Namen aus dem Datenkatalog · Auswahl wird mit der Sitzung gespeichert"
 msgstr "Fachliche Namen aus dem Datenkatalog · Auswahl wird mit der Sitzung gespeichert"
@@ -1596,6 +1711,7 @@ msgstr "Fassung"
 msgid "Fehler"
 msgstr "Fehler"
 
+#: src/admin/ConnectionsPage.tsx
 #: src/admin/format.ts
 msgid "fehlgeschlagen"
 msgstr "fehlgeschlagen"
@@ -1655,9 +1771,25 @@ msgstr "Fläche"
 msgid "Fragestellung, Annahmen …"
 msgstr "Fragestellung, Annahmen …"
 
+#: src/admin/ConnectionsPage.tsx
+msgid "Freigabe"
+msgstr "Freigabe"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "freigegeben"
+msgstr "freigegeben"
+
 #: src/operations/OperationDialog.tsx
 msgid "Funktion"
 msgstr "Funktion"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Für Anwender"
+msgstr "Für Anwender"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Für Anwender freigegeben"
+msgstr "Für Anwender freigegeben"
 
 #: src/admin/LayerPage.tsx
 msgid "Für Anwender sichtbar"
@@ -1838,6 +1970,10 @@ msgstr "Herauszoomen"
 msgid "heute {time}"
 msgstr "heute {time}"
 
+#: src/admin/ConnectionsPage.tsx
+msgid "high"
+msgstr "high"
+
 #: src/map/MapView.tsx
 msgid "Hineinzoomen"
 msgstr "Hineinzoomen"
@@ -1865,6 +2001,14 @@ msgstr "Hinzufügen"
 #: src/table/TableDock.tsx
 msgid "Höhe der Tabelle"
 msgstr "Höhe der Tabelle"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Ich bestätige: Dateninhalte dürfen an {host} gehen."
+msgstr "Ich bestätige: Dateninhalte dürfen an {host} gehen."
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Ich bestätige: Dateninhalte dürfen nach aussen gehen."
+msgstr "Ich bestätige: Dateninhalte dürfen nach aussen gehen."
 
 #: src/admin/ImportRunPage.tsx
 msgid "Im Assistenten abgebrochen."
@@ -1898,6 +2042,10 @@ msgstr "Importieren"
 #: src/admin/ImportLogPage.tsx
 msgid "Importprotokoll"
 msgstr "Importprotokoll"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "in Ordnung"
+msgstr "in Ordnung"
 
 #: src/admin/SystemPage.tsx
 msgid "Internes CRS"
@@ -1985,6 +2133,10 @@ msgstr "Kein Layer passt."
 msgid "Kein Objekt im Kartenausschnitt."
 msgstr "Kein Objekt im Kartenausschnitt."
 
+#: src/admin/ConnectionsPage.tsx
+msgid "kein Ollama"
+msgstr "kein Ollama"
+
 #: src/i18n/errors.ts
 msgid "kein Schlüsselwert"
 msgstr "kein Schlüsselwert"
@@ -2064,6 +2216,10 @@ msgstr "Kodierung"
 #: src/admin/ImportWizard.tsx
 msgid "Komma"
 msgstr "Komma"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Kontextlänge"
+msgstr "Kontextlänge"
 
 #: src/admin/UsersPage.tsx
 msgid "Konto"
@@ -2192,6 +2348,10 @@ msgstr "Letzte Anmeldung"
 msgid "Letzter Import"
 msgstr "Letzter Import"
 
+#: src/admin/ConnectionsPage.tsx
+msgid "Letzter Test"
+msgstr "Letzter Test"
+
 #: src/editor/describe.ts
 msgid "liegt ausserhalb"
 msgstr "liegt ausserhalb"
@@ -2205,7 +2365,20 @@ msgstr "liegt in"
 msgid "Linie"
 msgstr "Linie"
 
+#: src/components/LocalityBadge.tsx
+msgid "lokal"
+msgstr "lokal"
+
+#: src/components/LocalityBadge.tsx
+msgid "Lokal: {host}"
+msgstr "Lokal: {host}"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Lokale Anbindungen dürfen Dateninhalte erhalten, externe nur Metadaten; nach dem Speichern änderbar."
+msgstr "Lokale Anbindungen dürfen Dateninhalte erhalten, externe nur Metadaten; nach dem Speichern änderbar."
+
 #: src/admin/CatalogPage.tsx
+#: src/admin/ConnectionsPage.tsx
 #: src/admin/LayerPage.tsx
 #: src/admin/UsersPage.tsx
 #: src/queries/ManageQueriesDialog.tsx
@@ -2215,6 +2388,10 @@ msgstr "Linie"
 msgid "Löschen"
 msgstr "Löschen"
 
+#: src/admin/ConnectionsPage.tsx
+msgid "low"
+msgstr "low"
+
 #: src/operations/OperationDialog.tsx
 msgid "Maximum"
 msgstr "Maximum"
@@ -2222,6 +2399,10 @@ msgstr "Maximum"
 #: src/admin/format.ts
 msgid "Maximum {field}"
 msgstr "Maximum {field}"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "medium"
+msgstr "medium"
 
 #: src/map/Measurement.tsx
 msgid "Messart"
@@ -2280,17 +2461,31 @@ msgid "Mittelwert"
 msgstr "Mittelwert"
 
 #: src/admin/AdminLayout.tsx
+#: src/admin/ConnectionsPage.tsx
 msgid "Modell"
 msgstr "Modell"
 
+#: src/admin/ConnectionsPage.tsx
+msgid "Modell vorhanden"
+msgstr "Modell vorhanden"
+
 #: src/admin/AdminLayout.tsx
-msgid "Modelle"
-msgstr "Modelle"
+#: src/admin/ConnectionsPage.tsx
+msgid "Modellanbindungen"
+msgstr "Modellanbindungen"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Modelle hinter einer OpenAI-kompatiblen Schnittstelle (Ollama, vLLM, llama.cpp, Cloud). Anwender wählen unter den freigegebenen; eine nicht freigegebene nutzt niemand, auch kein Administrator."
+msgstr "Modelle hinter einer OpenAI-kompatiblen Schnittstelle (Ollama, vLLM, llama.cpp, Cloud). Anwender wählen unter den freigegebenen; eine nicht freigegebene nutzt niemand, auch kein Administrator."
 
 #: src/editor/describe.ts
 msgctxt "date"
 msgid "nach"
 msgstr "nach"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "nach Art (lokal: none, extern: default)"
+msgstr "nach Art (lokal: none, extern: default)"
 
 #: src/workplace/LayerPanel.tsx
 msgid "Nach oben"
@@ -2300,6 +2495,7 @@ msgstr "Nach oben"
 msgid "Nach unten"
 msgstr "Nach unten"
 
+#: src/admin/ConnectionsPage.tsx
 #: src/admin/LayerPage.tsx
 #: src/admin/LevelsPage.tsx
 #: src/admin/UsersPage.tsx
@@ -2332,6 +2528,10 @@ msgstr "Neu"
 #: src/queries/SavedQueries.tsx
 msgid "Neue Abfrage (leer)"
 msgstr "Neue Abfrage (leer)"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Neue Anbindung"
+msgstr "Neue Anbindung"
 
 #: src/workplace/AddLayers.tsx
 msgid "Neue Daten importieren"
@@ -2380,6 +2580,14 @@ msgctxt "date"
 msgid "nicht am"
 msgstr "nicht am"
 
+#: src/admin/ConnectionsPage.tsx
+msgid "nicht bestanden"
+msgstr "nicht bestanden"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "nicht freigegeben"
+msgstr "nicht freigegeben"
+
 #: src/queries/SavedQueries.tsx
 msgid "Nicht gespeichert"
 msgstr "Nicht gespeichert"
@@ -2396,6 +2604,10 @@ msgstr "Noch gibt es kein Konto. Das erste Konto wird Administrator und legt wei
 msgid "Noch keine Abfrage gespeichert."
 msgstr "Noch keine Abfrage gespeichert."
 
+#: src/admin/ConnectionsPage.tsx
+msgid "Noch keine Anbindung. Ohne sie steht nur die klassische Bedienung (Modus A) zur Verfügung."
+msgstr "Noch keine Anbindung. Ohne sie steht nur die klassische Bedienung (Modus A) zur Verfügung."
+
 #: src/workplace/LayerPanel.tsx
 msgid "Noch keine Layer. Über „+ Layer\" kommen sie aus dem Katalog."
 msgstr "Noch keine Layer. Über „+ Layer\" kommen sie aus dem Katalog."
@@ -2403,6 +2615,10 @@ msgstr "Noch keine Layer. Über „+ Layer\" kommen sie aus dem Katalog."
 #: src/session/SessionsDialog.tsx
 msgid "Noch keine Sitzung gespeichert."
 msgstr "Noch keine Sitzung gespeichert."
+
+#: src/admin/ConnectionsPage.tsx
+msgid "none (ohne Nachdenken)"
+msgstr "none (ohne Nachdenken)"
 
 #: src/session/SaveAsDialog.tsx
 msgid "Notiz (optional)"
@@ -2423,6 +2639,10 @@ msgstr "Nur gefilterte Objekte (Treffer der Abfrage)"
 #: src/workplace/QueryPanel.tsx
 msgid "Nur in:"
 msgstr "Nur in:"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "nur Metadaten"
+msgstr "nur Metadaten"
 
 #: src/queries/ManageQueriesDialog.tsx
 msgid "Nur wer sie gespeichert hat, teilt sie."
@@ -2467,6 +2687,18 @@ msgstr "Ohne {conditions}: ihr Layer ist nicht verfügbar."
 #: src/queries/SavedQueries.tsx
 msgid "OK"
 msgstr "OK"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Ollama {version}"
+msgstr "Ollama {version}"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Ollama-Version"
+msgstr "Ollama-Version"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "OpenAI-kompatibel, mit /v1. Lokal sind 127.0.0.1, localhost, host.docker.internal und die Namen in GEOTANDEM_LLM_LOCAL_HOSTS; alles andere ist extern."
+msgstr "OpenAI-kompatibel, mit /v1. Lokal sind 127.0.0.1, localhost, host.docker.internal und die Namen in GEOTANDEM_LLM_LOCAL_HOSTS; alles andere ist extern."
 
 #: src/editor/EditorPanel.tsx
 msgid "Operator"
@@ -2592,6 +2824,10 @@ msgstr "Schlüssel auf <0>{target}</0>"
 msgid "Schlüssel auf vorhandenen Layer"
 msgstr "Schlüssel auf vorhandenen Layer"
 
+#: src/admin/ConnectionsPage.tsx
+msgid "Schlüssel entfernen"
+msgstr "Schlüssel entfernen"
+
 #: src/operations/OperationDialog.tsx
 msgid "Schlüssel im Layer"
 msgstr "Schlüssel im Layer"
@@ -2612,6 +2848,10 @@ msgstr "schneidet"
 #: src/admin/ImportWizard.tsx
 msgid "Schritte"
 msgstr "Schritte"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Seed"
+msgstr "Seed"
 
 #: src/workplace/Workplace.tsx
 msgid "Seitenleiste"
@@ -2682,6 +2922,7 @@ msgstr "Spalten"
 msgid "Später"
 msgstr "Später"
 
+#: src/admin/ConnectionsPage.tsx
 #: src/admin/LayerPage.tsx
 #: src/admin/LevelsPage.tsx
 #: src/queries/SavedQueries.tsx
@@ -2840,6 +3081,14 @@ msgstr "Tabulator"
 msgid "Technischer Name"
 msgstr "Technischer Name"
 
+#: src/admin/ConnectionsPage.tsx
+msgid "Temperatur"
+msgstr "Temperatur"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Testet …"
+msgstr "Testet …"
+
 #: src/admin/format.ts
 msgid "Text"
 msgstr "Text"
@@ -2900,6 +3149,10 @@ msgstr "Übernommen"
 msgid "Überschreiben"
 msgstr "Überschreiben"
 
+#: src/admin/ConnectionsPage.tsx
+msgid "übersprungen"
+msgstr "übersprungen"
+
 #: src/editor/EditorPanel.tsx
 msgctxt "around a feature"
 msgid "um"
@@ -2943,9 +3196,29 @@ msgstr "unverändert"
 msgid "Unvollständig"
 msgstr "Unvollständig"
 
+#: src/admin/ConnectionsPage.tsx
+msgid "Ursache"
+msgstr "Ursache"
+
 #: src/admin/SystemPage.tsx
 msgid "Verbinde …"
 msgstr "Verbinde …"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Verbindung testen"
+msgstr "Verbindung testen"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Verbindungstest „{name}\""
+msgstr "Verbindungstest „{name}\""
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Verbindungstest bestanden"
+msgstr "Verbindungstest bestanden"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Verbindungstest nicht bestanden"
+msgstr "Verbindungstest nicht bestanden"
 
 #: src/editor/EditorPanel.tsx
 msgid "Verknüpfung"
@@ -2983,6 +3256,11 @@ msgctxt "date"
 msgid "vor"
 msgstr "vor"
 
+#: src/admin/ConnectionsPage.tsx
+msgid "voreingestellt"
+msgstr "voreingestellt"
+
+#: src/admin/ConnectionsPage.tsx
 #: src/admin/LevelsPage.tsx
 msgid "Voreingestellt"
 msgstr "Voreingestellt"
@@ -3025,6 +3303,14 @@ msgstr "weitere Treffer — genauer suchen"
 msgid "Weniger als die Hälfte der Schlüssel findet einen Treffer."
 msgstr "Weniger als die Hälfte der Schlüssel findet einen Treffer."
 
+#: src/admin/ConnectionsPage.tsx
+msgid "Wer sie gewählt hatte, arbeitet mit der voreingestellten Anbindung weiter."
+msgstr "Wer sie gewählt hatte, arbeitet mit der voreingestellten Anbindung weiter."
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Werkzeugaufruf"
+msgstr "Werkzeugaufruf"
+
 #: src/editor/EditorPanel.tsx
 msgid "Wert"
 msgstr "Wert"
@@ -3057,6 +3343,10 @@ msgstr "Wird gespeichert"
 msgid "Wird nur jetzt angezeigt. Bitte sicher weitergeben; es muss bei der ersten Anmeldung geändert werden."
 msgstr "Wird nur jetzt angezeigt. Bitte sicher weitergeben; es muss bei der ersten Anmeldung geändert werden."
 
+#: src/admin/ConnectionsPage.tsx
+msgid "Wird verschlüsselt gespeichert und nie wieder angezeigt."
+msgstr "Wird verschlüsselt gespeichert und nie wieder angezeigt."
+
 #: src/editor/EditorPanel.tsx
 msgid "wo"
 msgstr "wo"
@@ -3084,6 +3374,10 @@ msgstr "Zeile {id} auswählen"
 #: src/admin/ImportRunPage.tsx
 msgid "Zeilen"
 msgstr "Zeilen"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Zeitlimit (s)"
+msgstr "Zeitlimit (s)"
 
 #: src/admin/ImportLogPage.tsx
 #: src/admin/ImportRunPage.tsx
@@ -3130,6 +3424,10 @@ msgstr "Zu viele hochgeladene Dateien warten auf ihren Import. Bitte zuerst eine
 #: src/admin/AdminLayout.tsx
 msgid "Zugang"
 msgstr "Zugang"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Zugang angenommen"
+msgstr "Zugang angenommen"
 
 #: src/session/SessionMenu.tsx
 msgid "Zuletzt"

@@ -81,6 +81,10 @@ CODES: dict[str, str] = {
     "llm_server_error": "The endpoint failed (HTTP 5xx).",
     "llm_rejected": "The endpoint rejected the request (HTTP 4xx).",
     "llm_bad_response": "The endpoint's answer is not a valid response.",
+    # Connection test: what a reachable endpoint cannot do (C12)
+    "llm_model_missing": "The endpoint does not offer the model (details.offered).",
+    "llm_schema_unsupported": "The answer to a JSON-schema request did not fit the schema.",
+    "llm_tools_unsupported": "The model did not call the offered tool.",
     # Import: refusals (details.reason of unreadable_source) and the run
     "unreadable_source": "The file cannot be read as given; details.reason says why.",
     "too_many_pending_imports": "Too many uploaded files wait for their import.",

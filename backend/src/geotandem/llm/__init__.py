@@ -3,6 +3,7 @@
 
 from geotandem.llm.client import (
     EFFORTS,
+    ClientFactory,
     Completion,
     Effort,
     Endpoint,
@@ -18,6 +19,7 @@ from geotandem.llm.hosts import LOCAL_HOSTS, Locality, classify_host, host_of
 __all__ = [
     "EFFORTS",
     "LOCAL_HOSTS",
+    "ClientFactory",
     "Completion",
     "Effort",
     "Endpoint",
