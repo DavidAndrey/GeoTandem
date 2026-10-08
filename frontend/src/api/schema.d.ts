@@ -546,6 +546,46 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/admin/llm/connections': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Llm Connections
+     * @description Every connection; the API key never leaves, ``has_api_key`` says whether one is set.
+     */
+    get: operations['llm_connections_api_admin_llm_connections_get']
+    put?: never
+    /** Create Llm Connection */
+    post: operations['create_llm_connection_api_admin_llm_connections_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/admin/llm/connections/{connection_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Llm Connection */
+    get: operations['llm_connection_api_admin_llm_connections__connection_id__get']
+    put?: never
+    post?: never
+    /** Delete Llm Connection */
+    delete: operations['delete_llm_connection_api_admin_llm_connections__connection_id__delete']
+    options?: never
+    head?: never
+    /** Update Llm Connection */
+    patch: operations['update_llm_connection_api_admin_llm_connections__connection_id__patch']
+    trace?: never
+  }
   '/api/auth/setup': {
     parameters: {
       query?: never
@@ -819,6 +859,31 @@ export interface paths {
     /** Usage */
     get: operations['usage_api_queries__query_id__usage_get']
     put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/llm/options': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Options
+     * @description Enabled connections, the account's choice and what is active now (C17).
+     */
+    get: operations['options_api_llm_options_get']
+    /**
+     * Choose
+     * @description Choose a connection, or none for the default. A disabled one is refused,
+     *     for administrators too (C14).
+     */
+    put: operations['choose_api_llm_options_put']
     post?: never
     delete?: never
     options?: never
@@ -1223,6 +1288,14 @@ export interface components {
        */
       has_result: boolean
     }
+    /** Choice */
+    Choice: {
+      /**
+       * Connection Id
+       * @description None: use the default.
+       */
+      connection_id: number | null
+    }
     /** Classified */
     Classified: {
       /**
@@ -1302,6 +1375,183 @@ export interface components {
       spatial: number
       /** Restriction */
       restriction: boolean
+    }
+    /** ConnectionInfo */
+    ConnectionInfo: {
+      /** Id */
+      id: number
+      /** Name */
+      name: string
+      /** Base Url */
+      base_url: string
+      /** Host */
+      host: string
+      /**
+       * Locality
+       * @enum {string}
+       */
+      locality: 'local' | 'external'
+      /** Model */
+      model: string
+      /** Has Api Key */
+      has_api_key: boolean
+      /** Credentials Unreadable */
+      credentials_unreadable: boolean
+      /** Temperature */
+      temperature: number
+      /** Seed */
+      seed: number | null
+      /** Timeout S */
+      timeout_s: number
+      /**
+       * Reasoning Effort
+       * @enum {string}
+       */
+      reasoning_effort: 'default' | 'none' | 'low' | 'medium' | 'high'
+      /** Context Length */
+      context_length: number | null
+      /** Enabled */
+      enabled: boolean
+      /** Is Default */
+      is_default: boolean
+      /** May Receive Data */
+      may_receive_data: boolean
+      /** Marked External */
+      marked_external: boolean
+      /** Last Test */
+      last_test: {
+        [key: string]: unknown
+      } | null
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string
+    }
+    /**
+     * ConnectionOption
+     * @description What a user sees of a connection when choosing one (C7, C14).
+     */
+    ConnectionOption: {
+      /** Id */
+      id: number
+      /** Name */
+      name: string
+      /** Model */
+      model: string
+      /** Host */
+      host: string
+      /**
+       * Locality
+       * @enum {string}
+       */
+      locality: 'local' | 'external'
+      /** Is Default */
+      is_default: boolean
+    }
+    /**
+     * ConnectionPatch
+     * @description Only the fields sent change. ``api_key: null`` removes the key.
+     */
+    ConnectionPatch: {
+      /** Name */
+      name?: string | null
+      /** Base Url */
+      base_url?: string | null
+      /** Model */
+      model?: string | null
+      /** Api Key */
+      api_key?: string | null
+      /** Temperature */
+      temperature?: number | null
+      /** Seed */
+      seed?: number | null
+      /** Timeout S */
+      timeout_s?: number | null
+      /** Reasoning Effort */
+      reasoning_effort?: ('default' | 'none' | 'low' | 'medium' | 'high') | null
+      /** Context Length */
+      context_length?: number | null
+      /** Enabled */
+      enabled?: boolean | null
+      /** Is Default */
+      is_default?: boolean | null
+      /** May Receive Data */
+      may_receive_data?: boolean | null
+      /** Marked External */
+      marked_external?: boolean | null
+      /**
+       * Confirm Data Release
+       * @default false
+       */
+      confirm_data_release: boolean
+    }
+    /**
+     * ConnectionWrite
+     * @description A new connection (C4). Unset defaults follow from local or external.
+     */
+    ConnectionWrite: {
+      /** Name */
+      name: string
+      /** Base Url */
+      base_url: string
+      /** Model */
+      model: string
+      /** Api Key */
+      api_key?: string | null
+      /**
+       * Temperature
+       * @default 0
+       */
+      temperature: number
+      /**
+       * Seed
+       * @default 42
+       */
+      seed: number | null
+      /**
+       * Timeout S
+       * @default 120
+       */
+      timeout_s: number
+      /**
+       * Reasoning Effort
+       * @description Unset: 'none' for a local connection, 'default' else (C10).
+       */
+      reasoning_effort?: ('default' | 'none' | 'low' | 'medium' | 'high') | null
+      /** Context Length */
+      context_length?: number | null
+      /**
+       * Enabled
+       * @default false
+       */
+      enabled: boolean
+      /**
+       * Is Default
+       * @default false
+       */
+      is_default: boolean
+      /**
+       * May Receive Data
+       * @description Unset: on for a local connection, off else (C6).
+       */
+      may_receive_data?: boolean | null
+      /**
+       * Marked External
+       * @default false
+       */
+      marked_external: boolean
+      /**
+       * Confirm Data Release
+       * @description Required to let an external connection receive data contents (C6).
+       * @default false
+       */
+      confirm_data_release: boolean
     }
     /**
      * CountMetric
@@ -1838,6 +2088,15 @@ export interface components {
       layer: string
       /** Attribute */
       attribute: string
+    }
+    /** LLMOptions */
+    LLMOptions: {
+      /** Connections */
+      connections: components['schemas']['ConnectionOption'][]
+      /** Chosen Connection Id */
+      chosen_connection_id: number | null
+      /** Active Connection Id */
+      active_connection_id: number | null
     }
     /** LayerInfo */
     LayerInfo: {
@@ -5143,6 +5402,343 @@ export interface operations {
       }
     }
   }
+  llm_connections_api_admin_llm_connections_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ConnectionInfo'][]
+        }
+      }
+    }
+  }
+  create_llm_connection_api_admin_llm_connections_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ConnectionWrite']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ConnectionInfo']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Content Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  llm_connection_api_admin_llm_connections__connection_id__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        connection_id: number
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ConnectionInfo']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Content Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  delete_llm_connection_api_admin_llm_connections__connection_id__delete: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        connection_id: number
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Content Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  update_llm_connection_api_admin_llm_connections__connection_id__patch: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        connection_id: number
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ConnectionPatch']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ConnectionInfo']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Content Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
   setup_status_api_auth_setup_get: {
     parameters: {
       query?: never
@@ -6622,6 +7218,68 @@ export interface operations {
       }
       /** @description Gateway Timeout */
       504: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  options_api_llm_options_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['LLMOptions']
+        }
+      }
+    }
+  }
+  choose_api_llm_options_put: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['Choice']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['LLMOptions']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
         headers: {
           [name: string]: unknown
         }

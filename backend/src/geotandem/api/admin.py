@@ -35,6 +35,7 @@ from geotandem.catalog import (
     update_attribute,
     update_layer,
 )
+from geotandem.connections import ConnectionInfo, ConnectionPatch, ConnectionWrite
 from geotandem.data import LayerExists, Op
 from geotandem.db.orm import Role
 from geotandem.importing import Message, Preview, ReadOptions, SourceError
@@ -508,3 +509,50 @@ def put_levels(body: LevelSet, state: State, user: Actor) -> LevelSet:
         deleted=sorted(i for i in before - after if i is not None),
     )
     return LevelSet(levels=levels)
+
+
+# --- model connections (F-3.2, plan E2.1) ---------------------------------------
+
+_CONNECTION_ERRORS = {**ERRORS, 409: ERRORS[400]}
+
+
+@router.get("/llm/connections")
+def llm_connections(state: State) -> list[ConnectionInfo]:
+    """Every connection; the API key never leaves, ``has_api_key`` says whether one is set."""
+    return state.connections.all()
+
+
+@router.get("/llm/connections/{connection_id}", responses=ERRORS)
+def llm_connection(connection_id: int, state: State) -> ConnectionInfo:
+    info = state.connections.get(connection_id)
+    if info is None:
+        raise NotFound(f"Unknown connection {connection_id}.", id=connection_id)
+    return info
+
+
+@router.post("/llm/connections", status_code=201, responses=ERRORS)
+def create_llm_connection(body: ConnectionWrite, state: State, user: Actor) -> ConnectionInfo:
+    info = state.connections.create(body)
+    fields = sorted(body.model_fields_set - {"confirm_data_release"})
+    audit.event(
+        "llm_connection_changed", username=user, action="created", id=info.id, fields=fields
+    )
+    return info
+
+
+@router.patch("/llm/connections/{connection_id}", responses=_CONNECTION_ERRORS)
+def update_llm_connection(
+    connection_id: int, body: ConnectionPatch, state: State, user: Actor
+) -> ConnectionInfo:
+    info, changed = state.connections.update(connection_id, body)
+    audit.event(
+        "llm_connection_changed", username=user, action="updated", id=info.id, fields=changed
+    )
+    return info
+
+
+@router.delete("/llm/connections/{connection_id}", status_code=204, responses=ERRORS)
+def delete_llm_connection(connection_id: int, state: State, user: Actor) -> Response:
+    state.connections.delete(connection_id)
+    audit.event("llm_connection_changed", username=user, action="deleted", id=connection_id)
+    return Response(status_code=204)

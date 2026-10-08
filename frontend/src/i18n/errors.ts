@@ -130,6 +130,18 @@ const MESSAGES: Record<string, Words> = {
     return t`Die voreingestellte Stufe „${name}" muss für Anwender wählbar sein.`
   },
   // Model connections
+  connection_name_taken: (d) => {
+    const name = text(d.name)
+    return t`Eine Anbindung „${name}" gibt es schon.`
+  },
+  default_not_enabled: () => t`Die voreingestellte Anbindung muss für Anwender freigegeben sein.`,
+  default_connection_required: () =>
+    t`Solange andere Anbindungen freigegeben sind, braucht es eine voreingestellte. Bitte zuerst eine andere voreinstellen.`,
+  data_release_unconfirmed: () =>
+    t`Datenfreigabe an eine externe Anbindung braucht eine ausdrückliche Bestätigung.`,
+  connection_not_available: () => t`Diese Anbindung steht nicht zur Wahl.`,
+  credentials_unreadable: () =>
+    t`Der gespeicherte Zugangsschlüssel lässt sich nicht mehr öffnen (secret.key fehlt oder wurde ersetzt). Bitte neu eintragen.`,
   llm_invalid_url: () =>
     t`Die Adresse muss mit http:// oder https:// beginnen, einen Host nennen und darf keine Zugangsdaten enthalten.`,
   llm_unreachable: () => t`Das Modell ist nicht erreichbar.`,

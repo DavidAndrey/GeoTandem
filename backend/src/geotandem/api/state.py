@@ -6,6 +6,7 @@ from geotandem.api.slots import HashingSlots, QuerySlots
 from geotandem.auth.device import Devices
 from geotandem.auth.throttle import LoginThrottle
 from geotandem.config import Settings
+from geotandem.connections import Connections
 from geotandem.data import DataBackend, Limits, Op
 from geotandem.importing.isolation import ReadLimits
 from geotandem.importing.staging import Staging
@@ -23,6 +24,8 @@ class AppState:
     query_slots: QuerySlots
     hashing_slots: HashingSlots
     devices: Devices
+    connections: Connections
+    """Model connections, with the vault that opens their keys (plan E2.1)."""
     setup_token: str | None = None
     """While no account exists: what setup asks for (auth.setup_token)."""
 

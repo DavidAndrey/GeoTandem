@@ -63,6 +63,13 @@ CODES: dict[str, str] = {
     "level_name_taken": "Two levels share the name details.name.",
     "default_level_count": "Exactly one level must be the default.",
     "default_not_selectable": "The default level must be selectable by users.",
+    # Model connections: administration and choice
+    "connection_name_taken": "A connection of that name exists (details.name).",
+    "default_not_enabled": "The default connection must be enabled for users.",
+    "default_connection_required": "Another enabled connection must become the default first.",
+    "data_release_unconfirmed": "Data contents to an external connection need confirmation.",
+    "connection_not_available": "The connection is not offered: unknown or disabled.",
+    "credentials_unreadable": "A stored API key cannot be opened with this secret.key.",
     # Model connections: why a call brought no answer (details.cause, verbatim)
     "llm_invalid_url": "The base URL is not http(s) with a host, or carries credentials.",
     "llm_unreachable": "The model endpoint could not be reached.",

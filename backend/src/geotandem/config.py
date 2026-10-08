@@ -120,6 +120,12 @@ class Settings(BaseSettings):
     basemap_attribution: str = Field(
         default="", description="Attribution shown for an own tile URL template."
     )
+    llm_local_hosts: str = Field(
+        default="",
+        description="Comma-separated host names whose model connections count as local, "
+        "besides 127.0.0.1, ::1, localhost and host.docker.internal (plan E2.1, C5). "
+        "Compared literally, never resolved.",
+    )
     frontend_dir: Path | None = Field(
         default=None, description="Built frontend to serve at '/'; none in development."
     )
@@ -137,6 +143,10 @@ class Settings(BaseSettings):
 
         resolve(value)  # fail at start, not when the first map opens
         return value
+
+    @property
+    def local_hosts(self) -> tuple[str, ...]:
+        return tuple(h.strip().lower() for h in self.llm_local_hosts.split(",") if h.strip())
 
     @property
     def staging_dir(self) -> Path:

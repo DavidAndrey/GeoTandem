@@ -948,6 +948,10 @@ msgstr ""
 msgid "Daten neu"
 msgstr ""
 
+#: src/i18n/errors.ts
+msgid "Datenfreigabe an eine externe Anbindung braucht eine ausdrückliche Bestätigung."
+msgstr ""
+
 #: src/admin/AdminLayout.tsx
 #: src/admin/CatalogPage.tsx
 #: src/admin/LayerPage.tsx
@@ -992,6 +996,10 @@ msgstr ""
 
 #: src/session/notice.ts
 msgid "Der Ergebnis-Layer fehlt"
+msgstr ""
+
+#: src/i18n/errors.ts
+msgid "Der gespeicherte Zugangsschlüssel lässt sich nicht mehr öffnen (secret.key fehlt oder wurde ersetzt). Bitte neu eintragen."
 msgstr ""
 
 #: src/session/notice.ts
@@ -1227,6 +1235,10 @@ msgid "Die Treffer sind dieselben."
 msgstr ""
 
 #: src/i18n/errors.ts
+msgid "Die voreingestellte Anbindung muss für Anwender freigegeben sein."
+msgstr ""
+
+#: src/i18n/errors.ts
 msgid "Die voreingestellte Stufe „{name}\" muss für Anwender wählbar sein."
 msgstr ""
 
@@ -1240,6 +1252,10 @@ msgstr ""
 
 #: src/i18n/errors.ts
 msgid "Diese Adresse oder dieses Modell gibt es dort nicht."
+msgstr ""
+
+#: src/i18n/errors.ts
+msgid "Diese Anbindung steht nicht zur Wahl."
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -1335,6 +1351,10 @@ msgstr ""
 
 #: src/i18n/errors.ts
 msgid "Ein Layer fehlt oder ist nicht sichtbar."
+msgstr ""
+
+#: src/i18n/errors.ts
+msgid "Eine Anbindung „{name}\" gibt es schon."
 msgstr ""
 
 #: src/queries/SaveQueryDialog.tsx
@@ -2640,6 +2660,10 @@ msgstr ""
 
 #: src/admin/VisibilityPage.tsx
 msgid "sofort sichtbar"
+msgstr ""
+
+#: src/i18n/errors.ts
+msgid "Solange andere Anbindungen freigegeben sind, braucht es eine voreingestellte. Bitte zuerst eine andere voreinstellen."
 msgstr ""
 
 #: src/table/TableDock.tsx

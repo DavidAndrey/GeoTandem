@@ -948,6 +948,10 @@ msgstr "Daten importieren"
 msgid "Daten neu"
 msgstr "Daten neu"
 
+#: src/i18n/errors.ts
+msgid "Datenfreigabe an eine externe Anbindung braucht eine ausdrückliche Bestätigung."
+msgstr "Datenfreigabe an eine externe Anbindung braucht eine ausdrückliche Bestätigung."
+
 #: src/admin/AdminLayout.tsx
 #: src/admin/CatalogPage.tsx
 #: src/admin/LayerPage.tsx
@@ -993,6 +997,10 @@ msgstr "Der Ergebnis-Layer „{result}\" ist nicht verfügbar."
 #: src/session/notice.ts
 msgid "Der Ergebnis-Layer fehlt"
 msgstr "Der Ergebnis-Layer fehlt"
+
+#: src/i18n/errors.ts
+msgid "Der gespeicherte Zugangsschlüssel lässt sich nicht mehr öffnen (secret.key fehlt oder wurde ersetzt). Bitte neu eintragen."
+msgstr "Der gespeicherte Zugangsschlüssel lässt sich nicht mehr öffnen (secret.key fehlt oder wurde ersetzt). Bitte neu eintragen."
 
 #: src/session/notice.ts
 msgid "Der gespeicherte Zustand ergibt nicht mehr genau die gespeicherte Abfrage."
@@ -1227,6 +1235,10 @@ msgid "Die Treffer sind dieselben."
 msgstr "Die Treffer sind dieselben."
 
 #: src/i18n/errors.ts
+msgid "Die voreingestellte Anbindung muss für Anwender freigegeben sein."
+msgstr "Die voreingestellte Anbindung muss für Anwender freigegeben sein."
+
+#: src/i18n/errors.ts
 msgid "Die voreingestellte Stufe „{name}\" muss für Anwender wählbar sein."
 msgstr "Die voreingestellte Stufe „{name}\" muss für Anwender wählbar sein."
 
@@ -1241,6 +1253,10 @@ msgstr "Diese Abfrage wurde mit einem unbekannten Format gespeichert."
 #: src/i18n/errors.ts
 msgid "Diese Adresse oder dieses Modell gibt es dort nicht."
 msgstr "Diese Adresse oder dieses Modell gibt es dort nicht."
+
+#: src/i18n/errors.ts
+msgid "Diese Anbindung steht nicht zur Wahl."
+msgstr "Diese Anbindung steht nicht zur Wahl."
 
 #: src/i18n/errors.ts
 msgid "Diese Operation geht hier nicht."
@@ -1336,6 +1352,10 @@ msgstr "Ein beteiligter Layer hat seit dem Speichern eine neue Fassung oder fehl
 #: src/i18n/errors.ts
 msgid "Ein Layer fehlt oder ist nicht sichtbar."
 msgstr "Ein Layer fehlt oder ist nicht sichtbar."
+
+#: src/i18n/errors.ts
+msgid "Eine Anbindung „{name}\" gibt es schon."
+msgstr "Eine Anbindung „{name}\" gibt es schon."
 
 #: src/queries/SaveQueryDialog.tsx
 msgid "Eine eigene Abfrage „{trimmed}\" gibt es schon."
@@ -2641,6 +2661,10 @@ msgstr "Sitzungsmenü"
 #: src/admin/VisibilityPage.tsx
 msgid "sofort sichtbar"
 msgstr "sofort sichtbar"
+
+#: src/i18n/errors.ts
+msgid "Solange andere Anbindungen freigegeben sind, braucht es eine voreingestellte. Bitte zuerst eine andere voreinstellen."
+msgstr "Solange andere Anbindungen freigegeben sind, braucht es eine voreingestellte. Bitte zuerst eine andere voreinstellen."
 
 #: src/table/TableDock.tsx
 msgid "Sortieren: ↓ / ↑ / aus · Umschalt für zweite Sortierung"

@@ -10,11 +10,13 @@ from pydantic import BaseModel
 from geotandem import audit
 from geotandem.api.slots import QueriesBusy
 from geotandem.auth.accounts import AccountError, HashingBusy
+from geotandem.connections import ConnectionProblem
 from geotandem.engine import QueryError
 from geotandem.levels import LevelError
 from geotandem.saved_queries import SavedQueryError
 from geotandem.sessions import SessionError
 from geotandem.tools import UnknownTool
+from geotandem.vault import CredentialsUnreadable
 
 
 class Problem(Exception):
@@ -84,6 +86,14 @@ def install(app: FastAPI) -> None:
     @app.exception_handler(SavedQueryError)
     async def _saved_query_rule(_: Request, exc: SavedQueryError) -> JSONResponse:
         return _body(exc.status, exc.code, exc.message, **exc.details)
+
+    @app.exception_handler(ConnectionProblem)
+    async def _connection_rule(_: Request, exc: ConnectionProblem) -> JSONResponse:
+        return _body(exc.status, exc.code, exc.message, **exc.details)
+
+    @app.exception_handler(CredentialsUnreadable)
+    async def _credentials_unreadable(_: Request, exc: CredentialsUnreadable) -> JSONResponse:
+        return _body(409, exc.code, str(exc))
 
     @app.exception_handler(LevelError)
     async def _level_rule(_: Request, exc: LevelError) -> JSONResponse:

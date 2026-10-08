@@ -12,7 +12,7 @@ from starlette.responses import FileResponse, HTMLResponse, Response
 from starlette.types import Scope
 
 from geotandem import __version__, audit
-from geotandem.api import admin, auth, errors, queries, routes, sessions
+from geotandem.api import admin, auth, errors, llm, queries, routes, sessions
 from geotandem.api.guards import (
     CSP_NONCE,
     NONCE_PLACEHOLDER,
@@ -26,12 +26,14 @@ from geotandem.auth import accounts, setup_token
 from geotandem.auth.device import Devices
 from geotandem.auth.throttle import LoginThrottle
 from geotandem.config import Settings, get_settings
+from geotandem.connections import Connections
 from geotandem.data.spatialite import SpatiaLiteBackend
 from geotandem.db.bootstrap import bootstrap
 from geotandem.importing import log as import_log
 from geotandem.importing.staging import Staging
 from geotandem.sample.load import load_sample
 from geotandem.tools import default_registry
+from geotandem.vault import Vault
 
 log = logging.getLogger(__name__)
 
@@ -73,6 +75,7 @@ def start(settings: Settings) -> AppState:
         slots,
         hashing,
         Devices(),
+        Connections(engine, Vault.open(settings.data_dir), settings.local_hosts),
         token,
     )
 
@@ -132,6 +135,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(auth.router)
     app.include_router(sessions.router)
     app.include_router(queries.router)
+    app.include_router(llm.router)
     frontend = settings.frontend_dir
     if frontend is not None and Path(frontend, "index.html").exists():
         app.mount("/", SinglePageApp(directory=frontend, html=True), name="frontend")

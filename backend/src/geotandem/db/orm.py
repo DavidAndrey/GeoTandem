@@ -122,6 +122,10 @@ class User(Base):
     last_login_at: Mapped[datetime | None]
     level_id: Mapped[int | None] = mapped_column(ForeignKey("level.id", ondelete="SET NULL"))
     """The chosen level of model support; none or gone means the default (plan E2.0, H7)."""
+    llm_connection_id: Mapped[int | None] = mapped_column(
+        ForeignKey("llm_connection.id", ondelete="SET NULL")
+    )
+    """The chosen model connection; disabled, none or gone means the default (plan C17)."""
 
 
 class AuthSession(Base):
@@ -225,6 +229,35 @@ class LevelPermission(Base):
     )
     op_class: Mapped[str] = mapped_column(String(16), primary_key=True)
     mode: Mapped[str] = mapped_column(String(16))
+
+
+class LLMConnection(Base):
+    """A model behind an OpenAI-compatible endpoint (F-3.2, plan E2.1, C4)."""
+
+    __tablename__ = "llm_connection"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(60), unique=True)
+    base_url: Mapped[str] = mapped_column(String(500))
+    model: Mapped[str] = mapped_column(String(200))
+    api_key: Mapped[str | None]
+    """Fernet-encrypted with ``secret.key`` (C8); never sent back."""
+    temperature: Mapped[float]
+    seed: Mapped[int | None]
+    timeout_s: Mapped[float]
+    reasoning_effort: Mapped[str] = mapped_column(String(16))
+    context_length: Mapped[int | None]
+    """A declared budget for the profile size check, not sent anywhere (C11)."""
+    enabled: Mapped[bool]
+    """Offered to users; a disabled connection is usable by nobody (C14)."""
+    is_default: Mapped[bool]
+    may_receive_data: Mapped[bool]
+    """Data release (C6): may receive data contents, not only metadata."""
+    marked_external: Mapped[bool]
+    """A local host the administrator treats as external (C5); never the reverse."""
+    last_test: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.current_timestamp())
 
 
 class AppMeta(Base):
