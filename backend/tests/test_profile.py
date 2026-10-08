@@ -174,3 +174,26 @@ async def test_unknown_account_is_404(client: httpx.AsyncClient) -> None:
 
 def names(profile: dict[str, Any]) -> list[str]:
     return [layer["name"] for layer in profile["layers"]]
+
+
+async def test_the_preview_sizes_the_profile_against_the_accounts_connection(
+    client: httpx.AsyncClient,
+) -> None:
+    """S5: a token estimate next to the context length of the connection in use."""
+    alone = await profile_of(client, "admin")
+    assert alone["tokens_estimate"] == -(-alone["size_chars"] // 3)
+    assert (alone["budget"], alone["over_budget"]) == (None, False)
+
+    connection = {"name": "Ollama", "base_url": "http://127.0.0.1:11434/v1", "model": "q"}
+    created = await client.post(
+        "/api/admin/llm/connections", json={**connection, "enabled": True, "context_length": 256}
+    )
+    assert created.status_code == 201, created.text
+    small = await profile_of(client, "admin")
+    assert small["budget"] == {"connection": "Ollama", "context_length": 256}
+    assert small["tokens_estimate"] > 256 and small["over_budget"] is True
+
+    await client.patch(
+        f"/api/admin/llm/connections/{created.json()['id']}", json={"context_length": 10_000_000}
+    )
+    assert (await profile_of(client, "admin"))["over_budget"] is False

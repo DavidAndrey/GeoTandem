@@ -51,6 +51,7 @@ def save_levels(engine: Engine, levels: Sequence[Level]) -> list[Level]:
 
     A level with an id keeps it; one without is new; a stored level the set no
     longer names is deleted, and accounts that chose it fall back to the default.
+    The stored default cannot go: make another the default first, then delete it.
     """
     validate_levels(levels)
     with Session(engine) as session, session.begin():
@@ -64,6 +65,13 @@ def save_levels(engine: Engine, levels: Sequence[Level]) -> list[Level]:
             if level.id is not None and level.id not in stored:
                 raise UnknownLevel(level.id)
         kept = {level.id for level in levels}
+        for row in stored.values():
+            if row.is_default and row.id not in kept:
+                raise LevelError(
+                    "default_level_deleted",
+                    f"The default level '{row.name}' cannot be deleted.",
+                    name=row.name,
+                )
         for level_id, row in stored.items():
             if level_id not in kept:
                 session.delete(row)

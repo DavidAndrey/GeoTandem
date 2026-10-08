@@ -199,6 +199,10 @@ msgid "{layer}: {objects} → {read} in der Datei. Felder: {changes}"
 msgstr "{layer}: {objects} → {read} in der Datei. Felder: {changes}"
 
 #: src/admin/ProfilePage.tsx
+msgid "{limit} Token ({connection})"
+msgstr "{limit} Token ({connection})"
+
+#: src/admin/ProfilePage.tsx
 msgid "{low} bis {high}"
 msgstr "{low} bis {high}"
 
@@ -268,8 +272,8 @@ msgid "{shown} von {all}"
 msgstr "{shown} von {all}"
 
 #: src/admin/ProfilePage.tsx
-msgid "{size} Zeichen"
-msgstr "{size} Zeichen"
+msgid "{size} Zeichen, geschätzt {tokens} Token"
+msgstr "{size} Zeichen, geschätzt {tokens} Token"
 
 #: src/map/Measurement.tsx
 msgid "{surface} · Umfang {length}"
@@ -742,6 +746,10 @@ msgstr "Bedingungen (Übersicht)"
 msgid "beginnt mit"
 msgstr "beginnt mit"
 
+#: src/admin/ProfilePage.tsx
+msgid "bei „{connection}\" nicht angegeben"
+msgstr "bei „{connection}\" nicht angegeben"
+
 #: src/editor/describe.ts
 msgid "bei {feature} ({layer})"
 msgstr "bei {feature} ({layer})"
@@ -1176,6 +1184,10 @@ msgstr "Der Name „{attribute}\" ist schon vergeben; bitte einen anderen Namen 
 msgid "Der Stand ist zu gross, um gespeichert zu werden."
 msgstr "Der Stand ist zu gross, um gespeichert zu werden."
 
+#: src/admin/ProfilePage.tsx
+msgid "Der Steckbrief ist voraussichtlich grösser als die Kontextlänge von „{connection}“. Er wird nicht gekürzt: Ab der Direktabfrage wird eine Modellaktion für dieses Konto abgelehnt. Weniger Layer oder Felder für das Modell freigeben oder eine Anbindung mit grösserem Kontext wählen."
+msgstr "Der Steckbrief ist voraussichtlich grösser als die Kontextlänge von „{connection}“. Er wird nicht gekürzt: Ab der Direktabfrage wird eine Modellaktion für dieses Konto abgelehnt. Weniger Layer oder Felder für das Modell freigeben oder eine Anbindung mit grösserem Kontext wählen."
+
 #: src/admin/ConnectionsPage.tsx
 msgid "Der Text der Anfrage geht in jedem Fall an das Modell."
 msgstr "Der Text der Anfrage geht in jedem Fall an das Modell."
@@ -1371,6 +1383,10 @@ msgstr "Die Treffer sind dieselben."
 #: src/i18n/errors.ts
 msgid "Die voreingestellte Anbindung muss für Anwender freigegeben sein."
 msgstr "Die voreingestellte Anbindung muss für Anwender freigegeben sein."
+
+#: src/i18n/errors.ts
+msgid "Die voreingestellte Stufe „{name}\" kann nicht entfernt werden. Bitte zuerst eine andere voreinstellen und speichern."
+msgstr "Die voreingestellte Stufe „{name}\" kann nicht entfernt werden. Bitte zuerst eine andere voreinstellen und speichern."
 
 #: src/i18n/errors.ts
 msgid "Die voreingestellte Stufe „{name}\" muss für Anwender wählbar sein."
@@ -2238,6 +2254,10 @@ msgstr "Keine Layer freigegeben."
 msgid "Keine Modellanbindung eingerichtet"
 msgstr "Keine Modellanbindung eingerichtet"
 
+#: src/admin/ProfilePage.tsx
+msgid "keine Modellanbindung für dieses Konto"
+msgstr "keine Modellanbindung für dieses Konto"
+
 #: src/table/TableDock.tsx
 msgid "Keine Objekte."
 msgstr "Keine Objekte."
@@ -2283,6 +2303,7 @@ msgid "Komma"
 msgstr "Komma"
 
 #: src/admin/ConnectionsPage.tsx
+#: src/admin/ProfilePage.tsx
 msgid "Kontextlänge"
 msgstr "Kontextlänge"
 

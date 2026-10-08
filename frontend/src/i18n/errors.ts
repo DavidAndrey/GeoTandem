@@ -129,6 +129,10 @@ const MESSAGES: Record<string, Words> = {
     const name = text(d.name)
     return t`Die voreingestellte Stufe „${name}" muss für Anwender wählbar sein.`
   },
+  default_level_deleted: (d) => {
+    const name = text(d.name)
+    return t`Die voreingestellte Stufe „${name}" kann nicht entfernt werden. Bitte zuerst eine andere voreinstellen und speichern.`
+  },
   level_not_available: () => t`Diese Stufe steht nicht zur Wahl.`,
   class_not_allowed: (d) => {
     const level = text(d.level)

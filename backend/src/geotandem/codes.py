@@ -63,6 +63,7 @@ CODES: dict[str, str] = {
     "level_name_taken": "Two levels share the name details.name.",
     "default_level_count": "Exactly one level must be the default.",
     "default_not_selectable": "The default level must be selectable by users.",
+    "default_level_deleted": "The stored default level cannot be deleted (details.name).",
     "level_not_available": "The level does not exist or users may not choose it.",
     "class_not_allowed": "The level does not allow a part of the action (details.part).",
     # Model connections: administration and choice

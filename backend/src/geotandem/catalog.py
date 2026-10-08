@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import math
 from collections.abc import Collection
 from datetime import datetime
 from typing import Annotated, Any, Literal
@@ -167,6 +168,10 @@ def update_attribute(
 
 PROFILE_VERSION = 1
 
+CHARS_PER_TOKEN = 3
+"""For the token estimate (S5): deliberately low, so the estimate errs high.
+Tokenizers differ; compact JSON with German labels runs at about 3 to 4."""
+
 
 class AttributeProfile(BaseModel):
     name: str
@@ -207,6 +212,8 @@ class ModelProfile(BaseModel):
     hash: str
     size_chars: int
     """Characters of the canonical form, as the model receives it."""
+    tokens_estimate: int
+    """A rough upper estimate of its size in tokens (S5, ``CHARS_PER_TOKEN``)."""
 
 
 def profile(layer: LayerInfo) -> LayerProfile | None:
@@ -266,4 +273,5 @@ def model_profile(engine: Engine, visible: Collection[str]) -> ModelProfile:
         layers=layers,
         hash=hashlib.sha256(text.encode()).hexdigest(),
         size_chars=len(text),
+        tokens_estimate=math.ceil(len(text) / CHARS_PER_TOKEN),
     )

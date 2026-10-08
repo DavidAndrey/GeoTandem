@@ -1,17 +1,18 @@
 // What the model sees (plan E2.2, S6): the layer profile for one account —
 // metadata only, limited to what that account sees and the administrator
-// released for the model — with its hash and size. The per-layer view stays
-// on the layer page.
+// released for the model — with its hash and size, the size estimated in
+// tokens against the context length of the connection the account would use
+// (S5). The per-layer view stays on the layer page.
 import { Trans } from '@lingui/react/macro'
 import { t } from '@lingui/core/macro'
 import { useState } from 'react'
-import type { ModelProfile } from '../api/client'
+import type { ProfilePreview } from '../api/client'
 import { useModelProfile, useUsers } from '../api/queries'
 import { ErrorNotice, Loading } from '../components/ui'
 import { formatNumber } from '../i18n/locale'
 import { typeLabel } from './format'
 
-type AttributeProfile = ModelProfile['layers'][number]['attributes'][number]
+type AttributeProfile = ProfilePreview['layers'][number]['attributes'][number]
 
 function domainText(a: AttributeProfile): string {
   if (a.range) {
@@ -31,6 +32,10 @@ export function ProfilePage() {
   const profile = useModelProfile(account)
   const data = profile.data
   const size = data ? formatNumber(data.size_chars) : ''
+  const tokens = data ? formatNumber(data.tokens_estimate) : ''
+  const budget = data?.budget
+  const limit = budget?.context_length != null ? formatNumber(budget.context_length) : ''
+  const connection = budget?.connection ?? ''
   const count = data ? formatNumber(data.layers.length) : ''
 
   return (
@@ -68,7 +73,17 @@ export function ProfilePage() {
             <dt>
               <Trans>Grösse</Trans>
             </dt>
-            <dd>{t`${size} Zeichen`}</dd>
+            <dd>{t`${size} Zeichen, geschätzt ${tokens} Token`}</dd>
+            <dt>
+              <Trans>Kontextlänge</Trans>
+            </dt>
+            <dd>
+              {!budget
+                ? t`keine Modellanbindung für dieses Konto`
+                : limit
+                  ? t`${limit} Token (${connection})`
+                  : t`bei „${connection}" nicht angegeben`}
+            </dd>
             <dt>
               <Trans>Prüfsumme</Trans>
             </dt>
@@ -76,6 +91,16 @@ export function ProfilePage() {
               <code className="text-xs break-all">{data.hash}</code>
             </dd>
           </dl>
+          {data.over_budget && (
+            <p role="alert" className="text-danger mb-3 max-w-3xl text-sm">
+              <Trans>
+                Der Steckbrief ist voraussichtlich grösser als die Kontextlänge von „{connection}“.
+                Er wird nicht gekürzt: Ab der Direktabfrage wird eine Modellaktion für dieses Konto
+                abgelehnt. Weniger Layer oder Felder für das Modell freigeben oder eine Anbindung
+                mit grösserem Kontext wählen.
+              </Trans>
+            </p>
+          )}
           {data.layers.length === 0 && (
             <p className="text-muted text-sm">
               <Trans>Für dieses Konto kennt das Modell keinen Layer.</Trans>

@@ -62,6 +62,8 @@ export function LevelsPage() {
   const save = useSaveLevels()
   const [draft, setDraft] = useState<Column[] | null>(null)
   const columns = draft ?? stored.data?.levels.map(keyed)
+  // The stored default stays until another one is saved as the default (H7).
+  const storedDefault = stored.data?.levels.find((l) => l.is_default)?.id
 
   const change = (next: Column[] | null) => {
     save.reset()
@@ -144,7 +146,11 @@ export function LevelsPage() {
                         type="button"
                         className="btn ml-auto px-1"
                         aria-label={removeLevel(level.name)}
-                        disabled={columns.length === 1}
+                        disabled={
+                          columns.length === 1 ||
+                          level.is_default ||
+                          (level.id != null && level.id === storedDefault)
+                        }
                         onClick={() => change(columns.filter((_, j) => j !== i))}
                       >
                         <Trash2 size={14} aria-hidden />

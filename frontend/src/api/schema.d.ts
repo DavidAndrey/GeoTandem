@@ -636,7 +636,8 @@ export interface paths {
     /**
      * Account Profile
      * @description The layer profile a model would get for ``account``: only what that account
-     *     sees and the administrator released for the model (F-9.3, F-5.10).
+     *     sees and the administrator released for the model (F-9.3, F-5.10), sized
+     *     against the context length of the connection it would use (S5).
      */
     get: operations['account_profile_api_admin_llm_profile_get']
     put?: never
@@ -2408,26 +2409,6 @@ export interface components {
       }
     }
     /**
-     * ModelProfile
-     * @description Every layer an account's model may know of, in canonical form (S3, S4).
-     *
-     *     ``hash`` is SHA-256 over the canonical JSON of ``profile_version`` and
-     *     ``layers``: two calls with the same hash asked about the same world (E3).
-     */
-    ModelProfile: {
-      /**
-       * Profile Version
-       * @default 1
-       */
-      profile_version: number
-      /** Layers */
-      layers: components['schemas']['LayerProfile'][]
-      /** Hash */
-      hash: string
-      /** Size Chars */
-      size_chars: number
-    }
-    /**
      * NearFeature
      * @description Source geometry lies within a distance of one reference feature (F-4.3).
      */
@@ -2644,6 +2625,36 @@ export interface components {
       warnings: components['schemas']['Message'][]
       /** Errors */
       errors: components['schemas']['Message'][]
+    }
+    /**
+     * ProfileBudget
+     * @description The connection the account's model actions would use, and its declared
+     *     context length (C11, C17).
+     */
+    ProfileBudget: {
+      /** Connection */
+      connection: string
+      /** Context Length */
+      context_length: number | null
+    }
+    /** ProfilePreview */
+    ProfilePreview: {
+      /**
+       * Profile Version
+       * @default 1
+       */
+      profile_version: number
+      /** Layers */
+      layers: components['schemas']['LayerProfile'][]
+      /** Hash */
+      hash: string
+      /** Size Chars */
+      size_chars: number
+      /** Tokens Estimate */
+      tokens_estimate: number
+      budget: components['schemas']['ProfileBudget'] | null
+      /** Over Budget */
+      over_budget: boolean
     }
     /**
      * GeoTandem query object
@@ -6089,7 +6100,7 @@ export interface operations {
           [name: string]: unknown
         }
         content: {
-          'application/json': components['schemas']['ModelProfile']
+          'application/json': components['schemas']['ProfilePreview']
         }
       }
       /** @description Bad Request */

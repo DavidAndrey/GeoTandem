@@ -2904,7 +2904,7 @@
           "admin"
         ],
         "summary": "Account Profile",
-        "description": "The layer profile a model would get for ``account``: only what that account\nsees and the administrator released for the model (F-9.3, F-5.10).",
+        "description": "The layer profile a model would get for ``account``: only what that account\nsees and the administrator released for the model (F-9.3, F-5.10), sized\nagainst the context length of the connection it would use (S5).",
         "operationId": "account_profile_api_admin_llm_profile_get",
         "parameters": [
           {
@@ -2923,7 +2923,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ModelProfile"
+                  "$ref": "#/components/schemas/ProfilePreview"
                 }
               }
             }
@@ -8422,38 +8422,6 @@
         "title": "Message",
         "description": "A finding about the source; ``code`` is stable, ``message`` explains it."
       },
-      "ModelProfile": {
-        "properties": {
-          "profile_version": {
-            "type": "integer",
-            "title": "Profile Version",
-            "default": 1
-          },
-          "layers": {
-            "items": {
-              "$ref": "#/components/schemas/LayerProfile"
-            },
-            "type": "array",
-            "title": "Layers"
-          },
-          "hash": {
-            "type": "string",
-            "title": "Hash"
-          },
-          "size_chars": {
-            "type": "integer",
-            "title": "Size Chars"
-          }
-        },
-        "type": "object",
-        "required": [
-          "layers",
-          "hash",
-          "size_chars"
-        ],
-        "title": "ModelProfile",
-        "description": "Every layer an account's model may know of, in canonical form (S3, S4).\n\n``hash`` is SHA-256 over the canonical JSON of ``profile_version`` and\n``layers``: two calls with the same hash asked about the same world (E3)."
-      },
       "NearFeature": {
         "properties": {
           "op": {
@@ -9006,6 +8974,84 @@
           "errors"
         ],
         "title": "Preview"
+      },
+      "ProfileBudget": {
+        "properties": {
+          "connection": {
+            "type": "string",
+            "title": "Connection"
+          },
+          "context_length": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context Length"
+          }
+        },
+        "type": "object",
+        "required": [
+          "connection",
+          "context_length"
+        ],
+        "title": "ProfileBudget",
+        "description": "The connection the account's model actions would use, and its declared\ncontext length (C11, C17)."
+      },
+      "ProfilePreview": {
+        "properties": {
+          "profile_version": {
+            "type": "integer",
+            "title": "Profile Version",
+            "default": 1
+          },
+          "layers": {
+            "items": {
+              "$ref": "#/components/schemas/LayerProfile"
+            },
+            "type": "array",
+            "title": "Layers"
+          },
+          "hash": {
+            "type": "string",
+            "title": "Hash"
+          },
+          "size_chars": {
+            "type": "integer",
+            "title": "Size Chars"
+          },
+          "tokens_estimate": {
+            "type": "integer",
+            "title": "Tokens Estimate"
+          },
+          "budget": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProfileBudget"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "over_budget": {
+            "type": "boolean",
+            "title": "Over Budget"
+          }
+        },
+        "type": "object",
+        "required": [
+          "layers",
+          "hash",
+          "size_chars",
+          "tokens_estimate",
+          "budget",
+          "over_budget"
+        ],
+        "title": "ProfilePreview"
       },
       "QueryObject-Input": {
         "properties": {

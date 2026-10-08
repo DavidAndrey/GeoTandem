@@ -59,6 +59,18 @@ test('a cell, the default and the order are edited and saved as one set', async 
   expect(sent(calls)[1]?.matrix).toMatchObject({ display: 'approve', query: 'auto' })
 })
 
+test('the stored default cannot be removed until another is saved as the default', async () => {
+  fakeApi({ ...signedIn(), 'GET /api/admin/levels': { levels: shipped } })
+  renderAt('/admin/stufen', <App />)
+
+  const remove = await screen.findByRole('button', { name: '„Prüfen" entfernen' })
+  expect(remove).toBeDisabled()
+  expect(screen.getByRole('button', { name: '„Assistenz" entfernen' })).toBeEnabled()
+  await userEvent.click(screen.getByLabelText('Voreingestellt – Assistenz'))
+  expect(remove).toBeDisabled()
+  expect(screen.getByRole('button', { name: '„Assistenz" entfernen' })).toBeDisabled()
+})
+
 test('a new level starts with everything off, and a fifth cannot be added', async () => {
   const calls = fakeApi({
     ...signedIn(),
@@ -71,12 +83,12 @@ test('a new level starts with everything off, and a fifth cannot be added', asyn
   await userEvent.click(add)
   expect(add).toBeDisabled()
   expect(screen.getByLabelText('Abfragen und filtern – Neue Stufe')).toHaveValue('off')
-  await userEvent.click(screen.getByRole('button', { name: '„Prüfen" entfernen' }))
+  await userEvent.click(screen.getByRole('button', { name: '„Automatisch" entfernen' }))
   await userEvent.click(screen.getByRole('button', { name: 'Speichern' }))
 
   await vi.waitFor(() => expect(saved(calls)).toHaveLength(1))
   const levels = sent(calls)
-  expect(levels.map((l) => l.name)).toEqual(['Assistenz', 'Automatisch', 'Neue Stufe'])
+  expect(levels.map((l) => l.name)).toEqual(['Assistenz', 'Prüfen', 'Neue Stufe'])
   expect(levels[2]).not.toHaveProperty('id')
   expect(levels[2]).not.toHaveProperty('key')
 })

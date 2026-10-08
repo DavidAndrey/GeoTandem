@@ -82,6 +82,7 @@ async def test_refusals_carry_their_code_and_change_nothing(client: httpx.AsyncC
         ([assistenz], "default_level_count"),
         ([assistenz, {**pruefen, "selectable": False}], "default_not_selectable"),
         ([pruefen, {**assistenz, "name": " prüfen"}], "level_name_taken"),
+        ([{**assistenz, "is_default": True}], "default_level_deleted"),
     ]
     for body, code in cases:
         response = await put(client, body)
@@ -95,6 +96,15 @@ async def test_refusals_carry_their_code_and_change_nothing(client: httpx.AsyncC
     assert (response.status_code, response.json()["code"]) == (422, "schema_violation")
 
     assert await levels(client) == shipped
+
+
+async def test_the_default_goes_only_after_another_took_over(client: httpx.AsyncClient) -> None:
+    assistenz, pruefen, automatisch = await levels(client)
+    moved = [{**assistenz, "is_default": True}, {**pruefen, "is_default": False}, automatisch]
+    assert (await put(client, moved)).status_code == 200
+    response = await put(client, [{**assistenz, "is_default": True}, automatisch])
+    assert response.status_code == 200
+    assert [lv["name"] for lv in await levels(client)] == ["Assistenz", "Automatisch"]
 
 
 async def test_a_deleted_level_lets_its_accounts_fall_back(

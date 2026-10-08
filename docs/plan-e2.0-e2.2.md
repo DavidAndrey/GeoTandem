@@ -136,7 +136,7 @@ flowchart LR
 | S2 | Value domains | Count as metadata: the import wizard *proposes* them from the data, but the admin confirms or edits them (F-2.8). The wizard says that a confirmed code list reaches the model. A proposal is stored as unconfirmed (`value_domain_confirmed`, migration 0008) and left out of the profile; saving a changed domain, or confirming it explicitly in the field editor, confirms it. Saving a label alone does not | Confirmation is the explicit release |
 | S3 | Filter | Layer `for_model` ∧ visible to the account ∧ attribute `for_model`. A `references` entry is kept only if its target layer and attribute are in the same profile | The model must not learn the names of layers the account cannot see (F-5.10) |
 | S4 | Form | Canonical JSON, stable order (layer name, attribute position), `profile_version: 1`, SHA-256 over the canonical form. The hash is recorded with each model action (E2.4) | Two calls with the same profile must be provably the same question (E3) |
-| S5 | Size | An estimate in tokens next to the connection's context length (C11; which connection the preview uses is postponed, section 6). Until then the preview shows the size in characters of the canonical form. Over budget: a warning in the admin preview; a refusal with `context_too_large` from E2.3 on. Never truncated silently | A cut profile makes the model guess at layers it was not told about |
+| S5 | Size | An estimate in tokens next to the connection's context length (C11): the connection the previewed account would use (C17), the estimate deliberately high at 3 characters per token (decided in the E2.0–E2.2 review, section 6). Over budget: a warning in the admin preview; a refusal with `context_too_large` from E2.3 on. Never truncated silently | A cut profile makes the model guess at layers it was not told about |
 | S6 | Preview | Admin area: *Was das Modell sieht* — pick an account, see the profile, its hash and size. The per-layer profile view stays | Makes F-9.3 inspectable |
 | S7 | Proof | A test seeds a layer with sentinel values in its rows and asserts that no sentinel appears in any profile unless the admin put it into a code list | The done-when as a test, not a promise |
 
@@ -287,8 +287,11 @@ plain SQLAlchemy and run on both backends.
 
 ## 6 Postponed
 
-- **S5/S6**: which connection's context length the admin preview compares
-  the profile size against, and how tokens are estimated.
+- ~~**S5/S6**: which connection's context length the admin preview compares
+  the profile size against, and how tokens are estimated.~~ Decided in the
+  review after WP61: the account's active connection; characters / 3,
+  rounded up (`CHARS_PER_TOKEN`). A real tokenizer per model can replace
+  the estimate in E3, where token counts come back from the calls (C1).
 
 *[KB §n]*: section n of "Local LLM / Ollama integration — a knowledge base"
 (from the RA2 project, shared 2026-10-05; not in this repository).

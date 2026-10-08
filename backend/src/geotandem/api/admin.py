@@ -605,14 +605,43 @@ def delete_llm_connection(connection_id: int, state: State, user: Actor) -> Resp
 # --- what the model sees (plan E2.2, S6) ------------------------------------------
 
 
+class ProfileBudget(BaseModel):
+    """The connection the account's model actions would use, and its declared
+    context length (C11, C17)."""
+
+    connection: str
+    context_length: int | None
+
+
+class ProfilePreview(ModelProfile):
+    budget: ProfileBudget | None
+    """``None``: the account has no connection to use."""
+    over_budget: bool
+    """The estimate exceeds the declared context length: a warning here, a
+    refusal with ``context_too_large`` from E2.3 on (S5)."""
+
+
 @router.get("/llm/profile", responses=ERRORS)
-def account_profile(account: str, state: State) -> ModelProfile:
+def account_profile(account: str, state: State) -> ProfilePreview:
     """The layer profile a model would get for ``account``: only what that account
-    sees and the administrator released for the model (F-9.3, F-5.10)."""
+    sees and the administrator released for the model (F-9.3, F-5.10), sized
+    against the context length of the connection it would use (S5)."""
     found = next(
         (a for a in accounts.list_accounts(state.backend.engine) if a.username == account), None
     )
     if found is None:
         raise NotFound(f"Unknown account '{account}'.", account=account)
     view = view_for(state.backend, found)
-    return model_profile(state.backend.engine, view.layer_names())
+    found_profile = model_profile(state.backend.engine, view.layer_names())
+    active = state.connections.active(found.id)
+    budget = (
+        ProfileBudget(connection=active.name, context_length=active.context_length)
+        if active
+        else None
+    )
+    limit = budget.context_length if budget else None
+    return ProfilePreview(
+        **found_profile.model_dump(),
+        budget=budget,
+        over_budget=limit is not None and found_profile.tokens_estimate > limit,
+    )
