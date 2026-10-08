@@ -13,5 +13,19 @@ export default defineConfig({
     // account or none start their own context.
     storageState: './.auth/admin.json',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+      grepInvert: /@llm/,
+    },
+    // Tests that enable a model connection change what every account sees: they
+    // run alone, after all others (E2.1 with a real model, scripts/gate.sh).
+    {
+      name: 'llm',
+      use: { ...devices['Desktop Chrome'] },
+      grep: /@llm/,
+      dependencies: ['chromium'],
+    },
+  ],
 })

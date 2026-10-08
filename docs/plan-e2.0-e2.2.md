@@ -252,7 +252,10 @@ flowchart LR
 - `.env.example`: `GEOTANDEM_LLM_LOCAL_HOSTS`. [tech-stack.md](../tech-stack.md):
   `openai`, `cryptography`.
 - End-to-end acceptance for E2.0, E2.1 (local Ollama green, offline proof)
-  and E2.2.
+  and E2.2. Completed in the review after WP61: the gate runs the container
+  on an internal Docker network (every pass is the offline proof), and with
+  `GATE_LLM_MODEL` an Ollama container on that network makes the E2.1 test
+  run instead of skip.
 
 ## 4 Order
 

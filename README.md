@@ -196,8 +196,23 @@ die festen Zahlen in Tests und Playwright prüfen.
 Container-Image (mit den aktuellen Basis-Images), dessen erster Start auf einem leeren Datenträger, Playwright
 gegen diesen Container, ein Neustart auf demselben Datenträger (Daten bleiben,
 kein zweites Laden des Beispieldatensatzes) und Playwright ein zweites Mal auf
-den Daten des ersten Durchlaufs. Container und Datenträger
+den Daten des ersten Durchlaufs. Der Container läuft dabei in einem internen
+Docker-Netz ohne Weg nach aussen: jeder Durchlauf belegt, dass GeoTandem ohne
+Internetverbindung arbeitet (F-9.1). Container, Netz und Datenträger
 sind Wegwerfobjekte und werden auch bei einem Fehler entfernt. Braucht Docker.
+
+Mit einem lokalen Modell prüft das Gate auch die Modellanbindung (E2.1): ein
+Ollama-Container kommt ins selbe Netz, liest die Modelle des Hosts nur lesend
+und muss den Verbindungstest bestehen.
+
+```bash
+GATE_LLM_MODEL=qwen3:8b make gate
+# Modelle anderswo (Verzeichnis oder Volume mit manifests/ und blobs/):
+GATE_OLLAMA_MODELS=/pfad/zu/models GATE_LLM_MODEL=qwen3:8b make gate
+```
+
+Ohne `GATE_LLM_MODEL` überspringt das Gate diesen Test und sagt es am Ende;
+`GATE_REQUIRE_LLM=1` macht daraus einen Fehler.
 
 Abgeleitete Artefakte werden nie von Hand bearbeitet, sondern mit `make gen`
 aus ihrer einzigen Quelle erzeugt; Tests schlagen fehl, wenn sie abweichen:
@@ -283,62 +298,13 @@ klassische Bedienung (Modus A) vollständig nutzbar.
   aus den Daten vorschlägt, kommen erst hinein, wenn der Administrator sie im
   Layer bestätigt.
 
-**Ollama auf dem Host.** Der Container erreicht den Host als
-`host.docker.internal` ([compose.yaml](compose.yaml) setzt dafür
-`host-gateway`; mit `docker run`: `--add-host host.docker.internal:host-gateway`).
-Ollama lauscht standardmässig nur auf `127.0.0.1` und ist damit aus dem
-Container nicht erreichbar: `OLLAMA_HOST` auf die Adresse der Docker-Brücke
-setzen (meist `172.17.0.1:11434`) oder auf `0.0.0.0:11434` und den Port nach
-aussen sperren. Adresse der Anbindung dann `http://host.docker.internal:11434/v1`;
-`host.docker.internal` gilt als lokal. Beispiel in
-`/etc/systemd/system/ollama.service.d/override.conf`:
-
-```ini
-[Service]
-Environment="OLLAMA_HOST=172.17.0.1:11434"
-Environment="OLLAMA_CONTEXT_LENGTH=16384"
-```
-
-**Ollama als Container.** Beide Container in ein gemeinsames Docker-Netz; dort
-erreicht GeoTandem Ollama unter seinem Containernamen, ohne dass Port 11434 auf
-dem Host veröffentlicht wird (das Image `ollama/ollama` lauscht im Netz
-bereits auf allen Adressen):
-
-```sh
-docker network create llm
-docker run -d --name ollama --network llm --restart unless-stopped \
-  -v ollama:/root/.ollama -e OLLAMA_CONTEXT_LENGTH=16384 ollama/ollama
-#  mit NVIDIA-GPU zusätzlich: --gpus all
-docker exec ollama ollama pull qwen3:8b
-# ein schon laufender Ollama-Container kommt so ins Netz:
-docker network connect llm ollama
-```
-
-GeoTandem kommt mit `docker run --network llm …` ins selbe Netz, mit Compose
-über eine Datei `compose.override.yaml` neben `compose.yaml`, die
-`docker compose` von selbst dazunimmt:
-
-```yaml
-services:
-  geotandem:
-    networks: [default, llm]
-networks:
-  llm:
-    external: true
-```
-
-Adresse der Anbindung dann `http://ollama:11434/v1`. Ein Containername ist für
-GeoTandem ein gewöhnlicher Hostname und gilt damit als **extern**: Ohne
-Weiteres trägt die Anbindung das Kennzeichen «extern · ollama» und erhält nur
-Metadaten. Damit sie als lokal gilt, den Namen freigeben, etwa in `.env`:
-
-```sh
-GEOTANDEM_LLM_LOCAL_HOSTS=ollama
-```
+**Ollama aufsetzen** (als Container mit `docker run` oder Compose, mit
+NVIDIA-GPU, oder nativ auf dem Host): [docs/ollama.md](docs/ollama.md).
 
 Die Kontextlänge der Anbindung ist ein Budget für den Steckbrief und wird
 nicht gesendet: die `/v1`-Schnittstelle kennt kein Feld dafür. Bei Ollama muss
-sie zu `OLLAMA_CONTEXT_LENGTH` passen (in beiden Varianten oben gesetzt),
+sie zu `OLLAMA_CONTEXT_LENGTH` passen (in den Beispielen in
+[docs/ollama.md](docs/ollama.md) gesetzt),
 sonst schneidet Ollama den Kontext still ab.
 
 **API-Schlüssel** liegen verschlüsselt in der Datenbank. Den Schlüssel dazu
