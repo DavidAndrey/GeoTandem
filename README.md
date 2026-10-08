@@ -5,7 +5,8 @@ steht in [anforderungen.md](anforderungen.md), warum in [vision.md](vision.md),
 in welcher Reihenfolge in [etappen.md](etappen.md), womit in
 [tech-stack.md](tech-stack.md). Die Begriffe stehen in [CONTEXT.md](CONTEXT.md).
 
-Stand: **Etappe E1 abgeschlossen** (Modus A, ohne LLM), E2 noch nicht begonnen.
+Stand: **Etappe E1 abgeschlossen** (Modus A, ohne LLM); von E2 stehen die
+Grundlagen E2.0–E2.2, ein Prompt wird noch nicht gesendet (ab E2.3).
 Die Anwendung kann:
 
 - Vektordaten und Tabellen importieren, Layer verwalten, Metadaten pflegen
@@ -21,6 +22,11 @@ Die Anwendung kann:
 - jeder Text der Oberfläche in einem Meldungskatalog, Zahlen und Daten in einer
   zentralen Schweizer Form, Ablehnungen des Backends nach Code formuliert:
   bereit für weitere Sprachen, vorerst Deutsch (E1.9)
+- Stufen der Modellunterstützung je Operationsklasse festlegen (E2.0);
+  Modellanbindungen lokal und extern verwalten, mit verschlüsseltem
+  Zugangsschlüssel und Verbindungstest, Wahl von Anbindung und Stufe im
+  Arbeitsplatz (E2.1); der Layer-Steckbrief zeigt, was ein Modell je Konto
+  erfährt: nur Metadaten (E2.2)
 
 Pläne und Befunde je Etappe liegen in [docs/](docs/) (`plan-e1.*.md`); wie
 Bedingungen, Einschränkung und Abfrageobjekt zusammenhängen, steht in
@@ -235,6 +241,68 @@ TOML-Datei, deren Pfad `GEOTANDEM_CONFIG_FILE` nennt (Umgebung geht vor Datei).
 | `GEOTANDEM_LOAD_SAMPLE_DATA` | `false` (Container: `true`) | Beispieldatensatz beim Start laden |
 | `GEOTANDEM_SPATIALITE_LIBRARY` | `mod_spatialite` | Name oder Pfad der SpatiaLite-Erweiterung |
 | `GEOTANDEM_FRONTEND_DIR` | leer (Container: `/app/frontend/dist`) | Gebautes Frontend, unter `/` ausgeliefert; in der Entwicklung liefert Vite es aus |
+| `GEOTANDEM_LLM_LOCAL_HOSTS` | leer | Weitere Hostnamen, deren Modellanbindungen als lokal gelten, kommagetrennt, z. B. `gpu-01.intern`. Immer lokal: `127.0.0.1`, `::1`, `localhost`, `host.docker.internal`. Wörtlich verglichen, nie aufgelöst |
+
+## Modellanbindungen (ab E2)
+
+Unter *Administration › Modell › Modellanbindungen* trägt der Administrator
+Modelle hinter einer OpenAI-kompatiblen Schnittstelle ein (Ollama, vLLM,
+llama.cpp, OpenAI, Anthropics Kompatibilitätsschnittstelle): Adresse mit `/v1`,
+Modellname, optional ein API-Schlüssel, Parameter. Ohne Anbindung bleibt die
+klassische Bedienung (Modus A) vollständig nutzbar.
+
+- **Lokal oder extern** ergibt sich aus dem Host, nicht aus einem Häkchen:
+  `127.0.0.1`, `::1`, `localhost`, `host.docker.internal` und die Namen in
+  `GEOTANDEM_LLM_LOCAL_HOSTS` sind lokal, alles andere extern. Eine lokale
+  Anbindung lässt sich als extern behandeln, nie umgekehrt. Externe tragen
+  überall, wo sie gewählt oder aktiv sind, ein Kennzeichen mit ihrem Host.
+- **Datenfreigabe.** Lokale Anbindungen dürfen Dateninhalte erhalten, externe
+  standardmässig nur Metadaten; die Freigabe für eine externe verlangt eine
+  ausdrückliche Bestätigung. Der Text einer Anfrage geht in jedem Fall an das
+  Modell.
+- **Freigabe für Anwender.** Eine neue Anbindung ist nicht freigegeben; eine
+  nicht freigegebene nutzt niemand, auch kein Administrator. Die erste
+  freigegebene wird voreingestellt.
+- **Verbindungstest.** Prüft Schritt für Schritt Adresse, Erreichbarkeit,
+  Zugang, Modell, Ollama-Version, eine Antwort nach JSON-Schema und einen
+  Werkzeugaufruf, mit erfundenen Fragen, ohne Daten. Grün heisst: das Modell
+  kann, was Direktabfrage und Werkzeugkette brauchen. Ein Modell ohne
+  Werkzeugunterstützung (in Ollama etwa `gemma3:4b`) scheitert am letzten
+  Schritt.
+- **Stufen.** Unter *Administration › Modell › Stufen* legt der Administrator
+  1 bis 4 Stufen fest und je Operationsklasse `aus`, `mit Freigabe` oder
+  `automatisch`. Ausgeliefert: *Assistenz* (alles aus), *Prüfen* (alles mit
+  Freigabe, voreingestellt), *Automatisch* (nur für Administratoren).
+- **Was das Modell sieht** (*Administration › Modell*): der Layer-Steckbrief
+  für ein Konto, nur Metadaten. Wertebereiche und Codelisten, die ein Import
+  aus den Daten vorschlägt, kommen erst hinein, wenn der Administrator sie im
+  Layer bestätigt.
+
+**Ollama neben dem Container.** Der Container erreicht den Host als
+`host.docker.internal` ([compose.yaml](compose.yaml) setzt dafür
+`host-gateway`; mit `docker run`: `--add-host host.docker.internal:host-gateway`).
+Ollama lauscht standardmässig nur auf `127.0.0.1` und ist damit aus dem
+Container nicht erreichbar: `OLLAMA_HOST` auf die Adresse der Docker-Brücke
+setzen (meist `172.17.0.1:11434`) oder auf `0.0.0.0:11434` und den Port nach
+aussen sperren. Adresse der Anbindung dann `http://host.docker.internal:11434/v1`.
+
+Die Kontextlänge der Anbindung ist ein Budget für den Steckbrief und wird
+nicht gesendet: die `/v1`-Schnittstelle kennt kein Feld dafür. Bei Ollama muss
+sie zu `OLLAMA_CONTEXT_LENGTH` passen, sonst schneidet
+Ollama den Kontext still ab. Beispiel in `/etc/systemd/system/ollama.service.d/override.conf`:
+
+```ini
+[Service]
+Environment="OLLAMA_HOST=172.17.0.1:11434"
+Environment="OLLAMA_CONTEXT_LENGTH=16384"
+```
+
+**API-Schlüssel** liegen verschlüsselt in der Datenbank. Den Schlüssel dazu
+erzeugt der erste Start in `DATA_DIR/secret.key` (nur für den Benutzer der
+Anwendung lesbar). Fehlt die Datei oder wurde sie ersetzt, startet die
+Anwendung trotzdem; gespeicherte API-Schlüssel sind dann unlesbar und müssen
+neu eingetragen werden. Über die Schnittstelle verlässt ein API-Schlüssel die
+Anwendung nie: sie meldet nur, ob einer gesetzt ist.
 
 **Öffentlich, hinter Traefik:** `compose.traefik.yaml` (Anleitung in der Datei)
 setzt TLS, Grössen- und Ratenbegrenzung und sperrt die Ersteinrichtung von
@@ -245,7 +313,8 @@ und setzt ihre Sicherheits-Header (CSP, HSTS über HTTPS, `nosniff`,
 
 **Sicherheitsprotokoll.** Anmeldungen (auch fehlgeschlagene, mit Grund:
 `unknown_user`, `wrong_password`, `account_locked`), gebremste Anmeldungen,
-Passwortwechsel, Konto-, Katalog-, Sichtbarkeits- und Importänderungen samt
+Passwortwechsel, Konto-, Katalog-, Sichtbarkeits-, Stufen- und Importänderungen,
+Änderungen und Tests von Modellanbindungen (nur Feldnamen, nie Schlüssel) samt
 handelndem Konto sowie die Abweisungen der Schutzschicht stehen als je eine
 JSON-Zeile mit `"event"` auf stderr, also in `docker logs`. Passwörter und
 Sitzungstoken stehen nie darin. Auswerten etwa mit
@@ -275,12 +344,24 @@ docker run --rm -v geotandem-data:/data -v "$PWD":/backup debian \
   cp /data/geotandem.sqlite /backup/geotandem-$(date +%F).sqlite
 ```
 
-Wiederherstellen: Datei zurück nach `/data/geotandem.sqlite` kopieren.
+Dazu `secret.key` aus demselben Verzeichnis sichern:
 
-Die Datei enthält alles: Layer, Metadaten, Konten, Protokolle und die
-gespeicherten Sitzungen (F-4.10) samt ihrem Ergebnis-Stempel. Nach einer
-Wiederherstellung zeigt das Öffnen einer Sitzung an, ob ihr Ergebnis noch
-dasselbe ist.
+```sh
+docker run --rm -v geotandem-data:/data -v "$PWD":/backup debian \
+  cp /data/secret.key /backup/geotandem-$(date +%F).secret.key
+```
+
+Wiederherstellen: beide Dateien zurück nach `/data` kopieren
+(`geotandem.sqlite`, `secret.key`, Rechte `0600`).
+
+Die Datenbank enthält Layer, Metadaten, Konten, Stufen, Modellanbindungen,
+Protokolle und die gespeicherten Sitzungen (F-4.10) samt ihrem
+Ergebnis-Stempel. Nach einer Wiederherstellung zeigt das Öffnen einer Sitzung
+an, ob ihr Ergebnis noch dasselbe ist. Ohne `secret.key` sind die API-Schlüssel
+der Modellanbindungen verloren, alles andere nicht. **Bewusst in Kauf
+genommen:** Wer die Sicherung beider Dateien hat, kann die API-Schlüssel
+entschlüsseln. Sicherungen deshalb wie Zugangsdaten behandeln oder
+`secret.key` getrennt aufbewahren.
 
 ## Aufbau
 
@@ -291,8 +372,11 @@ backend/          Anwendung: config, db (Migrationen), data (Zugriffsschicht,
                   tools (Registry), catalog (Layer-Katalog), importing (Import
                   und Protokoll), gdal (erlaubte Importformate), auth (Konten,
                   Anmeldungen, Sichtbarkeit), sessions und saved_queries
-                  (Sitzungen, gespeicherte Abfragen), basemap, api (HTTP),
-                  sample (Beispieldatensatz)
+                  (Sitzungen, gespeicherte Abfragen), levels (Stufen),
+                  llm (Modell-Schnittstelle, einziger openai-Adapter),
+                  connections, connection_check, vault (Anbindungen,
+                  Verbindungstest, verschlüsselte Schlüssel), basemap,
+                  api (HTTP), sample (Beispieldatensatz)
 frontend/         Vite + React + TypeScript, Leaflet
 e2e/              Playwright, auch die Abnahmetests je Etappe
 schema/           Versionierte Schema-Artefakte

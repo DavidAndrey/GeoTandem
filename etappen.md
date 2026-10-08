@@ -102,6 +102,15 @@ menschlicher Kontrolle.
 > der Werkzeugkette (E2.5). Konfiguration von System-Prompt, Matrix und
 > Wählbarkeit der Stufen (F-3.6–F-3.8) wandert von E2.4 nach E2.0, die Wahl
 > durch den Anwender (F-5.2) nach E2.1; E2.4 setzt die Stufen durch.
+>
+> **E2.0–E2.2 umgesetzt (2026-10-08, WP53–WP61):** Stufen je Operationsklasse
+> mit Adminseite und Wahl im Arbeitsplatz; Modellanbindungen lokal und extern
+> über eine Schnittstelle zum openai-SDK, verschlüsselte Schlüssel,
+> Verbindungstest; der Layer-Steckbrief nur aus Metadaten, je Konto. Abnahme in
+> `e2e/tests/acceptance-e2.0-e2.2.spec.ts`; der Nachweis ohne ausgehende
+> Verbindung (F-9.1) in `backend/tests/test_offline.py`. Offen für E2.3: Welche
+> Kontextlänge die Steckbrief-Vorschau heranzieht und wie Token geschätzt werden
+> ([docs/plan-e2.0-e2.2.md 6](docs/plan-e2.0-e2.2.md)).
 
 **Vorführung E2:** Ein Anwender ohne GIS-Vorkenntnisse beantwortet die
 Fragestellung aus E1 per Prompt; ein zweiter Durchlauf zeigt einen Fall, in dem

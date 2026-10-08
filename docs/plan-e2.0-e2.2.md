@@ -1,6 +1,6 @@
 # Plan E2.0–E2.2 — Levels, model connections, layer profile
 
-> Stand: 2026-10-07 · **in Umsetzung (ab WP53)** · Bezug:
+> Stand: 2026-10-08 · **umgesetzt (WP53–WP61)** · Bezug:
 > [anforderungen.md](../anforderungen.md) (F-2.9, F-3.2–F-3.8, F-5.2, F-5.3, F-5.10,
 > F-6.7, F-7.1–F-7.3, F-9.1–F-9.5), [etappen.md 4](../etappen.md),
 > [vision.md 8.1](../vision.md), [bewertung.md 10](../bewertung.md)

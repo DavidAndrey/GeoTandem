@@ -15,6 +15,10 @@ services:
       - "${GEOTANDEM_PORT:-8000}:8000"
     volumes:
       - ./data:/data
+    # An Ollama next to the container is http://host.docker.internal:11434/v1
+    # (README, "Modellanbindungen"); on Linux this name needs the gateway entry.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       # Variables of the README's "Konfiguration"; unset ones keep the image defaults.
       GEOTANDEM_BASEMAP: ${GEOTANDEM_BASEMAP:-none}
@@ -32,3 +36,4 @@ services:
       GEOTANDEM_MAX_FEATURES: ${GEOTANDEM_MAX_FEATURES:-10000}
       GEOTANDEM_QUERY_TIMEOUT_S: ${GEOTANDEM_QUERY_TIMEOUT_S:-10}
       GEOTANDEM_MAX_IMPORT_MB: ${GEOTANDEM_MAX_IMPORT_MB:-200}
+      GEOTANDEM_LLM_LOCAL_HOSTS: ${GEOTANDEM_LLM_LOCAL_HOSTS:-}

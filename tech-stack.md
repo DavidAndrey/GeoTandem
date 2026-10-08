@@ -72,6 +72,9 @@ nennt, worauf gebaut wird; die Sperrdateien aus E1.1 sind massgeblich.
 | openpyxl | 3.1 | **3.x** | Excel-Import |
 | pytest | 9.1 | **9.x** | |
 | MCP-SDK | 2.2 | **2.x** | Für E4/E6 relevant, wird dort erneut geprüft |
+| openai | 3.26 | **3.x** | Ergänzt in E2.1 (2026-10-08): einziger Adapter zu OpenAI-kompatiblen Endpunkten, siehe 3.5 |
+| httpx2 | 2.13 | **2.x** | Ergänzt in E2.1: der HTTP-Client, auf dem openai 3.x aufsetzt (pydantic-Fork von httpx, gleiche Schnittstelle); der Adapter konfiguriert ihn selbst |
+| cryptography | 50 | **50** | Ergänzt in E2.1: Fernet für API-Schlüssel, siehe 3.6 |
 | Node | 24 LTS | **24 LTS** | 26 wird am 2026-10-28 LTS; Vite 8 und Vitest 5 verlangen ≥ 22.12 |
 | React | 19.3 | **19** | |
 | React Router | 8.4 | **8** | |
@@ -185,9 +188,20 @@ Abweichungen gelten als Fehler (F-10.7), nicht als Eigenart des Backends.
 
 ### 3.5 Modellanbindung und MCP
 
-- **httpx** als HTTP-Client für lokale Modell-Endpunkte (F-7.1). Dieselbe
-  Bibliothek dient in den Tests als Client gegen die eigene Anwendung (siehe 5.2)
-  — eine Abhängigkeit weniger.
+- **Das offizielle `openai`-SDK** spricht mit allen Modell-Endpunkten über die
+  OpenAI-kompatible `/v1`-Schnittstelle: Ollama, vLLM, llama.cpp, OpenAI,
+  Anthropics Kompatibilitätsschnittstelle (F-7.1, F-7.2). Entschieden in E2.1
+  statt eines eigenen Protokolls über httpx: Fehlerklassen, Tool-Calls und
+  JSON-Schema-Ausgabe sind dort schon richtig abgebildet. Es ist auf ein Modul
+  beschränkt (`geotandem/llm/openai_compat.py`, ein Test zählt die Importe),
+  das hinter dem eigenen Protokoll `LLMClient` steht
+  ([docs/plan-e2.0-e2.2.md](docs/plan-e2.0-e2.2.md), C1–C3).
+- **Der Adapter baut den HTTP-Client selbst** (`httpx2`, auf dem openai 3.x
+  aufsetzt): keine Proxy-Variablen (`trust_env=False`), keine Weiterleitungen,
+  ausgehende Header aus einer Positivliste — das SDK würde sonst
+  `OPENAI_ORG_ID`, `OPENAI_PROJECT_ID` und `OPENAI_CUSTOM_HEADERS` aus der
+  Umgebung an jeden Endpunkt senden. Die Wiederholungen des SDK sind aus; der
+  Adapter wiederholt höchstens zweimal und meldet, wie oft (C9).
 - **Offizielles MCP-Python-SDK** für beide Rollen: Server (E4, F-7.5) und Client
   (E6, F-7.8).
 - Die Anbieterabstraktion (F-7.3) ist ein eigenes schmales Protokoll im
@@ -201,7 +215,7 @@ Abweichungen gelten als Fehler (F-10.7), nicht als Eigenart des Backends.
 | Aufgabe | Technologie | Bezug |
 |---|---|---|
 | Passwort-Hashing | Argon2 (argon2-cffi) | F-3.12 |
-| Verschlüsselte Ablage von Zugangsdaten und Token | cryptography (Fernet), Schlüssel aus der Umgebung | F-9.2 |
+| Verschlüsselte Ablage von Zugangsdaten und Token | cryptography (Fernet); der Schlüssel entsteht beim ersten Start in `DATA_DIR/secret.key` (0600), entschieden in E2.1 statt aus der Umgebung: keine Einrichtung, dafür liegt er in der Sicherung neben den Daten (README, Sicherung) | F-9.2 |
 | Anmeldung | serverseitige Sitzung über HttpOnly-Cookie | F-3.12 |
 
 Die Durchsetzung der HITL-Regeln (F-6.7) und der Grenzwerte (F-9.6) liegt in der
@@ -331,9 +345,11 @@ Die Grundlage kostet rund 3 kB (gzip) und wenige Zehntelsekunden beim Bauen
 
 ### 5.2 Festlegungen
 
-- **httpx doppelt genutzt:** als Testclient gegen die eigene Anwendung und als
-  Produktionsclient gegen Modell-Endpunkte. In den Tests der Modellanbindung
-  wird derselbe Client gegen einen Aufzeichnungs-Transport geführt.
+- **httpx als Testclient** gegen die eigene Anwendung. Die Modellanbindung
+  läuft über `httpx2` (openai 3.x); ihre Tests führen den Adapter gegen einen
+  Aufzeichnungs-Transport (`httpx2.MockTransport`, ein nachgebildetes Ollama)
+  und prüfen die Transport-Schutzmassnahmen auf echten Sockets mit
+  Positivkontrolle.
 - **Kein Modell in der Testsuite.** Der LLM-Pfad wird gegen einen
   deterministischen Anbieter-Adapter mit hinterlegten Antworten geprüft. Ein
   echtes Modell ist Gegenstand der Vorführung, nicht der automatisierten Tests —
@@ -341,7 +357,11 @@ Die Grundlage kostet rund 3 kB (gzip) und wenige Zehntelsekunden beim Bauen
   Die Messung der Modellgüte selbst geschieht in eigenen, vom Administrator
   ausgelösten Bewertungsläufen neben der Suite ([bewertung.md 9](bewertung.md));
   die Bewertungsmaschinerie — Normalisierung und Vergleich — ist dagegen
-  gewöhnlicher Anwendungscode und wird von pytest abgedeckt.
+  gewöhnlicher Anwendungscode und wird von pytest abgedeckt. Gegen ein echtes
+  lokales Modell laufen zwei Prüfungen nur auf Verlangen, ausserhalb von
+  `make gate`: `GEOTANDEM_TEST_LLM_MODEL=qwen3:8b uv run pytest -m llm`
+  (Adapter und Verbindungstest) und der Abnahmetest E2.1 mit `E2E_LLM_URL` und
+  `E2E_LLM_MODEL`.
 - **Der Beispieldatensatz (F-10.5) ist das Testfundament.** Er entsteht in E1.1
   und dient Unit-, Backend-Vergleichs- und Playwright-Tests gleichermassen.
 - **Playwright bildet die Vorführungen ab.** Jede Etappe endet mit einer
@@ -421,8 +441,8 @@ Anforderungen, deren Erfüllung unmittelbar an einer Stackentscheidung hängt:
 | F-5.16, F-5.17 | Gemeinsamer Analysezustand im Frontend, Typen aus dem Backend-Schema erzeugt |
 | F-6.5, F-6.6 | Server-Sent Events und asynchrone Verarbeitung in FastAPI |
 | F-6.7, F-9.6 | Durchsetzung in Web-Schicht und Ausführungsmaschine, nicht in der Oberfläche |
-| F-7.1, F-7.3 | httpx plus eigenes Anbieterprotokoll statt Framework |
+| F-7.1, F-7.3 | Eigenes Protokoll `LLMClient`, ein einziger Adapter über das openai-SDK, kein Framework |
 | F-7.5, F-7.8 | MCP-Python-SDK in beiden Rollen |
-| F-9.2 | cryptography/Fernet mit Schlüssel aus der Umgebung |
+| F-9.2 | cryptography/Fernet mit Schlüssel in `DATA_DIR/secret.key` |
 | F-9.7, F-9.8 | Ein Bildabzug, zwei Betriebsarten über Konfiguration |
 | F-10.7 | Parametrisierte pytest-Fixtures über beide Backends |
