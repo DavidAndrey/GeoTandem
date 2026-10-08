@@ -27,6 +27,7 @@ export const keys = {
   visibilityDefault: ['admin', 'visibility', 'default'] as const,
   levels: ['admin', 'levels'] as const,
   connections: ['admin', 'llm', 'connections'] as const,
+  llmOptions: ['llm', 'options'] as const,
 }
 
 /** The signed-in account, or ``null`` when nobody is signed in. */
@@ -185,7 +186,10 @@ export function useSaveLevels() {
   const client = useQueryClient()
   return useMutation({
     mutationFn: api.admin.saveLevels,
-    onSuccess: (data) => client.setQueryData(keys.levels, data),
+    onSuccess: (data) => {
+      client.setQueryData(keys.levels, data)
+      return client.invalidateQueries({ queryKey: keys.llmOptions })
+    },
   })
 }
 
@@ -197,6 +201,21 @@ export function useConnectionChange<T, R>(change: (args: T) => Promise<R>) {
   const client = useQueryClient()
   return useMutation({
     mutationFn: change,
-    onSuccess: () => client.invalidateQueries({ queryKey: keys.connections }),
+    // The account's options show enabled connections: they change too.
+    onSuccess: () =>
+      client
+        .invalidateQueries({ queryKey: ['admin', 'llm'] })
+        .then(() => client.invalidateQueries({ queryKey: keys.llmOptions })),
+  })
+}
+
+/** What the account may choose for model support, and its choice (plan E2.1, C14). */
+export const useLLMOptions = () => useQuery({ queryKey: keys.llmOptions, queryFn: api.llm.options })
+
+export function useChooseLLM() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: api.llm.choose,
+    onSuccess: (data) => client.setQueryData(keys.llmOptions, data),
   })
 }

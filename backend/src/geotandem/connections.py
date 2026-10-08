@@ -143,17 +143,13 @@ class ConnectionOption(BaseModel):
     is_default: bool
 
 
-class LLMOptions(BaseModel):
+class ConnectionChoice(BaseModel):
     connections: list[ConnectionOption]
     """Enabled connections; none when the administrator has set none up (C18)."""
     chosen_connection_id: int | None
     """The account's stored choice, even while that connection is disabled (C17)."""
     active_connection_id: int | None
     """What a model action would use now: the choice if enabled, else the default."""
-
-
-class Choice(BaseModel):
-    connection_id: int | None = Field(description="None: use the default.")
 
 
 @dataclass(frozen=True)
@@ -452,7 +448,7 @@ class Connections:
             )
             return self._info(default) if default else None
 
-    def options(self, user_id: int) -> LLMOptions:
+    def options(self, user_id: int) -> ConnectionChoice:
         with Session(reading(self.engine)) as session:
             chosen = session.scalar(select(User.llm_connection_id).where(User.id == user_id))
             rows = session.scalars(
@@ -470,13 +466,13 @@ class Connections:
                 for r in rows
             ]
         active = self.active(user_id)
-        return LLMOptions(
+        return ConnectionChoice(
             connections=offered,
             chosen_connection_id=chosen,
             active_connection_id=active.id if active else None,
         )
 
-    def choose(self, user_id: int, connection_id: int | None) -> LLMOptions:
+    def choose(self, user_id: int, connection_id: int | None) -> None:
         """Store the account's choice; a disabled connection is refused, also for
         administrators (C14)."""
         with Session(self.engine) as session, session.begin():
@@ -492,4 +488,3 @@ class Connections:
             session.execute(
                 update(User).where(User.id == user_id).values(llm_connection_id=connection_id)
             )
-        return self.options(user_id)

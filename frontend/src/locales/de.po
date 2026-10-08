@@ -83,9 +83,17 @@ msgstr "(Ergebnis)"
 msgid "(nicht gefunden)"
 msgstr "(nicht gefunden)"
 
+#: src/workplace/ModelChoice.tsx
+msgid "(nur Administratoren)"
+msgstr "(nur Administratoren)"
+
 #: src/admin/UsersPage.tsx
 msgid "(Sie)"
 msgstr "(Sie)"
+
+#: src/workplace/ModelChoice.tsx
+msgid "(voreingestellt)"
+msgstr "(voreingestellt)"
 
 #. placeholder {0}: preview.columns.length
 #: src/admin/ImportWizard.tsx
@@ -530,6 +538,7 @@ msgid "Analyse unter einem Namen speichern"
 msgstr "Analyse unter einem Namen speichern"
 
 #: src/admin/ConnectionsPage.tsx
+#: src/workplace/ModelChoice.tsx
 msgid "Anbindung"
 msgstr "Anbindung"
 
@@ -1366,6 +1375,10 @@ msgid "Diese Sitzung löschen"
 msgstr "Diese Sitzung löschen"
 
 #: src/i18n/errors.ts
+msgid "Diese Stufe steht nicht zur Wahl."
+msgstr "Diese Stufe steht nicht zur Wahl."
+
+#: src/i18n/errors.ts
 msgid "Diesen Benutzernamen gibt es schon."
 msgstr "Diesen Benutzernamen gibt es schon."
 
@@ -1501,6 +1514,10 @@ msgstr "Einheit {field}"
 #: src/table/TableDock.tsx
 msgid "Einklappen"
 msgstr "Einklappen"
+
+#: src/workplace/ModelChoice.tsx
+msgid "einrichten"
+msgstr "einrichten"
 
 #: src/auth/SetupPage.tsx
 msgid "Einrichten"
@@ -2173,6 +2190,10 @@ msgstr "keine Koordinaten"
 msgid "Keine Layer freigegeben."
 msgstr "Keine Layer freigegeben."
 
+#: src/workplace/ModelChoice.tsx
+msgid "Keine Modellanbindung eingerichtet"
+msgstr "Keine Modellanbindung eingerichtet"
+
 #: src/table/TableDock.tsx
 msgid "Keine Objekte."
 msgstr "Keine Objekte."
@@ -2477,6 +2498,10 @@ msgstr "Modellanbindungen"
 #: src/admin/ConnectionsPage.tsx
 msgid "Modelle hinter einer OpenAI-kompatiblen Schnittstelle (Ollama, vLLM, llama.cpp, Cloud). Anwender wählen unter den freigegebenen; eine nicht freigegebene nutzt niemand, auch kein Administrator."
 msgstr "Modelle hinter einer OpenAI-kompatiblen Schnittstelle (Ollama, vLLM, llama.cpp, Cloud). Anwender wählen unter den freigegebenen; eine nicht freigegebene nutzt niemand, auch kein Administrator."
+
+#: src/workplace/ModelChoice.tsx
+msgid "Modellunterstützung wählen"
+msgstr "Modellunterstützung wählen"
 
 #: src/editor/describe.ts
 msgctxt "date"
@@ -3003,6 +3028,14 @@ msgstr "Strecke"
 #: src/admin/LevelsPage.tsx
 msgid "Stufe"
 msgstr "Stufe"
+
+#: src/workplace/ModelChoice.tsx
+msgid "Stufe der Modellunterstützung"
+msgstr "Stufe der Modellunterstützung"
+
+#: src/workplace/ModelChoice.tsx
+msgid "Stufe: {levelName}"
+msgstr "Stufe: {levelName}"
 
 #: src/admin/AdminLayout.tsx
 #: src/admin/LevelsPage.tsx

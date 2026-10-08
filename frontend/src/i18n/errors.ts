@@ -129,6 +129,7 @@ const MESSAGES: Record<string, Words> = {
     const name = text(d.name)
     return t`Die voreingestellte Stufe „${name}" muss für Anwender wählbar sein.`
   },
+  level_not_available: () => t`Diese Stufe steht nicht zur Wahl.`,
   // Model connections
   connection_name_taken: (d) => {
     const name = text(d.name)

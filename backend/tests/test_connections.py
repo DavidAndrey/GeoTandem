@@ -204,11 +204,9 @@ async def choose(client: httpx.AsyncClient, id: int | None) -> httpx.Response:
 
 
 async def test_no_connection_means_no_options(client: httpx.AsyncClient) -> None:
-    assert await options(client) == {
-        "connections": [],
-        "chosen_connection_id": None,
-        "active_connection_id": None,
-    }
+    found = await options(client)
+    assert (found["connections"], found["chosen_connection_id"]) == ([], None)
+    assert found["active_connection_id"] is None
 
 
 async def test_a_user_chooses_among_enabled_connections(client: httpx.AsyncClient) -> None:

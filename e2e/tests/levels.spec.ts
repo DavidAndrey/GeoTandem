@@ -49,3 +49,31 @@ test('a user reaches neither the page nor the API', async ({ browser, request })
   await expect(page.getByRole('heading', { name: 'Stufen der Modellunterstützung' })).toHaveCount(0)
   await context.close()
 })
+
+test('a user cannot choose a level closed to users through the API', async ({
+  browser,
+  request,
+}) => {
+  const { levels } = await (await request.get('/api/admin/levels')).json()
+  const closed = levels.find((l: { selectable: boolean }) => !l.selectable)
+  const open = levels.find((l: { selectable: boolean }) => l.selectable)
+  await ensureAccount(request, browser, USER, 'user')
+  const [context, page] = await signIn(browser, USER)
+  await expect(page.getByRole('button', { name: 'Sitzungsmenü' })).toBeVisible()
+
+  const refused = await context.request.put('/api/llm/options', { data: { level_id: closed.id } })
+  expect(refused.status()).toBe(400)
+  expect((await refused.json()).code).toBe('level_not_available')
+  const options = await (await context.request.get('/api/llm/options')).json()
+  expect(options.levels.map((l: { id: number }) => l.id)).not.toContain(closed.id)
+
+  const chosen = await context.request.put('/api/llm/options', { data: { level_id: open.id } })
+  expect((await chosen.json()).active_level_id).toBe(open.id)
+  await context.request.put('/api/llm/options', { data: { level_id: null } })
+  await context.close()
+})
+
+test('without an enabled connection the workplace header says so', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByText(/^Keine Modellanbindung eingerichtet/)).toBeVisible()
+})

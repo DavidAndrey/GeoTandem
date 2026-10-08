@@ -913,15 +913,12 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /**
-     * Options
-     * @description Enabled connections, the account's choice and what is active now (C17).
-     */
+    /** Options */
     get: operations['options_api_llm_options_get']
     /**
      * Choose
-     * @description Choose a connection, or none for the default. A disabled one is refused,
-     *     for administrators too (C14).
+     * @description Choose a connection, a level or both. A disabled connection is refused for
+     *     administrators too (C14); a level users may not choose is refused for users.
      */
     put: operations['choose_api_llm_options_put']
     post?: never
@@ -1364,13 +1361,21 @@ export interface components {
         [key: string]: unknown
       }
     }
-    /** Choice */
+    /**
+     * Choice
+     * @description Only the fields sent change; ``null`` returns to the default.
+     */
     Choice: {
       /**
        * Connection Id
-       * @description None: use the default.
+       * @description None: the default.
        */
-      connection_id: number | null
+      connection_id?: number | null
+      /**
+       * Level Id
+       * @description None: the default.
+       */
+      level_id?: number | null
     }
     /** Classified */
     Classified: {
@@ -2212,6 +2217,12 @@ export interface components {
       chosen_connection_id: number | null
       /** Active Connection Id */
       active_connection_id: number | null
+      /** Levels */
+      levels: components['schemas']['LevelOption'][]
+      /** Chosen Level Id */
+      chosen_level_id: number | null
+      /** Active Level Id */
+      active_level_id: number
     }
     /** LayerInfo */
     LayerInfo: {
@@ -2325,6 +2336,17 @@ export interface components {
       matrix: {
         [key: string]: components['schemas']['CellMode']
       }
+    }
+    /** LevelOption */
+    LevelOption: {
+      /** Id */
+      id: number
+      /** Name */
+      name: string
+      /** Description */
+      description: string
+      /** Selectable */
+      selectable: boolean
     }
     /**
      * LevelSet

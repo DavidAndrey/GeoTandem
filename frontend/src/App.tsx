@@ -25,6 +25,7 @@ import { OpenNotice } from './session/OpenNotice'
 import { SessionDialogs } from './session/SessionDialogs'
 import { isUnsaved, saveOrAsk } from './session/ui'
 import { useSessionRoute } from './session/useSessionRoute'
+import { ModelChoice } from './workplace/ModelChoice'
 import { Workplace } from './workplace/Workplace'
 
 const link = ({ isActive }: { isActive: boolean }) =>
@@ -70,7 +71,10 @@ function Shell() {
             </NavLink>
           )}
         </nav>
-        <div className="ml-auto">{me.data && <UserMenu account={me.data} />}</div>
+        <div className="ml-auto flex items-center gap-4">
+          {workplace && <ModelChoice />}
+          {me.data && <UserMenu account={me.data} />}
+        </div>
       </header>
       {workplace && <OpenNotice />}
       <main className="flex-1 overflow-auto p-5">

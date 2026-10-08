@@ -119,3 +119,60 @@ async def test_only_administrators_see_or_change_levels(client: httpx.AsyncClien
     await sign_in_as(client, "m.keller")
     assert (await client.get("/api/admin/levels")).status_code == 403
     assert (await put(client, shipped)).status_code == 403
+
+
+# --- the account's choice (H6, H7, C14) ------------------------------------------
+
+
+async def options(client: httpx.AsyncClient) -> Body:
+    response = await client.get("/api/llm/options")
+    assert response.status_code == 200, response.text
+    body: Body = response.json()
+    return body
+
+
+async def test_users_choose_among_selectable_levels(client: httpx.AsyncClient) -> None:
+    assistenz, pruefen, automatisch = await levels(client)
+    await sign_in_as(client, "m.keller")
+
+    offered = await options(client)
+    assert [lv["name"] for lv in offered["levels"]] == ["Assistenz", "Prüfen"]
+    assert (offered["chosen_level_id"], offered["active_level_id"]) == (None, pruefen["id"])
+
+    chosen = await client.put("/api/llm/options", json={"level_id": assistenz["id"]})
+    assert chosen.json()["active_level_id"] == assistenz["id"]
+    # A connection field not sent stays as it was.
+    assert chosen.json()["chosen_connection_id"] is None
+
+    refused = await client.put("/api/llm/options", json={"level_id": automatisch["id"]})
+    assert (refused.status_code, refused.json()["code"]) == (400, "level_not_available")
+    refused = await client.put("/api/llm/options", json={"level_id": 999})
+    assert refused.json()["code"] == "level_not_available"
+    assert (await options(client))["active_level_id"] == assistenz["id"]
+
+    back = await client.put("/api/llm/options", json={"level_id": None})
+    assert back.json()["active_level_id"] == pruefen["id"]
+
+
+async def test_administrators_may_use_every_level(client: httpx.AsyncClient) -> None:
+    *_, automatisch = await levels(client)
+    offered = await options(client)
+    assert [lv["selectable"] for lv in offered["levels"]] == [True, True, False]
+    chosen = await client.put("/api/llm/options", json={"level_id": automatisch["id"]})
+    assert chosen.json()["active_level_id"] == automatisch["id"]
+
+
+async def test_a_level_closed_later_falls_back_to_the_default(
+    client: httpx.AsyncClient,
+) -> None:
+    assistenz, pruefen, automatisch = await levels(client)
+    await sign_in_as(client, "m.keller")
+    await client.put("/api/llm/options", json={"level_id": assistenz["id"]})
+    await sign_in(client, "admin", ADMIN_PASSWORD)
+    closed = {**assistenz, "selectable": False}
+    assert (await put(client, [closed, pruefen, automatisch])).status_code == 200
+
+    await sign_in(client, "m.keller", "nutzer-passwort-1")
+    now = await options(client)
+    assert (now["chosen_level_id"], now["active_level_id"]) == (assistenz["id"], pruefen["id"])
+    assert [lv["name"] for lv in now["levels"]] == ["Prüfen"]

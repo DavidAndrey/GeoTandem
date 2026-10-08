@@ -41,6 +41,7 @@
   "layer_exists": "A layer of that name exists.",
   "level_count": "There must be details.min to details.max levels.",
   "level_name_taken": "Two levels share the name details.name.",
+  "level_not_available": "The level does not exist or users may not choose it.",
   "llm_bad_response": "The endpoint's answer is not a valid response.",
   "llm_invalid_url": "The base URL is not http(s) with a host, or carries credentials.",
   "llm_model_missing": "The endpoint does not offer the model (details.offered).",

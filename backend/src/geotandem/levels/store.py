@@ -2,12 +2,19 @@
 
 from collections.abc import Sequence
 
-from sqlalchemy import Engine, select
+from sqlalchemy import Engine, select, update
 from sqlalchemy.orm import Session, selectinload
 
 from geotandem.db import orm
 from geotandem.db.spatialite import reading
-from geotandem.levels.model import CellMode, Level, OpClass, validate_levels
+from geotandem.levels.model import (
+    CellMode,
+    Level,
+    LevelError,
+    OpClass,
+    resolve_level,
+    validate_levels,
+)
 
 
 def _level(row: orm.Level) -> Level:
@@ -76,3 +83,29 @@ def save_levels(engine: Engine, levels: Sequence[Level]) -> list[Level]:
                     row.permissions.append(orm.LevelPermission(op_class=op_class, mode=mode))
             session.add(row)
     return load_levels(engine)
+
+
+def chosen_level_id(engine: Engine, user_id: int) -> int | None:
+    """The account's stored choice, whether or not it still counts (H7)."""
+    with Session(reading(engine)) as session:
+        return session.scalar(select(orm.User.level_id).where(orm.User.id == user_id))
+
+
+def active_level(engine: Engine, user_id: int, *, admin: bool) -> Level:
+    """The level a model action of this account works on, resolved on every use (H6, H7)."""
+    return resolve_level(
+        load_levels(engine), admin=admin, chosen_id=chosen_level_id(engine, user_id)
+    )
+
+
+def choose_level(engine: Engine, user_id: int, level_id: int | None, *, admin: bool) -> None:
+    """Store the account's choice; ``None`` means the default. A level users may not
+    choose is refused, checked here and not only in the interface (H6)."""
+    if level_id is not None:
+        level = next((lv for lv in load_levels(engine) if lv.id == level_id), None)
+        if level is None or not (level.selectable or admin):
+            raise LevelError(
+                "level_not_available", "That level is not open to this account.", id=level_id
+            )
+    with Session(engine) as session, session.begin():
+        session.execute(update(orm.User).where(orm.User.id == user_id).values(level_id=level_id))

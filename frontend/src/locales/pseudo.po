@@ -83,8 +83,16 @@ msgstr ""
 msgid "(nicht gefunden)"
 msgstr ""
 
+#: src/workplace/ModelChoice.tsx
+msgid "(nur Administratoren)"
+msgstr ""
+
 #: src/admin/UsersPage.tsx
 msgid "(Sie)"
+msgstr ""
+
+#: src/workplace/ModelChoice.tsx
+msgid "(voreingestellt)"
 msgstr ""
 
 #. placeholder {0}: preview.columns.length
@@ -530,6 +538,7 @@ msgid "Analyse unter einem Namen speichern"
 msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
+#: src/workplace/ModelChoice.tsx
 msgid "Anbindung"
 msgstr ""
 
@@ -1366,6 +1375,10 @@ msgid "Diese Sitzung löschen"
 msgstr ""
 
 #: src/i18n/errors.ts
+msgid "Diese Stufe steht nicht zur Wahl."
+msgstr ""
+
+#: src/i18n/errors.ts
 msgid "Diesen Benutzernamen gibt es schon."
 msgstr ""
 
@@ -1500,6 +1513,10 @@ msgstr ""
 
 #: src/table/TableDock.tsx
 msgid "Einklappen"
+msgstr ""
+
+#: src/workplace/ModelChoice.tsx
+msgid "einrichten"
 msgstr ""
 
 #: src/auth/SetupPage.tsx
@@ -2173,6 +2190,10 @@ msgstr ""
 msgid "Keine Layer freigegeben."
 msgstr ""
 
+#: src/workplace/ModelChoice.tsx
+msgid "Keine Modellanbindung eingerichtet"
+msgstr ""
+
 #: src/table/TableDock.tsx
 msgid "Keine Objekte."
 msgstr ""
@@ -2476,6 +2497,10 @@ msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
 msgid "Modelle hinter einer OpenAI-kompatiblen Schnittstelle (Ollama, vLLM, llama.cpp, Cloud). Anwender wählen unter den freigegebenen; eine nicht freigegebene nutzt niemand, auch kein Administrator."
+msgstr ""
+
+#: src/workplace/ModelChoice.tsx
+msgid "Modellunterstützung wählen"
 msgstr ""
 
 #: src/editor/describe.ts
@@ -3002,6 +3027,14 @@ msgstr ""
 
 #: src/admin/LevelsPage.tsx
 msgid "Stufe"
+msgstr ""
+
+#: src/workplace/ModelChoice.tsx
+msgid "Stufe der Modellunterstützung"
+msgstr ""
+
+#: src/workplace/ModelChoice.tsx
+msgid "Stufe: {levelName}"
 msgstr ""
 
 #: src/admin/AdminLayout.tsx

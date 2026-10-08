@@ -38,6 +38,8 @@ export type ConnectionDraft = Schemas['ConnectionDraft']
 export type CheckResult = Schemas['CheckResult']
 export type CheckStep = Schemas['CheckStep']
 export type Effort = NonNullable<ConnectionWrite['reasoning_effort']>
+export type LLMOptions = Schemas['LLMOptions']
+export type LLMChoice = Schemas['Choice']
 export type MapConfig = Schemas['MapConfig']
 export type QueryObject = Schemas['QueryObject-Input']
 export type SessionSummary = Schemas['SessionSummary']
@@ -83,6 +85,10 @@ const json = (method: string, body: unknown): RequestInit => ({
 const enc = encodeURIComponent
 
 export const api = {
+  llm: {
+    options: () => request<LLMOptions>('/api/llm/options'),
+    choose: (choice: LLMChoice) => request<LLMOptions>('/api/llm/options', json('PUT', choice)),
+  },
   auth: {
     setupStatus: () => request<SetupStatus>('/api/auth/setup'),
     setup: (body: {

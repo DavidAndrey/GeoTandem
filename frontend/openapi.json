@@ -4684,7 +4684,6 @@
           "llm"
         ],
         "summary": "Options",
-        "description": "Enabled connections, the account's choice and what is active now (C17).",
         "operationId": "options_api_llm_options_get",
         "responses": {
           "200": {
@@ -4704,7 +4703,7 @@
           "llm"
         ],
         "summary": "Choose",
-        "description": "Choose a connection, or none for the default. A disabled one is refused,\nfor administrators too (C14).",
+        "description": "Choose a connection, a level or both. A disabled connection is refused for\nadministrators too (C14); a level users may not choose is refused for users.",
         "operationId": "choose_api_llm_options_put",
         "requestBody": {
           "content": {
@@ -5877,14 +5876,24 @@
               }
             ],
             "title": "Connection Id",
-            "description": "None: use the default."
+            "description": "None: the default."
+          },
+          "level_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level Id",
+            "description": "None: the default."
           }
         },
         "type": "object",
-        "required": [
-          "connection_id"
-        ],
-        "title": "Choice"
+        "title": "Choice",
+        "description": "Only the fields sent change; ``null`` returns to the default."
       },
       "Classified": {
         "properties": {
@@ -7891,13 +7900,38 @@
               }
             ],
             "title": "Active Connection Id"
+          },
+          "levels": {
+            "items": {
+              "$ref": "#/components/schemas/LevelOption"
+            },
+            "type": "array",
+            "title": "Levels"
+          },
+          "chosen_level_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chosen Level Id"
+          },
+          "active_level_id": {
+            "type": "integer",
+            "title": "Active Level Id"
           }
         },
         "type": "object",
         "required": [
           "connections",
           "chosen_connection_id",
-          "active_connection_id"
+          "active_connection_id",
+          "levels",
+          "chosen_level_id",
+          "active_level_id"
         ],
         "title": "LLMOptions"
       },
@@ -8164,6 +8198,34 @@
         ],
         "title": "Level",
         "description": "One level. In a set, the list order is the display order (H1)."
+      },
+      "LevelOption": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "selectable": {
+            "type": "boolean",
+            "title": "Selectable"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description",
+          "selectable"
+        ],
+        "title": "LevelOption"
       },
       "LevelSet": {
         "properties": {

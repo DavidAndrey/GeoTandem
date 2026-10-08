@@ -63,6 +63,7 @@ CODES: dict[str, str] = {
     "level_name_taken": "Two levels share the name details.name.",
     "default_level_count": "Exactly one level must be the default.",
     "default_not_selectable": "The default level must be selectable by users.",
+    "level_not_available": "The level does not exist or users may not choose it.",
     # Model connections: administration and choice
     "connection_name_taken": "A connection of that name exists (details.name).",
     "default_not_enabled": "The default connection must be enabled for users.",
