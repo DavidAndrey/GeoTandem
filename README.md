@@ -63,7 +63,7 @@ Einstellungen an einem Ort:
 ```sh
 docker compose up -d --build   # bauen und im Hintergrund starten
 docker compose logs -f         # Protokoll
-docker compose down            # stoppen; die Daten bleiben im Volume
+docker compose down            # stoppen; die Daten bleiben in ./data
 ```
 
 Port und Einstellungen kommen aus der Umgebung oder aus einer Datei `.env`
@@ -76,11 +76,16 @@ GEOTANDEM_BASEMAP=swisstopo-grau
 ```
 
 `GEOTANDEM_PORT` (Standard `8000`) ist der Port auf dem Host; die übrigen
-Variablen stehen unter [Konfiguration](#konfiguration). Das Volume heisst wie
-oben `geotandem-data`: `docker run` und Compose arbeiten also auf denselben
-Daten, und die [Sicherung](#sicherung-f-98) gilt unverändert. Nicht beide
-gleichzeitig starten. Befehle im Container: `docker compose exec geotandem
-geotandem user create …`.
+Variablen stehen unter [Konfiguration](#konfiguration).
+
+Die Daten liegen im Verzeichnis `./data` neben `compose.yaml`, nicht im Volume
+`geotandem-data` von `docker run`: Compose und `docker run` arbeiten also auf
+verschiedenen Daten. Der Container heisst `geo` und läuft als UID:GID
+`1000:1000`, dem Besitzer von `./data`. Das Verzeichnis deshalb vor dem
+ersten Start selbst anlegen (`mkdir -p data`); legt Docker es an, gehört es
+`root`, und die Anwendung kann nicht hineinschreiben. Hat das eigene Konto eine
+andere UID (`id -u`), `user:` in `compose.yaml` anpassen. Befehle im Container:
+`docker compose exec geotandem geotandem user create …`.
 
 **Erstes Konto.** Solange kein Konto existiert, führt die Anwendung auf die
 Ersteinrichtung: Das erste Konto wird Administrator und legt weitere an
@@ -278,24 +283,63 @@ klassische Bedienung (Modus A) vollständig nutzbar.
   aus den Daten vorschlägt, kommen erst hinein, wenn der Administrator sie im
   Layer bestätigt.
 
-**Ollama neben dem Container.** Der Container erreicht den Host als
+**Ollama auf dem Host.** Der Container erreicht den Host als
 `host.docker.internal` ([compose.yaml](compose.yaml) setzt dafür
 `host-gateway`; mit `docker run`: `--add-host host.docker.internal:host-gateway`).
 Ollama lauscht standardmässig nur auf `127.0.0.1` und ist damit aus dem
 Container nicht erreichbar: `OLLAMA_HOST` auf die Adresse der Docker-Brücke
 setzen (meist `172.17.0.1:11434`) oder auf `0.0.0.0:11434` und den Port nach
-aussen sperren. Adresse der Anbindung dann `http://host.docker.internal:11434/v1`.
-
-Die Kontextlänge der Anbindung ist ein Budget für den Steckbrief und wird
-nicht gesendet: die `/v1`-Schnittstelle kennt kein Feld dafür. Bei Ollama muss
-sie zu `OLLAMA_CONTEXT_LENGTH` passen, sonst schneidet
-Ollama den Kontext still ab. Beispiel in `/etc/systemd/system/ollama.service.d/override.conf`:
+aussen sperren. Adresse der Anbindung dann `http://host.docker.internal:11434/v1`;
+`host.docker.internal` gilt als lokal. Beispiel in
+`/etc/systemd/system/ollama.service.d/override.conf`:
 
 ```ini
 [Service]
 Environment="OLLAMA_HOST=172.17.0.1:11434"
 Environment="OLLAMA_CONTEXT_LENGTH=16384"
 ```
+
+**Ollama als Container.** Beide Container in ein gemeinsames Docker-Netz; dort
+erreicht GeoTandem Ollama unter seinem Containernamen, ohne dass Port 11434 auf
+dem Host veröffentlicht wird (das Image `ollama/ollama` lauscht im Netz
+bereits auf allen Adressen):
+
+```sh
+docker network create llm
+docker run -d --name ollama --network llm --restart unless-stopped \
+  -v ollama:/root/.ollama -e OLLAMA_CONTEXT_LENGTH=16384 ollama/ollama
+#  mit NVIDIA-GPU zusätzlich: --gpus all
+docker exec ollama ollama pull qwen3:8b
+# ein schon laufender Ollama-Container kommt so ins Netz:
+docker network connect llm ollama
+```
+
+GeoTandem kommt mit `docker run --network llm …` ins selbe Netz, mit Compose
+über eine Datei `compose.override.yaml` neben `compose.yaml`, die
+`docker compose` von selbst dazunimmt:
+
+```yaml
+services:
+  geotandem:
+    networks: [default, llm]
+networks:
+  llm:
+    external: true
+```
+
+Adresse der Anbindung dann `http://ollama:11434/v1`. Ein Containername ist für
+GeoTandem ein gewöhnlicher Hostname und gilt damit als **extern**: Ohne
+Weiteres trägt die Anbindung das Kennzeichen «extern · ollama» und erhält nur
+Metadaten. Damit sie als lokal gilt, den Namen freigeben, etwa in `.env`:
+
+```sh
+GEOTANDEM_LLM_LOCAL_HOSTS=ollama
+```
+
+Die Kontextlänge der Anbindung ist ein Budget für den Steckbrief und wird
+nicht gesendet: die `/v1`-Schnittstelle kennt kein Feld dafür. Bei Ollama muss
+sie zu `OLLAMA_CONTEXT_LENGTH` passen (in beiden Varianten oben gesetzt),
+sonst schneidet Ollama den Kontext still ab.
 
 **API-Schlüssel** liegen verschlüsselt in der Datenbank. Den Schlüssel dazu
 erzeugt der erste Start in `DATA_DIR/secret.key` (nur für den Benutzer der
@@ -334,25 +378,33 @@ Neustart von vorn. Weitere Befunde und Massnahmen:
 
 ## Sicherung (F-9.8)
 
-Bei SpatiaLite genügt das Kopieren der Datei bei gestoppter Anwendung. Im
-laufenden Betrieb liegen neben ihr `geotandem.sqlite-wal` und `-shm`
+Zu sichern sind zwei Dateien des Datenverzeichnisses: `geotandem.sqlite` und
+`secret.key`. Bei SpatiaLite genügt das Kopieren bei gestoppter Anwendung. Im
+laufenden Betrieb liegen neben der Datenbank `geotandem.sqlite-wal` und `-shm`
 (WAL-Modus); beim Beenden werden sie zurückgeschrieben und entfernt, die Datei
-allein ist dann vollständig:
+allein ist dann vollständig.
+
+Mit Compose liegen beide in `./data`:
 
 ```sh
-docker run --rm -v geotandem-data:/data -v "$PWD":/backup debian \
-  cp /data/geotandem.sqlite /backup/geotandem-$(date +%F).sqlite
+docker compose stop
+mkdir -p backup
+cp data/geotandem.sqlite backup/geotandem-$(date +%F).sqlite
+cp data/secret.key backup/geotandem-$(date +%F).secret.key
+docker compose start
 ```
 
-Dazu `secret.key` aus demselben Verzeichnis sichern:
+Mit `docker run` liegen sie im Volume `geotandem-data` (Container vorher stoppen):
 
 ```sh
-docker run --rm -v geotandem-data:/data -v "$PWD":/backup debian \
-  cp /data/secret.key /backup/geotandem-$(date +%F).secret.key
+docker run --rm -v geotandem-data:/data -v "$PWD":/backup debian sh -c \
+  'cp /data/geotandem.sqlite /backup/geotandem-$(date +%F).sqlite &&
+   cp /data/secret.key /backup/geotandem-$(date +%F).secret.key'
 ```
 
-Wiederherstellen: beide Dateien zurück nach `/data` kopieren
-(`geotandem.sqlite`, `secret.key`, Rechte `0600`).
+Wiederherstellen: beide Dateien zurück ins Datenverzeichnis kopieren
+(`./data` bzw. `/data` im Volume), `secret.key` mit Rechten `0600` und dem
+Besitzer, als der die Anwendung läuft.
 
 Die Datenbank enthält Layer, Metadaten, Konten, Stufen, Modellanbindungen,
 Protokolle und die gespeicherten Sitzungen (F-4.10) samt ihrem
