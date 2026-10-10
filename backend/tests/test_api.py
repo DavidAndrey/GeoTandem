@@ -83,7 +83,12 @@ async def test_schema_and_tools(client: httpx.AsyncClient) -> None:
     schema = (await client.get("/api/schema/query-object")).json()
     assert schema["$id"].endswith("/query-object/v2.json")
     tools = (await client.get("/api/tools")).json()
-    assert [t["name"] for t in tools] == ["list_layers", "describe_layer", "run_query"]
+    assert [t["name"] for t in tools] == [
+        "list_layers",
+        "describe_layer",
+        "run_query",
+        *("filter", "buffer", "within", "outside", "intersects", "near"),  # the chain's (WP74)
+    ]
 
 
 async def test_frontend_served_with_client_routing(client: httpx.AsyncClient) -> None:

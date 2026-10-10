@@ -250,7 +250,7 @@ def chain_tools() -> list[Tool[Any, QueryObject]]:
     writes (``model.chain.plan.step_classes``)."""
 
     def tool(
-        name: str, description: str, input_model: type[BaseModel], op_class: OpClass, handler: Any
+        name: str, op_class: OpClass, input_model: type[BaseModel], handler: Any, description: str
     ) -> Tool[Any, QueryObject]:
         return Tool(
             name=name,
@@ -265,49 +265,49 @@ def chain_tools() -> list[Tool[Any, QueryObject]]:
     return [
         tool(
             "filter",
-            "Keep the features of a layer, or of an earlier step's result, that meet 'where'.",
-            FilterInput[QueryObject],
             OpClass.QUERY,
+            FilterInput[QueryObject],
             _filter,
+            "Keep the features of a layer, or of an earlier step's result, that meet 'where'.",
         ),
         tool(
             "buffer",
+            OpClass.DERIVE,
+            BufferInput[QueryObject],
+            _buffer,
             "Buffer the features of a layer (those meeting 'where', if given), or of an earlier "
             "step's result, by 'distance_m'. Another step relates to it with within, outside "
             "or intersects.",
-            BufferInput[QueryObject],
-            OpClass.DERIVE,
-            _buffer,
         ),
         tool(
             "within",
+            OpClass.SPATIAL,
+            WithinInput[QueryObject],
+            _within,
             "Keep the features of step 'of' that lie in a feature of step 'in'. In a buffer: "
             "within its distance; for point features only.",
-            WithinInput[QueryObject],
-            OpClass.SPATIAL,
-            _within,
         ),
         tool(
             "outside",
+            OpClass.SPATIAL,
+            OutsideInput[QueryObject],
+            _outside,
             "Keep the features of step 'of' that lie in no feature of step 'in'. Of a buffer: "
             "farther than its distance; for point features only.",
-            OutsideInput[QueryObject],
-            OpClass.SPATIAL,
-            _outside,
         ),
         tool(
             "intersects",
+            OpClass.SPATIAL,
+            IntersectsInput[QueryObject],
+            _intersects,
             "Keep the features of step 'of' that intersect a feature of step 'with' (a buffer: "
             "come within its distance).",
-            IntersectsInput[QueryObject],
-            OpClass.SPATIAL,
-            _intersects,
         ),
         tool(
             "near",
-            "Keep the features of step 'of' within 'distance_m' of a feature of step 'to'.",
-            NearInput[QueryObject],
             OpClass.SPATIAL,
+            NearInput[QueryObject],
             _near,
+            "Keep the features of step 'of' within 'distance_m' of a feature of step 'to'.",
         ),
     ]

@@ -158,7 +158,8 @@ def _check_step(
         kinds = {layer.name: layer.geometry_type for layer in profile.layers}
         if kinds.get(query.source) not in POINTS:
             reason = "lying in a buffer is lying within its distance for points only"
-            return _not_composable("in", f"Step {position}: 'in': {reason}", position)
+            message = f"Step {position}: 'in': {reason}"
+            return _not_composable("in", message, position)
     found = _check_query(query, context, profile, position)
     if isinstance(found, Refusal):
         return found
