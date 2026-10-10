@@ -4989,6 +4989,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
               "title": "Action Id"
             }
           }
@@ -5058,13 +5060,13 @@
       }
     },
     "/api/model/actions/{action_id}/preview": {
-      "get": {
+      "post": {
         "tags": [
           "model"
         ],
         "summary": "Preview",
-        "description": "Count, the result layer's total and ids of the stored query, for the user\nonly (P2): an interactive session (``session_required`` for any token), no\nclass ``off`` (``class_not_allowed``), status unchanged.",
-        "operationId": "preview_api_model_actions__action_id__preview_get",
+        "description": "Count, the result layer's total and ids of the stored query, for the user\nonly (P2): an interactive session (``session_required`` for any token), no\nclass ``off`` (``class_not_allowed``), status unchanged. A ``POST``: it\nwrites ``previewed_at``, so it is a change the origin check covers (review\n#39).",
+        "operationId": "preview_api_model_actions__action_id__preview_post",
         "parameters": [
           {
             "name": "action_id",
@@ -5072,6 +5074,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
               "title": "Action Id"
             }
           }
@@ -5195,6 +5199,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
               "title": "Action Id"
             }
           }
@@ -5298,6 +5304,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
               "title": "Action Id"
             }
           }
@@ -5391,6 +5399,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
               "title": "Action Id"
             }
           }
@@ -5494,6 +5504,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
               "title": "Action Id"
             }
           }
@@ -5607,6 +5619,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
               "title": "Action Id"
             }
           }
@@ -5690,6 +5704,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
               "title": "Action Id"
             }
           }
@@ -5773,6 +5789,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
               "title": "Action Id"
             }
           }
@@ -5855,6 +5873,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
               "title": "Action Id"
             }
           }
@@ -5947,6 +5967,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
               "title": "Action Id"
             }
           }
@@ -6070,6 +6092,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
               "title": "Action Id"
             }
           }
@@ -6153,6 +6177,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
               "title": "Action Id"
             }
           }
@@ -6276,6 +6302,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
               "title": "Action Id"
             }
           }
@@ -6514,7 +6542,9 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "integer",
+                  "maximum": 9223372036854775807,
+                  "minimum": 1
                 },
                 {
                   "type": "null"
@@ -6530,7 +6560,9 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "integer",
+                  "maximum": 9223372036854775807,
+                  "minimum": 1
                 },
                 {
                   "type": "null"
@@ -6690,7 +6722,9 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "integer",
+                  "maximum": 9223372036854775807,
+                  "minimum": 1
                 },
                 {
                   "type": "null"
@@ -6706,7 +6740,9 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "integer",
+                  "maximum": 9223372036854775807,
+                  "minimum": 1
                 },
                 {
                   "type": "null"
@@ -6866,7 +6902,9 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "integer",
+                  "maximum": 9223372036854775807,
+                  "minimum": 1
                 },
                 {
                   "type": "null"
@@ -6882,7 +6920,9 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "integer",
+                  "maximum": 9223372036854775807,
+                  "minimum": 1
                 },
                 {
                   "type": "null"
@@ -7004,7 +7044,7 @@
           "admin"
         ],
         "summary": "Action",
-        "description": "Any account's record as it was (design M16.2); 404 when there is none.",
+        "description": "Any account's record as it was (design M16.2), a failure's technical\ndetails included (D4); 404 when there is none.",
         "operationId": "action_api_admin_model_actions__action_id__get",
         "parameters": [
           {
@@ -7013,6 +7053,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
               "title": "Action Id"
             }
           }
@@ -7556,7 +7598,8 @@
                 "items": {
                   "type": "integer"
                 },
-                "type": "array"
+                "type": "array",
+                "maxItems": 20
               },
               {
                 "type": "null"
@@ -11474,6 +11517,11 @@
             ],
             "title": "Reject Reason"
           },
+          "proposal_only": {
+            "type": "boolean",
+            "title": "Proposal Only",
+            "default": false
+          },
           "applied_by_hand": {
             "type": "boolean",
             "title": "Applied By Hand",
@@ -12584,7 +12632,9 @@
           "parent_action_id": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "integer",
+                "maximum": 9.223372036854776e+18,
+                "minimum": 1.0
               },
               {
                 "type": "null"

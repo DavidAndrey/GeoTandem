@@ -115,6 +115,7 @@ export function actionView(
   const failed = status === 'failed' || status === 'aborted'
   const refused = status === 'refused'
   const decision = FINAL[status] ?? null
+  const governed = refused ? null : governance(c, levelName)
   return {
     id: fixture.cases.indexOf(c) + 1,
     account: 'admin',
@@ -126,6 +127,8 @@ export function actionView(
     status,
     decision,
     reject_reason: null,
+    // As the server stores it (D1): a class ``off`` at the level as it was.
+    proposal_only: (governed?.off.length ?? 0) > 0,
     applied_by_hand: false,
     undone_at: null,
     previewed_at: null,
@@ -139,7 +142,7 @@ export function actionView(
     answer: failed ? null : answer,
     query: !refused && answer?.kind === 'query' ? (answer.query as unknown as QueryObject) : null,
     applied_query: null,
-    governance: refused ? null : governance(c, levelName),
+    governance: governed,
     refusal: refused
       ? {
           code: expect.refusal_code as NonNullable<ModelActionView['refusal']>['code'],

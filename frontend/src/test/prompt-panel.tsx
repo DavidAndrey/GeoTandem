@@ -115,7 +115,7 @@ export function enforcement(server: ModelServer, ...ids: number[]): Routes {
     ids.flatMap((id) => {
       const base = `/api/model/actions/${id}`
       return [
-        [`GET ${base}/preview`, () => answer(server.preview(id))],
+        [`POST ${base}/preview`, () => answer(server.preview(id))],
         [`POST ${base}/approve`, () => answer(server.approve(id))],
         [
           `POST ${base}/reject`,

@@ -51,6 +51,14 @@ CHAIN_TIME_LIMIT_S = 300
 """Wall clock of one tool-chain request (P4)."""
 MAX_PAGE = 200
 """Rows of one page of the log."""
+MAX_ID = 2**63 - 1
+"""The largest id a record can have (a signed 64-bit integer): an id or id
+filter beyond it is refused (422) before it reaches the database (review #38)."""
+MAX_CONDITION_PATH = 20
+"""Indexes of an assumption's path into the where tree (review #35)."""
+
+Id = Annotated[int, Field(ge=1, le=MAX_ID)]
+"""A record's id as a request names it."""
 
 Approach = Literal["direct", "chain"]
 """*Direktabfrage* or *Werkzeugkette* (F-5.4), chosen per request."""
@@ -192,6 +200,7 @@ class Assumption(_Answer):
     text: Short
     condition: list[int] | None = Field(
         default=None,
+        max_length=MAX_CONDITION_PATH,
         description="Path of indexes into the query's where tree; lets 'ändern' open it.",
     )
 
@@ -275,7 +284,7 @@ class PromptRequest(_Request):
 
     text: Prompt
     approach: Approach = "direct"
-    parent_action_id: int | None = None
+    parent_action_id: Id | None = None
     """The answer this follows; ``None`` for a fresh question ("ohne Bezug", design M11.1)."""
     analysis: QueryObject | None = None
     """The current analysis; sent with a parent and only then."""
@@ -401,6 +410,11 @@ class ModelActionView(BaseModel):
     status: ActionStatus
     decision: Decision | None
     reject_reason: RejectReason | None = None
+    proposal_only: bool = False
+    """The model may only propose (D1, section 2): a class of the answer was
+    ``off`` at the level as it was. The user applies it by hand, ``approve`` is
+    refused, and when the next prompt overtakes it the decision is
+    ``proposal_only``, never ``superseded``."""
     applied_by_hand: bool = False
     undone_at: datetime | None = None
     touched_at: datetime | None = None
@@ -426,7 +440,10 @@ class ModelActionView(BaseModel):
     governance: Governance | None = None
     refusal: Refusal | None = None
     error: dict[str, Any] | None = None
-    """``{code, message, details}`` of a model or limit error (design M14)."""
+    """``{code, message, details}`` of a model or limit error (design M14).
+    Its ``details`` (the transport's ``cause``, what did not parse) only in an
+    administrator's view of the log (``/api/admin/model-actions/{id}``, D4);
+    every other view carries the code and the message (review #37)."""
     steps: list[StepView] = []
     replans: int = 0
     stop_reason: StopReason | None = None

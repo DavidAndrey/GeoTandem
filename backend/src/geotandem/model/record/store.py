@@ -169,8 +169,19 @@ def _query_json(query: QueryObject | None) -> dict[str, Any] | None:
     return None if query is None else compact(query)
 
 
-def to_view(row: ModelAction) -> ModelActionView:
-    """The record as its owner or an administrator sees it; never rows (D10)."""
+def _error_for(error: dict[str, Any] | None, detail: bool) -> dict[str, Any] | None:
+    """A failure as a view carries it: code and message, and its ``details``
+    (the transport's ``cause``, what did not parse) only for ``detail``, the
+    administrator's log (D4, review #37)."""
+    if error is None or detail:
+        return error
+    return {"code": error.get("code"), "message": error.get("message"), "details": {}}
+
+
+def to_view(row: ModelAction, *, detail: bool = False) -> ModelActionView:
+    """The record as its owner or an administrator sees it; never rows (D10).
+    ``detail``: the administrator's log entry (design M16.2), with a failure's
+    technical details; every other view has its code and message only."""
     return ModelActionView.model_validate(
         {
             "id": row.id,
@@ -182,6 +193,7 @@ def to_view(row: ModelAction) -> ModelActionView:
             "status": row.status,
             "decision": row.decision,
             "reject_reason": row.reject_reason,
+            "proposal_only": row.proposal_only,
             "applied_by_hand": row.applied_by_hand,
             "undone_at": row.undone_at,
             "touched_at": row.touched_at,
@@ -209,7 +221,7 @@ def to_view(row: ModelAction) -> ModelActionView:
             "applied_query": row.applied_query,
             "governance": row.governance,
             "refusal": row.refusal,
-            "error": row.error,
+            "error": _error_for(row.error, detail),
             "replans": row.replans,
             "stop_reason": row.stop_reason,
             "stamp": row.stamp,
@@ -346,9 +358,10 @@ class ModelActionStore:
             raise _not_found(action_id)
         return row
 
-    def get(self, caller: Account, action_id: int) -> ModelActionView:
+    def get(self, caller: Account, action_id: int, *, detail: bool = False) -> ModelActionView:
+        """``detail``: the administrator's log entry (``to_view``)."""
         with Session(reading(self.engine)) as db:
-            return to_view(self._visible(db, caller, action_id))
+            return to_view(self._visible(db, caller, action_id), detail=detail and _admin(caller))
 
     def ready(
         self, caller: Account, action_id: int, step: str, sources: Collection[str]

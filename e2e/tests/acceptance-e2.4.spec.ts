@@ -337,7 +337,7 @@ test.describe('E2.4 against the model stub', { tag: '@stub' }, () => {
     await expect(hits(page)).toHaveText('137 von 137')
 
     // Past the surface: no preview, no approval, no run for an off class.
-    expect(await direct(page, 'GET', `/api/model/actions/${id}/preview`)).toMatchObject({
+    expect(await direct(page, 'POST', `/api/model/actions/${id}/preview`)).toMatchObject({
       code: 'class_not_allowed',
     })
     expect(await direct(page, 'POST', `/api/model/actions/${id}/approve`)).toMatchObject({
