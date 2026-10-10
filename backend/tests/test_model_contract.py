@@ -42,11 +42,6 @@ WITH_ANSWER = [c["id"] for c in cases() if "answer" in c]
 SOURCE = REPO / "backend" / "src" / "geotandem"
 
 PENDING_CODES = {
-    "model_query_invalid": "WP64",
-    "limit_exceeded": "WP64",
-    "not_representable": "WP64",
-    "context_too_large": "WP64",
-    "model_unreadable": "WP64",
     "quota_exceeded": "WP65",
     "not_approved": "WP70",
     "already_decided": "WP63",
