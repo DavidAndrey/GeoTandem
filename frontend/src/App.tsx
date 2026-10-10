@@ -10,6 +10,8 @@ import { ImportRunPage } from './admin/ImportRunPage'
 import { ImportWizard } from './admin/ImportWizard'
 import { LayerPage } from './admin/LayerPage'
 import { LevelsPage } from './admin/LevelsPage'
+import { ModelActionPage } from './admin/ModelActionPage'
+import { ModelLogPage } from './admin/ModelLogPage'
 import { ProfilePage } from './admin/ProfilePage'
 import { SystemPage } from './admin/SystemPage'
 import { UsersPage } from './admin/UsersPage'
@@ -130,6 +132,8 @@ export function App() {
               <Route path="stufen" element={<LevelsPage />} />
               <Route path="modelle" element={<ConnectionsPage />} />
               <Route path="steckbrief" element={<ProfilePage />} />
+              <Route path="modellprotokoll" element={<ModelLogPage />} />
+              <Route path="modellprotokoll/:id" element={<ModelActionPage />} />
               <Route path="system" element={<SystemPage />} />
             </Route>
             <Route path="*" element={<NotFound />} />

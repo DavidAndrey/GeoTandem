@@ -26,6 +26,7 @@ const groups = (): Group[] => [
       { to: '/admin/modelle', label: t`Modellanbindungen` },
       { to: '/admin/stufen', label: t`Stufen` },
       { to: '/admin/steckbrief', label: t`Was das Modell sieht` },
+      { to: '/admin/modellprotokoll', label: t`Modellprotokoll` },
     ],
   },
   {

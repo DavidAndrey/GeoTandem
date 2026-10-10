@@ -30,6 +30,7 @@
   "duplicate_keys": "Rows repeat a key and share a geometry.",
   "empty": "The file contains no rows.",
   "encoding_fallback": "Not UTF-8; read as Windows-1252.",
+  "export_too_large": "The log export would hold more than details.max rows.",
   "forbidden": "The account's role does not allow this.",
   "internal_error": "The import or copy stopped unexpectedly.",
   "interrupted": "The application stopped during the import.",

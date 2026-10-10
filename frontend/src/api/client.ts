@@ -71,6 +71,24 @@ export type StopReason = NonNullable<ModelActionView['stop_reason']>
 export type DecideRequest = Omit<Schemas['DecideRequest'], 'applied_by_hand'> &
   Partial<Pick<Schemas['DecideRequest'], 'applied_by_hand'>>
 export type Assumption = Schemas['Assumption']
+export type Approach = ModelActionView['approach']
+/** The filters of the model log (design M16.1); ``from``/``to`` as ISO times. */
+export interface ModelLogFilter {
+  from?: string
+  to?: string
+  level_id?: number
+  connection_id?: number
+  approach?: Approach
+  account?: string
+}
+
+/** A filter and a page as query parameters, only what is set. */
+function logParams(filter: ModelLogFilter, page?: { offset: number; limit: number }): string {
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries({ ...filter, ...page }))
+    if (value !== undefined && value !== '') params.set(key, String(value))
+  return params.size ? `?${params}` : ''
+}
 
 export class ApiRequestError extends Error {
   readonly status: number
@@ -175,6 +193,9 @@ export const api = {
       request<ModelActionView>(`/api/model/actions/${id}/decide`, json('POST', body)),
     abort: (id: number) =>
       request<ModelActionView>(`/api/model/actions/${id}/abort`, { method: 'POST' }),
+    /** The account's own log entries, newest first (D4, design M16.3). */
+    myActions: (offset = 0, limit = 50) =>
+      request<ModelActionPage>(`/api/model/my-actions${logParams({}, { offset, limit })}`),
   },
   sampleRows: (layer: string, limit = 50) =>
     request<QueryResult>('/api/query', json('POST', { source: layer, output: 'table', limit })),
@@ -257,5 +278,15 @@ export const api = {
       request<CheckResult>(`/api/admin/llm/connections/${id}/test`, { method: 'POST' }),
     testDraft: (body: ConnectionDraft) =>
       request<CheckResult>('/api/admin/llm/connections/test', json('POST', body)),
+
+    // The model log (plan WP73, design M16): list, key figures and CSV take the same filters.
+    modelActions: (filter: ModelLogFilter, offset = 0, limit = 50) =>
+      request<ModelActionPage>(`/api/admin/model-actions${logParams(filter, { offset, limit })}`),
+    modelKeyFigures: (filter: ModelLogFilter) =>
+      request<KeyFigures>(`/api/admin/model-actions/key-figures${logParams(filter)}`),
+    modelAction: (id: number) => request<ModelActionView>(`/api/admin/model-actions/${id}`),
+    /** A link, not a request: the browser downloads the file with the session cookie. */
+    modelExportUrl: (filter: ModelLogFilter) =>
+      `/api/admin/model-actions/export.csv${logParams(filter)}`,
   },
 }

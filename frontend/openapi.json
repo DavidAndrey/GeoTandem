@@ -6310,7 +6310,7 @@
           "model"
         ],
         "summary": "My Actions",
-        "description": "The account's own entries (D4, design M16.3).",
+        "description": "The account's own entries, newest first (D4, design M16.3); an\nadministrator's too, the log of all is ``/api/admin/model-actions``.",
         "operationId": "my_actions_api_model_my_actions_get",
         "parameters": [
           {
@@ -6407,6 +6407,7 @@
           "admin"
         ],
         "summary": "Actions",
+        "description": "Newest first, every account's; ``total`` counts all that match.",
         "operationId": "actions_api_admin_model_actions_get",
         "parameters": [
           {
@@ -6781,7 +6782,7 @@
           "admin"
         ],
         "summary": "Export Csv",
-        "description": "CSV of the filtered log; cells safe against formula injection.",
+        "description": "CSV of the filtered log, prompt text included (D4); cells safe against\nformula injection (``model/record/export.py`` names the columns). Streamed\na row at a time; more than ``MAX_EXPORT_ROWS`` rows are refused (413).",
         "operationId": "export_csv_api_admin_model_actions_export_csv_get",
         "parameters": [
           {
@@ -6889,7 +6890,10 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response"
+            "description": "Successful Response",
+            "content": {
+              "text/csv": {}
+            }
           },
           "400": {
             "content": {
@@ -6940,6 +6944,16 @@
               }
             },
             "description": "Not Implemented"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Content Too Large"
           }
         }
       }
@@ -6950,6 +6964,7 @@
           "admin"
         ],
         "summary": "Action",
+        "description": "Any account's record as it was (design M16.2); 404 when there is none.",
         "operationId": "action_api_admin_model_actions__action_id__get",
         "parameters": [
           {
@@ -11229,6 +11244,51 @@
             ],
             "title": "Decision"
           },
+          "reject_reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "misunderstood",
+                  "wrong_layer",
+                  "wrong_value",
+                  "other"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reject Reason"
+          },
+          "refusal_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "invalid_query",
+                  "unknown_layer",
+                  "unknown_attribute",
+                  "unsupported_operation",
+                  "query_too_complex",
+                  "invalid_query_geometry",
+                  "name_clash",
+                  "key_type_mismatch",
+                  "attribute_not_text",
+                  "attribute_not_numeric",
+                  "wrong_value_type",
+                  "model_query_invalid",
+                  "limit_exceeded",
+                  "not_representable",
+                  "step_limit"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refusal Code"
+          },
           "hits": {
             "anyOf": [
               {
@@ -11253,6 +11313,8 @@
           "locality",
           "status",
           "decision",
+          "reject_reason",
+          "refusal_code",
           "hits"
         ],
         "title": "ModelActionSummary",

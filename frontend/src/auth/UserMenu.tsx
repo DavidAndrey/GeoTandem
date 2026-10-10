@@ -1,4 +1,5 @@
-// Header user menu: name and role, own password (design A4), sign-out.
+// Header user menu: name and role, own model actions (design M16.3), own
+// password (design A4), sign-out.
 import { Trans, useLingui } from '@lingui/react/macro'
 import { useMutation } from '@tanstack/react-query'
 import { ChevronDown } from 'lucide-react'
@@ -7,6 +8,8 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { api, type Account } from '../api/client'
 import { useResetSession } from '../api/queries'
+import { openMyActions } from '../model/log/dialog'
+import { MyActionsDialog } from '../model/log/MyActionsDialog'
 import { newSession } from '../session/actions'
 import { guarded, useSessionUi } from '../session/ui'
 import { PasswordForm } from './PasswordForm'
@@ -46,6 +49,12 @@ export function UserMenu({ account }: { account: Account }) {
               <div>{account.username}</div>
               <div className="text-muted text-xs">{roleLabel(account.role)}</div>
             </div>
+            <DropdownMenu.Item
+              className="cursor-pointer px-3 py-1 text-sm outline-none data-[highlighted]:bg-neutral-200"
+              onSelect={openMyActions}
+            >
+              <Trans>Meine Modellaktionen</Trans>
+            </DropdownMenu.Item>
             <DropdownMenu.Item
               className="cursor-pointer px-3 py-1 text-sm outline-none data-[highlighted]:bg-neutral-200"
               onSelect={() => {
@@ -89,6 +98,7 @@ export function UserMenu({ account }: { account: Account }) {
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
+      <MyActionsDialog />
     </>
   )
 }

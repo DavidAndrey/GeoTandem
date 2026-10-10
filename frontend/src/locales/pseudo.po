@@ -99,6 +99,10 @@ msgstr ""
 msgid "„Nur in“ entfällt: Der Vorschlag gilt ohne Ihre Einschränkung auf Ausschnitt oder Fläche. „Verwerfen“ stellt sie wieder her."
 msgstr ""
 
+#: src/model/log/KeyFigureRow.tsx
+msgid "(angenommen + angepasst) / (angenommen + angepasst + abgelehnt + übergangen); auto angewendete zählen nicht mit"
+msgstr ""
+
 #: src/table/TableDock.tsx
 msgid "(Ergebnis)"
 msgstr ""
@@ -162,6 +166,10 @@ msgstr ""
 msgid "{count, plural, one {# Modell angeboten} other {# Modelle angeboten}}"
 msgstr ""
 
+#: src/admin/ModelActionPage.tsx
+msgid "{decision} {decided}"
+msgstr ""
+
 #: src/admin/ConnectionsPage.tsx
 msgid "{digest} · {gb} GB"
 msgstr ""
@@ -192,6 +200,10 @@ msgstr ""
 
 #: src/admin/format.ts
 msgid "{field} übernehmen"
+msgstr ""
+
+#: src/admin/ModelLogPage.tsx
+msgid "{first}–{last} von {all}"
 msgstr ""
 
 #: src/admin/format.ts
@@ -286,6 +298,10 @@ msgstr ""
 msgid "{n, plural, one {{count} Zeile wiederholt einen Schlüssel; sie teilt dessen Geometrie.} other {{count} Zeilen wiederholen einen Schlüssel; sie teilen dessen Geometrie.}}"
 msgstr ""
 
+#: src/admin/ModelActionPage.tsx
+msgid "{n} Treffer"
+msgstr ""
+
 #: src/model/panel/PromptPanel.tsx
 msgid "{name} · extern · {host}"
 msgstr ""
@@ -296,6 +312,7 @@ msgid "{op} {layer}"
 msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
+#: src/admin/ModelActionPage.tsx
 #: src/model/panel/Answer.tsx
 msgid "{s} s"
 msgstr ""
@@ -338,6 +355,10 @@ msgstr ""
 
 #: src/admin/wizard.ts
 msgid "{unlabelled, plural, one {# Feld ohne Bezeichnung} other {# Felder ohne Bezeichnung}}"
+msgstr ""
+
+#: src/admin/ModelActionPage.tsx
+msgid "{when} · {account}"
 msgstr ""
 
 #: src/admin/ImportWizard.tsx
@@ -413,6 +434,7 @@ msgstr ""
 msgid "Abbrechen"
 msgstr ""
 
+#: src/admin/ModelActionPage.tsx
 #: src/editor/EditorPanel.tsx
 #: src/model/tree.tsx
 #: src/workplace/QueryPanel.tsx
@@ -427,12 +449,20 @@ msgstr ""
 msgid "Abfrage · Ziel {target}"
 msgstr ""
 
+#: src/model/log/words.ts
+msgid "Abfrage ausserhalb des Schemas"
+msgstr ""
+
 #: src/queries/SaveQueryDialog.tsx
 msgid "Abfrage speichern"
 msgstr ""
 
 #: src/session/notice.ts
 msgid "Abfrage und Rezepte sind unverändert."
+msgstr ""
+
+#: src/model/log/words.ts
+msgid "Abfrage ungültig"
 msgstr ""
 
 #: src/editor/EditorPanel.tsx
@@ -452,10 +482,12 @@ msgid "Abfrageschema"
 msgstr ""
 
 #: src/admin/format.ts
+#: src/model/log/words.ts
 #: src/model/statusKey.ts
 msgid "abgebrochen"
 msgstr ""
 
+#: src/model/log/words.ts
 #: src/model/statusKey.ts
 msgid "abgelehnt"
 msgstr ""
@@ -472,8 +504,13 @@ msgstr ""
 msgid "Abgestufte Grösse"
 msgstr ""
 
+#: src/model/log/words.ts
 #: src/model/statusKey.ts
 msgid "abgewiesen"
+msgstr ""
+
+#: src/admin/ModelActionPage.tsx
+msgid "Abgewiesen"
 msgstr ""
 
 #: src/model/panel/Answer.tsx
@@ -561,6 +598,7 @@ msgid "Aktuelles Passwort"
 msgstr ""
 
 #: src/admin/ImportLogPage.tsx
+#: src/admin/ModelLogPage.tsx
 msgid "alle"
 msgstr ""
 
@@ -621,6 +659,14 @@ msgstr ""
 msgid "als Kopie"
 msgstr ""
 
+#: src/admin/ModelLogPage.tsx
+msgid "Ältere"
+msgstr ""
+
+#: src/model/log/MyActionsDialog.tsx
+msgid "Ältere laden"
+msgstr ""
+
 #: src/editor/describe.ts
 msgctxt "date"
 msgid "am"
@@ -639,12 +685,18 @@ msgid "Analyse unverändert"
 msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
+#: src/admin/ModelActionPage.tsx
+#: src/admin/ModelLogPage.tsx
 #: src/workplace/ModelChoice.tsx
 msgid "Anbindung"
 msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
 msgid "Anbindung „{name}\" löschen?"
+msgstr ""
+
+#: src/admin/ModelLogPage.tsx
+msgid "Anbindung {connectionId}"
 msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
@@ -661,6 +713,10 @@ msgstr ""
 
 #: src/session/OpenNotice.tsx
 msgid "Anderen Ergebnis-Layer wählen"
+msgstr ""
+
+#: src/model/log/words.ts
+msgid "anderes"
 msgstr ""
 
 #: src/model/panel/Answer.tsx
@@ -695,8 +751,24 @@ msgstr ""
 msgid "angehalten · Begrenzung"
 msgstr ""
 
+#: src/model/log/words.ts
+msgid "angenommen"
+msgstr ""
+
+#: src/model/log/words.ts
+msgid "angenommen unverändert"
+msgstr ""
+
+#: src/model/log/words.ts
+msgid "angepasst"
+msgstr ""
+
 #: src/model/statusKey.ts
 msgid "angewendet"
+msgstr ""
+
+#: src/admin/ModelActionPage.tsx
+msgid "Angewendet stattdessen"
 msgstr ""
 
 #: src/admin/UsersPage.tsx
@@ -711,12 +783,17 @@ msgstr ""
 msgid "Annahme ändern: {text}"
 msgstr ""
 
+#: src/admin/ModelActionPage.tsx
 #: src/model/panel/Answer.tsx
 msgid "Annahmen"
 msgstr ""
 
 #: src/model/panel/Answer.tsx
 msgid "Annahmen · {count}"
+msgstr ""
+
+#: src/model/log/KeyFigureRow.tsx
+msgid "Annahmequote"
 msgstr ""
 
 #: src/model/panel/Answer.tsx
@@ -761,6 +838,8 @@ msgstr ""
 msgid "API-Schlüssel"
 msgstr ""
 
+#: src/admin/ModelActionPage.tsx
+#: src/admin/ModelLogPage.tsx
 #: src/model/panel/PromptPanel.tsx
 #: src/workplace/Workplace.tsx
 msgid "Arbeitsweise"
@@ -825,6 +904,7 @@ msgid "Aufklappen"
 msgstr ""
 
 #: src/admin/LevelsPage.tsx
+#: src/model/log/words.ts
 msgid "aus"
 msgstr ""
 
@@ -848,7 +928,12 @@ msgstr ""
 msgid "Auswählen ersetzt die aktuelle Abfrage (bei Änderungen mit Rückfrage)."
 msgstr ""
 
+#: src/model/log/words.ts
+msgid "auto angewendet"
+msgstr ""
+
 #: src/admin/LevelsPage.tsx
+#: src/model/log/words.ts
 msgid "automatisch"
 msgstr ""
 
@@ -1043,6 +1128,10 @@ msgstr ""
 msgid "Codeliste (je Zeile „Code = Bedeutung\")"
 msgstr ""
 
+#: src/admin/ModelLogPage.tsx
+msgid "CSV"
+msgstr ""
+
 #: src/admin/ImportWizard.tsx
 msgid "CSV · Excel · GeoPackage · Shapefile (zip) · GeoJSON"
 msgstr ""
@@ -1054,6 +1143,10 @@ msgstr ""
 
 #: src/i18n/errors.ts
 msgid "Dafür braucht es die Rolle Administrator."
+msgstr ""
+
+#: src/admin/ModelActionPage.tsx
+msgid "danach von Hand geändert {touched}"
 msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
@@ -1252,6 +1345,10 @@ msgstr ""
 msgid "Datum"
 msgstr ""
 
+#: src/model/log/words.ts
+msgid "davon zurückgenommen"
+msgstr ""
+
 #: src/workplace/LayerPanel.tsx
 msgid "Deckkraft"
 msgstr ""
@@ -1280,6 +1377,14 @@ msgstr ""
 msgid "Der aktuelle Kartenausschnitt, festgehalten beim Klick"
 msgstr ""
 
+#: src/model/log/words.ts
+msgid "der angenommenen"
+msgstr ""
+
+#: src/model/log/words.ts
+msgid "der automatisch angewendeten"
+msgstr ""
+
 #: src/i18n/errors.ts
 msgid "Der Einrichtungscode stimmt nicht."
 msgstr ""
@@ -1290,6 +1395,10 @@ msgstr ""
 
 #: src/session/notice.ts
 msgid "Der Ergebnis-Layer fehlt"
+msgstr ""
+
+#: src/i18n/errors.ts
+msgid "Der Export umfasst mehr als {max} Einträge. Bitte den Zeitraum oder die Filter enger wählen."
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -1366,6 +1475,10 @@ msgstr ""
 
 #: src/i18n/errors.ts
 msgid "Der Vorgang wurde unerwartet abgebrochen."
+msgstr ""
+
+#: src/model/log/words.ts
+msgid "der Vorschläge"
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -1697,6 +1810,11 @@ msgstr ""
 msgid "Dieses Werkzeug gibt es nicht."
 msgstr ""
 
+#: src/model/log/words.ts
+msgid "Direkt"
+msgstr ""
+
+#: src/model/log/words.ts
 #: src/model/panel/Answer.tsx
 #: src/model/panel/PromptPanel.tsx
 msgid "Direktabfrage"
@@ -1832,6 +1950,10 @@ msgstr ""
 msgid "Einschränkung aufheben"
 msgstr ""
 
+#: src/admin/ModelActionPage.tsx
+msgid "Eintrag {parent}"
+msgstr ""
+
 #: src/operations/OperationDialog.tsx
 msgid "Einzelfarbe"
 msgstr ""
@@ -1856,6 +1978,12 @@ msgstr ""
 #: src/editor/describe.ts
 msgctxt "text"
 msgid "enthält"
+msgstr ""
+
+#: src/admin/ModelActionPage.tsx
+#: src/admin/ModelLogPage.tsx
+#: src/model/log/MyActionsDialog.tsx
+msgid "Entscheidung"
 msgstr ""
 
 #: src/admin/ImportRunPage.tsx
@@ -1887,6 +2015,7 @@ msgid "erfolgreich"
 msgstr ""
 
 #: src/admin/ImportLogPage.tsx
+#: src/admin/ModelActionPage.tsx
 #: src/workplace/LayerPanel.tsx
 msgid "Ergebnis"
 msgstr ""
@@ -1938,6 +2067,10 @@ msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
 msgid "erlaubt"
+msgstr ""
+
+#: src/admin/ModelActionPage.tsx
+msgid "Erläuterung"
 msgstr ""
 
 #: src/admin/ImportWizard.tsx
@@ -2046,6 +2179,14 @@ msgstr ""
 msgid "Fachliche Namen aus dem Datenkatalog · Auswahl wird mit der Sitzung gespeichert"
 msgstr ""
 
+#: src/model/log/words.ts
+msgid "falscher Layer"
+msgstr ""
+
+#: src/model/log/words.ts
+msgid "falscher Wert"
+msgstr ""
+
 #: src/operations/OperationDialog.tsx
 msgid "Farbe"
 msgstr ""
@@ -2055,6 +2196,8 @@ msgid "Fassung"
 msgstr ""
 
 #: src/admin/ImportRunPage.tsx
+#: src/admin/ModelActionPage.tsx
+#: src/model/log/words.ts
 #: src/model/statusKey.ts
 msgid "Fehler"
 msgstr ""
@@ -2078,6 +2221,18 @@ msgstr ""
 
 #: src/operations/OperationDialog.tsx
 msgid "Feld der Darstellung"
+msgstr ""
+
+#: src/model/log/words.ts
+msgid "Feld ist kein Text"
+msgstr ""
+
+#: src/model/log/words.ts
+msgid "Feld ist keine Zahl"
+msgstr ""
+
+#: src/model/log/words.ts
+msgid "Feld nicht vorhanden"
 msgstr ""
 
 #: src/admin/LayerPage.tsx
@@ -2109,6 +2264,10 @@ msgstr ""
 msgid "Filter entfernen"
 msgstr ""
 
+#: src/admin/ModelLogPage.tsx
+msgid "Filter Konto {account} entfernen"
+msgstr ""
+
 #: src/map/Measurement.tsx
 #: src/queries/part.ts
 #: src/workplace/QueryPanel.tsx
@@ -2118,6 +2277,10 @@ msgstr ""
 #: src/admin/format.ts
 msgctxt "geometry"
 msgid "Fläche"
+msgstr ""
+
+#: src/admin/ModelActionPage.tsx
+msgid "Folgt auf"
 msgstr ""
 
 #: src/model/panel/PromptPanel.tsx
@@ -2137,6 +2300,7 @@ msgid "Fragestellung, Annahmen …"
 msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
+#: src/model/log/words.ts
 msgid "Freigabe"
 msgstr ""
 
@@ -2219,12 +2383,20 @@ msgstr ""
 msgid "Geometrie in der Datei"
 msgstr ""
 
+#: src/model/log/words.ts
+msgid "Geometrie ungültig"
+msgstr ""
+
 #: src/admin/ImportRunPage.tsx
 msgid "Geometrien gebildet"
 msgstr ""
 
 #: src/i18n/errors.ts
 msgid "Gerade sind zu viele Anfragen gleichzeitig unterwegs. Bitte gleich nochmals versuchen."
+msgstr ""
+
+#: src/model/log/words.ts
+msgid "Gesamter Zeitraum"
 msgstr ""
 
 #: src/queries/SavedQueries.tsx
@@ -2400,12 +2572,20 @@ msgstr ""
 msgid "Ihr Stand ist unverändert."
 msgstr ""
 
+#: src/model/log/MyActionsDialog.tsx
+msgid "Ihre eigenen Anfragen an das Modell und wie sie ausgingen"
+msgstr ""
+
 #: src/model/panel/PromptPanel.tsx
 msgid "Ihre Eingabe beantwortet die Rückfrage."
 msgstr ""
 
 #: src/model/panel/PromptPanel.tsx
 msgid "Ihre Eingaben werden protokolliert"
+msgstr ""
+
+#: src/model/log/MyActionsDialog.tsx
+msgid "Ihre Eingaben werden protokolliert. Administratoren sehen alle Einträge samt Prompt."
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -2555,6 +2735,7 @@ msgstr ""
 msgid "kein Schlüsselwert"
 msgstr ""
 
+#: src/admin/ModelActionPage.tsx
 #: src/session/SaveAsDialog.tsx
 msgid "keine"
 msgstr ""
@@ -2588,6 +2769,10 @@ msgstr ""
 msgid "Keine Layer freigegeben."
 msgstr ""
 
+#: src/admin/ModelLogPage.tsx
+msgid "Keine Modellaktionen in diesem Ausschnitt."
+msgstr ""
+
 #: src/workplace/ModelChoice.tsx
 msgid "Keine Modellanbindung"
 msgstr ""
@@ -2602,6 +2787,10 @@ msgstr ""
 
 #: src/table/TableDock.tsx
 msgid "Keine Objekte."
+msgstr ""
+
+#: src/admin/ModelActionPage.tsx
+msgid "keine Schritte"
 msgstr ""
 
 #: src/session/SessionsDialog.tsx
@@ -2620,8 +2809,17 @@ msgstr ""
 msgid "Kennzahl entfernen"
 msgstr ""
 
+#: src/model/log/KeyFigureRow.tsx
 #: src/operations/OperationDialog.tsx
 msgid "Kennzahlen"
+msgstr ""
+
+#: src/model/log/KeyFigureRow.tsx
+msgid "Kennzahlen zu Vorschlägen im gewählten Zeitraum, aufschlüsselbar über die Filter. Nicht als Vorschlag gezählt: {rest}."
+msgstr ""
+
+#: src/model/log/words.ts
+msgid "Kette"
 msgstr ""
 
 #: src/operations/OperationDialog.tsx
@@ -2657,6 +2855,7 @@ msgstr ""
 msgid "Kontextlänge"
 msgstr ""
 
+#: src/admin/ModelLogPage.tsx
 #: src/admin/ProfilePage.tsx
 #: src/admin/UsersPage.tsx
 msgid "Konto"
@@ -2664,6 +2863,10 @@ msgstr ""
 
 #: src/admin/UsersPage.tsx
 msgid "Konto „{username}\" löschen?"
+msgstr ""
+
+#: src/admin/ModelLogPage.tsx
+msgid "Konto {account}"
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -2753,6 +2956,10 @@ msgstr ""
 msgid "Layer in der Datei"
 msgstr ""
 
+#: src/model/log/words.ts
+msgid "Layer nicht vorhanden"
+msgstr ""
+
 #: src/admin/ImportWizard.tsx
 msgid "Layer öffnen"
 msgstr ""
@@ -2770,6 +2977,14 @@ msgstr ""
 msgid "Layer-Detail"
 msgstr ""
 
+#: src/admin/ModelActionPage.tsx
+msgid "Layer-Steckbrief"
+msgstr ""
+
+#: src/admin/ModelActionPage.tsx
+msgid "leer"
+msgstr ""
+
 #: src/map/MapView.tsx
 #: src/workplace/Workplace.tsx
 msgid "Legende"
@@ -2777,6 +2992,10 @@ msgstr ""
 
 #: src/map/MapView.tsx
 msgid "Legende ein/aus"
+msgstr ""
+
+#: src/model/log/words.ts
+msgid "Letzte {n} Tage"
 msgstr ""
 
 #: src/admin/UsersPage.tsx
@@ -2843,6 +3062,11 @@ msgstr ""
 msgid "medium"
 msgstr ""
 
+#: src/auth/UserMenu.tsx
+#: src/model/log/MyActionsDialog.tsx
+msgid "Meine Modellaktionen"
+msgstr ""
+
 #: src/model/statusKey.ts
 msgid "Meldung"
 msgstr ""
@@ -2887,6 +3111,10 @@ msgstr ""
 msgid "Minimum {field}"
 msgstr ""
 
+#: src/model/log/words.ts
+msgid "missverstanden"
+msgstr ""
+
 #: src/session/OpenNotice.tsx
 msgid "Mit aktuellen Daten übernehmen"
 msgstr ""
@@ -2925,12 +3153,17 @@ msgctxt "origin mark"
 msgid "Modell"
 msgstr ""
 
+#: src/model/log/words.ts
 #: src/model/statusKey.ts
 msgid "Modell arbeitet …"
 msgstr ""
 
 #: src/model/panel/Problem.tsx
 msgid "Modell nicht erreichbar"
+msgstr ""
+
+#: src/admin/ModelActionPage.tsx
+msgid "Modell sieht"
 msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
@@ -2948,6 +3181,12 @@ msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
 msgid "Modelle hinter einer OpenAI-kompatiblen Schnittstelle (Ollama, vLLM, llama.cpp, Cloud). Anwender wählen unter den freigegebenen; eine nicht freigegebene nutzt niemand, auch kein Administrator."
+msgstr ""
+
+#: src/admin/AdminLayout.tsx
+#: src/admin/ModelActionPage.tsx
+#: src/admin/ModelLogPage.tsx
+msgid "Modellprotokoll"
 msgstr ""
 
 #: src/workplace/ModelChoice.tsx
@@ -2995,6 +3234,10 @@ msgstr ""
 msgid "Name der Kennzahl"
 msgstr ""
 
+#: src/model/log/words.ts
+msgid "Namenskonflikt"
+msgstr ""
+
 #: src/admin/CatalogPage.tsx
 #: src/editor/describe.ts
 #: src/editor/EditorPanel.tsx
@@ -3038,6 +3281,10 @@ msgstr ""
 msgid "Neuer Name"
 msgstr ""
 
+#: src/admin/ModelLogPage.tsx
+msgid "Neuere"
+msgstr ""
+
 #: src/admin/UsersPage.tsx
 msgid "Neues Konto"
 msgstr ""
@@ -3068,12 +3315,20 @@ msgstr ""
 msgid "nicht bestanden"
 msgstr ""
 
+#: src/model/log/words.ts
+msgid "nicht darstellbar"
+msgstr ""
+
 #: src/admin/ConnectionsPage.tsx
 msgid "nicht freigegeben"
 msgstr ""
 
 #: src/queries/SavedQueries.tsx
 msgid "Nicht gespeichert"
+msgstr ""
+
+#: src/admin/ModelActionPage.tsx
+msgid "nicht leer"
 msgstr ""
 
 #: src/map/MapSearch.tsx
@@ -3094,6 +3349,10 @@ msgstr ""
 
 #: src/workplace/LayerPanel.tsx
 msgid "Noch keine Layer. Über „+ Layer\" kommen sie aus dem Katalog."
+msgstr ""
+
+#: src/model/log/MyActionsDialog.tsx
+msgid "Noch keine Modellaktionen."
 msgstr ""
 
 #: src/session/SessionsDialog.tsx
@@ -3120,6 +3379,14 @@ msgstr ""
 msgid "Nur der Kartenausschnitt ist geladen: der Layer hat mehr als {maxFeatures} Objekte."
 msgstr ""
 
+#: src/model/log/MyActionsDialog.tsx
+msgid "Nur eigene Einträge, neueste zuerst."
+msgstr ""
+
+#: src/admin/ModelLogPage.tsx
+msgid "Nur Einträge von {account}"
+msgstr ""
+
 #: src/operations/OperationDialog.tsx
 msgid "Nur gefilterte Objekte (Treffer der Abfrage)"
 msgstr ""
@@ -3138,6 +3405,10 @@ msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
 msgid "nur Metadaten"
+msgstr ""
+
+#: src/model/log/words.ts
+msgid "nur Vorschlag"
 msgstr ""
 
 #: src/queries/ManageQueriesDialog.tsx
@@ -3167,6 +3438,7 @@ msgid "ODER"
 msgstr ""
 
 #: src/admin/ImportWizard.tsx
+#: src/model/log/words.ts
 #: src/session/SessionsDialog.tsx
 msgid "offen"
 msgstr ""
@@ -3185,6 +3457,10 @@ msgstr ""
 msgid "ohne Klartext:"
 msgstr ""
 
+#: src/model/log/words.ts
+msgid "ohne Vorschlag"
+msgstr ""
+
 #: src/queries/SavedQueries.tsx
 msgid "OK"
 msgstr ""
@@ -3199,6 +3475,10 @@ msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
 msgid "OpenAI-kompatibel, mit /v1. Lokal sind 127.0.0.1, localhost, host.docker.internal und die Namen in GEOTANDEM_LLM_LOCAL_HOSTS; alles andere ist extern."
+msgstr ""
+
+#: src/model/log/words.ts
+msgid "Operation nicht möglich"
 msgstr ""
 
 #: src/editor/EditorPanel.tsx
@@ -3227,6 +3507,9 @@ msgstr ""
 msgid "Passwort zurücksetzen"
 msgstr ""
 
+#: src/admin/ModelActionPage.tsx
+#: src/admin/ModelLogPage.tsx
+#: src/model/log/MyActionsDialog.tsx
 #: src/model/panel/Answer.tsx
 #: src/model/panel/PromptPanel.tsx
 #: src/workplace/Workplace.tsx
@@ -3247,6 +3530,10 @@ msgstr ""
 
 #: src/model/panel/PromptPanel.tsx
 msgid "Prompt nicht verfügbar: keine Modellanbindung aktiv. Klassik ist voll nutzbar."
+msgstr ""
+
+#: src/admin/ModelActionPage.tsx
+msgid "Prompt-Hash"
 msgstr ""
 
 #: src/model/panel/Answer.tsx
@@ -3325,11 +3612,13 @@ msgstr ""
 msgid "Rolle: {label}"
 msgstr ""
 
+#: src/admin/ModelActionPage.tsx
 #: src/model/statusKey.ts
 msgid "Rückfrage"
 msgstr ""
 
 #: src/auth/UserMenu.tsx
+#: src/model/log/MyActionsDialog.tsx
 #: src/queries/ManageQueriesDialog.tsx
 #: src/session/SessionsDialog.tsx
 msgid "Schliessen"
@@ -3371,17 +3660,26 @@ msgstr ""
 msgid "Schlüssel ohne Treffer im Ziel-Layer"
 msgstr ""
 
+#: src/model/log/words.ts
+msgid "Schlüsseltypen passen nicht"
+msgstr ""
+
 #: src/editor/describe.ts
 #: src/operations/OperationDialog.tsx
 msgid "schneidet"
 msgstr ""
 
 #: src/admin/ImportWizard.tsx
+#: src/admin/ModelActionPage.tsx
 msgid "Schritte"
 msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
 msgid "Seed"
+msgstr ""
+
+#: src/admin/ModelLogPage.tsx
+msgid "Seiten"
 msgstr ""
 
 #: src/workplace/Workplace.tsx
@@ -3505,6 +3803,10 @@ msgstr ""
 msgid "Stand"
 msgstr ""
 
+#: src/admin/ModelActionPage.tsx
+msgid "Stand von Hand geändert"
+msgstr ""
+
 #: src/admin/UsersPage.tsx
 msgid "Startpasswort"
 msgstr ""
@@ -3549,6 +3851,7 @@ msgid "Strg+↵"
 msgstr ""
 
 #: src/admin/LevelsPage.tsx
+#: src/admin/ModelLogPage.tsx
 msgid "Stufe"
 msgstr ""
 
@@ -3556,12 +3859,24 @@ msgstr ""
 msgid "Stufe {level}: Das Modell wendet in dieser Ausbaustufe nichts selbst an. Keine Vorschau, keine Freigabe, kein Zurücknehmen; „Übernehmen“ im Editor ist Ihre Änderung."
 msgstr ""
 
+#: src/admin/ModelLogPage.tsx
+msgid "Stufe {levelId}"
+msgstr ""
+
 #: src/model/panel/PromptPanel.tsx
 msgid "Stufe {levelName}"
 msgstr ""
 
+#: src/admin/ModelActionPage.tsx
+msgid "Stufe damals"
+msgstr ""
+
 #: src/workplace/ModelChoice.tsx
 msgid "Stufe der Modellunterstützung"
+msgstr ""
+
+#: src/admin/ModelActionPage.tsx
+msgid "Stufe und Anbindung so, wie sie zum Zeitpunkt der Anfrage waren."
 msgstr ""
 
 #: src/workplace/ModelChoice.tsx
@@ -3665,6 +3980,8 @@ msgstr ""
 msgid "Titel"
 msgstr ""
 
+#: src/admin/ModelLogPage.tsx
+#: src/model/log/MyActionsDialog.tsx
 #: src/session/SessionsDialog.tsx
 msgid "Treffer"
 msgstr ""
@@ -3711,6 +4028,7 @@ msgstr ""
 msgid "Über diesen Vorschlag ist schon entschieden."
 msgstr ""
 
+#: src/model/log/words.ts
 #: src/model/statusKey.ts
 msgid "übergangen"
 msgstr ""
@@ -3742,6 +4060,10 @@ msgstr ""
 #: src/queries/ManageQueriesDialog.tsx
 #: src/session/SessionsDialog.tsx
 msgid "Umbenennen"
+msgstr ""
+
+#: src/admin/ModelActionPage.tsx
+msgid "unbekannt"
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -3849,6 +4171,7 @@ msgstr ""
 msgid "Von"
 msgstr ""
 
+#: src/admin/ModelActionPage.tsx
 #: src/model/statusKey.ts
 msgid "von Hand übernommen"
 msgstr ""
@@ -3876,12 +4199,20 @@ msgstr ""
 msgid "Vorschau"
 msgstr ""
 
+#: src/admin/ModelActionPage.tsx
+msgid "Vorschau {previewed}"
+msgstr ""
+
 #: src/model/statusKey.ts
 msgid "Vorschlag"
 msgstr ""
 
 #: src/admin/format.ts
 msgid "Vorschlag für {field} bestätigen"
+msgstr ""
+
+#: src/model/log/words.ts
+msgid "Vorschläge"
 msgstr ""
 
 #: src/admin/ImportRunPage.tsx
@@ -3900,6 +4231,10 @@ msgstr ""
 #: src/admin/AdminLayout.tsx
 #: src/admin/ProfilePage.tsx
 msgid "Was das Modell sieht"
+msgstr ""
+
+#: src/admin/ModelActionPage.tsx
+msgid "Was fehlt"
 msgstr ""
 
 #: src/workplace/ResultSelect.tsx
@@ -3938,6 +4273,7 @@ msgstr ""
 msgid "Werkzeugaufruf"
 msgstr ""
 
+#: src/model/log/words.ts
 #: src/model/panel/Answer.tsx
 #: src/model/panel/PromptPanel.tsx
 msgid "Werkzeugkette"
@@ -3949,6 +4285,10 @@ msgstr ""
 
 #: src/editor/EditorPanel.tsx
 msgid "Wert hinzufügen"
+msgstr ""
+
+#: src/model/log/words.ts
+msgid "Wert passt nicht zum Feld"
 msgstr ""
 
 #: src/admin/LayerPage.tsx
@@ -4020,6 +4360,11 @@ msgstr ""
 msgid "Zeilen"
 msgstr ""
 
+#: src/admin/ModelLogPage.tsx
+#: src/model/log/MyActionsDialog.tsx
+msgid "Zeit"
+msgstr ""
+
 #: src/admin/ConnectionsPage.tsx
 msgid "Zeitlimit (s)"
 msgstr ""
@@ -4027,6 +4372,10 @@ msgstr ""
 #: src/admin/ImportLogPage.tsx
 #: src/admin/ImportRunPage.tsx
 msgid "Zeitpunkt"
+msgstr ""
+
+#: src/admin/ModelLogPage.tsx
+msgid "Zeitraum"
 msgstr ""
 
 #: src/model/panel/Problem.tsx
@@ -4062,12 +4411,24 @@ msgstr ""
 msgid "Zoomen"
 msgstr ""
 
+#: src/model/log/words.ts
+msgid "zu komplex"
+msgstr ""
+
+#: src/model/log/words.ts
+msgid "zu viele Bedingungen"
+msgstr ""
+
 #: src/i18n/errors.ts
 msgid "Zu viele fehlgeschlagene Anmeldungen. Bitte etwas warten und dann nochmals versuchen."
 msgstr ""
 
 #: src/i18n/errors.ts
 msgid "Zu viele hochgeladene Dateien warten auf ihren Import. Bitte zuerst einen abschliessen."
+msgstr ""
+
+#: src/model/log/words.ts
+msgid "zu viele Schritte"
 msgstr ""
 
 #: src/admin/AdminLayout.tsx
@@ -4098,8 +4459,13 @@ msgstr ""
 msgid "Zurück"
 msgstr ""
 
+#: src/model/log/words.ts
 #: src/model/statusKey.ts
 msgid "zurückgenommen"
+msgstr ""
+
+#: src/admin/ModelActionPage.tsx
+msgid "zurückgenommen {undone}"
 msgstr ""
 
 #: src/i18n/errors.ts

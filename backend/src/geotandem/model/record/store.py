@@ -19,7 +19,7 @@ Logs carry ids and codes only, never prompt or answer text (C15).
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Callable, Collection, Iterable, Mapping
+from collections.abc import Callable, Collection, Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
@@ -230,6 +230,8 @@ def _summary(row: ModelAction) -> ModelActionSummary:
         locality=row.connection_locality,
         status=row.status,
         decision=row.decision,
+        reject_reason=row.reject_reason,
+        refusal_code=(row.refusal or {}).get("code"),
         hits=row.stamp["count"] if row.stamp else None,
     )
 
@@ -379,9 +381,11 @@ class ModelActionStore:
         return found[::-1]
 
     @staticmethod
-    def _where(caller: Account, filters: ActionFilters) -> list[ColumnElement[bool]]:
+    def _where(
+        caller: Account, filters: ActionFilters, own: bool = False
+    ) -> list[ColumnElement[bool]]:
         where: list[ColumnElement[bool]] = []
-        if not _admin(caller):
+        if own or not _admin(caller):
             where.append(ModelAction.user_id == caller.id)
         if filters.since is not None:
             where.append(ModelAction.created_at >= filters.since)
@@ -404,11 +408,13 @@ class ModelActionStore:
         *,
         offset: int = 0,
         limit: int = 50,
+        own: bool = False,
     ) -> ModelActionPage:
-        """Newest first; a user's list holds their own records only (D4)."""
+        """Newest first; a user's list holds their own records only (D4). With
+        ``own`` an administrator's list does too ("Meine Modellaktionen", M16.3)."""
         if offset < 0 or not 1 <= limit <= MAX_PAGE:
             raise ValueError(f"offset >= 0 and 1 <= limit <= {MAX_PAGE}")
-        where = self._where(caller, filters)
+        where = self._where(caller, filters, own)
         with Session(reading(self.engine)) as db:
             total = db.scalar(select(func.count()).select_from(ModelAction).where(*where))
             rows = db.scalars(
@@ -419,6 +425,53 @@ class ModelActionStore:
                 .limit(limit)
             )
             return ModelActionPage(items=[_summary(row) for row in rows], total=total or 0)
+
+    def count(
+        self,
+        caller: Account,
+        filters: ActionFilters = ActionFilters(),  # noqa: B008 - frozen
+    ) -> int:
+        """How many records the filters hold for the caller (D4)."""
+        stmt = select(func.count()).select_from(ModelAction).where(*self._where(caller, filters))
+        with Session(reading(self.engine)) as db:
+            return db.scalar(stmt) or 0
+
+    def export(
+        self,
+        caller: Account,
+        filters: ActionFilters = ActionFilters(),  # noqa: B008 - frozen
+        *,
+        limit: int | None = None,
+        chunk: int = 500,
+    ) -> Iterator[ModelActionView]:
+        """Every record of the filters as a full view, newest first, at most
+        ``limit``, for the CSV of the log (WP73); the same visibility as the list
+        (D4). Read ``chunk`` records at a time, each chunk in a session of its own
+        that is closed before its records are handed on (keyset paging on time
+        and id), so a slow reader of the CSV holds no database session."""
+        where = self._where(caller, filters)
+        newest_first = (ModelAction.created_at.desc(), ModelAction.id.desc())
+        after: tuple[datetime, int] | None = None
+        left = limit
+        while left is None or left > 0:
+            size = chunk if left is None else min(chunk, left)
+            stmt = select(ModelAction).where(*where)
+            if after is not None:
+                at, last = after
+                stmt = stmt.where(
+                    (ModelAction.created_at < at)
+                    | ((ModelAction.created_at == at) & (ModelAction.id < last))
+                )
+            with Session(reading(self.engine)) as db:
+                views = [
+                    to_view(row) for row in db.scalars(stmt.order_by(*newest_first).limit(size))
+                ]
+            yield from views
+            if len(views) < size:
+                return
+            after = (views[-1].created_at, views[-1].id)
+            if left is not None:
+                left -= len(views)
 
     def key_figures(
         self,
