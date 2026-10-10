@@ -251,6 +251,17 @@ See section 5.2. Entry: WP62–WP69 merged. Done-when (etappen.md): one prompt p
 #### Gate E2.4
 See section 5.2 plus the **security review** of section 5.4. Done-when (etappen.md): a level without approval duty and one with it behave demonstrably differently, and the rule holds past the surface.
 
+**Passed 2026-10-10** on `ep-2.3-6` (tag `e2.4`), run in a Linux container on a Windows host through `GATE_RUNNER_CONTAINER`, Playwright with one worker:
+- lint clean; backend tests all green; frontend 481/482 (the one failure is `src/i18n/locale.test.ts`, which fails the same way on main in that container); `make audit` clean;
+- image, first start, both Playwright passes 51 passed and 1 skipped (E2.1 with a local model), restart; E2.3 and E2.4 acceptance included;
+- etappe review and security review (5.4, findings #34–#39 in `security-review.md`), all fixed (`e24-gate-fixes`); `httpcore2` declared.
+
+Open from the gate list:
+- the run on a Linux host (`make gate`, default workers);
+- the real-model run;
+- the sign-off of the undecided design deviations below;
+- the word for the `auto` cell on the admin levels page ("automatisch" vs the model screens' "auto").
+
 **Design deviations of E2.4** (gate step 6, from the etappe review; to be signed off):
 
 *Deliberate, decided during the WPs:*
