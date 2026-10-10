@@ -34,6 +34,7 @@ from geotandem.db.orm import ModelAction
 from geotandem.db.spatialite import reading
 from geotandem.engine import ResultStamp
 from geotandem.levels import Level
+from geotandem.model.errors import ActionError
 from geotandem.model.schemas import (
     MAX_PAGE,
     ActionStatus,
@@ -98,17 +99,6 @@ COUNTED: tuple[Decision, ...] = (
 """The decisions of a proposal; ``aborted`` and ``failed`` are counted apart."""
 
 AnyAnswer = QueryAnswer | Clarification | CannotAnswer | PlanAnswer
-
-
-class ActionError(Exception):
-    """A rule about action records was violated; ``code`` is stable for the UI."""
-
-    def __init__(self, status: int, code: str, message: str, /, **details: Any) -> None:
-        super().__init__(message)
-        self.status = status
-        self.code = code
-        self.message = message
-        self.details = details
 
 
 @dataclass(frozen=True)
@@ -242,24 +232,24 @@ def _admin(caller: Account) -> bool:
 
 
 def _not_found(action_id: int) -> ActionError:
-    return ActionError(404, "not_found", f"No model action {action_id}.", id=action_id)
+    return ActionError("not_found", f"No model action {action_id}.", http_status=404, id=action_id)
 
 
 def _wrong_state(row: ModelAction, step: str) -> ActionError:
     """An edge the diagram does not have: decided already, or not there yet."""
     if row.decision is not None or row.status not in EDGES:
         return ActionError(
-            409,
             "already_decided",
             f"Model action {row.id} is decided already ({row.status}).",
+            http_status=409,
             id=row.id,
             status=row.status,
             decision=row.decision,
         )
     return ActionError(
-        409,
         "not_approved",
         f"Model action {row.id} is {row.status}; '{step}' does not apply.",
+        http_status=409,
         id=row.id,
         status=row.status,
     )
@@ -267,9 +257,9 @@ def _wrong_state(row: ModelAction, step: str) -> ActionError:
 
 def _nothing_to_undo(row: ModelAction, why: str) -> ActionError:
     return ActionError(
-        409,
         "nothing_to_undo",
         f"Model action {row.id} cannot be undone: {why}.",
+        http_status=409,
         id=row.id,
         status=row.status,
         decision=row.decision,
@@ -666,9 +656,9 @@ class ModelActionStore:
             off = (row.governance or {}).get("off") or []
             if off:
                 raise ActionError(
-                    409,
                     "class_not_allowed",
                     f"The level of model action {row.id} does not allow '{off[0]}'.",
+                    http_status=409,
                     id=row.id,
                     part=off[0],
                     op_class=off[0],
@@ -703,7 +693,6 @@ class ModelActionStore:
         adjusted query went through the editor, so it was not applied by hand."""
         if decision == "adjusted" and applied_by_hand:
             raise ActionError(
-                400,
                 "bad_request",
                 "An adjusted query is applied through the editor, not by hand.",
                 decision=decision,

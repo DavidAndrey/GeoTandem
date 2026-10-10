@@ -1,0 +1,1803 @@
+{
+  "_about": "Shared cases of to_analysis (plan E2.3-E2.6, D3, WP64; the TypeScript inverse of WP80 must agree). INPUTS of every case: its 'query' and the top-level 'catalog' (kind and field types per layer, as the controls know them from the layer list; modelled on the sample data, with date fields added). A query is representable exactly when to_analysis finds an analysis and resultQuery of that analysis (frontend/src/analysis/query.ts) has the query's canonical form. 'analysis' is the query part of the frontend state (QueryPart of analysis/model.ts: result, tree, restriction) plus the result layer's symbology; node ids are left out and not compared. The controls' limits: the result is a vector layer; a row names a field of its layer with an operator operatorsFor (editor/describe.ts) offers for the field's type, a number range only on a number field, a date range only on a date field; a relation or reference names another vector layer, never the result layer; a relation's filter is one attribute row of the related layer, never negated (no NICHT toggle there). Where several analyses give one query, to_analysis picks: the root is an 'and' group, never negated, an 'and' at the top gives the root's children; the restriction is the last of exactly two 'and' arguments at the top, or the whole 'where'; 'not' of 'within' is 'outside', of 'dwithin' 'far', otherwise 'not' sets the node's flag and an already negated node is wrapped in a negated group of one; 'and' of a 'ge' and a 'le' compare on one date field with ISO dates in order is one date range row. 'conditions' is the count the limit of the model path uses (MAX_CONDITIONS 8, also for a follow-up's analysis, P6): one per row of the tree (an attribute row, a date range row, a relation with its filter, a reference row) and one for a restriction; groups, and, or, not count nothing. 'part' of a case that is not representable names the first top-level field (in schema order) or condition op the controls cannot show; it is the refusal's details.part.",
+  "version": 1,
+  "catalog": {
+    "schulen": {
+      "kind": "vector",
+      "attributes": {
+        "name": "text",
+        "gem_nr": "integer",
+        "typ": "text",
+        "kindergarten": "boolean",
+        "primarstufe": "boolean",
+        "sekundarstufe": "boolean",
+        "sprache": "text",
+        "standorte": "integer",
+        "eroeffnet": "date"
+      }
+    },
+    "strassen": {
+      "kind": "vector",
+      "attributes": {
+        "name": "text",
+        "klasse": "text"
+      }
+    },
+    "gemeinden": {
+      "kind": "vector",
+      "attributes": {
+        "gem_nr": "integer",
+        "name": "text",
+        "gegruendet": "date"
+      }
+    },
+    "gemeinden_steuern": {
+      "kind": "vector",
+      "attributes": {
+        "gem_nr": "integer",
+        "steueranlage": "real"
+      }
+    },
+    "gewaesser": {
+      "kind": "vector",
+      "attributes": {
+        "name": "text",
+        "typ": "text"
+      }
+    },
+    "haltestellen": {
+      "kind": "vector",
+      "attributes": {
+        "name": "text",
+        "verkehrsmittel": "text",
+        "kategorie": "text",
+        "einwohner": "integer",
+        "arbeitsplaetze": "integer"
+      }
+    },
+    "gemeindedaten": {
+      "kind": "table",
+      "attributes": {
+        "gem_nr": "integer",
+        "steueranlage": "real",
+        "einwohner": "integer"
+      }
+    }
+  },
+  "representable": [
+    {
+      "id": "reference",
+      "note": "the E1 reference question, built by hand in E1.5",
+      "query_equals": "e2e/fixtures/reference-question.json",
+      "query": {
+        "schema_version": "2",
+        "source": "schulen",
+        "output": "map",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "in",
+              "attr": "typ",
+              "values": [
+                "primar"
+              ]
+            },
+            {
+              "op": "related",
+              "layer": "strassen",
+              "predicate": "dwithin",
+              "distance_m": 500,
+              "where": {
+                "op": "compare",
+                "attr": "klasse",
+                "cmp": "eq",
+                "value": "kantonsstrasse_b"
+              }
+            },
+            {
+              "op": "related",
+              "layer": "gemeinden_steuern",
+              "predicate": "within",
+              "where": {
+                "op": "compare",
+                "attr": "steueranlage",
+                "cmp": "gt",
+                "value": 1.6
+              }
+            }
+          ]
+        }
+      },
+      "analysis": {
+        "result": "schulen",
+        "tree": {
+          "kind": "group",
+          "not": false,
+          "op": "and",
+          "children": [
+            {
+              "kind": "attribute",
+              "not": false,
+              "attr": "typ",
+              "operator": "in",
+              "value": null,
+              "min": null,
+              "max": null,
+              "values": [
+                "primar"
+              ]
+            },
+            {
+              "kind": "spatial",
+              "not": false,
+              "operator": "near",
+              "layer": "strassen",
+              "distance_m": 500,
+              "filter": {
+                "kind": "attribute",
+                "not": false,
+                "attr": "klasse",
+                "operator": "eq",
+                "value": "kantonsstrasse_b",
+                "min": null,
+                "max": null,
+                "values": []
+              }
+            },
+            {
+              "kind": "spatial",
+              "not": false,
+              "operator": "in",
+              "layer": "gemeinden_steuern",
+              "distance_m": null,
+              "filter": {
+                "kind": "attribute",
+                "not": false,
+                "attr": "steueranlage",
+                "operator": "gt",
+                "value": 1.6,
+                "min": null,
+                "max": null,
+                "values": []
+              }
+            }
+          ]
+        },
+        "restriction": null,
+        "symbology": null
+      },
+      "conditions": 3
+    },
+    {
+      "id": "no_condition",
+      "note": "a layer alone; schema_version and output may be left out",
+      "query": {
+        "source": "schulen"
+      },
+      "analysis": {
+        "result": "schulen",
+        "tree": {
+          "kind": "group",
+          "not": false,
+          "op": "and",
+          "children": []
+        },
+        "restriction": null,
+        "symbology": null
+      },
+      "conditions": 0
+    },
+    {
+      "id": "one_compare",
+      "query": {
+        "schema_version": "2",
+        "source": "schulen",
+        "output": "map",
+        "where": {
+          "op": "compare",
+          "attr": "standorte",
+          "cmp": "ge",
+          "value": 2
+        }
+      },
+      "analysis": {
+        "result": "schulen",
+        "tree": {
+          "kind": "group",
+          "not": false,
+          "op": "and",
+          "children": [
+            {
+              "kind": "attribute",
+              "not": false,
+              "attr": "standorte",
+              "operator": "ge",
+              "value": 2,
+              "min": null,
+              "max": null,
+              "values": []
+            }
+          ]
+        },
+        "restriction": null,
+        "symbology": null
+      },
+      "conditions": 1
+    },
+    {
+      "id": "boolean_value",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "compare",
+          "attr": "kindergarten",
+          "cmp": "eq",
+          "value": true
+        }
+      },
+      "analysis": {
+        "result": "schulen",
+        "tree": {
+          "kind": "group",
+          "not": false,
+          "op": "and",
+          "children": [
+            {
+              "kind": "attribute",
+              "not": false,
+              "attr": "kindergarten",
+              "operator": "eq",
+              "value": true,
+              "min": null,
+              "max": null,
+              "values": []
+            }
+          ]
+        },
+        "restriction": null,
+        "symbology": null
+      },
+      "conditions": 1
+    },
+    {
+      "id": "or_group",
+      "note": "an 'or' at the top is a group inside the root",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "or",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "gem_nr",
+              "cmp": "eq",
+              "value": 351
+            },
+            {
+              "op": "compare",
+              "attr": "gem_nr",
+              "cmp": "eq",
+              "value": 355
+            }
+          ]
+        }
+      },
+      "analysis": {
+        "result": "schulen",
+        "tree": {
+          "kind": "group",
+          "not": false,
+          "op": "and",
+          "children": [
+            {
+              "kind": "group",
+              "not": false,
+              "op": "or",
+              "children": [
+                {
+                  "kind": "attribute",
+                  "not": false,
+                  "attr": "gem_nr",
+                  "operator": "eq",
+                  "value": 351,
+                  "min": null,
+                  "max": null,
+                  "values": []
+                },
+                {
+                  "kind": "attribute",
+                  "not": false,
+                  "attr": "gem_nr",
+                  "operator": "eq",
+                  "value": 355,
+                  "min": null,
+                  "max": null,
+                  "values": []
+                }
+              ]
+            }
+          ]
+        },
+        "restriction": null,
+        "symbology": null
+      },
+      "conditions": 2
+    },
+    {
+      "id": "nested_groups",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "in",
+              "attr": "typ",
+              "values": [
+                "primar",
+                "sekundar"
+              ]
+            },
+            {
+              "op": "or",
+              "args": [
+                {
+                  "op": "compare",
+                  "attr": "standorte",
+                  "cmp": "gt",
+                  "value": 1
+                },
+                {
+                  "op": "not",
+                  "arg": {
+                    "op": "and",
+                    "args": [
+                      {
+                        "op": "is_null",
+                        "attr": "name"
+                      },
+                      {
+                        "op": "compare",
+                        "attr": "gem_nr",
+                        "cmp": "ne",
+                        "value": 351
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "analysis": {
+        "result": "schulen",
+        "tree": {
+          "kind": "group",
+          "not": false,
+          "op": "and",
+          "children": [
+            {
+              "kind": "attribute",
+              "not": false,
+              "attr": "typ",
+              "operator": "in",
+              "value": null,
+              "min": null,
+              "max": null,
+              "values": [
+                "primar",
+                "sekundar"
+              ]
+            },
+            {
+              "kind": "group",
+              "not": false,
+              "op": "or",
+              "children": [
+                {
+                  "kind": "attribute",
+                  "not": false,
+                  "attr": "standorte",
+                  "operator": "gt",
+                  "value": 1,
+                  "min": null,
+                  "max": null,
+                  "values": []
+                },
+                {
+                  "kind": "group",
+                  "not": true,
+                  "op": "and",
+                  "children": [
+                    {
+                      "kind": "attribute",
+                      "not": false,
+                      "attr": "name",
+                      "operator": "is_empty",
+                      "value": null,
+                      "min": null,
+                      "max": null,
+                      "values": []
+                    },
+                    {
+                      "kind": "attribute",
+                      "not": false,
+                      "attr": "gem_nr",
+                      "operator": "ne",
+                      "value": 351,
+                      "min": null,
+                      "max": null,
+                      "values": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "restriction": null,
+        "symbology": null
+      },
+      "conditions": 4
+    },
+    {
+      "id": "negated_compare",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "not",
+          "arg": {
+            "op": "compare",
+            "attr": "typ",
+            "cmp": "eq",
+            "value": "primar"
+          }
+        }
+      },
+      "analysis": {
+        "result": "schulen",
+        "tree": {
+          "kind": "group",
+          "not": false,
+          "op": "and",
+          "children": [
+            {
+              "kind": "attribute",
+              "not": true,
+              "attr": "typ",
+              "operator": "eq",
+              "value": "primar",
+              "min": null,
+              "max": null,
+              "values": []
+            }
+          ]
+        },
+        "restriction": null,
+        "symbology": null
+      },
+      "conditions": 1
+    },
+    {
+      "id": "double_negation",
+      "note": "a negated row negated again: a negated group of one",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "not",
+          "arg": {
+            "op": "not",
+            "arg": {
+              "op": "compare",
+              "attr": "typ",
+              "cmp": "eq",
+              "value": "primar"
+            }
+          }
+        }
+      },
+      "analysis": {
+        "result": "schulen",
+        "tree": {
+          "kind": "group",
+          "not": false,
+          "op": "and",
+          "children": [
+            {
+              "kind": "group",
+              "not": true,
+              "op": "and",
+              "children": [
+                {
+                  "kind": "attribute",
+                  "not": true,
+                  "attr": "typ",
+                  "operator": "eq",
+                  "value": "primar",
+                  "min": null,
+                  "max": null,
+                  "values": []
+                }
+              ]
+            }
+          ]
+        },
+        "restriction": null,
+        "symbology": null
+      },
+      "conditions": 1
+    },
+    {
+      "id": "has_a_value",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "not",
+          "arg": {
+            "op": "is_null",
+            "attr": "name"
+          }
+        }
+      },
+      "analysis": {
+        "result": "schulen",
+        "tree": {
+          "kind": "group",
+          "not": false,
+          "op": "and",
+          "children": [
+            {
+              "kind": "attribute",
+              "not": true,
+              "attr": "name",
+              "operator": "is_empty",
+              "value": null,
+              "min": null,
+              "max": null,
+              "values": []
+            }
+          ]
+        },
+        "restriction": null,
+        "symbology": null
+      },
+      "conditions": 1
+    },
+    {
+      "id": "numeric_range",
+      "note": "bounds in either order: the schema normalises them",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "between",
+          "attr": "standorte",
+          "min": 4,
+          "max": 2
+        }
+      },
+      "analysis": {
+        "result": "schulen",
+        "tree": {
+          "kind": "group",
+          "not": false,
+          "op": "and",
+          "children": [
+            {
+              "kind": "attribute",
+              "not": false,
+              "attr": "standorte",
+              "operator": "between",
+              "value": null,
+              "min": 2,
+              "max": 4,
+              "values": []
+            }
+          ]
+        },
+        "restriction": null,
+        "symbology": null
+      },
+      "conditions": 1
+    },
+    {
+      "id": "date_range",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "eroeffnet",
+              "cmp": "ge",
+              "value": "2020-01-01"
+            },
+            {
+              "op": "compare",
+              "attr": "eroeffnet",
+              "cmp": "le",
+              "value": "2020-12-31"
+            }
+          ]
+        }
+      },
+      "analysis": {
+        "result": "schulen",
+        "tree": {
+          "kind": "group",
+          "not": false,
+          "op": "and",
+          "children": [
+            {
+              "kind": "attribute",
+              "not": false,
+              "attr": "eroeffnet",
+              "operator": "between",
+              "value": null,
+              "min": "2020-01-01",
+              "max": "2020-12-31",
+              "values": []
+            }
+          ]
+        },
+        "restriction": null,
+        "symbology": null
+      },
+      "conditions": 1
+    },
+    {
+      "id": "integer_bounds_are_two_rows",
+      "note": "ge and le on a number field: two rows, not a date range",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "standorte",
+              "cmp": "ge",
+              "value": 2
+            },
+            {
+              "op": "compare",
+              "attr": "standorte",
+              "cmp": "le",
+              "value": 4
+            }
+          ]
+        }
+      },
+      "analysis": {
+        "result": "schulen",
+        "tree": {
+          "kind": "group",
+          "not": false,
+          "op": "and",
+          "children": [
+            {
+              "kind": "attribute",
+              "not": false,
+              "attr": "standorte",
+              "operator": "ge",
+              "value": 2,
+              "min": null,
+              "max": null,
+              "values": []
+            },
+            {
+              "kind": "attribute",
+              "not": false,
+              "attr": "standorte",
+              "operator": "le",
+              "value": 4,
+              "min": null,
+              "max": null,
+              "values": []
+            }
+          ]
+        },
+        "restriction": null,
+        "symbology": null
+      },
+      "conditions": 2
+    },
+    {
+      "id": "text_match",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "text_match",
+              "attr": "name",
+              "text": "Liebefeld",
+              "mode": "contains",
+              "case_sensitive": false
+            },
+            {
+              "op": "text_match",
+              "attr": "name",
+              "text": "Schule"
+            }
+          ]
+        }
+      },
+      "analysis": {
+        "result": "schulen",
+        "tree": {
+          "kind": "group",
+          "not": false,
+          "op": "and",
+          "children": [
+            {
+              "kind": "attribute",
+              "not": false,
+              "attr": "name",
+              "operator": "contains",
+              "value": "Liebefeld",
+              "min": null,
+              "max": null,
+              "values": []
+            },
+            {
+              "kind": "attribute",
+              "not": false,
+              "attr": "name",
+              "operator": "contains",
+              "value": "Schule",
+              "min": null,
+              "max": null,
+              "values": []
+            }
+          ]
+        },
+        "restriction": null,
+        "symbology": null
+      },
+      "conditions": 2
+    },
+    {
+      "id": "outside_and_far",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "not",
+              "arg": {
+                "op": "related",
+                "layer": "gemeinden",
+                "predicate": "within"
+              }
+            },
+            {
+              "op": "not",
+              "arg": {
+                "op": "related",
+                "layer": "haltestellen",
+                "predicate": "dwithin",
+                "distance_m": 300
+              }
+            }
+          ]
+        }
+      },
+      "analysis": {
+        "result": "schulen",
+        "tree": {
+          "kind": "group",
+          "not": false,
+          "op": "and",
+          "children": [
+            {
+              "kind": "spatial",
+              "not": false,
+              "operator": "outside",
+              "layer": "gemeinden",
+              "distance_m": null,
+              "filter": null
+            },
+            {
+              "kind": "spatial",
+              "not": false,
+              "operator": "far",
+              "layer": "haltestellen",
+              "distance_m": 300,
+              "filter": null
+            }
+          ]
+        },
+        "restriction": null,
+        "symbology": null
+      },
+      "conditions": 2
+    },
+    {
+      "id": "negated_outside",
+      "note": "not of not of within: outside, negated",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "not",
+          "arg": {
+            "op": "not",
+            "arg": {
+              "op": "related",
+              "layer": "gemeinden",
+              "predicate": "within"
+            }
+          }
+        }
+      },
+      "analysis": {
+        "result": "schulen",
+        "tree": {
+          "kind": "group",
+          "not": false,
+          "op": "and",
+          "children": [
+            {
+              "kind": "spatial",
+              "not": true,
+              "operator": "outside",
+              "layer": "gemeinden",
+              "distance_m": null,
+              "filter": null
+            }
+          ]
+        },
+        "restriction": null,
+        "symbology": null
+      },
+      "conditions": 1
+    },
+    {
+      "id": "intersects_and_contains_with_filters",
+      "query": {
+        "source": "gemeinden",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "related",
+              "layer": "gewaesser",
+              "predicate": "intersects",
+              "where": {
+                "op": "compare",
+                "attr": "typ",
+                "cmp": "ne",
+                "value": "bach"
+              }
+            },
+            {
+              "op": "related",
+              "layer": "schulen",
+              "predicate": "contains",
+              "where": {
+                "op": "and",
+                "args": [
+                  {
+                    "op": "compare",
+                    "attr": "eroeffnet",
+                    "cmp": "ge",
+                    "value": "2001-01-01"
+                  },
+                  {
+                    "op": "compare",
+                    "attr": "eroeffnet",
+                    "cmp": "le",
+                    "value": "2010-12-31"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "analysis": {
+        "result": "gemeinden",
+        "tree": {
+          "kind": "group",
+          "not": false,
+          "op": "and",
+          "children": [
+            {
+              "kind": "spatial",
+              "not": false,
+              "operator": "intersects",
+              "layer": "gewaesser",
+              "distance_m": null,
+              "filter": {
+                "kind": "attribute",
+                "not": false,
+                "attr": "typ",
+                "operator": "ne",
+                "value": "bach",
+                "min": null,
+                "max": null,
+                "values": []
+              }
+            },
+            {
+              "kind": "spatial",
+              "not": false,
+              "operator": "contains",
+              "layer": "schulen",
+              "distance_m": null,
+              "filter": {
+                "kind": "attribute",
+                "not": false,
+                "attr": "eroeffnet",
+                "operator": "between",
+                "value": null,
+                "min": "2001-01-01",
+                "max": "2010-12-31",
+                "values": []
+              }
+            }
+          ]
+        },
+        "restriction": null,
+        "symbology": null
+      },
+      "conditions": 2
+    },
+    {
+      "id": "reference_feature",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "near_feature",
+          "layer": "haltestellen",
+          "fid": 12,
+          "distance_m": 250
+        }
+      },
+      "analysis": {
+        "result": "schulen",
+        "tree": {
+          "kind": "group",
+          "not": false,
+          "op": "and",
+          "children": [
+            {
+              "kind": "reference",
+              "not": false,
+              "layer": "haltestellen",
+              "fid": 12,
+              "label": "",
+              "distance_m": 250
+            }
+          ]
+        },
+        "restriction": null,
+        "symbology": null
+      },
+      "conditions": 1
+    },
+    {
+      "id": "view_restriction_only",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "bbox",
+          "bbox": [
+            7.5,
+            46.9,
+            7.3,
+            46.8
+          ]
+        }
+      },
+      "analysis": {
+        "result": "schulen",
+        "tree": {
+          "kind": "group",
+          "not": false,
+          "op": "and",
+          "children": []
+        },
+        "restriction": {
+          "kind": "view",
+          "bbox": [
+            7.3,
+            46.8,
+            7.5,
+            46.9
+          ]
+        },
+        "symbology": null
+      },
+      "conditions": 1
+    },
+    {
+      "id": "rows_and_shape_restriction",
+      "note": "the tree's 'and' stays nested inside the restriction's 'and'",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "and",
+              "args": [
+                {
+                  "op": "in",
+                  "attr": "typ",
+                  "values": [
+                    "primar"
+                  ]
+                },
+                {
+                  "op": "compare",
+                  "attr": "standorte",
+                  "cmp": "gt",
+                  "value": 1
+                }
+              ]
+            },
+            {
+              "op": "geometry",
+              "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                  [
+                    [
+                      7.4,
+                      46.9
+                    ],
+                    [
+                      7.5,
+                      46.9
+                    ],
+                    [
+                      7.5,
+                      47.0
+                    ],
+                    [
+                      7.4,
+                      46.9
+                    ]
+                  ]
+                ]
+              },
+              "predicate": "intersects"
+            }
+          ]
+        }
+      },
+      "analysis": {
+        "result": "schulen",
+        "tree": {
+          "kind": "group",
+          "not": false,
+          "op": "and",
+          "children": [
+            {
+              "kind": "attribute",
+              "not": false,
+              "attr": "typ",
+              "operator": "in",
+              "value": null,
+              "min": null,
+              "max": null,
+              "values": [
+                "primar"
+              ]
+            },
+            {
+              "kind": "attribute",
+              "not": false,
+              "attr": "standorte",
+              "operator": "gt",
+              "value": 1,
+              "min": null,
+              "max": null,
+              "values": []
+            }
+          ]
+        },
+        "restriction": {
+          "kind": "shape",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  7.4,
+                  46.9
+                ],
+                [
+                  7.5,
+                  46.9
+                ],
+                [
+                  7.5,
+                  47
+                ],
+                [
+                  7.4,
+                  46.9
+                ]
+              ]
+            ]
+          }
+        },
+        "symbology": null
+      },
+      "conditions": 3
+    },
+    {
+      "id": "one_row_and_view_restriction",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "in",
+              "attr": "typ",
+              "values": [
+                "primar"
+              ]
+            },
+            {
+              "op": "bbox",
+              "bbox": [
+                7.3,
+                46.8,
+                7.5,
+                46.9
+              ]
+            }
+          ]
+        }
+      },
+      "analysis": {
+        "result": "schulen",
+        "tree": {
+          "kind": "group",
+          "not": false,
+          "op": "and",
+          "children": [
+            {
+              "kind": "attribute",
+              "not": false,
+              "attr": "typ",
+              "operator": "in",
+              "value": null,
+              "min": null,
+              "max": null,
+              "values": [
+                "primar"
+              ]
+            }
+          ]
+        },
+        "restriction": {
+          "kind": "view",
+          "bbox": [
+            7.3,
+            46.8,
+            7.5,
+            46.9
+          ]
+        },
+        "symbology": null
+      },
+      "conditions": 2
+    },
+    {
+      "id": "symbology",
+      "query": {
+        "source": "schulen",
+        "symbology": {
+          "kind": "categorized",
+          "attr": "typ"
+        },
+        "where": {
+          "op": "in",
+          "attr": "typ",
+          "values": [
+            "primar"
+          ]
+        }
+      },
+      "analysis": {
+        "result": "schulen",
+        "tree": {
+          "kind": "group",
+          "not": false,
+          "op": "and",
+          "children": [
+            {
+              "kind": "attribute",
+              "not": false,
+              "attr": "typ",
+              "operator": "in",
+              "value": null,
+              "min": null,
+              "max": null,
+              "values": [
+                "primar"
+              ]
+            }
+          ]
+        },
+        "restriction": null,
+        "symbology": {
+          "kind": "categorized",
+          "attr": "typ",
+          "colors": {}
+        }
+      },
+      "conditions": 1
+    }
+  ],
+  "not_representable": [
+    {
+      "id": "fixture_not_representable",
+      "note": "the contract fixture's case (model-cases/v1.json 'not_representable')",
+      "query": {
+        "schema_version": "2",
+        "source": "schulen",
+        "order_by": [
+          {
+            "attr": "standorte",
+            "dir": "desc"
+          }
+        ],
+        "limit": 5
+      },
+      "part": "order_by"
+    },
+    {
+      "id": "limit",
+      "query": {
+        "source": "schulen",
+        "limit": 5
+      },
+      "part": "limit"
+    },
+    {
+      "id": "select",
+      "query": {
+        "source": "schulen",
+        "select": [
+          "name"
+        ]
+      },
+      "part": "select"
+    },
+    {
+      "id": "columns",
+      "query": {
+        "source": "schulen",
+        "columns": [
+          {
+            "fn": "distance_to",
+            "name": "calc_distanz_strassen",
+            "layer": "strassen"
+          }
+        ]
+      },
+      "part": "columns"
+    },
+    {
+      "id": "buffer",
+      "query": {
+        "source": "strassen",
+        "buffer": {
+          "distance_m": 500
+        }
+      },
+      "part": "buffer"
+    },
+    {
+      "id": "attribute_join",
+      "query": {
+        "source": "gemeinden",
+        "attribute_join": {
+          "layer": "gemeindedaten",
+          "left_key": "gem_nr",
+          "right_key": "gem_nr",
+          "fields": [
+            "steueranlage"
+          ]
+        }
+      },
+      "part": "attribute_join"
+    },
+    {
+      "id": "aggregate",
+      "query": {
+        "source": "schulen",
+        "aggregate": {
+          "by_layer": "gemeinden",
+          "metrics": [
+            {
+              "fn": "count",
+              "as": "anzahl"
+            }
+          ]
+        }
+      },
+      "part": "aggregate"
+    },
+    {
+      "id": "spatial_relation",
+      "query": {
+        "source": "schulen",
+        "spatial_relation": {
+          "layer": "gemeinden",
+          "predicate": "within"
+        }
+      },
+      "part": "spatial_relation"
+    },
+    {
+      "id": "table_output",
+      "query": {
+        "source": "schulen",
+        "output": "table"
+      },
+      "part": "output"
+    },
+    {
+      "id": "and_of_one",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "standorte",
+              "cmp": "gt",
+              "value": 1
+            }
+          ]
+        }
+      },
+      "part": "and"
+    },
+    {
+      "id": "or_of_one_in_a_group",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "in",
+              "attr": "typ",
+              "values": [
+                "primar"
+              ]
+            },
+            {
+              "op": "or",
+              "args": [
+                {
+                  "op": "compare",
+                  "attr": "standorte",
+                  "cmp": "gt",
+                  "value": 1
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "part": "or"
+    },
+    {
+      "id": "empty_text_value",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "compare",
+          "attr": "name",
+          "cmp": "eq",
+          "value": ""
+        }
+      },
+      "part": "compare"
+    },
+    {
+      "id": "text_match_equals",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "text_match",
+          "attr": "name",
+          "text": "Schule",
+          "mode": "equals"
+        }
+      },
+      "part": "text_match"
+    },
+    {
+      "id": "text_match_case_sensitive",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "text_match",
+          "attr": "name",
+          "text": "Schule",
+          "case_sensitive": true
+        }
+      },
+      "part": "text_match"
+    },
+    {
+      "id": "bbox_inside_the_tree",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "or",
+          "args": [
+            {
+              "op": "bbox",
+              "bbox": [
+                7.3,
+                46.8,
+                7.5,
+                46.9
+              ]
+            },
+            {
+              "op": "compare",
+              "attr": "standorte",
+              "cmp": "gt",
+              "value": 1
+            }
+          ]
+        }
+      },
+      "part": "bbox"
+    },
+    {
+      "id": "restriction_not_alone_with_the_tree",
+      "note": "the controls nest the tree's 'and': three arguments put the bbox inside the tree",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "in",
+              "attr": "typ",
+              "values": [
+                "primar"
+              ]
+            },
+            {
+              "op": "compare",
+              "attr": "standorte",
+              "cmp": "gt",
+              "value": 1
+            },
+            {
+              "op": "bbox",
+              "bbox": [
+                7.3,
+                46.8,
+                7.5,
+                46.9
+              ]
+            }
+          ]
+        }
+      },
+      "part": "bbox"
+    },
+    {
+      "id": "geometry_within",
+      "note": "a drawn area restricts by 'intersects' only",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "geometry",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  7.4,
+                  46.9
+                ],
+                [
+                  7.5,
+                  46.9
+                ],
+                [
+                  7.5,
+                  47.0
+                ],
+                [
+                  7.4,
+                  46.9
+                ]
+              ]
+            ]
+          },
+          "predicate": "within"
+        }
+      },
+      "part": "geometry"
+    },
+    {
+      "id": "relation_filter_of_two_rows",
+      "note": "a relation's filter is one attribute row",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "related",
+          "layer": "strassen",
+          "predicate": "dwithin",
+          "distance_m": 500,
+          "where": {
+            "op": "or",
+            "args": [
+              {
+                "op": "compare",
+                "attr": "klasse",
+                "cmp": "eq",
+                "value": "kantonsstrasse_a"
+              },
+              {
+                "op": "compare",
+                "attr": "klasse",
+                "cmp": "eq",
+                "value": "kantonsstrasse_b"
+              }
+            ]
+          }
+        }
+      },
+      "part": "related"
+    },
+    {
+      "id": "relation_filter_on_a_relation",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "related",
+          "layer": "gemeinden",
+          "predicate": "within",
+          "where": {
+            "op": "related",
+            "layer": "gewaesser",
+            "predicate": "intersects"
+          }
+        }
+      },
+      "part": "related"
+    },
+    {
+      "id": "dates_out_of_order",
+      "note": "the controls write a date range with its bounds in order; 'ge' after 'le' is two rows, and a relation's filter is one row",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "or",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "standorte",
+              "cmp": "gt",
+              "value": 3
+            },
+            {
+              "op": "related",
+              "layer": "gemeinden",
+              "predicate": "within",
+              "where": {
+                "op": "and",
+                "args": [
+                  {
+                    "op": "compare",
+                    "attr": "gegruendet",
+                    "cmp": "ge",
+                    "value": "2020-12-31"
+                  },
+                  {
+                    "op": "compare",
+                    "attr": "gegruendet",
+                    "cmp": "le",
+                    "value": "2020-01-01"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "part": "related"
+    },
+    {
+      "id": "text_ordering",
+      "note": "text fields have no < ≤ > ≥",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "compare",
+          "attr": "name",
+          "cmp": "lt",
+          "value": "M"
+        }
+      },
+      "part": "compare"
+    },
+    {
+      "id": "text_bounds",
+      "note": "ge and le on text: no date range, and text has no ge or le",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "name",
+              "cmp": "ge",
+              "value": "2020-01-01"
+            },
+            {
+              "op": "compare",
+              "attr": "name",
+              "cmp": "le",
+              "value": "2020-12-31"
+            }
+          ]
+        }
+      },
+      "part": "compare"
+    },
+    {
+      "id": "boolean_ne",
+      "note": "a boolean field offers = and 'ist leer' only",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "compare",
+          "attr": "kindergarten",
+          "cmp": "ne",
+          "value": true
+        }
+      },
+      "part": "compare"
+    },
+    {
+      "id": "date_in_list",
+      "note": "a date field offers no 'ist eins von'",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "in",
+          "attr": "eroeffnet",
+          "values": [
+            "2020-01-01"
+          ]
+        }
+      },
+      "part": "in"
+    },
+    {
+      "id": "number_range_on_a_date",
+      "note": "a date range is ge and le with ISO dates",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "between",
+          "attr": "eroeffnet",
+          "min": 1,
+          "max": 2
+        }
+      },
+      "part": "between"
+    },
+    {
+      "id": "text_match_on_a_number",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "text_match",
+          "attr": "standorte",
+          "text": "1"
+        }
+      },
+      "part": "text_match"
+    },
+    {
+      "id": "unknown_field",
+      "note": "fid is no field the editor lists",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "compare",
+          "attr": "fid",
+          "cmp": "eq",
+          "value": 1
+        }
+      },
+      "part": "compare"
+    },
+    {
+      "id": "negated_relation_filter",
+      "note": "the filter of a relation has no NICHT toggle",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "related",
+          "layer": "gemeinden",
+          "predicate": "within",
+          "where": {
+            "op": "not",
+            "arg": {
+              "op": "compare",
+              "attr": "name",
+              "cmp": "eq",
+              "value": "Bern"
+            }
+          }
+        }
+      },
+      "part": "related"
+    },
+    {
+      "id": "relation_to_the_result_layer",
+      "note": "the reference layer list leaves out the result layer",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "related",
+          "layer": "schulen",
+          "predicate": "dwithin",
+          "distance_m": 500
+        }
+      },
+      "part": "related"
+    },
+    {
+      "id": "reference_on_the_result_layer",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "near_feature",
+          "layer": "schulen",
+          "fid": 3,
+          "distance_m": 100
+        }
+      },
+      "part": "near_feature"
+    },
+    {
+      "id": "relation_to_a_table_layer",
+      "note": "only vector layers are offered",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "related",
+          "layer": "gemeindedaten",
+          "predicate": "intersects"
+        }
+      },
+      "part": "related"
+    },
+    {
+      "id": "table_layer_as_result",
+      "note": "a table layer is never the result (B11)",
+      "query": {
+        "source": "gemeindedaten"
+      },
+      "part": "source"
+    }
+  ]
+}

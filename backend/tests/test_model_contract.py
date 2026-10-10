@@ -42,11 +42,6 @@ WITH_ANSWER = [c["id"] for c in cases() if "answer" in c]
 SOURCE = REPO / "backend" / "src" / "geotandem"
 
 PENDING_CODES = {
-    "model_query_invalid": "WP64",
-    "limit_exceeded": "WP64",
-    "not_representable": "WP64",
-    "context_too_large": "WP64",
-    "model_unreadable": "WP64",
     "quota_exceeded": "WP65",
     "undo_blocked": "WP70",
     "step_limit": "WP75",
@@ -369,6 +364,17 @@ def test_rows_leave_only_through_execute_and_adopt(app: FastAPI) -> None:
         ("post", "/api/model/actions/{action_id}/execute"),
         ("post", "/api/model/actions/{action_id}/adopt"),
     }
+
+
+def test_model_errors_answer_with_the_common_body(app: FastAPI) -> None:
+    """One ActionError for the direct path (WP64) and the record (WP63), one handler."""
+    from geotandem.model.errors import ActionError
+    from geotandem.model.record import ActionError as RecordError
+
+    assert RecordError is ActionError
+    assert ActionError in app.exception_handlers
+    error = ActionError("already_decided", "x", http_status=409, status="applied")
+    assert (error.status, error.details) == (409, {"status": "applied"})
 
 
 def test_no_schema_name_is_taken_twice(app: FastAPI) -> None:

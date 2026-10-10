@@ -13,6 +13,7 @@ from geotandem.auth.accounts import AccountError, HashingBusy
 from geotandem.connections import ConnectionProblem
 from geotandem.engine import QueryError
 from geotandem.levels import LevelError
+from geotandem.model.errors import ActionError
 from geotandem.saved_queries import SavedQueryError
 from geotandem.sessions import SessionError
 from geotandem.tools import UnknownTool
@@ -94,6 +95,10 @@ def install(app: FastAPI) -> None:
     @app.exception_handler(CredentialsUnreadable)
     async def _credentials_unreadable(_: Request, exc: CredentialsUnreadable) -> JSONResponse:
         return _body(409, exc.code, str(exc))
+
+    @app.exception_handler(ActionError)
+    async def _model_action_rule(_: Request, exc: ActionError) -> JSONResponse:
+        return _body(exc.status, exc.code, exc.message, **exc.details)
 
     @app.exception_handler(LevelError)
     async def _level_rule(_: Request, exc: LevelError) -> JSONResponse:

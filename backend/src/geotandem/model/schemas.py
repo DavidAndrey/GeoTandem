@@ -123,21 +123,30 @@ EngineCode = Literal[
 """The engine's codes, as a failed step reports them to the model (D9)."""
 
 RefusalCode = Literal[
+    "invalid_query",
     "unknown_layer",
     "unknown_attribute",
+    "unsupported_operation",
+    "query_too_complex",
+    "invalid_query_geometry",
+    "name_clash",
+    "key_type_mismatch",
+    "attribute_not_text",
+    "attribute_not_numeric",
+    "wrong_value_type",
     "model_query_invalid",
     "limit_exceeded",
     "not_representable",
-    "query_too_complex",
-    "wrong_value_type",
-    "invalid_query",
     "step_limit",
 ]
-"""Why the application refused a model's answer (D1, D3, design M3). The engine's
-codes keep their meaning: ``unknown_layer`` covers a layer that does not exist and
-one hidden from the account, as everywhere else, so a prompt cannot probe for
-hidden layers; ``query_too_complex`` is the engine's bound for any query, while
-``limit_exceeded`` is the stricter bound of the model path (``MAX_CONDITIONS``)."""
+"""Why the application refused a model's answer (D1, D3, design M3). Every
+validation code of the engine (``EngineCode`` but ``result_too_large`` and
+``query_timeout``, which only a run raises) passes through with its meaning:
+``unknown_layer`` covers a layer that does not exist, one hidden from the
+account and one not released for the model, as everywhere else, so a prompt
+cannot probe for them; ``query_too_complex`` is the engine's bound for any
+query, while ``limit_exceeded`` is the stricter bound of the model path
+(``MAX_CONDITIONS``)."""
 
 ActionErrorCode = Literal[
     "not_implemented",
