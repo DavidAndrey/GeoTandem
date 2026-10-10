@@ -293,12 +293,17 @@ class ModelAction(Base):
     __table_args__ = (
         Index("ix_model_action_user_id_created_at", "user_id", "created_at"),
         Index("ix_model_action_decision_created_at", "decision", "created_at"),
+        Index("ix_model_action_connection_id_created_at", "connection_id", "created_at"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int | None] = mapped_column(ForeignKey("app_user.id", ondelete="SET NULL"))
     account: Mapped[str] = mapped_column(String(63))
-    created_at: Mapped[datetime] = mapped_column(server_default=func.current_timestamp())
+    created_at: Mapped[datetime]
+    """Naive UTC from the application's clock, like every time of the record, so
+    a period filter means the same on every database."""
+    proposal_only: Mapped[bool] = mapped_column(default=False, server_default=false())
+    """The model may only propose (P1, D1); an overtaken record ends ``proposal_only``."""
     prompt: Mapped[str]
     prompt_hash: Mapped[str] = mapped_column(String(128))
     approach: Mapped[str] = mapped_column(String(16))

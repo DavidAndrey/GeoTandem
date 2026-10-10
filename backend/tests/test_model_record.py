@@ -9,7 +9,7 @@ figures of the contract fixture come out of the table exactly.
 import json
 import random
 from collections.abc import Callable
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, get_args
 
@@ -31,8 +31,6 @@ from geotandem.db.orm import ModelAction
 from geotandem.engine import ResultStamp
 from geotandem.levels import CellMode, Level, OpClass, load_levels, save_levels
 from geotandem.model.record import (
-    DECIDED,
-    EDGES,
     ActionError,
     ActionFilters,
     ModelActionStore,
@@ -234,15 +232,36 @@ STEPS: dict[str, Step] = {
     "undo": lambda s, a, i: s.undo(a, i),
     "preview": lambda s, a, i: s.mark_previewed(a, i),
     "new_prompt": lambda s, a, i: s.supersede_open(a),
+    "restart": lambda s, a, i: s.close_stale(datetime(2100, 1, 1)),
+}
+
+# Plan 1.2 and section 2, copied here on purpose: the store is checked against
+# the plan, not against itself.
+PLAN_EDGES: dict[str, set[str]] = {
+    "thinking": {"refused", "answered", "proposed", "approved", "aborted", "failed"},
+    "proposed": {"approved", "rejected", "superseded", "applied"},
+    "approved": {"applied", "running", "superseded"},
+    "running": {"done", "limited"},
+    "done": {"applied", "superseded"},
+    "limited": {"applied", "superseded"},
+    "applied": {"undone"},
+}
+PLAN_DECISIONS: dict[str, set[str]] = {
+    "applied": {"accepted", "adjusted", "auto", "proposal_only"},
+    "rejected": {"rejected"},
+    "superseded": {"superseded", "proposal_only"},
+    "undone": {"accepted", "auto"},
+    "aborted": {"aborted"},
+    "failed": {"failed"},
 }
 
 
 def check(before: ModelActionView, after: ModelActionView) -> None:
     """What every step leaves true, legal or refused."""
     if after.status != before.status:
-        assert after.status in EDGES[before.status], (before.status, after.status)
-    if after.status in DECIDED:
-        assert after.decision in DECIDED[after.status], (after.status, after.decision)
+        assert after.status in PLAN_EDGES.get(before.status, set()), (before, after.status)
+    if after.status in PLAN_DECISIONS:
+        assert after.decision in PLAN_DECISIONS[after.status], (after.status, after.decision)
         assert after.decided_at is not None
     else:
         assert after.decision is None and after.decided_at is None, after.status
@@ -275,8 +294,8 @@ def test_no_order_of_steps_reaches_an_illegal_state(
     rng = random.Random(63)
     reached: set[str] = set()
     names = sorted(STEPS)
-    for _ in range(150):
-        action = new(store, anna)
+    for _ in range(250):
+        action = new(store, anna, proposal_only=rng.random() < 0.3)
         for _ in range(10):
             before = store.get(anna, action.id)
             likely = LIKELY.get(before.status)
@@ -374,6 +393,151 @@ def test_undo_takes_back_only_what_the_model_changed(
     assert undo_events == [
         {"event": "model_action_undone", "username": "anna", "action_id": auto, "decision": "auto"}
     ]
+
+
+def test_only_the_latest_model_change_is_undone(
+    store: ModelActionStore, people: dict[str, Account]
+) -> None:
+    anna, beat = people["anna"], people["beat"]
+    first = proposed(store, anna, AUTO)
+    store.execute(anna, first, STAMP)
+    second = proposed(store, anna)
+    store.approve(anna, second)
+    store.execute(anna, second, STAMP)
+    theirs = proposed(store, beat, AUTO)
+    store.execute(beat, theirs, STAMP)  # another account's change does not count
+
+    with pytest.raises(ActionError) as older:
+        store.undo(anna, first)
+    assert older.value.code == "nothing_to_undo"
+    assert store.undo(anna, second).undone_at is not None
+    with pytest.raises(ActionError) as still:
+        store.undo(anna, first)  # no redo, and no reaching further back
+    assert still.value.code == "nothing_to_undo"
+
+
+def test_an_adjusted_query_is_not_applied_by_hand(
+    store: ModelActionStore, people: dict[str, Account]
+) -> None:
+    anna = people["anna"]
+    action_id = proposed(store, anna)
+    with pytest.raises(ActionError) as refused:
+        store.decide(anna, action_id, "adjusted", applied_by_hand=True, applied_query=QUERY)
+    assert (refused.value.status, refused.value.code) == (400, "bad_request")
+    assert store.get(anna, action_id).status == "proposed"
+    adjusted = store.decide(anna, action_id, "adjusted", applied_query=QUERY)
+    assert (adjusted.decision, adjusted.applied_by_hand, adjusted.applied_query) == (
+        "adjusted",
+        False,
+        QUERY,
+    )
+
+
+def racing(monkeypatch: pytest.MonkeyPatch, status: str, **values: Any) -> None:
+    """Another request moves the record on between reading and writing it."""
+    original = ModelActionStore._own
+
+    def own(db: Session, caller: Account, action_id: int) -> ModelAction:
+        row = original(db, caller, action_id)
+        db.connection().execute(
+            update(ModelAction).where(ModelAction.id == action_id).values(status=status, **values)
+        )
+        return row
+
+    monkeypatch.setattr(ModelActionStore, "_own", staticmethod(own))
+
+
+def test_of_two_changes_at_once_the_later_one_loses(
+    store: ModelActionStore, people: dict[str, Account], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    anna = people["anna"]
+    action_id = proposed(store, anna)
+    racing(monkeypatch, "rejected", decision="rejected", decided_at=datetime(2026, 10, 10))
+    with pytest.raises(ActionError) as lost:
+        store.approve(anna, action_id)
+    assert (lost.value.status, lost.value.code) == (409, "already_decided")
+    assert lost.value.details["status"] == "rejected"
+
+
+def test_a_preview_racing_an_approval_still_counts(
+    store: ModelActionStore, people: dict[str, Account], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    anna = people["anna"]
+    action_id = proposed(store, anna)
+    racing(monkeypatch, "approved")
+    previewed = store.mark_previewed(anna, action_id)
+    assert (previewed.status, previewed.previewed_at is not None) == ("approved", True)
+
+
+def test_every_time_comes_from_the_application_clock(
+    engine: Engine, people: dict[str, Account]
+) -> None:
+    """Naive UTC everywhere, so a period means the same on every database."""
+    now = datetime(2026, 10, 10, 8, 30)
+    store = ModelActionStore(engine, clock=lambda: now)
+    anna = people["anna"]
+    auto = proposed(store, anna, AUTO)
+    store.mark_previewed(anna, auto)
+    store.execute(anna, auto, STAMP)
+    view = store.undo(anna, auto)
+    assert (view.created_at, view.previewed_at, view.decided_at, view.undone_at) == (now,) * 4
+    assert store.list_actions(anna, ActionFilters(since=now, until=now + timedelta(1))).total == 1
+
+
+def test_the_start_up_check_closes_what_nobody_will_finish(
+    engine: Engine, store: ModelActionStore, people: dict[str, Account], events: Events
+) -> None:
+    anna, beat = people["anna"], people["beat"]
+    thinking = new(store, anna, supersede=False).id
+    auto = proposed(store, beat, AUTO, supersede=False)
+    approved = proposed(store, anna, supersede=False)
+    store.approve(anna, approved)
+    running = proposed(store, anna, approach="chain", supersede=False)
+    store.approve(anna, running)
+    store.run(anna, running)
+    store.mark_previewed(anna, approved)
+    waiting = proposed(store, anna, supersede=False)
+    cutoff = datetime.now(UTC).replace(tzinfo=None) + timedelta(seconds=1)
+    young = new(store, beat, supersede=False, proposal_only=True).id
+    with Session(engine) as db, db.begin():
+        db.execute(
+            update(ModelAction)
+            .where(ModelAction.id == young)
+            .values(created_at=cutoff + timedelta(minutes=1))
+        )
+
+    assert sorted(store.close_stale(cutoff)) == sorted([thinking, auto, running])
+
+    failed = store.get(anna, thinking)
+    assert (failed.status, failed.decision, failed.error and failed.error["code"]) == (
+        "failed",
+        "failed",
+        "llm_timeout",
+    )
+    assert store.get(beat, auto).decision == "superseded"
+    interrupted = store.get(anna, running)
+    assert (interrupted.status, interrupted.stop_reason) == ("limited", "interrupted")
+    assert store.adopt(anna, running, STAMP).decision == "accepted"  # still adoptable
+    assert store.get(anna, approved).status == "approved"  # the user approved it
+    assert store.get(anna, waiting).status == "proposed"
+    assert store.get(beat, young).status == "thinking"
+    assert store.close_stale(cutoff) == []
+    system = [
+        e for e in events if e["event"] == "model_action_decided" and e["username"] == "system"
+    ]
+    assert {e["action_id"] for e in system} == {thinking, auto}
+
+
+def test_a_proposal_only_record_never_runs_unasked_and_is_never_superseded(
+    store: ModelActionStore, people: dict[str, Account]
+) -> None:
+    """P1: in E2.3 every record is proposal-only, whatever the level's cells say."""
+    anna = people["anna"]
+    action_id = proposed(store, anna, AUTO, proposal_only=True)
+    assert store.get(anna, action_id).status == "proposed"
+    new(store, anna)
+    closed = store.get(anna, action_id)
+    assert (closed.status, closed.decision) == ("superseded", "proposal_only")
 
 
 def test_a_chain_runs_and_is_adopted_or_stopped(
@@ -491,7 +655,7 @@ def test_level_and_connection_stay_as_they_were(
 
 # --- who sees what (D4) ---------------------------------------------------------
 
-CHANGES = sorted(set(STEPS) - {"new_prompt"})
+CHANGES = sorted(set(STEPS) - {"new_prompt", "restart"})  # those take no record id
 
 
 @pytest.mark.parametrize("step", CHANGES)

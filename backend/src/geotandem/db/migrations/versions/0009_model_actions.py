@@ -11,8 +11,7 @@ per connection (P5); existing connections start without a limit.
 
 The limit's check constraint is part of the column definition, so it is added
 with the column: SQLite cannot add a constraint to an existing table without
-recreating it, and recreating ``llm_connection`` would empty the accounts'
-choice of connection through their ``ON DELETE SET NULL`` key.
+recreating it, and this way ``llm_connection`` needs no rebuild.
 """
 
 from collections.abc import Sequence
@@ -32,12 +31,9 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=True),
         sa.Column("account", sa.String(length=63), nullable=False),
-        sa.Column(
-            "created_at",
-            sa.DateTime(),
-            server_default=sa.text("(CURRENT_TIMESTAMP)"),
-            nullable=False,
-        ),
+        # Written by the application in naive UTC, never by the database's clock.
+        sa.Column("created_at", sa.DateTime(), nullable=False),
+        sa.Column("proposal_only", sa.Boolean(), server_default=sa.false(), nullable=False),
         sa.Column("prompt", sa.String(), nullable=False),
         sa.Column("prompt_hash", sa.String(length=128), nullable=False),
         sa.Column("approach", sa.String(length=16), nullable=False),
@@ -81,6 +77,10 @@ def upgrade() -> None:
         "ix_model_action_decision_created_at", "model_action", ["decision", "created_at"]
     )
     op.create_index("ix_model_action_parent_action_id", "model_action", ["parent_action_id"])
+    # The request limit counts a connection's requests per day (P5).
+    op.create_index(
+        "ix_model_action_connection_id_created_at", "model_action", ["connection_id", "created_at"]
+    )
 
     op.add_column(
         "llm_connection",
@@ -98,6 +98,7 @@ def downgrade() -> None:
     # The constraint belongs to request_limit_per_day and goes with it, first.
     op.drop_column("llm_connection", "request_limit_per_day")
     op.drop_column("llm_connection", "request_limit_enabled")
+    op.drop_index("ix_model_action_connection_id_created_at", table_name="model_action")
     op.drop_index("ix_model_action_parent_action_id", table_name="model_action")
     op.drop_index("ix_model_action_decision_created_at", table_name="model_action")
     op.drop_index("ix_model_action_user_id_created_at", table_name="model_action")

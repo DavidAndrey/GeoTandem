@@ -25,7 +25,7 @@ from datetime import UTC, datetime
 from typing import Any, Literal
 
 from sqlalchemy import ColumnElement, Engine, case, func, select, update
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 
 from geotandem import audit
 from geotandem.auth.accounts import Account
@@ -123,6 +123,11 @@ class NewAction:
     parent_action_id: int | None = None
     reference: Reference = "none"
     compare_of: int | None = None
+    proposal_only: bool = False
+    """The model may only propose: the user applies by hand, an overtaken record
+    ends ``proposal_only``, never ``superseded``, and an ``auto`` answer still
+    waits as a proposal. Set by the caller: in E2.3 for every record (P1), later
+    where the level says so; an answer with an ``off`` class sets it too (D1)."""
 
 
 @dataclass(frozen=True)
@@ -271,10 +276,16 @@ def _nothing_to_undo(row: ModelAction, why: str) -> ActionError:
     )
 
 
-def _supersede_decision(row: ModelAction) -> Decision:
-    """A proposal with ``off`` parts stays ``proposal_only`` when overtaken (section 2)."""
-    governance = row.governance or {}
-    return "proposal_only" if governance.get("off") else "superseded"
+def _cell(row: ModelAction) -> str | None:
+    """The cell that governed the answer, if there was one."""
+    cell = (row.governance or {}).get("cell")
+    return str(cell) if cell is not None else None
+
+
+def _superseded(row: ModelAction, now: datetime) -> dict[str, Any]:
+    """A proposal-only record stays ``proposal_only`` when overtaken (section 2)."""
+    decision: Decision = "proposal_only" if row.proposal_only else "superseded"
+    return {"status": "superseded", "decision": decision, "decided_at": now}
 
 
 Change = Callable[[ModelAction], dict[str, Any]]
@@ -284,7 +295,8 @@ Change = Callable[[ModelAction], dict[str, Any]]
 class ModelActionStore:
     engine: Engine
     clock: Callable[[], datetime] = _now
-    """Naive UTC, as ``CURRENT_TIMESTAMP`` writes ``created_at``."""
+    """Every time the record holds comes from here, naive UTC (the project's
+    convention), never from the database's clock and its time zone."""
 
     # --- reading -------------------------------------------------------------------
 
@@ -405,6 +417,8 @@ class ModelActionStore:
             row = ModelAction(
                 user_id=caller.id,
                 account=caller.username,
+                created_at=self.clock(),
+                proposal_only=new.proposal_only,
                 prompt=new.prompt,
                 prompt_hash=text_hash(new.prompt),
                 approach=new.approach,
@@ -426,7 +440,7 @@ class ModelActionStore:
             db.add(row)
             db.flush()
             db.refresh(row)
-        self._audit(caller, decided)
+        self._audit(caller.username, decided)
         return to_view(row)
 
     # --- superseding ---------------------------------------------------------------
@@ -437,41 +451,79 @@ class ModelActionStore:
                 ModelAction.user_id == caller.id, ModelAction.status.in_(OPEN)
             )
         ).all()
-        closed = []
-        for row in rows:
-            moved = self._compare_and_set(
-                db,
-                row,
-                {
-                    "status": "superseded",
-                    "decision": _supersede_decision(row),
-                    "decided_at": self.clock(),
-                },
-            )
-            if moved:
-                closed.append(row)
-        return closed
+        now = self.clock()
+        return [row for row in rows if self._settle(db, row, OPEN, lambda r: _superseded(r, now))]
 
     def supersede_open(self, caller: Account) -> list[int]:
         """Close the account's open records as a new prompt overtakes them: decision
-        ``superseded``, or ``proposal_only`` when a class was ``off`` (WP70)."""
+        ``superseded``, or ``proposal_only`` for a proposal-only record (WP70)."""
         with Session(self.engine, expire_on_commit=False) as db, db.begin():
             closed = self._supersede(db, caller)
-        self._audit(caller, closed)
+        self._audit(caller.username, closed)
+        return [row.id for row in closed]
+
+    # --- the system's own path -----------------------------------------------------
+
+    def close_stale(self, older_than: datetime) -> list[int]:
+        """Close what no request will finish any more, for the start-up check (P4,
+        P7, WP70, WP82); no caller, every account. Of the records created before
+        ``older_than``: ``thinking`` ends ``failed`` (the model's answer is lost),
+        ``running`` ends ``limited``/``interrupted`` with its last complete result
+        adoptable, and an ``auto`` answer never executed (``approved``, cell
+        ``auto``) is ``superseded``. A record the user approved stays approved."""
+        now = self.clock()
+        error = {
+            "code": "llm_timeout",
+            "message": "No answer arrived before the application stopped waiting.",
+            "details": {},
+        }
+
+        def change(row: ModelAction) -> dict[str, Any]:
+            if row.status == "thinking":
+                return {"status": "failed", "decision": "failed", "decided_at": now, "error": error}
+            if row.status == "running":
+                return {"status": "limited", "stop_reason": "interrupted"}
+            return _superseded(row, now)
+
+        stale = ("thinking", "running", "approved")
+        with Session(self.engine, expire_on_commit=False) as db, db.begin():
+            rows = db.scalars(
+                select(ModelAction).where(
+                    ModelAction.status.in_(stale), ModelAction.created_at < older_than
+                )
+            ).all()
+            closed = [
+                row
+                for row in rows
+                if (row.status != "approved" or _cell(row) == "auto")
+                and self._settle(db, row, stale, change)
+            ]
+        self._audit(None, [row for row in closed if row.decision is not None])
         return [row.id for row in closed]
 
     # --- the edges of the diagram -----------------------------------------------------
 
     @staticmethod
-    def _compare_and_set(db: Session, row: ModelAction, values: dict[str, Any]) -> bool:
-        """Write ``values`` only if the record is still where it was read."""
-        result = db.connection().execute(
-            update(ModelAction)
-            .where(ModelAction.id == row.id, ModelAction.status == row.status)
-            .values(**values)
-        )
-        db.refresh(row)
-        return result.rowcount == 1
+    def _settle(db: Session, row: ModelAction, sources: Collection[str], change: Change) -> bool:
+        """Apply ``change`` as a compare-and-set on the status it was computed from.
+        When another change came first, decide again from the state it left: a step
+        still allowed there is tried anew (statuses only move forward, so this ends)."""
+        while row.status in sources:
+            before = row.status
+            values = change(row)
+            target = values.get("status", before)
+            assert target == before or target in EDGES[before], (before, target)
+            if "decision" in values:
+                assert values["decision"] in DECIDED[target], (target, values["decision"])
+            result = db.connection().execute(
+                update(ModelAction)
+                .where(ModelAction.id == row.id, ModelAction.status == before)
+                .values(**values)
+            )
+            db.refresh(row)
+            if result.rowcount == 1:
+                return True
+        return False
 
     def _move(
         self,
@@ -483,30 +535,31 @@ class ModelActionStore:
         refuse: Callable[[ModelAction, str], ActionError] = _wrong_state,
     ) -> ModelActionView:
         """One edge: check the status, apply ``change``, stamp a decision's time."""
+
+        def stamped(row: ModelAction) -> dict[str, Any]:
+            values = change(row)
+            if "decision" in values:
+                values["decided_at"] = self.clock()
+            return values
+
         with Session(self.engine, expire_on_commit=False) as db, db.begin():
             row = self._own(db, caller, action_id)
-            if row.status not in sources:
+            before = row.decision
+            if not self._settle(db, row, sources, stamped):
+                # Not allowed from here, or another change came first and left
+                # a state this step does not apply to.
                 raise refuse(row, step)
-            before = row.status
-            values = change(row)
-            target = values.get("status", before)
-            assert target == before or target in EDGES[before], (before, target)
-            if "decision" in values:
-                assert values["decision"] in DECIDED[target], (target, values["decision"])
-                values["decided_at"] = self.clock()
-            if not self._compare_and_set(db, row, values):
-                # Another change came first; report the state it left.
-                raise refuse(row, step)
-        if "decision" in values:
-            self._audit(caller, [row])
+        if row.decision != before:
+            self._audit(caller.username, [row])
         return to_view(row)
 
     @staticmethod
-    def _audit(caller: Account, rows: Iterable[ModelAction]) -> None:
+    def _audit(actor: str | None, rows: Iterable[ModelAction]) -> None:
+        """``actor`` ``None``: the application itself (the start-up check)."""
         for row in rows:
             audit.event(
                 "model_action_decided",
-                username=caller.username,
+                username=actor or "system",
                 action_id=row.id,
                 status=row.status,
                 decision=row.decision,
@@ -566,21 +619,23 @@ class ModelActionStore:
         latency_ms: int | None = None,
     ) -> ModelActionView:
         """A query or a plan the application accepted: ``approved`` without a
-        question when the governing cell is ``auto``, else ``proposed`` (D2)."""
-        status: ActionStatus = "approved" if governance.cell == "auto" else "proposed"
-        return self._move(
-            caller,
-            action_id,
-            "propose",
-            ["thinking"],
-            lambda _: {
+        question when the governing cell is ``auto``, else ``proposed`` (D2). A
+        proposal-only record, or an answer with an ``off`` class, is ``proposed``."""
+
+        def change(row: ModelAction) -> dict[str, Any]:
+            only = row.proposal_only or bool(governance.off)
+            auto = governance.cell == "auto" and not only
+            status: ActionStatus = "approved" if auto else "proposed"
+            return {
                 "status": status,
+                "proposal_only": only,
                 "answer": _json(answer),
                 "query": _json(query),
                 "governance": _json(governance),
                 "latency_ms": latency_ms,
-            },
-        )
+            }
+
+        return self._move(caller, action_id, "propose", ["thinking"], change)
 
     def abort(self, caller: Account, action_id: int) -> ModelActionView:
         """The user cancelled while the model thought (M2.1)."""
@@ -644,7 +699,15 @@ class ModelActionStore:
         applied_query: QueryObject | None = None,
     ) -> ModelActionView:
         """The hand-over (P1, D2): applied by hand, or edited and applied through
-        Modus A; ``applied_query`` is the user's, logged, never run here."""
+        Modus A; ``applied_query`` is the user's, logged, never run here. An
+        adjusted query went through the editor, so it was not applied by hand."""
+        if decision == "adjusted" and applied_by_hand:
+            raise ActionError(
+                400,
+                "bad_request",
+                "An adjusted query is applied through the editor, not by hand.",
+                decision=decision,
+            )
         return self._move(
             caller,
             action_id,
@@ -664,7 +727,8 @@ class ModelActionStore:
         """The stored query ran (D2): ``auto`` when nobody was asked, else ``accepted``."""
 
         def change(row: ModelAction) -> dict[str, Any]:
-            auto = (row.governance or {}).get("cell") == "auto"
+            # Arrived approved, nobody was asked: exactly the auto answers (propose).
+            auto = _cell(row) == "auto" and not row.proposal_only
             return {
                 "status": "applied",
                 "decision": "auto" if auto else "accepted",
@@ -720,12 +784,26 @@ class ModelActionStore:
     # from applied
 
     def undo(self, caller: Account, action_id: int) -> ModelActionView:
-        """For the log only (D2): the decision stays, ``undone_at`` is set. Only a
-        change the model made is taken back, and only once."""
+        """For the log only (D2): the decision stays, ``undone_at`` is set. Only the
+        account's last change made by the model is taken back, and only once."""
 
         def change(row: ModelAction) -> dict[str, Any]:
             if row.decision not in UNDOABLE:
                 raise _nothing_to_undo(row, "it was applied by the user, not by the model")
+            db = object_session(row)
+            assert db is not None
+            latest = db.scalar(
+                select(ModelAction.id)
+                .where(
+                    ModelAction.user_id == row.user_id,
+                    ModelAction.status.in_(("applied", "undone")),
+                    ModelAction.decision.in_(UNDOABLE),
+                )
+                .order_by(ModelAction.decided_at.desc(), ModelAction.id.desc())
+                .limit(1)
+            )
+            if latest != row.id:
+                raise _nothing_to_undo(row, f"a later model change ({latest}) came after it")
             return {"status": "undone", "undone_at": self.clock()}
 
         def refuse(row: ModelAction, step: str) -> ActionError:
