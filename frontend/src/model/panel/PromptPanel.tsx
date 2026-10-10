@@ -104,7 +104,8 @@ function Intro() {
       <p>
         <Trans>
           Fragen Sie in eigenen Worten nach den sichtbaren Layern. Das Modell schlägt eine Abfrage
-          vor; die Analyse ändert sich erst, wenn Sie den Vorschlag im Editor übernehmen.
+          vor. Je nach Stufe geben Sie den Vorschlag frei, übernehmen ihn im Editor, oder das Modell
+          wendet ihn an und Sie können ihn zurücknehmen.
         </Trans>{' '}
         <DataRelease />
       </p>

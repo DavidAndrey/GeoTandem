@@ -65,8 +65,25 @@ interface AnalysisStore extends Analysis {
 
   reset: () => void
   load: (analysis: Analysis, table?: TableState, queryRef?: QueryRef | null) => void
+  /** What an undo of a model change puts back (design M6.2), origin marks included. */
+  snapshot: () => AnalysisSnapshot
+  /** Puts a snapshot back whole; unlike ``load`` it keeps the marks it carries (plan WP72). */
+  restore: (snapshot: AnalysisSnapshot) => void
   /** After saving: the state is unchanged, it just no longer counts as unsaved. */
   markSaved: () => void
+}
+
+/**
+ * The analysis as it was before a model change (design M6.2: "stellt den
+ * vorigen Analysezustand vollständig wieder her"): layers, result layer,
+ * conditions and restriction, the saved-query link, the unsaved mark and the
+ * origin marks. ``load`` clears the marks, so an undo must not go through it.
+ * Table and map view are not part of it: neither is a change of the analysis.
+ */
+export interface AnalysisSnapshot extends Analysis {
+  queryRef: QueryRef | null
+  dirty: boolean
+  origin: Origin
 }
 
 export const emptyTable = (): TableState => ({
@@ -277,6 +294,11 @@ export const useAnalysis = create<AnalysisStore>()((set, get) => ({
       origin: NO_ORIGIN,
     }),
   markSaved: () => set({ dirty: false }),
+  snapshot: () => {
+    const { layers, result, tree, restriction, queryRef, dirty, origin } = get()
+    return { layers, result, tree, restriction, queryRef, dirty, origin }
+  },
+  restore: (snapshot) => set({ ...snapshot, draft: null }),
 }))
 
 /** The analysis as the query sees it: the draft counts while the editor is open. */

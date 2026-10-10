@@ -35,7 +35,8 @@ import { usePanel } from './state'
 beforeEach(resetStores)
 afterEach(done)
 
-const REFERENCE = actionView('reference')
+// At a level with ``off`` parts the answer is a proposal only (M4); the approval is approval.test.tsx's.
+const REFERENCE = actionView('reference', {}, 'Assistenz')
 const PROMPT = REFERENCE.prompt
 
 const posts = (calls: { key: string; body: unknown }[]) =>
@@ -49,7 +50,7 @@ const ask = (user: ReturnType<typeof userEvent.setup>, text = PROMPT) => typeAnd
 /** Sends a case's prompt and lets the first poll bring its answer. */
 async function answered(id: CaseId, patch = {}) {
   const user = fakeTimers()
-  const answer = actionView(id, patch)
+  const answer = actionView(id, patch, 'Assistenz')
   const calls = backend(promptFlow(thinkingView(id), answer))
   await openPanel()
   await ask(user, answer.prompt)
@@ -337,10 +338,14 @@ describe('answer (M2, M4)', () => {
     expect(within(card).getByRole('group', { name: 'Bedingungen' })).toBeInTheDocument()
     expect(within(card).getByText('Technisch (Abfrageobjekt JSON)')).toBeInTheDocument()
     expect(within(card).getByRole('button', { name: 'In Editor übernehmen' })).toBeEnabled()
-    // The log arrives with WP73, undo with E2.4 (P1).
+    // The log arrives with WP73; a proposal only has no approval, preview or undo (M4.1).
     expect(within(card).getByRole('button', { name: 'Protokoll' })).toBeDisabled()
     expect(within(card).queryByRole('button', { name: 'Zurücknehmen' })).toBeNull()
-    expect(card).toHaveTextContent(/Stufe Prüfen: Das Modell wendet in dieser Ausbaustufe nichts/)
+    expect(within(card).queryByRole('button', { name: 'Annehmen' })).toBeNull()
+    expect(within(card).queryByRole('region', { name: 'Freigabe' })).toBeNull()
+    expect(card).toHaveTextContent(
+      /Stufe Assistenz: Das Modell darf hier nur vorschlagen \(aus: Attributfilter, Raumfilter\)/,
+    )
     // The analysis is untouched until the user applies the proposal.
     expect(useAnalysis.getState().tree.children).toEqual([])
   })
@@ -372,9 +377,9 @@ describe('answer (M2, M4)', () => {
     const card = await screen.findByRole('article', { name: 'Antwort' })
     expect(within(card).getByRole('status')).toHaveTextContent('von Hand übernommen')
     expect(within(card).getByRole('button', { name: 'Im Editor öffnen' })).toBeEnabled()
-    // Applied: the analysis's hits (M2.2); the fake counts 10 of 10.
+    // Applied: the analysis's hits (M2.2); the fake counts 10 of 137.
     expect(await within(card).findByLabelText('Trefferzahl der Analyse')).toHaveTextContent(
-      '10 von 10',
+      '10 von 137',
     )
   })
 
@@ -386,7 +391,7 @@ describe('answer (M2, M4)', () => {
   })
 
   test("taken over in a full dump's shape and applied unchanged: proposal_only, by hand", async () => {
-    const shaped = actionView('reference', { query: serverShape(REFERENCE.query) })
+    const shaped = actionView('reference', { query: serverShape(REFERENCE.query) }, 'Assistenz')
     const { user, calls, editor } = await takenOver({}, shaped)
     expect(within(editor).getAllByText('Modell')).toHaveLength(3)
     await user.click(within(editor).getByRole('button', { name: 'Übernehmen' }))
@@ -645,6 +650,7 @@ describe('pseudo locale and layout', () => {
     'Lokales Modell',
     'host.docker.internal',
     'Prüfen',
+    'Assistenz',
   ]
 
   async function inPseudo(check: () => Promise<void>) {

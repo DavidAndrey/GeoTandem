@@ -1,5 +1,5 @@
-// Whether the level rules are enforced on the model path yet (plan P1). Until
-// E2.4 (WP70/WP72) every level behaves as proposal-only: an answer is applied
-// by hand, nothing waits for an approval, and a record a new prompt overtakes
-// is decided ``proposal_only``. WP72 switches this to ``true``.
-export const ENFORCEMENT: boolean = false
+// Whether the level rules are enforced on the model path (plan P1). In E2.3
+// every level behaved as proposal-only; from E2.4 (WP70/WP72) a level without
+// an ``off`` part asks for an approval or applies at once (``auto``), and only
+// a level with ``off`` parts keeps the hand-over of M4.
+export const ENFORCEMENT: boolean = true

@@ -12,6 +12,9 @@ import { currentAnalysis, useAnalysis } from '../analysis/store'
 import type { LayerInfo } from '../api/client'
 import { useLayers, useMapConfig } from '../api/queries'
 import { EditorPanel } from '../editor/EditorPanel'
+import { watchApproval } from '../model/approval/flow'
+import { NoticeBar } from '../model/approval/NoticeBar'
+import { PreviewCaption, PreviewLayer } from '../model/approval/Preview'
 import { watchHandover } from '../model/panel/handover'
 import { useActionPolling } from '../model/panel/poll'
 import { useActiveModel } from '../model/panel/active'
@@ -47,6 +50,7 @@ export function Workplace() {
   const setOpen = useModel((s) => s.setOpen)
   useActionPolling()
   useEffect(watchHandover, [])
+  useEffect(watchApproval, [])
   return (
     <div
       className={`grid h-full gap-4 ${editing || prompt ? 'grid-cols-[250px_460px_minmax(0,1fr)]' : 'grid-cols-[250px_minmax(0,1fr)]'}`}
@@ -181,7 +185,11 @@ function MapLayers() {
         <FeatureOnRequest />
         <FoundOverlay />
         <Measurement />
+        {/* Modus B: the dashed preview of a proposal waiting for approval (design M5.1). */}
+        <PreviewLayer />
       </MapView>
+      <NoticeBar />
+      {!active && <PreviewCaption />}
       {active && hitIds && resultTitle && (
         <p role="status" className="card absolute bottom-6 left-3 z-[1000] px-3 py-1 text-sm">
           <ActiveCount count={hitIds.size} layer={layerTitle(resultTitle, catalog.data)} />

@@ -71,6 +71,8 @@ export type StopReason = NonNullable<ModelActionView['stop_reason']>
 export type DecideRequest = Omit<Schemas['DecideRequest'], 'applied_by_hand'> &
   Partial<Pick<Schemas['DecideRequest'], 'applied_by_hand'>>
 export type Assumption = Schemas['Assumption']
+export type RejectReason = NonNullable<Schemas['RejectRequest']['reason']>
+export type LevelOption = LLMOptions['levels'][number]
 
 export class ApiRequestError extends Error {
   readonly status: number
@@ -175,6 +177,23 @@ export const api = {
       request<ModelActionView>(`/api/model/actions/${id}/decide`, json('POST', body)),
     abort: (id: number) =>
       request<ModelActionView>(`/api/model/actions/${id}/abort`, { method: 'POST' }),
+    // Enforcement (plan D2, WP70): the transitions of a record. ``execute`` takes
+    // no body: the server runs the stored query, never one the client sends.
+    /** Count and ids of the stored query, for the user only (P2). */
+    preview: (id: number) => request<ActionPreview>(`/api/model/actions/${id}/preview`),
+    approve: (id: number) =>
+      request<ModelActionView>(`/api/model/actions/${id}/approve`, { method: 'POST' }),
+    reject: (id: number, reason: RejectReason | null = null) =>
+      request<ModelActionView>(`/api/model/actions/${id}/reject`, json('POST', { reason })),
+    /** The one answer with rows (D2, P7). */
+    execute: (id: number) =>
+      request<ExecuteResponse>(`/api/model/actions/${id}/execute`, { method: 'POST' }),
+    /** For the log: the client restores the analysis itself (D2). */
+    undo: (id: number) =>
+      request<ModelActionView>(`/api/model/actions/${id}/undo`, { method: 'POST' }),
+    /** The analysis was changed by hand since this action: its undo is over (design rule 7). */
+    touched: (id: number) =>
+      request<ModelActionView>(`/api/model/actions/${id}/touched`, { method: 'POST' }),
   },
   sampleRows: (layer: string, limit = 50) =>
     request<QueryResult>('/api/query', json('POST', { source: layer, output: 'table', limit })),

@@ -3,13 +3,18 @@
 // answer and expectation become the action record the backend will return.
 import fixture from '../../../schema/model-cases/v1.json'
 import type {
+  ActionPreview,
   ActionStatus,
   Decision,
+  ExecuteResponse,
   Governance,
+  LevelOption,
   ModelActionView,
   ModelAnswer,
   OpClass,
   QueryObject,
+  QueryResult,
+  RejectReason,
 } from '../api/client'
 import { ENFORCEMENT } from '../model/enforcement'
 
@@ -37,6 +42,23 @@ function level(name: LevelName) {
     matrix: found.matrix as ModelActionView['level']['matrix'],
     prompt_hash: `sha256:level-${index + 1}`,
   }
+}
+
+/**
+ * A level as ``GET /api/llm/options`` lists it, with its matrix: an addition
+ * to ``LevelOption`` that WP72 assumes (design M7.1, M7.2; see
+ * ``levelMatrix``). Ids as in ``actionView``'s snapshots.
+ */
+export function levelOption(name: LevelName, description = ''): LevelOption {
+  const snapshot = level(name)
+  const found = fixture.levels.find((l) => l.name === name)
+  return {
+    id: snapshot.id,
+    name,
+    description,
+    selectable: found?.selectable ?? true,
+    matrix: snapshot.matrix,
+  } as LevelOption
 }
 
 const CONNECTION = {
@@ -186,4 +208,237 @@ export function promptRoutes(id: CaseId, levelName: LevelName = 'Prüfen') {
     'POST /api/model/prompt': () => new Response(JSON.stringify(thinking), { status: 202 }),
     [`GET /api/model/actions/${answered.id}`]: answered,
   }
+}
+
+// --- Enforcement (WP70) as the fake server answers it -----------------------
+//
+// The transitions of plan 1.2 as the record store already holds them (backend
+// model/record/store.py, WP63) and WP70 exposes them. WP72's assumptions, for
+// the integrator to hold against WP70's server:
+// - ``approve``: only ``proposed``; a class ``off`` in the record's governance
+//   ⇒ 409 ``class_not_allowed`` {part, op_class, level}.
+// - ``reject`` {reason}: only ``proposed``; decision ``rejected`` with the reason.
+// - ``execute`` (no body): only ``approved``; decision ``auto`` when the cell is
+//   ``auto``, else ``accepted``; answers ``ExecuteResponse`` {action, result}.
+// - ``undo``: ``applied`` with ``accepted``/``auto`` and the account's latest
+//   such change only (else 409 ``nothing_to_undo``); after ``touched`` 409
+//   ``undo_blocked``; an ``undone`` record 409 ``already_decided``.
+// - ``touched``: 200 with the record unchanged; only the undo rule notes it.
+// - ``preview``: ``proposed``/``approved`` only; a class ``off`` ⇒ 409
+//   ``class_not_allowed``; sets ``previewed_at``, never the status.
+// - Any other step: 409 ``already_decided`` on a decided record, else 409
+//   ``not_approved`` (the store's ``_wrong_state``).
+
+/** Statuses with an edge out of them (store.py ``EDGES``). */
+const MOVABLE: readonly ActionStatus[] = [
+  'thinking',
+  'proposed',
+  'approved',
+  'running',
+  'done',
+  'limited',
+  'applied',
+]
+
+export interface FakeError {
+  status: number
+  body: { code: string; message: string; details: Record<string, unknown> }
+}
+
+const fail = (
+  code: string,
+  message: string,
+  details: Record<string, unknown>,
+  status = 409,
+): FakeError => ({ status, body: { code, message, details } })
+
+export const isFakeError = (value: unknown): value is FakeError =>
+  typeof value === 'object' && value !== null && 'body' in value && 'status' in value
+
+/** The ten of 137 the reference question finds (fixture ``reference``: hits, total). */
+export const REFERENCE_IDS = [3, 8, 15, 21, 34, 55, 61, 89, 104, 130]
+
+/** A result as the engine sends it: one point per id. */
+export function queryResult(
+  query: QueryObject | null | undefined,
+  ids: readonly number[],
+): QueryResult {
+  return {
+    type: 'FeatureCollection',
+    features: ids.map((id) => ({
+      type: 'Feature' as const,
+      id,
+      properties: { name: `Schule ${id}` },
+      geometry: { type: 'Point', coordinates: [7.9, 46.9] },
+    })),
+    query: (query ?? { schema_version: '2', source: 'schulen' }) as QueryResult['query'],
+    meta: {
+      schema_version: '2',
+      query_hash: 'sha256:query',
+      data_versions: { schulen: 'v1' },
+      backend: 'sqlite',
+      feature_count: ids.length,
+      elapsed_ms: 12,
+    },
+  }
+}
+
+/**
+ * The model routes of one account as the server answers them: one store for
+ * all records, so "the last model change" spans records as on the server.
+ * Each step returns its answer or a ``FakeError``.
+ */
+export function modelServer(
+  views: readonly ModelActionView[],
+  preview: ActionPreview = { count: 10, total: 137, ids: REFERENCE_IDS },
+) {
+  const records = new Map(views.map((v) => [v.id, v]))
+  const touched = new Set<number>()
+  let latest: number | null = null
+  let minute = 6
+  // Naive UTC, as the server writes every time.
+  const now = () => `2026-10-10T14:${String(minute++).padStart(2, '0')}:00`
+  const set = (view: ModelActionView) => {
+    records.set(view.id, view)
+    return view
+  }
+  const wrongState = (view: ModelActionView, step: string): FakeError =>
+    view.decision !== null || !MOVABLE.includes(view.status)
+      ? fail('already_decided', `Model action ${view.id} is decided already (${view.status}).`, {
+          id: view.id,
+          status: view.status,
+          decision: view.decision,
+        })
+      : fail(
+          'not_approved',
+          `Model action ${view.id} is ${view.status}; '${step}' does not apply.`,
+          {
+            id: view.id,
+            status: view.status,
+          },
+        )
+  const offClass = (view: ModelActionView): FakeError | null => {
+    const off = view.governance?.off ?? []
+    return off.length
+      ? fail('class_not_allowed', `The level does not allow '${off[0]}'.`, {
+          id: view.id,
+          part: off[0],
+          op_class: off[0],
+          level: view.level.name,
+        })
+      : null
+  }
+  function step<T>(id: number, run: (view: ModelActionView) => T | FakeError): T | FakeError {
+    const view = records.get(id)
+    return view ? run(view) : fail('not_found', `No model action ${id}.`, { id }, 404)
+  }
+
+  return {
+    record: (id: number) => records.get(id),
+    preview: (id: number) =>
+      step<ActionPreview>(id, (view) => {
+        const off = offClass(view)
+        if (off) return off
+        if (view.status !== 'proposed' && view.status !== 'approved')
+          return wrongState(view, 'preview')
+        set({ ...view, previewed_at: now() })
+        return preview
+      }),
+    approve: (id: number) =>
+      step<ModelActionView>(id, (view) => {
+        if (view.status !== 'proposed') return wrongState(view, 'approve')
+        return offClass(view) ?? set({ ...view, status: 'approved' })
+      }),
+    reject: (id: number, reason: RejectReason | null) =>
+      step<ModelActionView>(id, (view) =>
+        view.status !== 'proposed'
+          ? wrongState(view, 'reject')
+          : set({
+              ...view,
+              status: 'rejected',
+              decision: 'rejected',
+              reject_reason: reason,
+              decided_at: now(),
+            }),
+      ),
+    execute: (id: number) =>
+      step<ExecuteResponse>(id, (view) => {
+        if (view.status !== 'approved') return wrongState(view, 'execute')
+        const auto = view.governance?.cell === 'auto' && view.governance.off.length === 0
+        const result = queryResult(view.query, preview.ids)
+        const action = set({
+          ...view,
+          status: 'applied',
+          decision: auto ? 'auto' : 'accepted',
+          decided_at: now(),
+          stamp: {
+            count: result.features.length,
+            ids_hash: 'sha256:ids',
+            query_hash: 'sha256:query',
+            data_versions: { schulen: 'v1' },
+          },
+        })
+        latest = view.id
+        return { action, result }
+      }),
+    undo: (id: number) =>
+      step<ModelActionView>(id, (view) => {
+        if (view.status === 'undone') return wrongState(view, 'undo')
+        const why =
+          view.status !== 'applied'
+            ? `it changed nothing (${view.status})`
+            : view.decision !== 'accepted' && view.decision !== 'auto'
+              ? 'it was applied by the user, not by the model'
+              : latest !== view.id
+                ? `a later model change (${latest}) came after it`
+                : null
+        if (why)
+          return fail('nothing_to_undo', `Model action ${view.id} cannot be undone: ${why}.`, {
+            id: view.id,
+            status: view.status,
+            decision: view.decision,
+          })
+        if (touched.has(view.id))
+          return fail('undo_blocked', 'The analysis was changed by hand since; undo is over.', {
+            id: view.id,
+          })
+        return set({ ...view, status: 'undone', undone_at: now() })
+      }),
+    touched: (id: number) =>
+      step<ModelActionView>(id, (view) => {
+        if (view.status === 'applied') touched.add(view.id)
+        return view
+      }),
+    /** ``decide`` (WP65): the hand-over of a proposal, once. */
+    decide: (
+      id: number,
+      body: { decision: 'proposal_only' | 'adjusted'; applied_by_hand?: boolean; query?: unknown },
+    ) =>
+      step<ModelActionView>(id, (view) => {
+        if (view.status !== 'proposed') return wrongState(view, 'decide')
+        const byHand = body.applied_by_hand ?? false
+        if (body.decision === 'adjusted' && byHand)
+          return fail('bad_request', 'adjusted is not by hand', {}, 400)
+        if ((body.decision === 'adjusted') !== (body.query !== undefined && body.query !== null))
+          return fail('bad_request', 'adjusted, and only that, names the applied query', {}, 400)
+        return set({
+          ...view,
+          status: 'applied',
+          decision: body.decision,
+          applied_by_hand: byHand,
+          applied_query: (body.query ?? null) as ModelActionView['applied_query'],
+          decided_at: now(),
+        })
+      }),
+  }
+}
+
+export type ModelServer = ReturnType<typeof modelServer>
+
+/** The decisions a status may carry (store.py ``DECIDED``). */
+export const DECIDED: Partial<Record<ActionStatus, readonly Decision[]>> = {
+  applied: ['accepted', 'adjusted', 'auto', 'proposal_only'],
+  rejected: ['rejected'],
+  superseded: ['superseded', 'proposal_only'],
+  undone: ['accepted', 'auto'],
 }

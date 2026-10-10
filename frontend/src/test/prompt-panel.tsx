@@ -4,10 +4,11 @@ import { act, cleanup, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import { useAnalysis } from '../analysis/store'
-import type { LLMOptions, ModelActionView } from '../api/client'
+import type { LLMOptions, ModelActionView, RejectReason } from '../api/client'
 import { useMapView } from '../map/view'
+import { resetApproval } from '../model/approval/flow'
 import { attribute, layer, signedIn } from './fixtures'
-import { actionView } from './model-mocks'
+import { actionView, isFakeError, levelOption, type ModelServer } from './model-mocks'
 import { fakeApi, renderAt } from './render'
 import { Workplace } from '../workplace/Workplace'
 import { useModel } from '../model/store'
@@ -56,17 +57,19 @@ export const EXTERNAL = {
   is_default: false,
 }
 
-export function llmOptions(active: number | null = 1): LLMOptions {
+/**
+ * The account's options; the levels carry their matrix as WP72 assumes the
+ * server will send it (``levelOption``). ``level``: the active one's id
+ * (1 Assistenz, 2 Prüfen, 3 Teilautonom, 4 Automatisch).
+ */
+export function llmOptions(active: number | null = 1, level = 2): LLMOptions {
   return {
     connections: active === null ? [] : [LOCAL, EXTERNAL],
     chosen_connection_id: null,
     active_connection_id: active,
-    levels: [
-      { id: 1, name: 'Assistenz', description: '', selectable: true },
-      { id: 2, name: 'Prüfen', description: '', selectable: true },
-    ],
+    levels: [levelOption('Assistenz'), levelOption('Prüfen'), levelOption('Teilautonom')],
     chosen_level_id: null,
-    active_level_id: 2,
+    active_level_id: level,
   }
 }
 
@@ -83,12 +86,46 @@ export function backend(routes: Routes = {}, options: LLMOptions = llmOptions())
     'GET /api/sessions': [],
     'POST /api/query': { type: 'FeatureCollection', features: [], query: {}, meta: {} },
     'POST /api/query/ids': { ids: [] },
+    // 10 hits under any condition, all 137 without (the reference question's numbers).
     'POST /api/query/count': (init: RequestInit | undefined) => {
-      const body = JSON.parse(String(init?.body)) as { queries: unknown[] }
-      return { counts: body.queries.map(() => 10) }
+      const body = JSON.parse(String(init?.body)) as { queries: { where?: unknown }[] }
+      return { counts: body.queries.map((q) => (q.where ? 10 : 137)) }
     },
     ...routes,
   })
+}
+
+/**
+ * The enforcement routes of ``server`` for the records ``ids`` (WP70 as the
+ * fake answers it, ``modelServer``); a ``FakeError`` becomes its error body.
+ */
+export function enforcement(server: ModelServer, ...ids: number[]): Routes {
+  const answer = (value: unknown) =>
+    isFakeError(value) ? json(value.body, value.status) : json(value)
+  const body = (init: RequestInit | undefined) =>
+    (init?.body ? JSON.parse(String(init.body)) : {}) as Record<string, unknown>
+  return Object.fromEntries(
+    ids.flatMap((id) => {
+      const base = `/api/model/actions/${id}`
+      return [
+        [`GET ${base}/preview`, () => answer(server.preview(id))],
+        [`POST ${base}/approve`, () => answer(server.approve(id))],
+        [
+          `POST ${base}/reject`,
+          (init: RequestInit | undefined) =>
+            answer(server.reject(id, (body(init).reason ?? null) as RejectReason | null)),
+        ],
+        [`POST ${base}/execute`, () => answer(server.execute(id))],
+        [`POST ${base}/undo`, () => answer(server.undo(id))],
+        [`POST ${base}/touched`, () => answer(server.touched(id))],
+        [
+          `POST ${base}/decide`,
+          (init: RequestInit | undefined) =>
+            answer(server.decide(id, body(init) as Parameters<ModelServer['decide']>[1])),
+        ],
+      ]
+    }),
+  )
 }
 
 /** A fresh workplace with the three layers on the map, schools the result. */
@@ -98,6 +135,7 @@ export function resetStores() {
   useHandover.setState({ open: null, failed: null })
   useMapView.getState().setActiveRow(null)
   resetPanel()
+  resetApproval()
   const analysis = useAnalysis.getState()
   analysis.addLayer('gemeinden_steuern')
   analysis.addLayer('strassen')
