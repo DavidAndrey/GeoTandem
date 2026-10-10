@@ -8,40 +8,47 @@ is materialised. In order, each failure a ``Refusal`` naming the step
 (``details.step``, 1 for the first):
 
 1. the step limit, counting the completed steps of a re-plan too (P4) ⇒
-   ``step_limit``;
+   ``step_limit``, naming the first step beyond it;
 2. a tool the chain does not have, arguments that do not fit its schema, a
    reference to no earlier step ⇒ ``model_query_invalid`` with ``errors``;
 3. a step that cannot extend the query object (``tools.chain``), or relates
-   lines or areas to a buffer by ``within`` or ``outside`` ⇒
+   anything but points to a buffer by ``within`` or ``outside`` ⇒
    ``not_representable`` with the argument as ``part``;
 4. the step's query object in the model's world, as a direct query is
    (``validate.check_query``: the engine's validation, what the controls can
-   show, the condition limit); a buffer by the same check of what it buffers
-   and the engine's validation of the buffer.
+   show, the condition limit); a buffer is validated whole by the engine once,
+   and shown as what it buffers;
+5. a chain that ends in a buffer ⇒ ``not_representable``, ``part: buffer``
+   (D3): a buffer that feeds a spatial step becomes its distance, but as a
+   result the controls cannot show it.
 
 A step's classes (H4) are its tool's (H2) and those of the conditions it
 writes itself; the conditions it takes over from an earlier step are counted
-there. Nothing here runs a query.
+there. The chain is governed by all its steps' classes (``chain_classes``),
+never by ``classify`` of the last query: the composition turns a buffer into a
+distance and would hide ``derive``. Nothing here runs a query.
 """
 
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
 from geotandem.catalog import ModelProfile
-from geotandem.engine import QueryError, validate_query
-from geotandem.levels import OpClass, classify
+from geotandem.levels import Level, OpClass, classify
 from geotandem.model.chain.tools import CHAIN, ChainTool
-from geotandem.model.schemas import MAX_LISTED, MAX_STEPS, PlannedStep, Refusal
-from geotandem.model.validate import ModelWorld, Validated, check_query
+from geotandem.model.direct import governance
+from geotandem.model.schemas import MAX_STEPS, Governance, PlannedStep, Refusal
+from geotandem.model.validate import NESTED, check_query, invalid, schema_errors
 from geotandem.tools import ToolContext
 from geotandem.tools.chain import NotComposable
 from geotandem_query import QueryObject
 
-POINTS = ("Point", "MultiPoint")
-"""Geometry types for which lying in a buffer is lying within its distance."""
+POINTS = ("Point",)
+"""Geometry types for which lying in a buffer is lying within its distance: a
+multipoint lies in a buffer when all its points do, within its distance when
+one does."""
 
 
 @dataclass(frozen=True)
@@ -54,14 +61,6 @@ class CheckedStep:
     classes: frozenset[OpClass]
 
 
-def step_limit(value: int) -> Refusal:
-    return Refusal(
-        code="step_limit",
-        message=f"The chain has {value} steps; at most {MAX_STEPS} are allowed.",
-        details={"value": value, "max": MAX_STEPS},
-    )
-
-
 def step_classes(chain: ChainTool, arguments: BaseModel) -> frozenset[OpClass]:
     """The tool's class and those of the conditions the step writes (H4)."""
     where = getattr(arguments, "where", None)
@@ -69,6 +68,16 @@ def step_classes(chain: ChainTool, arguments: BaseModel) -> frozenset[OpClass]:
         return frozenset({chain.tool.op_class})
     written = QueryObject(source=getattr(arguments, "layer", None) or "step", where=where)
     return frozenset({chain.tool.op_class}) | classify(written)
+
+
+def chain_classes(steps: Iterable[CheckedStep]) -> frozenset[OpClass]:
+    """Every class the chain touches: the union of its steps' (H4)."""
+    return frozenset().union(*(step.classes for step in steps))
+
+
+def chain_governance(level: Level, steps: Iterable[CheckedStep]) -> Governance:
+    """What ``level`` decides for the whole chain, a re-plan or its adoption (D1)."""
+    return governance(level, chain_classes(steps))
 
 
 def check_plan(
@@ -83,13 +92,21 @@ def check_plan(
     account whose read-only view ``context`` holds."""
     total = len(done) + len(steps)
     if total > MAX_STEPS:
-        return step_limit(total)
+        return Refusal(
+            code="step_limit",
+            message=f"The chain has {total} steps; at most {MAX_STEPS} are allowed.",
+            details={"value": total, "max": MAX_STEPS, "step": MAX_STEPS + 1},
+        )
     checked = list(done)
     for step in steps:
         found = _check_step(step, len(checked) + 1, checked, context, profile)
         if isinstance(found, Refusal):
             return found
         checked.append(found)
+    if checked and checked[-1].query.buffer is not None:
+        last = checked[-1].position
+        message = f"Step {last}: a chain does not end in a buffer; the controls cannot show it."
+        return _not_composable("buffer", message, last)
     return checked[len(done) :]
 
 
@@ -98,18 +115,14 @@ def _refused(refusal: Refusal, position: int) -> Refusal:
 
 
 def _invalid(errors: list[dict[str, Any]], position: int) -> Refusal:
+    message = f"Step {position} does not match the schema of a chain step."
+    return invalid(errors, message, step=position)
+
+
+def _not_composable(part: str, message: str, position: int) -> Refusal:
     return Refusal(
-        code="model_query_invalid",
-        message=f"Step {position} does not match the schema of a chain step.",
-        details={"step": position, "errors": errors[:MAX_LISTED], "error_count": len(errors)},
+        code="not_representable", message=message, details={"step": position, "part": part}
     )
-
-
-def _engine(exc: QueryError, position: int) -> Refusal:
-    refusal = Refusal.model_validate(
-        {"code": exc.code, "message": exc.message, "details": exc.details}
-    )
-    return _refused(refusal, position)
 
 
 def _check_step(
@@ -126,28 +139,19 @@ def _check_step(
     try:
         arguments = chain.arguments.model_validate(step.arguments)
     except ValidationError as exc:
-        errors = exc.errors(include_url=False, include_input=False, include_context=False)
-        return _invalid(
-            [{"loc": ["arguments", *e["loc"]], "msg": e["msg"], "type": e["type"]} for e in errors],
-            position,
-        )
+        errors = [{**e, "loc": ["arguments", *e["loc"]]} for e in schema_errors(exc)]
+        return _invalid(errors, position)
     except RecursionError:
-        error = {"loc": ["arguments"], "msg": "Nested too deeply", "type": "recursion_loop"}
-        return _invalid([error], position)
-    resolved: dict[str, Any] = {
-        name: getattr(arguments, name) for name in type(arguments).model_fields
-    }
+        return _invalid([{**NESTED, "loc": ["arguments"]}], position)
+    fields = type(arguments).model_fields
+    resolved: dict[str, Any] = {name: getattr(arguments, name) for name in fields}
     for name in chain.references:
         ref = resolved[name]
         if ref is None:
             continue
         if ref >= position:
-            alias = type(arguments).model_fields[name].alias or name
-            error = {
-                "loc": ["arguments", alias],
-                "msg": "Names no earlier step",
-                "type": "step_reference",
-            }
+            loc = ["arguments", fields[name].alias or name]
+            error = {"loc": loc, "msg": "Names no earlier step", "type": "step_reference"}
             return _invalid([error], position)
         resolved[name] = earlier[ref - 1].query
     try:
@@ -160,30 +164,8 @@ def _check_step(
             reason = "lying in a buffer is lying within its distance for points only"
             message = f"Step {position}: 'in': {reason}"
             return _not_composable("in", message, position)
-    found = _check_query(query, context, profile, position)
-    if isinstance(found, Refusal):
-        return found
-    return CheckedStep(position, step, query, step_classes(chain, arguments))
-
-
-def _not_composable(part: str, message: str, position: int) -> Refusal:
-    return Refusal(
-        code="not_representable", message=message, details={"step": position, "part": part}
-    )
-
-
-def _check_query(
-    query: QueryObject, context: ToolContext, profile: ModelProfile, position: int
-) -> Validated | Refusal:
-    """As a direct query is checked; a buffer by what it buffers, and its distance."""
-    shown = query.model_copy(update={"buffer": None})
-    found = check_query(shown, context, profile)
+    shown = query.model_copy(update={"buffer": None}) if query.buffer is not None else None
+    found = check_query(query, context, profile, shown=shown)
     if isinstance(found, Refusal):
         return _refused(found, position)
-    if query.buffer is not None:
-        world = ModelWorld(context.backend, profile)
-        try:
-            validate_query(query, world, context.limits, context.unsupported)
-        except QueryError as exc:
-            return _engine(exc, position)
-    return found
+    return CheckedStep(position, step, query, step_classes(chain, arguments))

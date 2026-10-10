@@ -9,6 +9,10 @@ and in a layer kept from the model, by name and by its rows. The chain plans,
 runs, re-plans after an empty step and after an engine error, and every
 message the model receives, every turn, every re-plan input, is searched.
 
+A step that names the hidden layer is refused exactly as one that names a
+missing layer, and an engine error whose details carry a name-shaped value
+reaches the model without it.
+
 Then D10: the connection's data release, flipped through the API, leaves the
 model's input the same, byte for byte.
 """
@@ -18,24 +22,29 @@ from pathlib import Path
 from typing import Any
 
 import httpx
+import pytest
 from fastapi import FastAPI
-from sqlalchemy import update
+from sqlalchemy import select, update
+from test_model_direct import same_refusal
 from test_model_enforcement import CONNECTIONS, account_of, connect
 from test_profile import SENTINELS, sentinel_csv
 
 from geotandem.api.state import AppState
 from geotandem.catalog import AttributeUpdate, update_attribute
 from geotandem.data import Limits
-from geotandem.engine import run_query
+from geotandem.engine import ids_query, run_query
+from geotandem.engine.compile import FID, GEOM
+from geotandem.engine.errors import UnknownAttribute
 from geotandem.importing.run import ImportDecisions, XYReference, run_import
 from geotandem.levels import active_level
 from geotandem.llm import Completion
 from geotandem.llm.fake import FakeLLMClient
-from geotandem.model.chain.ask import ChainState, ask
+from geotandem.model.chain import run as chain_run
+from geotandem.model.chain.ask import ChainState, ask, replan_message
 from geotandem.model.chain.plan import check_plan
 from geotandem.model.chain.run import ChainOutcome, StepRun, run_chain, run_step
 from geotandem.model.prompt import Prompt, build_prompt
-from geotandem.model.schemas import PlanAnswer
+from geotandem.model.schemas import PlanAnswer, PlannedStep, Refusal
 from geotandem.model.service import profile_for, read_view
 from geotandem_query import QueryObject
 
@@ -194,13 +203,23 @@ def received(model: FakeLLMClient) -> bytes:
     ).encode()
 
 
+def named(setup: Setup, layer: str) -> ChainOutcome:
+    """A plan whose first step names ``layer``: refused before anything runs."""
+    step = ("filter", {"layer": layer, "where": {"op": "is_null", "attr": "kategorie"}})
+    model = FakeLLMClient(script=[completion(plan(step, why="Die Punkte ohne Kategorie."))])
+    outcome = run_chain(model, setup.prompt("Punkte?"), setup.context, setup.profile)
+    assert outcome.runs == [] and len(model.calls) == 1
+    return outcome
+
+
 EVERY = Limits(max_features=100_000, timeout_s=30)
 """Every feature a step found, for the search; the user's own limit is lower."""
 
 
 def rows(setup: Setup, queries: list[QueryObject]) -> tuple[set[str], set[str]]:
     """The text values and the coordinates of every feature the steps found, as
-    the user's run returns them."""
+    the user's run returns them (WGS84) and as the data core stores them (the
+    internal CRS)."""
     texts: set[str] = set()
     coordinates: set[str] = set()
 
@@ -211,11 +230,19 @@ def rows(setup: Setup, queries: list[QueryObject]) -> tuple[set[str], set[str]]:
         elif isinstance(node, float):
             coordinates.add(repr(node))
 
-    view = read_view(setup.state.backend, setup.admin)
+    backend = setup.state.backend
+    view = read_view(backend, setup.admin)
     for query in queries:
         for feature in run_query(query, view, EVERY).features:
             texts.update(v for v in feature.properties.values() if isinstance(v, str))
             walk((feature.geometry or {}).get("coordinates"))
+        table = backend.layer_table(query.source)
+        ids = ids_query(query, view, EVERY)
+        stored = select(backend.dialect.as_geojson(table.c[GEOM]).label("g")).where(
+            table.c[FID].in_(ids)
+        )
+        for row in backend.execute(stored, EVERY):
+            walk(json.loads(row["g"])["coordinates"])
     return texts, coordinates
 
 
@@ -227,6 +254,7 @@ async def test_no_row_content_reaches_the_model_through_a_chain(
     setup = Setup(app)
     outcome, planned = empty_then_revised(setup)
     runs, failed = error_then_revised(setup, app)
+    hidden, missing = named(setup, HIDDEN), named(setup, "kitas")
 
     # The chain did what it should: an empty step, an error, a re-plan after each.
     assert outcome.refusal is None and outcome.replans == 1
@@ -234,15 +262,18 @@ async def test_no_row_content_reaches_the_model_through_a_chain(
     assert [r.view.empty for r in outcome.runs] == [False, True, False, False, False, False]
     assert runs[1].view.code == "unknown_attribute" and runs[1].error is not None
     assert len(planned.calls) == len(failed.calls) == 2
+    same_refusal(missing.refusal, hidden.refusal, "kitas", HIDDEN)
+    assert hidden.refusal is not None and hidden.refusal.code == "unknown_layer"
     text = sent(planned, failed)
     assert '"empty":true' in text and '"code":"unknown_attribute","part":"klasse"' in text
 
     # The sentinels are there: in what the steps found, and kept from the profile.
     found = [r.step.query for r in [*outcome.runs, *runs] if r.view.outcome == "ok"]
     values, coordinates = rows(setup, found)
-    assert any(IN_A_NAME in v for v in values) and NAME_SHAPED in values and coordinates
-    hidden = setup.state.backend.layer_names()
-    assert HIDDEN in hidden and HIDDEN not in setup.profile.text
+    assert any(IN_A_NAME in v for v in values) and NAME_SHAPED in values
+    assert any(float(c) > 1_000_000 for c in coordinates)  # the internal CRS (LV95)
+    assert any(float(c) < 90 for c in coordinates)  # WGS84
+    assert HIDDEN in setup.state.backend.layer_names() and HIDDEN not in setup.profile.text
     assert "klasse" in runs[1].error.message  # the user's to read, never the model's
 
     # ... and none reached the model.
@@ -256,10 +287,41 @@ async def test_no_row_content_reaches_the_model_through_a_chain(
     assert [c for c in coordinates if c in text] == []
 
 
+async def test_a_name_shaped_value_in_an_error_never_reaches_the_model(
+    app: FastAPI, client: httpx.AsyncClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An engine error whose details carry a row value shaped like a name: the
+    model wrote it only as a value, so ``part`` drops it, and the re-plan input
+    has the code alone."""
+    await connect(client)
+    seed(app.state.geotandem, tmp_path)
+    setup = Setup(app)
+    where = {"op": "compare", "attr": "nummer", "cmp": "ne", "value": NAME_SHAPED}
+    planned = [
+        PlannedStep(text="x", tool="filter", arguments={"layer": "strassen", "where": where})
+    ]
+    checked = check_plan(planned, setup.context, setup.profile)
+    assert not isinstance(checked, Refusal)
+
+    def failing(*_: Any, **__: Any) -> int:
+        raise UnknownAttribute(f"No '{NAME_SHAPED}' here.", attribute=NAME_SHAPED)
+
+    monkeypatch.setattr(chain_run, "count_query", failing)
+    run = run_step(checked[0], setup.context, setup.profile)
+    assert run.error is not None and run.error.details == {"attribute": NAME_SHAPED}
+    assert (run.view.code, run.view.part) == ("unknown_attribute", None)
+    assert NAME_SHAPED not in replan_message([(1, "filter", run.view)], 0)
+
+
 async def test_the_data_release_changes_nothing_the_model_receives(
     app: FastAPI, client: httpx.AsyncClient, tmp_path: Path
 ) -> None:
-    """D10: the flag is stored and shown, and it has no effect in E2.5."""
+    """D10: the flag is stored and shown, and it has no effect in E2.5.
+
+    PENDING (WP75): anchored on ``run_chain`` here, which never sees the
+    connection, so today it shows the flag is read nowhere on the way, no more.
+    WP75 re-anchors it on the service and API path (``POST /prompt`` with the
+    chain approach, ``run``), where the connection is resolved."""
     connection = await connect(client)
     seed(app.state.geotandem, tmp_path)
     inputs: list[bytes] = []

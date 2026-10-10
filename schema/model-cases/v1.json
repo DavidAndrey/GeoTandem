@@ -876,7 +876,7 @@
           "Teilautonom": "proposed"
         },
         "step_classes": ["query", "derive", "spatial", "query", "spatial"],
-        "_note": "step_classes: the class of each step's tool (H2, tools.chain); a step also counts the classes of the conditions it writes itself (H4), so the buffer step's cell is the strictest of derive and query. Step 5's query object is the reference query",
+        "_note": "step_classes: each step's tool's own class (H2, tools.chain), one per step. StepView.classes holds a step's full set (H4): its tool's and those of the conditions it writes, so the buffer step is derive and query; the cell shown per step (WP77) is the strictest of that full set. The chain is governed by the union of all steps' sets (chain_classes), never by classify of step 5's query object, which is the reference query",
         "hits": 10,
         "total": 137
       }
@@ -1015,7 +1015,8 @@
         "refusal_code": "step_limit",
         "details": {
           "max": 8,
-          "value": 9
+          "value": 9,
+          "step": 9
         }
       }
     }

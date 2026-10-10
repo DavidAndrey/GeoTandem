@@ -79,32 +79,43 @@ def _format(approach: Approach) -> dict[str, Any]:
     if approach == "direct":
         _controls_only(defs)
     schema["$defs"] = {name: defs[name] for name in sorted(_reachable(schema, defs))}
-    _drop_titles(schema)
+    drop_titles(schema)
     return schema
 
 
 def _controls_only(defs: dict[str, Any]) -> None:
     """The query object as the controls write it (D3): their fields, ``output``
-    always ``map``, no view or drawn area, text matches as the editor offers them."""
+    always ``map``, and its conditions as ``conditions_as_controls`` cuts them."""
     query = defs["QueryObject"]
     query["properties"] = {k: v for k, v in query["properties"].items() if k in ALLOWED_FIELDS}
     query["properties"]["output"] = {"const": "map", "default": "map", "type": "string"}
+    conditions_as_controls(defs)
+
+
+def conditions_as_controls(defs: dict[str, Any], *schemas: Any) -> None:
+    """The conditions in ``defs`` as the controls write them: no view or drawn
+    area (``NOT_IN_CONTROLS``, also where ``schemas`` refer to them), text
+    matches as the editor offers them. In place; the dropped definitions stay
+    in ``defs`` until the caller keeps only what is reachable."""
     text = defs["TextMatch"]["properties"]
     text["mode"]["enum"] = ["contains", "starts_with", "ends_with"]
     text["case_sensitive"] = {"const": False, "default": False, "type": "boolean"}
     dropped = {f"#/$defs/{name}" for name in NOT_IN_CONTROLS}
-    stack: list[Any] = [defs]
+    stack: list[Any] = [defs, *schemas]
     while stack:
         node = stack.pop()
         if isinstance(node, dict):
             if isinstance(node.get("oneOf"), list):
                 node["oneOf"] = [v for v in node["oneOf"] if v.get("$ref") not in dropped]
+            mapping = node.get("mapping")
+            if isinstance(mapping, dict):
+                node["mapping"] = {k: v for k, v in mapping.items() if v not in dropped}
             stack.extend(node.values())
         elif isinstance(node, list):
             stack.extend(node)
 
 
-def _drop_titles(schema: Any) -> None:
+def drop_titles(schema: Any) -> None:
     """Titles repeat the property names: tokens without meaning."""
     if isinstance(schema, dict):
         title = schema.get("title")
@@ -112,13 +123,13 @@ def _drop_titles(schema: Any) -> None:
             del schema["title"]
         for key, value in schema.items():
             if key != "properties":
-                _drop_titles(value)
+                drop_titles(value)
             else:
                 for prop in value.values():
-                    _drop_titles(prop)
+                    drop_titles(prop)
     elif isinstance(schema, list):
         for value in schema:
-            _drop_titles(value)
+            drop_titles(value)
 
 
 def _reachable(schema: dict[str, Any], defs: dict[str, Any]) -> set[str]:

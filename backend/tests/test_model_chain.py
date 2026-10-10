@@ -10,7 +10,8 @@ enumeration (D10): an engine result reaches the model only through
 
 import ast
 import json
-from collections.abc import Iterator
+import time
+from collections.abc import Callable, Iterator
 from typing import Any
 
 import pytest
@@ -20,22 +21,26 @@ from test_model_bypass import READS, WRITE, model_path_sources
 from test_model_direct import CHECK, LIMITS, context_of, profile_of, with_sample
 
 from geotandem.catalog import AttributeUpdate, update_attribute
-from geotandem.data import DataBackend
-from geotandem.engine import QueryError, QueryResult, count_query, stamp_query
+from geotandem.data import DataBackend, Limits
+from geotandem.engine import QueryError, count_query, stamp_query
 from geotandem.engine.errors import UnknownAttribute
-from geotandem.engine.result import ResultMeta, ResultStamp
-from geotandem.levels import OpClass
+from geotandem.importing.run import ImportDecisions, run_import
+from geotandem.levels import OpClass, classify
 from geotandem.llm import Completion
 from geotandem.llm.fake import FakeLLMClient
+from geotandem.model.chain import run as chain_run
 from geotandem.model.chain.ask import ChainState
-from geotandem.model.chain.plan import CheckedStep, check_plan
-from geotandem.model.chain.run import run_chain, run_step
+from geotandem.model.chain.plan import CheckedStep, chain_classes, chain_governance, check_plan
+from geotandem.model.chain.run import adoptable, run_chain, run_step
 from geotandem.model.chain.tools import CHAIN, tool_list
 from geotandem.model.chain.view import StepResult, model_view, names_in
+from geotandem.model.errors import ActionError
 from geotandem.model.prompt import build_prompt
 from geotandem.model.result import answer_format
 from geotandem.model.schemas import MAX_REPLANS, ModelView, PlanAnswer, PlannedStep, Refusal
-from geotandem_query import QueryObject, canonical_json
+from geotandem.tools import ToolContext
+from geotandem.tools.chain import conjoin
+from geotandem_query import And, QueryObject, canonical_json
 
 REFERENCE_CASE = case("chain_reference")
 REFERENCE_PLAN = PlanAnswer.model_validate(REFERENCE_CASE["answer"])
@@ -92,13 +97,12 @@ def test_the_reference_chain_is_the_reference_query_and_finds_10_of_137(
     context, profile = context_of(world), profile_of(world)
     assert [s.position for s in found] == [1, 2, 3, 4, 5]
     assert canonical_json(found[-1].query) == canonical_json(QueryObject.model_validate(REFERENCE))
-    runs = [run_step(s, context, profile) for s in found]
+    runs = [run_step(s, context, profile, last=s.position == 5) for s in found]
     assert [r.view for r in runs] == [ModelView(outcome="ok", empty=False, count=n) for n in COUNTS]
-    for run in runs:  # counted alike by the engine's other way
-        assert run.stamp is not None and run.error is None
-        assert run.stamp.count == count_query(run.step.query, context.backend, LIMITS)
-    final = runs[-1].stamp
-    assert final == stamp_query(found[-1].query, context.backend, LIMITS)
+    assert [r.count for r in runs] == COUNTS and {r.stamp for r in runs} == {None}
+    final = adoptable(runs, context, profile)
+    assert final is not None and final.step.position == 5
+    assert final.stamp == stamp_query(found[-1].query, context.backend, LIMITS)
     assert count_query(QueryObject(source="schulen"), context.backend, LIMITS) == 137
 
 
@@ -114,6 +118,17 @@ def test_a_step_reads_its_tools_class_and_those_of_the_conditions_it_writes(
     assert [s.classes for s in found] == [{Q}, {D, Q}, {S}, {Q}, {S}]
     near = checked(world, steps(("filter", {"layer": "schulen", "where": REFERENCE["where"]})))
     assert near[0].classes == {Q, S}
+
+
+def test_a_chain_is_governed_by_all_its_steps(world: DataBackend) -> None:
+    """The buffer became a distance in the last query object: ``classify`` of
+    it misses ``derive``, the chain's governance does not (H4)."""
+    found = checked(world, REFERENCE_PLAN.steps)
+    Q, D, S = OpClass.QUERY, OpClass.DERIVE, OpClass.SPATIAL
+    assert classify(found[-1].query) == {Q, S}
+    assert chain_classes(found) == {Q, D, S}
+    ruled = chain_governance(CHECK, found)
+    assert set(ruled.classes) == {Q, D, S} and OpClass.DERIVE in ruled.needs_approval
 
 
 def test_every_step_is_a_query_object_and_nothing_is_written(world: DataBackend) -> None:
@@ -163,6 +178,85 @@ def test_each_tool_composes_what_modus_a_writes(world: DataBackend) -> None:
     assert where[5] == {"op": "and", "args": [PRIMAR, cmp("standorte", "gt", 1)]}
     assert found[6].query.buffer is not None and found[6].query.source == "gemeinden"
     assert where[7]["args"][1] == {**related, "predicate": "dwithin", "distance_m": 100}
+
+
+def test_a_filter_on_a_buffer_takes_attribute_conditions_only(world: DataBackend) -> None:
+    """Its conditions are evaluated before the buffer: a relation in them would
+    see the roads, not their buffer."""
+    tax = {"op": "related", "layer": "gemeinden", "predicate": "within"}
+    refused = check(world, steps(ROADS_B, ("filter", {"of": 1, "where": tax}), SCHOOLS))
+    assert isinstance(refused, Refusal)
+    assert (refused.code, refused.details["part"], refused.details["step"]) == (
+        "not_representable",
+        "where",
+        2,
+    )
+    roads = ("buffer", {"layer": "strassen", "distance_m": 500})
+    named = ("filter", {"of": 1, "where": cmp("klasse", "eq", "kantonsstrasse_b")})
+    found = checked(world, steps(roads, named, SCHOOLS, ("within", {"of": 3, "in": 2})))
+    assert found[1].query.buffer is not None
+    assert canonical_json(found[3].query) == canonical_json(
+        checked(world, steps(SCHOOLS, ROADS_B, ("within", {"of": 1, "in": 2})))[2].query
+    )
+
+
+def test_conjoin_never_writes_an_and_of_one() -> None:
+    a, b = QueryObject.model_validate({"source": "x", "where": PRIMAR}).where, None
+    assert a is not None
+    one = And(op="and", args=[a])
+    assert conjoin(one, b) == a
+    assert conjoin(None, And(op="and", args=[one, one])) == And(op="and", args=[a, a])
+    assert conjoin(None, None) is None
+
+
+def test_a_chain_does_not_end_in_a_buffer(world: DataBackend) -> None:
+    """D3: a buffer that feeds a spatial step is its distance; as the result,
+    the controls cannot show it."""
+    refused = check(world, steps(SCHOOLS, ROADS_B))
+    assert isinstance(refused, Refusal)
+    assert (refused.code, refused.details) == ("not_representable", {"step": 2, "part": "buffer"})
+    assert isinstance(check(world, steps(SCHOOLS, ROADS_B, ("within", {"of": 1, "in": 2}))), list)
+    done = checked(world, steps(SCHOOLS, ROADS_B, ("within", {"of": 1, "in": 2})))
+    again = check(world, steps(("buffer", {"of": 3, "distance_m": 10})), done=done)
+    assert isinstance(again, Refusal) and again.details == {"step": 4, "part": "buffer"}
+
+
+@pytest.fixture(scope="module")
+def multipoints(world: DataBackend, tmp_path_factory: pytest.TempPathFactory) -> str:
+    """A layer of multipoints, imported as a user would."""
+    path = tmp_path_factory.mktemp("multi") / "punktgruppen.geojson"
+    features = [
+        {
+            "type": "Feature",
+            "properties": {"nr": i},
+            "geometry": {
+                "type": "MultiPoint",
+                "coordinates": [[7.44 + i / 100, 46.95], [7.6, 46.9]],
+            },
+        }
+        for i in range(1, 4)
+    ]
+    path.write_text(json.dumps({"type": "FeatureCollection", "features": features}), "utf-8")
+    run = run_import(
+        path, path.name, ImportDecisions(layer_name="punktgruppen", title="P"), world, actor="admin"
+    )
+    assert run.status in ("ok", "warning"), run
+    return "punktgruppen"
+
+
+def test_multipoints_do_not_lie_in_a_buffer_by_its_distance(
+    world: DataBackend, multipoints: str
+) -> None:
+    """A multipoint lies in a buffer when all its points do; ``dwithin`` asks
+    for one: the rewrite holds for single points only."""
+    [kind] = [p.geometry_type for p in profile_of(world).layers if p.name == multipoints]
+    assert kind == "MultiPoint"
+    groups = ("filter", {"layer": multipoints, "where": cmp("nr", "gt", 0)})
+    for tool in ("within", "outside"):
+        refused = check(world, steps(groups, ROADS_B, (tool, {"of": 1, "in": 2})))
+        assert isinstance(refused, Refusal) and refused.details == {"step": 3, "part": "in"}
+    meets = ("intersects", {"of": 1, "with": 2})
+    assert isinstance(check(world, steps(groups, ROADS_B, meets)), list)
 
 
 # --- refusals, each naming its step --------------------------------------------------
@@ -261,7 +355,7 @@ def test_the_step_limit_counts_the_completed_steps(world: DataBackend) -> None:
     done = checked(world, REFERENCE_PLAN.steps)
     assert isinstance(check(world, steps(SCHOOLS, SCHOOLS, SCHOOLS), done=done), list)
     again = check(world, steps(SCHOOLS, SCHOOLS, SCHOOLS, SCHOOLS), done=done)
-    assert isinstance(again, Refusal) and again.details == {"value": 9, "max": 8}
+    assert isinstance(again, Refusal) and again.details == {"value": 9, "max": 8, "step": 9}
     # A re-plan's steps continue the count and may name the completed ones.
     more = check(world, steps(("filter", {"of": 5, "where": cmp("standorte", "gt", 1)})), done=done)
     assert isinstance(more, list) and more[0].position == 6
@@ -270,7 +364,6 @@ def test_the_step_limit_counts_the_completed_steps(world: DataBackend) -> None:
 
 # --- model_view (D9, D10) ------------------------------------------------------------
 
-STAMP = ResultStamp(count=3, ids_hash="h", query_hash="q", data_versions={})
 ARGS: Body = {
     "layer": "strassen",
     "distance_m": 500,
@@ -279,17 +372,8 @@ ARGS: Body = {
 
 
 def test_a_step_that_ran_shows_its_count_and_whether_it_is_empty() -> None:
-    result = QueryResult(
-        features=[],
-        query=QueryObject(source="schulen"),
-        meta=ResultMeta(
-            schema_version="2", query_hash="q", data_versions={}, backend="b",
-            feature_count=0, elapsed_ms=1,
-        ),
-    )  # fmt: skip
-    assert model_view(StepResult(ARGS, STAMP)) == ModelView(outcome="ok", empty=False, count=3)
-    assert model_view(StepResult(ARGS, result)) == ModelView(outcome="ok", empty=True, count=0)
-    assert model_view(StepResult(ARGS, 7)).count == 7
+    assert model_view(StepResult(ARGS, 3)) == ModelView(outcome="ok", empty=False, count=3)
+    assert model_view(StepResult(ARGS, 0)) == ModelView(outcome="ok", empty=True, count=0)
     with pytest.raises(TypeError):
         model_view(StepResult(ARGS, True))
 
@@ -316,22 +400,20 @@ def test_an_error_shows_its_code_and_only_a_name_the_model_wrote() -> None:
     assert part({"part": "where"}) is None
     assert part({"attribute": "Schule Liebefeld"}, {"attr": "Schule Liebefeld"}) is None
     assert names_in(ARGS) == {"strassen", "klasse"}
-    refused = Refusal(code="not_representable", message="x", details={"step": 3, "part": "in"})
-    assert model_view(StepResult({"of": 1, "in": 2}, refused)) == ModelView(
-        outcome="error", code="not_representable"
-    )
+    # An error inside a condition taken over from an earlier step: no name.
+    assert part({"attribute": "klasse", "layer": "strassen"}, {"of": 1, "in": 2}) is None
 
 
 def test_an_engine_error_of_a_run_reaches_the_model_as_its_code(world: DataBackend) -> None:
     """Planned while ``klasse`` was released, run after it was withdrawn (S3):
     the run fails in the model's world as it is now."""
-    found = checked(world, steps(ROADS_B))
+    found = checked(world, steps(ROADS_B, SCHOOLS, ("within", {"of": 2, "in": 1})))
     update_attribute(world.engine, "strassen", "klasse", AttributeUpdate(for_model=False))
     try:
         run = run_step(found[0], context_of(world), profile_of(world))
     finally:
         update_attribute(world.engine, "strassen", "klasse", AttributeUpdate(for_model=True))
-    assert isinstance(run.error, UnknownAttribute) and run.stamp is None
+    assert isinstance(run.error, UnknownAttribute) and run.count is None
     assert run.view == ModelView(outcome="error", code="unknown_attribute", part="klasse")
     assert "klasse" in run.error.message  # the text is the user's, never the model's
 
@@ -400,6 +482,91 @@ def test_the_re_plan_input_is_the_views_and_the_models_own_plan(world: DataBacke
     assert "Die Schritte 1 bis 1 bleiben" in seen.content
 
 
+def test_a_re_plan_must_fit_the_context_too(world: DataBackend) -> None:
+    state = state_of(world)
+    state.context_length = state.prompt.tokens_estimate + 10
+    state.ran(state.steps[0], next(views("error")))
+    with pytest.raises(ActionError) as caught:
+        state.replan_messages()
+    assert caught.value.code == "context_too_large"
+
+
+def reference_run(
+    world: DataBackend, limits: Limits = LIMITS, **kw: Any
+) -> tuple[chain_run.ChainOutcome, FakeLLMClient]:
+    prompt = build_prompt("?", approach="chain", level=CHECK, profile=profile_of(world))
+    model = FakeLLMClient(script=[Completion(text=json.dumps(REFERENCE_CASE["answer"]))])
+    base = context_of(world)
+    context = ToolContext(base.backend, limits, base.unsupported)
+    return run_chain(model, prompt, context, profile_of(world), **kw), model
+
+
+def test_only_the_adoptable_result_is_stamped(
+    world: DataBackend, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Steps are counted; no id list is built but for the result to adopt."""
+    stamped: list[str] = []
+    stamp = chain_run.stamp_query
+
+    def spy(query: QueryObject, *args: Any, **kwargs: Any) -> Any:
+        stamped.append(canonical_json(query))
+        return stamp(query, *args, **kwargs)
+
+    monkeypatch.setattr(chain_run, "stamp_query", spy)
+    outcome, _ = reference_run(world)
+    assert outcome.result is not None and outcome.result.stamp is not None
+    assert stamped == [canonical_json(QueryObject.model_validate(REFERENCE))]
+    assert [r.stamp for r in outcome.runs] == [None] * 5
+
+
+def test_a_result_beyond_the_size_limit_stops_the_run(
+    world: DataBackend, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Intermediate counts may exceed it (62 > 9); the last step may not (10 > 9)."""
+    monkeypatch.setattr(chain_run, "stamp_query", None)  # nothing to stamp
+    outcome, _ = reference_run(world, Limits(max_features=9, timeout_s=10))
+    assert outcome.stop_reason == "result_too_large" and outcome.result is None
+    assert [r.count for r in outcome.runs] == [*COUNTS[:4], None]
+    assert outcome.runs[-1].view == ModelView(outcome="error", code="result_too_large")
+    assert outcome.adopted is None  # step 4, 37 municipalities, is beyond it too
+
+
+def clock(*readings: float) -> Callable[[], float]:
+    start = time.monotonic()
+    values = iter(readings)
+    return lambda: start + next(values)
+
+
+def test_the_request_deadline_stops_before_a_step(world: DataBackend) -> None:
+    """P4: checked before every step; the last complete result stays adoptable."""
+    deadline = time.monotonic() + 300
+    outcome, _ = reference_run(world, deadline=deadline, clock=clock(0, 1, 2, 301))
+    assert outcome.stop_reason == "time_limit" and outcome.result is None
+    assert [r.step.position for r in outcome.runs] == [1, 2, 3]
+    assert outcome.adopted is not None and outcome.adopted.step.position == 3
+    assert outcome.adopted.stamp is not None and outcome.adopted.stamp.count == 37
+
+
+def test_the_request_deadline_stops_before_a_re_plan(world: DataBackend) -> None:
+    prompt = build_prompt("?", approach="chain", level=CHECK, profile=profile_of(world))
+    empty = {"op": "in", "attr": "typ", "values": ["keiner"]}
+    plan = REFERENCE_CASE["answer"] | {
+        "steps": [
+            {"text": "a", "tool": "filter", "arguments": {"layer": "schulen", "where": empty}},
+            {"text": "b", "tool": "filter", "arguments": {"of": 1, "where": PRIMAR}},
+        ]
+    }
+    model = FakeLLMClient(script=[Completion(text=json.dumps(plan))])
+    deadline = time.monotonic() + 300
+    outcome = run_chain(
+        model, prompt, context_of(world), profile_of(world), deadline=deadline, clock=clock(0, 301)
+    )
+    assert outcome.stop_reason == "time_limit" and len(model.calls) == 1
+    assert outcome.runs[0].view.empty is True
+    # An empty step is adoptable as it is (0 hits), though not a buffer.
+    assert outcome.adopted is not None and outcome.adopted.count == 0
+
+
 def test_the_chain_plans_in_one_call_and_offers_no_tool(world: DataBackend) -> None:
     prompt = build_prompt(
         "Primarschulen?", approach="chain", level=CHECK, profile=profile_of(world)
@@ -416,11 +583,16 @@ def test_the_chain_plans_in_one_call_and_offers_no_tool(world: DataBackend) -> N
 
 
 # --- the only way to the model (D10, static) ----------------------------------------
+#
+# Heuristics over the source, not proofs: they catch the ways that are cheap to
+# write by accident (a direct call, an alias, a re-export, a dict for a view);
+# code that means to get round them can. The sentinel test checks the effect.
 
 ENGINE = "geotandem.engine"
+RESULT_NAMES = {"QueryResult", "ResultStamp", "Feature", "ResultMeta"}
+"""Engine results, also where another module re-exports them (``model.schemas``)."""
 ENGINE_USERS = {
-    "model/chain/plan.py": "checks a step's query object; runs nothing",
-    "model/chain/run.py": "runs a step as a stamp; hands on model_view of it",
+    "model/chain/run.py": "counts a step; hands on model_view of it",
     "model/chain/view.py": "model_view",
     "model/record/store.py": "keeps the stamp for the user",
     "model/schemas.py": "the user's views: ExecuteResponse, StepView",
@@ -428,7 +600,8 @@ ENGINE_USERS = {
     "model/validate.py": "the checks of a query; their refusal is the user's",
     "tools/builtin.py": "run_query, a registry tool the model path never offers",
 }
-"""Every module of the model path that imports from the engine, and why."""
+"""Every module of the model path that imports from the engine or one of its
+results, and why."""
 TALKERS = {"model/prompt.py", "model/direct.py", "model/chain/ask.py"}
 """The modules that write a message to the model or call it."""
 RESULT_ATTRIBUTES = {
@@ -445,7 +618,11 @@ def _sources() -> dict[str, ast.Module]:
 
 def _engine_imports(tree: ast.Module) -> bool:
     return any(
-        isinstance(node, ast.ImportFrom) and (node.module or "").startswith(ENGINE)
+        isinstance(node, ast.ImportFrom)
+        and (
+            (node.module or "").startswith(ENGINE)
+            or any(alias.name in RESULT_NAMES for alias in node.names)
+        )
         for node in ast.walk(tree)
     )
 
@@ -462,28 +639,81 @@ def _talks(tree: ast.Module) -> bool:
     return False
 
 
-def test_only_model_view_makes_what_the_model_sees() -> None:
-    makers = sorted(
-        name
-        for name, tree in _sources().items()
-        for node in ast.walk(tree)
-        if isinstance(node, ast.Call)
-        and (
-            (isinstance(node.func, ast.Name) and node.func.id == "ModelView")
-            or (
-                isinstance(node.func, ast.Attribute)
-                and isinstance(node.func.value, ast.Name)
-                and node.func.value.id == "ModelView"
+def _aliases(tree: ast.Module, names: set[str]) -> set[str]:
+    """``names`` and what the module calls them: ``import … as``, ``X = Name``."""
+    found = set(names)
+    while True:
+        more = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom | ast.Import):
+                more |= {a.asname for a in node.names if a.name in found and a.asname}
+            elif (
+                isinstance(node, ast.Assign)
+                and isinstance(node.value, ast.Name)
+                and node.value.id in found
+            ):
+                more |= {t.id for t in node.targets if isinstance(t, ast.Name)}
+        if more <= found:
+            return found
+        found |= more
+
+
+def _makes_a_view(tree: ast.Module) -> bool:
+    """A ``ModelView`` built, by any of its names, or as a ``StepView``'s
+    ``model_view`` filled with anything but ``model_view(…)`` or a value."""
+    names = _aliases(tree, {"ModelView"})
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Dict) and any(
+            isinstance(k, ast.Constant) and k.value == "model_view" for k in node.keys
+        ):
+            return True
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        if isinstance(func, ast.Name) and func.id in names:
+            return True
+        if isinstance(func, ast.Attribute):
+            owner = func.value
+            if func.attr == "ModelView" or (
+                (isinstance(owner, ast.Name) and owner.id in names)
+                or (isinstance(owner, ast.Attribute) and owner.attr == "ModelView")
+            ):
+                return True
+        for keyword in node.keywords:
+            value = keyword.value
+            made = isinstance(value, ast.Call) and not (
+                isinstance(value.func, ast.Name) and value.func.id == "model_view"
             )
-        )
-    )
-    assert set(makers) == {"model/chain/view.py"}
+            if keyword.arg == "model_view" and (made or isinstance(value, ast.Dict)):
+                return True
+    return False
+
+
+def test_only_model_view_makes_what_the_model_sees() -> None:
+    makers = {name for name, tree in _sources().items() if _makes_a_view(tree)}
+    assert makers == {"model/chain/view.py"}
+
+
+def test_the_check_catches_the_cheap_ways_round() -> None:
+    for code in (
+        "from geotandem.model.schemas import ModelView as M; M(outcome='ok')",
+        "from geotandem.model.schemas import ModelView; MV = ModelView; MV.model_validate({})",
+        "import geotandem.model.schemas as s; s.ModelView(outcome='ok')",
+        "StepView(position=1, model_view={'outcome': 'ok', 'count': 3})",
+        "StepView(position=1, model_view=dict(outcome='ok'))",
+        "StepView.model_validate({'model_view': rows})",
+    ):
+        assert _makes_a_view(ast.parse(code)), code
+    for code in ("StepView(model_view=model_view(result))", "StepView(model_view=run.view)"):
+        assert not _makes_a_view(ast.parse(code)), code
+    assert _engine_imports(ast.parse("from geotandem.model.schemas import ResultStamp"))
 
 
 def test_an_engine_result_reaches_the_model_only_through_model_view() -> None:
-    """Who imports the engine is listed with a reason; who talks to the model
-    imports nothing of it, reads nothing a result or an error carries, and takes
-    no result as an argument: a chain's step reaches it as a ``ModelView``."""
+    """Who imports the engine or its results is listed with a reason; who talks
+    to the model imports none of it, reads nothing a result or an error carries,
+    and takes no result as an argument: a chain's step reaches it as a
+    ``ModelView``."""
     sources = _sources()
     assert {name for name, tree in sources.items() if _engine_imports(tree)} == set(ENGINE_USERS)
     assert {name for name, tree in sources.items() if _talks(tree)} == TALKERS

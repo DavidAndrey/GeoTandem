@@ -8,7 +8,7 @@ and "≤ Distanz". A step **builds or extends a query object**: nothing runs,
 nothing is stored, no layer is made. So every chain stays expressible as one
 query object (F-5.7): the result of the last step is the query the user
 adopts, and every intermediate result is a query object too, which the
-application counts or stamps (``engine.stamp_query``), never a table.
+application counts (``engine.count_query``), never a table.
 
 The inputs are generic in the type that stands for an earlier result: here,
 in the registry, a ``QueryObject``; in a planned step the model writes the
@@ -20,24 +20,24 @@ How a relation to an earlier step becomes one condition (schema v1
 conditions only, so its conditions become the relation's filter on that
 layer. When it is a buffer, lying in it means lying within its distance
 (``dwithin``): exact for points and for ``intersects``; ``model.chain.plan``
-refuses ``within`` and ``outside`` of a buffer for lines and areas, where the
-two differ. Anything else cannot be one query object and raises
+refuses ``within`` and ``outside`` of a buffer for anything but points
+(multipoints, lines, areas), where the two differ. A filter on a buffer takes
+attribute conditions only: a relation in it would see the geometry before
+buffering. Anything else cannot be one query object and raises
 ``NotComposable``, naming the argument.
 """
 
-from collections.abc import Iterator
 from typing import Annotated, Any, Final, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from geotandem.levels import OpClass
+from geotandem.levels import OpClass, classify
 from geotandem.tools.registry import Tool, ToolContext
 from geotandem_query import (
     And,
     Buffer,
     Condition,
     Not,
-    Or,
     QueryObject,
     RelatedByDistance,
     RelatedTopological,
@@ -48,9 +48,6 @@ Layer = Annotated[
     Field(pattern=r"^[a-z_][a-z0-9_]{0,62}$", description="Name of a layer of the profile."),
 ]
 Distance = Annotated[float, Field(gt=0, description="Distance in metres.")]
-
-ATTRIBUTE_CONDITIONS: Final = frozenset({"compare", "between", "in", "text_match", "is_null"})
-"""What a plain step's conditions may be, combined with ``and``, ``or``, ``not``."""
 
 
 class NotComposable(Exception):
@@ -114,28 +111,24 @@ class NearInput[T](_Input):
 # --- composing -------------------------------------------------------------------
 
 
-def _conditions(condition: Condition | None) -> Iterator[Condition]:
-    if condition is None:
-        return
-    yield condition
-    if isinstance(condition, And | Or):
-        for arg in condition.args:
-            yield from _conditions(arg)
-    elif isinstance(condition, Not):
-        yield from _conditions(condition.arg)
+def _flat(condition: Condition | None) -> list[Condition]:
+    if isinstance(condition, And):
+        return [part for arg in condition.args for part in _flat(arg)]
+    return [] if condition is None else [condition]
 
 
 def conjoin(first: Condition | None, then: Condition | None) -> Condition | None:
-    """Both, as one flat ``and``: the shape the condition editor writes."""
-    parts: list[Condition] = []
-    for condition in (first, then):
-        if isinstance(condition, And):
-            parts.extend(condition.args)
-        elif condition is not None:
-            parts.append(condition)
+    """Both, as one flat ``and`` (the shape the condition editor writes); never
+    an ``and`` of one argument."""
+    parts = _flat(first) + _flat(then)
     if not parts:
         return None
     return parts[0] if len(parts) == 1 else And(op="and", args=parts)
+
+
+def _relates(where: Condition | None) -> bool:
+    """``where`` relates to another layer somewhere (``classify``: a spatial part)."""
+    return where is not None and OpClass.SPATIAL in classify(QueryObject(source="x", where=where))
 
 
 _EXTRAS: Final = (
@@ -171,9 +164,8 @@ def _result(query: QueryObject, part: str) -> QueryObject:
 
 def _plain(query: QueryObject, part: str) -> QueryObject:
     """A step related to: one layer, attribute conditions only."""
-    for condition in _conditions(_bare(query, part).where):
-        if condition.op not in ATTRIBUTE_CONDITIONS | {"and", "or", "not"}:
-            raise NotComposable(part, "a step related to has attribute conditions only")
+    if _relates(_bare(query, part).where):
+        raise NotComposable(part, "a step related to has attribute conditions only")
     return query
 
 
@@ -204,7 +196,11 @@ def _base(args: _OnLayerOrStep[QueryObject]) -> QueryObject:
 
 
 def _filter(_: ToolContext, args: FilterInput[QueryObject]) -> QueryObject:
-    return _narrowed(_base(args), args.where)
+    base = _base(args)
+    if base.buffer is not None and _relates(args.where):
+        # Its relations would see the geometry before buffering (``_result``).
+        raise NotComposable("where", "a buffer is related to, not filtered by a relation")
+    return _narrowed(base, args.where)
 
 
 def _buffer(_: ToolContext, args: BufferInput[QueryObject]) -> QueryObject:
@@ -277,7 +273,7 @@ def chain_tools() -> list[Tool[Any, QueryObject]]:
             _buffer,
             "Buffer the features of a layer (those meeting 'where', if given), or of an earlier "
             "step's result, by 'distance_m'. Another step relates to it with within, outside "
-            "or intersects.",
+            "or intersects; a chain does not end in a buffer.",
         ),
         tool(
             "within",
@@ -285,7 +281,7 @@ def chain_tools() -> list[Tool[Any, QueryObject]]:
             WithinInput[QueryObject],
             _within,
             "Keep the features of step 'of' that lie in a feature of step 'in'. In a buffer: "
-            "within its distance; for point features only.",
+            "within its distance; for point (not multipoint) features only.",
         ),
         tool(
             "outside",
@@ -293,7 +289,7 @@ def chain_tools() -> list[Tool[Any, QueryObject]]:
             OutsideInput[QueryObject],
             _outside,
             "Keep the features of step 'of' that lie in no feature of step 'in'. Of a buffer: "
-            "farther than its distance; for point features only.",
+            "farther than its distance; for point (not multipoint) features only.",
         ),
         tool(
             "intersects",

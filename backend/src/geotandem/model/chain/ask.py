@@ -26,7 +26,7 @@ from typing import Any, Literal
 from geotandem.catalog import ModelProfile
 from geotandem.llm import LLMClient, Message
 from geotandem.model.chain.plan import CheckedStep, check_plan
-from geotandem.model.prompt import Prompt
+from geotandem.model.prompt import Prompt, fit
 from geotandem.model.result import Answer, parse_answer
 from geotandem.model.schemas import MAX_REPLANS, MAX_STEPS, ModelView, PlanAnswer, Refusal
 from geotandem.tools import ToolContext
@@ -43,7 +43,7 @@ def ask(
     deadline: float | None = None,
 ) -> Answer:
     """One model call of the chain; ``model_unreadable`` as for the direct query."""
-    completion = client.complete(messages, schema=dict(schema), deadline=deadline)
+    completion = client.complete(messages, schema=schema, deadline=deadline)
     return parse_answer(completion, "chain")
 
 
@@ -89,6 +89,8 @@ class ChainState:
     replans: int = 0
     turns: list[Message] = field(default_factory=list)
     """The conversation after the prompt: each plan and each re-plan input."""
+    context_length: int | None = None
+    """The connection's, as for the first call (``prompt.fit``)."""
 
     @property
     def next(self) -> CheckedStep | None:
@@ -108,14 +110,17 @@ class ChainState:
 
     def replan_messages(self) -> tuple[Message, ...]:
         """The re-plan call's messages: the conversation so far and the views.
-        Each call counts, whether its answer is used or not (P4)."""
+        Each call counts, whether its answer is used or not (P4); one that does
+        not fit the connection's context is ``context_too_large``."""
         self.replans += 1
         seen = [(position, *self.seen[position]) for position in sorted(self.seen)]
         self.turns += [
             Message("assistant", said(self.answer)),
             Message("user", replan_message(seen, self.completed)),
         ]
-        return (*self.prompt.messages, *self.turns)
+        messages = (*self.prompt.messages, *self.turns)
+        fit(messages, self.context_length)
+        return messages
 
     def revise(
         self, answer: PlanAnswer, context: ToolContext, profile: ModelProfile

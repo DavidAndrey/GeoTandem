@@ -240,6 +240,18 @@ def build_prompt(
         messages.append(Message("assistant", _assistant(turn)))
         previous = turn
     messages.append(Message("user", _user(text, previous, follow_up)))
+    return Prompt(
+        messages=tuple(messages),
+        schema=answer_format(approach),
+        profile_hash=profile.hash,
+        tokens_estimate=fit(messages, context_length),
+    )
+
+
+def fit(messages: Sequence[Message], context_length: int | None) -> int:
+    """The size estimate of ``messages``; ``context_too_large`` if it exceeds the
+    connection's context length. Every call of a prompt is held to it, a
+    chain's re-plan too."""
     estimate = estimate_tokens(messages)
     if context_length is not None and estimate > context_length:
         raise ActionError(
@@ -249,9 +261,4 @@ def build_prompt(
             tokens_estimate=estimate,
             context_length=context_length,
         )
-    return Prompt(
-        messages=tuple(messages),
-        schema=answer_format(approach),
-        profile_hash=profile.hash,
-        tokens_estimate=estimate,
-    )
+    return estimate

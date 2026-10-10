@@ -9,18 +9,17 @@ that step's query object, never the model.
 Planning is one call that returns the steps as structured output (P4): no
 tool is called by the model. ``tool_list`` is the part of the answer format
 that names the tools, their arguments as JSON schema, and the conditions they
-take, cut to what the controls write (``result.NOT_IN_CONTROLS``).
+take, cut to what the controls write (``result.conditions_as_controls``).
 """
 
 import json
-from collections.abc import Iterator
 from dataclasses import dataclass
 from functools import cache
 from typing import Annotated, Any, Final, get_args
 
 from pydantic import BaseModel, Field
 
-from geotandem.model.result import NOT_IN_CONTROLS, _drop_titles
+from geotandem.model.result import NOT_IN_CONTROLS, conditions_as_controls, drop_titles
 from geotandem.model.schemas import MAX_CONDITIONS, MAX_STEPS
 from geotandem.tools.chain import chain_tools
 from geotandem.tools.registry import Tool
@@ -64,38 +63,21 @@ CHAIN: Final[dict[str, ChainTool]] = {t.name: _as_planned(t) for t in chain_tool
 """Every chain tool by name, in the prompt's order."""
 
 
-def _walk(node: Any) -> Iterator[Any]:
-    stack = [node]
-    while stack:
-        item = stack.pop()
-        yield item
-        if isinstance(item, dict):
-            stack.extend(item.values())
-        elif isinstance(item, list):
-            stack.extend(item)
-
-
 @cache
 def _schemas() -> tuple[dict[str, Any], dict[str, Any]]:
-    """Each tool's arguments schema, and the definitions they share."""
+    """Each tool's arguments schema, and the definitions they share, with the
+    conditions as the controls write them (as for the direct query)."""
     shared: dict[str, Any] = {}
     tools: dict[str, Any] = {}
     for name, chain in CHAIN.items():
         schema = chain.arguments.model_json_schema(by_alias=True)
         shared.update(schema.pop("$defs", {}))
         tools[name] = schema
-    dropped = {f"#/$defs/{name}" for name in NOT_IN_CONTROLS}
+    conditions_as_controls(shared, tools)
     for name in NOT_IN_CONTROLS:
-        shared.pop(name, None)
-    for node in _walk([tools, shared]):
-        if isinstance(node, dict):
-            if isinstance(node.get("oneOf"), list):
-                node["oneOf"] = [v for v in node["oneOf"] if v.get("$ref") not in dropped]
-            mapping = node.get("mapping")
-            if isinstance(mapping, dict):
-                node["mapping"] = {k: v for k, v in mapping.items() if v not in dropped}
-    _drop_titles(tools)
-    _drop_titles(shared)
+        del shared[name]
+    drop_titles(tools)
+    drop_titles(shared)
     return tools, shared
 
 

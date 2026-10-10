@@ -862,7 +862,7 @@ READ_ONLY_IMPORTS: dict[str, set[str]] = {
         "validate_query",
     },
     "geotandem.engine.compile": {"FID", "GEOM"},
-    "geotandem.engine.errors": {"QueryTimedOut", "UnknownLayer"},
+    "geotandem.engine.errors": {"QueryTimedOut", "ResultTooLarge", "UnknownLayer"},
     "geotandem.engine.result": {"QueryResult", "ResultStamp"},
     # Levels: read and resolved, never chosen or saved here.
     "geotandem.levels": {"CellMode", "Level", "OpClass", "active_level", "classify", "strictest"},
