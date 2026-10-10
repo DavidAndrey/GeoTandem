@@ -55,7 +55,8 @@ stateDiagram-v2
   approved --> applied : execute (stored query)
   approved --> running : run (chain)
   running --> done : last step
-  running --> limited : limit · abort · restart
+  running --> limited : limit · abort · restart · re-plans used up
+  proposed --> limited : abort while halted for approval (chain)
   done --> applied : adopt
   limited --> applied : adopt
   approved --> superseded : new prompt
@@ -291,7 +292,7 @@ Open from the gate list:
 - `model_view(result) -> ModelView` in `geotandem/model/chain/view.py`: **the only** function that turns an engine result into something the model sees (D9, D10): `ok|error`, an engine or refusal code, the name of the layer or attribute of the model's own query it is about, `empty|not empty`, hit count. `ModelView` (frozen in WP62) has no free-text field; mypy strict. Its `part` is an identifier, which an attribute value can also look like (`kantonsstrasse_b`): `model_view` asserts that `part` is a layer or attribute name occurring in that step's arguments, and the sentinel test uses a name-shaped sentinel.
 - Sentinel test (like S7): seed layers with sentinel values in attributes, geometry and layer names of derived layers; run the chain; assert no sentinel appears in any message sent to the `FakeLLMClient` (all turns, tool results, error texts, re-plan input). A second test greps the call sites: engine results are only passed to the model through `model_view` (AST check).
 - Chain tools = wrappers over the existing operations registry (`tools/builtin.py`), each with `op_class` (H2): `run_query` (own class from its parts), `buffer`, `attribute_join`, `aggregate`, `spatial_relation`/`near_feature` — whichever Modus A offers; no tool the user cannot reach by hand (F-5.8). No value-inspection tool.
-- Intermediate results are session-scoped temporary layers owned by the action; removed on completion/abort/expiry (no leak into the catalog; a janitor test).
+- Intermediate results are **not layers** (decided after WP74): each step's result is its query object plus a result stamp (`stamp_query`), nothing is written to the data core (F-9.5, WP71's checks). The whole chain composes into one query object (F-5.7).
 - **Done when:** sentinel test green; the data-release flag is stored, shown and has no effect (D10) — asserted explicitly by a test that flips it and compares the model input byte for byte.
 
 #### WP75 — Chain planning and run (BE-chain)
@@ -301,6 +302,13 @@ Open from the gate list:
 - Planning call (P4): model returns the step list as a `PlanAnswer` in structured output (never executed in this call); validated per step (schema, layer visibility, class), total ≤ 8 (`step_limit`); stored as `proposed` with per-step cell at the snapshotted level.
 - Approval rule: *Prüfen* = one approval for the whole chain; *Teilautonom* = stop before each step whose cell is `approve`, `off` steps make the action proposal-only (D1); strictest cell for the chain-level status.
 - Plan editing `PATCH /api/model/actions/{id}/plan`: change values, remove steps, **no new steps** (design 17); revalidated; result dependencies re-checked (removing a step that a later step reads ⇒ error naming the step).
+- Decisions for WP75 (from WP74 and WP77, 2026-10-11):
+  - `StepView` carries the step's compact `query` (contract change); `layer` is removed. The client draws the dimmed intermediate result by running that query as the user through Modus A (`/api/query/ids`), the same visibility as by hand.
+  - A chain halted for approval can be aborted: `proposed → limited`, `stop_reason` `aborted`, its last complete result adoptable.
+  - Re-plans used up (P4: at most 2) end the run `limited` with a new `stop_reason` `replan_limit` (contract change).
+  - `stamp_query` is not capped: a step whose count exceeds the result-size limit stops the run with `result_too_large`.
+  - Each step validates against the profile and view **as they are at run time** (a layer withdrawn after planning stops the run with its code).
+  - Adopting a result that ends in a `buffer` (a derived query) creates a derived layer in "Abgeleitet · Sitzung" on the client, from the analysis model's buffer recipe; otherwise the result becomes conditions with the origin mark (design "Kette übernehmen"). attribute_join and aggregate are not chain tools (not representable).
 - Run `POST /api/model/actions/{id}/run` → 202 + background task; `GET` polling returns steps with status and `model_view`; per-step timeout 10 s, request 120 s (`time_limit`), result size 10 000 objects (`result_too_large`); abort `POST .../abort` stops before the next step, keeps the last complete intermediate result adoptable; `limit` hit ⇒ `angehalten · Begrenzung` with the same adoptable state.
 - Re-plan (P4): after an error, or an empty intermediate step, never after an empty final step; ≤ 2 per request; input is `model_view` only; revises the remaining steps, completed steps stay fixed; the 8-step total includes completed steps; approval is asked again per level rules (*Prüfen* always, *Teilautonom* for revised `approve` steps, *Automatisch* never) and the status is `wartet auf Freigabe` meanwhile.
 - Runner: in-process background task, one step at a time, engine call in a thread; per-request cap 300 s on top of the 120 s model and 10 s step limits; start-up check closes orphaned `running` records as `failed` and keeps their last complete intermediate result adoptable.
@@ -416,7 +424,7 @@ One parametrised API test over **level cell × operation class × path**, so "th
 
 ### 5.4 Security review (E2.4 and E2.5)
 
-At the etappe gate, in addition to 5.2: run `/security-review` on the etappe's diff and update [security-review.md](../security-review.md). Checklist, E2.4: authorisation on every `/api/model/*` route, snapshot integrity (level cannot be changed through the request), TOCTOU on approve/execute, CSV injection, log visibility (D4), audit events. Checklist, E2.5: `model_view` is the only path to the model (D10), sentinel test, intermediate layers cannot be read by other accounts, background task cancellation, resource exhaustion (8 steps, 10 000 objects, 120 s, quota), the accepted residual risk of D9 re-read and still acceptable.
+At the etappe gate, in addition to 5.2: run `/security-review` on the etappe's diff and update [security-review.md](../security-review.md). Checklist, E2.4: authorisation on every `/api/model/*` route, snapshot integrity (level cannot be changed through the request), TOCTOU on approve/execute, CSV injection, log visibility (D4), audit events. Checklist, E2.5: `model_view` is the only path to the model (D10), sentinel test, no intermediate result is written anywhere (a step is a query object plus a stamp), background task cancellation, resource exhaustion (8 steps, 10 000 objects, 120 s, quota), the accepted residual risk of D9 re-read and still acceptable.
 
 ### 5.5 Design conformance table
 
