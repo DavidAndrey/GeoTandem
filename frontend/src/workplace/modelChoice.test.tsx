@@ -86,3 +86,19 @@ test('without a connection the header says so; an administrator gets a link', as
     '/admin/modelle',
   )
 })
+
+test('with connections but none active for the account, the header says so (M1.3)', async () => {
+  // No choice of its own and no default: the backend resolves no connection.
+  const unresolved = {
+    ...options,
+    connections: options.connections.map((c) => ({ ...c, is_default: false })),
+    chosen_connection_id: null,
+    active_connection_id: null,
+  }
+  fakeApi({ ...signedIn({ role: 'user' }), 'GET /api/llm/options': unresolved })
+  renderAt('/', <ModelChoice />)
+
+  const trigger = await screen.findByRole('button', { name: 'Modellunterstützung wählen' })
+  expect(within(trigger).getByText('Keine Modellanbindung')).toBeInTheDocument()
+  expect(within(trigger).getByText('Stufe: Prüfen')).toBeInTheDocument()
+})

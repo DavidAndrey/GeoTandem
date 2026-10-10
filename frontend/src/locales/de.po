@@ -340,7 +340,7 @@ msgid "≤ Distanz zu"
 msgstr "≤ Distanz zu"
 
 #. Badge: attribute condition
-#: src/workplace/QueryPanel.tsx
+#: src/editor/CompactTree.tsx
 msgid "A"
 msgstr "A"
 
@@ -367,9 +367,14 @@ msgid "Abbrechen"
 msgstr "Abbrechen"
 
 #: src/editor/EditorPanel.tsx
+#: src/model/tree.tsx
 #: src/workplace/QueryPanel.tsx
 msgid "Abfrage"
 msgstr "Abfrage"
+
+#: src/model/tree.tsx
+msgid "Abfrage · Ergebnis {title}"
+msgstr "Abfrage · Ergebnis {title}"
 
 #: src/session/SaveAsDialog.tsx
 msgid "Abfrage · Ziel {target}"
@@ -400,8 +405,13 @@ msgid "Abfrageschema"
 msgstr "Abfrageschema"
 
 #: src/admin/format.ts
+#: src/model/statusKey.ts
 msgid "abgebrochen"
 msgstr "abgebrochen"
+
+#: src/model/statusKey.ts
+msgid "abgelehnt"
+msgstr "abgelehnt"
 
 #: src/workplace/LayerPanel.tsx
 msgid "Abgeleitet · Sitzung"
@@ -414,6 +424,10 @@ msgstr "Abgeleitete Layer (als Rezept)"
 #: src/operations/OperationDialog.tsx
 msgid "Abgestufte Grösse"
 msgstr "Abgestufte Grösse"
+
+#: src/model/statusKey.ts
+msgid "abgewiesen"
+msgstr "abgewiesen"
 
 #: src/admin/ImportRunPage.tsx
 msgid "Ablauf"
@@ -582,6 +596,14 @@ msgstr "Anderen Ergebnis-Layer wählen"
 msgid "Anfragen von anderen Seiten werden nicht angenommen."
 msgstr "Anfragen von anderen Seiten werden nicht angenommen."
 
+#: src/model/statusKey.ts
+msgid "angehalten · Begrenzung"
+msgstr "angehalten · Begrenzung"
+
+#: src/model/statusKey.ts
+msgid "angewendet"
+msgstr "angewendet"
+
 #: src/admin/UsersPage.tsx
 msgid "Anlegen"
 msgstr "Anlegen"
@@ -697,6 +719,10 @@ msgstr "aus Raumfilter"
 msgid "Ausschnitt"
 msgstr "Ausschnitt"
 
+#: src/model/tree.tsx
+msgid "Ausserdem, nur unter „Technisch“: {extra}"
+msgstr "Ausserdem, nur unter „Technisch“: {extra}"
+
 #: src/queries/SavedQueries.tsx
 msgid "Auswählen ersetzt die aktuelle Abfrage (bei Änderungen mit Rückfrage)."
 msgstr "Auswählen ersetzt die aktuelle Abfrage (bei Änderungen mit Rückfrage)."
@@ -704,6 +730,10 @@ msgstr "Auswählen ersetzt die aktuelle Abfrage (bei Änderungen mit Rückfrage)
 #: src/admin/LevelsPage.tsx
 msgid "automatisch"
 msgstr "automatisch"
+
+#: src/model/statusKey.ts
+msgid "automatisch angewendet"
+msgstr "automatisch angewendet"
 
 #: src/admin/SystemPage.tsx
 msgid "Backend nicht erreichbar: {error}"
@@ -734,6 +764,7 @@ msgid "Bedingung entfernen"
 msgstr "Bedingung entfernen"
 
 #: src/editor/EditorPanel.tsx
+#: src/model/tree.tsx
 #: src/queries/ManageQueriesDialog.tsx
 msgid "Bedingungen"
 msgstr "Bedingungen"
@@ -1820,6 +1851,7 @@ msgid "Fassung"
 msgstr "Fassung"
 
 #: src/admin/ImportRunPage.tsx
+#: src/model/statusKey.ts
 msgid "Fehler"
 msgstr "Fehler"
 
@@ -1865,6 +1897,10 @@ msgstr "Feldname"
 msgid "Feldname {field}"
 msgstr "Feldname {field}"
 
+#: src/model/statusKey.ts
+msgid "fertig"
+msgstr "fertig"
+
 #: src/editor/EditorPanel.tsx
 msgid "Filter entfernen"
 msgstr "Filter entfernen"
@@ -1893,6 +1929,7 @@ msgid "Freigabe"
 msgstr "Freigabe"
 
 #: src/admin/ConnectionsPage.tsx
+#: src/model/statusKey.ts
 msgid "freigegeben"
 msgstr "freigegeben"
 
@@ -1932,7 +1969,7 @@ msgid "Für Modell"
 msgstr "Für Modell"
 
 #. Badge: group
-#: src/workplace/QueryPanel.tsx
+#: src/editor/CompactTree.tsx
 msgid "G"
 msgstr "G"
 
@@ -2278,6 +2315,7 @@ msgstr "keine"
 msgid "Keine Abfrage passt."
 msgstr "Keine Abfrage passt."
 
+#: src/model/tree.tsx
 #: src/workplace/QueryPanel.tsx
 msgid "Keine Bedingung: alle Objekte sind Treffer."
 msgstr "Keine Bedingung: alle Objekte sind Treffer."
@@ -2301,6 +2339,10 @@ msgstr "keine Koordinaten"
 #: src/workplace/AddLayers.tsx
 msgid "Keine Layer freigegeben."
 msgstr "Keine Layer freigegeben."
+
+#: src/workplace/ModelChoice.tsx
+msgid "Keine Modellanbindung"
+msgstr "Keine Modellanbindung"
 
 #: src/workplace/ModelChoice.tsx
 msgid "Keine Modellanbindung eingerichtet"
@@ -2398,6 +2440,7 @@ msgid "Lädt …"
 msgstr "Lädt …"
 
 #: src/admin/format.ts
+#: src/model/statusKey.ts
 msgid "läuft"
 msgstr "läuft"
 
@@ -2544,6 +2587,10 @@ msgstr "Maximum {field}"
 msgid "medium"
 msgstr "medium"
 
+#: src/model/statusKey.ts
+msgid "Meldung"
+msgstr "Meldung"
+
 #: src/map/Measurement.tsx
 msgid "Messart"
 msgstr "Messart"
@@ -2604,6 +2651,15 @@ msgstr "Mittelwert"
 #: src/admin/ConnectionsPage.tsx
 msgid "Modell"
 msgstr "Modell"
+
+#: src/editor/CompactTree.tsx
+msgctxt "origin mark"
+msgid "Modell"
+msgstr "Modell"
+
+#: src/model/statusKey.ts
+msgid "Modell arbeitet …"
+msgstr "Modell arbeitet …"
 
 #: src/admin/ConnectionsPage.tsx
 msgid "Modell vorhanden"
@@ -2784,6 +2840,14 @@ msgstr "Nur der Kartenausschnitt ist geladen: der Layer hat mehr als {maxFeature
 msgid "Nur gefilterte Objekte (Treffer der Abfrage)"
 msgstr "Nur gefilterte Objekte (Treffer der Abfrage)"
 
+#: src/editor/CompactTree.tsx
+msgid "nur im Kartenausschnitt"
+msgstr "nur im Kartenausschnitt"
+
+#: src/editor/CompactTree.tsx
+msgid "nur in der Fläche"
+msgstr "nur in der Fläche"
+
 #: src/workplace/QueryPanel.tsx
 msgid "Nur in:"
 msgstr "Nur in:"
@@ -2813,6 +2877,7 @@ msgid "Objekte ohne Partner behalten"
 msgstr "Objekte ohne Partner behalten"
 
 #: src/editor/EditorPanel.tsx
+#: src/model/tree.tsx
 #: src/workplace/QueryPanel.tsx
 msgid "ODER"
 msgstr "ODER"
@@ -2831,6 +2896,10 @@ msgstr "Öffnen"
 #: src/queries/useChooseQuery.ts
 msgid "Ohne {conditions}: ihr Layer ist nicht verfügbar."
 msgstr "Ohne {conditions}: ihr Layer ist nicht verfügbar."
+
+#: src/editor/CompactTree.tsx
+msgid "ohne Klartext:"
+msgstr "ohne Klartext:"
 
 #: src/queries/SavedQueries.tsx
 msgid "OK"
@@ -2926,7 +2995,7 @@ msgid "Quelle"
 msgstr "Quelle"
 
 #. Badge: spatial or reference condition (Raum)
-#: src/workplace/QueryPanel.tsx
+#: src/editor/CompactTree.tsx
 msgid "R"
 msgstr "R"
 
@@ -2949,6 +3018,10 @@ msgstr "Rolle"
 #: src/admin/UsersPage.tsx
 msgid "Rolle: {label}"
 msgstr "Rolle: {label}"
+
+#: src/model/statusKey.ts
+msgid "Rückfrage"
+msgstr "Rückfrage"
 
 #: src/auth/UserMenu.tsx
 #: src/queries/ManageQueriesDialog.tsx
@@ -3237,6 +3310,10 @@ msgstr "Tabellenblatt"
 msgid "Tabulator"
 msgstr "Tabulator"
 
+#: src/model/tree.tsx
+msgid "Technisch (Abfrageobjekt JSON)"
+msgstr "Technisch (Abfrageobjekt JSON)"
+
 #: src/admin/ImportWizard.tsx
 msgid "Technischer Name"
 msgstr "Technischer Name"
@@ -3299,6 +3376,10 @@ msgstr "Typ"
 msgid "Über diesen Vorschlag ist schon entschieden."
 msgstr "Über diesen Vorschlag ist schon entschieden."
 
+#: src/model/statusKey.ts
+msgid "übergangen"
+msgstr "übergangen"
+
 #: src/admin/ImportWizard.tsx
 #: src/editor/EditorPanel.tsx
 #: src/operations/OperationDialog.tsx
@@ -3333,6 +3414,7 @@ msgid "Unbekannte Spalten: {columns}."
 msgstr "Unbekannte Spalten: {columns}."
 
 #: src/editor/EditorPanel.tsx
+#: src/model/tree.tsx
 #: src/workplace/QueryPanel.tsx
 msgid "UND"
 msgstr "UND"
@@ -3364,6 +3446,10 @@ msgstr "Unvollständig"
 #: src/admin/ConnectionsPage.tsx
 msgid "Ursache"
 msgstr "Ursache"
+
+#: src/model/statusKey.ts
+msgid "veraltet"
+msgstr "veraltet"
 
 #: src/admin/SystemPage.tsx
 msgid "Verbinde …"
@@ -3407,6 +3493,10 @@ msgstr "Verwerfen"
 msgid "Verwerfen und schliessen"
 msgstr "Verwerfen und schliessen"
 
+#: src/editor/CompactTree.tsx
+msgid "Vom Modell gesetzt; die Marke fällt weg, sobald Sie Feld, Operator oder Wert ändern."
+msgstr "Vom Modell gesetzt; die Marke fällt weg, sobald Sie Feld, Operator oder Wert ändern."
+
 #: src/editor/EditorPanel.tsx
 msgid "von"
 msgstr "von"
@@ -3415,6 +3505,10 @@ msgstr "von"
 #: src/admin/ImportRunPage.tsx
 msgid "Von"
 msgstr "Von"
+
+#: src/model/statusKey.ts
+msgid "von Hand übernommen"
+msgstr "von Hand übernommen"
 
 #: src/editor/describe.ts
 msgctxt "date"
@@ -3439,6 +3533,10 @@ msgstr "Vorgang"
 msgid "Vorschau"
 msgstr "Vorschau"
 
+#: src/model/statusKey.ts
+msgid "Vorschlag"
+msgstr "Vorschlag"
+
 #: src/admin/format.ts
 msgid "Vorschlag für {field} bestätigen"
 msgstr "Vorschlag für {field} bestätigen"
@@ -3447,6 +3545,10 @@ msgstr "Vorschlag für {field} bestätigen"
 #: src/admin/ImportWizard.tsx
 msgid "Warnung"
 msgstr "Warnung"
+
+#: src/model/statusKey.ts
+msgid "wartet auf Freigabe"
+msgstr "wartet auf Freigabe"
 
 #: src/admin/LevelsPage.tsx
 msgid "Was das Modell darf"
@@ -3631,6 +3733,10 @@ msgstr "Zuordnung"
 #: src/admin/ImportWizard.tsx
 msgid "Zurück"
 msgstr "Zurück"
+
+#: src/model/statusKey.ts
+msgid "zurückgenommen"
+msgstr "zurückgenommen"
 
 #: src/i18n/errors.ts
 msgid "Zwei Stufen heissen „{name}\"; jede braucht einen eigenen Namen."
