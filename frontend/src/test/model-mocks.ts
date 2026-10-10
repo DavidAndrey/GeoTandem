@@ -228,6 +228,8 @@ export function promptRoutes(id: CaseId, levelName: LevelName = 'Prüfen') {
 //   account's latest model change (else ``nothing_to_undo``).
 // - ``touched``: ``applied`` only (else 409 ``nothing_to_undo``); the record
 //   is answered unchanged, the first report stays.
+// - ``decide``: ``proposal_only`` only for a proposal with an ``off`` class,
+//   else 409 ``not_approved`` (WP71).
 // - Any other wrong status: 409 ``already_decided`` on a decided record, else
 //   409 ``not_approved`` (the store's ``_wrong_state``).
 // Times are naive UTC with microseconds, as the server writes them.
@@ -450,6 +452,13 @@ export function modelServer(
         if ((body.decision === 'adjusted') !== (body.query !== undefined && body.query !== null))
           return fail('bad_request', 'adjusted, and only that, names the applied query', {}, 400)
         if (view.status !== 'proposed') return wrongState(view, 'decide')
+        // WP71: ``proposal_only`` belongs to a level with ``off`` parts (store.py ``decide``).
+        if (body.decision === 'proposal_only' && !(view.governance?.off ?? []).length)
+          return fail(
+            'not_approved',
+            `Model action ${view.id} waits for approval: 'proposal_only' is for a proposal whose level has an 'off' part.`,
+            { id: view.id, status: view.status },
+          )
         return set({
           ...view,
           status: 'applied',

@@ -148,6 +148,8 @@ def require_interactive(request: Request, account: CurrentAccount) -> Account:
     is a request whose ``Authorization`` header carries a token scheme
     (``Bearer``, or anything but ``Basic``), the place a model or MCP token
     travels in (E4). ``Basic`` passes: a reverse proxy in front may ask for it.
+    A refusal is a security event (``session_required``). Used by the preview
+    (P2) and by the person's decisions: approve, reject, decide (WP71).
 
     Obligation for E4: a token credential must never set
     ``request.state.credential`` to ``SESSION``; only ``signed_in`` (the login
@@ -155,6 +157,13 @@ def require_interactive(request: Request, account: CurrentAccount) -> Account:
     credential = getattr(request.state, "credential", None)
     scheme = request.headers.get("authorization", "basic").strip().split(" ", 1)[0]
     if credential != SESSION or scheme.lower() != "basic":
+        # Which way it failed, never the header: its first word may be the token itself.
+        audit.event(
+            "session_required",
+            username=account.username,
+            credential=credential if credential == SESSION else "other",
+            authorization_header=scheme.lower() != "basic",
+        )
         raise SessionRequired("This needs an interactive session; a token is not accepted here.")
     return account
 

@@ -941,6 +941,8 @@ export interface paths {
      * Choose
      * @description Choose a connection, a level or both. A disabled connection is refused for
      *     administrators too (C14); a level users may not choose is refused for users.
+     *     The person's choice only (``session_required`` for a token, WP71): a program
+     *     acting for the account must not move it to a level without approval.
      */
     put: operations['choose_api_llm_options_put']
     post?: never
@@ -1032,7 +1034,8 @@ export interface paths {
     /**
      * Decide
      * @description Applied by hand or edited and applied through Modus A (P1, D2); the
-     *     owner's alone. ``adjusted`` names the query the user applied, logged only.
+     *     owner's alone. ``adjusted`` names the query the user applied, logged only;
+     *     ``proposal_only`` only for a proposal with an ``off`` class (section 2).
      */
     post: operations['decide_api_model_actions__action_id__decide_post']
     delete?: never
@@ -1850,7 +1853,9 @@ export interface components {
     }
     /**
      * Choice
-     * @description Only the fields sent change; ``null`` returns to the default.
+     * @description Only the fields sent change; ``null`` returns to the default. Nothing else
+     *     is accepted (422): a matrix, a level's cells or a connection's address sent
+     *     along would be ignored, but refusing them says so (WP71).
      */
     Choice: {
       /**
@@ -2985,6 +2990,8 @@ export interface components {
     /**
      * LevelSet
      * @description Every level in display order; saved as a whole, so its rules hold together (H7).
+     *     An unknown field, here or in a level, is refused (422): a misspelt
+     *     ``selectable`` must not save a level with the default instead (WP71).
      */
     LevelSet: {
       /** Levels */
@@ -8764,6 +8771,15 @@ export interface operations {
           'application/json': components['schemas']['ErrorBody']
         }
       }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
       /** @description Unprocessable Content */
       422: {
         headers: {
@@ -9083,6 +9099,15 @@ export interface operations {
           'application/json': components['schemas']['ErrorBody']
         }
       }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
       /** @description Not Found */
       404: {
         headers: {
@@ -9143,6 +9168,15 @@ export interface operations {
       }
       /** @description Bad Request */
       400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Forbidden */
+      403: {
         headers: {
           [name: string]: unknown
         }
@@ -9214,6 +9248,15 @@ export interface operations {
       }
       /** @description Bad Request */
       400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Forbidden */
+      403: {
         headers: {
           [name: string]: unknown
         }

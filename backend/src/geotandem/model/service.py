@@ -78,10 +78,11 @@ from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session
 
 from geotandem.auth.accounts import Account
-from geotandem.auth.visibility import view_for
+from geotandem.auth.visibility import visible_names
 from geotandem.catalog import ModelProfile, model_profile
 from geotandem.connections import ConnectionInfo, ConnectionProblem, Connections
 from geotandem.data import DataBackend, Limits, Op
+from geotandem.data.view import LayerView
 from geotandem.db.orm import ModelAction
 from geotandem.engine import count_query, ids_query, run_query, stamp_of
 from geotandem.engine.errors import QueryTimedOut
@@ -144,10 +145,18 @@ def close_stale(engine: Engine, clock: Callable[[], datetime] = utc_now) -> list
     return ModelActionStore(engine, clock).close_stale(clock() - timedelta(seconds=MODEL_CALL_S))
 
 
+def read_view(backend: DataBackend, account: Account) -> DataBackend:
+    """The layers ``account`` sees, read-only whatever its role (F-9.5):
+    ``view_for`` hands an administrator the data core itself, which can write;
+    the model path gets a ``LayerView`` over the same layers instead, whose
+    writes raise ``PermissionError`` (WP71)."""
+    return LayerView(backend, visible_names(backend.engine, account.role))
+
+
 def profile_for(backend: DataBackend, account: Account) -> tuple[DataBackend, ModelProfile]:
-    """The account's view and the layer profile its model gets over it (S3):
-    what it sees and the administrator released for the model."""
-    view = view_for(backend, account)
+    """The account's read-only view and the layer profile its model gets over it
+    (S3): what it sees and the administrator released for the model."""
+    view = read_view(backend, account)
     return view, model_profile(backend.engine, view.layer_names())
 
 
@@ -317,14 +326,16 @@ class PromptFlow:
         if request.approach != "direct":
             raise ValueError("the tool chain arrives with WP75")
         level = active_level(self.backend.engine, caller.id, admin=caller.role == "admin")
-        connection = self.connections.active(caller.id)
-        if connection is None:
+        # One read: the snapshot is of the connection the call goes to (WP71).
+        active = self.connections.active_call(caller.id)
+        if active is None:
             raise ConnectionProblem(
                 409,
                 "connection_not_available",
                 "No model connection is set up for this account.",
                 reason="none",
             )
+        connection, endpoint = active
         view, profile = profile_for(self.backend, caller)
         follow_up = None
         if request.parent_action_id is not None:
@@ -338,7 +349,6 @@ class PromptFlow:
             follow_up=follow_up,
             context_length=connection.context_length,
         )
-        endpoint = self.connections.endpoint(connection.id)
         timeout_s = min(endpoint.timeout_s, MODEL_CALL_S)
         call = _Call(
             endpoint=replace(endpoint, timeout_s=timeout_s),
@@ -514,7 +524,8 @@ class PromptFlow:
         return self.store.get(caller, action_id)
 
     def decide(self, caller: Account, action_id: int, request: DecideRequest) -> ModelActionView:
-        """The hand-over (P1); the store keeps its rules."""
+        """The hand-over (P1); the store keeps its rules, ``proposal_only`` only
+        for a proposal whose level had an ``off`` part (section 2, WP71)."""
         view = self.store.decide(
             caller,
             action_id,
@@ -569,7 +580,7 @@ class PromptFlow:
         try:
             ready = self.store.ready(caller, action_id, "execute", ["approved"])
             query = _stored(ready, "execute")
-            visible = view_for(self.backend, caller)
+            visible = read_view(self.backend, caller)
             result = run_query(query, visible, self.limits, self.unsupported)
             view = self.store.execute(caller, action_id, stamp_of(result))
         finally:
@@ -590,7 +601,7 @@ class PromptFlow:
         share one time limit, as ``/api/query/count`` does."""
         ready = self.store.ready(caller, action_id, "preview", ["proposed", "approved"])
         query = _stored(ready, "preview")
-        view = view_for(self.backend, caller)
+        view = read_view(self.backend, caller)
         budget = self.limits.timeout_s
         deadline = time.monotonic() + budget
         ids = ids_query(query, view, self.limits, self.unsupported)

@@ -875,18 +875,27 @@ class ModelActionStore:
                 "An adjusted decision, and only that, names the query the user applied.",
                 decision=decision,
             )
-        return self._move(
-            caller,
-            action_id,
-            "decide",
-            ["proposed"],
-            lambda _: {
+
+        def change(row: ModelAction) -> dict[str, Any]:
+            if decision == "proposal_only" and not row.proposal_only:
+                # Section 2: a level with an ``off`` part only. One that waits for
+                # approval is approved, rejected or adjusted (WP71, security review #29).
+                raise ActionError(
+                    "not_approved",
+                    f"Model action {row.id} waits for approval: 'proposal_only' is for a "
+                    "proposal whose level has an 'off' part.",
+                    http_status=409,
+                    id=row.id,
+                    status=row.status,
+                )
+            return {
                 "status": "applied",
                 "decision": decision,
                 "applied_by_hand": applied_by_hand,
                 "applied_query": _query_json(applied_query),
-            },
-        )
+            }
+
+        return self._move(caller, action_id, "decide", ["proposed"], change)
 
     # from approved
 

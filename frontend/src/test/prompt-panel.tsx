@@ -8,7 +8,14 @@ import type { LLMOptions, ModelActionView, RejectReason } from '../api/client'
 import { useMapView } from '../map/view'
 import { resetApproval } from '../model/approval/flow'
 import { attribute, layer, signedIn } from './fixtures'
-import { actionView, isFakeError, levelOption, modelServer, type ModelServer } from './model-mocks'
+import {
+  actionView,
+  isFakeError,
+  levelOption,
+  modelServer,
+  type LevelName,
+  type ModelServer,
+} from './model-mocks'
 import { fakeApi, renderAt } from './render'
 import { Workplace } from '../workplace/Workplace'
 import { useModel } from '../model/store'
@@ -203,11 +210,16 @@ const DECIDED_AS: Partial<Record<ModelActionView['status'], ModelActionView['dec
  * record still ``proposed`` is decided, once; ``not_approved`` for a record
  * not there yet (``thinking``, ``approved``), ``already_decided`` for a
  * decided or final one; ``applied_by_hand`` belongs to ``proposal_only``, and
- * ``adjusted`` names its query (else 400).
+ * ``adjusted`` names its query (else 400). Under *Assistenz* by default: ``proposal_only``
+ * belongs to a level with ``off`` parts (WP71), any other answers ``not_approved``.
  */
-export function decideRoute(id: number, status: ModelActionView['status'] = 'proposed') {
+export function decideRoute(
+  id: number,
+  status: ModelActionView['status'] = 'proposed',
+  levelName: LevelName = 'Assistenz',
+) {
   const server = modelServer([
-    actionView('reference', { id, status, decision: DECIDED_AS[status] ?? null }),
+    actionView('reference', { id, status, decision: DECIDED_AS[status] ?? null }, levelName),
   ])
   return {
     [`POST /api/model/actions/${id}/decide`]: (init: RequestInit | undefined) => {

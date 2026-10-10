@@ -9,11 +9,12 @@ import httpx
 import pytest
 from api_helpers import ADMIN_PASSWORD, Events, sign_in, sign_in_as
 from fastapi import FastAPI
-from sqlalchemy import select, text
+from sqlalchemy import select, text, update
 from sqlalchemy.orm import Session
 
 from geotandem.connections import Connections
 from geotandem.db.orm import LLMConnection, User
+from geotandem.llm import Endpoint
 from geotandem.vault import KEY_FILE, CredentialsUnreadable, Vault
 
 Body = dict[str, Any]
@@ -45,6 +46,23 @@ async def connections(client: httpx.AsyncClient) -> dict[str, Body]:
 def state(app: FastAPI) -> Connections:
     found: Connections = app.state.geotandem.connections
     return found
+
+
+def endpoint_of(app: FastAPI, connection_id: int) -> Endpoint:
+    """The endpoint a call to this connection gets: enabled and the administrator's
+    choice, read the only way a call reads one (``active_call``, WP71)."""
+    with Session(app.state.geotandem.backend.engine) as session, session.begin():
+        session.execute(
+            update(LLMConnection).where(LLMConnection.id == connection_id).values(enabled=True)
+        )
+        admin = session.scalar(select(User.id).where(User.username == "admin"))
+        session.execute(
+            update(User).where(User.id == admin).values(llm_connection_id=connection_id)
+        )
+    assert admin is not None
+    found = state(app).active_call(admin)
+    assert found is not None and found[0].id == connection_id
+    return found[1]
 
 
 # --- the vault (C8) --------------------------------------------------------------
@@ -85,7 +103,7 @@ async def test_the_api_key_never_comes_back(
     with Session(app.state.geotandem.backend.engine) as session:
         stored = session.scalar(select(LLMConnection.api_key))
     assert stored is not None and KEY not in stored
-    endpoint = state(app).endpoint(created["id"])
+    endpoint = endpoint_of(app, created["id"])
     assert endpoint.api_key == KEY + "-neu" and KEY not in repr(endpoint)
 
     removed = await patch(client, created["id"], api_key=None)
@@ -101,14 +119,14 @@ async def test_a_key_from_another_secret_key_is_reported(
         session.execute(text("UPDATE llm_connection SET api_key = :k"), {"k": foreign})
     assert (await connections(client))["Cloud"]["credentials_unreadable"] is True
     with pytest.raises(CredentialsUnreadable):
-        state(app).endpoint(created["id"])
+        endpoint_of(app, created["id"])
 
 
 async def test_a_new_address_needs_the_key_again(client: httpx.AsyncClient, app: FastAPI) -> None:
     created = await create(client, "Cloud", **EXTERNAL, api_key=KEY)
     moved = {"base_url": "https://llm.example.org/v1"}
     await refused(await patch(client, created["id"], **moved), "api_key_bound_to_url")
-    assert state(app).endpoint(created["id"]).base_url == EXTERNAL["base_url"]
+    assert endpoint_of(app, created["id"]).base_url == EXTERNAL["base_url"]
 
     retyped = await patch(client, created["id"], **moved, api_key=KEY + "-neu")
     assert retyped.status_code == 200 and retyped.json()["has_api_key"] is True

@@ -4796,7 +4796,7 @@
           "llm"
         ],
         "summary": "Choose",
-        "description": "Choose a connection, a level or both. A disabled connection is refused for\nadministrators too (C14); a level users may not choose is refused for users.",
+        "description": "Choose a connection, a level or both. A disabled connection is refused for\nadministrators too (C14); a level users may not choose is refused for users.\nThe person's choice only (``session_required`` for a token, WP71): a program\nacting for the account must not move it to a level without approval.",
         "operationId": "choose_api_llm_options_put",
         "requestBody": {
           "content": {
@@ -4821,6 +4821,16 @@
           },
           "400": {
             "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
             "content": {
               "application/json": {
                 "schema": {
@@ -5176,7 +5186,7 @@
           "model"
         ],
         "summary": "Decide",
-        "description": "Applied by hand or edited and applied through Modus A (P1, D2); the\nowner's alone. ``adjusted`` names the query the user applied, logged only.",
+        "description": "Applied by hand or edited and applied through Modus A (P1, D2); the\nowner's alone. ``adjusted`` names the query the user applied, logged only;\n``proposal_only`` only for a proposal with an ``off`` class (section 2).",
         "operationId": "decide_api_model_actions__action_id__decide_post",
         "parameters": [
           {
@@ -5259,6 +5269,16 @@
               }
             },
             "description": "Not Implemented"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
           }
         }
       }
@@ -5342,6 +5362,16 @@
               }
             },
             "description": "Not Implemented"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
           }
         }
       }
@@ -5435,6 +5465,16 @@
               }
             },
             "description": "Not Implemented"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
           }
         }
       }
@@ -8296,9 +8336,10 @@
             "description": "None: the default."
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "title": "Choice",
-        "description": "Only the fields sent change; ``null`` returns to the default."
+        "description": "Only the fields sent change; ``null`` returns to the default. Nothing else\nis accepted (422): a matrix, a level's cells or a connection's address sent\nalong would be ignored, but refusing them says so (WP71)."
       },
       "Clarification": {
         "properties": {
@@ -8655,6 +8696,7 @@
             "title": "Connection Id"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "base_url",
@@ -9061,6 +9103,7 @@
             "title": "Request Limit Per Day"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "title": "ConnectionPatch",
         "description": "Only the fields sent change. ``api_key: null`` removes the key."
@@ -9255,6 +9298,7 @@
             "description": "The cap; required while request_limit_enabled (P5)."
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "base_url",
@@ -10965,6 +11009,7 @@
             "title": "Matrix"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "name",
@@ -11022,12 +11067,13 @@
             "title": "Levels"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "levels"
         ],
         "title": "LevelSet",
-        "description": "Every level in display order; saved as a whole, so its rules hold together (H7)."
+        "description": "Every level in display order; saved as a whole, so its rules hold together (H7).\nAn unknown field, here or in a level, is refused (422): a misspelt\n``selectable`` must not save a level with the default instead (WP71)."
       },
       "LevelSnapshot": {
         "properties": {

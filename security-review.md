@@ -496,3 +496,74 @@ the account (a new device) shares the pace with the guessers while a flood
 lasts. One browser remembers one username, the last it signed in as. At one
 check per 30 s, a sustained flood gets about 2 900 guesses a day at one
 username, against a password policy (#12) that refuses common and short ones.
+
+## Model path, E2.4 (plan E2.3–E2.6, 5.4)
+
+Date: 2026-10-10, WP71, after WP70 (enforcement), WP72 and WP73 (model log).
+Scope: Modus B as far as E2.4 builds it: every `/api/model/*` route and
+`/api/admin/model-actions`, the prompt flow and its model calls
+(`model/service.py`), the action record (`model/record/`), the CSV of the log,
+the account's choice of level and connection (`api/llm.py`, `connections.py`),
+the tool registry. Method: code reading against the checklist of plan 5.4 and
+the unit-of-attack list of WP71, each item backed by a test. The tests observe
+the effect, not only the status code: statements in the data core's query
+log, calls that reached the model, the stored record before and after
+(`backend/tests/test_model_bypass.py`, beside `test_model_enforcement.py`,
+`test_model_flow.py` and `test_model_log.py`). Each new finding was shown by a
+test that fails on the code before its fix. **Pending:** the `/security-review`
+run on the etappe's diff that plan 5.4 asks for belongs to the E2.4 etappe gate
+and has not been run yet; this section is the WP71 part.
+
+**Overall:** the rule holds past the surface. No request runs a query the
+level did not allow, approves under an `off` class, reaches another account's
+record or calls a disabled connection, whatever the body says. The findings
+are small and none is usable today: a connection read twice for one prompt, a
+decision the log could be given against its definition, the person's choices
+open to a future token, an administrator's model path holding the writable
+data core, and bodies that accepted more than they should (#28–#33).
+
+### Checklist
+
+| Item | Result | Basis |
+|---|---|---|
+| **Authorisation on every `/api/model/*` route** | No finding | Every route needs an account (#21). A record is its owner's: another account's id and a forged id answer `404 not_found` alike, on all nine built action routes, for users and, on every change, for administrators; administrators read every record (D4). Tested both ways, with the owner's same request passing afterwards as the control. The five routes still at 501 (`plan`, `run`, `adopt`, `compare`, `comparison`) answer 501 for any id, so no id tells anything; they are listed in the test, which demands the 404 once they are built. A follow-up's parent and the turns built from it are the caller's own only (P6); `/api/model/my-actions` lists own records only; `/api/admin/model-actions` needs the administrator role. |
+| **Snapshot integrity** (the level cannot be changed through the request) | #29, #31, #33 | Level and connection are resolved on the server for every prompt (H6, C14, C17): a level the user may not choose is refused at the choice and, chosen before it was closed, replaced by the default; a disabled connection is refused at the choice and never called, administrators included. The request bodies refuse unknown fields (`extra="forbid"`: `level_id`, `matrix`, `governance`, `status`, `connection`, `system_prompt`, `tools`, `turns` → 422); routes without a body read nothing sent along. The record keeps the level as it was (matrix, prompt hash) and its governance; `approve`, `execute` and the preview judge only that, so a level edited or deleted after the prompt changes no record (tested both ways). The connection snapshot is now read with the call (#28). |
+| **TOCTOU on approve/execute** | #28 | Every edge of the state diagram is a compare-and-set on the status it was checked against (`ModelActionStore._settle`): of `approve` and `reject` at once exactly one wins. `execute` checks the record, claims the action in the process (`ModelCalls.claim`) and writes with a compare-and-set, so six parallel executes run the query once; a replay is `already_decided`. Nothing runs while the model thinks or a record runs (`not_approved`); an answer arriving after an abort is dropped. The `proposal_only` check of #29 runs inside the same compare-and-set as the decision it guards. |
+| **CSV injection** | No finding | Verified (WP73): every text cell of `export.csv` gets a `'` before `=`, `+`, `-` or `@` at its start, judged after NFKC normalisation and leading white space (fullwidth forms included), and after any `;`, `,`, tab or line break inside it, where a spreadsheet opened with the wrong separator would start a new cell; every cell is quoted (`model/record/export.py`, tested by writing and reading back). |
+| **Log visibility (D4)** | No finding | Users read their own records (detail, list, "Meine Modellaktionen"), administrators all, prompt text included; the admin log, its key figures and the CSV answer 403 to users. No log line holds a prompt, an answer or a key (C15, `test_no_log_line_holds_the_prompt_or_the_answer`). |
+| **Audit events** | #30 | `model_action_decided` for every decision, by its user or by `system` at start-up; `model_action_undone`; `levels_changed`, `llm_connection_changed` (the request limit too, P5), `model_calls_busy`. New: `session_required` when a token-shaped credential is refused (#30), without the token. `approve` alone is no event: the decision that follows it is (`accepted`, or `superseded`). |
+| **DoS bounds** | No finding | At most `GEOTANDEM_MAX_MODEL_CALLS` (4) model calls at once (503 `busy`), each in a thread of its own; one per account, an aborted call included until it ends, across all logins of the account (409 `busy`, tested with four logins at once); 120 s per call, retries included; the prompt's size against the connection's context before any call; the request limit per connection and day (P5) counted in the transaction that creates the record under a process-wide lock, so parallel prompts pass exactly up to it, and an aborted request that reached the model still counts. Preview and execute take a query slot and keep the engine's limits (size, time). The CSV export stops at 50 000 rows and streams; pages are bounded. |
+| **No write reachable from the model path (F-9.5)** | #32 | No model route writes anything but its record, but an administrator's model path held the writable data core (#32). Now enumerated four ways, each a test that fails when the code moves past it: the tools (three, `read` or `state`, none writes; the direct path offers the model none); every name the model path (`model/`, `tools/`, `api/model.py`) imports from the rest of the application, each one that reads, with no relative import to slip past (a new import fails until it is listed); no name of a data-core write (`create_layer`, `replace_layer`, `drop_layer`, `duplicate_layer`: what `LayerView` refuses) anywhere on the path, as an attribute or a string; and, walking every model route as an administrator and as a user, the model's thread included, only `model_action` is written (insert and update, besides the one statement that extends a login), and every view handed to the model's checks, the preview and `execute` is a `LayerView` whose writes raise `PermissionError`. Queries run on a connection with `PRAGMA query_only`. |
+| **Prompt injection** | No finding (see residual risks) | The prompt text is the user message and nothing else: the system message (level prompt, layer profile, answer format), the answer schema and the tools are byte for byte those of a harmless prompt, and the level is the account's. A model that obeys gets no further: a write is `model_query_invalid`, a level of its own beside the query is `model_unreadable`, a query is governed by the level as any other. |
+
+### New findings
+
+| # | Priority | Finding | Impact |
+|---|---|---|---|
+| 28 | **Low** | **One prompt read its connection twice.** `PromptFlow.prompt` took the record's snapshot (name, host, local or external) and the request limit from `Connections.active`, then the endpoint by id from `Connections.endpoint` in a second transaction, which did not check that the connection was still enabled. | An administrator who changes or disables the connection between the two reads (milliseconds apart) sends that prompt, with the account's layer profile, to the new address while the record says it went to the old one, possibly local when it went out (F-9.4), or to a connection just disabled (C14). Needs the administrator's own change at that moment; a user cannot cause it. |
+| 29 | **Low** | **A proposal waiting for approval could be logged as applied by hand.** `decide` accepted `proposal_only` for every `proposed` record. Section 2 defines it for a level with an `off` part only. | A direct API client logs its *Prüfen* proposals as `proposal_only` instead of approving or rejecting them: they leave the acceptance rate, and the key figures show a level with approval duty as if it had none. Nothing runs on the server (the user applies by hand, as Modus A allows), so this is the log's integrity only. |
+| 30 | **Low (E4)** | **Approve, reject, decide and the level choice took any credential.** Only the preview needed an interactive session (P2). | Today the login cookie is the only credential, so nothing is open. With the model and MCP tokens of E4, a program acting for the account could approve its own proposal, or move the account to an `auto` level (`PUT /api/llm/options`) and then prompt and execute without a person deciding, which F-6.2 forbids. |
+| 31 | **Info** | **`PUT /api/llm/options` dropped unknown fields.** `matrix`, `selectable` or `enabled` sent along were ignored without a word. | Nothing changed, but a client could believe it had. |
+| 32 | **Low** | **An administrator's model path held the writable data core.** `view_for` gives an administrator the data core itself, not a `LayerView`; the prompt flow passed it to the model's checks and tools (`ToolContext.backend`), the preview and `execute`. | No code on the path calls a write, and queries run with `PRAGMA query_only`, so nothing is open. But F-9.5 rested on the code staying so: a chain tool (E2.5) that reached `drop_layer` through its context would drop a layer when an administrator asks, and no check would stop it. |
+| 33 | **Info** | **Level and connection bodies dropped unknown fields.** `PUT /api/admin/levels` and the connection bodies (create, change, test) ignored a field they did not know. | A misspelt `selectible: true` saved the level not selectable, `enabeld: false` left a connection on, without a word. Administrators only. |
+
+### Status of #28–#33
+
+| # | Fixed |
+|---|---|
+| 28 | `Connections.active_call` reads the active connection and its endpoint in one transaction; the prompt takes the snapshot, the request limit and the call from it. Tested by changing the connection right after the read: the call goes to the host the record names. |
+| 29 | `ModelActionStore.decide` refuses `proposal_only` for a record that is not proposal-only (`409 not_approved`), inside the compare-and-set that writes the decision, as `approve` checks its `off` classes; `adjusted` stays open to every proposal. The frontend's fake server answers the same. The E2.3 test of the hand-over now runs under *Assistenz*. |
+| 30 | `approve`, `reject`, `decide` and `PUT /api/llm/options` need an interactive session, as the preview does (`403 session_required` for a token beside the cookie, any token scheme, or a credential other than the login cookie); the refusal is logged (`session_required`). |
+| 31 | The choice takes `connection_id` and `level_id` only (`extra="forbid"`, 422). |
+| 32 | The model path takes its view from `read_view` (`model/service.py`): a `LayerView` over the account's layers for every role, all layers for an administrator, so a write raises `PermissionError` whoever asks. `view_for` itself is unchanged for the rest of the application. |
+| 33 | `Level`, `LevelSet`, the connection's call parameters (create, test) and `ConnectionPatch` refuse unknown fields (422). The admin pages and the e2e specs send none; tested with `selectible` and `enabeld`. |
+
+### Accepted residual risks
+
+- **In flight when the administrator acts.** A prompt read before its connection is disabled or edited is still sent there; the call is not cancelled, it ends by its deadline. A request limit switched on meanwhile does not refuse requests already admitted.
+- **An aborted call holds its slot** until its deadline (at most 120 s). One account holds at most one; as many accounts as there are model-call slots can fill them all, and others get `503 busy` meanwhile. There is no per-account daily limit (P5 counts per connection, over all accounts), so one account can use up the day's requests of a connection whose limit is on.
+- **What the client reports is believed for the log.** `undo` and `touched` are reported by the client and change the log only (D2: the server never sees the analysis); `adjusted` names a query the user says they applied, logged, never run. A direct client can make its own entries say so falsely; it cannot make anything run.
+- **`prompt`, `execute`, `undo`, `touched` and `abort` take any signed-in credential** until E4. A token can ask the model and execute what the account's level, chosen by the person, already allows (`auto` cells); it can neither choose that level nor approve. `undo`, `touched` and `abort` change the log only. E4 decides them together with its token design; the obligation in `require_interactive` stays: no token may set the login cookie's credential.
+- **Indirect prompt injection** through layer titles, descriptions, attribute labels and value lists in the layer profile (API10) is not filtered. Its reach is the same as a user's own prompt: the answer is checked, governed by the level, and only the stored query runs.
+- **Routes still at 501** answer the same for every id without looking at the record. `test_model_bypass.py` lists them (`PENDING_ROUTES`, `GUARDED_PENDING`); WP75 and WP76 must move each to the tested lists when they build it, or the test fails.
+- **Administrators read every prompt** (D4), by design; the prompt panel says inputs are logged.

@@ -12,7 +12,7 @@ from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, File, Query, Response, UploadFile
 from fastapi.concurrency import run_in_threadpool
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from geotandem import __version__, audit
 from geotandem.api.auth import require_admin
@@ -492,7 +492,11 @@ def set_visibility(body: VisibilityChange, state: State, user: Actor) -> list[Vi
 
 
 class LevelSet(BaseModel):
-    """Every level in display order; saved as a whole, so its rules hold together (H7)."""
+    """Every level in display order; saved as a whole, so its rules hold together (H7).
+    An unknown field, here or in a level, is refused (422): a misspelt
+    ``selectable`` must not save a level with the default instead (WP71)."""
+
+    model_config = ConfigDict(extra="forbid")
 
     levels: list[Level]
 

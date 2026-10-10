@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Annotated, Any
 
-from pydantic import BaseModel, Field, SecretStr, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, StringConstraints
 from sqlalchemy import Engine, select, update
 from sqlalchemy.orm import Session
 
@@ -46,7 +46,10 @@ class ConnectionProblem(Exception):
 
 
 class CallParameters(BaseModel):
-    """How to call the model (C4): what an ``Endpoint`` is built from."""
+    """How to call the model (C4): what an ``Endpoint`` is built from. Here and in
+    every connection body an unknown field is refused (422), never dropped (WP71)."""
+
+    model_config = ConfigDict(extra="forbid")
 
     base_url: BaseUrl
     model: ModelName
@@ -89,6 +92,8 @@ class ConnectionWrite(CallParameters):
 
 class ConnectionPatch(BaseModel):
     """Only the fields sent change. ``api_key: null`` removes the key."""
+
+    model_config = ConfigDict(extra="forbid")
 
     name: Name | None = None
     base_url: BaseUrl | None = None
@@ -253,13 +258,6 @@ class Connections:
             return self.vault.decrypt(row.api_key), False
         except CredentialsUnreadable:
             return None, True
-
-    def endpoint(self, connection_id: int) -> Endpoint:
-        """The parameters for a call, the key decrypted (C8). Raises
-        ``CredentialsUnreadable`` when the key cannot be opened."""
-        with Session(reading(self.engine)) as session:
-            row = self._row(session, connection_id)
-            return self._endpoint(row, self.vault.decrypt(row.api_key) if row.api_key else None)
 
     @staticmethod
     def _endpoint(row: LLMConnection, key: str | None) -> Endpoint:
@@ -470,18 +468,36 @@ class Connections:
 
     # --- the account's choice (C14, C17) -----------------------------------------
 
+    @staticmethod
+    def _active_row(session: Session, user_id: int) -> LLMConnection | None:
+        chosen_id = session.scalar(select(User.llm_connection_id).where(User.id == user_id))
+        chosen = session.get(LLMConnection, chosen_id) if chosen_id is not None else None
+        if chosen is not None and chosen.enabled:
+            return chosen
+        return session.scalar(
+            select(LLMConnection).where(LLMConnection.is_default, LLMConnection.enabled)
+        )
+
     def active(self, user_id: int) -> ConnectionInfo | None:
         """The connection a model action of this account uses: its choice while that
         is enabled, else the default, else none. Resolved on every use."""
         with Session(reading(self.engine)) as session:
-            chosen_id = session.scalar(select(User.llm_connection_id).where(User.id == user_id))
-            chosen = session.get(LLMConnection, chosen_id) if chosen_id is not None else None
-            if chosen is not None and chosen.enabled:
-                return self._info(chosen)
-            default = session.scalar(
-                select(LLMConnection).where(LLMConnection.is_default, LLMConnection.enabled)
-            )
-            return self._info(default) if default else None
+            row = self._active_row(session, user_id)
+            return self._info(row) if row else None
+
+    def active_call(self, user_id: int) -> tuple[ConnectionInfo, Endpoint] | None:
+        """``active`` and its endpoint, read together for a model call (C14, H7):
+        the record's snapshot (name, host, locality) is of the connection the
+        call goes to, and a connection disabled or edited meanwhile is never
+        half used, as two reads would allow (security review #28). The only way
+        to an endpoint with the key decrypted (C8) for a call; raises
+        ``CredentialsUnreadable`` when the key cannot be opened."""
+        with Session(reading(self.engine)) as session:
+            row = self._active_row(session, user_id)
+            if row is None:
+                return None
+            key = self.vault.decrypt(row.api_key) if row.api_key else None
+            return self._info(row), self._endpoint(row, key)
 
     def options(self, user_id: int) -> ConnectionChoice:
         with Session(reading(self.engine)) as session:
