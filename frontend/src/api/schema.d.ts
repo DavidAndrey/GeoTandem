@@ -1264,7 +1264,8 @@ export interface paths {
     }
     /**
      * My Actions
-     * @description The account's own entries (D4, design M16.3).
+     * @description The account's own entries, newest first (D4, design M16.3); an
+     *     administrator's too, the log of all is ``/api/admin/model-actions``.
      */
     get: operations['my_actions_api_model_my_actions_get']
     put?: never
@@ -1282,7 +1283,10 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** Actions */
+    /**
+     * Actions
+     * @description Newest first, every account's; ``total`` counts all that match.
+     */
     get: operations['actions_api_admin_model_actions_get']
     put?: never
     post?: never
@@ -1321,7 +1325,8 @@ export interface paths {
     }
     /**
      * Export Csv
-     * @description CSV of the filtered log; cells safe against formula injection.
+     * @description CSV of the filtered log, prompt text included (D4); cells safe against
+     *     formula injection (``model/record/export.py`` names the columns).
      */
     get: operations['export_csv_api_admin_model_actions_export_csv_get']
     put?: never
@@ -1339,7 +1344,10 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** Action */
+    /**
+     * Action
+     * @description Any account's record as it was (design M16.2); 404 when there is none.
+     */
     get: operations['action_api_admin_model_actions__action_id__get']
     put?: never
     post?: never
@@ -10091,7 +10099,9 @@ export interface operations {
         headers: {
           [name: string]: unknown
         }
-        content?: never
+        content: {
+          'text/csv': unknown
+        }
       }
       /** @description Bad Request */
       400: {

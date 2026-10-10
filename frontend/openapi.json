@@ -6239,7 +6239,7 @@
           "model"
         ],
         "summary": "My Actions",
-        "description": "The account's own entries (D4, design M16.3).",
+        "description": "The account's own entries, newest first (D4, design M16.3); an\nadministrator's too, the log of all is ``/api/admin/model-actions``.",
         "operationId": "my_actions_api_model_my_actions_get",
         "parameters": [
           {
@@ -6336,6 +6336,7 @@
           "admin"
         ],
         "summary": "Actions",
+        "description": "Newest first, every account's; ``total`` counts all that match.",
         "operationId": "actions_api_admin_model_actions_get",
         "parameters": [
           {
@@ -6710,7 +6711,7 @@
           "admin"
         ],
         "summary": "Export Csv",
-        "description": "CSV of the filtered log; cells safe against formula injection.",
+        "description": "CSV of the filtered log, prompt text included (D4); cells safe against\nformula injection (``model/record/export.py`` names the columns).",
         "operationId": "export_csv_api_admin_model_actions_export_csv_get",
         "parameters": [
           {
@@ -6818,7 +6819,10 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response"
+            "description": "Successful Response",
+            "content": {
+              "text/csv": {}
+            }
           },
           "400": {
             "content": {
@@ -6879,6 +6883,7 @@
           "admin"
         ],
         "summary": "Action",
+        "description": "Any account's record as it was (design M16.2); 404 when there is none.",
         "operationId": "action_api_admin_model_actions__action_id__get",
         "parameters": [
           {

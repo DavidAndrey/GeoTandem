@@ -19,7 +19,7 @@ Logs carry ids and codes only, never prompt or answer text (C15).
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Callable, Collection, Iterable, Mapping
+from collections.abc import Callable, Collection, Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Literal
@@ -330,9 +330,11 @@ class ModelActionStore:
         return found[::-1]
 
     @staticmethod
-    def _where(caller: Account, filters: ActionFilters) -> list[ColumnElement[bool]]:
+    def _where(
+        caller: Account, filters: ActionFilters, own: bool = False
+    ) -> list[ColumnElement[bool]]:
         where: list[ColumnElement[bool]] = []
-        if not _admin(caller):
+        if own or not _admin(caller):
             where.append(ModelAction.user_id == caller.id)
         if filters.since is not None:
             where.append(ModelAction.created_at >= filters.since)
@@ -355,11 +357,13 @@ class ModelActionStore:
         *,
         offset: int = 0,
         limit: int = 50,
+        own: bool = False,
     ) -> ModelActionPage:
-        """Newest first; a user's list holds their own records only (D4)."""
+        """Newest first; a user's list holds their own records only (D4). With
+        ``own`` an administrator's list does too ("Meine Modellaktionen", M16.3)."""
         if offset < 0 or not 1 <= limit <= MAX_PAGE:
             raise ValueError(f"offset >= 0 and 1 <= limit <= {MAX_PAGE}")
-        where = self._where(caller, filters)
+        where = self._where(caller, filters, own)
         with Session(reading(self.engine)) as db:
             total = db.scalar(select(func.count()).select_from(ModelAction).where(*where))
             rows = db.scalars(
@@ -370,6 +374,24 @@ class ModelActionStore:
                 .limit(limit)
             )
             return ModelActionPage(items=[_summary(row) for row in rows], total=total or 0)
+
+    def export(
+        self,
+        caller: Account,
+        filters: ActionFilters = ActionFilters(),  # noqa: B008 - frozen
+    ) -> Iterator[ModelActionView]:
+        """Every record of the filters as a full view, newest first, for the CSV
+        of the log (WP73); the same visibility as the list (D4). Read in batches,
+        so a long period does not hold every record at once."""
+        with Session(reading(self.engine)) as db:
+            rows = db.scalars(
+                select(ModelAction)
+                .where(*self._where(caller, filters))
+                .order_by(ModelAction.created_at.desc(), ModelAction.id.desc())
+                .execution_options(yield_per=500)
+            )
+            for row in rows:
+                yield to_view(row)
 
     def key_figures(
         self,

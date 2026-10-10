@@ -80,9 +80,14 @@ BUILT = {
     ("GET", "/api/model/actions/1"): "WP65",
     ("POST", "/api/model/actions/1/decide"): "WP65",
     ("POST", "/api/model/actions/1/abort"): "WP65",
+    ("GET", "/api/model/my-actions"): "WP73",
+    ("GET", "/api/admin/model-actions"): "WP73",
+    ("GET", "/api/admin/model-actions/key-figures"): "WP73",
+    ("GET", "/api/admin/model-actions/export.csv"): "WP73",
+    ("GET", "/api/admin/model-actions/1"): "WP73",
 }
 """Routes whose work package has landed: they no longer answer 501
-(``test_model_flow.py`` tests them)."""
+(``test_model_flow.py`` and ``test_model_log.py`` test them)."""
 BODIES: dict[str, dict[str, Any]] = {
     "/api/model/prompt": {"text": "Primarschulen in Köniz"},
     "/api/model/actions/1/decide": {"decision": "proposal_only"},
@@ -416,7 +421,7 @@ async def test_the_log_is_for_administrators(client: httpx.AsyncClient) -> None:
     await sign_in_as(client, "m.keller")
     for method, path in ADMIN_ROUTES:
         assert (await _call(client, method, path)).status_code == 403, path
-    assert (await _call(client, "GET", "/api/model/my-actions")).status_code == 501
+    assert (await _call(client, "GET", "/api/model/my-actions")).status_code == 200
 
 
 async def test_paging_is_bounded(client: httpx.AsyncClient) -> None:

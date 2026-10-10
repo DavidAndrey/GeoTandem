@@ -174,8 +174,10 @@ def comparison(action_id: int, account: CurrentAccount) -> Comparison:
 @router.get("/my-actions", responses=ERRORS)
 def my_actions(
     account: CurrentAccount,
+    flow: Flow,
     offset: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE)] = 50,
 ) -> ModelActionPage:
-    """The account's own entries (D4, design M16.3)."""
-    raise NotBuilt("WP73")
+    """The account's own entries, newest first (D4, design M16.3); an
+    administrator's too, the log of all is ``/api/admin/model-actions``."""
+    return flow.store.list_actions(account, offset=offset, limit=limit, own=True)
