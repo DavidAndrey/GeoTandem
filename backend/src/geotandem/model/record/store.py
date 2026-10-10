@@ -21,7 +21,7 @@ from __future__ import annotations
 import hashlib
 from collections.abc import Callable, Collection, Iterable, Mapping
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 
 from sqlalchemy import ColumnElement, Engine, case, func, select, update
@@ -184,6 +184,7 @@ def to_view(row: ModelAction) -> ModelActionView:
             "reject_reason": row.reject_reason,
             "applied_by_hand": row.applied_by_hand,
             "undone_at": row.undone_at,
+            "touched_at": row.touched_at,
             "previewed_at": row.previewed_at,
             "parent_action_id": row.parent_action_id,
             "reference": row.reference,
@@ -297,6 +298,13 @@ def _allowed(row: ModelAction) -> None:
             op_class=off[0],
             level=row.level_name,
         )
+
+
+def _answered_at(row: ModelAction) -> datetime:
+    """When the model's answer arrived: the call's start plus its latency. Never
+    before ``created_at``; without a recorded call, ``created_at``."""
+    start = max(row.created_at, row.called_at or row.created_at)
+    return start + timedelta(milliseconds=row.latency_ms or 0)
 
 
 def _cell(row: ModelAction) -> str | None:
@@ -535,8 +543,11 @@ class ModelActionStore:
         ``failed`` (the model's answer is lost) and every ``running`` one
         ``limited``/``interrupted`` with its last complete result adoptable,
         whatever their age. An ``auto`` answer never executed (``approved``, cell
-        ``auto``) created before ``older_than`` is ``superseded``: its window may
-        still be open. A record the user approved stays approved."""
+        ``auto``) that arrived before ``older_than`` is ``superseded``; one that
+        arrived later may still have its window open. The record keeps no
+        arrival time of its own: it is the call's start (``called_at``, else
+        ``created_at``) plus the call's ``latency_ms`` (``_answered_at``). A
+        record the user approved stays approved."""
         now = self.clock()
         error = {
             "code": "llm_timeout",
@@ -562,7 +573,10 @@ class ModelActionStore:
             closed = [
                 row
                 for row in rows
-                if (row.status != "approved" or _cell(row) == "auto")
+                if (
+                    row.status != "approved"
+                    or (_cell(row) == "auto" and _answered_at(row) < older_than)
+                )
                 and self._settle(db, row, stale, change)
             ]
         self._audit(None, [row for row in closed if row.decision is not None])

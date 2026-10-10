@@ -143,12 +143,18 @@ CurrentSession = Annotated[Account, Depends(require_session)]
 
 def require_interactive(request: Request, account: CurrentAccount) -> Account:
     """A person at the application, not a program acting for them (plan E2.3-E2.6,
-    P2, F-6.7): signed in through the login cookie and sending no other
-    credential. Any other credential is refused, whatever account it stands
-    for, and so is a request that carries an ``Authorization`` header beside the
-    cookie, the place a model or MCP token travels in (E4)."""
+    P2, F-6.7): signed in through the login cookie and sending no token beside
+    it. Any other credential is refused, whatever account it stands for, and so
+    is a request whose ``Authorization`` header carries a token scheme
+    (``Bearer``, or anything but ``Basic``), the place a model or MCP token
+    travels in (E4). ``Basic`` passes: a reverse proxy in front may ask for it.
+
+    Obligation for E4: a token credential must never set
+    ``request.state.credential`` to ``SESSION``; only ``signed_in`` (the login
+    cookie) does."""
     credential = getattr(request.state, "credential", None)
-    if credential != SESSION or "authorization" in request.headers:
+    scheme = request.headers.get("authorization", "basic").strip().split(" ", 1)[0]
+    if credential != SESSION or scheme.lower() != "basic":
         raise SessionRequired("This needs an interactive session; a token is not accepted here.")
     return account
 

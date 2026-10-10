@@ -276,3 +276,38 @@ def test_a_rebuild_keeps_the_references_of_model_actions(settings: Settings) -> 
     with engine.connect() as conn:
         after = (_children(engine), sorted(tuple(r) for r in conn.execute(text(actions))))
     assert after == before
+
+
+def test_touched_at_comes_and_goes_with_0010_and_keeps_the_records(settings: Settings) -> None:
+    """WP70: the hand edit after a model action (``undo_blocked``) is its own
+    revision; 0009 belongs to the tag e2.3 and stays as it was."""
+    engine = make_engine(settings)
+    migrate.upgrade(engine, "0009")
+    assert "touched_at" not in {c["name"] for c in inspect(engine).get_columns("model_action")}
+    with engine.begin() as conn:
+        for id, parent in [(1, None), (2, 1)]:
+            conn.execute(
+                text(
+                    "INSERT INTO model_action (id, account, created_at, prompt, prompt_hash,"
+                    " approach, status, parent_action_id, level_id, level_name, level_matrix,"
+                    " level_prompt_hash, connection_id, connection_name, connection_model,"
+                    " connection_host, connection_locality, profile_hash) VALUES (:id, 'anna',"
+                    " '2026-10-10 08:00:00', 'p', 'h', 'direct', 'applied', :parent, 1,"
+                    " 'Prüfen', '{}', 'h', 1, 'Lokal', 'm', 'localhost', 'local', 'h')"
+                ),
+                {"id": id, "parent": parent},
+            )
+    rows = "SELECT id, parent_action_id, status FROM model_action ORDER BY id"
+    with engine.connect() as conn:
+        before = [tuple(r) for r in conn.execute(text(rows))]
+
+    migrate.upgrade(engine)
+    with engine.begin() as conn:
+        untouched = "SELECT count(*) FROM model_action WHERE touched_at IS NULL"
+        assert conn.scalar(text(untouched)) == 2
+        conn.execute(text("UPDATE model_action SET touched_at = '2026-10-10 09:00:00'"))
+
+    migrate.downgrade(engine, "0009")
+    assert "touched_at" not in {c["name"] for c in inspect(engine).get_columns("model_action")}
+    with engine.connect() as conn:
+        assert [tuple(r) for r in conn.execute(text(rows))] == before

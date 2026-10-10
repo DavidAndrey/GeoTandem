@@ -14,6 +14,7 @@ and the hand edit, concurrent decisions, and the start-up check.
 """
 
 import asyncio
+import threading
 from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass
 from datetime import timedelta
@@ -25,6 +26,7 @@ from api_helpers import ADMIN_PASSWORD, USER_PASSWORD, sign_in, sign_in_as
 from fastapi import FastAPI, Request
 from model_fixtures import case, completion, fixture
 from sqlalchemy import Select
+from sqlalchemy.orm import Session
 
 from geotandem.api.auth import signed_in
 from geotandem.api.state import AppState
@@ -32,6 +34,7 @@ from geotandem.auth import accounts
 from geotandem.auth.accounts import Account
 from geotandem.auth.visibility import set_visible
 from geotandem.data import DataBackend, Limits
+from geotandem.db.orm import ModelAction
 from geotandem.importing.run import FieldDecision, ImportDecisions, KeyReference, run_import
 from geotandem.levels import CellMode, OpClass, classify, load_levels
 from geotandem.llm import Completion, Endpoint
@@ -42,7 +45,6 @@ from geotandem.model.record import (
     NewAction,
     connection_snapshot,
     level_snapshot,
-    utc_now,
 )
 from geotandem.model.schemas import QueryAnswer
 from geotandem.model.service import MODEL_CALL_S, close_stale
@@ -497,24 +499,61 @@ async def test_enforcement_matrix(
         await install_levels(client, levels)
         kept = (await client.get(url(action_id))).json()
         assert kept["level"] == record["level"] and kept["governance"] == record["governance"]
+        if cell is not CellMode.AUTO:
+            # Now auto, then off or approve: still no execute without approval.
+            early = await client.post(url(action_id, "execute"))
+            assert (early.status_code, early.json()["code"]) == (409, "not_approved")
+            assert ran == []
         await run_surface(client, record, cell, ran)
 
     assert len(model.fake.calls) == calls, "no step after the prompt asks the model"
 
 
-async def test_a_disabled_connection_asks_nothing_and_runs_nothing(
+@pytest.mark.parametrize("role", ["user", "admin"])
+async def test_a_connection_disabled_after_the_prompt_leaves_the_record_runnable(
+    client: httpx.AsyncClient,
+    app: FastAPI,
+    model: Model,
+    other: httpx.AsyncClient,
+    ran: list[str],
+    role: str,
+) -> None:
+    """D2: approve and execute call no model, the stored query runs as the
+    caller, so a connection disabled since the prompt does not stop them. The
+    disabled connection is never asked again: the next prompt goes to the
+    default (C14)."""
+    await connect(client)
+    extra = await connect(client, name="Extra", is_default=False)
+    await install_levels(client, fixture_levels())  # Prüfen, the default: approve
+    actor = other if role == "user" else client
+    chosen = await actor.put(OPTIONS, json={"connection_id": extra["id"]})
+    assert chosen.status_code == 200, chosen.text
+    record = await ask(actor, app, model, PLAIN)
+    assert (record["connection"]["name"], record["status"]) == ("Extra", "proposed")
+
+    disabled = await client.patch(f"{CONNECTIONS}/{extra['id']}", json={"enabled": False})
+    assert disabled.status_code == 200, disabled.text
+    calls = len(model.fake.calls)
+    ran.clear()
+
+    assert (await actor.post(url(record["id"], "approve"))).status_code == 200
+    executed = await actor.post(url(record["id"], "execute"))
+    assert executed.status_code == 200, executed.text
+    assert executed.json()["action"]["decision"] == "accepted"
+    assert executed.json()["action"]["connection"]["name"] == "Extra"  # as it was
+    assert len(ran) == 1 and len(model.fake.calls) == calls
+
+    after = await ask(actor, app, model, PLAIN)
+    assert after["connection"]["name"] == "Lokal"
+
+
+async def test_without_an_enabled_connection_nothing_is_asked_or_run(
     client: httpx.AsyncClient, app: FastAPI, model: Model, ran: list[str]
 ) -> None:
     await connect(client, enabled=False, is_default=False)
-    ids = await install_levels(client, fixture_levels())
-    await choose(client, ids["Automatisch"])
-    model.fake.script.append(answer(PLAIN))
     response = await client.post(PROMPT, json={"text": "Primarschulen bitte"})
     assert (response.status_code, response.json()["code"]) == (409, "connection_not_available")
     assert model.fake.calls == [] and ran == []
-    executed = await client.post(url(1, "execute"))
-    assert (executed.status_code, executed.json()["code"]) == (404, "not_found")
-    assert ran == []
 
 
 async def test_a_level_users_may_not_choose_never_governs_their_answer(
@@ -667,6 +706,45 @@ async def test_concurrent_approve_and_reject_have_one_winner(
         assert final["status"] == winner
 
 
+async def test_concurrent_executes_run_the_query_once(
+    client: httpx.AsyncClient,
+    app: FastAPI,
+    model: Model,
+    auto: dict[str, int],
+    ran: list[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The first execute holds the engine; the second, meanwhile, is refused
+    without running anything (the action is claimed before it runs)."""
+    record = await ask(client, app, model, PLAIN)
+    ran.clear()
+    entered, release = threading.Event(), threading.Event()
+    backend_type = type(app.state.geotandem.backend)
+    logged = backend_type.execute  # the ``ran`` observer
+
+    def held(self: DataBackend, stmt: Select[Any], limits: Limits) -> list[dict[str, Any]]:
+        entered.set()
+        assert release.wait(10)
+        return logged(self, stmt, limits)
+
+    monkeypatch.setattr(backend_type, "execute", held)
+    first = asyncio.create_task(client.post(url(record["id"], "execute")))
+    assert await asyncio.to_thread(entered.wait, 10)
+    second, third = await asyncio.gather(
+        client.post(url(record["id"], "execute")), client.post(url(record["id"], "execute"))
+    )
+    release.set()
+    done = await first
+
+    assert done.status_code == 200, done.text
+    for refused in (second, third):
+        assert (refused.status_code, refused.json()["code"]) == (409, "already_decided")
+    assert len(ran) == 1
+    replay = await client.post(url(record["id"], "execute"))
+    assert (replay.status_code, replay.json()["code"]) == (409, "already_decided")
+    assert len(ran) == 1
+
+
 # --- governance (M6.3) ----------------------------------------------------------
 
 
@@ -704,6 +782,10 @@ async def test_the_preview_is_for_an_interactive_session_only(
     # A token beside the login cookie, or a token alone.
     with_cookie = await client.get(url(record["id"], "preview"), headers=token)
     assert (with_cookie.status_code, with_cookie.json()["code"]) == (403, "session_required")
+    for scheme in ("bearer", "Token", "Negotiate"):
+        other_scheme = {"Authorization": f"{scheme} gt_mcp_4f1c9a7e"}
+        refused = await client.get(url(record["id"], "preview"), headers=other_scheme)
+        assert (refused.status_code, refused.json()["code"]) == (403, "session_required")
     alone = httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test")
     async with alone:
         response = await alone.get(url(record["id"], "preview"), headers=token)
@@ -729,6 +811,10 @@ async def test_the_preview_is_for_an_interactive_session_only(
 
     allowed = await client.get(url(record["id"], "preview"))
     assert allowed.status_code == 200, allowed.text
+    # A reverse proxy's Basic authentication in front is no token.
+    proxy = {"Authorization": "Basic cHJveHk6c2VjcmV0"}
+    behind_proxy = await client.get(url(record["id"], "preview"), headers=proxy)
+    assert behind_proxy.status_code == 200, behind_proxy.text
 
 
 async def test_the_preview_changes_no_status_and_never_reaches_the_model(
@@ -785,7 +871,10 @@ async def test_a_hand_edit_after_the_change_blocks_its_undo(
     touched = await client.post(url(action["id"], "touched"))
     assert touched.status_code == 200, touched.text
     assert (touched.json()["status"], touched.json()["decision"]) == ("applied", "auto")
-    assert (await client.post(url(action["id"], "touched"))).status_code == 200  # once is enough
+    assert action["touched_at"] is None and touched.json()["touched_at"] is not None
+    again = await client.post(url(action["id"], "touched"))
+    assert again.status_code == 200  # the first report's time stays
+    assert again.json()["touched_at"] == touched.json()["touched_at"]
 
     blocked = await client.post(url(action["id"], "undo"))
     assert (blocked.status_code, blocked.json()["code"]) == (409, "undo_blocked")
@@ -829,13 +918,21 @@ async def test_a_new_prompt_closes_an_unexecuted_auto_answer(
 async def test_the_start_up_check_closes_an_auto_answer_left_unexecuted(
     client: httpx.AsyncClient, app: FastAPI, model: Model, auto: dict[str, int]
 ) -> None:
+    """Timed from when the answer arrived (the call's start plus its latency),
+    not from the prompt: a slow answer still gets its whole window."""
     record = await ask(client, app, model, PLAIN)
     engine = app.state.geotandem.backend.engine
-    created = utc_now()
+    with Session(engine) as db, db.begin():
+        row = db.get(ModelAction, record["id"])
+        assert row is not None and row.called_at is not None
+        row.called_at = row.created_at + timedelta(seconds=100)
+        row.latency_ms = 15_000
+        arrived = row.created_at + timedelta(seconds=115)
 
     def at(seconds: float) -> Callable[[], Any]:
-        return lambda: created + timedelta(seconds=seconds)
+        return lambda: arrived + timedelta(seconds=seconds)
 
+    assert close_stale(engine, at(-115 + MODEL_CALL_S + 5)) == []  # by the prompt: over
     assert close_stale(engine, at(MODEL_CALL_S - 5)) == []
     assert (await client.get(url(record["id"]))).json()["status"] == "approved"
     assert close_stale(engine, at(MODEL_CALL_S + 5)) == [record["id"]]

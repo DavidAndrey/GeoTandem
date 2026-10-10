@@ -3159,6 +3159,8 @@ export interface components {
       applied_by_hand: boolean
       /** Undone At */
       undone_at?: string | null
+      /** Touched At */
+      touched_at?: string | null
       /** Previewed At */
       previewed_at?: string | null
       /** Parent Action Id */

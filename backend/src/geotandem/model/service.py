@@ -202,6 +202,21 @@ class ModelCalls:
         self._accounts: dict[int, int] = {}
         """Account id → the action whose call it has in flight."""
         self._running: set[Future[None]] = set()
+        self._executing: set[int] = set()
+        """Actions whose stored query runs now (``PromptFlow.execute``)."""
+
+    def claim(self, action_id: int) -> bool:
+        """The action's ``execute`` may run: ``False`` while another runs it. The
+        application is one process, so this holds across its threads."""
+        with self._lock:
+            if action_id in self._executing:
+                return False
+            self._executing.add(action_id)
+            return True
+
+    def release(self, action_id: int) -> None:
+        with self._lock:
+            self._executing.discard(action_id)
 
     def take(self) -> None:
         """A slot for one call, without waiting; given back when the call ends."""
@@ -537,11 +552,28 @@ class PromptFlow:
         """Run the stored query (D2): only an ``approved`` record of the caller's,
         as the caller (visibility, limits); the stamp is kept, the rows go to the
         user only. The decision is ``auto`` when nobody was asked, else
-        ``accepted``. A refused step runs nothing; a replay is ``already_decided``."""
-        ready = self.store.ready(caller, action_id, "execute", ["approved"])
-        query = _stored(ready, "execute")
-        result = run_query(query, view_for(self.backend, caller), self.limits, self.unsupported)
-        view = self.store.execute(caller, action_id, stamp_of(result))
+        ``accepted``. A refused step runs nothing; a replay is ``already_decided``,
+        and so is an ``execute`` while another of the same action runs: the
+        action is claimed (``ModelCalls.claim``), so its query runs once. The
+        record is checked before the claim (another account's is ``not_found``,
+        never "busy") and again under it (one executed meanwhile runs nothing)."""
+        self.store.ready(caller, action_id, "execute", ["approved"])
+        if not self.calls.claim(action_id):
+            raise ActionError(
+                "already_decided",
+                f"Model action {action_id} is being executed already.",
+                http_status=409,
+                id=action_id,
+                status="approved",
+            )
+        try:
+            ready = self.store.ready(caller, action_id, "execute", ["approved"])
+            query = _stored(ready, "execute")
+            visible = view_for(self.backend, caller)
+            result = run_query(query, visible, self.limits, self.unsupported)
+            view = self.store.execute(caller, action_id, stamp_of(result))
+        finally:
+            self.calls.release(action_id)
         log.info(
             "model action %d: executed (%s), %d features",
             action_id,
