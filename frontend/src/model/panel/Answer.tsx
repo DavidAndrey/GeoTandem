@@ -11,7 +11,7 @@ import type { Assumption as AssumptionData, ModelActionView, ModelAnswer } from 
 import { ErrorNotice } from '../../components/ui'
 import { useCounts } from '../../editor/useCounts'
 import { errorText } from '../../i18n/errors'
-import { formatNumber } from '../../i18n/locale'
+import { formatNumber, parseTimestamp } from '../../i18n/locale'
 import { hitsOf } from '../../i18n/phrases'
 import { StatusLabel } from '../status'
 import { dialogueViews, useModel } from '../store'
@@ -134,7 +134,7 @@ function useElapsed(since: number): number {
 
 /** M2.1: the model works. Input locked, a timer up to 2:00, "Abbrechen"; no streaming. */
 function Thinking({ view }: { view: ModelActionView }) {
-  const started = usePanel((s) => s.started[view.id]) ?? Date.parse(view.created_at)
+  const started = usePanel((s) => s.started[view.id]) ?? parseTimestamp(view.created_at).getTime()
   const aborting = usePanel((s) => s.aborting === view.id)
   const abortError = usePanel((s) => s.abortError)
   const pollError = usePanel((s) => (s.pollError?.id === view.id ? s.pollError.error : null))

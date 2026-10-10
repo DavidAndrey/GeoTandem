@@ -1158,7 +1158,7 @@ msgid "Das Modell ruft keine Werkzeuge auf; für Werkzeugketten ist es so nicht 
 msgstr ""
 
 #: src/model/panel/PromptPanel.tsx
-msgid "Das Modell sieht Layer- und Feldnamen, keine Geodaten-Inhalte."
+msgid "Das Modell sieht Layer- und Feldnamen sowie die freigegebenen Wertelisten und Wertebereiche, keine einzelnen Objekte oder Geometrien."
 msgstr ""
 
 #: src/auth/rules.ts
@@ -2402,6 +2402,10 @@ msgstr ""
 
 #: src/model/panel/PromptPanel.tsx
 msgid "Ihre Eingaben werden protokolliert"
+msgstr ""
+
+#: src/i18n/errors.ts
+msgid "Ihre vorige Anfrage ist beim Modell noch nicht zu Ende. Bitte gleich nochmals versuchen."
 msgstr ""
 
 #: src/admin/ImportRunPage.tsx

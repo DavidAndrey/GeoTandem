@@ -9,7 +9,7 @@ import { useAnalysis } from '../../analysis/store'
 import { rows } from '../../analysis/tree'
 import { activate } from '../../i18n/i18n'
 import { messages as pseudo } from '../../locales/pseudo.po'
-import { actionView, thinkingView, type CaseId } from '../../test/model-mocks'
+import { actionView, serverShape, thinkingView, type CaseId } from '../../test/model-mocks'
 import {
   ask as typeAndSend,
   backend,
@@ -62,11 +62,11 @@ const decides = (calls: { key: string; body: unknown }[]) =>
   calls.filter((c) => c.key.endsWith('/decide')).map((c) => c.body)
 
 /** The reference answer, taken over into B2; ``decide`` as the backend answers it. */
-async function takenOver(routes = {}) {
+async function takenOver(routes = {}, answer = REFERENCE) {
   const user = fakeTimers()
   const calls = backend({
-    ...promptFlow(thinkingView('reference'), REFERENCE),
-    ...decideRoute(REFERENCE.id),
+    ...promptFlow(thinkingView('reference'), answer),
+    ...decideRoute(answer.id),
     ...routes,
   })
   await openPanel()
@@ -84,7 +84,9 @@ describe('entry (M1)', () => {
     await userEventOpen()
     const panel = screen.getByRole('region', { name: 'Prompt' })
     expect(within(panel).getByText(/Fragen Sie in eigenen Worten/)).toBeInTheDocument()
-    expect(within(panel).getByText(/keine Geodaten-Inhalte/)).toBeInTheDocument()
+    expect(
+      within(panel).getByText(/Wertelisten und Wertebereiche, keine einzelnen Objekte/),
+    ).toBeInTheDocument()
     const examples = within(panel).getByRole('region', {
       name: 'Beispiele aus den sichtbaren Layern',
     })
@@ -124,7 +126,7 @@ describe('entry (M1)', () => {
     const notice = await within(panel).findByRole('complementary', { name: 'Externe Anbindung' })
     expect(notice).toHaveTextContent('Der Prompt-Text verlässt das Haus')
     expect(notice).toHaveTextContent('Er geht an api.anbieter.example.')
-    expect(notice).toHaveTextContent('keine Geodaten-Inhalte')
+    expect(notice).toHaveTextContent('freigegebenen Wertelisten und Wertebereiche')
     expect(
       screen.getByText(/Extern · extern · api\.anbieter\.example · Stufe Prüfen/),
     ).toBeInTheDocument()
@@ -205,6 +207,49 @@ describe('request (P7)', () => {
     const before = polls(calls, thinking.id).length
     await tick(5000)
     expect(polls(calls, thinking.id)).toHaveLength(before)
+  })
+
+  test('after a reload, the prompt the server still answers is picked up again, not refused', async () => {
+    const user = fakeTimers()
+    const running = thinkingView('reference')
+    let reads = 0
+    backend({
+      'POST /api/model/prompt': () =>
+        json(
+          { code: 'busy', message: 'busy', details: { reason: 'running', id: running.id } },
+          409,
+        ),
+      [`GET /api/model/actions/${running.id}`]: () => (reads++ === 0 ? running : REFERENCE),
+    })
+    await openPanel()
+    await ask(user, 'Und nur die öffentlichen?')
+
+    await thinking()
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.getByText(PROMPT)).toBeInTheDocument()
+    await tick()
+    expect(await screen.findByRole('button', { name: 'In Editor übernehmen' })).toBeEnabled()
+    // The text typed meanwhile is the next prompt: the old answer leaves it in the field.
+    expect(screen.getByRole('textbox', { name: 'Prompt' })).toHaveValue('Und nur die öffentlichen?')
+  })
+
+  test('a prompt while an aborted call still runs out says so and keeps the text', async () => {
+    const user = fakeTimers()
+    const aborted = actionView('aborted')
+    backend({
+      'POST /api/model/prompt': () =>
+        json(
+          { code: 'busy', message: 'busy', details: { reason: 'running', id: aborted.id } },
+          409,
+        ),
+      [`GET /api/model/actions/${aborted.id}`]: aborted,
+    })
+    await openPanel()
+    await ask(user, 'Nochmals')
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Ihre vorige Anfrage ist beim Modell noch nicht zu Ende.',
+    )
+    expect(screen.getByRole('textbox', { name: 'Prompt' })).toHaveValue('Nochmals')
   })
 
   test('no polling after unmount', async () => {
@@ -330,6 +375,23 @@ describe('answer (M2, M4)', () => {
     // Applied: the analysis's hits (M2.2); the fake counts 10 of 10.
     expect(await within(card).findByLabelText('Trefferzahl der Analyse')).toHaveTextContent(
       '10 von 10',
+    )
+  })
+
+  test("a proposal in a full dump's shape (nulls, empty defaults) reads as the editor writes it", async () => {
+    await answered('reference', { query: serverShape(REFERENCE.query) })
+    const card = await screen.findByRole('article', { name: 'Antwort' })
+    expect(within(card).queryByText(/Ausserdem/)).toBeNull()
+    expect(within(card).getByRole('button', { name: 'In Editor übernehmen' })).toBeEnabled()
+  })
+
+  test("taken over in a full dump's shape and applied unchanged: proposal_only, by hand", async () => {
+    const shaped = actionView('reference', { query: serverShape(REFERENCE.query) })
+    const { user, calls, editor } = await takenOver({}, shaped)
+    expect(within(editor).getAllByText('Modell')).toHaveLength(3)
+    await user.click(within(editor).getByRole('button', { name: 'Übernehmen' }))
+    await waitFor(() =>
+      expect(decides(calls)).toEqual([{ decision: 'proposal_only', applied_by_hand: true }]),
     )
   })
 

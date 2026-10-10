@@ -23,6 +23,7 @@ import { currentAnalysis, useAnalysis } from '../../analysis/store'
 import { rows } from '../../analysis/tree'
 import { api, type DecideRequest, type ModelActionView } from '../../api/client'
 import { useMapView } from '../../map/view'
+import { compactQuery } from '../readable'
 import { useModel } from '../store'
 import { assumptionRow, proposalDraft } from './draft'
 
@@ -149,12 +150,14 @@ function canonical(value: unknown): string {
 
 /**
  * The parts of a query object the editor decides. A layer's symbology is
- * display state the analysis adds to every query of it, and ``output`` is
- * ``map`` unless named.
+ * display state the analysis adds to every query of it, ``output`` is ``map``
+ * and ``schema_version`` the current one unless named, and a key that is null
+ * or empty sets nothing (``compactQuery``).
  */
 function decided(query: unknown): unknown {
-  if (query === null || typeof query !== 'object') return query
-  const parts: Record<string, unknown> = { output: 'map', ...query }
+  const compact = compactQuery(query)
+  if (compact === null || typeof compact !== 'object') return compact
+  const parts: Record<string, unknown> = { schema_version: '2', output: 'map', ...compact }
   delete parts.symbology
   return parts
 }

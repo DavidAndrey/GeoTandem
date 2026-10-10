@@ -5,22 +5,25 @@ catalog result layer, rewritten in Python; ``to_analysis`` is its inverse. A
 query is **representable** exactly when ``to_analysis`` finds an analysis and
 ``to_query`` of that analysis has the query's canonical form: the controls show
 what the model wrote, and applying it sends the same query back. A model may
-mean the same with another shape (``and`` of one argument, a ``bbox`` that is
-not the last argument); that is refused rather than rewritten, so the query on
-the record is the one the user sees.
+mean the same with another shape (``and`` of one argument); that is refused
+rather than rewritten, so the query on the record is the one the user sees.
 
 The analysis is the query part of the frontend's state (``QueryPart`` of
 ``analysis/model.ts``: result layer, condition tree, restriction) plus the
 result layer's symbology. Node ids are left out; the frontend gives its own.
-Where several analyses give the same query, ``to_analysis`` picks one:
+``to_analysis`` serves the model path, so it finds only what the editor's
+draft of a proposal can take (``model/panel/draft.ts``): a condition tree,
+never a restriction ("Nur in" is the map's, not the model's; ``result.py``
+leaves ``bbox`` and ``geometry`` out of the answer format), never a
+symbology (a layer's display, not part of the draft), and never ``not`` of a
+``not`` (the editor writes it only as a negated group around one negated row,
+which the draft does not rebuild). Where
+several analyses give the same query, ``to_analysis`` picks one:
 
 - the root is an ``and`` group, never negated; an ``and`` at the top gives its
   arguments as the root's children, anything else is the root's only child;
-- the restriction ("Nur in") is the last of exactly two ``and`` arguments at
-  the top, or the whole ``where``;
 - ``not`` of a ``within`` relation is the operator ``outside``, ``not`` of a
-  distance relation ``far``; otherwise ``not`` sets the node's flag, and a
-  node already negated is wrapped in a negated group of one;
+  distance relation ``far``; otherwise ``not`` sets the node's flag;
 - ``and`` of a ``ge`` and a ``le`` compare on one date attribute, both ISO
   dates in order, is one date range row (``between``).
 
@@ -47,12 +50,10 @@ from pydantic import BaseModel, ConfigDict, Field
 from geotandem.catalog import ModelProfile
 from geotandem_query import (
     And,
-    BBox,
     Between,
     Compare,
     Condition,
     GeoJSONGeometry,
-    GeometryFilter,
     InList,
     IsNull,
     NearFeature,
@@ -94,8 +95,9 @@ _TOPOLOGICAL: Final[dict[str, SpatialOperator]] = {
 }
 _ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
-ALLOWED_FIELDS: Final = ("schema_version", "source", "where", "symbology", "output")
-"""Top-level fields the controls write; every other one must be unset."""
+ALLOWED_FIELDS: Final = ("schema_version", "source", "where", "output")
+"""Top-level fields a proposal may set (the controls also write ``symbology``,
+which the draft does not take); every other one must be unset."""
 
 
 def operators_for(field_type: str | None) -> tuple[AttributeOperator, ...]:
@@ -369,42 +371,19 @@ def to_analysis(query: QueryObject, catalog: Catalog) -> QueryPart:
     source = catalog.get(query.source)
     if source is None or source.kind != "vector":
         raise NotRepresentable("source")  # a table layer is never the result (B11)
-    tree, restriction = _Inverse(catalog, query.source).split(query.where)
-    part = QueryPart(
-        result=query.source, tree=tree, restriction=restriction, symbology=query.symbology
-    )
+    inverse = _Inverse(catalog, query.source)
+    tree = Group() if query.where is None else inverse.root(query.where)
+    part = QueryPart(result=query.source, tree=tree)
     if canonical_json(to_query(part)) != canonical_json(query):
         # A safety net: the inverse above is meant to fail first, naming the part.
         raise NotRepresentable("where")
     return part
 
 
-def representable(query: QueryObject, catalog: Catalog) -> bool:
-    try:
-        to_analysis(query, catalog)
-    except NotRepresentable:
-        return False
-    return True
-
-
 @dataclass(frozen=True)
 class _Inverse:
     catalog: Catalog
     source: str
-
-    def split(
-        self, where: Condition | None
-    ) -> tuple[Group, ViewRestriction | ShapeRestriction | None]:
-        if where is None:
-            return Group(), None
-        alone = _restriction(where)
-        if alone is not None:
-            return Group(), alone
-        if isinstance(where, And) and len(where.args) == 2:
-            last = _restriction(where.args[1])
-            if last is not None:
-                return self.root(where.args[0]), last
-        return self.root(where), None
 
     def root(self, condition: Condition) -> Group:
         if (
@@ -465,6 +444,8 @@ class _Inverse:
                 children = [self.node(arg, layer) for arg in condition.args]
                 return Group(op=condition.op, children=children)
             case Not():
+                if isinstance(condition.arg, Not):
+                    raise NotRepresentable(condition.op)
                 return _negated(self.node(condition.arg, layer))
             case Compare():
                 if condition.value == "":
@@ -512,7 +493,7 @@ class _Inverse:
                     distance_m=condition.distance_m,
                     filter=self.filter(condition.where, condition.layer),
                 )
-        # bbox and geometry: only as the restriction, never inside the tree.
+        # bbox and geometry: the map's restriction, never the model's.
         raise NotRepresentable(condition.op)
 
     def filter(self, where: Condition | None, layer: str) -> AttributeRow | None:
@@ -526,17 +507,8 @@ class _Inverse:
         return node
 
 
-def _restriction(condition: Condition) -> ViewRestriction | ShapeRestriction | None:
-    if isinstance(condition, BBox):
-        return ViewRestriction(bbox=condition.bbox)
-    if isinstance(condition, GeometryFilter) and condition.predicate == "intersects":
-        return ShapeRestriction(geometry=condition.geometry)
-    return None
-
-
 def _negated(node: Group | Row) -> Group | Row:
-    if node.negated:
-        return Group(negated=True, children=[node])
+    # Never negated already: ``not`` of a ``not`` is refused above.
     if isinstance(node, SpatialRow) and node.operator in ("in", "near"):
         return node.model_copy(update={"operator": "outside" if node.operator == "in" else "far"})
     return node.model_copy(update={"negated": True})

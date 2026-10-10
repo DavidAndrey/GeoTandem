@@ -42,8 +42,11 @@ export interface ModelState {
   draft: string
   /** Direktabfrage | Werkzeugkette, chosen per request (F-5.4). */
   approach: Approach
-  /** The record being polled: while the model thinks or a chain runs (P7). */
-  running: { id: number; status: ActionStatus } | null
+  /**
+   * The record being polled: while the model thinks or a chain runs (P7).
+   * ``resumed``: picked up again, not sent from the field (``resumed``).
+   */
+  running: { id: number; status: ActionStatus; resumed?: boolean } | null
   /** Action ids, oldest first. */
   dialogue: number[]
   /** The latest view of each record in the dialogue. */
@@ -90,6 +93,17 @@ export function sent(state: ModelState, view: ModelActionView): ModelState {
   }
 }
 
+/**
+ * A request of the account still running that this workplace no longer knows
+ * (sent before a reload, P7; the server answered a new prompt 409 ``busy``
+ * naming it): polled again in the dialogue. The text in the field is the
+ * user's next prompt, not this one's, so its answer leaves it there.
+ */
+export function resumed(state: ModelState, view: ModelActionView): ModelState {
+  const next = sent(state, view)
+  return { ...next, running: next.running && { ...next.running, resumed: true } }
+}
+
 /** A newer view of a record (a poll, or the answer of a decision). */
 export function received(state: ModelState, view: ModelActionView): ModelState {
   if (!state.dialogue.includes(view.id)) return state
@@ -98,6 +112,7 @@ export function received(state: ModelState, view: ModelActionView): ModelState {
   const wasRunning = state.running?.id === view.id
   // The model has answered the prompt (not: a chain run has ended).
   const answered = wasRunning && state.running?.status === 'thinking' && !polled
+  const ownPrompt = !state.running?.resumed
   const pending = OPEN.includes(view.status)
     ? view.id
     : state.pending === view.id
@@ -106,10 +121,14 @@ export function received(state: ModelState, view: ModelActionView): ModelState {
   return {
     ...state,
     views,
-    running: polled ? { id: view.id, status: view.status } : wasRunning ? null : state.running,
+    running: polled
+      ? { ...(wasRunning ? state.running : {}), id: view.id, status: view.status }
+      : wasRunning
+        ? null
+        : state.running,
     pending,
     reference: answered && ANSWERED.includes(view.status) ? view.id : state.reference,
-    draft: answered && !KEEPS_PROMPT.includes(view.status) ? '' : state.draft,
+    draft: answered && ownPrompt && !KEEPS_PROMPT.includes(view.status) ? '' : state.draft,
   }
 }
 
@@ -137,6 +156,7 @@ interface ModelStore extends ModelState {
   setDraft: (draft: string) => void
   setApproach: (approach: Approach) => void
   sent: (view: ModelActionView) => void
+  resumed: (view: ModelActionView) => void
   received: (view: ModelActionView) => void
   /** A parent action id, or ``null`` for "ohne Bezug" (M11.1 ×). */
   setReference: (id: number | null) => void
@@ -150,6 +170,7 @@ export const useModel = create<ModelStore>()((set) => ({
   setDraft: (draft) => set({ draft }),
   setApproach: (approach) => set({ approach }),
   sent: (view) => set((s) => sent(s, view)),
+  resumed: (view) => set((s) => resumed(s, view)),
   received: (view) => set((s) => received(s, view)),
   setReference: (reference) =>
     set((s) => (reference === null || s.dialogue.includes(reference) ? { reference } : s)),

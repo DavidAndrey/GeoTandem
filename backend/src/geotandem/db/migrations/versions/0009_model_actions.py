@@ -67,6 +67,8 @@ def upgrade() -> None:
         sa.Column("replans", sa.Integer(), server_default="0", nullable=False),
         sa.Column("stamp", sa.JSON(), nullable=True),
         sa.Column("latency_ms", sa.Integer(), nullable=True),
+        # When the model call started; the request limit counts only those (P5).
+        sa.Column("called_at", sa.DateTime(), nullable=True),
         sa.ForeignKeyConstraint(["user_id"], ["app_user.id"], ondelete="SET NULL"),
         sa.ForeignKeyConstraint(["parent_action_id"], ["model_action.id"], ondelete="SET NULL"),
         sa.ForeignKeyConstraint(["compare_of"], ["model_action.id"], ondelete="SET NULL"),

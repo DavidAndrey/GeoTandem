@@ -11,6 +11,7 @@ import type {
   OpClass,
   QueryObject,
 } from '../api/client'
+import { ENFORCEMENT } from '../model/enforcement'
 
 type Case = (typeof fixture.cases)[number]
 export type LevelName = (typeof fixture.levels)[number]['name']
@@ -50,12 +51,17 @@ const FINAL: Partial<Record<ActionStatus, Decision>> = { failed: 'failed', abort
 
 // What the record says once the model has answered: the fixture's status, or for
 // a level the case does not list, what the level's cell makes of it (D1, D2).
-function statusOf(c: Case, levelName: LevelName): ActionStatus {
+// Before enforcement every level only proposes (P1): the E2.3 server sends
+// ``proposed`` where the fixture, written for E2.4, says ``approved``.
+function statusOf(c: Case, levelName: LevelName, enforcement = ENFORCEMENT): ActionStatus {
   const status: unknown = 'status' in c.expect ? c.expect.status : undefined
   if (status === undefined) throw new Error(`case '${c.id}' is refused before any record exists`)
-  if (typeof status === 'string') return status as ActionStatus
-  const listed = (status as Partial<Record<LevelName, ActionStatus>>)[levelName]
-  return listed ?? (governance(c, levelName)?.cell === 'auto' ? 'approved' : 'proposed')
+  const listed =
+    typeof status === 'string'
+      ? (status as ActionStatus)
+      : ((status as Partial<Record<LevelName, ActionStatus>>)[levelName] ??
+        (governance(c, levelName)?.cell === 'auto' ? 'approved' : 'proposed'))
+  return listed === 'approved' && !enforcement ? 'proposed' : listed
 }
 
 function governance(c: Case, levelName: LevelName): Governance | null {
@@ -91,8 +97,9 @@ export function actionView(
   return {
     id: fixture.cases.indexOf(c) + 1,
     account: 'admin',
-    created_at: '2026-10-10T14:05:00Z',
-    decided_at: decision ? '2026-10-10T14:05:06Z' : null,
+    // Naive UTC, as the server writes every time (``parseTimestamp``).
+    created_at: '2026-10-10T14:05:00',
+    decided_at: decision ? '2026-10-10T14:05:06' : null,
     prompt: c.prompt,
     approach: c.approach as ModelActionView['approach'],
     status,
@@ -127,6 +134,38 @@ export function actionView(
     latency_ms: 6000,
     ...patch,
   }
+}
+
+/**
+ * A query object as a full pydantic dump writes it (``model_dump`` without
+ * ``compact``): every unset field ``null``, every empty default ``[]``, a
+ * relation without filter with ``where: null``. The server sends the compact
+ * form; the frontend must read this one the same (``compactQuery``).
+ */
+export function serverShape(query: unknown): QueryObject {
+  const condition = (c: unknown): unknown => {
+    if (c === null || typeof c !== 'object') return c
+    const json = c as Record<string, unknown>
+    if (json.op === 'and' || json.op === 'or')
+      return { ...json, args: (json.args as unknown[]).map(condition) }
+    if (json.op === 'not') return { ...json, arg: condition(json.arg) }
+    if (json.op === 'related') return { where: null, ...json }
+    return json
+  }
+  const q = query as Record<string, unknown>
+  return {
+    attribute_join: null,
+    buffer: null,
+    spatial_relation: null,
+    aggregate: null,
+    columns: [],
+    select: null,
+    order_by: [],
+    limit: null,
+    symbology: null,
+    ...q,
+    where: q.where === undefined ? null : condition(q.where),
+  } as unknown as QueryObject
 }
 
 /** The record while the model thinks: what ``POST /api/model/prompt`` answers (P7). */

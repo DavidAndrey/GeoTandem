@@ -57,7 +57,7 @@ from geotandem.model.schemas import (
     RejectReason,
     StopReason,
 )
-from geotandem_query import QueryObject
+from geotandem_query import QueryObject, compact
 
 EDGES: Mapping[str, frozenset[ActionStatus]] = {
     "thinking": frozenset({"refused", "answered", "proposed", "approved", "aborted", "failed"}),
@@ -162,6 +162,11 @@ def utc_now() -> datetime:
 
 def _json(model: Any) -> Any:
     return None if model is None else model.model_dump(mode="json", by_alias=True)
+
+
+def _query_json(query: QueryObject | None) -> dict[str, Any] | None:
+    """A query as the editor writes it (``compact``), as every view returns it."""
+    return None if query is None else compact(query)
 
 
 def to_view(row: ModelAction) -> ModelActionView:
@@ -307,6 +312,22 @@ class ModelActionStore:
     def get(self, caller: Account, action_id: int) -> ModelActionView:
         with Session(reading(self.engine)) as db:
             return to_view(self._visible(db, caller, action_id))
+
+    def thread(self, caller: Account, action_id: int, depth: int) -> list[ModelActionView]:
+        """The caller's record ``action_id`` and its parents, at most ``depth``,
+        oldest first: what a follow-up builds its turns from (P6). Another
+        account's record is ``not_found``; the chain ends at the first parent
+        that is not the caller's (an account deleted meanwhile)."""
+        found: list[ModelActionView] = []
+        with Session(reading(self.engine)) as db:
+            row: ModelAction | None = self._own(db, caller, action_id)
+            while row is not None and len(found) < depth:
+                found.append(to_view(row))
+                parent = row.parent_action_id
+                row = db.get(ModelAction, parent) if parent is not None else None
+                if row is not None and row.user_id != caller.id:
+                    row = None
+        return found[::-1]
 
     @staticmethod
     def _where(caller: Account, filters: ActionFilters) -> list[ColumnElement[bool]]:
@@ -506,6 +527,42 @@ class ModelActionStore:
         self._audit(None, [row for row in closed if row.decision is not None])
         return [row.id for row in closed]
 
+    def fail_thinking(
+        self, caller: Account, older_than: datetime, error: Mapping[str, Any]
+    ) -> list[int]:
+        """The caller's ``thinking`` records created before ``older_than`` end
+        ``failed`` with ``error``: no model call will finish them any more, and
+        each would hold the account's next prompt (the prompt flow, WP65)."""
+        now = self.clock()
+        with Session(self.engine, expire_on_commit=False) as db, db.begin():
+            rows = db.scalars(
+                select(ModelAction).where(
+                    ModelAction.user_id == caller.id,
+                    ModelAction.status == "thinking",
+                    ModelAction.created_at < older_than,
+                )
+            ).all()
+            values = {"status": "failed", "decision": "failed", "decided_at": now, "error": error}
+            closed = [row for row in rows if self._settle(db, row, ["thinking"], lambda _: values)]
+        self._audit(caller.username, closed)
+        return [row.id for row in closed]
+
+    def mark_called(self, caller: Account, action_id: int) -> bool:
+        """The model call of a ``thinking`` record starts now: from here it counts
+        for the request limit (P5). ``False`` when it is no longer thinking
+        (aborted): then the call must not start."""
+        with Session(self.engine) as db, db.begin():
+            done = db.connection().execute(
+                update(ModelAction)
+                .where(
+                    ModelAction.id == action_id,
+                    ModelAction.user_id == caller.id,
+                    ModelAction.status == "thinking",
+                )
+                .values(called_at=self.clock())
+            )
+        return done.rowcount == 1
+
     # --- the edges of the diagram -----------------------------------------------------
 
     @staticmethod
@@ -635,7 +692,7 @@ class ModelActionStore:
                 "status": status,
                 "proposal_only": only,
                 "answer": _json(answer),
-                "query": _json(query),
+                "query": _query_json(query),
                 "governance": _json(governance),
                 "latency_ms": latency_ms,
             }
@@ -729,7 +786,7 @@ class ModelActionStore:
                 "status": "applied",
                 "decision": decision,
                 "applied_by_hand": applied_by_hand,
-                "applied_query": _json(applied_query),
+                "applied_query": _query_json(applied_query),
             },
         )
 

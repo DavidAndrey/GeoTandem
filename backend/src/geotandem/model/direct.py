@@ -4,13 +4,13 @@ level and connection, builds the client and the account's layer profile
 (``catalog.model_profile`` over the account's view), records the profile's hash
 on the ``thinking`` record, and maps errors.
 
-``DirectQuery.run`` returns a ``DirectAnswer``: the parsed answer, and for a
-``query`` answer either the validated query with its governance or the
-refusal. It raises ``ActionError`` (``context_too_large`` before any call,
-``model_unreadable`` after it) and lets the seam's ``LLMError`` (``llm_*``)
-pass. Governance follows D1: the classes and the strictest cell at the level;
-a class that is ``off`` makes a proposal the user applies by hand, never a
-refusal.
+``direct_prompt`` builds the messages (``context_too_large`` before any call);
+``DirectQuery.ask`` sends them and returns a ``DirectAnswer``: the parsed
+answer, and for a ``query`` answer either the validated query with its
+governance or the refusal. It raises ``ActionError`` (``model_unreadable``)
+and lets the seam's ``LLMError`` (``llm_*``) pass. Governance follows D1:
+the classes and the strictest cell at the level; a class that is ``off``
+makes a proposal the user applies by hand, never a refusal.
 """
 
 from dataclasses import dataclass
@@ -71,10 +71,7 @@ class DirectAnswer:
     """The validated query of a ``query`` answer, ``None`` when refused."""
     governance: Governance | None
     refusal: Refusal | None
-    tokens_estimate: int
     latency_ms: int
-    prompt_tokens: int | None
-    completion_tokens: int | None
 
 
 @dataclass(frozen=True)
@@ -84,27 +81,16 @@ class DirectQuery:
     """The account's view (``view_for``), limits and unsupported operations."""
     level: Level
     """The level resolved for the account (H6)."""
-    context_length: int | None = None
-    """The connection's declared context length (C11); ``None``: not declared."""
 
-    def run(
-        self, text: str, *, profile: ModelProfile, follow_up: FollowUp | None = None
+    def ask(
+        self, prompt: Prompt, *, profile: ModelProfile, deadline: float | None = None
     ) -> DirectAnswer:
-        """Ask about ``text``. ``profile`` is the account's layer profile: the
-        model sees exactly it, and its answer is checked in its world."""
-        prompt = direct_prompt(
-            text,
-            level=self.level,
-            profile=profile,
-            follow_up=follow_up,
-            context_length=self.context_length,
-        )
-        return self.ask(prompt, profile=profile)
-
-    def ask(self, prompt: Prompt, *, profile: ModelProfile) -> DirectAnswer:
-        """Send a prompt built by ``direct_prompt`` over ``profile``: the prompt
-        flow builds it while the request is checked, the call follows (P7)."""
-        completion = self.client.complete(prompt.messages, schema=prompt.schema)
+        """Send a prompt built by ``direct_prompt`` over ``profile``, the
+        account's layer profile: the model sees exactly it, and its answer is
+        checked in its world. The prompt flow builds the prompt while the
+        request is checked, the call follows (P7) and ends by ``deadline``
+        (``time.monotonic()``)."""
+        completion = self.client.complete(prompt.messages, schema=prompt.schema, deadline=deadline)
         answer = parse_answer(completion, "direct")
         assert not isinstance(answer, PlanAnswer)  # parse_answer took the direct kinds only
         query = refusal = rules = None
@@ -119,8 +105,5 @@ class DirectQuery:
             query=query,
             governance=rules,
             refusal=refusal,
-            tokens_estimate=prompt.tokens_estimate,
             latency_ms=completion.latency_ms,
-            prompt_tokens=completion.prompt_tokens,
-            completion_tokens=completion.completion_tokens,
         )

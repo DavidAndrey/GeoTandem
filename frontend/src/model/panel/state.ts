@@ -5,8 +5,8 @@
 import { create } from 'zustand'
 import { resultQuery } from '../../analysis/query'
 import { currentAnalysis, useAnalysis } from '../../analysis/store'
-import { api, type PromptRequest } from '../../api/client'
-import { useModel, type Approach } from '../store'
+import { api, ApiRequestError, type ModelActionView, type PromptRequest } from '../../api/client'
+import { POLLED, useModel, type Approach } from '../store'
 
 /** The prompt field, for actions that hand it the focus ("Prompt ändern"). */
 export const PROMPT_INPUT = 'prompt-input'
@@ -14,7 +14,12 @@ export const PROMPT_INPUT = 'prompt-input'
 /** The Prompt tab: Esc in the panel gives the focus back to it. */
 export const PROMPT_TAB = '[data-tab="prompt"]'
 
-/** Seconds of one model call before the server gives up (plan section 1, limits). */
+/**
+ * Seconds of one model call before the server gives up (plan section 1,
+ * limits): ``MODEL_CALL_S`` of the backend's ``model/service.py``, repeated
+ * here; a test on each side holds both to the contract fixture
+ * (``limits.model_call_s``).
+ */
 export const MODEL_CALL_S = 120
 
 /** A request refused before any record exists (quota, context, stale reference, transport). */
@@ -85,7 +90,32 @@ export async function send(text: string, approach: Approach, parent: number | nu
     usePanel.setState((s) => ({ sending: false, started: { ...s.started, [view.id]: Date.now() } }))
     useModel.getState().sent(view)
   } catch (error) {
+    const running = await stillRunning(error)
+    if (running) {
+      usePanel.setState({ sending: false })
+      useModel.getState().resumed(running)
+      return
+    }
     usePanel.setState({ sending: false, failure: { prompt, approach, parent, error } })
+  }
+}
+
+/**
+ * The record a 409 ``busy`` (``reason: running``) names, when it is still
+ * being answered: a prompt of the account sent before a reload (P7), which the
+ * dialogue then shows and polls again. ``null`` otherwise, e.g. for an aborted
+ * call still running out: then the refusal is shown.
+ */
+async function stillRunning(error: unknown): Promise<ModelActionView | null> {
+  if (!(error instanceof ApiRequestError) || error.status !== 409) return null
+  const { code, details } = error.body ?? {}
+  const id: unknown = details?.id
+  if (code !== 'busy' || details?.reason !== 'running' || typeof id !== 'number') return null
+  try {
+    const view = await api.model.action(id)
+    return POLLED.includes(view.status) ? view : null
+  } catch {
+    return null
   }
 }
 

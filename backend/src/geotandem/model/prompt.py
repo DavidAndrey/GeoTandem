@@ -87,7 +87,8 @@ _FORMAT: Final[dict[Approach, str]] = {
         "Die Abfrage muss sich in den Bedienelementen zeigen lassen: höchstens "
         f"{MAX_CONDITIONS} Bedingungen, nur die Felder {', '.join(ALLOWED_FIELDS)}, "
         '"output" immer "map"; keine Sortierung, keine Begrenzung, keine berechneten '
-        "Spalten, kein Puffer, keine Verknüpfung und keine Zusammenfassung. Bedingungen "
+        'Spalten, kein Puffer, keine Verknüpfung, keine Zusammenfassung und kein "not" '
+        'direkt in einem "not". Bedingungen '
         'auf einem Bezugslayer stehen in dessen "where" als eine einzige, nicht verneinte '
         "Attributbedingung. Sonst antworte mit cannot_answer und other_approach chain."
     ),

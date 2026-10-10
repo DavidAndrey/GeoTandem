@@ -12,7 +12,6 @@ from geotandem.levels import (
     Level,
     LevelError,
     OpClass,
-    allowed,
     classify,
     classify_parts,
     load_levels,
@@ -21,6 +20,7 @@ from geotandem.levels import (
     validate_levels,
 )
 from geotandem.levels.classify import COLUMN_CLASS, CONDITION_CLASS, FIELD_CLASS
+from geotandem.model.direct import governance
 from geotandem_query import Column, QueryObject
 
 ALL = list(OpClass)
@@ -235,11 +235,14 @@ def test_parts_are_named_with_their_class() -> None:
     }
 
 
-def test_a_part_that_is_off_refuses_the_whole_and_is_named() -> None:
+def test_a_part_that_is_off_makes_the_whole_a_proposal_not_a_refusal() -> None:
+    """D1 (amends H4): ``off`` is shown as a proposal applied by hand."""
     mixed = level("Gemischt", CellMode.AUTO, spatial=CellMode.APPROVE, derive=CellMode.OFF)
-    assert allowed(mixed, q(where=GEMEINDE)) == CellMode.AUTO
-    assert allowed(mixed, q(where=RELATED)) == CellMode.APPROVE
-    with pytest.raises(LevelError) as refused:
-        allowed(mixed, q(where=RELATED, buffer={"distance_m": 100}))
-    assert refused.value.code == "class_not_allowed"
-    assert refused.value.details == {"part": "buffer", "op_class": "derive", "level": "Gemischt"}
+    assert governance(mixed, classify(q(where=GEMEINDE))).cell == CellMode.AUTO
+    assert governance(mixed, classify(q(where=RELATED))).cell == CellMode.APPROVE
+    rules = governance(mixed, classify(q(where=RELATED, buffer={"distance_m": 100})))
+    assert (rules.cell, rules.off, rules.needs_approval) == (
+        CellMode.OFF,
+        [OpClass.DERIVE],
+        [OpClass.SPATIAL],
+    )
