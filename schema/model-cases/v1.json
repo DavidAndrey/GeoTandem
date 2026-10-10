@@ -801,7 +801,6 @@
       "screens": ["M8.1", "M9.1", "M9.3"],
       "approach": "chain",
       "prompt": "Welche Primarschulen liegen nahe an Kantonsstrassen, in Gemeinden mit hoher Steueranlage?",
-      "_provisional": "tool names and arguments are pinned by WP74, which builds the chain tools",
       "answer": {
         "kind": "plan",
         "explanation": "Ich gehe in fünf Schritten vor: Primarschulen, Puffer um die Kantonsstrassen B, Schulen darin, Gemeinden mit hoher Steueranlage, Schulen darin.",
@@ -877,6 +876,7 @@
           "Teilautonom": "proposed"
         },
         "step_classes": ["query", "derive", "spatial", "query", "spatial"],
+        "_note": "step_classes: the class of each step's tool (H2, tools.chain); a step also counts the classes of the conditions it writes itself (H4), so the buffer step's cell is the strictest of derive and query. Step 5's query object is the reference query",
         "hits": 10,
         "total": 137
       }
@@ -886,7 +886,6 @@
       "screens": ["M9.5"],
       "approach": "chain",
       "prompt": "Schulen Schritt für Schritt nach Standorten eingrenzen",
-      "_provisional": "tool names are pinned by WP74",
       "answer": {
         "kind": "plan",
         "explanation": "Ich grenze in neun Schritten ein.",
