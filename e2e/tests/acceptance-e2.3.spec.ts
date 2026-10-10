@@ -26,7 +26,9 @@ import { ensureAreaLayer, reference, watchQueries } from './reference'
 // Without them the tests skip. A connection whose address ends in
 // /case/<id>/v1 gets the fixture case <id> for every prompt (the stub's doc).
 //
-// P1: in E2.3 every level only proposes; the user applies by hand.
+// P1: in E2.3 every level only proposed; the user applied by hand. Since E2.4
+// that is the behaviour of a level whose classes are off (D1), which the
+// reference test chooses; the other levels are acceptance-e2.4.spec.ts's.
 
 const STUB = process.env.E2E_STUB_URL
 const EXTERNAL = process.env.E2E_STUB_EXTERNAL_URL
@@ -208,6 +210,17 @@ test.describe('E2.3 against the model stub', { tag: '@stub' }, () => {
     await ensureAccount(request, browser, ANALYST, 'admin')
     const [context, page] = await user(browser, ANALYST)
     await choose(context, await connectionId(request, LOCAL, STUB!))
+    // P1 ended with E2.4: the hand path of E2.3 (M4) is now the level whose
+    // classes are all off (shipped as Assistenz); Prüfen asks for approval
+    // (acceptance-e2.4.spec.ts).
+    const { levels } = (await (await request.get('/api/admin/levels')).json()) as {
+      levels: { id: number; matrix: Record<string, string> }[]
+    }
+    const handOnly = levels.find((l) => Object.values(l.matrix).every((m) => m === 'off'))!
+    const level = await context.request.put('/api/llm/options', {
+      data: { level_id: handOnly.id },
+    })
+    expect(level.ok(), await level.text()).toBe(true)
     const { sent, failures } = watchQueries(page)
 
     const panel = await openPanel(page)
@@ -244,7 +257,7 @@ test.describe('E2.3 against the model stub', { tag: '@stub' }, () => {
       })
       .toBe(true)
     expect(failures).toEqual([])
-    // Applied by hand, as proposed (P1).
+    // Applied by hand, as proposed (D1).
     await expect
       .poll(async () => {
         const view = await action(context, id)
