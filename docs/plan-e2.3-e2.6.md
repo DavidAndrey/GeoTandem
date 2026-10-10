@@ -280,6 +280,7 @@ See section 5.2 plus the **security review** of section 5.4. Done-when (etappen.
 - Polling hook with backoff, cancelled on unmount/abort; `role="status"` per step change (throttled so a screen reader is not flooded).
 - Enables the chain option in the approach toggle (replaces "ab E2.5") and the chain offer on `not_representable` (M3.3) and M13.1.
 - **Done when:** component tests per state; step-count and elapsed display from the fixture; no polling after unmount.
+- Leftover from E2.3 (nit): the working timer shows "max. 2:00" even when the connection's own timeout is shorter; show min(timeout, 2:00) once the view or options carry the connection's timeout.
 
 #### WP78 — Comparison UI (FE-chain)
 *Deps: WP77 · Parallel with: WP76*
@@ -309,6 +310,7 @@ See section 5.2 plus the **security review** of section 5.4 (data-release, `mode
 *Deps: WP80 · Parallel with: WP82*
 
 - Backend (P6): accept `parent_action_id` and `analysis`; load the parent chain (≤ 6, own records, 404 otherwise) and build the turns from the records; derive `last_answer`/`hand_edited` by canonical comparison and store it with `parent_action_id`; `context_too_large` over budget; `stale_reference` when a layer of the parent is gone or invisible; `limit_exceeded` for a hand-built analysis over the condition limit. Column `parent_action_id` (self-reference, nullable, index) and the reference kind are part of migration 0009 (WP63). × sends neither parent nor analysis.
+- "Nur in" in a follow-up (from the E2.3 gate review): the model path refuses restrictions (`to_analysis`), so `check_query` on a follow-up's analysis with a "Nur in" restriction would refuse every follow-up. Set the restriction aside before the check and the prompt, tell the model it is set by the user, and keep it on the analysis; test with a restriction set.
 - Frontend: M11.1 reference marker above the field (× = no reference), older answers collapsed with their status; M11.2 reference "von Hand geänderter Stand"; M11.3 stale answer (layer removed) marked and not usable as reference.
 - Dialogue is not saved with the session (D8): saving a session then reloading shows an empty dialogue (test).
 - **Done when:** fixture follow-up (`follow_up`: "Welche davon haben mehr als einen Standort?", added condition `standorte > 1`, count pinned in this WP) reproduces; the model input contains the turns built from records and a forged client-side turn list is ignored (no such field); a foreign `parent_action_id` answers 404; hand edit between answer and follow-up derives `hand_edited` and the model input says so; 7th turn drops the oldest from the model context but not from the display; rejected answers appear with their reason chip; context over budget refuses with the code.

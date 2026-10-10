@@ -25,7 +25,8 @@
 # URLs as the container reaches them (E2E_STUB_URL, E2E_STUB_EXTERNAL_URL) and
 # the stub's own address for its request log (E2E_STUB_CONTROL).
 #
-#   GATE_MODEL_STUB=0   leave the stub out; its tests skip
+#   GATE_MODEL_STUB=0   leave the stub out; its tests skip, and the final line
+#                       says SKIPPED (no etappe gate passes that way)
 #
 # Running this script inside a container, with the host's Docker socket
 # mounted: the container must join the internal network to reach the
@@ -189,8 +190,12 @@ base="http://$(address):8000"  # the address may change with the restart
 (cd e2e && env "${stub_env[@]}" E2E_AFTER_RESTART=1 E2E_BASE_URL="$base" \
   npx playwright test --reporter=line)
 
-if [ -z "$llm_model" ]; then
-  step "gate passed — SKIPPED: E2.1 with a local model (set GATE_LLM_MODEL)"
-else
+# Say what did not run, so a pass never hides a skipped acceptance.
+skipped=()
+[ -z "$llm_model" ] && skipped+=("E2.1 with a local model (set GATE_LLM_MODEL)")
+[ "${GATE_MODEL_STUB:-1}" = 0 ] && skipped+=("the Modus B acceptance against the model stub (GATE_MODEL_STUB=0)")
+if [ ${#skipped[@]} -eq 0 ]; then
   step "gate passed"
+else
+  step "gate passed — SKIPPED: $(IFS=';'; echo "${skipped[*]}" | sed 's/;/; /g')"
 fi
