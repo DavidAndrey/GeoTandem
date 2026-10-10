@@ -3,7 +3,16 @@
 import { beforeEach, expect, test } from 'vitest'
 import type { ModelActionView } from '../api/client'
 import { actionView, thinkingView } from '../test/model-mocks'
-import { cleared, dialogueViews, initialModel, received, sent, useModel } from './store'
+import {
+  cleared,
+  dialogueViews,
+  initialModel,
+  OPEN,
+  overtaken,
+  received,
+  sent,
+  useModel,
+} from './store'
 
 const store = () => useModel.getState()
 
@@ -28,7 +37,7 @@ test('a prompt runs while the model thinks; the answer ends the run and becomes 
   const answer = actionView('reference')
   store().received(answer)
   expect(store().running).toBeNull()
-  expect(store().proposal).toBe(answer.id)
+  expect(store().pending).toBe(answer.id)
   expect(store().reference).toBe(answer.id)
   expect(store().draft).toBe('')
   expect(dialogueViews(store())).toEqual([answer])
@@ -62,21 +71,39 @@ test('at most one open proposal: a new prompt supersedes the open one (M5.2)', (
   const first = actionView('reference')
   store().sent(thinkingView('reference'))
   store().received(first)
-  expect(store().proposal).toBe(first.id)
+  expect(store().pending).toBe(first.id)
 
   const next = again(thinkingView('follow_up'), 50)
   store().sent(next)
-  expect(store().proposal).toBeNull()
-  expect(store().views[first.id]?.status).toBe('superseded')
+  expect(store().pending).toBeNull()
+  // Decided as the server does: proposal-only until enforcement exists (P1).
+  expect(store().views[first.id]).toMatchObject({ status: 'superseded', decision: 'proposal_only' })
 
   store().received(again(actionView('follow_up'), 50))
-  expect(store().proposal).toBe(50)
+  expect(store().pending).toBe(50)
   expect(dialogueViews(store()).map((v) => v.status)).toEqual(['superseded', 'proposed'])
 
   // A decision closes the proposal; the reference stays on the answer.
   store().received(again(actionView('follow_up', { status: 'rejected', decision: 'rejected' }), 50))
-  expect(store().proposal).toBeNull()
+  expect(store().pending).toBeNull()
   expect(store().reference).toBe(50)
+})
+
+test.each(OPEN)('a record %s is open, and a new prompt supersedes it (WP70)', (status) => {
+  const open = actionView('chain_reference', { status })
+  store().sent(thinkingView('chain_reference'))
+  store().received(open)
+  expect(store().pending).toBe(open.id)
+  store().sent(again(thinkingView('follow_up'), 70))
+  expect(store().views[open.id]?.status).toBe('superseded')
+  expect(store().pending).toBeNull()
+})
+
+test('the decision of an overtaken record (plan section 2)', () => {
+  const at = (level: 'Assistenz' | 'Prüfen') => actionView('reference', {}, level)
+  expect(overtaken(at('Prüfen'), true)).toBe('superseded')
+  expect(overtaken(at('Assistenz'), true)).toBe('proposal_only')
+  expect(overtaken(at('Prüfen'), false)).toBe('proposal_only')
 })
 
 test('a chain run is polled too, and its end does not touch the field', () => {
@@ -86,8 +113,10 @@ test('a chain run is polled too, and its end does not touch the field', () => {
   store().setDraft('Und nur grosse Schulen?')
   store().received({ ...plan, status: 'running' })
   expect(store().running).toEqual({ id: plan.id, status: 'running' })
+  expect(store().pending).toBeNull()
   store().received({ ...plan, status: 'done' })
   expect(store().running).toBeNull()
+  expect(store().pending).toBe(plan.id)
   expect(store().draft).toBe('Und nur grosse Schulen?')
 })
 
@@ -115,7 +144,7 @@ test('"Verlauf leeren" keeps a request still running', () => {
   store().sent(running)
   store().clearDialogue()
   expect(store().dialogue).toEqual([60])
-  expect(store().proposal).toBeNull()
+  expect(store().pending).toBeNull()
   expect(store().reference).toBeNull()
   expect(cleared(initialModel())).toEqual(initialModel())
 })

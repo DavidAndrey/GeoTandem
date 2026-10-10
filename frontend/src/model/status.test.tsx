@@ -3,9 +3,10 @@
 // what a screen reader gets.
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, test } from 'vitest'
-import type { ActionStatus, ModelActionView, StepView } from '../api/client'
+import type { ActionStatus, ModelActionView } from '../api/client'
 import { actionView, thinkingView } from '../test/model-mocks'
 import { inPseudo, strays, unmarked } from '../test/pseudo'
+import { ENFORCEMENT } from './enforcement'
 import { StatusLabel } from './status'
 import {
   lineStyle,
@@ -78,6 +79,15 @@ describe('accessibility', () => {
     expect(screen.getByRole('status')).toHaveTextContent('angewendet14:06')
   })
 
+  test.each([
+    ['error', 'Fehler'],
+    ['refused', 'abgewiesen'],
+  ] as const)('a live %s is an alert (design: Fehler und Abweisung)', (key, text) => {
+    render(<StatusLabel status={key} live />)
+    expect(screen.getByRole('alert')).toHaveTextContent(text)
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+
   test('a label in a list is no live region; icons are hidden from screen readers', () => {
     const { container } = render(
       <>
@@ -97,16 +107,6 @@ describe('accessibility', () => {
 })
 
 describe('statusKey', () => {
-  const step = (status: StepView['status']): StepView => ({
-    position: 1,
-    text: 'Primarschulen auswählen',
-    tool: 'filter',
-    arguments: {},
-    classes: ['query'],
-    cell: 'approve',
-    status,
-    revised: false,
-  })
   const ref = (patch: Partial<ModelActionView>, level?: 'Assistenz' | 'Teilautonom') =>
     actionView('reference', patch, level)
 
@@ -123,10 +123,7 @@ describe('statusKey', () => {
       [actionView('reference', {}, 'Assistenz'), 'proposal'],
     ],
     approved: [[actionView('reference', {}, 'Teilautonom'), 'approved']],
-    running: [
-      [ref({ approach: 'chain', status: 'running', steps: [step('running')] }), 'running'],
-      [ref({ approach: 'chain', status: 'running', steps: [step('waiting')] }), 'awaiting'],
-    ],
+    running: [[ref({ approach: 'chain', status: 'running' }), 'running']],
     done: [[ref({ status: 'done' }), 'done']],
     limited: [
       [ref({ status: 'limited', stop_reason: 'time_limit' }), 'limited'],
@@ -151,14 +148,18 @@ describe('statusKey', () => {
     Object.entries(BY_STATUS).flatMap(([status, rows]) =>
       rows.map(([view, key]) => [status, key, view] as const),
     ),
-  )('%s → %s', (status, key, view) => {
+  )('%s → %s (with enforcement, E2.4)', (status, key, view) => {
     expect(view.status).toBe(status)
-    expect(statusKey(view)).toBe(key)
+    expect(statusKey(view, { proposalOnly: false })).toBe(key)
   })
 
-  test('stale (M11.3) wins; proposal-only (P1) turns a waiting proposal into a proposal', () => {
-    expect(statusKey(actionView('reference'), { stale: true })).toBe('stale')
+  test.skipIf(ENFORCEMENT)('before enforcement (P1) nothing waits for an approval', () => {
+    expect(statusKey(actionView('reference'))).toBe('proposal')
     expect(statusKey(actionView('reference'), { proposalOnly: true })).toBe('proposal')
-    expect(statusKey(ref({ status: 'applied' }), { proposalOnly: true })).toBe('applied')
+    expect(statusKey(ref({ status: 'applied', decision: 'accepted' }))).toBe('applied')
+  })
+
+  test('stale (M11.3) wins', () => {
+    expect(statusKey(actionView('reference'), { stale: true })).toBe('stale')
   })
 })

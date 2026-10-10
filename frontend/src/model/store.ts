@@ -7,7 +7,8 @@
 // The server builds the model's turns from the parent chain (P6), so the
 // dialogue is only a list of the records this workplace has seen.
 import { create } from 'zustand'
-import type { ActionStatus, ModelActionView } from '../api/client'
+import type { ActionStatus, Decision, ModelActionView } from '../api/client'
+import { ENFORCEMENT } from './enforcement'
 
 export type Approach = ModelActionView['approach']
 
@@ -25,6 +26,12 @@ const ANSWERED: readonly ActionStatus[] = [
   'applied',
 ]
 
+/**
+ * Records still open for a decision: a proposal, an approval not yet executed,
+ * a chain result not yet adopted. A new prompt supersedes it (plan 1.2, WP70).
+ */
+export const OPEN: readonly ActionStatus[] = ['proposed', 'approved', 'done', 'limited']
+
 /** Requests that ended without an answer keep the prompt in the field (M14). */
 const KEEPS_PROMPT: readonly ActionStatus[] = ['failed', 'aborted']
 
@@ -41,8 +48,8 @@ export interface ModelState {
   dialogue: number[]
   /** The latest view of each record in the dialogue. */
   views: Record<number, ModelActionView>
-  /** At most one open proposal (design M5.2). */
-  proposal: number | null
+  /** The one open record, if any (design M5.2: at most one open proposal). */
+  pending: number | null
   /** The answer a follow-up prompt refers to; ``null`` = fresh question (P6, M11.1 ×). */
   reference: number | null
 }
@@ -54,26 +61,32 @@ export const initialModel = (): ModelState => ({
   running: null,
   dialogue: [],
   views: {},
-  proposal: null,
+  pending: null,
   reference: null,
 })
 
+/** How the server decides an open record a new prompt overtakes (plan section 2). */
+export function overtaken(view: ModelActionView, enforcement = ENFORCEMENT): Decision {
+  return !enforcement || view.governance?.cell === 'off' ? 'proposal_only' : 'superseded'
+}
+
 /**
  * A prompt was accepted (``POST /api/model/prompt`` answered 202 with the record
- * in ``thinking``). The server supersedes the open proposal (plan WP65); its
- * record is shown so at once, the next poll of it says the same.
+ * in ``thinking``). The server supersedes the open record in the same
+ * transaction (plan WP65, WP70); it is shown so at once, the next poll of it
+ * says the same.
  */
 export function sent(state: ModelState, view: ModelActionView): ModelState {
-  const previous = state.proposal !== null ? state.views[state.proposal] : undefined
+  const previous = state.pending !== null ? state.views[state.pending] : undefined
   const views = { ...state.views, [view.id]: view }
   if (previous && previous.id !== view.id)
-    views[previous.id] = { ...previous, status: 'superseded' }
+    views[previous.id] = { ...previous, status: 'superseded', decision: overtaken(previous) }
   return {
     ...state,
     views,
     dialogue: state.dialogue.includes(view.id) ? state.dialogue : [...state.dialogue, view.id],
     running: POLLED.includes(view.status) ? { id: view.id, status: view.status } : null,
-    proposal: view.status === 'proposed' ? view.id : null,
+    pending: OPEN.includes(view.status) ? view.id : null,
   }
 }
 
@@ -85,13 +98,16 @@ export function received(state: ModelState, view: ModelActionView): ModelState {
   const wasRunning = state.running?.id === view.id
   // The model has answered the prompt (not: a chain run has ended).
   const answered = wasRunning && state.running?.status === 'thinking' && !polled
-  const proposal =
-    view.status === 'proposed' ? view.id : state.proposal === view.id ? null : state.proposal
+  const pending = OPEN.includes(view.status)
+    ? view.id
+    : state.pending === view.id
+      ? null
+      : state.pending
   return {
     ...state,
     views,
     running: polled ? { id: view.id, status: view.status } : wasRunning ? null : state.running,
-    proposal,
+    pending,
     reference: answered && ANSWERED.includes(view.status) ? view.id : state.reference,
     draft: answered && !KEEPS_PROMPT.includes(view.status) ? '' : state.draft,
   }
@@ -104,7 +120,7 @@ export function cleared(state: ModelState): ModelState {
     ...state,
     dialogue: running ? [running.id] : [],
     views: running ? { [running.id]: running } : {},
-    proposal: null,
+    pending: null,
     reference: null,
   }
 }

@@ -2,14 +2,14 @@
 // plain language, JSON only under "Technisch", and what has no row form.
 import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import type { Group } from '../analysis/model'
+import type { DisplayLayer, Group } from '../analysis/model'
 import { activate } from '../i18n/i18n'
 import { messages as pseudo } from '../locales/pseudo.po'
 import { attribute, layer } from '../test/fixtures'
 import { actionView, type CaseId } from '../test/model-mocks'
 import { strays } from '../test/pseudo'
 import { fakeApi, renderAt } from '../test/render'
-import { stamp } from './origin'
+import { NO_ORIGIN, stamp } from './origin'
 import { readCondition, readQuery } from './readable'
 import { ConditionTree, QueryTree } from './tree'
 
@@ -39,6 +39,14 @@ const LAYERS = [
 ]
 
 const reference = () => actionView('reference').query
+
+const catalogLayer = (name: string): DisplayLayer => ({
+  id: name,
+  source: { kind: 'catalog', layer: name },
+  visible: true,
+  opacity: 1,
+  symbology: null,
+})
 
 /** The query as the model wrote it, also when the record refused it (M3). */
 function rawQuery(id: CaseId): unknown {
@@ -90,6 +98,23 @@ describe('readQuery', () => {
     expect(
       readCondition({ op: 'not', arg: { op: 'or', args: [{ op: 'is_null', attr: 'a' }] } }, 'x'),
     ).toMatchObject({ kind: 'group', op: 'or', not: true })
+    // "Nur in" has no negation in the controls: JSON, never the opposite.
+    const bbox = { op: 'bbox', bbox: [7, 46, 8, 47] }
+    const shape = { op: 'geometry', geometry: { type: 'Point', coordinates: [7, 46] } }
+    expect(readCondition({ op: 'not', arg: bbox }, 'x').kind).toBe('opaque')
+    expect(readCondition({ op: 'not', arg: shape }, 'x').kind).toBe('opaque')
+  })
+
+  test('only what the controls can show exactly gets a row', () => {
+    const text = { op: 'text_match', attr: 'name', text: 'Tal', mode: 'contains' }
+    expect(readCondition(text, 'x')).toMatchObject({ operator: 'contains', value: 'Tal' })
+    expect(readCondition({ ...text, case_sensitive: false }, 'x').kind).toBe('attribute')
+    expect(readCondition({ ...text, case_sensitive: true }, 'x').kind).toBe('opaque')
+    const shape = { op: 'geometry', geometry: { type: 'Point', coordinates: [7, 46] } }
+    expect(readCondition(shape, 'x').kind).toBe('within')
+    expect(readCondition({ ...shape, predicate: 'intersects' }, 'x').kind).toBe('within')
+    expect(readCondition({ ...shape, predicate: 'within' }, 'x').kind).toBe('opaque')
+    expect(readCondition({ ...shape, predicate: 'contains' }, 'x').kind).toBe('opaque')
   })
 
   test('what has no row form stays JSON, never guessed', () => {
@@ -123,10 +148,11 @@ describe('QueryTree', () => {
     const lines = within(tree)
       .getAllByRole('listitem')
       .map((li) => li.textContent)
+    // Badge, words and hits as in the sidebar (design B1).
     expect(lines).toEqual([
-      'Schulstufe ist eins von primar',
-      '≤ 500 m zu Strassen (Strassenklasse = kantonsstrasse_b)',
-      expect.stringMatching(/^liegt in Gemeinden · Steuern \(Steueranlage > 1[.,]6\)$/),
+      'ASchulstufe ist eins von primar',
+      'R≤ 500 m zu Strassen (Strassenklasse = kantonsstrasse_b)',
+      expect.stringMatching(/^Rliegt in Gemeinden · Steuern \(Steueranlage > 1[.,]6\)$/),
     ])
     // The answer shows no origin marks: those belong to the applied analysis.
     expect(within(tree).queryByText('Modell')).toBeNull()
@@ -178,21 +204,50 @@ describe('ConditionTree with marks', () => {
     fakeApi({ 'GET /api/layers': LAYERS })
     const tree = readQuery(reference()).tree
     const [first] = tree.children
-    const marks = stamp({}, { ...tree, children: first ? [first] : [] } as Group)
-    renderAt('/', <ConditionTree source="schulen" tree={tree} marks={marks} />)
+    const origin = stamp(NO_ORIGIN, { ...tree, children: first ? [first] : [] } as Group)
+    renderAt('/', <ConditionTree result={catalogLayer('schulen')} tree={tree} origin={origin} />)
     await screen.findByText('Schulstufe ist eins von primar')
     const marked = screen.getAllByText('Modell')
     expect(marked).toHaveLength(1)
-    expect(marked[0]?.parentElement).toHaveTextContent('ModellSchulstufe ist eins von primar')
+    expect(marked[0]?.parentElement).toHaveTextContent('AModellSchulstufe ist eins von primar')
+  })
+
+  test('a joined result layer labels its joined fields too (fieldsOf)', async () => {
+    fakeApi({ 'GET /api/layers': LAYERS })
+    const joined: DisplayLayer = {
+      ...catalogLayer('d1'),
+      source: {
+        kind: 'derived',
+        name: 'Schulen mit Steuern',
+        recipe: {
+          op: 'join',
+          layer: 'schulen',
+          join: {
+            layer: 'gemeinden_steuern',
+            left_key: 'gem_nr',
+            right_key: 'gem_nr',
+            fields: ['steueranlage'],
+            prefix: 'g_',
+          },
+          keepUnmatched: true,
+        },
+      },
+    }
+    const tree = readQuery({
+      source: 'schulen',
+      where: { op: 'compare', attr: 'g_steueranlage', cmp: 'gt', value: 2 },
+    }).tree
+    renderAt('/', <ConditionTree result={joined} tree={tree} />)
+    expect(await screen.findByText('Steueranlage > 2')).toBeVisible()
   })
 
   test('in pseudo, the mark comes from the catalog', async () => {
     fakeApi({ 'GET /api/layers': LAYERS })
     const tree = readQuery(reference()).tree
-    const marks = stamp({}, tree as Group)
+    const origin = stamp(NO_ORIGIN, tree as Group)
     const data = ['Schulstufe', 'primar', 'Strassen', 'Strassenklasse', 'kantonsstrasse_b']
     await inPseudoLocale(async () => {
-      renderAt('/', <ConditionTree source="schulen" tree={tree} marks={marks} />)
+      renderAt('/', <ConditionTree result={catalogLayer('schulen')} tree={tree} origin={origin} />)
       await waitFor(() => expect(screen.getAllByText(/Strassenklasse/)).toHaveLength(1))
       expect(strays([...data, 'Gemeinden · Steuern', 'Steueranlage'])).toEqual([])
     })

@@ -6,11 +6,11 @@ import type { AttributeRow, Group, Node, Row, SpatialRow } from '../analysis/mod
 import { useAnalysis } from '../analysis/store'
 import { newAttributeRow, rows } from '../analysis/tree'
 import { saveQueryAs } from '../queries/actions'
-import { toSaved } from '../session/format'
+import { saveSessionAs } from '../session/actions'
 import { attribute, layer } from '../test/fixtures'
 import { actionView } from '../test/model-mocks'
 import { fakeApi, renderAt } from '../test/render'
-import { isMarked, prune, stamp } from './origin'
+import { applied, discarded, isMarked, NO_ORIGIN, stamp, touch } from './origin'
 import { readQuery, type ReadNode } from './readable'
 import { AnalysisConditions } from './tree'
 
@@ -45,21 +45,33 @@ beforeEach(() => store().reset())
 afterEach(() => vi.unstubAllGlobals())
 
 describe('pure', () => {
-  test('a mark holds while the row is as the model set it', () => {
+  test('stamp, touch, apply, discard', () => {
     const tree = referenceTree()
-    const marks = stamp({}, tree)
     const [first, second] = rows(tree) as [Row, Row]
-    expect(rows(tree).every((row) => isMarked(marks, row))).toBe(true)
-    expect(isMarked(marks, { ...second, not: true })).toBe(false)
-    // Key order does not matter, the id is no content.
-    expect(isMarked(marks, JSON.parse(JSON.stringify(first)) as Row)).toBe(true)
-    expect(prune(marks, { ...tree, children: [first] })).toEqual({ [first.id]: marks[first.id] })
+    const origin = stamp(NO_ORIGIN, tree)
+    expect(rows(tree).every((row) => isMarked(origin, row))).toBe(true)
+
+    const touched = touch(origin, tree, second.id, { not: true })
+    expect(isMarked(touched, second)).toBe(false)
+    expect(isMarked(touched, first)).toBe(true)
+    // A patch that changes nothing, or an edit of a group, touches nothing.
+    expect(touch(origin, tree, second.id, { not: false })).toBe(origin)
+    expect(touch(origin, tree, tree.id, { op: 'or' })).toBe(origin)
+
+    expect(applied(touched, tree).marks).toEqual({
+      [first.id]: true,
+      [(rows(tree)[2] as Row).id]: true,
+    })
+    expect(discarded(touched, tree)).toEqual(origin)
+    expect(discarded(origin, { ...tree, children: [first] }).marks).toEqual({ [first.id]: true })
   })
 
-  test('only the named rows are stamped', () => {
+  test('only the named rows are stamped; stamping again clears a touch', () => {
     const tree = referenceTree()
     const [first] = rows(tree) as [Row]
-    expect(Object.keys(stamp({}, tree, [first.id]))).toEqual([first.id])
+    expect(Object.keys(stamp(NO_ORIGIN, tree, [first.id]).marks)).toEqual([first.id])
+    const touched = touch(stamp(NO_ORIGIN, tree), tree, first.id, { values: ['x'] })
+    expect(isMarked(stamp(touched, tree, [first.id]), first)).toBe(true)
   })
 })
 
@@ -89,6 +101,16 @@ describe('lifecycle in the analysis store', () => {
     // Back to the model's value by hand: still the user's row.
     store().edit()
     store().editNode<SpatialRow>(near().id, { distance_m: 500 })
+    store().apply()
+    expect(marked()).toHaveLength(2)
+  })
+
+  test('changed and changed back within one draft is still a hand edit (P3)', () => {
+    applyModelQuery()
+    store().edit()
+    store().editNode<SpatialRow>(near().id, { distance_m: 300 })
+    store().editNode<SpatialRow>(near().id, { distance_m: 500 })
+    expect(isMarked(store().origin, near())).toBe(false)
     store().apply()
     expect(marked()).toHaveLength(2)
   })
@@ -128,13 +150,13 @@ describe('lifecycle in the analysis store', () => {
     store().apply()
     expect(current()).toHaveLength(3)
     expect(marked()).toHaveLength(2)
-    expect(Object.keys(store().origin)).toHaveLength(2)
+    expect(Object.keys(store().origin.marks)).toHaveLength(2)
   })
 
   test('a saved query, a session opened or a new session bring no marks', () => {
     applyModelQuery()
     store().applyQuery({ result: 'schulen', tree: referenceTree(), restriction: null }, null)
-    expect(store().origin).toEqual({})
+    expect(store().origin).toEqual(NO_ORIGIN)
 
     applyModelQuery()
     const { layers, result, tree, restriction } = store()
@@ -143,49 +165,41 @@ describe('lifecycle in the analysis store', () => {
 
     applyModelQuery()
     store().reset()
-    expect(store().origin).toEqual({})
+    expect(store().origin).toEqual(NO_ORIGIN)
   })
 })
 
-describe('never saved', () => {
-  test('a session export is the same with and without marks', () => {
+describe('never saved: the real save paths send no mark', () => {
+  /** The request bodies of two saves, with marks and after the marks are gone. */
+  async function bodies(save: () => Promise<unknown>, calls: { body: unknown }[]) {
     applyModelQuery()
-    const s = store()
-    const export_ = () =>
-      JSON.stringify(
-        toSaved({
-          analysis: {
-            layers: s.layers,
-            result: s.result,
-            tree: s.tree,
-            restriction: s.restriction,
-          },
-          table: s.table,
-          view: null,
-          queryRef: s.queryRef,
-        }),
-      )
-    const withMarks = export_()
     expect(marked()).toHaveLength(3)
-    useAnalysis.setState({ origin: {} })
-    expect(withMarks).toBe(export_())
-    expect(withMarks).not.toMatch(/origin|Modell/)
+    await save()
+    useAnalysis.setState({ origin: NO_ORIGIN })
+    await save()
+    return calls.map((c) => JSON.stringify(c.body))
+  }
+  const echo = (patch: object) => (init: RequestInit | undefined) => ({
+    ...(JSON.parse(String(init?.body)) as object),
+    ...patch,
   })
 
-  test('a saved query is the same with and without marks', async () => {
+  test('saving a session (design C2)', async () => {
     const calls = fakeApi({
-      'POST /api/queries': (init: RequestInit | undefined) => {
-        const body = JSON.parse(String(init?.body)) as Record<string, unknown>
-        return { id: 'q1', mine: true, owner: 'admin', ...body }
-      },
+      'POST /api/sessions': echo({ id: 's1', updated_at: '2026-10-10T14:06:00Z', stamp: null }),
     })
-    applyModelQuery()
-    await saveQueryAs('Primarschulen', false)
-    useAnalysis.setState({ origin: {} })
-    await saveQueryAs('Primarschulen', false)
-    const [withMarks, without] = calls.map((c) => JSON.stringify(c.body))
+    const [withMarks, without] = await bodies(() => saveSessionAs('Schulen', ''), calls)
+    expect(calls.map((c) => c.key)).toEqual(['POST /api/sessions', 'POST /api/sessions'])
     expect(withMarks).toBe(without)
-    expect(withMarks).not.toMatch(/origin|Modell/)
+    expect(withMarks).not.toMatch(/origin|marks|touched|Modell/)
+  })
+
+  test('saving a query (design B1)', async () => {
+    const calls = fakeApi({ 'POST /api/queries': echo({ id: 'q1', mine: true, owner: 'admin' }) })
+    const [withMarks, without] = await bodies(() => saveQueryAs('Primarschulen', false), calls)
+    expect(calls.map((c) => c.key)).toEqual(['POST /api/queries', 'POST /api/queries'])
+    expect(withMarks).toBe(without)
+    expect(withMarks).not.toMatch(/origin|marks|touched|Modell/)
   })
 })
 

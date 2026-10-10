@@ -10,10 +10,14 @@ const LABEL: Record<LineStyle, string> = {
   message: 'border-ink text-ink',
 }
 
+/** Announced at once (design "Barrierefreiheit": Fehler und Abweisung). */
+const ALERT: readonly StatusKey[] = ['error', 'refused']
+
 /**
- * A status as a small label in its line style. ``live`` makes it a polite live
- * region (``role="status"``) for the place where a status changes (design
- * "Barrierefreiheit"); lists of older answers leave it off.
+ * A status as a small label in its line style. ``live`` makes it a live region
+ * for the place where a status changes (design "Barrierefreiheit"):
+ * ``role="alert"`` for an error or a refusal, ``role="status"`` otherwise; lists
+ * of older answers leave it off.
  */
 export function StatusLabel({
   status,
@@ -29,7 +33,7 @@ export function StatusLabel({
   const text = statusText(status)
   return (
     <span
-      role={live ? 'status' : undefined}
+      role={live ? (ALERT.includes(status) ? 'alert' : 'status') : undefined}
       data-status={status}
       data-line={style}
       className={`inline-flex items-center gap-1 rounded-full border px-2 text-xs ${LABEL[style]}`}

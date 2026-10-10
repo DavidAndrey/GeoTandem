@@ -5,15 +5,15 @@ import { Trans } from '@lingui/react/macro'
 import { t } from '@lingui/core/macro'
 import { Pencil, X } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
-import type { Node } from '../analysis/model'
 import { resultLayer } from '../analysis/query'
 import { currentAnalysis, useAnalysis } from '../analysis/store'
 import { newAttributeRow } from '../analysis/tree'
 import { useLayers } from '../api/queries'
 import { ErrorNotice } from '../components/ui'
+import { CompactTree } from '../editor/CompactTree'
 import { describe } from '../editor/describe'
 import { useCounts } from '../editor/useCounts'
-import { catalogFields, fieldsOf, labelOf } from '../editor/fields'
+import { labelsFor } from '../editor/fields'
 import { useMapView } from '../map/view'
 import { ResultSelect } from './ResultSelect'
 
@@ -33,17 +33,7 @@ export function QueryPanel() {
   const catalog = useLayers()
   const counts = useCounts(analysis)
   const result = resultLayer(analysis)
-  const fields = fieldsOf(result ?? undefined, catalog.data)
-  const typeOf = (list: typeof fields) => (name: string) => list.find((f) => f.name === name)?.type
-  const labels = {
-    field: labelOf(fields),
-    layer: (name: string) => catalog.data?.find((l) => l.name === name)?.title ?? name,
-    type: typeOf(fields),
-  }
-  const filterLabels = (layer: string) => {
-    const related = catalogFields(layer, catalog.data)
-    return { ...labels, field: labelOf(related), type: typeOf(related) }
-  }
+  const { fields, labels, filterLabels } = labelsFor(result ?? undefined, catalog.data)
   const restriction = analysis.restriction
 
   return (
@@ -143,42 +133,5 @@ export function QueryPanel() {
       )}
       <ErrorNotice error={counts.error} />
     </section>
-  )
-}
-
-function CompactTree({
-  nodes,
-  describe,
-  counts,
-}: {
-  nodes: Node[]
-  describe: (node: Node) => string
-  counts: Map<string, number> | undefined
-}) {
-  return (
-    <ul className="flex flex-col gap-0.5">
-      {nodes.map((node) => (
-        <li key={node.id} className="flex flex-col">
-          <span className="flex items-baseline gap-1.5">
-            <span className="text-muted w-3 text-[10px]">
-              {node.kind === 'attribute'
-                ? t({ message: 'A', comment: 'Badge: attribute condition' })
-                : node.kind === 'group'
-                  ? t({ message: 'G', comment: 'Badge: group' })
-                  : t({ message: 'R', comment: 'Badge: spatial or reference condition (Raum)' })}
-            </span>
-            <span className="flex-1">{describe(node)}</span>
-            {node.kind !== 'group' && (
-              <span className="text-muted text-xs">{counts?.get(node.id) ?? ''}</span>
-            )}
-          </span>
-          {node.kind === 'group' && (
-            <div className="border-divider ml-3 border-l pl-2">
-              <CompactTree nodes={node.children} describe={describe} counts={counts} />
-            </div>
-          )}
-        </li>
-      ))}
-    </ul>
   )
 }

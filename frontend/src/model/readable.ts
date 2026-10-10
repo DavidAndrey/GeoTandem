@@ -9,36 +9,14 @@
 import type {
   AttributeOperator,
   AttributeRow,
-  Group,
   ReferenceRow,
-  Row,
   Scalar,
   SpatialRow,
 } from '../analysis/model'
+import type { Opaque, TreeGroup, TreeNode } from '../editor/CompactTree'
 
-/** A condition without a row form: shown as its JSON. */
-export interface Opaque {
-  id: string
-  kind: 'opaque'
-  json: string
-}
-
-/** "Nur in: Ausschnitt / Fläche" inside a query object. */
-export interface Within {
-  id: string
-  kind: 'within'
-  shape: 'view' | 'shape'
-}
-
-export interface ReadGroup {
-  id: string
-  kind: 'group'
-  op: Group['op']
-  not: boolean
-  children: ReadNode[]
-}
-
-export type ReadNode = Row | ReadGroup | Opaque | Within
+export type ReadGroup = TreeGroup
+export type ReadNode = TreeNode
 
 export interface ReadQuery {
   /** The result layer, if the object names one. */
@@ -89,7 +67,11 @@ function readAttribute(c: Json, id: string): AttributeRow | null {
         ? attributeRow(id, attr, { operator: 'between', min: c.min, max: c.max })
         : null
     case 'text_match':
-      return typeof c.mode === 'string' && TEXT_MODES.includes(c.mode) && typeof c.text === 'string'
+      // The controls match without case only (query.ts); the schema's default is the same.
+      return typeof c.mode === 'string' &&
+        TEXT_MODES.includes(c.mode) &&
+        typeof c.text === 'string' &&
+        (c.case_sensitive === undefined || c.case_sensitive === false)
         ? attributeRow(id, attr, { operator: c.mode as AttributeOperator, value: c.text })
         : null
     case 'is_null':
@@ -146,9 +128,6 @@ function readReference(c: Json, id: string): ReferenceRow | null {
   }
 }
 
-const negate = (node: ReadNode): ReadNode =>
-  node.kind === 'opaque' || node.kind === 'within' ? node : { ...node, not: !node.not }
-
 /** One condition of a query object as a row, a group, or JSON. */
 export function readCondition(c: unknown, id: string): ReadNode {
   const opaque: Opaque = { id, kind: 'opaque', json: JSON.stringify(c) }
@@ -169,10 +148,16 @@ export function readCondition(c: unknown, id: string): ReadNode {
     if (related?.operator === 'in') return { ...related, operator: 'outside' }
     if (related?.operator === 'near') return { ...related, operator: 'far' }
     const inner = readCondition(c.arg, id)
-    return inner.kind === 'opaque' ? opaque : negate(inner)
+    // "Nur in" has no negation in the controls: say nothing rather than the opposite.
+    if (inner.kind === 'opaque' || inner.kind === 'within') return opaque
+    return { ...inner, not: !inner.not }
   }
   if (c.op === 'bbox') return { id, kind: 'within', shape: 'view' }
-  if (c.op === 'geometry') return { id, kind: 'within', shape: 'shape' }
+  // A drawn area restricts by "schneidet" only (query.ts ``restrictionCondition``).
+  if (c.op === 'geometry')
+    return c.predicate === undefined || c.predicate === 'intersects'
+      ? { id, kind: 'within', shape: 'shape' }
+      : opaque
   return readAttribute(c, id) ?? readRelated(c, id) ?? readReference(c, id) ?? opaque
 }
 

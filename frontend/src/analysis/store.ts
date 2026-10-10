@@ -16,7 +16,7 @@ import type {
   TableState,
 } from './model'
 import type { Analysis } from './model'
-import { prune, stamp, type OriginMarks } from '../model/origin'
+import { applied, discarded, NO_ORIGIN, stamp, touch, type Origin } from '../model/origin'
 import { canBeResult, emptyTree } from './query'
 import * as T from './tree'
 
@@ -28,7 +28,7 @@ interface AnalysisStore extends Analysis {
   table: TableState
   queryRef: QueryRef | null
   /** Origin marks "Modell" (plan P3): beside the analysis, so never saved with it. */
-  origin: OriginMarks
+  origin: Origin
 
   /** ``table``: a table layer, shown in the attribute table only (design B11). */
   addLayer: (layer: string, asResult?: boolean, table?: boolean) => void
@@ -100,7 +100,7 @@ const initial = (): Analysis & {
   dirty: boolean
   table: TableState
   queryRef: QueryRef | null
-  origin: OriginMarks
+  origin: Origin
 } => ({
   layers: [],
   result: null,
@@ -110,7 +110,7 @@ const initial = (): Analysis & {
   dirty: false,
   table: emptyTable(),
   queryRef: null,
-  origin: {},
+  origin: NO_ORIGIN,
 })
 
 const layerPatch =
@@ -203,15 +203,19 @@ export const useAnalysis = create<AnalysisStore>()((set, get) => ({
   },
 
   edit: () => set((s) => (s.draft ? s : { draft: s.tree })),
-  editNode: (id, patch) => set((s) => ({ draft: T.update(s.draft ?? s.tree, id, patch) })),
+  editNode: (id, patch) =>
+    set((s) => {
+      const draft = s.draft ?? s.tree
+      return { draft: T.update(draft, id, patch), origin: touch(s.origin, draft, id, patch) }
+    }),
   addNode: (groupId, node) => set((s) => ({ draft: T.append(s.draft ?? s.tree, groupId, node) })),
   removeNode: (id) => set((s) => ({ draft: T.remove(s.draft ?? s.tree, id) })),
   // A hand-edited row loses its mark for good once the draft is applied (P3).
   apply: () =>
     set((s) =>
-      s.draft ? { tree: s.draft, draft: null, dirty: true, origin: prune(s.origin, s.draft) } : s,
+      s.draft ? { tree: s.draft, draft: null, dirty: true, origin: applied(s.origin, s.draft) } : s,
     ),
-  discard: () => set((s) => ({ draft: null, origin: prune(s.origin, s.tree) })),
+  discard: () => set((s) => ({ draft: null, origin: discarded(s.origin, s.tree) })),
   setRestriction: (restriction) => set({ restriction, dirty: true }),
 
   setTableTab: (tab) => set((s) => ({ table: { ...s.table, tab } })),
@@ -256,7 +260,7 @@ export const useAnalysis = create<AnalysisStore>()((set, get) => ({
         queryRef,
         dirty: true,
         // A replaced query brings no marks; the model's caller marks its rows after.
-        origin: {},
+        origin: NO_ORIGIN,
       }
     }),
   setQueryRef: (queryRef) => set({ queryRef }),
@@ -270,7 +274,7 @@ export const useAnalysis = create<AnalysisStore>()((set, get) => ({
       queryRef: queryRef ?? null,
       draft: null,
       dirty: false,
-      origin: {},
+      origin: NO_ORIGIN,
     }),
   markSaved: () => set({ dirty: false }),
 }))
