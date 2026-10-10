@@ -1,23 +1,23 @@
 """The prompt flow of the direct query, proposal-only (plan E2.3-E2.6, WP65).
 
 Through the API, with the model faked behind the client factory and scripted
-from the contract fixture: every case ends in its status and code, the client
-sees ``thinking`` and then the outcome, abort drops a late answer, the request
-limit counts per connection and day (P5), every level only proposes (P1),
-another account's record does not exist, and no log line holds the prompt.
+from the contract fixture: every case ends in its status and code, the 202
+leaves while the model thinks, abort drops a late answer and keeps a queued
+call from the model, one prompt per account and a bounded number of calls run
+at once, the request limit counts per connection and day (P5), every level
+only proposes (P1), another account's record does not exist, and no log line
+holds the prompt.
 
-Background tasks: ``httpx.ASGITransport`` returns a response only once the
-application call is complete, background tasks included, so a test that
-awaits ``POST /prompt`` finds the outcome stored. A test that must see the
-record while the model thinks holds the model on an event and sends the
-prompt as a task; nothing sleeps.
+The model call runs in a thread of ``ModelCalls``, after the 202: a test waits
+for it with ``settle`` (``ModelCalls.wait``), and one that must see the record
+while the model thinks holds the model on an event. Nothing sleeps.
 """
 
 import asyncio
 import json
 import logging
 import threading
-from collections.abc import Sequence
+from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta, timezone
 from typing import Annotated, Any
@@ -37,8 +37,7 @@ from geotandem.api.state import AppState, get_state
 from geotandem.app import start
 from geotandem.auth import accounts
 from geotandem.auth.accounts import Account
-from geotandem.auth.visibility import set_visible, view_for
-from geotandem.catalog import model_profile
+from geotandem.auth.visibility import set_visible
 from geotandem.config import Settings
 from geotandem.data import DataBackend
 from geotandem.db.bootstrap import bootstrap
@@ -48,9 +47,21 @@ from geotandem.levels import CellMode, OpClass, active_level
 from geotandem.llm import Completion, Endpoint, Message, ModelInfo, ToolSpec
 from geotandem.llm.fake import FakeLLMClient
 from geotandem.llm.openai_compat import OpenAICompatClient
-from geotandem.model.record import ModelActionStore, NewAction, level_snapshot, text_hash
+from geotandem.model.record import (
+    ModelActionStore,
+    NewAction,
+    level_snapshot,
+    text_hash,
+    utc_now,
+)
 from geotandem.model.schemas import ConnectionSnapshot, LevelSnapshot, ModelAnswer
-from geotandem.model.service import MODEL_CALL_S, PromptFlow, day_start, utc_now
+from geotandem.model.service import (
+    MODEL_CALL_S,
+    ModelCalls,
+    PromptFlow,
+    day_start,
+    profile_for,
+)
 from geotandem.sample import DATA_DIR
 from geotandem_query import QueryObject
 
@@ -61,6 +72,7 @@ REFERENCE = json.loads((REPO / "e2e/fixtures/reference-question.json").read_text
 ANSWER = TypeAdapter[Any](ModelAnswer)
 
 Body = dict[str, Any]
+Users = Callable[[int], Awaitable[list[httpx.AsyncClient]]]
 
 
 def same_answer(stored: Body | None, case_id: str) -> bool:
@@ -79,7 +91,8 @@ class Model:
     ``released`` cleared holds every call until it is set again, so a test sees
     the record while the model thinks; ``asked`` tells that a call came."""
 
-    def __init__(self) -> None:
+    def __init__(self, app: FastAPI) -> None:
+        self.app = app
         self.fake = FakeLLMClient()
         self.endpoints: list[Endpoint] = []
         self.asked = threading.Event()
@@ -93,6 +106,9 @@ class Model:
 
     def script(self, *case_ids: str) -> None:
         self.fake.script.extend(completion(case(i)) for i in case_ids)
+
+    async def settle(self) -> None:
+        await settle(self.app)
 
     def complete(
         self,
@@ -116,6 +132,11 @@ class Model:
         pass
 
 
+async def settle(app: FastAPI) -> None:
+    """Until every model call started so far has ended."""
+    await asyncio.to_thread(app.state.geotandem.model_calls.wait, 10)
+
+
 async def connect(client: httpx.AsyncClient, **fields: Any) -> Body:
     response = await client.post(
         CONNECTIONS,
@@ -127,12 +148,42 @@ async def connect(client: httpx.AsyncClient, **fields: Any) -> Body:
 
 
 @pytest.fixture
-async def model(client: httpx.AsyncClient, app: FastAPI) -> Model:
+async def model(client: httpx.AsyncClient, app: FastAPI) -> AsyncIterator[Model]:
     """A connection every account uses, and the fake model behind it."""
-    fake = Model()
+    fake = Model(app)
     fake.connection = await connect(client)
     app.state.geotandem.client_factory = fake
-    return fake
+    yield fake
+    fake.released.set()
+    await settle(app)
+
+
+@pytest.fixture
+async def users(client: httpx.AsyncClient, app: FastAPI) -> AsyncIterator[Users]:
+    """Clients signed in as further users, created by ``client`` (an administrator)."""
+    made: list[httpx.AsyncClient] = []
+
+    async def make(count: int) -> list[httpx.AsyncClient]:
+        for _ in range(count):
+            name = f"a.muster{len(made) + 1}"
+            created = await client.post("/api/admin/users", json={"username": name, "role": "user"})
+            assert created.status_code == 201, created.text
+            first = created.json()["start_password"]
+            other = httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app), base_url="http://test"
+            )
+            made.append(other)
+            login = await other.post("/api/auth/login", json={"username": name, "password": first})
+            assert login.status_code == 200, login.text
+            changed = await other.post(
+                "/api/auth/password", json={"current": first, "new": USER_PASSWORD}
+            )
+            assert changed.status_code == 204, changed.text
+        return made[-count:]
+
+    yield make
+    for other in made:
+        await other.aclose()
 
 
 @pytest.fixture
@@ -163,6 +214,7 @@ async def outcome(client: httpx.AsyncClient, model: Model, case_id: str, **extra
     response = await ask(client, case_id, **extra)
     assert response.status_code == 202, response.text
     assert response.json()["status"] == "thinking"
+    await model.settle()
     polled = await client.get(action_url(response.json()["id"]))
     assert polled.status_code == 200, polled.text
     body: Body = polled.json()
@@ -174,13 +226,6 @@ def records(app: FastAPI) -> int:
         return db.scalar(select(func.count()).select_from(ModelAction)) or 0
 
 
-def latest(app: FastAPI) -> int:
-    with Session(app.state.geotandem.backend.engine) as db:
-        found = db.scalar(select(func.max(ModelAction.id)))
-    assert found is not None
-    return found
-
-
 def account_of(app: FastAPI, username: str) -> Account:
     engine = app.state.geotandem.backend.engine
     return next(a for a in accounts.list_accounts(engine) if a.username == username)
@@ -188,14 +233,26 @@ def account_of(app: FastAPI, username: str) -> Account:
 
 # --- every case of the fixture ---------------------------------------------------
 
-RECORD_CASES = [
-    c["id"]
-    for c in cases()
-    if c["approach"] == "direct"
-    and "http" not in c["expect"]
-    and "parent" not in c
-    and c["id"] not in ("reference", "aborted")
-]
+OWN_TESTS = {"reference", "aborted", "quota_exceeded", "context_too_large"}
+"""Cases with a test of their own below."""
+PENDING_CASES = {
+    "follow_up": "WP81",
+    "follow_up_hand_edited": "WP81",
+    "stale_reference": "WP81",
+    "chain_reference": "WP75",
+    "step_limit": "WP75",
+}
+"""Cases whose behaviour arrives with a later WP, which tests them and drops
+them here; the etappe gate needs the WP81 ones gone by E2.6 (plan 5.2)."""
+RECORD_CASES = [c["id"] for c in cases() if c["id"] not in OWN_TESTS | set(PENDING_CASES)]
+
+
+def test_every_case_is_tested_or_pending() -> None:
+    ids = [c["id"] for c in cases()]
+    assert set(ids) == set(RECORD_CASES) | OWN_TESTS | set(PENDING_CASES)
+    for case_id in RECORD_CASES:
+        c = case(case_id)
+        assert c["approach"] == "direct" and isinstance(c["expect"]["status"], str), case_id
 
 
 @pytest.mark.parametrize("case_id", RECORD_CASES)
@@ -228,6 +285,33 @@ async def test_each_case_ends_in_its_status_and_code(
     assert len(model.fake.calls) == 1
 
 
+async def test_a_hidden_layer_is_refused_as_a_missing_one(
+    client: httpx.AsyncClient, model: Model, backend_of_client: DataBackend
+) -> None:
+    """The fixture's ``same_as``: same code, same details keys, no hint it exists."""
+    hidden = case("hidden_layer")
+    assert hidden["expect"]["same_as"] == "unknown_layer"
+    await sign_in_as(client, "m.keller")
+    missing = (await outcome(client, model, "unknown_layer"))["refusal"]
+    setup = hidden["setup"]
+    set_visible(backend_of_client.engine, setup["layer"], setup["hide_from_role"], False)
+    kept = (await outcome(client, model, "hidden_layer"))["refusal"]
+    assert kept["code"] == missing["code"] == "unknown_layer"
+    assert set(kept["details"]) == set(missing["details"])
+    assert setup["layer"] not in kept["details"].get("available", [])
+
+
+async def test_not_representable_is_stored_as_the_refusal_it_is(
+    client: httpx.AsyncClient, model: Model
+) -> None:
+    """The record holds the refusal and the model's query as given; offering the
+    chain (``expect.offer``) is the frontend's, once the chain exists (M3.3)."""
+    record = await outcome(client, model, "not_representable")
+    assert (record["status"], record["refusal"]["code"]) == ("refused", "not_representable")
+    assert record["answer"]["query"] == case("not_representable")["answer"]["query"]
+    assert record["query"] is None and record["governance"] is None
+
+
 async def test_the_reference_question_is_proposed_with_what_it_was_asked_under(
     client: httpx.AsyncClient, model: Model, app: FastAPI, areas: None
 ) -> None:
@@ -239,7 +323,7 @@ async def test_the_reference_question_is_proposed_with_what_it_was_asked_under(
     assert set(record["governance"]["classes"]) == set(expect["classes"])
     state: AppState = app.state.geotandem
     admin = account_of(app, "admin")
-    profile = model_profile(state.backend.engine, view_for(state.backend, admin).layer_names())
+    _, profile = profile_for(state.backend, admin)
     assert record["profile_hash"] == profile.hash
     level = active_level(state.backend.engine, admin.id, admin=True)
     assert LevelSnapshot.model_validate(record["level"]) == level_snapshot(level)
@@ -251,6 +335,16 @@ async def test_the_reference_question_is_proposed_with_what_it_was_asked_under(
     [call] = model.fake.calls
     assert profile.text in call.messages[0].content
     assert model.endpoints[0].model == LOCAL["model"]
+
+
+async def test_the_call_waits_at_most_the_model_call_limit(
+    client: httpx.AsyncClient, model: Model
+) -> None:
+    url = f"{CONNECTIONS}/{model.connection['id']}"
+    for timeout, expected in ((600, MODEL_CALL_S), (30, 30)):
+        assert (await client.patch(url, json={"timeout_s": timeout})).status_code == 200
+        await outcome(client, model, "clarification")
+        assert model.endpoints[-1].timeout_s == expected
 
 
 async def test_every_level_only_proposes_in_e2_3(
@@ -275,38 +369,96 @@ async def test_every_level_only_proposes_in_e2_3(
         assert (before["status"], before["decision"]) == ("superseded", "proposal_only")
 
 
-# --- polling and abort (P7) ------------------------------------------------------
+# --- 202 at once, polling and abort (P7) -------------------------------------------
+
+
+async def test_the_answer_leaves_while_the_model_thinks(
+    client: httpx.AsyncClient, model: Model, app: FastAPI
+) -> None:
+    """Driven as a server drives it: the 202 and its body are sent, and the
+    application call ends, while the model still holds its answer."""
+    model.script("clarification")
+    model.released.clear()
+    body = json.dumps({"text": case("clarification")["prompt"]}).encode()
+    cookies = "; ".join(f"{name}={value}" for name, value in client.cookies.items())
+    scope = {
+        "type": "http",
+        "asgi": {"version": "3.0"},
+        "http_version": "1.1",
+        "method": "POST",
+        "scheme": "http",
+        "path": PROMPT,
+        "raw_path": PROMPT.encode(),
+        "query_string": b"",
+        "root_path": "",
+        "headers": [
+            (b"host", b"test"),
+            (b"content-type", b"application/json"),
+            (b"content-length", str(len(body)).encode()),
+            (b"cookie", cookies.encode()),
+        ],
+        "client": ("127.0.0.1", 50000),
+        "server": ("test", 80),
+    }
+    requested = False
+    closed = asyncio.Event()
+    sent: list[dict[str, Any]] = []
+
+    async def receive() -> dict[str, Any]:
+        nonlocal requested
+        if not requested:
+            requested = True
+            return {"type": "http.request", "body": body, "more_body": False}
+        await closed.wait()
+        return {"type": "http.disconnect"}
+
+    async def send(message: dict[str, Any]) -> None:
+        sent.append(message)
+
+    await asyncio.wait_for(app(scope, receive, send), 10)
+
+    assert not model.released.is_set()
+    start_, *parts = sent
+    assert start_["type"] == "http.response.start" and start_["status"] == 202
+    answer = json.loads(b"".join(p.get("body", b"") for p in parts))
+    assert answer["status"] == "thinking" and parts[-1].get("more_body", False) is False
+    assert await asyncio.to_thread(model.asked.wait, 10)  # the model is asked meanwhile
+    thinking = (await client.get(action_url(answer["id"]))).json()
+    assert thinking["status"] == "thinking"
+
+    model.released.set()
+    await model.settle()
+    closed.set()
+    assert (await client.get(action_url(answer["id"]))).json()["status"] == "answered"
 
 
 async def test_polling_sees_thinking_then_the_outcome(
-    client: httpx.AsyncClient, model: Model, app: FastAPI
+    client: httpx.AsyncClient, model: Model
 ) -> None:
     model.script("clarification")
     model.released.clear()
-    sent = asyncio.create_task(ask(client, "clarification"))
+    response = await ask(client, "clarification")
+    assert (response.status_code, response.json()["status"]) == (202, "thinking")
+    action_id = response.json()["id"]
     assert await asyncio.to_thread(model.asked.wait, 10)
 
-    action_id = latest(app)
     thinking = (await client.get(action_url(action_id))).json()
     assert thinking["status"] == "thinking" and thinking["answer"] is None
 
     model.released.set()
-    response = await sent
-    assert response.status_code == 202
-    assert (response.json()["id"], response.json()["status"]) == (action_id, "thinking")
+    await model.settle()
     answered = (await client.get(action_url(action_id))).json()
     assert answered["status"] == "answered"
     assert same_answer(answered["answer"], "clarification")
 
 
 async def test_abort_while_thinking_drops_the_late_answer(
-    client: httpx.AsyncClient, model: Model, app: FastAPI, caplog: pytest.LogCaptureFixture
+    client: httpx.AsyncClient, model: Model, caplog: pytest.LogCaptureFixture
 ) -> None:
     model.script("aborted")
     model.released.clear()
-    sent = asyncio.create_task(ask(client, "aborted"))
+    action_id = (await ask(client, "aborted")).json()["id"]
     assert await asyncio.to_thread(model.asked.wait, 10)
-    action_id = latest(app)
 
     aborted = await client.post(action_url(action_id, "abort"))
     assert aborted.status_code == 200, aborted.text
@@ -314,15 +466,37 @@ async def test_abort_while_thinking_drops_the_late_answer(
 
     with caplog.at_level(logging.INFO, logger="geotandem.model"):
         model.released.set()
-        assert (await sent).status_code == 202
+        await model.settle()
     expect = case("aborted")["expect"]
     final = (await client.get(action_url(action_id))).json()
     assert (final["status"], final["decision"]) == (expect["status"], expect["decision"])
     assert final["answer"] is None and final["query"] is None
-    assert f"model action {action_id}: answer dropped (already_decided)" in caplog.text
+    assert f"model action {action_id}: answer dropped" in caplog.text
 
     again = await client.post(action_url(action_id, "abort"))
     assert (again.status_code, again.json()["code"]) == (409, "already_decided")
+
+
+async def test_an_abort_while_queued_never_reaches_the_model(
+    client: httpx.AsyncClient, model: Model, app: FastAPI
+) -> None:
+    """The pool's one thread is busy: the call waits, is aborted, never asks."""
+    calls = ModelCalls(1)
+    app.state.geotandem.model_calls = calls
+    busy = threading.Event()
+    calls._executor.submit(busy.wait, 10)  # the thread taken outside the flow
+    model.script("clarification")
+
+    action_id = (await ask(client, "clarification")).json()["id"]
+    aborted = await client.post(action_url(action_id, "abort"))
+    assert aborted.json()["status"] == "aborted"
+    busy.set()
+    await model.settle()
+
+    assert model.fake.calls == [] and not model.asked.is_set()
+    assert (await client.get(action_url(action_id))).json()["status"] == "aborted"
+    # The slot came back.
+    assert (await ask(client, "clarification")).status_code == 202
 
 
 async def test_abort_after_the_answer_is_refused(client: httpx.AsyncClient, model: Model) -> None:
@@ -330,6 +504,54 @@ async def test_abort_after_the_answer_is_refused(client: httpx.AsyncClient, mode
     response = await client.post(action_url(record["id"], "abort"))
     assert response.status_code == 409
     assert (await client.get(action_url(record["id"]))).json()["status"] == "answered"
+
+
+# --- what runs at once -----------------------------------------------------------
+
+
+async def test_one_prompt_of_an_account_at_a_time(
+    client: httpx.AsyncClient, model: Model, app: FastAPI
+) -> None:
+    model.script("clarification")
+    model.released.clear()
+    assert (await ask(client, "clarification")).status_code == 202
+    second = await ask(client, "clarification")
+    assert (second.status_code, second.json()["code"]) == (409, "busy")
+    assert second.json()["details"]["reason"] == "running"
+    assert records(app) == 1
+    model.released.set()
+    await model.settle()
+
+
+async def test_of_two_prompts_at_once_one_passes(
+    client: httpx.AsyncClient, model: Model, app: FastAPI
+) -> None:
+    model.script("clarification")
+    model.released.clear()
+    both = await asyncio.gather(*(ask(client, "clarification") for _ in range(2)))
+    assert sorted(r.status_code for r in both) == [202, 409]
+    assert records(app) == 1
+    model.released.set()
+    await model.settle()
+
+
+async def test_model_calls_at_once_are_bounded(
+    client: httpx.AsyncClient, model: Model, app: FastAPI, users: Users
+) -> None:
+    app.state.geotandem.model_calls = ModelCalls(1)
+    [other] = await users(1)
+    model.script("clarification", "clarification")
+    model.released.clear()
+    assert (await ask(client, "clarification")).status_code == 202
+
+    refused = await ask(other, "clarification")
+
+    assert (refused.status_code, refused.json()["code"]) == (503, "busy")
+    assert refused.headers["Retry-After"] == "5"
+    assert records(app) == 1
+    model.released.set()
+    await model.settle()
+    assert (await ask(other, "clarification")).status_code == 202
 
 
 # --- refused before any call: no record --------------------------------------------
@@ -359,6 +581,7 @@ async def test_without_a_connection_nothing_is_asked(
 ) -> None:
     response = await ask(client, "clarification")
     assert (response.status_code, response.json()["code"]) == (409, "connection_not_available")
+    assert response.json()["details"]["reason"] == "none"
     assert records(app) == 0
 
 
@@ -414,6 +637,23 @@ async def test_the_limit_counts_every_request_up_to_it(
     await limit(client, model, request_limit_per_day=4)
     await outcome(client, model, "clarification")
     assert (await ask(client, "clarification")).status_code == 429
+
+
+async def test_parallel_prompts_at_the_limit_pass_exactly_up_to_it(
+    client: httpx.AsyncClient, model: Model, app: FastAPI, users: Users
+) -> None:
+    allowed, asking = 3, 7
+    app.state.geotandem.model_calls = ModelCalls(asking)
+    others = await users(asking)
+    await limit(client, model, request_limit_enabled=True, request_limit_per_day=allowed)
+    model.script(*["clarification"] * allowed)
+
+    answers = await asyncio.gather(*(ask(other, "clarification") for other in others))
+    await model.settle()
+
+    codes = sorted(r.status_code for r in answers)
+    assert codes == [202] * allowed + [429] * (asking - allowed)
+    assert records(app) == allowed and len(model.fake.calls) == allowed
 
 
 async def test_a_limit_that_is_off_is_never_checked(
@@ -652,7 +892,9 @@ async def test_no_log_line_holds_the_prompt_or_the_answer(
     )
     with caplog.at_level(logging.INFO):
         answered = await client.post(PROMPT, json={"text": secret_prompt})
+        await settle(app)
         failed = await client.post(PROMPT, json={"text": secret_prompt})
+        await settle(app)
         await client.get(action_url(answered.json()["id"]))
         await client.post(action_url(failed.json()["id"], "abort"))
 
@@ -668,7 +910,8 @@ async def test_no_log_line_holds_the_prompt_or_the_answer(
 # --- start-up (P7) ---------------------------------------------------------------
 
 
-def test_start_closes_what_the_last_shutdown_left_thinking(settings: Settings) -> None:
+def test_start_closes_everything_the_last_shutdown_left_thinking(settings: Settings) -> None:
+    """One process: nothing in flight survives a restart, whatever its age."""
     engine = bootstrap(settings)
     anna = accounts.create(engine, "anna", USER_PASSWORD, "user")
     new = NewAction(
@@ -691,8 +934,9 @@ def test_start_closes_what_the_last_shutdown_left_thinking(settings: Settings) -
     state = start(settings)
 
     store = ModelActionStore(state.backend.engine)
-    closed = store.get(anna, lost.id)
-    assert (closed.status, closed.decision) == ("failed", "failed")
-    assert closed.error is not None and closed.error["code"] == "llm_timeout"
-    assert store.get(anna, recent.id).status == "thinking"
+    for action in (lost, recent):
+        closed = store.get(anna, action.id)
+        assert (closed.status, closed.decision) == ("failed", "failed")
+        assert closed.error is not None and closed.error["code"] == "llm_timeout"
+    state.model_calls.shutdown()
     state.backend.engine.dispose()

@@ -5,24 +5,28 @@ first, so a refused request leaves no record and reaches no model:
 
 1. level and connection are the account's, resolved here on every request
    (H6, C17); no connection ⇒ ``connection_not_available``;
-2. the connection's request limit, when the administrator switched it on
-   (P5): the requests of the current calendar day (the server's time zone)
-   are counted from the action table, over all accounts ⇒ ``quota_exceeded``;
-3. the account's layer profile, built once: the record keeps its hash (S4) and
-   the model gets exactly it;
-4. the prompt's size against the connection's context length ⇒
-   ``context_too_large`` (400, no record, as the contract fixture says);
-5. the record, ``thinking``, created with ``proposal_only``: in E2.3 every
-   level only proposes (P1). Creating it closes the account's open proposal.
+2. the account's layer profile, built once: the record keeps its hash (S4) and
+   the model gets exactly it; the prompt, built once over it, against the
+   connection's context length ⇒ ``context_too_large`` (400, no record, as the
+   contract fixture says);
+3. a free model-call slot (``ModelCalls``) ⇒ else 503 ``busy``;
+4. in one critical section, inside the transaction that creates the record:
+   no other prompt of the account still ``thinking`` ⇒ else 409 ``busy``
+   (``reason: running``); the connection's request limit, when the
+   administrator switched it on (P5): the requests of the current calendar
+   day (the server's time zone), counted from the action table over all
+   accounts ⇒ ``quota_exceeded``. Then the record, ``thinking``, with
+   ``proposal_only``: in E2.3 every level only proposes (P1). Creating it
+   closes the account's open proposal.
 
-The model call then runs after the answer (P7), in ``Asked.run``: the route
-hands it to FastAPI's background tasks, which run it in the worker threads of
-the one uvicorn process once the 202 has left. Its outcome is stored as one
-edge out of ``thinking``: ``refused``, ``answered``, ``proposed``, or ``failed``
-with the seam's ``llm_*`` code or ``model_unreadable``. The store writes it as
-a compare-and-set, so an answer arriving after an abort finds the record moved
-on and is dropped. The HTTP call itself is not cancelled: it ends with its
-own timeout, and nothing of it is kept.
+The 202 leaves at once (P7); the model call runs in a thread of
+``ModelCalls``, never in the threads that answer requests. Its timeout is the
+connection's, at most ``MODEL_CALL_S``. Its outcome is stored as one edge out
+of ``thinking``: ``refused``, ``answered``, ``proposed``, or ``failed`` with
+the seam's ``llm_*`` code or ``model_unreadable``. An abort sets the call's
+cancel event: a call not started yet never reaches the model, an answer that
+arrives later is dropped (and the store's compare-and-set would drop it too).
+The HTTP call itself is not cancelled: it ends with its own timeout.
 
 A follow-up (P6) is linked to its parent, which must be the caller's own
 record (404 otherwise). Its turns and the derived reference arrive with WP81;
@@ -33,8 +37,11 @@ Logs carry ids and codes only, never the prompt or the answer (C15).
 """
 
 import logging
+import threading
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from concurrent.futures import Future, ThreadPoolExecutor
+from concurrent.futures import wait as wait_for
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta, tzinfo
 from functools import partial
 from typing import Any, Final
@@ -48,17 +55,17 @@ from geotandem.catalog import ModelProfile, model_profile
 from geotandem.connections import ConnectionInfo, ConnectionProblem, Connections
 from geotandem.data import DataBackend, Limits, Op
 from geotandem.db.orm import ModelAction
-from geotandem.db.spatialite import reading
 from geotandem.levels import Level, active_level
 from geotandem.llm import ClientFactory, Endpoint, LLMError
-from geotandem.model.direct import DirectAnswer, DirectQuery
+from geotandem.model.direct import DirectAnswer, DirectQuery, direct_prompt
 from geotandem.model.errors import ActionError
-from geotandem.model.prompt import build_prompt
+from geotandem.model.prompt import Prompt
 from geotandem.model.record import (
     ModelActionStore,
     NewAction,
     connection_snapshot,
     level_snapshot,
+    utc_now,
 )
 from geotandem.model.schemas import DecideRequest, ModelActionView, PromptRequest, QueryAnswer
 from geotandem.tools import ToolContext
@@ -66,13 +73,9 @@ from geotandem.tools import ToolContext
 log = logging.getLogger(__name__)
 
 MODEL_CALL_S: Final = 120
-"""The model call's time limit (plan 1, fixture ``limits.model_call_s``): a
-record still ``thinking`` after it has lost its answer."""
-
-
-def utc_now() -> datetime:
-    """Naive UTC, as every time the record holds (the store's convention)."""
-    return datetime.now(UTC).replace(tzinfo=None)
+"""The model call's time limit (plan 1, fixture ``limits.model_call_s``); also
+how long an ``auto`` answer waits to be executed before the start-up check
+closes it."""
 
 
 def day_start(now: datetime, tz: tzinfo | None = None) -> datetime:
@@ -86,9 +89,17 @@ def day_start(now: datetime, tz: tzinfo | None = None) -> datetime:
 
 
 def close_stale(engine: Engine, clock: Callable[[], datetime] = utc_now) -> list[int]:
-    """The start-up check (P7): records older than the model call's time limit
-    that no request will finish any more; ``thinking`` ends ``failed``."""
+    """The start-up check (P7): nothing in flight survives a restart of the one
+    process, so every ``thinking`` record ends ``failed``; an unexecuted ``auto``
+    answer older than ``MODEL_CALL_S`` is closed too."""
     return ModelActionStore(engine, clock).close_stale(clock() - timedelta(seconds=MODEL_CALL_S))
+
+
+def profile_for(backend: DataBackend, account: Account) -> tuple[DataBackend, ModelProfile]:
+    """The account's view and the layer profile its model gets over it (S3):
+    what it sees and the administrator released for the model."""
+    view = view_for(backend, account)
+    return view, model_profile(backend.engine, view.layer_names())
 
 
 def _error(code: str, message: str, **details: Any) -> dict[str, Any]:
@@ -96,25 +107,81 @@ def _error(code: str, message: str, **details: Any) -> dict[str, Any]:
     return {"code": code, "message": message, "details": details}
 
 
+class ModelCallsBusy(Exception):
+    """Every model-call slot is taken: 503 ``busy``, nothing recorded."""
+
+
+class ModelCalls:
+    """The model calls in flight (P7): at most ``size`` at once, each in a thread
+    of its own pool, so a slow model never holds the threads that answer
+    requests. One per application (``AppState``)."""
+
+    def __init__(self, size: int) -> None:
+        self.size = size
+        self.admission = threading.Lock()
+        """Held around the checks of a new record and its creation, so two
+        prompts never both pass (P5, one prompt at a time per account)."""
+        self._executor = ThreadPoolExecutor(max_workers=size, thread_name_prefix="model-call")
+        self._slots = threading.BoundedSemaphore(size)
+        self._lock = threading.Lock()
+        self._cancel: dict[int, threading.Event] = {}
+        self._running: set[Future[None]] = set()
+
+    def take(self) -> None:
+        """A slot for one call, without waiting; given back when the call ends."""
+        if not self._slots.acquire(blocking=False):
+            raise ModelCallsBusy
+
+    def give_back(self) -> None:
+        self._slots.release()
+
+    def start(self, action_id: int, call: Callable[[threading.Event], None]) -> None:
+        """Run ``call`` with the action's cancel event; it calls ``finish``."""
+        cancel = threading.Event()
+        with self._lock:
+            self._cancel[action_id] = cancel
+        future = self._executor.submit(call, cancel)
+        with self._lock:
+            self._running.add(future)
+        future.add_done_callback(self._done)
+
+    def _done(self, future: Future[None]) -> None:
+        with self._lock:
+            self._running.discard(future)
+
+    def finish(self, action_id: int) -> None:
+        """The call of ``action_id`` ended: forget its event, give its slot back."""
+        with self._lock:
+            self._cancel.pop(action_id, None)
+        self.give_back()
+
+    def cancel(self, action_id: int) -> None:
+        with self._lock:
+            event = self._cancel.get(action_id)
+        if event is not None:
+            event.set()
+
+    def wait(self, timeout: float | None = None) -> None:
+        """Until every call started so far has ended (tests)."""
+        with self._lock:
+            running = list(self._running)
+        wait_for(running, timeout)
+
+    def shutdown(self) -> None:
+        """Calls not started are dropped; their records are closed at the next start."""
+        self._executor.shutdown(wait=False, cancel_futures=True)
+
+
 @dataclass(frozen=True)
 class _Call:
-    """What the call after the answer needs, resolved while the request was checked."""
+    """What the call needs, resolved while the request was checked."""
 
     endpoint: Endpoint = field(repr=False)
     context: ToolContext
     level: Level
     context_length: int | None
-    text: str = field(repr=False)
+    prompt: Prompt = field(repr=False)
     profile: ModelProfile = field(repr=False)
-
-
-@dataclass(frozen=True)
-class Asked:
-    """A prompt the application accepted: the record as it is now, ``thinking``,
-    and the model call to run after the answer has left (P7)."""
-
-    action: ModelActionView
-    run: Callable[[], None] = field(repr=False)
 
 
 @dataclass(frozen=True)
@@ -122,6 +189,7 @@ class PromptFlow:
     backend: DataBackend
     connections: Connections
     client_factory: ClientFactory
+    calls: ModelCalls
     limits: Limits
     unsupported: frozenset[Op] = frozenset()
     clock: Callable[[], datetime] = utc_now
@@ -135,12 +203,11 @@ class PromptFlow:
 
     # --- the prompt (P7) ---------------------------------------------------------
 
-    def prompt(self, caller: Account, request: PromptRequest) -> Asked:
-        """Check, record ``thinking``, and hand back the call to run."""
+    def prompt(self, caller: Account, request: PromptRequest) -> ModelActionView:
+        """Check, record ``thinking``, start the call; the record as it is now."""
         if request.approach != "direct":
             raise ValueError("the tool chain arrives with WP75")
-        engine = self.backend.engine
-        level = active_level(engine, caller.id, admin=caller.role == "admin")
+        level = active_level(self.backend.engine, caller.id, admin=caller.role == "admin")
         connection = self.connections.active(caller.id)
         if connection is None:
             raise ConnectionProblem(
@@ -149,30 +216,38 @@ class PromptFlow:
                 "No model connection is set up for this account.",
                 reason="none",
             )
-        self._check_request_limit(connection)
-        view = view_for(self.backend, caller)
-        profile = model_profile(engine, view.layer_names())
-        # Too large to send: refused before the record, so it is no request (P5).
-        build_prompt(
-            request.text,
-            approach="direct",
-            level=level,
-            profile=profile,
-            context_length=connection.context_length,
+        view, profile = profile_for(self.backend, caller)
+        prompt = direct_prompt(
+            request.text, level=level, profile=profile, context_length=connection.context_length
         )
         endpoint = self.connections.endpoint(connection.id)
-        action = self.store.create(
-            caller,
-            NewAction(
-                prompt=request.text,
-                approach="direct",
-                level=level_snapshot(level),
-                connection=connection_snapshot(connection),
-                profile_hash=profile.hash,
-                parent_action_id=request.parent_action_id,
-                proposal_only=True,  # P1: every level only proposes in E2.3
-            ),
+        call = _Call(
+            endpoint=replace(endpoint, timeout_s=min(endpoint.timeout_s, MODEL_CALL_S)),
+            context=ToolContext(view, self.limits, self.unsupported),
+            level=level,
+            context_length=connection.context_length,
+            prompt=prompt,
+            profile=profile,
         )
+        new = NewAction(
+            prompt=request.text,
+            approach="direct",
+            level=level_snapshot(level),
+            connection=connection_snapshot(connection),
+            profile_hash=profile.hash,
+            parent_action_id=request.parent_action_id,
+            proposal_only=True,  # P1: every level only proposes in E2.3
+        )
+        self.calls.take()
+        try:
+            with self.calls.admission:
+                action = self.store.create(
+                    caller, new, admit=partial(self._admit, caller=caller, connection=connection)
+                )
+            self.calls.start(action.id, partial(self._answer, caller, action.id, call))
+        except BaseException:
+            self.calls.give_back()
+            raise
         log.info(
             "model action %d asked: connection %d, level %d, profile %s",
             action.id,
@@ -180,24 +255,40 @@ class PromptFlow:
             action.level.id,
             profile.hash[:12],
         )
-        call = _Call(
-            endpoint=endpoint,
-            context=ToolContext(view, self.limits, self.unsupported),
-            level=level,
-            context_length=connection.context_length,
-            text=request.text,
-            profile=profile,
-        )
-        return Asked(action, partial(self._answer, caller, action.id, call))
+        return action
 
-    def _check_request_limit(self, connection: ConnectionInfo) -> None:
-        """Off: no counting at all. On: refused once the day's requests reach it (P5)."""
+    def _admit(self, db: Session, *, caller: Account, connection: ConnectionInfo) -> None:
+        """In the transaction that creates the record: one prompt at a time per
+        account, and the connection's request limit (P5). Off: no counting."""
+        thinking = db.scalar(
+            select(ModelAction.id)
+            .where(ModelAction.user_id == caller.id, ModelAction.status == "thinking")
+            .limit(1)
+        )
+        if thinking is not None:
+            raise ActionError(
+                "busy",
+                f"The account's prompt {thinking} is still being answered.",
+                http_status=409,
+                reason="running",
+                id=thinking,
+            )
         if not connection.request_limit_enabled:
             return
         limit = connection.request_limit_per_day
         if limit is None:  # the connection rules and the table's check keep it set
             raise RuntimeError(f"connection {connection.id} has a request limit without number")
-        if self.requests_today(connection.id) >= limit:
+        # Every record is a request that reached the model: one refused before
+        # the call leaves none.
+        used = db.scalar(
+            select(func.count())
+            .select_from(ModelAction)
+            .where(
+                ModelAction.connection_id == connection.id,
+                ModelAction.created_at >= day_start(self.clock(), self.tz),
+            )
+        )
+        if (used or 0) >= limit:
             raise ActionError(
                 "quota_exceeded",
                 f"The {limit} requests per day of the connection '{connection.name}' are "
@@ -207,48 +298,51 @@ class PromptFlow:
                 connection=connection.name,
             )
 
-    def requests_today(self, connection_id: int) -> int:
-        """Requests of the current calendar day that reached the model call, over
-        all accounts (P5): every record is one, since a request refused before
-        the call leaves none."""
-        since = day_start(self.clock(), self.tz)
-        with Session(reading(self.backend.engine)) as db:
-            count = db.scalar(
-                select(func.count())
-                .select_from(ModelAction)
-                .where(ModelAction.connection_id == connection_id, ModelAction.created_at >= since)
-            )
-        return count or 0
+    # --- the call (P7) -------------------------------------------------------------
 
-    # --- the call, after the answer (P7) -----------------------------------------
-
-    def _answer(self, caller: Account, action_id: int, call: _Call) -> None:
-        """Ask the model and store what came of it. Never raises: whatever goes
-        wrong ends the record ``failed``, and the start-up check closes one this
-        process could not write any more."""
+    def _answer(
+        self, caller: Account, action_id: int, call: _Call, cancel: threading.Event
+    ) -> None:
+        """Ask the model and store what came of it. Never raises; gives the slot
+        back. Whatever goes wrong ends the record ``failed``, and the start-up
+        check closes one this process could not write any more."""
         store = self.store
+        try:
+            if cancel.is_set() or store.get(caller, action_id).status != "thinking":
+                log.info("model action %d: aborted before the call", action_id)
+                return
+            write = self._ask(store, caller, action_id, call)
+            if cancel.is_set():
+                log.info("model action %d: answer dropped (aborted)", action_id)
+                return
+            self._settle(action_id, write)
+        except Exception as exc:
+            # The type only: an exception's text may quote the prompt (C15).
+            log.error("model action %d: the call failed (%s)", action_id, type(exc).__name__)
+        finally:
+            self.calls.finish(action_id)
+
+    def _ask(
+        self, store: ModelActionStore, caller: Account, action_id: int, call: _Call
+    ) -> Callable[[], ModelActionView]:
+        """The model's answer, as the write that stores it."""
         try:
             client = self.client_factory(call.endpoint)
             try:
                 direct = DirectQuery(client, call.context, call.level, call.context_length)
-                found = direct.run(call.text, profile=call.profile)
+                found = direct.ask(call.prompt, profile=call.profile)
             finally:
                 client.close()
         except LLMError as exc:
             error = _error(exc.code, exc.message, cause=exc.cause)
-            self._settle(action_id, lambda: store.fail(caller, action_id, error))
-            return
         except ActionError as exc:  # model_unreadable; its cause names no text
             error = _error(exc.code, exc.message, **exc.details)
-            self._settle(action_id, lambda: store.fail(caller, action_id, error))
-            return
         except Exception as exc:
-            # The type only: an exception's text may quote the prompt (C15).
             log.error("model action %d: the call failed (%s)", action_id, type(exc).__name__)
             error = _error("internal_error", "The model call stopped unexpectedly.")
-            self._settle(action_id, lambda: store.fail(caller, action_id, error))
-            return
-        self._settle(action_id, lambda: self._keep(store, caller, action_id, found))
+        else:
+            return partial(self._keep, store, caller, action_id, found)
+        return partial(store.fail, caller, action_id, error)
 
     @staticmethod
     def _keep(
@@ -277,11 +371,6 @@ class PromptFlow:
             # Aborted meanwhile: the compare-and-set lost, the late answer is dropped.
             log.info("model action %d: answer dropped (%s)", action_id, exc.code)
             return
-        except Exception as exc:
-            log.error(
-                "model action %d: storing the outcome failed (%s)", action_id, type(exc).__name__
-            )
-            return
         code = (view.refusal.code if view.refusal else None) or (view.error or {}).get("code")
         log.info("model action %d: %s%s", action_id, view.status, f" ({code})" if code else "")
 
@@ -292,20 +381,7 @@ class PromptFlow:
         return self.store.get(caller, action_id)
 
     def decide(self, caller: Account, action_id: int, request: DecideRequest) -> ModelActionView:
-        """The hand-over (P1): applied by hand, or edited and applied through Modus A
-        with the query the user applied instead (``adjusted``, logged, never run)."""
-        if request.decision == "adjusted" and request.query is None:
-            raise ActionError(
-                "bad_request",
-                "An adjusted decision names the query the user applied.",
-                decision=request.decision,
-            )
-        if request.decision == "proposal_only" and request.query is not None:
-            raise ActionError(
-                "bad_request",
-                "A proposal applied as proposed has no query of the user's.",
-                decision=request.decision,
-            )
+        """The hand-over (P1); the store keeps its rules."""
         view = self.store.decide(
             caller,
             action_id,
@@ -317,8 +393,10 @@ class PromptFlow:
         return view
 
     def abort(self, caller: Account, action_id: int) -> ModelActionView:
-        """While the model thinks (M2.1): ``aborted``. The call runs on to its own
-        end; its answer is dropped by the store's compare-and-set."""
+        """While the model thinks (M2.1): ``aborted``. A call not started yet never
+        reaches the model; a running one ends with its own timeout, its answer
+        dropped."""
         view = self.store.abort(caller, action_id)
+        self.calls.cancel(action_id)
         log.info("model action %d: aborted", action_id)
         return view

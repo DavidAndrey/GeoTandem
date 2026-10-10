@@ -14,6 +14,7 @@ from geotandem.connections import ConnectionProblem
 from geotandem.engine import QueryError
 from geotandem.levels import LevelError
 from geotandem.model.errors import ActionError
+from geotandem.model.service import ModelCallsBusy
 from geotandem.saved_queries import SavedQueryError
 from geotandem.sessions import SessionError
 from geotandem.tools import UnknownTool
@@ -81,6 +82,12 @@ def install(app: FastAPI) -> None:
         audit.event("queries_busy")
         message = "Too many queries are running at the same time. Please try again shortly."
         return _body(503, "busy", message, {"Retry-After": "5"})
+
+    @app.exception_handler(ModelCallsBusy)
+    async def _model_calls_busy(_: Request, exc: ModelCallsBusy) -> JSONResponse:
+        audit.event("model_calls_busy")
+        message = "Too many model requests are running at once. Please try again shortly."
+        return _body(503, "busy", message, {"Retry-After": "5"}, reason="model_calls")
 
     @app.exception_handler(SessionError)
     async def _session_rule(_: Request, exc: SessionError) -> JSONResponse:

@@ -4848,7 +4848,7 @@
           "model"
         ],
         "summary": "Prompt",
-        "description": "Ask the model (F-5.1). Level and connection are the account's, resolved\nhere (H6, C17). Stores the action record and answers at once with it,\n``thinking``; the client polls ``GET /actions/{id}`` and may abort. No\nresult data: an ``auto`` answer arrives ``approved`` and the client\nexecutes it (D2). In E2.3 every answer is a proposal (P1).",
+        "description": "Ask the model (F-5.1). Level and connection are the account's, resolved\nhere (H6, C17). Stores the action record and answers at once with it,\n``thinking``; the client polls ``GET /actions/{id}`` and may abort. No\nresult data: an ``auto`` answer arrives ``approved`` and the client\nexecutes it (D2). In E2.3 every answer is a proposal (P1). One prompt of an\naccount at a time (409 ``busy``); all model calls at once are bounded\n(503 ``busy``).",
         "operationId": "prompt_api_model_prompt_post",
         "requestBody": {
           "content": {
@@ -4933,6 +4933,16 @@
           },
           "502": {
             "description": "Bad Gateway",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -5911,6 +5921,16 @@
             },
             "description": "Bad Gateway"
           },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
           "504": {
             "content": {
               "application/json": {
@@ -6106,6 +6126,16 @@
               }
             },
             "description": "Bad Gateway"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
           },
           "504": {
             "content": {

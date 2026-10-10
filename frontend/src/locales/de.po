@@ -1811,6 +1811,10 @@ msgid "Es braucht mindestens {min} und höchstens {max} Stufen."
 msgstr "Es braucht mindestens {min} und höchstens {max} Stufen."
 
 #: src/i18n/errors.ts
+msgid "Es ist keine Modellanbindung eingerichtet."
+msgstr "Es ist keine Modellanbindung eingerichtet."
+
+#: src/i18n/errors.ts
 msgid "Es sind schon so viele Abfragen gespeichert wie erlaubt. Bitte zuerst eine löschen."
 msgstr "Es sind schon so viele Abfragen gespeichert wie erlaubt. Bitte zuerst eine löschen."
 

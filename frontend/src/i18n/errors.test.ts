@@ -19,6 +19,13 @@ test('a refusal reads in German, from its code and details', () => {
   expect(refused('unreadable_source', { reason: 'archive_encrypted' }).message).toBe(
     'Das Archiv ist verschlüsselt und kann nicht gelesen werden.',
   )
+  // No connection at all is not a choice refused (design M1.3).
+  expect(refused('connection_not_available', { reason: 'none' }).message).toBe(
+    'Es ist keine Modellanbindung eingerichtet.',
+  )
+  expect(refused('connection_not_available', { id: 3 }).message).toBe(
+    'Diese Anbindung steht nicht zur Wahl.',
+  )
   // A code from a newer back end: its English rather than nothing.
   expect(refused('brand_new').message).toBe('English text')
   expect(new ApiRequestError(502, undefined).message).toBe('HTTP 502')

@@ -9,7 +9,7 @@ record of another account is ``not_found`` (404, never 403), as for sessions.
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query
+from fastapi import APIRouter, Depends, Query
 
 from geotandem.api.auth import CurrentAccount
 from geotandem.api.errors import ErrorBody, Problem
@@ -35,9 +35,10 @@ ERRORS: dict[int | str, dict[str, Any]] = {
 }
 CALLS_MODEL: dict[int | str, dict[str, Any]] = {
     **ERRORS,
-    **{status: {"model": ErrorBody} for status in (429, 502, 504)},
+    **{status: {"model": ErrorBody} for status in (429, 502, 503, 504)},
 }
-"""Routes that call the model: quota, the endpoint's failure, its timeout (design M14)."""
+"""Routes that call the model: quota, the endpoint's failure, every model-call
+slot taken, the endpoint's timeout (design M14)."""
 
 
 class NotBuilt(Problem):
@@ -56,6 +57,7 @@ def prompt_flow(state: Annotated[AppState, Depends(get_state)]) -> PromptFlow:
         backend=state.backend,
         connections=state.connections,
         client_factory=state.client_factory,
+        calls=state.model_calls,
         limits=state.limits,
         unsupported=frozenset(state.unsupported),
     )
@@ -65,19 +67,17 @@ Flow = Annotated[PromptFlow, Depends(prompt_flow)]
 
 
 @router.post("/prompt", status_code=202, responses=CALLS_MODEL)
-def prompt(
-    body: PromptRequest, account: CurrentAccount, flow: Flow, background: BackgroundTasks
-) -> ModelActionView:
+def prompt(body: PromptRequest, account: CurrentAccount, flow: Flow) -> ModelActionView:
     """Ask the model (F-5.1). Level and connection are the account's, resolved
     here (H6, C17). Stores the action record and answers at once with it,
     ``thinking``; the client polls ``GET /actions/{id}`` and may abort. No
     result data: an ``auto`` answer arrives ``approved`` and the client
-    executes it (D2). In E2.3 every answer is a proposal (P1)."""
+    executes it (D2). In E2.3 every answer is a proposal (P1). One prompt of an
+    account at a time (409 ``busy``); all model calls at once are bounded
+    (503 ``busy``)."""
     if body.approach == "chain":
         raise NotBuilt("WP75")
-    asked = flow.prompt(account, body)
-    background.add_task(asked.run)
-    return asked.action
+    return flow.prompt(account, body)
 
 
 @router.get("/actions/{action_id}", responses=ERRORS)

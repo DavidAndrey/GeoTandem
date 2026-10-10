@@ -965,7 +965,9 @@ export interface paths {
      *     here (H6, C17). Stores the action record and answers at once with it,
      *     ``thinking``; the client polls ``GET /actions/{id}`` and may abort. No
      *     result data: an ``auto`` answer arrives ``approved`` and the client
-     *     executes it (D2). In E2.3 every answer is a proposal (P1).
+     *     executes it (D2). In E2.3 every answer is a proposal (P1). One prompt of an
+     *     account at a time (409 ``busy``); all model calls at once are bounded
+     *     (503 ``busy``).
      */
     post: operations['prompt_api_model_prompt_post']
     delete?: never
@@ -8812,6 +8814,15 @@ export interface operations {
           'application/json': components['schemas']['ErrorBody']
         }
       }
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
       /** @description Gateway Timeout */
       504: {
         headers: {
@@ -9588,6 +9599,15 @@ export interface operations {
           'application/json': components['schemas']['ErrorBody']
         }
       }
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
       /** @description Gateway Timeout */
       504: {
         headers: {
@@ -9742,6 +9762,15 @@ export interface operations {
       }
       /** @description Bad Gateway */
       502: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Service Unavailable */
+      503: {
         headers: {
           [name: string]: unknown
         }

@@ -82,6 +82,7 @@ def start(settings: Settings) -> AppState:
         Devices(),
         Connections(engine, Vault.open(settings.data_dir), settings.local_hosts),
         OpenAICompatClient,
+        model_service.ModelCalls(settings.max_model_calls),
         token,
     )
 
@@ -117,6 +118,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.geotandem = start(settings)
         yield
+        app.state.geotandem.model_calls.shutdown()
         app.state.geotandem.backend.engine.dispose()
 
     docs = settings.api_docs
