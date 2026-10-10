@@ -211,6 +211,13 @@ test('the fake decide takes a proposal once, as the server does', async () => {
   // Decided or final: already_decided.
   for (const final of ['answered', 'rejected', 'applied', 'superseded'] as const)
     expect(await answer(post(final)(body))).toMatchObject([409, { code: 'already_decided' }])
+  // WP71: a proposal that waits for approval is no hand-over; adjusting it is.
+  const waits = Object.values(decideRoute(4, 'proposed', 'Prüfen'))[0] as (
+    init: RequestInit,
+  ) => Response
+  expect(await answer(waits(body))).toMatchObject([409, { code: 'not_approved' }])
+  const adjusted = { body: JSON.stringify({ decision: 'adjusted', query: { source: 'schulen' } }) }
+  expect(await answer(waits(adjusted))).toMatchObject([200, { decision: 'adjusted' }])
 })
 
 test('times are naive UTC, as the server writes them', () => {

@@ -8,7 +8,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict, Field
 
-from geotandem.api.auth import CurrentAccount
+from geotandem.api.auth import CurrentAccount, InteractiveAccount
 from geotandem.api.errors import ErrorBody
 from geotandem.api.state import AppState, get_state
 from geotandem.auth.accounts import Account
@@ -25,7 +25,9 @@ from geotandem.levels import (
 router = APIRouter(prefix="/api/llm", tags=["llm"])
 State = Annotated[AppState, Depends(get_state)]
 
-ERRORS: dict[int | str, dict[str, Any]] = {400: {"model": ErrorBody}, 422: {"model": ErrorBody}}
+ERRORS: dict[int | str, dict[str, Any]] = {
+    status: {"model": ErrorBody} for status in (400, 403, 422)
+}
 
 
 class LevelOption(BaseModel):
@@ -85,9 +87,11 @@ def options(state: State, account: CurrentAccount) -> LLMOptions:
 
 
 @router.put("/options", responses=ERRORS)
-def choose(body: Choice, state: State, account: CurrentAccount) -> LLMOptions:
+def choose(body: Choice, state: State, account: InteractiveAccount) -> LLMOptions:
     """Choose a connection, a level or both. A disabled connection is refused for
-    administrators too (C14); a level users may not choose is refused for users."""
+    administrators too (C14); a level users may not choose is refused for users.
+    The person's choice only (``session_required`` for a token, WP71): a program
+    acting for the account must not move it to a level without approval."""
     if "connection_id" in body.model_fields_set:
         state.connections.choose(account.id, body.connection_id)
     if "level_id" in body.model_fields_set:

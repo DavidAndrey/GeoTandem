@@ -78,12 +78,12 @@ from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session
 
 from geotandem.auth.accounts import Account
-from geotandem.auth.visibility import view_for
+from geotandem.auth.visibility import visible_names
 from geotandem.catalog import ModelProfile, model_profile
 from geotandem.connections import ConnectionInfo, ConnectionProblem, Connections
 from geotandem.data import DataBackend, Limits, Op
+from geotandem.data.view import LayerView
 from geotandem.db.orm import ModelAction
-from geotandem.db.spatialite import reading
 from geotandem.engine import count_query, ids_query, run_query, stamp_of
 from geotandem.engine.errors import QueryTimedOut
 from geotandem.levels import Level, active_level
@@ -145,10 +145,18 @@ def close_stale(engine: Engine, clock: Callable[[], datetime] = utc_now) -> list
     return ModelActionStore(engine, clock).close_stale(clock() - timedelta(seconds=MODEL_CALL_S))
 
 
+def read_view(backend: DataBackend, account: Account) -> DataBackend:
+    """The layers ``account`` sees, read-only whatever its role (F-9.5):
+    ``view_for`` hands an administrator the data core itself, which can write;
+    the model path gets a ``LayerView`` over the same layers instead, whose
+    writes raise ``PermissionError`` (WP71)."""
+    return LayerView(backend, visible_names(backend.engine, account.role))
+
+
 def profile_for(backend: DataBackend, account: Account) -> tuple[DataBackend, ModelProfile]:
-    """The account's view and the layer profile its model gets over it (S3):
-    what it sees and the administrator released for the model."""
-    view = view_for(backend, account)
+    """The account's read-only view and the layer profile its model gets over it
+    (S3): what it sees and the administrator released for the model."""
+    view = read_view(backend, account)
     return view, model_profile(backend.engine, view.layer_names())
 
 
@@ -516,12 +524,8 @@ class PromptFlow:
         return self.store.get(caller, action_id)
 
     def decide(self, caller: Account, action_id: int, request: DecideRequest) -> ModelActionView:
-        """The hand-over (P1); the store keeps its rules. ``proposal_only`` is the
-        decision of a proposal the model could only make (plan section 2: the
-        level had an ``off`` part); one that waits for ``approve`` is approved,
-        rejected or adjusted, never logged as a hand-over (WP71)."""
-        if request.decision == "proposal_only" and request.query is None:  # else bad_request
-            self._proposal_only(caller, action_id)
+        """The hand-over (P1); the store keeps its rules, ``proposal_only`` only
+        for a proposal whose level had an ``off`` part (section 2, WP71)."""
         view = self.store.decide(
             caller,
             action_id,
@@ -531,28 +535,6 @@ class PromptFlow:
         )
         log.info("model action %d: decided %s", action_id, view.decision)
         return view
-
-    def _proposal_only(self, caller: Account, action_id: int) -> None:
-        """Refuse ``proposal_only`` for an own record that is no proposal-only one.
-        The flag is final once the answer is stored (``propose``, the one edge
-        out of ``thinking`` that sets it), so nothing can overtake this read; a
-        record still ``thinking`` is refused, as the store refuses it."""
-        with Session(reading(self.backend.engine)) as db:
-            row = db.execute(
-                select(ModelAction.status, ModelAction.proposal_only).where(
-                    ModelAction.id == action_id, ModelAction.user_id == caller.id
-                )
-            ).one_or_none()
-        if row is None or row.proposal_only or row.status not in ("thinking", "proposed"):
-            return  # another account's, a proposal-only one, or decided: the store answers
-        raise ActionError(
-            "not_approved",
-            f"Model action {action_id} waits for approval: 'proposal_only' is for a "
-            "proposal whose level has an 'off' part.",
-            http_status=409,
-            id=action_id,
-            status=row.status,
-        )
 
     def abort(self, caller: Account, action_id: int) -> ModelActionView:
         """While the model thinks (M2.1): ``aborted``. A call not started yet never
@@ -598,7 +580,7 @@ class PromptFlow:
         try:
             ready = self.store.ready(caller, action_id, "execute", ["approved"])
             query = _stored(ready, "execute")
-            visible = view_for(self.backend, caller)
+            visible = read_view(self.backend, caller)
             result = run_query(query, visible, self.limits, self.unsupported)
             view = self.store.execute(caller, action_id, stamp_of(result))
         finally:
@@ -619,7 +601,7 @@ class PromptFlow:
         share one time limit, as ``/api/query/count`` does."""
         ready = self.store.ready(caller, action_id, "preview", ["proposed", "approved"])
         query = _stored(ready, "preview")
-        view = view_for(self.backend, caller)
+        view = read_view(self.backend, caller)
         budget = self.limits.timeout_s
         deadline = time.monotonic() + budget
         ids = ids_query(query, view, self.limits, self.unsupported)

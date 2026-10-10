@@ -57,11 +57,13 @@ from geotandem.api.auth import signed_in
 from geotandem.api.state import AppState
 from geotandem.auth.accounts import Account
 from geotandem.connections import Connections
-from geotandem.db.orm import LLMConnection, ModelAction
+from geotandem.data.view import LayerView
+from geotandem.db.orm import AuthSession, LLMConnection, ModelAction
 from geotandem.levels import classify, load_levels
 from geotandem.llm import Completion, Endpoint, Message, ModelInfo, ToolSpec, host_of
 from geotandem.llm.fake import FakeLLMClient
-from geotandem.model.direct import governance
+from geotandem.model import service
+from geotandem.model.direct import DirectQuery, governance
 from geotandem.model.record import (
     ModelActionStore,
     NewAction,
@@ -588,6 +590,30 @@ async def test_the_choice_takes_a_level_and_a_connection_only(
     assert (await client.get(OPTIONS)).json()["chosen_level_id"] is None
 
 
+async def test_a_misspelt_field_in_a_level_or_connection_is_refused(
+    client: httpx.AsyncClient, levels: dict[str, int]
+) -> None:
+    """Dropped, ``selectible: true`` would save a level that is not selectable,
+    ``enabeld: false`` leave a connection on (WP71 review)."""
+    stored_levels = (await client.get("/api/admin/levels")).json()["levels"]
+    misspelt = [{**stored_levels[0], "selectible": True}, *stored_levels[1:]]
+    for body in ({"levels": misspelt}, {"levels": stored_levels, "default": "Prüfen"}):
+        response = await client.put("/api/admin/levels", json=body)
+        assert response.status_code == 422, response.text
+    assert (await client.get("/api/admin/levels")).json()["levels"] == stored_levels
+
+    [connection] = (await client.get(CONNECTIONS)).json()
+    local = {"base_url": "http://127.0.0.1:11434/v1", "model": "qwen3:8b"}
+    for method, path, body in (
+        ("PATCH", f"{CONNECTIONS}/{connection['id']}", {"enabeld": False}),
+        ("POST", CONNECTIONS, {"name": "Zweite", **local, "enabeld": True}),
+        ("POST", f"{CONNECTIONS}/test", {**local, "timout_s": 5}),
+    ):
+        response = await client.request(method, path, json=body)
+        assert response.status_code == 422, (path, response.text)
+    assert (await client.get(CONNECTIONS)).json() == [connection]
+
+
 async def test_a_proposal_that_waits_for_approval_is_no_hand_over(
     client: httpx.AsyncClient, app: FastAPI, levels: dict[str, int], ran: list[str]
 ) -> None:
@@ -624,20 +650,23 @@ async def test_a_token_never_previews_approves_rejects_or_hands_over(
     """The person decides (F-6.2): a token beside the login cookie, or a
     credential that signs the account in but is not the login cookie (as a
     model's or MCP client's token will, E4), is refused, and the security log
-    says so without the token."""
+    says so without the token. That includes the level choice: a token that
+    moved the account to an ``auto`` level could then prompt and execute
+    without a person deciding."""
     waits = stored(app, "admin", "Prüfen")
     hand_only = stored(app, "admin", "Assistenz")
     steps = [
-        ("GET", "preview", waits, None),
-        ("POST", "approve", waits, None),
-        ("POST", "reject", waits, {}),
-        ("POST", "decide", hand_only, BODIES["decide"]),
+        ("GET", url(waits, "preview"), None),
+        ("POST", url(waits, "approve"), None),
+        ("POST", url(waits, "reject"), {}),
+        ("POST", url(hand_only, "decide"), BODIES["decide"]),
+        ("PUT", OPTIONS, {"level_id": levels["Automatisch"]}),
     ]
     before = {i: (await client.get(url(i))).json() for i in (waits, hand_only)}
     ran.clear()
-    for method, step, action_id, body in steps:
-        response = await client.request(method, url(action_id, step), json=body, headers=TOKEN)
-        assert (response.status_code, response.json()["code"]) == (403, "session_required"), step
+    for method, path, body in steps:
+        response = await client.request(method, path, json=body, headers=TOKEN)
+        assert (response.status_code, response.json()["code"]) == (403, "session_required"), path
 
     admin = account_of(app, "admin")
 
@@ -647,13 +676,14 @@ async def test_a_token_never_previews_approves_rejects_or_hands_over(
 
     app.dependency_overrides[signed_in] = by_token
     try:
-        for method, step, action_id, body in steps:
-            response = await client.request(method, url(action_id, step), json=body)
+        for method, path, body in steps:
+            response = await client.request(method, path, json=body)
             assert (response.status_code, response.json()["code"]) == (403, "session_required")
     finally:
         del app.dependency_overrides[signed_in]
     assert ran == []
     assert {i: (await client.get(url(i))).json() for i in before} == before
+    assert (await client.get(OPTIONS)).json()["chosen_level_id"] is None
     refused = [e for e in events if e["event"] == "session_required"]
     assert [(e["credential"], e["authorization_header"]) for e in refused] == [
         ("session", True)
@@ -797,14 +827,15 @@ query_only``); no tool writes. The chain tools of WP74 join here, each with its
 effect; the direct path offers the model none."""
 
 READ_ONLY_IMPORTS: dict[str, set[str]] = {
-    # Who asks, and what they may see (the layer view: reads only).
+    # Who asks, and which layers they see: the names, for a read-only view.
     "geotandem.auth.accounts": {"Account"},
-    "geotandem.auth.visibility": {"view_for"},
+    "geotandem.auth.visibility": {"visible_names"},
     # The layer profile the model gets (S3), read from the catalog.
-    "geotandem.catalog": {"CHARS_PER_TOKEN", "ModelProfile", "model_profile"},
+    "geotandem.catalog": {"CHARS_PER_TOKEN", "LayerProfile", "ModelProfile", "model_profile"},
     # Connections: the account's active one, read for a call (``active_call``).
     "geotandem.connections": {"ConnectionInfo", "ConnectionProblem", "Connections"},
-    # The data core's types and the read-only marker of its transactions.
+    # The data core's types, its read-only view and the read-only marker of
+    # its transactions.
     "geotandem.data": {"DataBackend", "Limits", "Op"},
     "geotandem.data.view": {"LayerView"},
     "geotandem.db.spatialite": {"reading"},
@@ -813,6 +844,7 @@ READ_ONLY_IMPORTS: dict[str, set[str]] = {
     # The engine: compiles and runs queries on a read-only connection.
     "geotandem.engine": {
         "QueryError",
+        "QueryResult",
         "ResultStamp",
         "count_query",
         "ids_query",
@@ -821,7 +853,7 @@ READ_ONLY_IMPORTS: dict[str, set[str]] = {
         "validate_query",
     },
     "geotandem.engine.compile": {"FID", "GEOM"},
-    "geotandem.engine.errors": {"QueryTimedOut"},
+    "geotandem.engine.errors": {"QueryTimedOut", "UnknownLayer"},
     "geotandem.engine.result": {"QueryResult", "ResultStamp"},
     # Levels: read and resolved, never chosen or saved here.
     "geotandem.levels": {"CellMode", "Level", "OpClass", "active_level", "classify", "strictest"},
@@ -835,7 +867,6 @@ READ_ONLY_IMPORTS: dict[str, set[str]] = {
         "Locality",
         "Message",
     },
-    "geotandem.tools": {"ToolContext"},
     # The security log (events, no data).
     "geotandem": {"audit"},
     # The HTTP side of the model routes.
@@ -849,15 +880,35 @@ one that reads. A new one fails ``test_the_model_path_imports_only_what_reads``
 until it is listed here, after a look at whether it writes (F-9.5)."""
 CALLED_ON: dict[str, set[str]] = {
     "connections": {"active_call"},
-    "backend": {"engine"},
+    "backend": {"engine", "layer_names"},
 }
 """What the model path uses of the connections (the account's active one) and
-of the data core (its engine, for the record and the read-only view)."""
+of the data core (its engine, for the record and the read-only view; the layer
+names, for the tools' profile)."""
+MODEL_PATH = ("model", "tools")
+"""The packages of the model path, besides its routes (``api/model.py``)."""
 
 
 def model_path_sources() -> Iterator[tuple[str, ast.Module]]:
-    for path in sorted([*(SOURCE / "model").rglob("*.py"), SOURCE / "api" / "model.py"]):
+    paths = [p for package in MODEL_PATH for p in (SOURCE / package).rglob("*.py")]
+    for path in sorted([*paths, SOURCE / "api" / "model.py"]):
         yield str(path.relative_to(SOURCE)), ast.parse(path.read_text(encoding="utf-8"))
+
+
+def write_methods() -> set[str]:
+    """The data core's writes: every method the read-only ``LayerView`` refuses."""
+    tree = ast.parse((SOURCE / "data" / "view.py").read_text(encoding="utf-8"))
+    return {
+        node.name
+        for node in ast.walk(tree)
+        if isinstance(node, ast.FunctionDef)
+        and any(
+            isinstance(raised, ast.Raise)
+            and isinstance(raised.exc, ast.Call)
+            and getattr(raised.exc.func, "id", None) == "PermissionError"
+            for raised in ast.walk(node)
+        )
+    }
 
 
 def test_the_tools_write_nothing(client: httpx.AsyncClient, app: FastAPI) -> None:
@@ -873,14 +924,28 @@ def test_the_model_path_imports_only_what_reads() -> None:
             if isinstance(node, ast.Import):
                 for alias in node.names:
                     assert not alias.name.startswith("geotandem"), (name, alias.name)
-            elif isinstance(node, ast.ImportFrom) and node.module:
-                module = node.module
-                if module == "geotandem" or (
-                    module.startswith("geotandem.") and not module.startswith("geotandem.model")
-                ):
+            elif isinstance(node, ast.ImportFrom):
+                assert node.level == 0, f"{name}: a relative import escapes this check"
+                module = node.module or ""
+                inside = any(module.startswith(f"geotandem.{p}") for p in MODEL_PATH)
+                if not inside and (module == "geotandem" or module.startswith("geotandem.")):
                     found.setdefault(module, set()).update(a.name for a in node.names)
     unlisted = {m: names - READ_ONLY_IMPORTS.get(m, set()) for m, names in found.items()}
     assert {m: n for m, n in unlisted.items() if n} == {}, "new reach of the model path (F-9.5)"
+
+
+def test_the_model_path_names_no_write_of_the_data_core() -> None:
+    """Neither as an attribute nor as a string (``getattr``): whoever calls."""
+    writes = write_methods()
+    assert {"create_layer", "replace_layer", "drop_layer", "duplicate_layer"} <= writes
+    named = [
+        (name, getattr(node, "attr", None) or getattr(node, "value", None))
+        for name, tree in model_path_sources()
+        for node in ast.walk(tree)
+        if (isinstance(node, ast.Attribute) and node.attr in writes)
+        or (isinstance(node, ast.Constant) and node.value in writes)
+    ]
+    assert named == []
 
 
 def test_the_model_path_uses_only_reads_of_connections_and_the_data_core() -> None:
@@ -915,10 +980,16 @@ READS = {"SELECT", "WITH", "PRAGMA", "BEGIN", "COMMIT", "ROLLBACK", "END", "SAVE
 
 @contextmanager
 def writes(app: FastAPI, into: list[tuple[str, str]]) -> Iterator[None]:
-    """Every statement that changes the database, as (kind, table), while open."""
+    """Every statement that changes the database, as (kind, table), while open;
+    but one: a signed-in request's extension of its login (``sessions.resolve``),
+    which no model route causes and which comes once a minute."""
     engine = app.state.geotandem.backend.engine
+    expiry = update(AuthSession).where(AuthSession.token_hash == "").values(expires_at=None)
+    extension = " ".join(str(expiry.compile(dialect=engine.dialect)).split())
 
     def seen(_conn: Any, _cursor: Any, statement: str, *_: Any) -> None:
+        if " ".join(statement.split()) == extension:
+            return
         found = WRITE.match(statement)
         if found:
             into.append((found.group(1).split()[0].upper(), found.group(2)))
@@ -934,20 +1005,43 @@ def writes(app: FastAPI, into: list[tuple[str, str]]) -> Iterator[None]:
         event.remove(engine, "before_cursor_execute", seen)
 
 
+@pytest.mark.parametrize("role", ["admin", "user"])
 async def test_walking_every_model_route_writes_the_action_record_only(
-    client: httpx.AsyncClient, app: FastAPI, model: Model, levels: dict[str, int]
+    client: httpx.AsyncClient,
+    app: FastAPI,
+    model: Model,
+    levels: dict[str, int],
+    other: httpx.AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+    role: str,
 ) -> None:
     """Every built model route with an outcome that changes something, the call
-    in its thread included: nothing is written but ``model_action`` (and what
-    a signed-in request writes anyway, the login's expiry)."""
-    baseline: list[tuple[str, str]] = []
-    with writes(app, baseline):
-        assert (await client.get("/api/layers")).status_code == 200
-    signed_in_writes = {table for _, table in baseline}
+    in its thread included, for an administrator as for a user: nothing is
+    written but ``model_action``, and every view of the data the path hands on
+    (to the model's checks and tools, the preview, ``execute``) is read-only,
+    also for an administrator, whose ``view_for`` is the writable data core."""
+    views: list[Any] = []
+
+    def keeping(run: Callable[..., Any], at: int) -> Callable[..., Any]:
+        def kept(*args: Any, **kwargs: Any) -> Any:
+            views.append(args[at])
+            return run(*args, **kwargs)
+
+        return kept
+
+    for name in ("run_query", "ids_query", "count_query"):
+        monkeypatch.setattr(service, name, keeping(getattr(service, name), 1))
+    ask_model = DirectQuery.ask
+    monkeypatch.setattr(
+        DirectQuery,
+        "ask",
+        lambda self, *a, **k: views.append(self.context.backend) or ask_model(self, *a, **k),
+    )
+    client = client if role == "admin" else other
 
     written: list[tuple[str, str]] = []
-    # Auto: preview, execute, the hand edit, undo.
-    await choose(client, level_id=levels["Automatisch"])
+    # Auto (query at Teilautonom): preview, execute, the hand edit, undo.
+    await choose(client, level_id=levels["Teilautonom"])
     with writes(app, written):
         first = await ask(client, app, model, PLAIN)
         second = await ask(client, app, model, PLAIN)
@@ -986,11 +1080,23 @@ async def test_walking_every_model_route_writes_the_action_record_only(
         assert (await client.get("/api/model/my-actions")).status_code == 200
 
     assert {kind for kind, _ in written} <= {"INSERT", "UPDATE"}, written
-    tables = {table for _, table in written}
-    assert "model_action" in tables  # the observer saw the record being written
-    assert tables <= signed_in_writes | {"model_action"}, written
-    assert {kind for kind, table in written if table == "model_action"} <= {"INSERT", "UPDATE"}
+    assert {table for _, table in written} == {"model_action"}, written
     assert all(c.tools == () for c in model.fake.calls)  # the direct path offers no tool
+
+    assert len(views) >= 12  # the asks, the preview's two counts, the executes
+    tries: list[tuple[str, tuple[Any, ...]]] = [
+        ("drop_layer", ("schulen",)),
+        ("duplicate_layer", ("schulen", "kopie", "Kopie")),
+        ("create_layer", (None,)),
+        ("replace_layer", ("schulen", None)),
+    ]
+    assert {method for method, _ in tries} == write_methods()
+    for view in views:
+        assert isinstance(view, LayerView)
+        for method, args in tries:
+            with pytest.raises(PermissionError):
+                getattr(view, method)(*args)
+    assert "schulen" in app.state.geotandem.backend.layer_names()
 
 
 # --- every route that calls the model or runs a record checks level and connection ---
@@ -1094,17 +1200,21 @@ GUARDED_PENDING: dict[tuple[str, str], str] = {
     ("POST", "/api/model/actions/{action_id}/run"): "WP75",
     ("POST", "/api/model/actions/{action_id}/adopt"): "WP75",
     ("POST", "/api/model/actions/{action_id}/compare"): "WP76",
+    ("PATCH", "/api/model/actions/{action_id}/plan"): "WP75",
 }
 """Such routes still answering 501. The WP that builds one writes its attack
 into ``GUARDED`` and removes it here: run and adopt by the level as it was
 (P4, never the account's level now), compare as a prompt (level and
-connection resolved now, request limit counted)."""
+connection resolved now, request limit counted), an edited plan revalidated
+and governed again (a step of an ``off`` class inserted or changed into one
+must not run, an approval given before the edit must not carry over)."""
 
 
 def test_every_route_that_calls_the_model_or_runs_a_record_is_guarded(app: FastAPI) -> None:
     """Read from the contract: a route that calls the model answers the request
     limit (429), one that changes the analysis returns rows (``ExecuteResponse``),
-    one that runs the stored query answers its result-size limit (413)."""
+    one that runs the stored query answers its result-size limit (413), one that
+    changes a record's query or plan is a ``PATCH``."""
     found = set()
     for path, item in app.openapi()["paths"].items():
         if not path.startswith("/api/model/"):
@@ -1112,7 +1222,7 @@ def test_every_route_that_calls_the_model_or_runs_a_record_is_guarded(app: FastA
         for method, spec in item.items():
             responses = spec["responses"]
             rows = "ExecuteResponse" in str(responses.get("200", {}))
-            if "429" in responses or "413" in responses or rows:
+            if "429" in responses or "413" in responses or rows or method == "patch":
                 found.add((method.upper(), path))
     assert found == set(GUARDED) | set(GUARDED_PENDING)
 
@@ -1137,7 +1247,8 @@ async def test_a_guarded_route_answers_501_until_its_attack_is_written(
 ) -> None:
     own = stored(app, "admin", "Automatisch")
     method, path = route
-    response = await client.request(method, path.replace("{action_id}", str(own)))
+    body = {} if method == "PATCH" else None  # an empty plan edit
+    response = await client.request(method, path.replace("{action_id}", str(own)), json=body)
     assert response.status_code == 501, (
         f"{method} {path} is built: write its attack into GUARDED and remove it from "
         "GUARDED_PENDING (and PENDING_ROUTES)"

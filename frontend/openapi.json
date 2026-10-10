@@ -4796,7 +4796,7 @@
           "llm"
         ],
         "summary": "Choose",
-        "description": "Choose a connection, a level or both. A disabled connection is refused for\nadministrators too (C14); a level users may not choose is refused for users.",
+        "description": "Choose a connection, a level or both. A disabled connection is refused for\nadministrators too (C14); a level users may not choose is refused for users.\nThe person's choice only (``session_required`` for a token, WP71): a program\nacting for the account must not move it to a level without approval.",
         "operationId": "choose_api_llm_options_put",
         "requestBody": {
           "content": {
@@ -4821,6 +4821,16 @@
           },
           "400": {
             "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
             "content": {
               "application/json": {
                 "schema": {
@@ -8686,6 +8696,7 @@
             "title": "Connection Id"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "base_url",
@@ -9092,6 +9103,7 @@
             "title": "Request Limit Per Day"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "title": "ConnectionPatch",
         "description": "Only the fields sent change. ``api_key: null`` removes the key."
@@ -9286,6 +9298,7 @@
             "description": "The cap; required while request_limit_enabled (P5)."
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "base_url",
@@ -10996,6 +11009,7 @@
             "title": "Matrix"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "name",
@@ -11053,12 +11067,13 @@
             "title": "Levels"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "levels"
         ],
         "title": "LevelSet",
-        "description": "Every level in display order; saved as a whole, so its rules hold together (H7)."
+        "description": "Every level in display order; saved as a whole, so its rules hold together (H7).\nAn unknown field, here or in a level, is refused (422): a misspelt\n``selectable`` must not save a level with the default instead (WP71)."
       },
       "LevelSnapshot": {
         "properties": {

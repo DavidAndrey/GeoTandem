@@ -941,6 +941,8 @@ export interface paths {
      * Choose
      * @description Choose a connection, a level or both. A disabled connection is refused for
      *     administrators too (C14); a level users may not choose is refused for users.
+     *     The person's choice only (``session_required`` for a token, WP71): a program
+     *     acting for the account must not move it to a level without approval.
      */
     put: operations['choose_api_llm_options_put']
     post?: never
@@ -2988,6 +2990,8 @@ export interface components {
     /**
      * LevelSet
      * @description Every level in display order; saved as a whole, so its rules hold together (H7).
+     *     An unknown field, here or in a level, is refused (422): a misspelt
+     *     ``selectable`` must not save a level with the default instead (WP71).
      */
     LevelSet: {
       /** Levels */
@@ -8760,6 +8764,15 @@ export interface operations {
       }
       /** @description Bad Request */
       400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Forbidden */
+      403: {
         headers: {
           [name: string]: unknown
         }

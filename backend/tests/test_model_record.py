@@ -796,7 +796,7 @@ def test_a_new_prompt_closes_the_open_record(
     running = proposed(store, anna, approach="chain", supersede=False)
     store.approve(anna, running)
     store.run(anna, running)
-    applied = proposed(store, anna, supersede=False)
+    applied = proposed(store, anna, OFF, supersede=False)  # proposal_only: an off part (WP71)
     store.decide(anna, applied, "proposal_only", applied_by_hand=True)
     theirs = proposed(store, beat)
     thinking = new(store, anna, supersede=False).id
