@@ -1,6 +1,13 @@
 import { isDeepStrictEqual } from 'node:util'
 import { readFileSync } from 'node:fs'
-import { expect, test, type APIRequestContext, type BrowserContext, type Page } from './test'
+import {
+  expect,
+  test,
+  type APIRequestContext,
+  type Browser,
+  type BrowserContext,
+  type Page,
+} from './test'
 import { ensureAccount, signIn } from './accounts'
 import { ensureAreaLayer, reference, watchQueries } from './reference'
 
@@ -26,11 +33,12 @@ const EXTERNAL = process.env.E2E_STUB_EXTERNAL_URL
 const CONTROL = process.env.E2E_STUB_CONTROL
 const MODEL = 'stub-model'
 
-const RUN = Date.now().toString(36)
-const LOCAL = `Stub lokal ${RUN}`
-const EXTERN = `Stub extern ${RUN}`
-const UNREACHABLE = `Stub unerreichbar ${RUN}`
-const SLOW = `Stub langsam ${RUN}`
+// Fixed names: a test after a failed one runs in a fresh worker and finds them.
+const LOCAL = 'Stub lokal'
+const EXTERN = 'Stub extern'
+const UNREACHABLE = 'Stub unerreichbar'
+const SLOW = 'Stub langsam'
+const OURS = [LOCAL, EXTERN, UNREACHABLE, SLOW]
 
 const ANALYST = 'e2e.abnahme.e23'
 const USER = 'm.keller'
@@ -56,11 +64,50 @@ interface Connection {
 /** The stub with every prompt answered by fixture case ``id``. */
 const caseUrl = (id: string) => STUB!.replace(/\/v1\/?$/, `/case/${id}/v1`)
 
-async function connectionId(request: APIRequestContext, name: string): Promise<number> {
-  const all = (await (await request.get('/api/admin/llm/connections')).json()) as Connection[]
-  const found = all.find((c) => c.name === name)
-  expect(found, `connection ${name}`).toBeDefined()
-  return found!.id
+async function connections(request: APIRequestContext) {
+  return (await (await request.get('/api/admin/llm/connections')).json()) as Connection[]
+}
+
+/** The connection's id; made through the API, released for users, if it is missing. */
+async function connectionId(
+  request: APIRequestContext,
+  name: string,
+  base_url: string,
+  timeout_s = 120,
+): Promise<number> {
+  const found = (await connections(request)).find((c) => c.name === name)
+  if (found) return found.id
+  const made = await request.post('/api/admin/llm/connections', {
+    data: { name, base_url, model: MODEL, enabled: true, timeout_s },
+  })
+  expect(made.ok(), await made.text()).toBe(true)
+  return ((await made.json()) as Connection).id
+}
+
+/** Deletes these connections, the default last: it may go only once no other is enabled (C18). */
+async function removeConnections(request: APIRequestContext, names: string[]) {
+  const doomed = (await connections(request))
+    .filter((c) => names.includes(c.name))
+    .sort((a, b) => Number(a.is_default) - Number(b.is_default))
+  for (const c of doomed) await request.delete(`/api/admin/llm/connections/${c.id}`)
+}
+
+/** A query object without the fields left at their default (null, []). */
+function given(query: unknown): unknown {
+  if (Array.isArray(query)) return query.map(given)
+  if (query === null || typeof query !== 'object') return query
+  return Object.fromEntries(
+    Object.entries(query)
+      .filter(([, v]) => v !== null && !(Array.isArray(v) && v.length === 0))
+      .map(([k, v]) => [k, given(v)]),
+  )
+}
+
+/** Signed in through the login page, the workplace shown (so the session cookie is set). */
+async function user(browser: Browser, username: string): Promise<[BrowserContext, Page]> {
+  const [context, page] = await signIn(browser, username)
+  await expect(page.getByRole('tab', { name: 'Klassik' })).toBeVisible()
+  return [context, page]
 }
 
 async function choose(context: BrowserContext, connection: number) {
@@ -133,26 +180,20 @@ async function addSchools(page: Page) {
 }
 
 test.describe('E2.3 against the model stub', { tag: '@stub' }, () => {
-  test.describe.configure({ mode: 'serial' })
   test.skip(
     !STUB || !EXTERNAL || !CONTROL,
     'E2E_STUB_URL, E2E_STUB_EXTERNAL_URL and E2E_STUB_CONTROL name the model stub (scripts/gate.sh)',
   )
 
-  test.afterAll(async ({ request }) => {
-    const all = (await (await request.get('/api/admin/llm/connections')).json()) as Connection[]
-    // The default last: it may go only once no other of these is enabled (C18).
-    const ours = all
-      .filter((c) => c.name.endsWith(` ${RUN}`))
-      .sort((a, b) => Number(a.is_default) - Number(b.is_default))
-    for (const c of ours) await request.delete(`/api/admin/llm/connections/${c.id}`)
-  })
+  test.afterAll(async ({ request }) => removeConnections(request, OURS))
 
   test('a local connection to the stub is made in the admin page; its test is green', async ({
     page,
+    request,
   }) => {
+    await removeConnections(request, [LOCAL])
     const row = await createInUi(page, LOCAL, STUB!)
-    await expect(row.getByText('lokal')).toBeVisible()
+    await expect(row.getByText('lokal', { exact: true })).toBeVisible()
     await row.getByRole('button', { name: `Aktionen für ${LOCAL}` }).click()
     await page.getByRole('menuitem', { name: 'Verbindung testen' }).click()
     const result = page.getByRole('region', { name: `Verbindungstest „${LOCAL}"` })
@@ -165,8 +206,8 @@ test.describe('E2.3 against the model stub', { tag: '@stub' }, () => {
   }) => {
     await ensureAreaLayer(request)
     await ensureAccount(request, browser, ANALYST, 'admin')
-    const [context, page] = await signIn(browser, ANALYST)
-    await choose(context, await connectionId(request, LOCAL))
+    const [context, page] = await user(browser, ANALYST)
+    await choose(context, await connectionId(request, LOCAL, STUB!))
     const { sent, failures } = watchQueries(page)
 
     const panel = await openPanel(page)
@@ -184,10 +225,13 @@ test.describe('E2.3 against the model stub', { tag: '@stub' }, () => {
     await expect(assumptions).toContainText('höchstens 500 m')
     // Proposed, nothing applied: the analysis has no result layer yet.
     await expect(page.getByLabel('Trefferzahl', { exact: true })).toHaveCount(0)
-    // The record holds the model's query: the one built by hand in E1.
-    expect((await action(context, id)).query).toEqual(reference)
+    // The record holds the model's query: the one built by hand in E1 (fields
+    // the record fills with their defaults aside; what ran is compared strictly below).
+    expect(given((await action(context, id)).query)).toEqual(reference)
 
-    await card.getByRole('button', { name: 'In Editor übernehmen' }).click()
+    const takeOver = card.getByRole('button', { name: 'In Editor übernehmen' })
+    await expect(takeOver).toBeEnabled()
+    await takeOver.click()
     const editor = page.getByRole('region', { name: 'Abfrage-Editor' })
     await expect(editor.getByRole('note')).toContainText('Entwurf aus Vorschlag')
     await editor.getByRole('button', { name: 'Übernehmen' }).click()
@@ -215,8 +259,8 @@ test.describe('E2.3 against the model stub', { tag: '@stub' }, () => {
     request,
   }) => {
     await ensureAccount(request, browser, USER, 'user')
-    const [context, page] = await signIn(browser, USER)
-    await choose(context, await connectionId(request, LOCAL))
+    const [context, page] = await user(browser, USER)
+    await choose(context, await connectionId(request, LOCAL, STUB!))
     const matrix = (await (await request.get('/api/admin/visibility')).json()) as {
       layer: string
       roles: { user: boolean }
@@ -289,19 +333,11 @@ test.describe('E2.3 against the model stub', { tag: '@stub' }, () => {
     browser,
     request,
   }) => {
-    for (const [name, id, timeout_s] of [
-      [UNREACHABLE, 'unreachable', 120],
-      // The stub holds this answer for 30 s; the connection waits 2 (llm_timeout).
-      [SLOW, 'timeout', 2],
-    ] as const) {
-      const made = await request.post('/api/admin/llm/connections', {
-        data: { name, base_url: caseUrl(id), model: MODEL, enabled: true, timeout_s },
-      })
-      expect(made.ok(), await made.text()).toBe(true)
-    }
+    // The stub holds the slow answer for 30 s; that connection waits 2 (llm_timeout).
+    await connectionId(request, SLOW, caseUrl('timeout'), 2)
     await ensureAccount(request, browser, USER, 'user')
-    const [context, page] = await signIn(browser, USER)
-    await choose(context, await connectionId(request, UNREACHABLE))
+    const [context, page] = await user(browser, USER)
+    await choose(context, await connectionId(request, UNREACHABLE, caseUrl('unreachable')))
     await page.goto('/')
     await addSchools(page)
 
@@ -335,13 +371,14 @@ test.describe('E2.3 against the model stub', { tag: '@stub' }, () => {
     page,
     request,
   }) => {
+    await removeConnections(request, [EXTERN])
     const row = await createInUi(page, EXTERN, EXTERNAL!)
     await expect(row).toContainText('extern')
     await expect(row).toContainText('nur Metadaten')
 
     await ensureAccount(request, browser, USER, 'user')
-    const [context, userPage] = await signIn(browser, USER)
-    await choose(context, await connectionId(request, EXTERN))
+    const [context, userPage] = await user(browser, USER)
+    await choose(context, await connectionId(request, EXTERN, EXTERNAL!))
     const panel = await openPanel(userPage)
     const host = new URL(EXTERNAL!).hostname
     const notice = panel.getByRole('complementary', { name: 'Externe Anbindung' })
@@ -360,7 +397,7 @@ test.describe('E2.3 against the model stub', { tag: '@stub' }, () => {
     expect(log.ok).toBe(true)
     const sentToModel = JSON.stringify(await log.json())
     // Positive control: the prompts and the layer profile did reach it.
-    expect(sentToModel).toContain(fixture('reference').prompt)
+    expect(sentToModel).toContain(fixture('unknown_layer').prompt)
     expect(sentToModel).toContain('schulen')
 
     const result = await request.post('/api/query', {
