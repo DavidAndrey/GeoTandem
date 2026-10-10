@@ -159,6 +159,10 @@ msgstr ""
 msgid "{condition} ({filter})"
 msgstr ""
 
+#: src/model/approval/Pending.tsx
+msgid "{conditions} · Vorschau {count}"
+msgstr ""
+
 #: src/session/SaveAsDialog.tsx
 msgid "{conditions} Bed."
 msgstr ""
@@ -247,6 +251,10 @@ msgstr ""
 msgid "{matched} / {total} Objekte finden einen Partner"
 msgstr ""
 
+#: src/model/approval/governance.ts
+msgid "{n, plural, one {{count} Bedingung} other {{count} Bedingungen}}"
+msgstr ""
+
 #: src/admin/wizard.ts
 msgid "{n, plural, one {{count} Datensatz gelesen} other {{count} Datensätze gelesen}}"
 msgstr ""
@@ -297,6 +305,10 @@ msgstr ""
 
 #: src/model/panel/PromptPanel.tsx
 msgid "{name} · extern · {host}"
+msgstr ""
+
+#: src/model/approval/Level.tsx
+msgid "{name}: {cell}"
 msgstr ""
 
 #. Spatial condition: relation ("liegt in"), layer
@@ -1522,6 +1534,10 @@ msgid "Die Analyse hat Änderungen, die noch nicht gespeichert sind."
 msgstr ""
 
 #: src/model/approval/Approval.tsx
+msgid "Die Analyse ist auf den Stand davor zurückgesetzt. Bleibt als Eintrag im Verlauf, ohne Aktion; kein „Wiederholen“."
+msgstr ""
+
+#: src/model/approval/Approval.tsx
 msgid "Die Analyse ist auf den Stand vor dem Annehmen zurückgesetzt. Bleibt als Eintrag im Verlauf, ohne Aktion; kein „Wiederholen“."
 msgstr ""
 
@@ -1623,10 +1639,6 @@ msgstr ""
 
 #: src/admin/ImportWizard.tsx
 msgid "Die Datei nennt: {label}"
-msgstr ""
-
-#: src/model/approval/Level.tsx
-msgid "Die Festlegungen dieser Stufe sind hier nicht bekannt."
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -2053,6 +2065,10 @@ msgstr ""
 msgid "erledigt"
 msgstr ""
 
+#: src/model/approval/Approval.tsx
+msgid "Erneut ausführen"
+msgstr ""
+
 #: src/admin/ImportRunPage.tsx
 msgid "Erneut importieren"
 msgstr ""
@@ -2065,7 +2081,6 @@ msgstr ""
 msgid "Erneut vermerken"
 msgstr ""
 
-#: src/model/approval/Approval.tsx
 #: src/model/panel/Answer.tsx
 #: src/model/panel/Problem.tsx
 msgid "Erneut versuchen"
@@ -2741,6 +2756,10 @@ msgstr ""
 msgid "keine"
 msgstr ""
 
+#: src/model/approval/Approval.tsx
+msgid "keine Abfrage"
+msgstr ""
+
 #: src/queries/ManageQueriesDialog.tsx
 msgid "Keine Abfrage passt."
 msgstr ""
@@ -3141,6 +3160,10 @@ msgstr ""
 
 #: src/model/approval/NoticeBar.tsx
 msgid "Modell hat angewendet: {said} · {hits}"
+msgstr ""
+
+#: src/model/approval/NoticeBar.tsx
+msgid "Modell hat angewendet. Rückgängig und die Änderung in der Hinweisleiste an der Karte."
 msgstr ""
 
 #: src/model/panel/Problem.tsx
@@ -3939,6 +3962,10 @@ msgstr ""
 msgid "Treffer: {from} → {to} (Vorschau, gestrichelt auf der Karte)"
 msgstr ""
 
+#: src/model/approval/NoticeBar.tsx
+msgid "Treffer: {hitsBefore} → {hitsAfter}"
+msgstr ""
+
 #: src/operations/OperationDialog.tsx
 msgid "Trefferquote"
 msgstr ""
@@ -3953,6 +3980,10 @@ msgstr ""
 
 #: src/model/approval/Approval.tsx
 msgid "Trefferzahl der Vorschau"
+msgstr ""
+
+#: src/model/approval/NoticeBar.tsx
+msgid "Trefferzahl vorher und nachher"
 msgstr ""
 
 #: src/admin/ImportWizard.tsx
@@ -4142,6 +4173,10 @@ msgstr ""
 msgid "Vorgang"
 msgstr ""
 
+#: src/model/approval/Approval.tsx
+msgid "vorher: {what} · {hits}"
+msgstr ""
+
 #: src/admin/ImportWizard.tsx
 #: src/admin/LayerPage.tsx
 msgid "Vorschau"
@@ -4163,8 +4198,16 @@ msgstr ""
 msgid "Vorschlag für {field} bestätigen"
 msgstr ""
 
+#: src/model/approval/Pending.tsx
+msgid "Vorschlag offen"
+msgstr ""
+
 #: src/model/approval/Approval.tsx
-msgid "War automatisch angewendet. Die Analyse ist auf den Stand davor zurückgesetzt. Bleibt als Eintrag im Verlauf, ohne Aktion; kein „Wiederholen“."
+msgid "war angewendet · {hits} Treffer"
+msgstr ""
+
+#: src/model/approval/Approval.tsx
+msgid "war automatisch angewendet · {hits} Treffer"
 msgstr ""
 
 #: src/admin/ImportRunPage.tsx
@@ -4280,6 +4323,10 @@ msgstr ""
 msgid "Wird angewendet, sobald der Editor geschlossen ist."
 msgstr ""
 
+#: src/model/approval/Pending.tsx
+msgid "wird erst bei Annehmen übernommen"
+msgstr ""
+
 #: src/session/SaveAsDialog.tsx
 msgid "Wird gespeichert"
 msgstr ""
@@ -4290,6 +4337,10 @@ msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
 msgid "Wird verschlüsselt gespeichert und nie wieder angezeigt."
+msgstr ""
+
+#: src/model/approval/Approval.tsx
+msgid "Wird zurückgenommen, sobald der Editor geschlossen ist."
 msgstr ""
 
 #: src/editor/EditorPanel.tsx

@@ -10904,6 +10904,16 @@
           "selectable": {
             "type": "boolean",
             "title": "Selectable"
+          },
+          "matrix": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CellMode"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/OpClass"
+            },
+            "type": "object",
+            "title": "Matrix"
           }
         },
         "type": "object",
@@ -10911,7 +10921,8 @@
           "id",
           "name",
           "description",
-          "selectable"
+          "selectable",
+          "matrix"
         ],
         "title": "LevelOption"
       },

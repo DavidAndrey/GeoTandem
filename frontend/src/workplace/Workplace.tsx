@@ -14,6 +14,7 @@ import { useLayers, useMapConfig } from '../api/queries'
 import { EditorPanel } from '../editor/EditorPanel'
 import { watchApproval } from '../model/approval/flow'
 import { NoticeBar } from '../model/approval/NoticeBar'
+import { PendingProposal } from '../model/approval/Pending'
 import { PreviewCaption, PreviewLayer } from '../model/approval/Preview'
 import { watchHandover } from '../model/panel/handover'
 import { useActionPolling } from '../model/panel/poll'
@@ -83,12 +84,14 @@ export function Workplace() {
           <Tabs.Content value="klassik" className="flex flex-col gap-5 pt-3">
             <LayerPanel />
             <QueryPanel />
+            <PendingProposal />
             <SavedQueries />
           </Tabs.Content>
           {/* The sidebar keeps showing the analysis (design M1.1). */}
           <Tabs.Content value="prompt" className="flex flex-col gap-5 pt-3">
             <LayerPanel />
             <QueryPanel />
+            <PendingProposal />
           </Tabs.Content>
         </Tabs.Root>
         {!loading && !available && <PromptUnavailable />}

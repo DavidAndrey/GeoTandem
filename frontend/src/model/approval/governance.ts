@@ -3,14 +3,9 @@
 // administrator: nothing here keys on it, only on the matrix and the record's
 // ``governance``, both as the server sent them.
 import { i18n, type MessageDescriptor } from '@lingui/core'
-import { msg } from '@lingui/core/macro'
-import type {
-  CellMode,
-  LevelOption,
-  ModelActionView,
-  OpClass,
-  RejectReason,
-} from '../../api/client'
+import { msg, plural } from '@lingui/core/macro'
+import type { CellMode, ModelActionView, OpClass, RejectReason } from '../../api/client'
+import { formatNumber } from '../../i18n/locale'
 
 /** The classes in the matrix's order (design M7.1, M7.2 "Spalten"). */
 export const OP_CLASSES: readonly OpClass[] = ['catalog', 'query', 'spatial', 'derive', 'display']
@@ -55,24 +50,14 @@ export const classLabel = (k: OpClass) => i18n._(CLASS_LABELS[k])
 export const cellLabel = (cell: CellMode) => i18n._(CELL_LABELS[cell])
 export const cellShort = (cell: CellMode) => i18n._(CELL_SHORT[cell])
 
+/** "1 Bedingung", "3 Bedingungen". */
+export function conditionCount(n: number) {
+  const count = formatNumber(n)
+  return plural(n, { one: `${count} Bedingung`, other: `${count} Bedingungen` })
+}
+
 /** "Attributfilter, Raumfilter". */
 export const classList = (classes: readonly OpClass[]) => classes.map(classLabel).join(', ')
-
-/**
- * The matrix of a level the account may choose. ``LevelOption`` of the E2.1
- * contract carries none; WP72 reads one if the server sends it (an assumption
- * for the integrator) and otherwise falls back on a record of the dialogue
- * made under that level, whose snapshot holds the matrix as it was then.
- */
-export function levelMatrix(
-  level: LevelOption,
-  views: readonly ModelActionView[] = [],
-): Matrix | null {
-  const sent = (level as LevelOption & { matrix?: Matrix }).matrix
-  if (sent) return sent
-  const seen = [...views].reverse().find((view) => view.level.id === level.id)
-  return seen ? seen.level.matrix : null
-}
 
 /** A query answer waiting for the user's approval (M5): a cell ``approve``, no class ``off``. */
 export const needsApproval = (view: ModelActionView): boolean =>

@@ -12,6 +12,8 @@ import { useLayers } from '../../api/queries'
 import { ErrorNotice } from '../../components/ui'
 import { useCounts } from '../../editor/useCounts'
 import { formatNumber } from '../../i18n/locale'
+import { rows } from '../../analysis/tree'
+import { hitsOf } from '../../i18n/phrases'
 import { useActiveModel } from '../panel/active'
 import { proposalDraft } from '../panel/draft'
 import { canTakeOver, takeOver } from '../panel/handover'
@@ -33,6 +35,7 @@ import {
   cellLabel,
   classLabel,
   classList,
+  conditionCount,
   mixed,
   REASON_ORDER,
   reasonText,
@@ -90,9 +93,15 @@ function PreviewLine({ view, analysis }: { view: ModelActionView; analysis: Anal
         <Trans>Keine Vorschau verfügbar; die Analyse ändert sich erst mit „Annehmen“.</Trans>
       </p>
     )
-  // On another result layer the analysis has no hits of it: all its objects count.
-  const now = analysis.result === source && counts.data ? counts.data.hits : preview.data.total
-  const from = formatNumber(now)
+  // On another result layer the analysis has no hits of it: all its objects
+  // count. On the same one, its hits once counted ("…" meanwhile, never a guess).
+  const counting = !counts.data || counts.isFetching || counts.isPlaceholderData
+  const from =
+    analysis.result !== source
+      ? formatNumber(preview.data.total)
+      : counting || !counts.data
+        ? '…'
+        : formatNumber(counts.data.hits)
   const to = formatNumber(preview.data.count)
   return (
     <p className="font-mono text-xs" aria-label={t`Trefferzahl der Vorschau`}>
@@ -233,11 +242,13 @@ export function Approval({ view }: { view: ModelActionView }) {
             type="button"
             className="btn"
             disabled={busy !== null}
+            aria-keyshortcuts="Escape"
+            aria-describedby={`esc-${view.id}`}
             onClick={() => startRejecting(view.id)}
           >
             <Trans>Ablehnen</Trans>
           </button>
-          <span className="text-muted ml-auto text-xs" aria-hidden>
+          <span id={`esc-${view.id}`} className="text-muted ml-auto text-xs">
             <Trans>Esc = Ablehnen</Trans>
           </span>
         </div>
@@ -267,7 +278,7 @@ function RejectStep({
   return (
     <div className="flex flex-col gap-2">
       <div
-        role="radiogroup"
+        role="group"
         aria-label={t`Grund (optional)`}
         className="flex flex-wrap items-center gap-1 text-sm"
       >
@@ -278,8 +289,7 @@ function RejectStep({
           <button
             key={r}
             type="button"
-            role="radio"
-            aria-checked={reason === r}
+            aria-pressed={reason === r}
             className={`chip text-xs ${reason === r ? 'border-ink font-semibold' : ''}`}
             onClick={() => chooseReason(reason === r ? null : r)}
           >
@@ -293,6 +303,7 @@ function RejectStep({
           type="button"
           className="btn btn-primary"
           disabled={busy}
+          aria-keyshortcuts="Escape"
           onClick={() => void reject(view, reason)}
         >
           <Trans>Ablehnen</Trans>
@@ -318,7 +329,9 @@ export function Approved({ view }: { view: ModelActionView }) {
   const failure = useApproval((s) =>
     s.failure?.action === view.id && s.failure.step === 'execute' ? s.failure.error : null,
   )
-  const waitsForEditor = useAnalysis((s) => s.draft !== null) && autoReady(view)
+  const parked = useApproval((s) => s.parked[view.id] === 'execute')
+  const editing = useAnalysis((s) => s.draft !== null)
+  const waitsForEditor = parked || (editing && autoReady(view))
   if (failure)
     return (
       <div className="flex flex-col gap-1">
@@ -327,7 +340,7 @@ export function Approved({ view }: { view: ModelActionView }) {
           <Trans>Ihr Stand ist unverändert.</Trans>
         </p>
         <button type="button" className="btn self-start" onClick={() => void execute(view)}>
-          <Trans>Erneut versuchen</Trans>
+          <Trans>Erneut ausführen</Trans>
         </button>
       </div>
     )
@@ -359,11 +372,18 @@ export function UndoAction({ view }: { view: ModelActionView }) {
   const last = useApproval((s) => (s.last?.action === view.id ? s.last : null))
   const busy = useApproval((s) => s.busy !== null)
   const editing = useAnalysis((s) => s.draft !== null)
+  const parked = useApproval((s) => s.parked[view.id] === 'undo')
   const failure = useApproval((s) =>
     s.failure?.action === view.id && s.failure.step === 'undo' ? s.failure.error : null,
   )
   if (view.status !== 'applied' || (view.decision !== 'accepted' && view.decision !== 'auto'))
     return null
+  if (parked)
+    return (
+      <p role="status" className="text-muted w-full text-xs">
+        <Trans>Wird zurückgenommen, sobald der Editor geschlossen ist.</Trans>
+      </p>
+    )
   const why = !last
     ? t`Zurücknehmen geht nur für die letzte Modelländerung.`
     : last.touched
@@ -397,15 +417,43 @@ export function UndoAction({ view }: { view: ModelActionView }) {
   )
 }
 
-/** M2.3, M6.2: taken back; stays in the dialogue without an action, no redo. */
+/**
+ * M2.3, M6.2: taken back; stays in the dialogue without an action, no redo.
+ * "vorher: …" is the state the undo put back, "war … angewendet" the run's hits.
+ */
 export function Undone({ view }: { view: ModelActionView }) {
+  const restored = useApproval((s) => s.restored[view.id])
+  const hits = view.stamp ? formatNumber(view.stamp.count) : null
   return (
-    <p className="text-muted text-xs">
-      {view.decision === 'auto'
-        ? t`War automatisch angewendet. Die Analyse ist auf den Stand davor zurückgesetzt. Bleibt als Eintrag im Verlauf, ohne Aktion; kein „Wiederholen“.`
-        : t`Die Analyse ist auf den Stand vor dem Annehmen zurückgesetzt. Bleibt als Eintrag im Verlauf, ohne Aktion; kein „Wiederholen“.`}
-    </p>
+    <div className="flex flex-col gap-0.5 text-xs">
+      {restored && <Before snapshot={restored} />}
+      {hits !== null && (
+        <p className="text-muted">
+          {view.decision === 'auto'
+            ? t`war automatisch angewendet · ${hits} Treffer`
+            : t`war angewendet · ${hits} Treffer`}
+        </p>
+      )}
+      <p className="text-muted">
+        {view.decision === 'auto'
+          ? t`Die Analyse ist auf den Stand davor zurückgesetzt. Bleibt als Eintrag im Verlauf, ohne Aktion; kein „Wiederholen“.`
+          : t`Die Analyse ist auf den Stand vor dem Annehmen zurückgesetzt. Bleibt als Eintrag im Verlauf, ohne Aktion; kein „Wiederholen“.`}
+      </p>
+    </div>
   )
+}
+
+/** "vorher: keine Abfrage · 137" or "vorher: 2 Bedingungen · 24 von 137". */
+function Before({ snapshot }: { snapshot: Analysis }) {
+  const counts = useCounts(snapshot)
+  const conditions = rows(snapshot.tree).length
+  const what = conditions === 0 ? t`keine Abfrage` : conditionCount(conditions)
+  const hits = !counts.data
+    ? '…'
+    : conditions === 0
+      ? formatNumber(counts.data.total)
+      : hitsOf(counts.data.hits, counts.data.total)
+  return <p className="text-muted">{t`vorher: ${what} · ${hits}`}</p>
 }
 
 /** M5.3: rejected, with its reason; the analysis was not touched. */

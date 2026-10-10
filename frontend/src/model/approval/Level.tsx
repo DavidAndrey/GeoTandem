@@ -6,27 +6,12 @@ import { Trans } from '@lingui/react/macro'
 import { t } from '@lingui/core/macro'
 import { Info } from 'lucide-react'
 import { AlertDialog, Popover } from 'radix-ui'
-import { useShallow } from 'zustand/react/shallow'
 import type { LevelOption, ModelActionView } from '../../api/client'
-import { dialogueViews, useModel } from '../store'
-import {
-  cellLabel,
-  cellShort,
-  classLabel,
-  levelMatrix,
-  OP_CLASSES,
-  type Matrix,
-} from './governance'
-
-/** The level's matrix as the header knows it (see ``levelMatrix``). */
-function useLevelMatrix(level: LevelOption | undefined): Matrix | null {
-  const views = useModel(useShallow(dialogueViews))
-  return level ? levelMatrix(level, views) : null
-}
+import { cellLabel, cellShort, classLabel, OP_CLASSES, type Matrix } from './governance'
 
 /** M7.1: ⓘ beside the level opens "Was darf das Modell hier?"; read only. */
 export function LevelInfo({ level }: { level: LevelOption }) {
-  const matrix = useLevelMatrix(level)
+  const matrix = level.matrix
   const name = level.name
   return (
     <Popover.Root>
@@ -46,34 +31,28 @@ export function LevelInfo({ level }: { level: LevelOption }) {
           <p className="text-muted text-xs">
             {t`Stufe ${name} · nur lesbar; geändert wird sie in der Administration.`}
           </p>
-          {matrix ? (
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-ink border-b">
-                  <th scope="col" className="py-0.5 font-semibold">
-                    <Trans>Klasse</Trans>
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-ink border-b">
+                <th scope="col" className="py-0.5 font-semibold">
+                  <Trans>Klasse</Trans>
+                </th>
+                <th scope="col" className="py-0.5 font-semibold">
+                  <Trans>Festlegung</Trans>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {OP_CLASSES.map((k) => (
+                <tr key={k} className="border-divider border-b">
+                  <th scope="row" className="py-0.5 font-normal">
+                    {classLabel(k)} <span className="text-muted font-mono text-xs">{k}</span>
                   </th>
-                  <th scope="col" className="py-0.5 font-semibold">
-                    <Trans>Festlegung</Trans>
-                  </th>
+                  <td className="py-0.5">{cellLabel(matrix[k])}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {OP_CLASSES.map((k) => (
-                  <tr key={k} className="border-divider border-b">
-                    <th scope="row" className="py-0.5 font-normal">
-                      {classLabel(k)} <span className="text-muted font-mono text-xs">{k}</span>
-                    </th>
-                    <td className="py-0.5">{cellLabel(matrix[k])}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <p className="text-muted text-xs">
-              <Trans>Die Festlegungen dieser Stufe sind hier nicht bekannt.</Trans>
-            </p>
-          )}
+              ))}
+            </tbody>
+          </table>
           <p className="text-muted text-xs">
             <Trans>
               aus = nur Vorschlag, von Hand übernehmbar · Freigabe = Sie entscheiden · auto = Modell
@@ -86,13 +65,23 @@ export function LevelInfo({ level }: { level: LevelOption }) {
   )
 }
 
-/** M7.2: "F F F F F", the cells in the order of the columns; hidden from screen readers (the popover says it). */
-export function ShortColumn({ matrix }: { matrix: Matrix | null }) {
-  if (!matrix) return null
+/**
+ * M7.2: "F F F F F", the cells in the order of the columns; a screen reader
+ * hears them in words ("Katalog lesen: Freigabe, …").
+ */
+export function ShortColumn({ matrix }: { matrix: Matrix }) {
+  const said = OP_CLASSES.map((k) => {
+    const name = classLabel(k)
+    const cell = cellLabel(matrix[k])
+    return t`${name}: ${cell}`
+  }).join(', ')
   return (
-    <span aria-hidden className="text-muted font-mono text-xs whitespace-pre">
-      {OP_CLASSES.map((k) => cellShort(matrix[k])).join(' ')}
-    </span>
+    <>
+      <span aria-hidden className="text-muted font-mono text-xs whitespace-pre">
+        {OP_CLASSES.map((k) => cellShort(matrix[k])).join(' ')}
+      </span>
+      <span className="sr-only">{said}</span>
+    </>
   )
 }
 

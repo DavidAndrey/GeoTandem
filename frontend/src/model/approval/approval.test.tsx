@@ -13,15 +13,18 @@ import { activate } from '../../i18n/i18n'
 import { messages as pseudo } from '../../locales/pseudo.po'
 import {
   actionView,
+  isFakeError,
   levelOption,
   modelServer,
   serverShape,
   thinkingView,
   type LevelName,
+  type ModelServer,
 } from '../../test/model-mocks'
 import {
   ask,
   backend,
+  decideRoute,
   done,
   enforcement,
   fakeTimers,
@@ -37,6 +40,8 @@ import { renderAt } from '../../test/render'
 import { ModelChoice } from '../../workplace/ModelChoice'
 import { Workplace } from '../../workplace/Workplace'
 import { useModel } from '../store'
+import { canTakeOver } from '../panel/handover'
+import { clearHistory } from '../panel/state'
 import { startRejecting, useApproval } from './flow'
 
 beforeEach(resetStores)
@@ -62,15 +67,21 @@ const bodies = (calls: Calls, step: string) =>
 async function answered(
   level: LevelName = 'Prüfen',
   answer: ModelActionView = actionView('reference', {}, level),
-  options: { server?: ModelActionView; routes?: object; ui?: 'both' } = {},
+  options: {
+    server?: ModelActionView
+    /** Routes over the defaults; a function gets the fake server they answer from. */
+    routes?: object | ((server: ModelServer) => object)
+    ui?: 'both'
+  } = {},
 ) {
   const user = fakeTimers()
   const server = modelServer([options.server ?? answer])
+  const routes = typeof options.routes === 'function' ? options.routes(server) : options.routes
   const calls = backend(
     {
       ...promptFlow(thinkingView('reference', level), answer),
       ...enforcement(server, answer.id),
-      ...options.routes,
+      ...routes,
     },
     llmOptions(1, LEVEL_ID[level]),
   )
@@ -115,6 +126,21 @@ function priorState(): AnalysisSnapshot {
 
 const marks = () => Object.keys(useAnalysis.getState().origin.marks)
 
+/** The analysis after an undo equals ``before`` whole, the unsaved mark aside: always set. */
+function restoredAs(before: AnalysisSnapshot) {
+  const now = useAnalysis.getState().snapshot()
+  expect(now.dirty).toBe(true)
+  expect({ ...now, dirty: before.dirty }).toEqual(before)
+}
+
+/** A route that runs ``during`` while the request is on its way, then answers ``answer()``. */
+const meanwhile = (during: () => void, answer: () => Response) => () => {
+  during()
+  return answer()
+}
+const answerOf = (value: unknown) =>
+  isFakeError(value) ? json(value.body, value.status) : json(value)
+
 describe('approval (M5)', () => {
   test('M5.1: change list, preview 137 → 10, the classes that need approval; Annehmen has the focus', async () => {
     const { card, calls } = await answered()
@@ -125,14 +151,29 @@ describe('approval (M5)', () => {
     expect(changes).toHaveLength(3)
     for (const change of changes) expect(change).toHaveTextContent(/^\+ neu:/)
     expect(changes[0]).toHaveTextContent('Schulstufe ist eins von primar')
-    expect(await within(approval).findByLabelText('Trefferzahl der Vorschau')).toHaveTextContent(
-      'Treffer: 137 → 10 (Vorschau, gestrichelt auf der Karte)',
+    // The count before is the analysis's once counted; never a guess meanwhile.
+    expect(['Treffer: … → 10', 'Treffer: 137 → 10']).toContain(
+      (await within(approval).findByLabelText('Trefferzahl der Vorschau')).textContent?.slice(
+        0,
+        17,
+      ),
     )
+    await waitFor(() =>
+      expect(within(approval).getByLabelText('Trefferzahl der Vorschau')).toHaveTextContent(
+        'Treffer: 137 → 10 (Vorschau, gestrichelt auf der Karte)',
+      ),
+    )
+    // The sidebar names what waits (design M5.1).
+    const pending = screen.getByRole('note', { name: 'Vorschlag offen' })
+    expect(pending).toHaveTextContent('3 Bedingungen · Vorschau 10')
+    expect(pending).toHaveTextContent('wird erst bei Annehmen übernommen')
     expect(approval).toHaveTextContent(
       'Braucht Freigabe: Attributfilter, Raumfilter (Stufe Prüfen)',
     )
     await waitFor(() => expect(screen.getByRole('button', { name: 'Annehmen' })).toHaveFocus())
-    expect(screen.getByText('Esc = Ablehnen')).toBeInTheDocument()
+    const reject = within(card).getByRole('button', { name: 'Ablehnen' })
+    expect(reject).toHaveAttribute('aria-keyshortcuts', 'Escape')
+    expect(reject).toHaveAccessibleDescription('Esc = Ablehnen')
     // The map says the dashed layer is a preview, nothing is applied yet.
     expect(screen.getByText('Vorschau gestrichelt · noch nicht angewendet')).toBeInTheDocument()
     expect(calls.filter((c) => c.key.endsWith('/preview'))).toHaveLength(1)
@@ -175,9 +216,11 @@ describe('approval (M5)', () => {
     )
     expect(within(card).queryByRole('region', { name: 'Freigabe' })).toBeNull()
 
+    // Saved meanwhile: the snapshot's own unsaved mark is stale, the undo is a change.
+    act(() => useAnalysis.getState().markSaved())
     await user.click(within(card).getByRole('button', { name: 'Zurücknehmen' }))
     await waitFor(() => expect(useModel.getState().views[answer.id]?.status).toBe('undone'))
-    expect(useAnalysis.getState().snapshot()).toEqual(before)
+    restoredAs(before)
     expect(marks()).toHaveLength(1)
     expect(within(card).getAllByRole('status')[0]).toHaveTextContent('zurückgenommen')
     expect(card).toHaveTextContent('kein „Wiederholen“')
@@ -211,10 +254,12 @@ describe('approval (M5)', () => {
   test('M5.3: Ablehnen asks for the optional reason; the chip goes with the rejection', async () => {
     const { user, card, calls } = await answered()
     await user.click(within(card).getByRole('button', { name: 'Ablehnen' }))
-    const reasons = within(card).getByRole('radiogroup', { name: 'Grund (optional)' })
+    const reasons = within(card).getByRole('group', { name: 'Grund (optional)' })
     expect(within(card).getByRole('button', { name: 'Ablehnen' })).toHaveFocus()
-    await user.click(within(reasons).getByRole('radio', { name: 'falscher Wert' }))
-    expect(within(reasons).getByRole('radio', { name: 'falscher Wert' })).toBeChecked()
+    const chip = within(reasons).getByRole('button', { name: 'falscher Wert' })
+    expect(chip).toHaveAttribute('aria-pressed', 'false')
+    await user.click(chip)
+    expect(chip).toHaveAttribute('aria-pressed', 'true')
     await user.click(within(card).getByRole('button', { name: 'Ablehnen' }))
 
     await waitFor(() => expect(bodies(calls, 'reject')).toEqual([{ reason: 'wrong_value' }]))
@@ -305,9 +350,86 @@ describe('approval (M5)', () => {
     expect(card).toHaveTextContent('Ihr Stand ist unverändert.')
     expect(useAnalysis.getState().tree.children).toEqual([])
     expect(within(card).getAllByRole('status')[0]).toHaveTextContent('freigegeben')
-    await user.click(within(card).getByRole('button', { name: 'Erneut versuchen' }))
+    await user.click(within(card).getByRole('button', { name: 'Erneut ausführen' }))
     await waitFor(() => expect(rows(useAnalysis.getState().tree)).toHaveLength(3))
     expect(bodies(calls, 'approve')).toHaveLength(1)
+  })
+
+  test('a run answered while the editor holds a draft waits for it; the draft stays', async () => {
+    const answer = actionView('reference')
+    const own = { ...newAttributeRow('standorte'), operator: 'gt' as const, value: 1 }
+    const { user, card } = await answered('Prüfen', answer, {
+      routes: (server: ModelServer) => ({
+        [`POST /api/model/actions/${answer.id}/execute`]: meanwhile(
+          () => {
+            // The user opens the editor and starts a row while the run is on its way.
+            useAnalysis.getState().edit()
+            useAnalysis.getState().addNode('root', own)
+          },
+          () => answerOf(server.execute(answer.id)),
+        ),
+      }),
+    })
+    await user.click(within(card).getByRole('button', { name: 'Annehmen' }))
+    await screen.findByRole('region', { name: 'Abfrage-Editor' })
+    await tick()
+    // Parked: the draft is the user's, the analysis unchanged.
+    expect(useAnalysis.getState().draft?.children.map((c) => c.id)).toEqual([own.id])
+    expect(useAnalysis.getState().tree.children).toEqual([])
+    expect(useApproval.getState().parked).toEqual({ [answer.id]: 'execute' })
+    await user.click(screen.getByRole('button', { name: 'Verwerfen' }))
+    await waitFor(() => expect(rows(useAnalysis.getState().tree)).toHaveLength(3))
+    expect(useModel.getState().views[answer.id]?.status).toBe('applied')
+    expect(useApproval.getState().parked).toEqual({})
+  })
+
+  test('after "Verlauf leeren" a run that answers late changes nothing here', async () => {
+    const answer = actionView('reference')
+    const { user, card, server } = await answered('Prüfen', answer, {
+      routes: (server: ModelServer) => ({
+        [`POST /api/model/actions/${answer.id}/execute`]: meanwhile(
+          () => clearHistory(),
+          () => answerOf(server.execute(answer.id)),
+        ),
+      }),
+    })
+    await user.click(within(card).getByRole('button', { name: 'Annehmen' }))
+    await waitFor(() => expect(server.record(answer.id)?.status).toBe('applied'))
+    await tick()
+    expect(useAnalysis.getState().tree.children).toEqual([])
+    expect(useApproval.getState().last).toBeNull()
+  })
+
+  test('"Anpassen …" is no hand edit: Verwerfen leaves undo and the M5.2 hint alone', async () => {
+    // An earlier model change whose undo is still open.
+    useApproval.setState({
+      last: {
+        action: 99,
+        before: useAnalysis.getState().snapshot(),
+        auto: true,
+        touched: false,
+        hidden: true,
+      },
+    })
+    const { user, card, calls } = await answered('Prüfen', undefined, {
+      routes: { 'POST /api/model/actions/99/touched': () => json({}) },
+    })
+    await user.click(within(card).getByRole('button', { name: 'Anpassen …' }))
+    const editor = await screen.findByRole('region', { name: 'Abfrage-Editor' })
+    await user.click(within(editor).getByRole('button', { name: 'Verwerfen' }))
+    await tick()
+    expect(useApproval.getState().last?.touched).toBe(false)
+    expect(calls.filter((c) => c.key.endsWith('/touched'))).toEqual([])
+    await user.click(screen.getByRole('tab', { name: 'Prompt' }))
+    const again = await screen.findByRole('region', { name: 'Freigabe' })
+    expect(within(again).queryByText(/Stand hat sich seit dem Vorschlag geändert/)).toBeNull()
+
+    // Applied from the editor, it is the user's change: undo of the earlier one is over.
+    await user.click(within(again).getByRole('button', { name: 'Anpassen …' }))
+    const second = await screen.findByRole('region', { name: 'Abfrage-Editor' })
+    await user.click(within(second).getByRole('button', { name: 'Übernehmen' }))
+    await waitFor(() => expect(useApproval.getState().last?.touched).toBe(true))
+    expect(calls.filter((c) => c.key.endsWith('/99/touched'))).toHaveLength(1)
   })
 
   test('a server-shaped query (full dump) applies as the editor writes it', async () => {
@@ -331,14 +453,26 @@ describe('auto (M6)', () => {
       expect(within(card).getAllByRole('status')[0]).toHaveTextContent('automatisch angewendet'),
     )
     const bar = screen.getByRole('complementary', { name: 'Modell hat angewendet' })
+    // The live region was there before the bar: its text is announced.
+    expect(
+      screen
+        .getAllByRole('status')
+        .some((s) => /^Modell hat angewendet\. Rückgängig/.test(s.textContent ?? '')),
+    ).toBe(true)
     await tick(500)
     await waitFor(() =>
-      expect(within(bar).getByRole('status')).toHaveTextContent(
-        /^Modell hat angewendet: Schulstufe ist eins von primar, .* · 10 von 137$/,
+      expect(bar).toHaveTextContent(
+        /Modell hat angewendet: Schulstufe ist eins von primar, .* · 10 von 137/,
       ),
     )
     await user.click(within(bar).getByRole('button', { name: 'Änderung ansehen' }))
     expect(within(bar).getAllByRole('listitem')).toHaveLength(3)
+    await tick(500)
+    await waitFor(() =>
+      expect(within(bar).getByLabelText('Trefferzahl vorher und nachher')).toHaveTextContent(
+        'Treffer: 137 → 10',
+      ),
+    )
     await user.click(within(bar).getByRole('button', { name: 'Hinweis ausblenden' }))
     expect(screen.queryByRole('complementary', { name: 'Modell hat angewendet' })).toBeNull()
     // Hidden, not over: the answer keeps its undo.
@@ -352,13 +486,15 @@ describe('auto (M6)', () => {
     expect(useAnalysis.getState().snapshot()).not.toEqual(before)
     await user.click(within(bar).getByRole('button', { name: 'Rückgängig' }))
     await waitFor(() => expect(bodies(calls, 'undo')).toHaveLength(1))
-    await waitFor(() => expect(useAnalysis.getState().snapshot()).toEqual(before))
-    expect(useAnalysis.getState().origin).toEqual(before.origin)
+    await waitFor(() => expect(useAnalysis.getState().origin).toEqual(before.origin))
+    restoredAs(before)
     expect(screen.queryByRole('complementary', { name: 'Modell hat angewendet' })).toBeNull()
     await waitFor(() =>
       expect(within(card).getAllByRole('status')[0]).toHaveTextContent('zurückgenommen'),
     )
-    expect(card).toHaveTextContent('War automatisch angewendet.')
+    expect(card).toHaveTextContent('war automatisch angewendet · 10 Treffer')
+    await tick(500)
+    await waitFor(() => expect(card).toHaveTextContent('vorher: 2 Bedingungen · 10 von 137'))
     expect(screen.queryByRole('button', { name: /Wiederholen|Rückgängig/ })).toBeNull()
   })
 
@@ -396,11 +532,83 @@ describe('auto (M6)', () => {
     await tick()
     await screen.findByRole('region', { name: 'Abfrage-Editor' })
     expect(keys(calls)).toEqual([])
+    // Approved, not proposed: no hand-over is offered, and the server would refuse one.
+    expect(canTakeOver(useModel.getState().views[answer.id] as ModelActionView)).toBe(false)
+    const decide = Object.values(decideRoute(answer.id, 'approved'))[0] as (
+      i: RequestInit,
+    ) => Response
+    const refused = decide({ body: JSON.stringify({ decision: 'adjusted', query: answer.query }) })
+    expect([refused.status, (await refused.json()).code]).toEqual([409, 'not_approved'])
     await user.click(screen.getByRole('button', { name: 'Verwerfen' }))
     await waitFor(() =>
       expect(keys(calls)).toEqual([`POST /api/model/actions/${answer.id}/execute`]),
     )
     await waitFor(() => expect(rows(useAnalysis.getState().tree)).toHaveLength(3))
+  })
+
+  test('an undo answered while the editor holds a draft waits for it; the draft stays', async () => {
+    const before = priorState()
+    const answer = AUTO()
+    const own = { ...newAttributeRow('standorte'), operator: 'lt' as const, value: 3 }
+    const { user } = await answered('Teilautonom', answer, {
+      routes: (server: ModelServer) => ({
+        [`POST /api/model/actions/${answer.id}/undo`]: meanwhile(
+          () => {
+            useAnalysis.getState().edit()
+            useAnalysis.getState().addNode('root', own)
+          },
+          () => answerOf(server.undo(answer.id)),
+        ),
+      }),
+    })
+    const bar = await screen.findByRole('complementary', { name: 'Modell hat angewendet' })
+    await user.click(within(bar).getByRole('button', { name: 'Rückgängig' }))
+    await screen.findByRole('region', { name: 'Abfrage-Editor' })
+    await tick()
+    expect(
+      rows(useAnalysis.getState().draft ?? useAnalysis.getState().tree).map((r) => r.id),
+    ).toContain(own.id)
+    expect(rows(useAnalysis.getState().tree)).toHaveLength(3)
+    expect(useApproval.getState().parked).toEqual({ [answer.id]: 'undo' })
+    await user.click(screen.getByRole('button', { name: 'Verwerfen' }))
+    await waitFor(() => expect(useModel.getState().views[answer.id]?.status).toBe('undone'))
+    restoredAs(before)
+  })
+
+  test('a failed auto run (503) leaves the record approved; Erneut ausführen lands it', async () => {
+    const answer = AUTO()
+    let runs = 0
+    const { user, card, server } = await answered('Teilautonom', answer, {
+      routes: (server: ModelServer) => ({
+        [`POST /api/model/actions/${answer.id}/execute`]: () =>
+          runs++ === 0
+            ? json({ code: 'busy', message: 'Too many queries at once.', details: {} }, 503)
+            : answerOf(server.execute(answer.id)),
+      }),
+    })
+    expect(await within(card).findByRole('alert')).toBeInTheDocument()
+    expect(useAnalysis.getState().tree.children).toEqual([])
+    expect(server.record(answer.id)?.status).toBe('approved')
+    await tick(5000)
+    expect(runs).toBe(1)
+    await user.click(within(card).getByRole('button', { name: 'Erneut ausführen' }))
+    await waitFor(() => expect(rows(useAnalysis.getState().tree)).toHaveLength(3))
+    expect(useModel.getState().views[answer.id]?.decision).toBe('auto')
+  })
+
+  test('undo the server refuses (undo_blocked) ends undo here too', async () => {
+    const answer = AUTO()
+    const { user, card, server } = await answered('Teilautonom', answer)
+    const bar = await screen.findByRole('complementary', { name: 'Modell hat angewendet' })
+    // A hand edit this window never reported (another tab, a lost request).
+    server.touched(answer.id)
+    await user.click(within(bar).getByRole('button', { name: 'Rückgängig' }))
+    expect(await within(card).findByRole('alert')).toHaveTextContent(
+      'Die Analyse wurde seither von Hand geändert',
+    )
+    expect(rows(useAnalysis.getState().tree)).toHaveLength(3)
+    expect(useApproval.getState().last?.touched).toBe(true)
+    expect(within(card).getByRole('button', { name: 'Rückgängig' })).toBeDisabled()
   })
 
   test('M6.3 mixed level: the strictest cell governs; the class list says why', async () => {
@@ -481,6 +689,8 @@ describe('level display (M7)', () => {
     expect(item(/Automatisch/)).toHaveTextContent('– – – – –')
     expect(item(/Prüfen/)).toHaveTextContent('F F F F F')
     expect(item(/Teilautonom/)).toHaveTextContent('A A A F A')
+    // A screen reader hears the cells in words.
+    expect(item(/Teilautonom/)).toHaveAccessibleName(/Abgeleitete Layer: Freigabe/)
     expect(
       screen.getByText(/A = auto · F = Freigabe · – = aus; Spalten: catalog · query/),
     ).toBeInTheDocument()

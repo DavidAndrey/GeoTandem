@@ -14,7 +14,15 @@
 //   the server first (log only, D2), then the snapshot comes back whole. Undo
 //   is offered for that change only and only until the analysis is changed by
 //   hand; the first hand edit is reported with ``touched`` (design rule 7).
-//   There is no redo (design decision 6).
+//   There is no redo (design decision 6). After an undo the analysis counts
+//   as unsaved: the snapshot's own mark may be older than the last save.
+// - An answer that arrives while the editor holds a draft (a run or an undo
+//   answered meanwhile) is parked and applied when the editor closes, so it
+//   never drops the user's draft. "Anpassen …" is no hand edit by itself:
+//   while the hand-over is open, changes are judged when it closes (applied =
+//   a hand edit, "Verwerfen" with the analysis as before = none).
+// - An answer whose record left the dialogue ("Verlauf leeren") changes
+//   nothing here any more.
 import { t } from '@lingui/core/macro'
 import { create } from 'zustand'
 import type { Analysis } from '../../analysis/model'
@@ -22,6 +30,7 @@ import { canBeResult, resultQuery } from '../../analysis/query'
 import { useAnalysis, type AnalysisSnapshot } from '../../analysis/store'
 import { api, ApiRequestError, type ModelActionView, type RejectReason } from '../../api/client'
 import { proposalDraft } from '../panel/draft'
+import { useHandover } from '../panel/handover'
 import { useModel, type ModelState } from '../store'
 import { autoReady, needsApproval } from './governance'
 
@@ -50,6 +59,10 @@ interface ApprovalState {
   rejecting: { action: number; reason: RejectReason | null } | null
   /** Auto answers whose execution has started: never twice. */
   started: Record<number, true>
+  /** Answers parked until the editor closes, by record. */
+  parked: Record<number, 'execute' | 'undo'>
+  /** What an undo put back, by record: the "vorher" of M2.3, M6.2. */
+  restored: Record<number, AnalysisSnapshot>
 }
 
 const initial = (): ApprovalState => ({
@@ -59,21 +72,52 @@ const initial = (): ApprovalState => ({
   failure: null,
   rejecting: null,
   started: {},
+  parked: {},
+  restored: {},
 })
 
 export const useApproval = create<ApprovalState>()(initial)
 
+/** Work waiting for the editor to close (see ``whenEditorClosed``). */
+let waiting: (() => void)[] = []
+
 /** A fresh workplace (and the tests' starting point). */
-export const resetApproval = () => useApproval.setState(initial())
+export const resetApproval = () => {
+  waiting = []
+  useApproval.setState(initial())
+}
 
 /** The committed analysis as the query sees it: what a hand edit changes (M5.2). */
 export function fingerprint(analysis: Analysis): string {
   return JSON.stringify([analysis.result, resultQuery(analysis)])
 }
 
-const committed = (): Analysis => {
-  const { layers, result, tree, restriction } = useAnalysis.getState()
-  return { layers, result, tree, restriction }
+const committedOf = ({ layers, result, tree, restriction }: Analysis): Analysis => ({
+  layers,
+  result,
+  tree,
+  restriction,
+})
+
+const committed = (): Analysis => committedOf(useAnalysis.getState())
+
+const sameRefs = (a: Analysis, b: Analysis) =>
+  a.layers === b.layers &&
+  a.result === b.result &&
+  a.tree === b.tree &&
+  a.restriction === b.restriction
+
+/** The committed analysis by value: what a hand edit changes, whatever the path. */
+const shape = (analysis: Analysis) =>
+  JSON.stringify([analysis.layers, analysis.result, analysis.tree, analysis.restriction])
+
+/** A hand edit after the last model change: its undo is over, reported once (WP70). */
+function handEdited() {
+  const last = useApproval.getState().last
+  if (!last || last.touched) return
+  useApproval.setState({ last: { ...last, touched: true } })
+  // For the log's undo rule; the button here is off already.
+  api.model.touched(last.action).catch(() => undefined)
 }
 
 /** Whether the record's stored query can become the analysis (D3: the editor shows it whole). */
@@ -120,6 +164,31 @@ function apply(view: ModelActionView): boolean {
   return true
 }
 
+/** Whether the record is still in this workplace's dialogue ("Verlauf leeren" drops it). */
+const inDialogue = (action: number) => useModel.getState().dialogue.includes(action)
+
+/**
+ * Runs ``apply`` now, or once the editor closes when it holds a draft: an
+ * answer must never drop the user's open work (applyQuery and restore both
+ * end the draft).
+ */
+function whenEditorClosed(action: number, kind: 'execute' | 'undo', apply: () => void) {
+  if (useAnalysis.getState().draft === null) {
+    apply()
+    return
+  }
+  waiting.push(apply)
+  useApproval.setState((s) => ({ parked: { ...s.parked, [action]: kind } }))
+}
+
+function flushParked() {
+  if (useAnalysis.getState().draft !== null || waiting.length === 0) return
+  const due = waiting
+  waiting = []
+  useApproval.setState({ parked: {} })
+  for (const apply of due) apply()
+}
+
 const notApplicable = () =>
   new Error(t`Diese Abfrage lässt sich nicht im Editor darstellen und darum nicht anwenden.`)
 
@@ -145,11 +214,16 @@ export async function execute(view: ModelActionView) {
   if (!response) return
   // The record says what ran; apply exactly that.
   const done = response.action
-  if (!apply({ ...done, query: done.query ?? view.query })) {
-    useApproval.setState({ failure: { action: view.id, step: 'execute', error: notApplicable() } })
-    return
-  }
-  useModel.getState().received(done)
+  whenEditorClosed(done.id, 'execute', () => {
+    if (!inDialogue(done.id)) return
+    if (!apply({ ...done, query: done.query ?? view.query })) {
+      useApproval.setState({
+        failure: { action: view.id, step: 'execute', error: notApplicable() },
+      })
+      return
+    }
+    useModel.getState().received(done)
+  })
 }
 
 /** *Annehmen* (M5.1): approve, then execute. */
@@ -188,9 +262,15 @@ export async function undo(action: number) {
       useApproval.setState((s) => (s.last ? { last: { ...s.last, touched: true } } : s))
     return
   }
-  changeAnalysis(() => useAnalysis.getState().restore(last.before))
-  useApproval.setState({ last: null })
-  useModel.getState().received(view)
+  whenEditorClosed(action, 'undo', () => {
+    // The snapshot's unsaved mark may predate a save since: unsaved after an undo.
+    changeAnalysis(() => useAnalysis.getState().restore({ ...last.before, dirty: true }))
+    useApproval.setState((s) => ({
+      last: s.last?.action === action ? null : s.last,
+      restored: { ...s.restored, [action]: last.before },
+    }))
+    useModel.getState().received(view)
+  })
 }
 
 /** × on the notice bar (M6.1): hidden only; undo stays in the answer. */
@@ -238,20 +318,32 @@ export function watchApproval(): () => void {
     runAuto(model)
   }
   const offModel = useModel.subscribe(onModel)
+  // The committed analysis as last judged: by reference first (cheap), then by value.
+  let seen = committed()
+  let known = shape(seen)
+  /** Judges the analysis as it is now; a nested change may have come after ``next``. */
+  const judge = () => {
+    const now = committed()
+    if (sameRefs(now, seen)) return
+    seen = now
+    // The flow's own change, or a hand-over in the editor (judged when it closes).
+    if (applying) {
+      known = shape(now)
+      return
+    }
+    if (useHandover.getState().open) return
+    const value = shape(now)
+    if (value === known) return
+    known = value
+    handEdited()
+  }
   const offAnalysis = useAnalysis.subscribe((next, previous) => {
-    if (previous.draft !== null && next.draft === null) runAuto(useModel.getState())
-    if (applying) return
-    const last = useApproval.getState().last
-    if (!last || last.touched) return
-    const same =
-      next.layers === previous.layers &&
-      next.result === previous.result &&
-      next.tree === previous.tree &&
-      next.restriction === previous.restriction
-    if (same) return
-    useApproval.setState({ last: { ...last, touched: true } })
-    // For the log's undo rule (WP70); the button here is off already.
-    api.model.touched(last.action).catch(() => undefined)
+    // The user's change first, then what waited for the editor to close.
+    judge()
+    if (previous.draft !== null && next.draft === null) {
+      flushParked()
+      runAuto(useModel.getState())
+    }
   })
   onModel(useModel.getState())
   return () => {

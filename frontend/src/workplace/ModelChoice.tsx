@@ -13,14 +13,12 @@ import { ChevronDown } from 'lucide-react'
 import { DropdownMenu } from 'radix-ui'
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { useShallow } from 'zustand/react/shallow'
 import type { LevelOption } from '../api/client'
 import { useChooseLLM, useLLMOptions, useMe } from '../api/queries'
 import { LocalityBadge } from '../components/LocalityBadge'
-import { levelMatrix } from '../model/approval/governance'
 import { LevelInfo, LevelSwitchDialog, ShortColumn } from '../model/approval/Level'
 import { awaiting } from '../model/approval/waiting'
-import { dialogueViews, useModel } from '../model/store'
+import { useModel } from '../model/store'
 
 const item =
   'flex cursor-pointer items-start gap-2 px-3 py-1 text-sm outline-none data-[highlighted]:bg-neutral-200'
@@ -35,7 +33,6 @@ export function ModelChoice() {
   const options = useLLMOptions()
   const choose = useChooseLLM()
   const me = useMe()
-  const views = useModel(useShallow(dialogueViews))
   const waiting = useModel(awaiting)
   const [switchTo, setSwitchTo] = useState<LevelOption | null>(null)
   const data = options.data
@@ -144,7 +141,7 @@ export function ModelChoice() {
                       <span className="text-muted block text-xs">{l.description}</span>
                     )}
                   </span>
-                  <ShortColumn matrix={levelMatrix(l, views)} />
+                  <ShortColumn matrix={l.matrix} />
                 </DropdownMenu.RadioItem>
               ))}
             </DropdownMenu.RadioGroup>

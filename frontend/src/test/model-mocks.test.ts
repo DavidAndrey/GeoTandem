@@ -114,7 +114,25 @@ describe('the fake enforcement server keeps the contract (WP70, store.py)', () =
     expect(schema('ActionPreview')(preview)).toBe(true)
     expect(preview).toMatchObject({ count: 10, total: 137 })
     expect(server.record(view.id)?.status).toBe('proposed')
-    expect(server.record(view.id)?.previewed_at).toMatch(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d$/)
+    // Naive UTC with microseconds, as the server writes it.
+    expect(server.record(view.id)?.previewed_at).toMatch(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{6}$/)
+    // A token is refused (P2: an interactive session only).
+    expect(code(server.preview(view.id, true))).toEqual([403, 'session_required'])
+  })
+
+  test('preview and execute check the status first, then off, then the stored query', () => {
+    const offRejected = actionView(
+      'reference',
+      { id: 101, status: 'rejected', decision: 'rejected' },
+      'Assistenz',
+    )
+    const noQuery = actionView('reference', { id: 102, query: null })
+    const offApproved = actionView('reference', { id: 103, status: 'approved' }, 'Assistenz')
+    const server = modelServer([offRejected, noQuery, offApproved])
+    expect(code(server.preview(offRejected.id))).toEqual([409, 'already_decided'])
+    expect(code(server.preview(noQuery.id))).toEqual([409, 'not_approved'])
+    expect(code(server.execute(offApproved.id))).toEqual([409, 'class_not_allowed'])
+    expect(server.record(offApproved.id)?.status).toBe('approved')
   })
 
   test('reject keeps the reason; only a proposal is rejected', () => {
@@ -142,7 +160,16 @@ describe('the fake enforcement server keeps the contract (WP70, store.py)', () =
     server.execute(second.id)
     expect(code(server.undo(first.id))).toEqual([409, 'nothing_to_undo'])
     server.touched(second.id)
-    expect(code(server.undo(second.id))).toEqual([409, 'undo_blocked'])
+    expect(server.undo(second.id)).toMatchObject({
+      status: 409,
+      body: { code: 'undo_blocked', details: { id: second.id } },
+    })
+    // touched is judged before "latest", as the server does.
+    server.touched(first.id)
+    expect(code(server.undo(first.id))).toEqual([409, 'undo_blocked'])
+    // touched only for an applied change.
+    const proposed = actionView('reference')
+    expect(code(modelServer([proposed]).touched(proposed.id))).toEqual([409, 'nothing_to_undo'])
 
     const fresh = modelServer([first])
     expect(code(fresh.undo(first.id))).toEqual([409, 'nothing_to_undo'])
@@ -169,14 +196,21 @@ describe('the fake enforcement server keeps the contract (WP70, store.py)', () =
 
 test('the fake decide takes a proposal once, as the server does', async () => {
   const post = (status?: ModelActionView['status']) =>
-    Object.values(decideRoute(3, status))[0] as (init: RequestInit) => ModelActionView | Response
+    Object.values(decideRoute(3, status))[0] as (init: RequestInit) => Response
   const body = { body: JSON.stringify({ decision: 'proposal_only', applied_by_hand: true }) }
+  const answer = async (response: Response) => [response.status, await response.json()]
   const once = post()
-  expect(once(body)).toMatchObject({ status: 'applied', decision: 'proposal_only' })
-  const again = once(body) as Response
-  expect(again.status).toBe(409)
-  expect(await again.json()).toMatchObject({ code: 'already_decided' })
-  expect((post('answered')(body) as Response).status).toBe(409)
+  expect(await answer(once(body))).toMatchObject([
+    200,
+    { status: 'applied', decision: 'proposal_only' },
+  ])
+  expect(await answer(once(body))).toMatchObject([409, { code: 'already_decided' }])
+  // Not there yet: thinking, or approved (an auto answer): not_approved, as WP70 answers.
+  for (const early of ['thinking', 'approved'] as const)
+    expect(await answer(post(early)(body))).toMatchObject([409, { code: 'not_approved' }])
+  // Decided or final: already_decided.
+  for (const final of ['answered', 'rejected', 'applied', 'superseded'] as const)
+    expect(await answer(post(final)(body))).toMatchObject([409, { code: 'already_decided' }])
 })
 
 test('times are naive UTC, as the server writes them', () => {

@@ -45,9 +45,8 @@ function level(name: LevelName) {
 }
 
 /**
- * A level as ``GET /api/llm/options`` lists it, with its matrix: an addition
- * to ``LevelOption`` that WP72 assumes (design M7.1, M7.2; see
- * ``levelMatrix``). Ids as in ``actionView``'s snapshots.
+ * A level as ``GET /api/llm/options`` lists it, with its matrix (design M7.1,
+ * M7.2). Ids as in ``actionView``'s snapshots.
  */
 export function levelOption(name: LevelName, description = ''): LevelOption {
   const snapshot = level(name)
@@ -58,7 +57,7 @@ export function levelOption(name: LevelName, description = ''): LevelOption {
     description,
     selectable: found?.selectable ?? true,
     matrix: snapshot.matrix,
-  } as LevelOption
+  }
 }
 
 const CONNECTION = {
@@ -212,22 +211,26 @@ export function promptRoutes(id: CaseId, levelName: LevelName = 'Prüfen') {
 
 // --- Enforcement (WP70) as the fake server answers it -----------------------
 //
-// The transitions of plan 1.2 as the record store already holds them (backend
-// model/record/store.py, WP63) and WP70 exposes them. WP72's assumptions, for
-// the integrator to hold against WP70's server:
-// - ``approve``: only ``proposed``; a class ``off`` in the record's governance
-//   ⇒ 409 ``class_not_allowed`` {part, op_class, level}.
-// - ``reject`` {reason}: only ``proposed``; decision ``rejected`` with the reason.
-// - ``execute`` (no body): only ``approved``; decision ``auto`` when the cell is
+// The routes as WP70's server answers them (api/model.py, model/service.py,
+// model/record/store.py at fdd97f7), checked in the server's order:
+// - ``approve``: status ``proposed`` (else ``_wrong_state``), then no class
+//   ``off`` (409 ``class_not_allowed`` {part, op_class, level}).
+// - ``reject`` {reason}: ``proposed`` only; decision ``rejected`` with the reason.
+// - ``execute`` (no body): status ``approved``, then no class ``off``, then a
+//   stored query (else ``not_approved``); decision ``auto`` when the cell is
 //   ``auto``, else ``accepted``; answers ``ExecuteResponse`` {action, result}.
-// - ``undo``: ``applied`` with ``accepted``/``auto`` and the account's latest
-//   such change only (else 409 ``nothing_to_undo``); after ``touched`` 409
-//   ``undo_blocked``; an ``undone`` record 409 ``already_decided``.
-// - ``touched``: 200 with the record unchanged; only the undo rule notes it.
-// - ``preview``: ``proposed``/``approved`` only; a class ``off`` ⇒ 409
-//   ``class_not_allowed``; sets ``previewed_at``, never the status.
-// - Any other step: 409 ``already_decided`` on a decided record, else 409
-//   ``not_approved`` (the store's ``_wrong_state``).
+// - ``preview``: a session (403 ``session_required`` for a token), status
+//   ``proposed``/``approved``, no class ``off``, a stored query; sets
+//   ``previewed_at``, never the status.
+// - ``undo``: ``applied`` (an ``undone`` record ``already_decided``, any other
+//   ``nothing_to_undo``), then a decision ``accepted``/``auto`` (else
+//   ``nothing_to_undo``), then not touched (``undo_blocked``), then the
+//   account's latest model change (else ``nothing_to_undo``).
+// - ``touched``: ``applied`` only (else 409 ``nothing_to_undo``); the record
+//   is answered unchanged, the first report stays.
+// - Any other wrong status: 409 ``already_decided`` on a decided record, else
+//   409 ``not_approved`` (the store's ``_wrong_state``).
+// Times are naive UTC with microseconds, as the server writes them.
 
 /** Statuses with an edge out of them (store.py ``EDGES``). */
 const MOVABLE: readonly ActionStatus[] = [
@@ -293,11 +296,14 @@ export function modelServer(
   preview: ActionPreview = { count: 10, total: 137, ids: REFERENCE_IDS },
 ) {
   const records = new Map(views.map((v) => [v.id, v]))
-  const touched = new Set<number>()
+  const touched = new Map<number, string>()
   let latest: number | null = null
-  let minute = 6
-  // Naive UTC, as the server writes every time.
-  const now = () => `2026-10-10T14:${String(minute++).padStart(2, '0')}:00`
+  let tick = 0
+  const now = () => {
+    tick += 1
+    const minute = String(5 + tick).padStart(2, '0')
+    return `2026-10-10T14:${minute}:00.${String(tick * 1000 + 271).padStart(6, '0')}`
+  }
   const set = (view: ModelActionView) => {
     records.set(view.id, view)
     return view
@@ -320,14 +326,35 @@ export function modelServer(
   const offClass = (view: ModelActionView): FakeError | null => {
     const off = view.governance?.off ?? []
     return off.length
-      ? fail('class_not_allowed', `The level does not allow '${off[0]}'.`, {
-          id: view.id,
-          part: off[0],
-          op_class: off[0],
-          level: view.level.name,
-        })
+      ? fail(
+          'class_not_allowed',
+          `The level of model action ${view.id} does not allow '${off[0]}'.`,
+          {
+            id: view.id,
+            part: off[0],
+            op_class: off[0],
+            level: view.level.name,
+          },
+        )
       : null
   }
+  const noQuery = (view: ModelActionView, step: string): FakeError | null =>
+    view.query
+      ? null
+      : fail(
+          'not_approved',
+          `Model action ${view.id} has no query of its own; '${step}' does not apply.`,
+          {
+            id: view.id,
+            status: view.status,
+          },
+        )
+  const nothingToUndo = (view: ModelActionView, why: string): FakeError =>
+    fail('nothing_to_undo', `Model action ${view.id} cannot be undone: ${why}.`, {
+      id: view.id,
+      status: view.status,
+      decision: view.decision,
+    })
   function step<T>(id: number, run: (view: ModelActionView) => T | FakeError): T | FakeError {
     const view = records.get(id)
     return view ? run(view) : fail('not_found', `No model action ${id}.`, { id }, 404)
@@ -335,15 +362,18 @@ export function modelServer(
 
   return {
     record: (id: number) => records.get(id),
-    preview: (id: number) =>
-      step<ActionPreview>(id, (view) => {
-        const off = offClass(view)
-        if (off) return off
-        if (view.status !== 'proposed' && view.status !== 'approved')
-          return wrongState(view, 'preview')
-        set({ ...view, previewed_at: now() })
-        return preview
-      }),
+    /** ``token``: the request carries a token, not the login cookie (P2: session only). */
+    preview: (id: number, token = false) =>
+      token
+        ? fail('session_required', 'Only an interactive session may do this.', {}, 403)
+        : step<ActionPreview>(id, (view) => {
+            if (view.status !== 'proposed' && view.status !== 'approved')
+              return wrongState(view, 'preview')
+            const refused = offClass(view) ?? noQuery(view, 'preview')
+            if (refused) return refused
+            set({ ...view, previewed_at: now() })
+            return preview
+          }),
     approve: (id: number) =>
       step<ModelActionView>(id, (view) => {
         if (view.status !== 'proposed') return wrongState(view, 'approve')
@@ -364,7 +394,9 @@ export function modelServer(
     execute: (id: number) =>
       step<ExecuteResponse>(id, (view) => {
         if (view.status !== 'approved') return wrongState(view, 'execute')
-        const auto = view.governance?.cell === 'auto' && view.governance.off.length === 0
+        const refused = offClass(view) ?? noQuery(view, 'execute')
+        if (refused) return refused
+        const auto = view.governance?.cell === 'auto'
         const result = queryResult(view.query, preview.ids)
         const action = set({
           ...view,
@@ -384,29 +416,26 @@ export function modelServer(
     undo: (id: number) =>
       step<ModelActionView>(id, (view) => {
         if (view.status === 'undone') return wrongState(view, 'undo')
-        const why =
-          view.status !== 'applied'
-            ? `it changed nothing (${view.status})`
-            : view.decision !== 'accepted' && view.decision !== 'auto'
-              ? 'it was applied by the user, not by the model'
-              : latest !== view.id
-                ? `a later model change (${latest}) came after it`
-                : null
-        if (why)
-          return fail('nothing_to_undo', `Model action ${view.id} cannot be undone: ${why}.`, {
-            id: view.id,
-            status: view.status,
-            decision: view.decision,
-          })
-        if (touched.has(view.id))
-          return fail('undo_blocked', 'The analysis was changed by hand since; undo is over.', {
-            id: view.id,
-          })
+        if (view.status !== 'applied')
+          return nothingToUndo(view, `it changed nothing (${view.status})`)
+        if (view.decision !== 'accepted' && view.decision !== 'auto')
+          return nothingToUndo(view, 'it was applied by the user, not by the model')
+        const at = touched.get(view.id)
+        if (at)
+          return fail(
+            'undo_blocked',
+            `Model action ${view.id} cannot be undone: the analysis was changed by hand after it.`,
+            { id: view.id, touched_at: at },
+          )
+        if (latest !== view.id)
+          return nothingToUndo(view, `a later model change (${latest}) came after it`)
         return set({ ...view, status: 'undone', undone_at: now() })
       }),
     touched: (id: number) =>
       step<ModelActionView>(id, (view) => {
-        if (view.status === 'applied') touched.add(view.id)
+        if (view.status !== 'applied')
+          return nothingToUndo(view, `it is no applied change (${view.status})`)
+        if (!touched.has(view.id)) touched.set(view.id, now())
         return view
       }),
     /** ``decide`` (WP65): the hand-over of a proposal, once. */
@@ -415,12 +444,12 @@ export function modelServer(
       body: { decision: 'proposal_only' | 'adjusted'; applied_by_hand?: boolean; query?: unknown },
     ) =>
       step<ModelActionView>(id, (view) => {
-        if (view.status !== 'proposed') return wrongState(view, 'decide')
         const byHand = body.applied_by_hand ?? false
         if (body.decision === 'adjusted' && byHand)
           return fail('bad_request', 'adjusted is not by hand', {}, 400)
         if ((body.decision === 'adjusted') !== (body.query !== undefined && body.query !== null))
           return fail('bad_request', 'adjusted, and only that, names the applied query', {}, 400)
+        if (view.status !== 'proposed') return wrongState(view, 'decide')
         return set({
           ...view,
           status: 'applied',

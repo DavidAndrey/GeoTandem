@@ -8,7 +8,7 @@ import type { LLMOptions, ModelActionView, RejectReason } from '../api/client'
 import { useMapView } from '../map/view'
 import { resetApproval } from '../model/approval/flow'
 import { attribute, layer, signedIn } from './fixtures'
-import { actionView, isFakeError, levelOption, type ModelServer } from './model-mocks'
+import { actionView, isFakeError, levelOption, modelServer, type ModelServer } from './model-mocks'
 import { fakeApi, renderAt } from './render'
 import { Workplace } from '../workplace/Workplace'
 import { useModel } from '../model/store'
@@ -188,41 +188,32 @@ export function promptFlow(thinking: ModelActionView, ...answers: ModelActionVie
   }
 }
 
+/** The decision a record in a final status carries (store.py ``DECIDED``). */
+const DECIDED_AS: Partial<Record<ModelActionView['status'], ModelActionView['decision']>> = {
+  applied: 'accepted',
+  rejected: 'rejected',
+  superseded: 'superseded',
+  undone: 'accepted',
+  aborted: 'aborted',
+  failed: 'failed',
+}
+
 /**
- * ``decide`` as the backend answers it (WP65, store.py): only a record still
- * ``proposed`` is decided, once (409 ``already_decided`` after, or for a record
- * in ``status``); ``applied_by_hand`` belongs to ``proposal_only``, and an
- * adjusted query with it is refused with 400.
+ * ``decide`` as the server answers it (WP65, store.py; ``modelServer``): only a
+ * record still ``proposed`` is decided, once; ``not_approved`` for a record
+ * not there yet (``thinking``, ``approved``), ``already_decided`` for a
+ * decided or final one; ``applied_by_hand`` belongs to ``proposal_only``, and
+ * ``adjusted`` names its query (else 400).
  */
 export function decideRoute(id: number, status: ModelActionView['status'] = 'proposed') {
-  let current = status
+  const server = modelServer([
+    actionView('reference', { id, status, decision: DECIDED_AS[status] ?? null }),
+  ])
   return {
     [`POST /api/model/actions/${id}/decide`]: (init: RequestInit | undefined) => {
-      const body = JSON.parse(String(init?.body)) as {
-        decision: 'proposal_only' | 'adjusted'
-        applied_by_hand?: boolean
-        query?: ModelActionView['applied_query']
-      }
-      if (current !== 'proposed')
-        return json(
-          {
-            code: 'already_decided',
-            message: `Model action ${id} is decided already (${current}).`,
-            details: { id, status: current },
-          },
-          409,
-        )
-      if (body.decision === 'adjusted' && body.applied_by_hand)
-        return json({ code: 'bad_request', message: 'adjusted is not by hand', details: {} }, 400)
-      current = 'applied'
-      return actionView('reference', {
-        id,
-        status: 'applied',
-        decision: body.decision,
-        applied_by_hand: body.applied_by_hand ?? false,
-        applied_query: body.query ?? null,
-        decided_at: '2026-10-10T14:07:00',
-      })
+      const body = JSON.parse(String(init?.body)) as Parameters<ModelServer['decide']>[1]
+      const answer = server.decide(id, body)
+      return isFakeError(answer) ? json(answer.body, answer.status) : json(answer)
     },
   }
 }

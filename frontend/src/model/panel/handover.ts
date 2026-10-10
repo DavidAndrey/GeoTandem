@@ -86,11 +86,8 @@ export function takeOver(view: ModelActionView, row: string | null = null): bool
     dirty: analysis.dirty,
     added: !shown,
   }
-  if (!shown) analysis.addLayer(draft.result, true)
-  // Result layer and restriction are not part of a draft: set here, put back by
-  // "Verwerfen" (watchHandover).
-  useAnalysis.setState({ result: draft.result, restriction: null, draft: draft.tree })
-  useAnalysis.getState().markOrigin()
+  // Open before the analysis changes: what follows belongs to the hand-over, and
+  // the undo rule judges it only when the editor closes (approval/flow.ts).
   useHandover.setState({
     open: {
       action: view.id,
@@ -103,6 +100,11 @@ export function takeOver(view: ModelActionView, row: string | null = null): bool
     },
     failed: null,
   })
+  if (!shown) analysis.addLayer(draft.result, true)
+  // Result layer and restriction are not part of a draft: set here, put back by
+  // "Verwerfen" (watchHandover).
+  useAnalysis.setState({ result: draft.result, restriction: null, draft: draft.tree })
+  useAnalysis.getState().markOrigin()
   useMapView.getState().setActiveRow(row)
   // "In Editor übernehmen" switches to Klassik; B2 takes the panel's place.
   useModel.getState().setOpen(false)
