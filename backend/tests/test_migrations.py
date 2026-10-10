@@ -2,9 +2,10 @@
 
 from typing import Any
 
+import pytest
 from alembic.autogenerate import compare_metadata
 from alembic.migration import MigrationContext
-from sqlalchemy import inspect, text
+from sqlalchemy import Engine, inspect, text
 
 from geotandem.config import Settings
 from geotandem.db import migrate
@@ -141,3 +142,96 @@ def test_downgrade_from_e20_keeps_accounts(settings: Settings) -> None:
     assert "level" not in inspect(engine).get_table_names()
     with engine.connect() as conn:
         assert conn.scalar(text("SELECT username FROM app_user")) == "anna"
+
+
+# --- rows that hang on an account (batch rebuilds of app_user) ------------------
+
+CHILDREN = {
+    "app_user": "SELECT id, username FROM app_user",
+    "auth_session": "SELECT id, user_id, token_hash FROM auth_session",
+    "analysis_session": "SELECT id, owner_id, name FROM analysis_session",
+    "saved_query": "SELECT id, owner_id, name FROM saved_query",
+}
+
+
+def _seed_accounts_with_children(engine: Engine) -> None:
+    """Two accounts, each with a login, a session and a saved query (revision 0005)."""
+    with engine.begin() as conn:
+        for n, name in enumerate(("anna", "beat"), start=1):
+            conn.execute(
+                text(
+                    "INSERT INTO app_user (id, username, display_name, password_hash, role,"
+                    " status, must_change_password) VALUES (:id, :name, '', 'x', 'user',"
+                    " 'active', 0)"
+                ),
+                {"id": n, "name": name},
+            )
+            conn.execute(
+                text(
+                    "INSERT INTO auth_session (token_hash, user_id, expires_at)"
+                    " VALUES (:token, :id, '2030-01-01 00:00:00')"
+                ),
+                {"token": f"{n:064d}", "id": n},
+            )
+            conn.execute(
+                text(
+                    "INSERT INTO analysis_session (id, owner_id, name, note, state_version,"
+                    " state) VALUES (:sid, :id, 'Sitzung', '', 1, '{}')"
+                ),
+                {"sid": f"s{n}", "id": n},
+            )
+            conn.execute(
+                text(
+                    "INSERT INTO saved_query (id, owner_id, name, shared, state_version, state,"
+                    " query, layers) VALUES (:qid, :id, 'Abfrage', 0, 1, '{}', :query, :layers)"
+                ),
+                {"qid": f"q{n}", "id": n, "query": '{"source": "s"}', "layers": '["s"]'},
+            )
+
+
+def _children(engine: Engine) -> dict[str, list[tuple[Any, ...]]]:
+    with engine.connect() as conn:
+        return {
+            table: sorted(tuple(row) for row in conn.execute(text(sql)))
+            for table, sql in CHILDREN.items()
+        }
+
+
+def test_migrations_keep_the_rows_of_every_account(settings: Settings) -> None:
+    """0006 and 0007 rebuild app_user; on SQLite that must not delete or null the
+    rows that refer to it (ON DELETE CASCADE / SET NULL)."""
+    engine = make_engine(settings)
+    migrate.upgrade(engine, "0005")
+    _seed_accounts_with_children(engine)
+    before = _children(engine)
+    assert all(len(rows) == 2 for rows in before.values())
+
+    migrate.upgrade(engine)
+    assert _children(engine) == before
+
+    with engine.begin() as conn:
+        conn.execute(text("UPDATE app_user SET level_id = (SELECT min(id) FROM level)"))
+    migrate.downgrade(engine, "0006")
+    assert _children(engine) == before
+    with engine.connect() as conn:
+        assert conn.scalar(text("SELECT count(*) FROM app_user WHERE level_id IS NULL")) == 0
+
+    migrate.downgrade(engine, "0005")
+    assert _children(engine) == before
+    migrate.upgrade(engine)
+    assert _children(engine) == before
+
+
+def test_a_migration_that_breaks_a_reference_fails(settings: Settings) -> None:
+    """Keys are not enforced while migrating; the check afterwards still is."""
+    engine = make_engine(settings)
+    migrate.upgrade(engine, "0005")
+    _seed_accounts_with_children(engine)
+    with engine.connect() as conn:
+        raw = conn.connection.driver_connection
+        assert raw is not None
+        raw.execute("PRAGMA foreign_keys = OFF")
+        raw.execute("DELETE FROM app_user WHERE id = 2")
+        raw.execute("PRAGMA foreign_keys = ON")
+    with pytest.raises(RuntimeError, match="foreign key"):
+        migrate.upgrade(engine, "0006")
