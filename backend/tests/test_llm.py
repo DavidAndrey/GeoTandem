@@ -197,6 +197,72 @@ def test_failures_map_to_codes_and_only_transient_ones_retry(
     assert "Schulen" not in error.cause and "Schulen" not in str(error)
 
 
+class Clock:
+    """Monotonic time under test control: a slow endpoint and the backoff move it."""
+
+    def __init__(self) -> None:
+        self.now = 1000.0
+        self.timeouts: list[float] = []
+
+    def __call__(self) -> float:
+        return self.now
+
+    def sleep(self, seconds: float) -> None:
+        self.now += seconds
+
+    def slow(self, seconds: float, then: httpx2.Response) -> Any:
+        """An attempt that takes ``seconds``, or times out after the read timeout it got."""
+
+        def answer(request: httpx2.Request) -> httpx2.Response:
+            read = request.extensions["timeout"]["read"]
+            self.timeouts.append(read)
+            if read < seconds:
+                self.now += read
+                raise httpx2.ReadTimeout("timed out", request=request)
+            self.now += seconds
+            return then
+
+        return answer
+
+
+def test_a_slow_call_and_its_retries_end_by_the_deadline() -> None:
+    clock = Clock()
+    deadline = clock.now + 50
+    stub = OllamaStub(answers=[clock.slow(20, status(503))] * 3)
+    with client(stub, sleep=clock.sleep, clock=clock) as llm:
+        error = error_of(lambda: llm.complete(ASK, deadline=deadline))
+    assert error.code == "llm_timeout"
+    # 20 s and a 503, 0.5 s backoff, 20 s and a 503, 1 s backoff, 8.5 s left.
+    assert clock.timeouts == [pytest.approx(t) for t in (50, 29.5, 8.5)]
+    assert clock.now == pytest.approx(deadline)
+
+
+def test_no_retry_is_made_past_the_deadline() -> None:
+    clock = Clock()
+    stub = OllamaStub(answers=[clock.slow(20, status(503)), chat("zu spät")])
+    with client(stub, sleep=clock.sleep, clock=clock) as llm:
+        error = error_of(lambda: llm.complete(ASK, deadline=clock.now + 20.3))
+    assert (error.code, error.retries, len(stub.chat_requests())) == ("llm_server_error", 0, 1)
+    assert clock.now <= 1020.3
+
+
+def test_an_attempt_gets_at_most_the_endpoints_timeout_and_none_after_the_deadline() -> None:
+    clock = Clock()
+    stub = OllamaStub(answers=[clock.slow(1, httpx2.Response(200, json=chat("ok")))])
+    with client(stub, sleep=clock.sleep, clock=clock) as llm:
+        assert llm.complete(ASK, deadline=clock.now + 500).text == "ok"
+        assert clock.timeouts == [ENDPOINT.timeout_s]
+        late = error_of(lambda: llm.complete(ASK, deadline=clock.now))
+    assert late.code == "llm_timeout" and len(stub.chat_requests()) == 1
+
+
+def test_the_fake_honours_the_deadline() -> None:
+    fake = FakeLLMClient(script=[Completion(text="a")], clock=lambda: 10.0)
+    assert error_of(lambda: fake.complete(ASK, deadline=10.0)).code == "llm_timeout"
+    assert fake.complete(ASK, deadline=11.0).text == "a"
+    assert [c.deadline for c in fake.calls] == [10.0, 11.0]
+
+
 def test_a_redirect_is_refused_not_followed() -> None:
     elsewhere = httpx2.Response(
         307, headers={"Location": "http://evil.example/v1/chat/completions"}

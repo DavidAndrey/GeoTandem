@@ -13,6 +13,9 @@ Guards, each tested on the transport actually used:
   every request, whoever the endpoint is.
 - SDK retries off; one loop here retries at most twice, on connection
   errors and 408/409/425/429/5xx only, so the count is known and reported.
+- A call's ``deadline`` bounds all its attempts together: each gets only the
+  time left (at most the endpoint's timeout), and a retry whose backoff would
+  end past the deadline is not made.
 """
 
 import json
@@ -102,9 +105,11 @@ class OpenAICompatClient:
         *,
         transport: httpx2.BaseTransport | None = None,
         sleep: Callable[[float], None] = time.sleep,
+        clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self.endpoint = endpoint
         self._sleep = sleep
+        self._clock = clock
         timeout = httpx2.Timeout(
             endpoint.timeout_s, connect=min(endpoint.timeout_s, CONNECT_TIMEOUT_S)
         )
@@ -142,11 +147,30 @@ class OpenAICompatClient:
 
     # --- calls -------------------------------------------------------------------
 
-    def _with_retries[T](self, call: Callable[[], T]) -> tuple[T, int]:
+    def _attempt_timeout(self, deadline: float | None, retries: int) -> httpx2.Timeout | None:
+        """What the next attempt may take: the endpoint's timeout, at most the
+        time left before ``deadline``; ``None``: the client's default."""
+        if deadline is None:
+            return None
+        left = deadline - self._clock()
+        if left <= 0:
+            raise LLMError(
+                "llm_timeout",
+                "No answer before the call's time limit.",
+                cause="deadline passed",
+                retries=retries,
+            )
+        total = min(self.endpoint.timeout_s, left)
+        return httpx2.Timeout(total, connect=min(total, CONNECT_TIMEOUT_S))
+
+    def _with_retries[T](
+        self, call: Callable[[httpx2.Timeout | None], T], deadline: float | None = None
+    ) -> tuple[T, int]:
         retries = 0
         while True:
+            timeout = self._attempt_timeout(deadline, retries)
             try:
-                return call(), retries
+                return call(timeout), retries
             except openai.APITimeoutError as exc:
                 # A timeout is not retried: the model is slow, and asking again doubles the wait.
                 raise LLMError(
@@ -175,8 +199,11 @@ class OpenAICompatClient:
                 ) from None
             if not retryable or retries >= MAX_RETRIES:
                 raise error from None
+            backoff = 0.5 * 2**retries
+            if deadline is not None and self._clock() + backoff >= deadline:
+                raise error from None  # no time left for another attempt
             retries += 1
-            self._sleep(0.5 * 2 ** (retries - 1))
+            self._sleep(backoff)
 
     def complete(
         self,
@@ -185,6 +212,7 @@ class OpenAICompatClient:
         schema: dict[str, Any] | None = None,
         schema_name: str = "answer",
         tools: Sequence[ToolSpec] = (),
+        deadline: float | None = None,
     ) -> Completion:
         endpoint = self.endpoint
         request: dict[str, Any] = {
@@ -214,11 +242,14 @@ class OpenAICompatClient:
                 for t in tools
             ]
 
-        started = time.monotonic()
+        def create(timeout: httpx2.Timeout | None) -> Any:
+            if timeout is None:
+                return self._sdk.chat.completions.create(**request)
+            return self._sdk.chat.completions.create(**request, timeout=timeout)
+
+        started = self._clock()
         try:
-            response, retries = self._with_retries(
-                lambda: self._sdk.chat.completions.create(**request)
-            )
+            response, retries = self._with_retries(create, deadline)
         except LLMError as exc:
             log.info(
                 "llm call failed: model=%s code=%s retries=%d",
@@ -227,7 +258,7 @@ class OpenAICompatClient:
                 exc.retries,
             )
             raise
-        latency_ms = round((time.monotonic() - started) * 1000)
+        latency_ms = round((self._clock() - started) * 1000)
 
         # A 200 whose body is not JSON reaches us as text, not as a completion.
         choices = getattr(response, "choices", None)
@@ -300,7 +331,7 @@ class OpenAICompatClient:
         return version if isinstance(version, str) else None
 
     def models(self) -> list[ModelInfo]:
-        page, retries = self._with_retries(self._sdk.models.list)
+        page, retries = self._with_retries(lambda _: self._sdk.models.list())
         data = getattr(page, "data", None)
         if not isinstance(data, list):
             raise LLMError("llm_bad_response", "The model list is not a list.", retries=retries)
