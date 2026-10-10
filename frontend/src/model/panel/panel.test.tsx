@@ -206,9 +206,10 @@ describe('answer (M2, M4)', () => {
         .getAllByRole('listitem')
         .map((li) => li.textContent),
     ).toEqual([
-      '≈„nahe“ = höchstens 500 m',
-      '≈„Kantonsstrassen“ = Strassenklasse Kantonsstrasse B',
-      '≈„hohe Steueranlage“ = über 1.6',
+      // Each with "ändern" for the condition it names (M12.1, WP68).
+      '≈„nahe“ = höchstens 500 mändern',
+      '≈„Kantonsstrassen“ = Strassenklasse Kantonsstrasse Bändern',
+      '≈„hohe Steueranlage“ = über 1.6ändern',
     ])
     expect(within(card).getByText('Abfrage · Ergebnis Schulen')).toBeInTheDocument()
     expect(within(card).getByRole('group', { name: 'Bedingungen' })).toBeInTheDocument()

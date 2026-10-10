@@ -38,3 +38,16 @@ export function proposalDraft(query: unknown, action: number): Draft | null {
   // The root keeps the analysis's id: "+ Bedingung" appends to 'root'.
   return { result: read.source, tree: { ...read.tree, children: children as Node[] } }
 }
+
+/**
+ * The row an assumption's ``condition`` path points at (``Assumption.condition``:
+ * indexes into the query's where tree, design M12.1), or ``null`` for the where
+ * clause as a whole or a path into nothing.
+ */
+export function assumptionRow(path: readonly number[], action: number, tree: Group): string | null {
+  // A where clause of one condition is the root's only row, ``q0`` (readable.ts).
+  const id = rowId(action, ['q0', ...path].join('.'))
+  const holds = (node: Node): boolean =>
+    node.id === id || (node.kind === 'group' && node.children.some(holds))
+  return tree.children.some(holds) ? id : null
+}

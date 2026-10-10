@@ -15,6 +15,10 @@ msgstr " (Tabelle)"
 msgid "– wählen –"
 msgstr "– wählen –"
 
+#: src/model/panel/Answer.tsx
+msgid "· Arbeitsweise passt nicht"
+msgstr "· Arbeitsweise passt nicht"
+
 #: src/queries/SavedQueries.tsx
 msgid "· geändert"
 msgstr "· geändert"
@@ -22,6 +26,10 @@ msgstr "· geändert"
 #: src/model/panel/Answer.tsx
 msgid "· nicht anwendbar"
 msgstr "· nicht anwendbar"
+
+#: src/model/panel/Answer.tsx
+msgid "· nicht beantwortbar"
+msgstr "· nicht beantwortbar"
 
 #: src/i18n/errors.ts
 msgid "„{layer}.{attribute}\" ist kein Feld eines Layers mit Geometrie."
@@ -378,6 +386,7 @@ msgstr "ab {stage}"
 msgid "ab E2.4"
 msgstr "ab E2.4"
 
+#: src/model/panel/Answer.tsx
 #: src/model/panel/PromptPanel.tsx
 msgid "ab E2.5"
 msgstr "ab E2.5"
@@ -580,6 +589,10 @@ msgctxt "metric name"
 msgid "als"
 msgstr "als"
 
+#: src/model/panel/Answer.tsx
+msgid "Als Direktabfrage versuchen"
+msgstr "Als Direktabfrage versuchen"
+
 #: src/queries/ManageQueriesDialog.tsx
 msgid "Als eigene Kopie speichern"
 msgstr "Als eigene Kopie speichern"
@@ -642,9 +655,29 @@ msgstr "Andere Ziel-Layer"
 msgid "Anderen Ergebnis-Layer wählen"
 msgstr "Anderen Ergebnis-Layer wählen"
 
+#: src/model/panel/Answer.tsx
+msgid "anderes …"
+msgstr "anderes …"
+
+#: src/model/panel/Answer.tsx
+msgid "ändern"
+msgstr "ändern"
+
 #: src/model/panel/Problem.tsx
 msgid "Anfrage nicht ausgeführt"
 msgstr "Anfrage nicht ausgeführt"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Anfragen"
+msgstr "Anfragen"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Anfragen pro Tag"
+msgstr "Anfragen pro Tag"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Anfragen pro Tag begrenzen"
+msgstr "Anfragen pro Tag begrenzen"
 
 #: src/i18n/errors.ts
 msgid "Anfragen von anderen Seiten werden nicht angenommen."
@@ -667,6 +700,10 @@ msgid "Anmelden"
 msgstr "Anmelden"
 
 #: src/model/panel/Answer.tsx
+msgid "Annahme ändern: {text}"
+msgstr "Annahme ändern: {text}"
+
+#: src/model/panel/Answer.tsx
 msgid "Annahmen"
 msgstr "Annahmen"
 
@@ -686,6 +723,10 @@ msgstr "Antwort nach JSON-Schema"
 #: src/model/panel/Problem.tsx
 msgid "Antwort nicht lesbar"
 msgstr "Antwort nicht lesbar"
+
+#: src/model/panel/Answer.tsx
+msgid "Antworten"
+msgstr "Antworten"
 
 #: src/admin/VisibilityPage.tsx
 #: src/auth/rules.ts
@@ -1688,6 +1729,10 @@ msgstr "Ein Benutzername hat 2 bis 63 Zeichen: Kleinbuchstaben, Ziffern, „.\",
 msgid "Ein beteiligter Layer hat seit dem Speichern eine neue Fassung oder fehlt."
 msgstr "Ein beteiligter Layer hat seit dem Speichern eine neue Fassung oder fehlt."
 
+#: src/model/panel/Answer.tsx
+msgid "Ein Knopf sendet die Antwort sofort; eine eigene Antwort geht über das Feld."
+msgstr "Ein Knopf sendet die Antwort sofort; eine eigene Antwort geht über das Feld."
+
 #: src/i18n/errors.ts
 msgid "Ein Layer fehlt oder ist nicht sichtbar."
 msgstr "Ein Layer fehlt oder ist nicht sichtbar."
@@ -1944,6 +1989,10 @@ msgstr "Ersteinrichtung"
 #: src/i18n/errors.ts
 msgid "Es braucht mindestens {min} und höchstens {max} Stufen."
 msgstr "Es braucht mindestens {min} und höchstens {max} Stufen."
+
+#: src/model/panel/Answer.tsx
+msgid "Es fehlt"
+msgstr "Es fehlt"
 
 #: src/i18n/errors.ts
 msgid "Es sind schon so viele Abfragen gespeichert wie erlaubt. Bitte zuerst eine löschen."
@@ -2227,6 +2276,10 @@ msgstr "Geteilt: für alle Anwender lesbar (Ändern erzeugt bei ihnen eine Kopie
 msgid "Geteilt: für alle Anwender sichtbar, die ihre Layer sehen — nur lesend, Ändern erzeugt eine Kopie."
 msgstr "Geteilt: für alle Anwender sichtbar, die ihre Layer sehen — nur lesend, Ändern erzeugt eine Kopie."
 
+#: src/admin/ConnectionsPage.tsx
+msgid "Gezählt über alle Konten je Kalendertag; eine Anfrage zählt, sobald sie das Modell erreicht. Ist die Grenze erreicht, wird die Anbindung bis zum nächsten Tag abgewiesen."
+msgstr "Gezählt über alle Konten je Kalendertag; eine Anfrage zählt, sobald sie das Modell erreicht. Ist die Grenze erreicht, wird die Anbindung bis zum nächsten Tag abgewiesen."
+
 #: src/admin/VisibilityPage.tsx
 msgid "Gilt für neu importierte Layer; ein aktualisierter Layer behält seine Sichtbarkeit. Administratoren sehen alle Layer."
 msgstr "Gilt für neu importierte Layer; ein aktualisierter Layer behält seine Sichtbarkeit. Administratoren sehen alle Layer."
@@ -2330,6 +2383,10 @@ msgstr "Ich bestätige: Dateninhalte dürfen nach aussen gehen."
 #: src/model/panel/Problem.tsx
 msgid "Ihr Stand ist unverändert."
 msgstr "Ihr Stand ist unverändert."
+
+#: src/model/panel/PromptPanel.tsx
+msgid "Ihre Eingabe beantwortet die Rückfrage."
+msgstr "Ihre Eingabe beantwortet die Rückfrage."
 
 #: src/model/panel/PromptPanel.tsx
 msgid "Ihre Eingaben werden protokolliert"
@@ -2821,6 +2878,10 @@ msgstr "Mit Layern auf der Karte erscheinen hier Beispiele."
 #: src/admin/format.ts
 msgid "mit Warnungen"
 msgstr "mit Warnungen"
+
+#: src/model/panel/Answer.tsx
+msgid "Mit Werkzeugkette versuchen"
+msgstr "Mit Werkzeugkette versuchen"
 
 #: src/model/panel/Answer.tsx
 msgid "Mit Werkzeugkette versuchen ›"
@@ -3445,6 +3506,14 @@ msgstr "Steckbrief für das Modell (F-2.9)"
 #: src/auth/SetupPage.tsx
 msgid "Steht beim ersten Start im Protokoll der Installation (<0>docker logs</0>) oder ist dort als <1>GEOTANDEM_SETUP_TOKEN</1> gesetzt."
 msgstr "Steht beim ersten Start im Protokoll der Installation (<0>docker logs</0>) oder ist dort als <1>GEOTANDEM_SETUP_TOKEN</1> gesetzt."
+
+#: src/model/panel/Answer.tsx
+msgid "Stellt den Schalter auf Direktabfrage und setzt denselben Prompt ins Feld. Gesendet wird erst mit Senden."
+msgstr "Stellt den Schalter auf Direktabfrage und setzt denselben Prompt ins Feld. Gesendet wird erst mit Senden."
+
+#: src/model/panel/Answer.tsx
+msgid "Stellt den Schalter auf Werkzeugkette und setzt denselben Prompt ins Feld. Gesendet wird erst mit Senden."
+msgstr "Stellt den Schalter auf Werkzeugkette und setzt denselben Prompt ins Feld. Gesendet wird erst mit Senden."
 
 #: src/map/Measurement.tsx
 msgid "Strecke"

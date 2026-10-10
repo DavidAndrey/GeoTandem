@@ -7,7 +7,7 @@ import { t } from '@lingui/core/macro'
 import { useEffect, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useAnalysis } from '../../analysis/store'
-import type { ModelActionView, ModelAnswer } from '../../api/client'
+import type { Assumption as AssumptionData, ModelActionView, ModelAnswer } from '../../api/client'
 import { ErrorNotice } from '../../components/ui'
 import { errorText } from '../../i18n/errors'
 import { formatNumber } from '../../i18n/locale'
@@ -16,11 +16,18 @@ import { dialogueViews, useModel } from '../store'
 import { FRAME, lineStyle, statusKey } from '../statusKey'
 import { QueryTree } from '../tree'
 import { CHAIN_AVAILABLE } from './chain'
-import { canTakeOver, report, takeOver, useHandover } from './handover'
+import {
+  canEditAssumption,
+  canTakeOver,
+  editAssumption,
+  report,
+  takeOver,
+  useHandover,
+} from './handover'
 import { resumePolling } from './poll'
 import { ProblemCard } from './Problem'
 import { recordProblem, requestProblem, technical } from './problems'
-import { abort, MODEL_CALL_S, prefill, send, usePanel } from './state'
+import { abort, focusPrompt, MODEL_CALL_S, prefill, send, usePanel } from './state'
 import { clockTime, minutes } from './time'
 
 type QueryAnswer = Extract<ModelAnswer, { kind: 'query' }>
@@ -273,12 +280,7 @@ function Proposal({ view, answer }: { view: ModelActionView; answer: QueryAnswer
           <p className="label-caps">{t`Annahmen · ${count}`}</p>
           <ul className="flex flex-col gap-0.5">
             {answer.assumptions.map((assumption, i) => (
-              <li key={i} className="flex items-baseline gap-1.5">
-                <span aria-hidden className="text-accent-700">
-                  ≈
-                </span>
-                <span className="min-w-0 flex-1">{assumption.text}</span>
-              </li>
+              <Assumption key={i} view={view} assumption={assumption} />
             ))}
           </ul>
         </section>
@@ -304,6 +306,35 @@ function Proposal({ view, answer }: { view: ModelActionView; answer: QueryAnswer
         </div>
       )}
     </article>
+  )
+}
+
+/**
+ * One assumption with ≈ (F-5.12); "ändern" opens the condition it is about in
+ * B2 (design M12.1) when the model named one and it can be opened.
+ */
+function Assumption({ view, assumption }: { view: ModelActionView; assumption: AssumptionData }) {
+  const path = assumption.condition
+  // The analysis decides whether an applied answer's row is still there.
+  const editable = useAnalysis((s) => s.draft === null && !!path && canEditAssumption(view, path))
+  const text = assumption.text
+  return (
+    <li className="flex items-baseline gap-1.5">
+      <span aria-hidden className="text-accent-700">
+        ≈
+      </span>
+      <span className="min-w-0 flex-1">{text}</span>
+      {editable && path && (
+        <button
+          type="button"
+          className="text-accent-700 text-xs"
+          aria-label={t`Annahme ändern: ${text}`}
+          onClick={() => editAssumption(view, path)}
+        >
+          <Trans>ändern</Trans>
+        </button>
+      )}
+    </li>
   )
 }
 
@@ -366,17 +397,150 @@ function Actions({ view }: { view: ModelActionView }) {
   )
 }
 
-/** A clarification or a cannot-answer: nothing proposed, the analysis untouched. */
+/**
+ * A clarification or a cannot-answer (design M12.2, M13): nothing proposed,
+ * the analysis untouched; black line, no status line style (design decision 10).
+ */
 function Message({ view }: { view: ModelActionView }) {
   const answer = view.answer
   return (
     <article aria-label={t`Antwort`} className={`card flex flex-col gap-2 p-3 ${FRAME.message}`}>
+      {answer?.kind === 'clarification' ? (
+        <Clarification view={view} question={answer.question} options={answer.options} />
+      ) : answer?.kind === 'cannot_answer' ? (
+        <CannotAnswer view={view} answer={answer} />
+      ) : (
+        <>
+          <p className="flex items-center gap-2">
+            <StatusLabel status={statusKey(view)} live />
+            {unchanged()}
+          </p>
+          {answer && 'explanation' in answer && <p>{answer.explanation}</p>}
+        </>
+      )}
+    </article>
+  )
+}
+
+/**
+ * M12.2: the model asks back, with 2–4 options. An option is sent at once as
+ * the answer to this question (its record is the parent, P6); "anderes …"
+ * leaves the free answer to the field, which then answers the question too.
+ * The analysis is not touched.
+ */
+function Clarification({
+  view,
+  question,
+  options,
+}: {
+  view: ModelActionView
+  question: string
+  options: string[]
+}) {
+  const running = useModel((s) => s.running !== null)
+  const sending = usePanel((s) => s.sending)
+  const locked = running || sending
+  return (
+    <>
       <p className="flex items-center gap-2">
-        <StatusLabel status={statusKey(view)} live />
+        <StatusLabel status="clarification" live />
         {unchanged()}
       </p>
-      {answer?.kind === 'clarification' && <p>{answer.question}</p>}
-      {(answer?.kind === 'cannot_answer' || answer?.kind === 'plan') && <p>{answer.explanation}</p>}
-    </article>
+      <p>{question}</p>
+      <div className="flex flex-wrap gap-2" role="group" aria-label={t`Antworten`}>
+        {options.map((option) => (
+          <button
+            key={option}
+            type="button"
+            className="btn"
+            disabled={locked}
+            onClick={() => void send(option, view.approach, view.id)}
+          >
+            {option}
+          </button>
+        ))}
+        <button type="button" className="btn" disabled={locked} onClick={focusPrompt}>
+          <Trans>anderes …</Trans>
+        </button>
+      </div>
+      <p className="text-muted text-xs">
+        <Trans>Ein Knopf sendet die Antwort sofort; eine eigene Antwort geht über das Feld.</Trans>
+      </p>
+    </>
+  )
+}
+
+/**
+ * M13: no query from this approach. With ``other_approach`` the model offers
+ * the other way of working (M13.1, D6): the button switches the toggle and
+ * fills the field with the same prompt, and never sends. Without, it says what
+ * is missing and offers nothing (M13.2).
+ *
+ * In E2.3 the chain cannot be chosen yet: its offer is shown disabled with
+ * "ab E2.5" rather than hidden, because the offer is the answer itself (the
+ * reason this prompt needs several steps) and matches the disabled chain in
+ * the approach toggle. The refusal M3.3, where the offer is only an extra,
+ * leaves it out until the chain exists.
+ */
+function CannotAnswer({
+  view,
+  answer,
+}: {
+  view: ModelActionView
+  answer: Extract<ModelAnswer, { kind: 'cannot_answer' }>
+}) {
+  const other = answer.other_approach
+  const offer = other && other !== view.approach ? other : null
+  const unavailable = offer === 'chain' && !CHAIN_AVAILABLE
+  const hint = `offer-${view.id}`
+  return (
+    <>
+      <p className="flex items-center gap-2">
+        <StatusLabel
+          status="message"
+          detail={offer ? t`· Arbeitsweise passt nicht` : t`· nicht beantwortbar`}
+          live
+        />
+        {unchanged()}
+      </p>
+      <p>{answer.explanation}</p>
+      {!offer && answer.missing.length > 0 && (
+        <section aria-labelledby={`missing-${view.id}`} className="text-sm">
+          <p id={`missing-${view.id}`} className="label-caps">
+            <Trans>Es fehlt</Trans>
+          </p>
+          <ul className="list-disc pl-5">
+            {answer.missing.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {offer && (
+        <>
+          <p className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={unavailable}
+              aria-describedby={hint}
+              onClick={() => prefill(view.prompt, offer)}
+            >
+              {offer === 'chain' ? t`Mit Werkzeugkette versuchen` : t`Als Direktabfrage versuchen`}
+            </button>
+            {unavailable && (
+              <span className="text-muted text-xs">
+                <Trans>ab E2.5</Trans>
+              </span>
+            )}
+          </p>
+          <p id={hint} className="text-muted text-xs">
+            {offer === 'chain'
+              ? t`Stellt den Schalter auf Werkzeugkette und setzt denselben Prompt ins Feld. Gesendet wird erst mit Senden.`
+              : t`Stellt den Schalter auf Direktabfrage und setzt denselben Prompt ins Feld. Gesendet wird erst mit Senden.`}
+          </p>
+        </>
+      )}
+    </>
   )
 }

@@ -19,7 +19,7 @@ import { rows } from '../../analysis/tree'
 import { api, type DecideRequest, type ModelActionView } from '../../api/client'
 import { useMapView } from '../../map/view'
 import { useModel } from '../store'
-import { proposalDraft } from './draft'
+import { assumptionRow, proposalDraft } from './draft'
 
 export interface Handover {
   action: number
@@ -88,6 +88,37 @@ export function takeOver(view: ModelActionView, row: string | null = null): bool
   return true
 }
 
+/** The row "ändern" opens (M12.1): in the proposal, or in the analysis once applied. */
+function assumptionTarget(view: ModelActionView, path: readonly number[]): string | null {
+  if (view.status === 'proposed') {
+    const draft = proposalDraft(view.query, view.id)
+    return draft && assumptionRow(path, view.id, draft.tree)
+  }
+  if (view.status !== 'applied') return null
+  return assumptionRow(path, view.id, useAnalysis.getState().tree)
+}
+
+/** Whether an assumption's "ändern" has a condition to open. */
+export const canEditAssumption = (view: ModelActionView, path: readonly number[]) =>
+  assumptionTarget(view, path) !== null
+
+/**
+ * "ändern" next to an assumption (design M12.1): the condition it is about,
+ * active in B2 with the focus on it. A proposal opens as the draft, as with
+ * "In Editor übernehmen"; an answer already applied opens the analysis.
+ */
+export function editAssumption(view: ModelActionView, path: readonly number[]): boolean {
+  const row = assumptionTarget(view, path)
+  if (row === null) return false
+  if (view.status === 'proposed') return takeOver(view, row)
+  const analysis = useAnalysis.getState()
+  if (analysis.draft !== null) return false
+  analysis.edit()
+  useMapView.getState().setActiveRow(row)
+  useModel.getState().setOpen(false)
+  return true
+}
+
 type AnalysisState = ReturnType<typeof useAnalysis.getState>
 
 /** What "Übernehmen" of the handed-over draft amounts to (see the head of this file). */
@@ -104,7 +135,7 @@ export function decisionFor(handover: Handover, applied: AnalysisState): DecideR
   }
 }
 
-/** Reports a decision; a failure stays visible with "Erneut senden". */
+/** Reports a decision; a failure stays visible with "Erneut vermerken". */
 export async function report(action: number, body: DecideRequest) {
   useHandover.setState({ failed: null })
   try {

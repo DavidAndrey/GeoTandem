@@ -25,6 +25,20 @@ import { formatDateTime } from './format'
 
 const EFFORTS: Effort[] = ['default', 'none', 'low', 'medium', 'high']
 
+// The request limit per connection (plan P5). TODO(WP65): the backend fields
+// `request_limit_enabled` / `request_limit_per_day` arrive with WP65's
+// connection API; drop these local extensions once `make gen` has them in
+// openapi.json. Until then the backend ignores them (no extra="forbid").
+interface RequestLimit {
+  request_limit_enabled: boolean
+  request_limit_per_day: number | null
+}
+type Connection = ConnectionInfo & Partial<RequestLimit>
+const limitOf = (c: Connection): RequestLimit => ({
+  request_limit_enabled: c.request_limit_enabled ?? false,
+  request_limit_per_day: c.request_limit_per_day ?? null,
+})
+
 const effortLabel = (e: Effort | '') =>
   ({
     '': t`nach Art (lokal: none, extern: default)`,
@@ -138,6 +152,8 @@ type Form = {
   may_receive_data: boolean
   marked_external: boolean
   confirm_data_release: boolean
+  limit_enabled: boolean
+  limit_per_day: string
 }
 
 const blank: Form = {
@@ -156,9 +172,11 @@ const blank: Form = {
   may_receive_data: true,
   marked_external: false,
   confirm_data_release: false,
+  limit_enabled: false,
+  limit_per_day: '',
 }
 
-const fromConnection = (c: ConnectionInfo): Form => ({
+const fromConnection = (c: Connection): Form => ({
   ...blank,
   name: c.name,
   base_url: c.base_url,
@@ -172,6 +190,14 @@ const fromConnection = (c: ConnectionInfo): Form => ({
   is_default: c.is_default,
   may_receive_data: c.may_receive_data,
   marked_external: c.marked_external,
+  limit_enabled: limitOf(c).request_limit_enabled,
+  limit_per_day: String(limitOf(c).request_limit_per_day ?? ''),
+})
+
+/** Off: no threshold is kept; on: the threshold the field holds (P5). */
+const requestLimit = (f: Form): RequestLimit => ({
+  request_limit_enabled: f.limit_enabled,
+  request_limit_per_day: f.limit_enabled ? optionalNumber(f.limit_per_day) : null,
 })
 
 const hostOf = (url: string) => {
@@ -195,7 +221,7 @@ const parameters = (f: Form) => ({
 })
 
 function createBody(f: Form): ConnectionWrite {
-  return {
+  const body: ConnectionWrite & RequestLimit = {
     ...parameters(f),
     name: f.name,
     api_key: f.api_key || undefined,
@@ -204,10 +230,12 @@ function createBody(f: Form): ConnectionWrite {
     enabled: f.enabled,
     is_default: f.is_default,
     confirm_data_release: false,
+    ...requestLimit(f),
   }
+  return body
 }
 
-function patchBody(f: Form, c: ConnectionInfo): ConnectionPatch {
+function patchBody(f: Form, c: Connection): ConnectionPatch {
   const next = {
     ...parameters(f),
     name: f.name,
@@ -220,6 +248,10 @@ function patchBody(f: Form, c: ConnectionInfo): ConnectionPatch {
   const patch: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(next))
     if (value !== c[key as keyof ConnectionInfo]) patch[key] = value
+  const limit = requestLimit(f)
+  const before = limitOf(c)
+  for (const key of Object.keys(limit) as (keyof RequestLimit)[])
+    if (limit[key] !== before[key]) patch[key] = limit[key]
   if (f.api_key) patch.api_key = f.api_key
   else if (f.remove_key) patch.api_key = null
   if (f.confirm_data_release) patch.confirm_data_release = true
@@ -294,6 +326,8 @@ function ConnectionForm({
       className="card mb-4 max-w-2xl p-4"
       onSubmit={(e) => {
         e.preventDefault()
+        // The browser checks before submitting; this holds for any other way in.
+        if (!e.currentTarget.reportValidity()) return
         save.mutate(undefined, { onSuccess: onDone })
       }}
     >
@@ -420,6 +454,35 @@ function ConnectionForm({
           ))}
         </select>
       </Field>
+      <fieldset className="mt-3 text-sm">
+        <legend className="label-caps mb-1">
+          <Trans>Anfragen</Trans>
+        </legend>
+        <label className="flex items-center gap-1.5">
+          <input
+            type="checkbox"
+            role="switch"
+            checked={form.limit_enabled}
+            onChange={(e) => set({ limit_enabled: e.target.checked })}
+          />
+          <Trans>Anfragen pro Tag begrenzen</Trans>
+        </label>
+        <Field
+          label={t`Anfragen pro Tag`}
+          hint={t`Gezählt über alle Konten je Kalendertag; eine Anfrage zählt, sobald sie das Modell erreicht. Ist die Grenze erreicht, wird die Anbindung bis zum nächsten Tag abgewiesen.`}
+        >
+          <input
+            className="input w-28"
+            type="number"
+            min={1}
+            step={1}
+            disabled={!form.limit_enabled}
+            required={form.limit_enabled}
+            value={form.limit_enabled ? form.limit_per_day : ''}
+            onChange={(e) => set({ limit_per_day: e.target.value })}
+          />
+        </Field>
+      </fieldset>
       <fieldset className="mt-3 text-sm">
         <legend className="label-caps mb-1">
           <Trans>Freigabe</Trans>

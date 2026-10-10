@@ -10,7 +10,7 @@ import { Link } from 'react-router'
 import { useShallow } from 'zustand/react/shallow'
 import { useAnalysis } from '../../analysis/store'
 import { useLayers, useMe } from '../../api/queries'
-import { useModel } from '../store'
+import { useModel, type ModelState } from '../store'
 import { useActiveModel } from './active'
 import { Dialogue } from './Answer'
 import { CHAIN_AVAILABLE } from './chain'
@@ -134,6 +134,13 @@ function Intro() {
 
 const isMac = () => /Mac|iPhone|iPad/.test(navigator.platform)
 
+/** The clarification the latest answer asks (M12.2), or ``null``. */
+function openQuestion(state: ModelState): number | null {
+  const last = state.dialogue[state.dialogue.length - 1]
+  const view = last === undefined ? undefined : state.views[last]
+  return view?.status === 'answered' && view.answer?.kind === 'clarification' ? view.id : null
+}
+
 /** The input (M1): multi-line, sent with ⌘/Ctrl+Enter, locked while the model works. */
 function Composer() {
   const { draft, approach, running, setDraft, setApproach } = useModel(
@@ -146,9 +153,11 @@ function Composer() {
     })),
   )
   const sending = usePanel((s) => s.sending)
+  const question = useModel(openQuestion)
   const { connection, level } = useActiveModel()
   const locked = running !== null || sending
-  const submit = () => void send(draft, approach)
+  // While the latest answer asks back, the field gives the free answer (M12.2).
+  const submit = () => void send(draft, approach, question)
   const levelName = level?.name ?? ''
   const name = connection?.name ?? ''
   const host = connection?.host ?? ''
@@ -166,8 +175,14 @@ function Composer() {
         submit()
       }}
     >
+      {question !== null && !locked && (
+        <p id="prompt-answers" className="text-muted text-xs">
+          <Trans>Ihre Eingabe beantwortet die Rückfrage.</Trans>
+        </p>
+      )}
       <textarea
         id={PROMPT_INPUT}
+        aria-describedby={question !== null && !locked ? 'prompt-answers' : undefined}
         className="input min-h-16 w-full resize-y"
         rows={3}
         maxLength={4000}
