@@ -108,7 +108,7 @@ Shared, single-writer files and their rule:
 - `frontend/src/locales/de.po` (and `pseudo.po`): written only by `npm run i18n:extract`, which sorts the whole file (so the earlier "one block per WP" rule cannot hold; changed in the WP66 review). A merge conflict here is resolved by taking either side and re-running the extraction after the merge; `npm run i18n:check` is part of every WP gate.
 - `frontend/src/api/schema.d.ts`, `frontend/openapi.json`, `frontend/error-codes.json`, `schema/`: generated only (`make gen`). A conflict is resolved by re-running `make gen` after the merge, never by hand.
 - `backend/src/geotandem/api/routes.py`, `errors.py`: WP62 registers all routers and all error codes up front (stubs answering 501), so later WPs only fill in bodies.
-- Migrations: **0009 only** for E2.3/E2.4 (WP63). E2.5 adds **0010** (WP75: step table; the P5 request-limit fields go into 0009). No other WP creates a migration; a WP that needs one waits for the integrator to assign the number.
+- Migrations: **0009** for E2.3 (WP63; frozen with the tag `e2.3`), **0010** for E2.4 (WP70: `touched_at`, added in the WP70 review because 0009 was already tagged), **0011** for E2.5 (WP75: step table). No other WP creates a migration; a WP that needs one waits for the integrator to assign the number.
 
 ## 4 Work packages
 
@@ -265,7 +265,7 @@ See section 5.2 plus the **security review** of section 5.4. Done-when (etappen.
 #### WP75 — Chain planning and run (BE-chain)
 *Deps: WP74 · Parallel with: WP77, WP78*
 
-- Migration `0010_model_steps.py`: `model_action_step` (action id, position, text, class, mode, tool, args JSON, status, result stamp, `model_view` JSON, duration, revised flag).
+- Migration `0011_model_steps.py`: `model_action_step` (action id, position, text, class, mode, tool, args JSON, status, result stamp, `model_view` JSON, duration, revised flag).
 - Planning call (P4): model returns the step list as a `PlanAnswer` in structured output (never executed in this call); validated per step (schema, layer visibility, class), total ≤ 8 (`step_limit`); stored as `proposed` with per-step cell at the snapshotted level.
 - Approval rule: *Prüfen* = one approval for the whole chain; *Teilautonom* = stop before each step whose cell is `approve`, `off` steps make the action proposal-only (D1); strictest cell for the chain-level status.
 - Plan editing `PATCH /api/model/actions/{id}/plan`: change values, remove steps, **no new steps** (design 17); revalidated; result dependencies re-checked (removing a step that a later step reads ⇒ error naming the step).
