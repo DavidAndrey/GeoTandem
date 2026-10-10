@@ -185,7 +185,10 @@ schliessen die Lücke.*
 - **F-5.9** Ausführung ausschliesslich durch die Anwendung, nachdem das
   Abfrageobjekt bzw. der Werkzeugaufruf gegen Schema und Werkzeug-Freigaben
   validiert wurde; Abweisung ungültiger oder nicht freigegebener Abfragen mit
-  verständlicher Meldung.
+  verständlicher Meldung. *Präzisiert in E2.3–E2.6 (D1): Eine Operationsklasse
+  `aus` weist nicht ab, sondern macht die Antwort zum reinen Vorschlag, den der
+  Anwender von Hand übernimmt; abgewiesen wird nur, was ungültig, unbekannt bzw.
+  unsichtbar, zu gross oder nicht darstellbar ist — siehe [docs/plan-e2.3-e2.6.md](docs/plan-e2.3-e2.6.md).*
 - **F-5.10** Bereitstellung des Layer- und Attributkontexts (F-2.9) an das
   Modell, begrenzt auf die für den Anwender sichtbaren Layer.
 - **F-5.11** Anzeige des erzeugten Abfrageobjekts bzw. der geplanten Schrittfolge
@@ -198,7 +201,9 @@ schliessen die Lücke.*
   abbilden kann — mit Hinweis auf den jeweils anderen Weg, ohne selbsttätigen
   Wechsel.
 - **F-5.15** Dialogverlauf mit Kontextbezug: Folgeprompts verfeinern die
-  bestehende Analyse, statt neu zu beginnen.
+  bestehende Analyse, statt neu zu beginnen. *Entschieden (D8, P6): Der Verlauf
+  ist eine Folge protokollierter Modellaktionen, flüchtig im Arbeitsplatz, nicht
+  Teil der Sitzung.*
 - **F-5.16** Übernahme jeder vom Modell erzeugten Abfrage in die Bedienelemente
   des Klassik-Modus zur manuellen Weiterbearbeitung.
 - **F-5.17** Umgekehrte Richtung: Der aktuelle Klassik-Zustand dient als
@@ -211,7 +216,9 @@ schliessen die Lücke.*
 
 - **F-6.1** Die aktive HITL-Stufe ist in der Oberfläche jederzeit sichtbar.
 - **F-6.2** Freigabedialog vor der Ausführung: Anzeige der geplanten Abfrage mit
-  Annahme, Ablehnung oder manueller Anpassung.
+  Annahme, Ablehnung oder manueller Anpassung. *Gelesen als „bevor sich die
+  Analyse ändert" (P2): Eine lesende Vorschau der Trefferzahl in der Sitzung des
+  Anwenders ist erlaubt; das Modell sieht sie nie.*
 - **F-6.3** Darstellung der Änderung gegenüber dem bisherigen Analysezustand
   (welche Layer, Filter, Darstellungen sich ändern).
 - **F-6.4** Rücknahme der zuletzt durch das Modell ausgelösten Änderung.
@@ -222,6 +229,8 @@ schliessen die Lücke.*
   Oberfläche — auch für Anfragen über den MCP-Server.
 - **F-6.8** Protokollierung jeder Modellaktion: Prompt, HITL-Stufe, erzeugte
   Abfrage, Freigabeentscheidung, Ergebnisumfang, Zeitstempel, Benutzer.
+  *Entschieden (D2): Der Protokolleintrag ist zugleich der Vorschlag; ausgeführt
+  wird nur das gespeicherte Abfrageobjekt.*
 - **F-6.9** Einsehbares Protokoll für Administrator und Anwender.
 
 ## 7 LLM-Anbindung und MCP
@@ -271,7 +280,8 @@ schliessen die Lücke.*
 - **F-9.2** Verschlüsselte Ablage von Zugangsdaten und Token.
 - **F-9.3** Keine Übermittlung von Geodaten-Inhalten an externe Modelle ohne
   ausdrückliche Freigabe; standardmässig gehen nur Struktur- und Metadaten in den
-  Kontext.
+  Kontext. *Präzisiert (D9, D10): Die Trefferzahl einer vom Modell gebauten
+  Abfrage gilt als Metadatum des Ergebnisses, nicht als Inhalt.*
 - **F-9.4** Sichtbarer Hinweis in der Oberfläche, wenn ein externes Modell aktiv
   ist.
 - **F-9.5** Keine schreibenden Datenoperationen über den LLM-Pfad.

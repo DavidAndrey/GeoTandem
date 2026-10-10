@@ -139,6 +139,41 @@ const MESSAGES: Record<string, Words> = {
     const part = text(d.part)
     return t`Auf der Stufe „${level}" ist „${part}" nicht erlaubt.`
   },
+  // Modus B: refusals of a model's answer (design M3) and the model routes
+  model_query_invalid: () => t`Die Antwort des Modells ist keine gültige Abfrage.`,
+  limit_exceeded: (d) => {
+    // details.limit says what is counted; so far only conditions (MAX_CONDITIONS).
+    const value = number(d.value)
+    const max = number(d.max)
+    return t`Die Abfrage hat ${value} Bedingungen; im Modus B sind höchstens ${max} möglich.`
+  },
+  not_representable: () =>
+    t`Diese Abfrage lässt sich in den Bedienelementen nicht vollständig darstellen.`,
+  step_limit: (d) => {
+    const max = number(d.max)
+    return t`Die Werkzeugkette braucht mehr als ${max} Schritte.`
+  },
+  not_implemented: () => t`Dieser Teil der Modellunterstützung ist noch nicht verfügbar.`,
+  context_too_large: () =>
+    t`Frage, Layer-Steckbrief und Verlauf sind zu lang für das Modell. Bitte ohne Bezug auf frühere Antworten fragen.`,
+  stale_reference: (d) => {
+    const layer = text(d.layer)
+    return t`Die frühere Antwort nutzt den Layer „${layer}", den es nicht mehr gibt.`
+  },
+  model_unreadable: () => t`Die Antwort des Modells ist nicht lesbar.`,
+  quota_exceeded: (d) => {
+    const limit = number(d.limit)
+    return t`Die ${limit} Anfragen pro Tag an diese Anbindung sind aufgebraucht. Die Grenze setzt ein Administrator.`
+  },
+  not_approved: () => t`Dieser Vorschlag ist nicht freigegeben.`,
+  already_decided: () => t`Über diesen Vorschlag ist schon entschieden.`,
+  nothing_to_undo: () => t`Hier gibt es nichts zurückzunehmen.`,
+  undo_blocked: () =>
+    t`Die Analyse wurde seither von Hand geändert; die Modelländerung lässt sich nicht mehr zurücknehmen.`,
+  time_limit: (d) => {
+    const max = number(d.max_s)
+    return t`Die Werkzeugkette lief länger als ${max} Sekunden und wurde angehalten.`
+  },
   // Model connections
   connection_name_taken: (d) => {
     const name = text(d.name)

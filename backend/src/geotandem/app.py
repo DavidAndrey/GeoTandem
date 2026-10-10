@@ -12,7 +12,7 @@ from starlette.responses import FileResponse, HTMLResponse, Response
 from starlette.types import Scope
 
 from geotandem import __version__, audit
-from geotandem.api import admin, auth, errors, llm, queries, routes, sessions
+from geotandem.api import admin, auth, errors, llm, model, model_log, queries, routes, sessions
 from geotandem.api.guards import (
     CSP_NONCE,
     NONCE_PLACEHOLDER,
@@ -138,6 +138,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(sessions.router)
     app.include_router(queries.router)
     app.include_router(llm.router)
+    app.include_router(model.router)
+    app.include_router(model_log.router)
     frontend = settings.frontend_dir
     if frontend is not None and Path(frontend, "index.html").exists():
         app.mount("/", SinglePageApp(directory=frontend, html=True), name="frontend")

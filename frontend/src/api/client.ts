@@ -51,6 +51,22 @@ export type SessionCheck = Schemas['Check']
 export type SavedQuerySummary = Schemas['SavedQuerySummary']
 export type SavedQueryDetail = Schemas['SavedQueryDetail']
 export type SavedQueryWrite = Schemas['SavedQueryWrite']
+// Modus B (plan E2.3-E2.6, frozen in WP62)
+export type PromptRequest = Schemas['PromptRequest']
+export type ModelAnswer = NonNullable<ModelActionView['answer']>
+export type ModelActionView = Schemas['ModelActionView']
+export type ModelActionSummary = Schemas['ModelActionSummary']
+export type ModelActionPage = Schemas['ModelActionPage']
+export type ActionStatus = ModelActionView['status']
+export type Decision = NonNullable<ModelActionView['decision']>
+export type Governance = Schemas['Governance']
+export type StepView = Schemas['StepView']
+export type ActionPreview = Schemas['ActionPreview']
+export type Comparison = Schemas['Comparison']
+export type KeyFigures = Schemas['KeyFigures']
+export type ExecuteResponse = Schemas['ExecuteResponse']
+export type ModelView = Schemas['ModelView']
+export type StopReason = NonNullable<ModelActionView['stop_reason']>
 
 export class ApiRequestError extends Error {
   readonly status: number

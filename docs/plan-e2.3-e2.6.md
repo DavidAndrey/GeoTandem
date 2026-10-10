@@ -33,30 +33,38 @@ The design (`design/e2/README.md`, 18 review decisions) fixes the surface. Where
 | P2 | Preview count (M5.1 "39 → 7") (**decided 2026-10-10**) | `GET /api/model/actions/{id}/preview` runs the **stored** query as the caller (visibility and limits as Modus A) and returns count, total and object ids for the dashed map layer. Rules: (1) it needs an **interactive user session** and is refused for any model or MCP token, so F-6.7 holds for E4; (2) offered **only when no class is `off`** (design M4.1: no preview there); (3) it changes no status, and the model never sees its result (design Q5); (4) `previewed_at` is set on the record so the log shows that a preview ran; (5) `execute` always re-runs the stored query and never reuses the preview result; (6) arrives with E2.4 (WP70), E2.3 has no preview (P1). **Reading of F-6.2:** "Freigabedialog vor der Ausführung" means before the analysis changes; the preview is a read-only run by the user's own session, not an execution on the model path | The user may run the same query by hand anyway; the guarantee in D2 concerns the model path. The preview uses the same stored query that `execute` will run, so what the user sees is what is approved |
 | P3 | Origin mark "Modell" (**decided 2026-10-10**) | Frontend-only, per condition, session-local, never saved, no link to saved queries (design). Backend returns the query only; the frontend stamps the conditions of an applied model query and clears the stamp on any hand edit of field, operator or value | Matches the design; no schema change |
 | P4 | Chain run (**decided 2026-10-10**) | Planning is **one model call** that returns the full step list (`plan`, F-6.5). The app runs the steps one at a time as an in-process background task (the server is a single uvicorn process); engine queries run in a thread so the event loop is not blocked. The client polls `GET /api/model/actions/{id}` about once a second, steps and `model_view` persist as they finish; no streaming. **Re-plan:** after a step that errors, or returns empty at an intermediate step, the model gets one re-plan call with `model_view` of all steps so far, at most 2 per request. An empty **final** step is not re-planned: 0 hits is shown as the result. A re-plan revises only the remaining steps; completed steps are fixed; the 8-step limit counts completed plus revised steps (`step_limit`). A re-plan that changes steps returns the action to `wartet auf Freigabe` where the level demands it (*Prüfen*: always; *Teilautonom*: only for revised steps whose cell is `approve`; *Automatisch*: never). **Time:** 120 s per model call and 10 s per step as before, plus a hard cap of **300 s per request** (`time_limit`, same "angehalten · Begrenzung" state as M9.5). Abort stops before the next step. A `running` record found at start-up is closed as `failed`; its last complete intermediate result stays adoptable | Matches M8/M9 (plan visible before the run, "Modell sieht" per step), the fixture timings (planning 9 s, run 3.6 s, so no model call between steps) and D9 (the chain can correct itself), without a token stream. The cap bounds the worst case, which would otherwise be about 7 minutes |
-| P5 | Quota (M14.4) (**decided 2026-10-10**) | An **administrator decision per connection**: switch `request_limit_enabled` (default off) and threshold `request_limit_per_day` (positive integer, required while the switch is on; the fixture's 50 is only an example). Counted per connection over all accounts (no per-account limit) from the action table: every request that reached the model call, per calendar day of the server's time zone; refusals before the call (`layer_not_visible`, `context_too_large`, …) do not count. Exceeded ⇒ `quota_exceeded` before any model call, message names the limit and that an administrator sets it. Off ⇒ no counting check at all. Provider-side 429 is shown as the same message. Admin edits both on the connection form (extends the E2.1 form); change is audited with `llm_connection_changed` (C16) | The design shows the case; the admin, not the code, decides whether and how tightly an external or costly model is capped. The action table already holds what is needed |
+| P5 | Quota (M14.4) (**decided 2026-10-10**) | An **administrator decision per connection**: switch `request_limit_enabled` (default off) and threshold `request_limit_per_day` (positive integer, required while the switch is on; the fixture's 50 is only an example). Counted per connection over all accounts (no per-account limit) from the action table: every request that reached the model call, per calendar day of the server's time zone; refusals before the call (`context_too_large`, `stale_reference`, …) do not count. Exceeded ⇒ `quota_exceeded` before any model call, message names the limit and that an administrator sets it. Off ⇒ no counting check at all. Provider-side 429 is shown as the same message. Admin edits both on the connection form (extends the E2.1 form); change is audited with `llm_connection_changed` (C16) | The design shows the case; the admin, not the code, decides whether and how tightly an external or costly model is capped. The action table already holds what is needed |
 | P6 | Follow-up reference (M11) (**decided 2026-10-10**) | The dialogue is a **thread of action records**. Each record stores `parent_action_id` (the answer the prompt follows; null for a fresh question). The client sends only `parent_action_id` and `analysis` (the current analysis as query object); it sends **no turns**. The server loads the parent chain, at most 6 records back, own records only (404 otherwise), and builds the turns from them: prompt, explanation, assumptions, decision and the reason chip of a rejected answer; the turn's own query is not repeated, the current analysis covers the state. The reference kind is **derived by the server**: `last_answer` if the canonical form of `analysis` equals the parent's query, else `hand_edited` (the model is told the user changed the state by hand since its last answer, M11.2); stored on the record with `parent_action_id`. × in M11.1 ("ohne Bezug") sends no parent and no analysis: a fresh question. The oldest turns beyond 6 leave the model context, not the screen. Over the context budget ⇒ `context_too_large`, never a silent cut. A parent whose layers no longer exist or are invisible ⇒ `stale_reference` before any model call (M11.3). An analysis over the condition limit ⇒ `limit_exceeded` with counts (as M3.2). **Not restored after a reload** (D8 stays: the analysis the dialogue refers to is client state and is gone too); the stored thread links allow a restore later without a migration | The log already holds prompt, answer and decision durably (D4), so the server builds authentic turns from its own records: nothing forged to validate, a small payload, and the log shows the thread (M16.2) |
+| P7 | Request flow (**decided in WP62 review, 2026-10-10**) | `POST /api/model/prompt` answers **202 at once** with the record in status `thinking`; the model call runs as a background task and the client polls `GET /api/model/actions/{id}` (about once a second, as for chains in P4) until the status changes. So `abort` has an id to address while the model thinks (M2.1), and a closed window leaves a record the start-up check can close. An answer whose cell is `auto` arrives `approved` without a question; the client calls `execute` at once and the decision becomes `auto` (D2: still only the stored query runs). Rows leave **only** in `ExecuteResponse {action, result}` from `execute` and `adopt`; no view of a record carries them (D10). A chain stopped by a limit, an abort or a restart ends `limited` with `stop_reason`, its last complete result adoptable, and gets its decision on adopt or supersede. Comparison: `POST .../compare` starts the other approach as a new record with `compare_of` (202), `GET .../comparison` returns the difference | Found in the WP62 review: a synchronous prompt left nothing to abort, and rows in the polled record would have been one step from the model's next turn |
 
 ### 1.2 Model result and record (shared contract)
 
 ```mermaid
 stateDiagram-v2
-  [*] --> refused : validation fails (D1, D3)
-  [*] --> answered : clarification · cannot_answer
-  [*] --> proposed : query, a class needs approve or is off
-  [*] --> auto : query, all classes auto → runs at once
+  [*] --> thinking : POST /prompt (202)
+  thinking --> refused : validation fails (D1, D3)
+  thinking --> answered : clarification · cannot_answer
+  thinking --> proposed : query, a class needs approve or is off
+  thinking --> approved : query, all classes auto (decision auto on execute)
+  thinking --> aborted : user aborts
+  thinking --> failed : model or limit error
   proposed --> approved : approve (no class off)
   proposed --> rejected : reject (+ reason)
-  proposed --> superseded : new prompt, no decision
-  proposed --> adjusted : edited in B2, applied via Modus A
-  proposed --> proposal_only : level has off parts, user applies by hand or not
-  approved --> executed : execute (stored query)
-  auto --> undone : undo (log only)
-  executed --> undone : undo
-  proposed --> aborted : user aborts
-  proposed --> failed : model or limit error
+  proposed --> superseded : new prompt, no decision (proposal_only if a class is off)
+  proposed --> applied : by hand (proposal_only) or edited in B2 (adjusted)
+  approved --> applied : execute (stored query)
+  approved --> running : run (chain)
+  running --> done : last step
+  running --> limited : limit · abort · restart
+  done --> applied : adopt
+  limited --> applied : adopt
+  approved --> superseded : new prompt
+  done --> superseded : new prompt
+  limited --> superseded : new prompt
+  applied --> undone : undo (log only)
 ```
 
-Terminal **decisions** (section 2) are stored in `model_action.decision`; transient state is `model_action.status`. The record keeps, as they were when asked (H7): level id, name, matrix and prompt hash; connection id, host and external flag; profile hash (S4); prompt text and its hash; approach; parent action id and the derived reference kind (P6); assumptions; query JSON and its `classify` result; for chains the steps with class, result stamp, `model_view`, duration; decision with time and optional reason; `applied_by_hand`; `undone`.
+The status names are those of `ActionStatus` in `geotandem/model/schemas.py`. Terminal **decisions** (section 2) are stored in `model_action.decision`; transient state is `model_action.status`. The record keeps, as they were when asked (H7): level id, name, matrix and prompt hash; connection id, host and external flag; profile hash (S4); prompt text and its hash; approach; parent action id and the derived reference kind (P6); assumptions; query JSON and its `classify` result; for chains the steps with class, result stamp, `model_view`, duration; decision with time and optional reason; `applied_by_hand`; `undone`.
 
 ## 2 Measuring acceptance
 
@@ -69,12 +77,12 @@ Every action ends with exactly one **decision**, stored on the action record:
 | `rejected` | declined; optional reason chip (misunderstood · wrong layer · wrong value · other) |
 | `superseded` | a new prompt was sent without deciding |
 | `auto` | applied without a question; `undone` is set if reverted |
-| `proposal_only` | level had `off` parts; user applied by hand or not (`applied_by_hand` flag) |
+| `proposal_only` | level had `off` parts; user applied by hand or not (`applied_by_hand` flag), also when the next prompt overtakes it — never counted as `superseded` |
 | `aborted` / `failed` | cancelled by the user / model or limit error |
 
 Key figures, on the log page, by period and broken down by level, connection and approach: proposals total; share `accepted`, `adjusted`, `rejected`, `superseded`; of `auto`, share `undone`. **Acceptance rate = (accepted + adjusted) / (accepted + adjusted + rejected + superseded)**; `auto` is reported separately because nobody decided. `aborted`/`failed` are excluded and counted on their own. Computed by a query over the action table; no extra store. The same decisions feed E3.17-style key figures later.
 
-Refusals (D1, D3, M3) are not decisions: they are records with status `refused`, a `refusal_code`, and the rejected query kept for inspection. They appear in the log and in the key figures as "not counted" (`abgewiesen`), like the fixture's `kennzahlen_30_tage.nicht_gezaehlt`.
+Refusals (D1, D3, M3) are not decisions: they are records with status `refused`, a `refusal` (`{code, message, details}`), and the rejected query kept for inspection. They appear in the log and in the key figures as "not counted" (`abgewiesen`), like the fixture's `kennzahlen_30_tage.nicht_gezaehlt`.
 
 ## 3 Workstreams and file ownership
 
@@ -92,6 +100,7 @@ Parallel work only stays parallel when WPs do not edit the same files. Each WP o
 | **FE-chain** | `frontend/src/model/chain/` | WP77, WP78 |
 | **FE-dialog** | `frontend/src/model/dialog/`, `frontend/src/analysis/query.ts` (`toAnalysis`) | WP80, WP81 |
 | **FE-log** | `frontend/src/admin/ModelLogPage.tsx`, `frontend/src/model/log/` | WP74 |
+| **Contract** | `backend/src/geotandem/model/schemas.py`, `schema/model-cases/`, `frontend/src/test/model-mocks.ts` | WP62; later changes only by the integrator, with `make gen` |
 | **E2E** | `e2e/tests/acceptance-e2.{3,4,5,6}.spec.ts`, `e2e/model-stub/` | WP69, WP73b, WP79, WP83 |
 
 Shared, single-writer files and their rule:
@@ -99,7 +108,7 @@ Shared, single-writer files and their rule:
 - `frontend/src/locales/de.po` (and `pseudo.po`): **append-only**, one block per WP under a header comment `# --- WPnn ---`. Merge conflicts here are resolved by keeping both blocks; `npm run i18n:check` is part of every WP gate.
 - `frontend/src/api/schema.d.ts`, `frontend/openapi.json`, `frontend/error-codes.json`, `schema/`: generated only (`make gen`). A conflict is resolved by re-running `make gen` after the merge, never by hand.
 - `backend/src/geotandem/api/routes.py`, `errors.py`: WP62 registers all routers and all error codes up front (stubs answering 501), so later WPs only fill in bodies.
-- Migrations: **0009 only** for E2.3/E2.4 (WP63). E2.5 adds **0010** (WP75: step table, `daily_request_limit` from P5 goes into 0009). No other WP creates a migration; a WP that needs one waits for the integrator to assign the number.
+- Migrations: **0009 only** for E2.3/E2.4 (WP63). E2.5 adds **0010** (WP75: step table; the P5 request-limit fields go into 0009). No other WP creates a migration; a WP that needs one waits for the integrator to assign the number.
 
 ## 4 Work packages
 
@@ -111,12 +120,12 @@ Legend — **Deps**: WPs that must be merged first. **Parallel with**: safe to r
 *Deps: none · Parallel with: none (everything forks from it)*
 
 - Docs: [CONTEXT.md](../CONTEXT.md) — *Modellaktion* (action record), *Entscheidung*, *Vorschlag*, *Herkunftsmarke*, *Datenfreigabe* (hit counts of model-built queries are not a content, D9). [anforderungen.md](../anforderungen.md) F-5.x/F-6.x marked with the decisions D1–D10, P1–P6; F-6.2 annotated: "vor der Ausführung" = before the analysis changes, a read-only preview by the user's own session is allowed (P2). [etappen.md](../etappen.md) E2.3–E2.6 marked decided. Plan e2.0–e2.2 H4 annotated "amended by D1".
-- Contract in code: pydantic models in `geotandem/model/schemas.py` — `PromptRequest` (text, approach, `parent_action_id`, `analysis`; no turns, P6), `ModelResult` (`query` · `clarification` · `cannot_answer`, D7), `ModelActionView`, `ActionStatus`, `Decision`, `Step`, `StepView`, `Plan`, `KeyFigures`, `PreviewView`. All routes of section 6 registered as stubs returning 501 with their final path, auth and response model.
-- Error codes (single catalog, `make gen` → `error-codes.json`): `layer_not_visible`, `layer_unknown`, `schema_invalid`, `limit_exceeded`, `not_representable`, `context_too_large`, `stale_reference`, `class_off`, `not_approved`, `already_decided`, `superseded`, `step_limit`, `time_limit`, `result_too_large`, `model_unreachable`, `model_timeout`, `model_unreadable`, `quota_exceeded`, `nothing_to_undo`, `undo_blocked`. Each with the German message key from `design/e2` (M3, M14).
-- Frontend: types generated; `msw` handlers in `frontend/src/test/model-mocks.ts` built from `design/e2/fixture/modus-b.json` (reference question, 5 chain steps, dialogues, key figures); i18n key skeleton `model.*` in `de.po` and `pseudo.po`.
-- Backend fixture: `backend/tests/model_fixtures.py` loads the same JSON, so frontend and backend tests share one truth (copy kept in `schema/` is checked equal in CI).
-- Fake model: `FakeLLMClient` scripted answers keyed by the fixture prompts, used by every later WP and by the E2E stub.
-- **Done when:** `make gen` is clean, every stub route is in the OpenAPI, the contract test (WP62's own) asserts that each fixture dialogue validates against the schemas, WP gate green.
+- Contract in code (**done**): `geotandem/model/schemas.py` — the model's answer `ModelAnswer` (`query` · `clarification` · `cannot_answer` · `plan`, D7; the query inside stays raw JSON so a refused one can be shown), `PromptRequest` (text, approach, `parent_action_id`, `analysis`; extra fields forbidden, so no turns, P6), `DecideRequest`, `RejectRequest`, `PlanEdit`, `ModelActionView` (with `LevelSnapshot`, `ConnectionSnapshot`, `Governance`, `Refusal`, `StepView`, `ModelView`), `ModelActionSummary`/`ModelActionPage`, `ActionPreview`, `Comparison`, `KeyFigures`, the limits (`MAX_CONDITIONS` 8, `MAX_STEPS` 8, `MAX_REPLANS` 2, `CHAIN_TIME_LIMIT_S` 300, `MAX_TURNS` 6) and the code literals `RefusalCode`, `ActionErrorCode`. Routers `api/model.py` (`/api/model/*`) and `api/model_log.py` (`/api/admin/model-actions*`, admin only); every route answers 501 `not_implemented` naming its WP.
+- Error codes (**done**, reusing what exists): refusals use the engine's codes where they fit (`unknown_layer`, which also covers a layer hidden from the account so a prompt cannot probe for hidden layers, `unknown_attribute`, `query_too_complex`, `wrong_value_type`, `invalid_query`) plus `model_query_invalid`, `limit_exceeded`, `not_representable`, `step_limit`. Route errors: `class_not_allowed` (existing, for `approve` with an `off` class), `not_approved`, `already_decided`, `nothing_to_undo`, `undo_blocked`, `context_too_large`, `stale_reference`, `model_unreadable`, `quota_exceeded`, `time_limit`, the temporary `not_implemented`; transport failures keep the `llm_*` codes of E2.1 (`llm_unreachable`, `llm_timeout`, `llm_rate_limited`, …) and `result_too_large` stays the engine's. German words in `frontend/src/i18n/errors.ts`. Dropped from the draft list: `layer_not_visible`, `layer_unknown`, `schema_invalid`, `class_off`, `superseded`, `model_unreachable`, `model_timeout`.
+- Contract fixture (**done**): `schema/model-cases/v1.json`, the design's cases (M3, M11–M14, M8) on the **real sample data**: the reference answer is the E1 reference question (`e2e/fixtures/reference-question.json`, 10 of 137 schools), not the design's illustrative 7 of 39. Levels, connections, limits and the key figures of the design are in it too. The chain case is provisional until WP74 names the chain tools. The Dockerfile copies all of `schema/` for the frontend type check.
+- Backend: `backend/tests/model_fixtures.py` (`case`, `completion`, `scripted(*ids) -> FakeLLMClient`) and `test_model_contract.py` (every answer fits the schema, refusals are genuine, codes are registered, every route exists, needs a session, answers 501; the log is admin-only; no OpenAPI schema name clash).
+- Frontend: types exported in `api/client.ts`; `frontend/src/test/model-mocks.ts` builds `ModelActionView`s and `fakeApi` routes from the same fixture (the existing `fakeApi` instead of a new `msw` dependency) with its own test. No i18n key skeleton: `lingui extract --clean` keeps only messages used in code, so messages arrive with the components.
+- **Done when:** `make gen` is clean, every stub route is in the OpenAPI, the contract test asserts that each fixture case validates against the schemas, WP gate green.
 
 #### WP63 — Action record and key figures (BE-record)
 *Deps: WP62 · Parallel with: WP64, WP66, WP67 (against mocks)*
@@ -132,20 +141,20 @@ Legend — **Deps**: WPs that must be merged first. **Parallel with**: safe to r
 *Deps: WP62 (types only; uses a fake store) · Parallel with: WP63, WP66, WP67*
 
 - `prompt.py`: assembles messages from system prompt of the level (H9), layer profile (S4, hash recorded), the fixed output-format block (D7, not editable), context (P6: current analysis as query object, up to 6 turns built from the parent chain by the caller of the builder), user text. Size check against the connection's declared context length ⇒ `context_too_large` before the call.
-- `result.py`: one JSON-schema for `query | clarification | cannot_answer`; parse failure ⇒ `model_unreadable` (verbatim cause in details, not shown to the model again).
-- `validate.py`: schema validation against the E1.2 query schema; layer existence and **visibility for the account** (`layer_unknown` vs `layer_not_visible` — never confirm that an invisible layer exists beyond the code the design shows); condition limit 8 and the existing complexity limit ⇒ `limit_exceeded` with counts in details; writes impossible by schema (F-9.5, tested by attempting a write-shaped object).
-- `represent.py`: `to_analysis(query)` and failure ⇒ `not_representable` (D3). Python reference implementation used for the refusal decision; the TypeScript inverse in WP80 must agree on a shared case list (`schema/represent-cases.json`).
+- `result.py`: parses the reply as `ModelAnswer` (`query | clarification | cannot_answer`; `plan` belongs to WP75) and sends `answer_schema()` as the output format; parse failure ⇒ `model_unreadable` (verbatim cause in details, not shown to the model again).
+- `validate.py`: schema validation against the E1.2 query schema; layer existence and **visibility for the account** (one code, `unknown_layer`, for both, as the engine does: a prompt must not confirm that a hidden layer exists; design M3.1 words it as "nicht vorhanden oder nicht sichtbar"); condition limit 8 and the existing complexity limit ⇒ `limit_exceeded` with counts in details; writes impossible by schema (F-9.5, tested by attempting a write-shaped object).
+- `represent.py`: `to_analysis(query)` and failure ⇒ `not_representable` (D3). Python reference implementation used for the refusal decision; the TypeScript inverse in WP80 must agree on a shared case list (`schema/model-cases/represent.json`).
 - Clarification limited to 2–4 options plus free text (M12.2); assumptions list (F-5.12).
-- Single entry point `DirectQuery.run(request, account) -> ModelResult | Refusal`, no HTTP, no store; unit-testable with `FakeLLMClient`.
-- **Done when:** every fixture dialogue with a refusal or clarification code produces exactly that code; the reference question yields the fixture query object and, run through the engine, 7 of 39; `classify` of that query is `{query, spatial}`; sentinel test: no row value appears in any prompt built (extends S7).
+- Single entry point `DirectQuery.run(request, account) -> ModelAnswer | Refusal`, no HTTP, no store; unit-testable with `FakeLLMClient`.
+- **Done when:** every fixture dialogue with a refusal or clarification code produces exactly that code; the reference question yields the fixture query object and, run through the engine, 10 of 137; `classify` of that query is `{query, spatial}`; sentinel test: no row value appears in any prompt built (extends S7).
 
 #### WP65 — Prompt flow, proposal-only (BE-flow)
 *Deps: WP63, WP64 · Parallel with: WP67, WP68 (mocks)*
 
 - `service.py` + `api/model.py`: `POST /api/model/prompt` — resolves level (`resolve_level`) and connection (C17) **server-side**, checks the connection's request limit when the admin switched it on (P5; boundary test at limit and limit + 1, off ⇒ never refused, day rollover with an injected clock; connection API and its validation extended here), supersedes the account's previous open `proposed` record (decision `superseded`), calls `DirectQuery`, stores the record, returns `ModelActionView` without result data. Per P1 every record is created as `proposed` (or `refused`/`answered`).
 - `GET /api/model/actions/{id}` (own or admin), `POST /api/model/actions/{id}/decide` with `{decision: "proposal_only"|"adjusted", applied_by_hand?, query?}` for the hand-over cases (the only decisions possible before E2.4).
-- Timeout 120 s, abort: `POST /api/model/actions/{id}/abort` while a call is running (request is cancelled, decision `aborted`).
-- Failure mapping to M14 codes: connection refused ⇒ `model_unreachable`, timeout ⇒ `model_timeout`, unreadable ⇒ `model_unreadable`; the state of the analysis is never touched (nothing server-side holds it).
+- Request flow (P7): the record is stored `thinking` and returned with 202; the model call runs as a background task; the client polls. Timeout 120 s; `POST /api/model/actions/{id}/abort` while `thinking` cancels the call, decision `aborted`, a late answer is dropped (fixture case `aborted`).
+- Failure mapping to M14 codes: connection refused ⇒ `llm_unreachable`, timeout ⇒ `llm_timeout`, provider 429 ⇒ `llm_rate_limited` (shown as M14.4), unreadable answer ⇒ `model_unreadable`; the state of the analysis is never touched (nothing server-side holds it).
 - **Done when:** API tests for each M3/M13/M14 code and each fixture dialogue; the prompt text never appears in the application log (C15); another account's record answers 404 (not 403).
 
 #### WP66 — Frontend core (FE-core)
@@ -181,7 +190,7 @@ Legend — **Deps**: WPs that must be merged first. **Parallel with**: safe to r
 *Deps: WP65, WP67, WP68 · Parallel with: none*
 
 - `e2e/model-stub/`: a small OpenAI-compatible stub server, scripted from the fixture (reference question, clarification, cannot-answer, malformed output, slow answer, 5xx). Started by `scripts/gate.sh` on the internal network next to the container; connection created through the admin UI in the test, so it is the real path.
-- `acceptance-e2.3.spec.ts`: reference question → answer with assumptions → *In Editor übernehmen* → 7 of 39 equal to the hand-built result of E1 (same query object, deep-equal); layer not visible as `m.keller` ⇒ M3.1; limit and not-representable refusals; unreachable model leaves the analysis unchanged; external connection shows host and notice; **a write-shaped answer from the stub is refused**.
+- `acceptance-e2.3.spec.ts`: reference question → answer with assumptions → *In Editor übernehmen* → 10 of 137 equal to the hand-built result of E1 (same query object, deep-equal); a layer that does not exist or is hidden from `m.keller` ⇒ `unknown_layer` (M3.1); limit and not-representable refusals; unreachable model leaves the analysis unchanged; external connection shows host and notice; **a write-shaped answer from the stub is refused**.
 - Offline proof: the model stub is the only reachable host.
 
 #### Gate E2.3
@@ -192,12 +201,12 @@ See section 5.2. Entry: WP62–WP69 merged. Done-when (etappen.md): one prompt p
 #### WP70 — Enforcement service (BE-flow)
 *Deps: Gate E2.3 · Parallel with: WP71 (same stream, separate files), WP72, WP73*
 
-- Transition endpoints: `approve` (refused with `class_off` if any class of the **stored** `classify(query)` is `off` at the **snapshotted** level; stored status must be `proposed`), `reject` (+ reason chip), `execute` (stored query only, status `approved`/`auto`, else 409 `not_approved`; runs through the engine as the caller with all existing limits; returns the Modus A run response shape), `undo` (log only: sets `undone`, allowed for the last model change only, `undo_blocked` once the analysis was edited by hand — the client reports hand edits with `POST /api/model/actions/{id}/touched`).
-- Preview (P2): `GET /api/model/actions/{id}/preview` and migration column `previewed_at` (added to 0009 by WP63). Refused with `class_off` when any class of the snapshot is `off`, 404 for another account's record, refused for non-session credentials (model/MCP tokens; tested with a token-shaped credential even though MCP arrives in E4). Count, total and ids only; same limits as Modus A; sets `previewed_at`; leaves status unchanged.
-- Auto path: `POST /api/model/prompt` with all classes `auto` executes inside the call and returns the result with `status=auto`. Mixed level ⇒ strictest cell governs the whole answer (M6.3); the response lists per class the cell and the reason.
+- Transition endpoints: `approve` (refused with `class_not_allowed` if any class of the **stored** `classify(query)` is `off` at the **snapshotted** level; stored status must be `proposed`), `reject` (+ reason chip), `execute` (stored query only, status `approved`/`auto`, else 409 `not_approved`; runs through the engine as the caller with all existing limits; returns the Modus A run response shape), `undo` (log only: sets `undone`, allowed for the last model change only, `undo_blocked` once the analysis was edited by hand — the client reports hand edits with `POST /api/model/actions/{id}/touched`).
+- Preview (P2): `GET /api/model/actions/{id}/preview` and migration column `previewed_at` (added to 0009 by WP63). Refused with `class_not_allowed` when any class of the snapshot is `off`, 404 for another account's record, refused for non-session credentials (model/MCP tokens; tested with a token-shaped credential even though MCP arrives in E4). Count, total and ids only; same limits as Modus A; sets `previewed_at`; leaves status unchanged.
+- Auto path (P7): an answer whose classes are all `auto` is stored `approved`; the client calls `execute` at once and the decision is `auto`; `execute` returns `ExecuteResponse` (the only rows). Mixed level ⇒ strictest cell governs the whole answer (M6.3); the response lists per class the cell and the reason.
 - Level change with an open proposal: the proposal keeps the snapshot of the level it was made under (M7.3); `approve` evaluates the snapshot, not the current level. Account's current level is never consulted after the prompt.
-- Superseding: a new prompt marks the previous open proposal `superseded` in the same transaction.
-- **Done when:** the **enforcement matrix test** (section 5.3) passes for every cell; a client-sent query on `execute` is rejected (extra fields forbidden); a replay of `execute` ⇒ `already_decided`; a concurrent `approve` + `reject` yields exactly one winner.
+- Superseding: a new prompt closes the account's previous open record (`proposed`, `approved` never executed, `done`, `limited`) in the same transaction: decision `superseded`, or `proposal_only` when a class was `off` (section 2). The start-up check also closes `approved` auto records left unexecuted (window closed) after the model timeout.
+- **Done when:** the **enforcement matrix test** (section 5.3) passes for every cell; `execute` takes no body: a query sent with it is ignored and the test asserts that the stored query ran; a replay of `execute` ⇒ `already_decided`; a concurrent `approve` + `reject` yields exactly one winner.
 
 #### WP71 — Bypass hardening (BE-flow)
 *Deps: WP70 · Parallel with: WP72, WP73*
@@ -210,7 +219,7 @@ See section 5.2. Entry: WP62–WP69 merged. Done-when (etappen.md): one prompt p
 #### WP72 — Approval UI, auto banner, level display (FE-approval)
 *Deps: WP66, WP67 (mocks until WP70) · Parallel with: WP70, WP71, WP73*
 
-- M5.1 docked approval (not modal): change list against the current analysis (+/~/− as D4 of E1), dashed preview "39 → 7" from the preview endpoint, "Braucht Freigabe: …" naming classes; *Annehmen* focused, Esc = reject, no auto-timeout. M5.2 hand edit meanwhile: hint, list recomputed, at most one open proposal. M5.3 reject with optional reason chip.
+- M5.1 docked approval (not modal): change list against the current analysis (+/~/− as D4 of E1), dashed preview ("137 → 10" for the reference question) from the preview endpoint, "Braucht Freigabe: …" naming classes; *Annehmen* focused, Esc = reject, no auto-timeout. M5.2 hand edit meanwhile: hint, list recomputed, at most one open proposal. M5.3 reject with optional reason chip.
 - M6.1 map notice bar "Modell hat angewendet … · Rückgängig · Änderung ansehen" (stays until the next change; × hides only), M6.2 after undo (restores the previous analysis completely; no redo), M6.3 mixed level with the class list explaining why.
 - M7.1 popover "Was darf das Modell hier?" (read-only matrix), M7.2 level choice with short column A/F/–, M7.3 change with open approval (dialog with focus trap; proposal stays bound to its level). Names are free text from admin, UI never keys on names.
 - Replaces the P1 proposal-only behaviour: levels with no `off` part show approve/auto, levels with `off` parts keep M4.
@@ -219,7 +228,7 @@ See section 5.2. Entry: WP62–WP69 merged. Done-when (etappen.md): one prompt p
 #### WP73 — Model log pages (FE-log + BE-record)
 *Deps: WP62, WP63 (API) · Parallel with: WP70–WP72*
 
-- Backend: `GET /api/admin/model-actions` (filters period/level/connection/approach, paging), `GET /api/admin/model-actions/{id}`, `GET /api/admin/model-actions.csv`, `GET /api/admin/model-actions/key-figures`, `GET /api/model/my-actions` (own only, D4).
+- Backend: `GET /api/admin/model-actions` (filters period/level/connection/approach, paging), `GET /api/admin/model-actions/{id}`, `GET /api/admin/model-actions/export.csv`, `GET /api/admin/model-actions/key-figures`, `GET /api/model/my-actions` (own only, D4).
 - Frontend: Admin group **Modell** gets *Modellprotokoll* (routes `/admin/modellprotokoll`, `/:id`): key-figure row (numbers with share, no chart), filters, CSV; entry page M16.2 with level "as it was" (matrix + hash), connection, approach, assumptions, readable query + JSON, steps (E2.5), decision with time, layer-profile hash, prompt hash. M16.3 dialog *Meine Modellaktionen* from the user menu (focus trap).
 - CSV safe against formula injection (cells starting `= + - @` prefixed), tested.
 - **Done when:** visibility tests (user A cannot read user B's entry by id or in the CSV); key figures equal the fixture's; prompt text visible to admins and the author only.
@@ -237,7 +246,7 @@ See section 5.2 plus the **security review** of section 5.4. Done-when (etappen.
 #### WP74 — `model_view` and chain tools (BE-chain)
 *Deps: Gate E2.4 · Parallel with: WP77 (mocks), WP78 (mocks)*
 
-- `model_view(result) -> StepView` in `geotandem/model/chain/view.py`: **the only** function that turns an engine result into something the model sees (D9, D10): `ok|error`, error code + validation text from the query, `empty|not empty`, hit count. Frozen dataclass without any field that can hold rows; mypy strict.
+- `model_view(result) -> ModelView` in `geotandem/model/chain/view.py`: **the only** function that turns an engine result into something the model sees (D9, D10): `ok|error`, an engine or refusal code, the name of the layer or attribute of the model's own query it is about, `empty|not empty`, hit count. `ModelView` (frozen in WP62) has no free-text field; mypy strict. Its `part` is an identifier, which an attribute value can also look like (`kantonsstrasse_b`): `model_view` asserts that `part` is a layer or attribute name occurring in that step's arguments, and the sentinel test uses a name-shaped sentinel.
 - Sentinel test (like S7): seed layers with sentinel values in attributes, geometry and layer names of derived layers; run the chain; assert no sentinel appears in any message sent to the `FakeLLMClient` (all turns, tool results, error texts, re-plan input). A second test greps the call sites: engine results are only passed to the model through `model_view` (AST check).
 - Chain tools = wrappers over the existing operations registry (`tools/builtin.py`), each with `op_class` (H2): `run_query` (own class from its parts), `buffer`, `attribute_join`, `aggregate`, `spatial_relation`/`near_feature` — whichever Modus A offers; no tool the user cannot reach by hand (F-5.8). No value-inspection tool.
 - Intermediate results are session-scoped temporary layers owned by the action; removed on completion/abort/expiry (no leak into the catalog; a janitor test).
@@ -247,21 +256,21 @@ See section 5.2 plus the **security review** of section 5.4. Done-when (etappen.
 *Deps: WP74 · Parallel with: WP77, WP78*
 
 - Migration `0010_model_steps.py`: `model_action_step` (action id, position, text, class, mode, tool, args JSON, status, result stamp, `model_view` JSON, duration, revised flag).
-- Planning call (P4): model returns the step list as tool calls (never executed in this call); validated per step (schema, layer visibility, class), total ≤ 8 (`step_limit`); stored as `proposed` with per-step cell at the snapshotted level.
+- Planning call (P4): model returns the step list as a `PlanAnswer` in structured output (never executed in this call); validated per step (schema, layer visibility, class), total ≤ 8 (`step_limit`); stored as `proposed` with per-step cell at the snapshotted level.
 - Approval rule: *Prüfen* = one approval for the whole chain; *Teilautonom* = stop before each step whose cell is `approve`, `off` steps make the action proposal-only (D1); strictest cell for the chain-level status.
 - Plan editing `PATCH /api/model/actions/{id}/plan`: change values, remove steps, **no new steps** (design 17); revalidated; result dependencies re-checked (removing a step that a later step reads ⇒ error naming the step).
 - Run `POST /api/model/actions/{id}/run` → 202 + background task; `GET` polling returns steps with status and `model_view`; per-step timeout 10 s, request 120 s (`time_limit`), result size 10 000 objects (`result_too_large`); abort `POST .../abort` stops before the next step, keeps the last complete intermediate result adoptable; `limit` hit ⇒ `angehalten · Begrenzung` with the same adoptable state.
 - Re-plan (P4): after an error, or an empty intermediate step, never after an empty final step; ≤ 2 per request; input is `model_view` only; revises the remaining steps, completed steps stay fixed; the 8-step total includes completed steps; approval is asked again per level rules (*Prüfen* always, *Teilautonom* for revised `approve` steps, *Automatisch* never) and the status is `wartet auf Freigabe` meanwhile.
 - Runner: in-process background task, one step at a time, engine call in a thread; per-request cap 300 s on top of the 120 s model and 10 s step limits; start-up check closes orphaned `running` records as `failed` and keeps their last complete intermediate result adoptable.
-- Adopt `POST .../adopt`: result becomes a query object; buffers become derived layers in "Abgeleitet · Sitzung", other steps become conditions with origin mark, pure intermediate layers dropped (design "Kette übernehmen"); transitions to `executed`/`accepted`.
-- **Done when:** reference question as chain yields 7 of 39 with the five fixture steps and counts 24 · 1 area · 17 · 14 · 7; limits tested at exactly the boundary (8 and 9 steps including re-planned ones, 10 000 and 10 001 objects, 10 s step, 120 s model call and 300 s request via an injected clock); re-plan cases: error, empty intermediate, empty final (no re-plan), third re-plan refused, approval asked again per level; restart with a `running` record; abort and janitor tests; stop-before-step per cell tests.
+- Adopt `POST .../adopt`: result becomes a query object; buffers become derived layers in "Abgeleitet · Sitzung", other steps become conditions with origin mark, pure intermediate layers dropped (design "Kette übernehmen"); transitions to `applied`/`accepted` and returns `ExecuteResponse`.
+- **Done when:** reference question as chain yields 10 of 137 with the five fixture steps (intermediate counts pinned in this WP from the sample data); limits tested at exactly the boundary (8 and 9 steps including re-planned ones, 10 000 and 10 001 objects, 10 s step, 120 s model call and 300 s request via an injected clock); re-plan cases: error, empty intermediate, empty final (no re-plan), third re-plan refused, approval asked again per level; restart with a `running` record; abort and janitor tests; stop-before-step per cell tests.
 
 #### WP76 — Comparison (BE-chain)
 *Deps: WP75 · Parallel with: WP78*
 
 - `POST /api/model/actions/{id}/compare` runs the other approach for the same prompt (M10.1 *Mit Werkzeugkette wiederholen* and the reverse), linked via `compare_of`. Returns both result stamps and the **difference set** (ids only in one, with names) computed by the app from object ids, never by the model; a reason is given from step data (e.g. operator differs) only when derivable, else omitted.
 - Taking one side (*Diese übernehmen*) replaces the analysis and counts as approval of that record.
-- **Done when:** equal case (7 = 7) and the fixture's differing case (7 vs 6, "2 nur links, 1 nur rechts") reproduce through the fake model.
+- **Done when:** equal case (10 = 10) and a differing case (a chain step using `intersects` instead of `within`, difference listed by feature ids, case added to the fixture in this WP) reproduce through the fake model.
 
 #### WP77 — Plan and run UI (FE-chain)
 *Deps: WP66, WP67 (mocks) · Parallel with: WP74–WP76*
@@ -291,8 +300,8 @@ See section 5.2 plus the **security review** of section 5.4 (data-release, `mode
 #### WP80 — `toAnalysis` and hand-over (FE-dialog)
 *Deps: Gate E2.5 (or only Gate E2.4 if started early — touches no chain code) · Parallel with: WP81, WP82*
 
-- `analysis/query.ts`: `toAnalysis(query)` mirroring `represent.py` (D3). Shared case list `schema/represent-cases.json` runs in pytest and vitest; **round trip** property test analysis → query → analysis identical over generated analyses.
-- B → A: *Im Editor öffnen* / *Anpassen* switches to Klassik and opens B2 at the panel's place; dialogue history survives (M15.1: condition marks "Modell"); hand edit in B2 clears the mark of the edited row only (M15.2, 500 → 300 m ⇒ "5 von 39").
+- `analysis/query.ts`: `toAnalysis(query)` mirroring `represent.py` (D3). Shared case list `schema/model-cases/represent.json` runs in pytest and vitest; **round trip** property test analysis → query → analysis identical over generated analyses.
+- B → A: *Im Editor öffnen* / *Anpassen* switches to Klassik and opens B2 at the panel's place; dialogue history survives (M15.1: condition marks "Modell"); hand edit in B2 clears the mark of the edited row only (M15.2, 500 → 300 m; count pinned from the sample data).
 - A → B: switching back keeps the draft and dialogue; `touched` reported to the server for the undo rule.
 - **Done when:** round-trip property test; mark clearing per field; panel and editor never both own the analysis (single store).
 
@@ -302,7 +311,7 @@ See section 5.2 plus the **security review** of section 5.4 (data-release, `mode
 - Backend (P6): accept `parent_action_id` and `analysis`; load the parent chain (≤ 6, own records, 404 otherwise) and build the turns from the records; derive `last_answer`/`hand_edited` by canonical comparison and store it with `parent_action_id`; `context_too_large` over budget; `stale_reference` when a layer of the parent is gone or invisible; `limit_exceeded` for a hand-built analysis over the condition limit. Column `parent_action_id` (self-reference, nullable, index) and the reference kind are part of migration 0009 (WP63). × sends neither parent nor analysis.
 - Frontend: M11.1 reference marker above the field (× = no reference), older answers collapsed with their status; M11.2 reference "von Hand geänderter Stand"; M11.3 stale answer (layer removed) marked and not usable as reference.
 - Dialogue is not saved with the session (D8): saving a session then reloading shows an empty dialogue (test).
-- **Done when:** fixture follow-up ("Welche davon haben mehr als 300 Schüler?" ⇒ 2 hits, added condition `schueler > 300`) reproduces; the model input contains the turns built from records and a forged client-side turn list is ignored (no such field); a foreign `parent_action_id` answers 404; hand edit between answer and follow-up derives `hand_edited` and the model input says so; 7th turn drops the oldest from the model context but not from the display; rejected answers appear with their reason chip; context over budget refuses with the code.
+- **Done when:** fixture follow-up (`follow_up`: "Welche davon haben mehr als einen Standort?", added condition `standorte > 1`, count pinned in this WP) reproduces; the model input contains the turns built from records and a forged client-side turn list is ignored (no such field); a foreign `parent_action_id` answers 404; hand edit between answer and follow-up derives `hand_edited` and the model input says so; 7th turn drops the oldest from the model context but not from the display; rejected answers appear with their reason chip; context over budget refuses with the code.
 
 #### WP82 — Round-trip hardening (BE-flow + FE)
 *Deps: WP80 · Parallel with: WP81*
@@ -345,7 +354,7 @@ Frontend WPs add: screenshot comparison by eye against `design/e2/screenshots/<C
 
 Run by the integrator on the merged main, never on a WP branch.
 
-1. **All WP gates** of the etappe passed; the open-findings list of the WP reviews is empty.
+1. **All WP gates** of the etappe passed; the open-findings list of the WP reviews is empty; `PENDING_CODES` in `backend/tests/test_model_contract.py` names no WP of this etappe (every code its WPs owe is raised).
 2. **`make gate`** green: lint, tests, image, first start on an empty volume, Playwright against the container (including the new `acceptance-e2.N.spec.ts`), restart on the same volume, Playwright again on the leftover data. The container sits on the internal network, so every pass is also the **offline proof** (F-9.1); the model stub is the only reachable host.
 3. **Real-model check (opt-in, recorded):** `GATE_LLM_MODEL=… make gate` once per etappe E2.3/E2.5 so the acceptance runs against a real Ollama model; result noted in the plan (pass or specific deviations). Not a merge blocker when no model is available; `GATE_REQUIRE_LLM=1` makes it one for release.
 4. **`make audit`** (dependencies) — new dependencies need a one-line justification in the review.
@@ -378,16 +387,16 @@ At the etappe gate, in addition to 5.2: run `/security-review` on the etappe's d
 
 | Route | WP | Notes |
 |---|---|---|
-| `POST /api/model/prompt` | 65, 70, 75 | direct or chain-plan; `parent_action_id` + `analysis` per P6; auto runs inline |
+| `POST /api/model/prompt` (202) | 65, 70, 75 | direct or chain-plan; `parent_action_id` + `analysis` per P6; answers `thinking`, the client polls (P7) |
 | `GET /api/model/actions/{id}` | 65 | own or admin; steps and `model_view` for chains; polled |
 | `GET /api/model/actions/{id}/preview` | 70 | P2, count + ids, caller's visibility, session only, not for `off` levels |
 | `POST /api/model/actions/{id}/decide` | 65 | `proposal_only` · `adjusted` (+ edited query) |
-| `POST /api/model/actions/{id}/approve` · `reject` · `execute` · `undo` · `abort` · `touched` | 70 | stored query only |
+| `POST /api/model/actions/{id}/approve` · `reject` · `execute` · `undo` · `abort` · `touched` | 70 (`abort` while thinking: 65) | stored query only; `execute` returns `ExecuteResponse` |
 | `PATCH /api/model/actions/{id}/plan` | 75 | edit values, remove steps |
-| `POST /api/model/actions/{id}/run` · `adopt` | 75 | background run; adopt per design "Kette übernehmen" |
-| `POST /api/model/actions/{id}/compare` | 76 | other approach, difference set by the app |
+| `POST /api/model/actions/{id}/run` (202) · `adopt` | 75 | background run; adopt per design "Kette übernehmen", returns `ExecuteResponse` |
+| `POST /api/model/actions/{id}/compare` (202) · `GET .../comparison` | 76 | other approach as a new record with `compare_of`; difference set by the app (P7) |
 | `GET /api/model/my-actions` | 73 | own entries |
-| `GET /api/admin/model-actions[/{id}]` · `.csv` · `/key-figures` | 73 | admin |
+| `GET /api/admin/model-actions[/{id}]` · `/export.csv` · `/key-figures` | 73 | admin |
 
 ## 7 Order and parallelism
 

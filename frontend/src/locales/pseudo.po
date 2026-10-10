@@ -1213,6 +1213,14 @@ msgid "Details zu {field}"
 msgstr ""
 
 #: src/i18n/errors.ts
+msgid "Die {limit} Anfragen pro Tag an diese Anbindung sind aufgebraucht. Die Grenze setzt ein Administrator."
+msgstr ""
+
+#: src/i18n/errors.ts
+msgid "Die Abfrage hat {value} Bedingungen; im Modus B sind höchstens {max} möglich."
+msgstr ""
+
+#: src/i18n/errors.ts
 msgid "Die Abfrage hat zu lange gedauert und wurde abgebrochen."
 msgstr ""
 
@@ -1253,6 +1261,10 @@ msgid "Die Analyse hat Änderungen, die noch nicht gespeichert sind."
 msgstr ""
 
 #: src/i18n/errors.ts
+msgid "Die Analyse wurde seither von Hand geändert; die Modelländerung lässt sich nicht mehr zurücknehmen."
+msgstr ""
+
+#: src/i18n/errors.ts
 msgid "Die Anfrage hat nicht die erwartete Form."
 msgstr ""
 
@@ -1266,6 +1278,14 @@ msgstr ""
 
 #: src/i18n/errors.ts
 msgid "Die Antwort des Modells hat nicht die erwartete Form."
+msgstr ""
+
+#: src/i18n/errors.ts
+msgid "Die Antwort des Modells ist keine gültige Abfrage."
+msgstr ""
+
+#: src/i18n/errors.ts
+msgid "Die Antwort des Modells ist nicht lesbar."
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -1332,6 +1352,10 @@ msgstr ""
 msgid "Die Datei nennt: {label}"
 msgstr ""
 
+#: src/i18n/errors.ts
+msgid "Die frühere Antwort nutzt den Layer „{layer}\", den es nicht mehr gibt."
+msgstr ""
+
 #: src/session/notice.ts
 msgid "Die gespeicherte Abfrage läuft nicht mehr: {error}"
 msgstr ""
@@ -1392,8 +1416,20 @@ msgstr ""
 msgid "Die voreingestellte Stufe „{name}\" muss für Anwender wählbar sein."
 msgstr ""
 
+#: src/i18n/errors.ts
+msgid "Die Werkzeugkette braucht mehr als {max} Schritte."
+msgstr ""
+
+#: src/i18n/errors.ts
+msgid "Die Werkzeugkette lief länger als {max} Sekunden und wurde angehalten."
+msgstr ""
+
 #: src/auth/rules.ts
 msgid "Die Wiederholung stimmt nicht überein."
+msgstr ""
+
+#: src/i18n/errors.ts
+msgid "Diese Abfrage lässt sich in den Bedienelementen nicht vollständig darstellen."
 msgstr ""
 
 #: src/queries/actions.ts
@@ -1446,6 +1482,14 @@ msgstr ""
 
 #: src/admin/LayerPage.tsx
 msgid "Dieser Layer ist für das Modell nicht sichtbar."
+msgstr ""
+
+#: src/i18n/errors.ts
+msgid "Dieser Teil der Modellunterstützung ist noch nicht verfügbar."
+msgstr ""
+
+#: src/i18n/errors.ts
+msgid "Dieser Vorschlag ist nicht freigegeben."
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -1836,6 +1880,10 @@ msgctxt "geometry"
 msgid "Fläche"
 msgstr ""
 
+#: src/i18n/errors.ts
+msgid "Frage, Layer-Steckbrief und Verlauf sind zu lang für das Modell. Bitte ohne Bezug auf frühere Antworten fragen."
+msgstr ""
+
 #: src/session/SaveAsDialog.tsx
 msgid "Fragestellung, Annahmen …"
 msgstr ""
@@ -2045,6 +2093,10 @@ msgstr ""
 
 #: src/session/ui.ts
 msgid "heute {time}"
+msgstr ""
+
+#: src/i18n/errors.ts
+msgid "Hier gibt es nichts zurückzunehmen."
 msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
@@ -3241,6 +3293,10 @@ msgstr ""
 #: src/admin/LayerPage.tsx
 #: src/admin/ProfilePage.tsx
 msgid "Typ"
+msgstr ""
+
+#: src/i18n/errors.ts
+msgid "Über diesen Vorschlag ist schon entschieden."
 msgstr ""
 
 #: src/admin/ImportWizard.tsx
