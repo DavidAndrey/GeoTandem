@@ -105,7 +105,7 @@ Parallel work only stays parallel when WPs do not edit the same files. Each WP o
 
 Shared, single-writer files and their rule:
 
-- `frontend/src/locales/de.po` (and `pseudo.po`): **append-only**, one block per WP under a header comment `# --- WPnn ---`. Merge conflicts here are resolved by keeping both blocks; `npm run i18n:check` is part of every WP gate.
+- `frontend/src/locales/de.po` (and `pseudo.po`): written only by `npm run i18n:extract`, which sorts the whole file (so the earlier "one block per WP" rule cannot hold; changed in the WP66 review). A merge conflict here is resolved by taking either side and re-running the extraction after the merge; `npm run i18n:check` is part of every WP gate.
 - `frontend/src/api/schema.d.ts`, `frontend/openapi.json`, `frontend/error-codes.json`, `schema/`: generated only (`make gen`). A conflict is resolved by re-running `make gen` after the merge, never by hand.
 - `backend/src/geotandem/api/routes.py`, `errors.py`: WP62 registers all routers and all error codes up front (stubs answering 501), so later WPs only fill in bodies.
 - Migrations: **0009 only** for E2.3/E2.4 (WP63). E2.5 adds **0010** (WP75: step table; the P5 request-limit fields go into 0009). No other WP creates a migration; a WP that needs one waits for the integrator to assign the number.
@@ -165,7 +165,7 @@ Legend — **Deps**: WPs that must be merged first. **Parallel with**: safe to r
 - Readable condition tree shared by M2, M5, M15: the existing tree view plus the **Herkunftsmarke** (P3), plain-language operator text, "Technisch" disclosure with JSON.
 - Origin-mark logic in the analysis store: stamped on apply, cleared on hand edit of field/operator/value, never serialised into sessions or saved queries (test: session export has no mark).
 - Header: connection · level ▾ (M7 entry) reuses `ModelChoice`; "Keine Modellanbindung" state.
-- **Done when:** component tests for every status label in light and pseudo-locale; mark lifecycle test; axe check on the status components; no `any` introduced.
+- **Done when:** component tests for every status label in light and pseudo-locale; mark lifecycle test; accessibility checks of the status components by role, name and text (the repo has no axe dependency; adding `axe-core` is an open decision, recorded in the WP66 review); no `any` introduced.
 
 #### WP67 — Prompt panel and answer (FE-panel)
 *Deps: WP66 (+ contract mocks) · Parallel with: WP63–WP65 until integration*
@@ -223,7 +223,7 @@ See section 5.2. Entry: WP62–WP69 merged. Done-when (etappen.md): one prompt p
 - M6.1 map notice bar "Modell hat angewendet … · Rückgängig · Änderung ansehen" (stays until the next change; × hides only), M6.2 after undo (restores the previous analysis completely; no redo), M6.3 mixed level with the class list explaining why.
 - M7.1 popover "Was darf das Modell hier?" (read-only matrix), M7.2 level choice with short column A/F/–, M7.3 change with open approval (dialog with focus trap; proposal stays bound to its level). Names are free text from admin, UI never keys on names.
 - Replaces the P1 proposal-only behaviour: levels with no `off` part show approve/auto, levels with `off` parts keep M4.
-- **Done when:** component tests per state; `role="status"` on status changes, `role="alert"` on failures; focus-trap tests for M7.3; undo restores the analysis deep-equal.
+- **Done when:** component tests per state; `role="status"` on status changes, `role="alert"` on failures; focus-trap tests for M7.3; undo restores the analysis deep-equal **including the origin marks** (the analysis store's `load()` clears them, so the undo snapshot must carry `origin` too; found in the WP66 review).
 
 #### WP73 — Model log pages (FE-log + BE-record)
 *Deps: WP62, WP63 (API) · Parallel with: WP70–WP72*
