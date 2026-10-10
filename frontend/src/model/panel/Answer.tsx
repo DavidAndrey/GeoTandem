@@ -16,6 +16,7 @@ import { formatNumber, parseTimestamp } from '../../i18n/locale'
 import { hitsOf } from '../../i18n/phrases'
 import { Approval, Approved, Rejected, Undone, UndoAction } from '../approval/Approval'
 import { byHandOnly, classList, needsApproval } from '../approval/governance'
+import { ChainAnswer } from '../chain/Chain'
 import { openMyActions } from '../log/dialog'
 import { StatusLabel } from '../status'
 import { dialogueViews, useModel } from '../store'
@@ -111,6 +112,9 @@ export function Answer({ view }: { view: ModelActionView }) {
     case 'aborted':
       return <Aborted />
     default:
+      // A tool chain's plan, run and result (design M8, M9): model/chain/.
+      if (view.answer?.kind === 'plan')
+        return <ChainAnswer view={view} actions={<Actions view={view} />} />
       return view.answer?.kind === 'query' ? (
         <Proposal view={view} answer={view.answer} />
       ) : (
@@ -136,7 +140,10 @@ function useElapsed(since: number): number {
   return Math.max(0, (now - since) / 1000)
 }
 
-/** M2.1: the model works. Input locked, a timer up to 2:00, "Abbrechen"; no streaming. */
+/**
+ * M2.1: the model works. Input locked, a timer up to 2:00 (the model call's
+ * limit; also for a chain's plan, one model call, P4), "Abbrechen"; no streaming.
+ */
 function Thinking({ view }: { view: ModelActionView }) {
   const started = usePanel((s) => s.started[view.id]) ?? parseTimestamp(view.created_at).getTime()
   const aborting = usePanel((s) => s.aborting === view.id)

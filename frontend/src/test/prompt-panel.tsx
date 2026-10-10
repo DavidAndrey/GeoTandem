@@ -4,7 +4,7 @@ import { act, cleanup, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import { useAnalysis } from '../analysis/store'
-import type { LLMOptions, ModelActionView, RejectReason } from '../api/client'
+import type { LLMOptions, ModelActionView, PlanEdit, RejectReason } from '../api/client'
 import { useMapView } from '../map/view'
 import { attribute, layer, signedIn } from './fixtures'
 import {
@@ -132,6 +132,30 @@ export function enforcement(server: ModelServer, ...ids: number[]): Routes {
       ]
     }),
   )
+}
+
+/**
+ * The tool-chain routes of ``server`` for the record ``id`` (WP75 as the fake
+ * answers it, ``modelServer``: the rules and what they assume are listed
+ * there), with the approval routes of ``enforcement``. The poll ``GET`` is the
+ * server's: a running chain moves on one step per poll. ``POST /api/model/prompt``
+ * answers 202 with ``thinking`` (P7); the first poll brings the plan.
+ */
+export function chainRoutes(server: ModelServer, thinking: ModelActionView): Routes {
+  const id = thinking.id
+  const base = `/api/model/actions/${id}`
+  const answer = (value: unknown, status = 200) =>
+    isFakeError(value) ? json(value.body, value.status) : json(value, status)
+  return {
+    ...enforcement(server, id),
+    'POST /api/model/prompt': () => json(thinking, 202),
+    [`GET ${base}`]: () => answer(server.poll(id)),
+    [`POST ${base}/run`]: () => answer(server.run(id), 202),
+    [`POST ${base}/abort`]: () => answer(server.abort(id)),
+    [`POST ${base}/adopt`]: () => answer(server.adopt(id)),
+    [`PATCH ${base}/plan`]: (init: RequestInit | undefined) =>
+      answer(server.plan(id, JSON.parse(String(init?.body)) as PlanEdit)),
+  }
 }
 
 /** A fresh workplace with the three layers on the map, schools the result. */

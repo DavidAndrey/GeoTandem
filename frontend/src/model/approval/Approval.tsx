@@ -263,8 +263,8 @@ export function Approval({ view }: { view: ModelActionView }) {
   )
 }
 
-/** M5.3 before sending: the optional reason, then *Ablehnen*. */
-function RejectStep({
+/** M5.3 before sending: the optional reason, then *Ablehnen* (also a chain plan's, M8.1). */
+export function RejectStep({
   view,
   reason,
   busy,

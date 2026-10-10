@@ -36,6 +36,7 @@ import { useAnalysis, type AnalysisSnapshot } from '../../analysis/store'
 import {
   api,
   ApiRequestError,
+  type ExecuteResponse,
   type ModelActionView,
   type QueryResult,
   type RejectReason,
@@ -46,7 +47,8 @@ import { useHandover, watchHandover } from '../panel/handover'
 import { sameGeneration, useModel, type ModelState } from '../store'
 import { autoReady, needsApproval } from './governance'
 
-export type Step = 'approve' | 'execute' | 'reject' | 'undo'
+/** ``adopt``: a tool chain's result taken over (design "Kette übernehmen", WP77). */
+export type Step = 'approve' | 'execute' | 'reject' | 'undo' | 'adopt'
 
 /** The last change the model made to the analysis: the one undo can take back. */
 export interface LastChange {
@@ -268,19 +270,43 @@ export async function execute(view: ModelActionView) {
     return
   }
   const response = await step(view.id, 'execute', () => api.model.execute(view.id))
-  if (!response) return
-  // The record says what ran; apply exactly that.
+  if (response) applyResponse(view, response, 'execute')
+}
+
+/**
+ * The answer of ``execute`` or ``adopt`` becomes the analysis (D2): the record
+ * says what ran, its query is applied exactly, marked "Modell", its rows are
+ * the hits. Waits for an open editor; the last model change, undoable.
+ */
+function applyResponse(view: ModelActionView, response: ExecuteResponse, name: Step) {
   const done = response.action
   whenEditorClosed(done.id, 'execute', () => {
     if (!inDialogue(done.id)) return
     if (!apply({ ...done, query: done.query ?? view.query }, response.result)) {
-      useApproval.setState({
-        failure: { action: view.id, step: 'execute', error: notApplicable() },
-      })
+      useApproval.setState({ failure: { action: view.id, step: name, error: notApplicable() } })
       return
     }
     useModel.getState().received(done)
   })
+}
+
+/**
+ * *Ergebnis übernehmen* / *Zwischenstand übernehmen* of a tool chain (design
+ * M9.3–M9.5, "Kette übernehmen"; plan WP75): the server turns the ``done`` or
+ * ``limited`` chain's last complete result into one query object and runs it
+ * (``ExecuteResponse``); it is applied as ``execute``'s is, origin marks and
+ * undo included. Until then the analysis is unchanged.
+ */
+export async function adopt(view: ModelActionView) {
+  if (useApproval.getState().busy) return
+  // The record's query is the chain's result (``ModelActionView.query``); one the
+  // editor cannot show is not taken over (D3). Without one, the answer decides.
+  if (view.query && !canApply(view)) {
+    useApproval.setState({ failure: { action: view.id, step: 'adopt', error: notApplicable() } })
+    return
+  }
+  const response = await step(view.id, 'adopt', () => api.model.adopt(view.id))
+  if (response) applyResponse(view, response, 'adopt')
 }
 
 /** *Annehmen* (M5.1): approve, then execute. */

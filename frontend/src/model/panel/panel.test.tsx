@@ -105,15 +105,15 @@ describe('entry (M1)', () => {
     expect(screen.getByRole('textbox', { name: 'Prompt' })).toHaveFocus()
     expect(posts(calls)).toEqual([])
 
-    // The approach: Direktabfrage chosen, the chain disabled until E2.5.
+    // The approach: Direktabfrage chosen, the chain there to choose (E2.5, WP77).
     const direct = screen.getByRole('radio', { name: 'Direktabfrage' })
     expect(direct).toBeChecked()
     // Not by colour alone: the chosen segment is underlined 2 px and set bold.
     expect(direct.className).toMatch(/\bborder-b-2\b.*\bfont-semibold\b/)
     const chain = screen.getByRole('radio', { name: 'Werkzeugkette' })
     expect(chain.className).not.toMatch(/\bborder-b-2\b/)
-    expect(chain).toBeDisabled()
-    expect(chain).toHaveAccessibleDescription('ab E2.5')
+    expect(chain).toBeEnabled()
+    expect(screen.queryByText('ab E2.5')).toBeNull()
     expect(
       screen.getByText(/Lokales Modell · Stufe Prüfen · Ihre Eingaben werden protokolliert/),
     ).toBeInTheDocument()
@@ -525,12 +525,12 @@ describe('refusal (M3)', () => {
     )
   })
 
-  test('M3.3: not representable, without the chain offer before E2.5', async () => {
+  test('M3.3: not representable, with the offer of the chain (E2.5)', async () => {
     await answered('not_representable')
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Diese Abfrage lässt sich in den Bedienelementen nicht vollständig darstellen.',
     )
-    expect(screen.queryByRole('button', { name: /Werkzeugkette versuchen/ })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Mit Werkzeugkette versuchen ›' })).toBeEnabled()
   })
 })
 
@@ -620,9 +620,11 @@ describe('keyboard', () => {
     expect(posts(calls)).toEqual([])
     await user.tab()
     expect(screen.getByRole('radio', { name: 'Direktabfrage' })).toHaveFocus()
-    // The disabled chain is skipped.
+    await user.tab()
+    expect(screen.getByRole('radio', { name: 'Werkzeugkette' })).toHaveFocus()
     await user.tab()
     expect(screen.getByRole('button', { name: /Senden/ })).toHaveFocus()
+    await user.tab({ shift: true })
     await user.tab({ shift: true })
     await user.tab({ shift: true })
     expect(field).toHaveFocus()
