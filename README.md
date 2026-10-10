@@ -340,8 +340,16 @@ eigenen Cookie (`geotandem_device`, über HTTPS `__Host-geotandem_device`, 180
 Tage, bleibt beim Abmelden) wieder: Wird sein Benutzername von anderswo mit
 Versuchen überflutet, meldet er sich trotzdem ohne Wartezeit an. Die Zähler und
 der Schlüssel dieses Cookies liegen im Speicher und beginnen nach einem
-Neustart von vorn. Weitere Befunde und Massnahmen:
-[security-review.md](security-review.md).
+Neustart von vorn.
+
+Der Proxy darf **keine `Authorization`-Kopfzeile mit Bearer-Token** (oder
+einem anderen Schema als Basic) an die Anwendung weiterreichen, etwa aus einer
+eigenen Token-Anmeldung davor: Die
+Anwendung hält jedes solche Token für einen Programmzugang (E4) und verweigert
+damit die Entscheidungen einer Person, nämlich Freigeben, Ablehnen, Übernehmen
+(`approve`, `reject`, `decide`), die Vorschau und die Wahl von Anbindung und
+Stufe (`403 session_required`). Basic-Authentifizierung des Proxys stört nicht.
+Weitere Befunde und Massnahmen: [security-review.md](security-review.md).
 
 ## Sicherung (F-9.8)
 
