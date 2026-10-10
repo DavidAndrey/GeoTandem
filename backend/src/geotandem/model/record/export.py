@@ -7,25 +7,37 @@ column names say so), hashes in full, codes as codes. The query, the answer and
 the steps are left out: they are JSON trees the entry page and its "Technisch"
 JSON show, and a spreadsheet cell would not.
 
+The file is written for the spreadsheet of its readers, Excel with Swiss
+German settings: ``;`` between cells, every cell quoted, a byte order mark so
+the umlauts read as UTF-8, CRLF line ends.
+
 A spreadsheet runs a cell that starts with ``=``, ``+``, ``-`` or ``@`` as a
-formula, and one that starts with a tab or a carriage return can be read as
-one too (CSV injection, security review E2.4). Prompts, names and every other
-text come from people, so every text cell that starts with one of them gets a
-leading ``'``, which spreadsheets show as text. Quoting is the ``csv``
-module's: a cell with a comma, a quote or a line break is quoted, quotes
-doubled.
+formula (CSV injection, security review E2.4), and one that opens a file with
+the wrong separator splits a cell wherever ``;``, ``,``, a tab or a line
+break stands, so a formula can start in the middle of a cell too. Prompts,
+names and every other text come from people, so every text cell gets a ``'``
+before a formula character that follows such a separator (spaces between
+allowed), and before one at its start, judged after NFKC normalisation and
+leading white space, which catches a leading space or line break and the
+fullwidth forms of the four characters.
 """
 
 import csv
 import io
-from collections.abc import Callable, Iterable
+import re
+import unicodedata
+from collections.abc import Callable, Iterable, Iterator
 from datetime import datetime
 from typing import Any
 
 from geotandem.model.schemas import ModelActionView
 
-FORMULA_START = ("=", "+", "-", "@", "\t", "\r")
-"""What a spreadsheet may read as the start of a formula."""
+BOM = "\ufeff"
+DELIMITER = ";"
+FORMULA_START = ("=", "+", "-", "@")
+"""What a spreadsheet reads as the start of a formula (after NFKC normalisation)."""
+_AFTER_SEPARATOR = re.compile(r"([;,\t\r\n]\s*)([=+\-@\uff1d\uff0b\uff0d\uff20])")
+"""A formula character after a separator a spreadsheet might split the cell on."""
 
 
 def _matrix(view: ModelActionView) -> str:
@@ -69,8 +81,8 @@ COLUMNS: list[tuple[str, Callable[[ModelActionView], Any]]] = [
 
 def safe_cell(value: Any) -> str:
     """One value as a cell: empty for none, ``true``/``false``, numbers as they
-    are, times in ISO form, and text with a leading ``'`` where a spreadsheet
-    would read a formula."""
+    are, times in ISO form, and text with a ``'`` before every place a
+    spreadsheet could start a formula."""
     if value is None:
         return ""
     if isinstance(value, bool):
@@ -79,15 +91,22 @@ def safe_cell(value: Any) -> str:
         return str(value)
     if isinstance(value, datetime):
         return value.isoformat()
-    text = str(value)
-    return f"'{text}" if text.startswith(FORMULA_START) else text
+    text = _AFTER_SEPARATOR.sub(r"\1'\2", str(value))
+    start = unicodedata.normalize("NFKC", text).lstrip()
+    if start.startswith(FORMULA_START) or text.startswith(("\t", "\r")):
+        return f"'{text}"
+    return text
 
 
-def to_csv(views: Iterable[ModelActionView]) -> str:
-    """The rows under a header line, lines ended with CRLF (RFC 4180)."""
+def _line(cells: Iterable[str]) -> str:
     out = io.StringIO()
-    writer = csv.writer(out)
-    writer.writerow(name for name, _ in COLUMNS)
-    for view in views:
-        writer.writerow(safe_cell(value(view)) for _, value in COLUMNS)
+    csv.writer(out, delimiter=DELIMITER, quoting=csv.QUOTE_ALL).writerow(cells)
     return out.getvalue()
+
+
+def csv_lines(views: Iterable[ModelActionView]) -> Iterator[str]:
+    """The byte order mark and the header line, then one line per record as it
+    is read: a long log is never held whole."""
+    yield BOM + _line(name for name, _ in COLUMNS)
+    for view in views:
+        yield _line(safe_cell(value(view)) for _, value in COLUMNS)

@@ -1326,7 +1326,8 @@ export interface paths {
     /**
      * Export Csv
      * @description CSV of the filtered log, prompt text included (D4); cells safe against
-     *     formula injection (``model/record/export.py`` names the columns).
+     *     formula injection (``model/record/export.py`` names the columns). Streamed
+     *     a row at a time; more than ``MAX_EXPORT_ROWS`` rows are refused (413).
      */
     get: operations['export_csv_api_admin_model_actions_export_csv_get']
     put?: never
@@ -3088,6 +3089,28 @@ export interface components {
             | 'proposal_only'
             | 'aborted'
             | 'failed'
+          )
+        | null
+      /** Reject Reason */
+      reject_reason: ('misunderstood' | 'wrong_layer' | 'wrong_value' | 'other') | null
+      /** Refusal Code */
+      refusal_code:
+        | (
+            | 'invalid_query'
+            | 'unknown_layer'
+            | 'unknown_attribute'
+            | 'unsupported_operation'
+            | 'query_too_complex'
+            | 'invalid_query_geometry'
+            | 'name_clash'
+            | 'key_type_mismatch'
+            | 'attribute_not_text'
+            | 'attribute_not_numeric'
+            | 'wrong_value_type'
+            | 'model_query_invalid'
+            | 'limit_exceeded'
+            | 'not_representable'
+            | 'step_limit'
           )
         | null
       /** Hits */
@@ -10123,6 +10146,15 @@ export interface operations {
       }
       /** @description Conflict */
       409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Content Too Large */
+      413: {
         headers: {
           [name: string]: unknown
         }

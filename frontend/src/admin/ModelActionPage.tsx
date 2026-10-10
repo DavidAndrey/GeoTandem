@@ -49,7 +49,9 @@ function hits(count: number): string {
 
 export function ModelActionPage() {
   const { id } = useParams()
-  const entry = useLogEntry(Number(id))
+  // Only digits name an entry: "/abc" is not asked for as "/NaN".
+  const entryId = /^\d+$/.test(id ?? '') ? Number(id) : null
+  const entry = useLogEntry(entryId ?? 0, entryId !== null)
   return (
     <section aria-labelledby="model-entry-title">
       <p className="text-muted mb-1 text-sm">
@@ -58,7 +60,12 @@ export function ModelActionPage() {
         </Link>{' '}
         ›
       </p>
-      {entry.isPending && <Loading />}
+      {entryId === null && (
+        <p role="alert" className="text-danger my-2 text-sm">
+          {errorText('not_found')}
+        </p>
+      )}
+      {entryId !== null && entry.isPending && <Loading />}
       <ErrorNotice error={entry.error} />
       {entry.data && <Entry view={entry.data} />}
     </section>

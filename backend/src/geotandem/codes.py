@@ -82,6 +82,7 @@ CODES: dict[str, str] = {
     "nothing_to_undo": "The action changed nothing that could be taken back.",
     "undo_blocked": "The analysis was changed by hand since; undo is over.",
     "time_limit": "The tool chain ran longer than details.max_s and was stopped.",
+    "export_too_large": "The log export would hold more than details.max rows.",
     # Model connections: administration and choice
     "connection_name_taken": "A connection of that name exists (details.name).",
     "default_not_enabled": "The default connection must be enabled for users.",

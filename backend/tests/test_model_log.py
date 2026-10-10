@@ -7,8 +7,11 @@ follow the same filters, the key figures of the contract fixture come out of
 the API built from records, and no CSV cell can start a formula.
 """
 
+import codecs
 import csv
 import io
+import re
+import unicodedata
 from collections.abc import AsyncIterator, Awaitable, Callable
 from datetime import datetime
 from typing import Any
@@ -17,11 +20,12 @@ import httpx
 import pytest
 from api_helpers import USER_PASSWORD
 from fastapi import FastAPI
-from model_fixtures import fixture
+from model_fixtures import REPO, fixture
 from sqlalchemy import update
 from sqlalchemy.orm import Session
 from test_model_record import CONNECTION, LEVEL, build, new
 
+from geotandem.api import model_log
 from geotandem.auth import accounts
 from geotandem.auth.accounts import Account
 from geotandem.db.orm import ModelAction
@@ -75,7 +79,7 @@ def created_at(app: FastAPI, action_id: int, moment: datetime) -> None:
 
 def rows(response: httpx.Response) -> list[dict[str, str]]:
     text = response.content.decode("utf-8-sig")
-    return list(csv.DictReader(io.StringIO(text, newline="")))
+    return list(csv.DictReader(io.StringIO(text, newline=""), delimiter=";"))
 
 
 # --- who sees what (D4) ---------------------------------------------------------
@@ -135,6 +139,27 @@ async def test_the_detail_is_the_record_as_it_was(client: httpx.AsyncClient, app
     assert "+" not in body["created_at"]
     # Compact, as the editor writes a query: no unset field.
     assert "attribute_join" not in body["query"]
+
+
+async def test_a_row_names_the_reason_of_a_rejection_and_the_code_of_a_refusal(
+    client: httpx.AsyncClient, app: FastAPI
+) -> None:
+    store = store_of(app)
+    admin = account(app, "admin")
+    refused = build(store, admin, "refused")
+    rejected = build(store, admin, "proposed")
+    store.reject(admin, rejected, "wrong_value")
+    items = {i["id"]: i for i in (await client.get(LOG)).json()["items"]}
+    assert (items[refused]["refusal_code"], items[refused]["reject_reason"]) == (
+        "unknown_layer",
+        None,
+    )
+    assert (items[rejected]["reject_reason"], items[rejected]["refusal_code"]) == (
+        "wrong_value",
+        None,
+    )
+    mine = {i["id"]: i for i in (await client.get(MINE)).json()["items"]}
+    assert mine[rejected]["reject_reason"] == "wrong_value"
 
 
 # --- key figures (plan section 2) -----------------------------------------------
@@ -244,6 +269,7 @@ async def test_pages_are_bounded_newest_first_and_do_not_overlap(
 # --- the CSV ------------------------------------------------------------------------
 
 
+FULLWIDTH_EQUALS = chr(0xFF1D)
 INJECTIONS = [
     '=HYPERLINK("http://x.example","klick")',
     "+41 79 000 00 00",
@@ -251,17 +277,53 @@ INJECTIONS = [
     "@SUM(A1:A2)",
     "\t=1+1",
     "\r=1+1",
+    # Split by a spreadsheet at ";" (de-CH Excel) or ",": a formula mid-cell.
+    "x;=1+1",
+    "x,=1+1",
+    'Schulen;=WEBSERVICE("http://x.example")',
+    "a; -1",
+    # Caught only after white space and NFKC normalisation.
+    " =1+1",
+    f"{FULLWIDTH_EQUALS}1+1",
+    "\n=1",
 ]
+SEPARATORS = re.compile(r"[;,\t\r\n]")
+
+
+def starts_no_formula(cell: str) -> bool:
+    """The cell, and every piece a spreadsheet might split it into, starts with
+    no formula character once normalised and stripped (the integrator's rule)."""
+    return not any(
+        unicodedata.normalize("NFKC", piece).lstrip().startswith(("=", "+", "-", "@"))
+        for piece in [cell, *SEPARATORS.split(cell)]
+    )
 
 
 @pytest.mark.parametrize("text", INJECTIONS)
 def test_a_cell_that_could_start_a_formula_is_text(text: str) -> None:
-    assert safe_cell(text) == f"'{text}"
+    cell = safe_cell(text)
+    assert starts_no_formula(cell), cell
+    assert cell.replace("'", "") == text  # quotes added, nothing else changed
+
+
+def test_cells_written_and_read_back_start_no_formula() -> None:
+    out = io.StringIO()
+    cells = [safe_cell(text) for text in INJECTIONS]
+    csv.writer(out, delimiter=";", quoting=csv.QUOTE_ALL).writerow(cells)
+    read = next(csv.reader(io.StringIO(out.getvalue(), newline=""), delimiter=";"))
+    assert read == cells
+    assert all(starts_no_formula(cell) for cell in read)
 
 
 @pytest.mark.parametrize(
     ("value", "cell"),
     [
+        ("x;=1+1", "x;'=1+1"),
+        (" =1+1", "' =1+1"),
+        (f"{FULLWIDTH_EQUALS}1+1", f"'{FULLWIDTH_EQUALS}1+1"),
+        ("\n=1", "\n'=1"),
+        ("-2+3", "'-2+3"),
+        ("500 m, nicht mehr", "500 m, nicht mehr"),
         ("Schulen in Köniz", "Schulen in Köniz"),
         ("Wert = 3", "Wert = 3"),
         ("a@b", "a@b"),
@@ -300,13 +362,14 @@ async def test_the_csv_is_a_safe_download_of_the_log(
         'attachment; filename="modellprotokoll-'
     )
     assert response.headers["content-disposition"].endswith('.csv"')
-    assert response.content.startswith("﻿".encode())
+    assert response.content.startswith(codecs.BOM_UTF8)
     text = response.content.decode("utf-8-sig")
-    assert text.splitlines()[0] == ",".join(name for name, _ in COLUMNS)
+    assert text.splitlines()[0] == ";".join(f'"{name}"' for name, _ in COLUMNS)
 
     found = rows(response)
     prompts = [r["prompt"] for r in found]
-    assert sorted(prompts) == sorted([*(f"'{p}" for p in INJECTIONS), quoted, "Kitas"])
+    assert sorted(prompts) == sorted(safe_cell(p) for p in [*INJECTIONS, quoted, "Kitas"])
+    assert quoted in prompts
     kitas = next(r for r in found if r["prompt"] == "Kitas")
     assert (kitas["level_name"], kitas["connection_name"]) == ("'=Stufe", "'@Anbindung")
     assert (kitas["decision"], kitas["hits"], kitas["applied_by_hand"]) == (
@@ -316,7 +379,58 @@ async def test_the_csv_is_a_safe_download_of_the_log(
     )
     assert kitas["level_matrix"].startswith("catalog=approve query=approve")
     assert datetime.fromisoformat(kitas["created_at_utc"]).tzinfo is None
-    # No cell of any row starts a formula, whichever column it is in.
+    # Read back with the csv module, no cell of any row starts a formula,
+    # whichever column it is in and wherever a spreadsheet might split it.
     for row in found:
         for name, cell in row.items():
-            assert not cell.startswith(("=", "+", "-", "@", "\t", "\r")), (name, cell)
+            assert starts_no_formula(cell), (name, cell)
+
+
+async def test_an_empty_log_is_a_header_line(client: httpx.AsyncClient) -> None:
+    response = await client.get(f"{LOG}/export.csv")
+    assert response.status_code == 200, response.text
+    assert rows(response) == []
+    assert response.content.decode("utf-8-sig").count("\r\n") == 1
+
+
+async def test_an_export_beyond_the_cap_is_refused(
+    client: httpx.AsyncClient, app: FastAPI, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(model_log, "MAX_EXPORT_ROWS", 2)
+    store = store_of(app)
+    admin = account(app, "admin")
+    for approach in ("direct", "direct", "chain"):
+        build(store, admin, "accepted", approach=approach)
+
+    refused = await client.get(f"{LOG}/export.csv")
+    assert refused.status_code == 413, refused.text
+    body = refused.json()
+    assert (body["code"], body["details"]["max"], body["details"]["rows"]) == (
+        "export_too_large",
+        2,
+        3,
+    )
+    narrowed = await client.get(f"{LOG}/export.csv", params={"approach": "direct"})
+    assert narrowed.status_code == 200, narrowed.text
+    assert len(rows(narrowed)) == 2
+
+
+async def test_the_export_reads_in_chunks_newest_first(
+    client: httpx.AsyncClient, app: FastAPI
+) -> None:
+    store = store_of(app)
+    admin = account(app, "admin")
+    made = [new(store, admin, supersede=False).id for _ in range(5)]
+    for action_id in made[:2]:  # two at the same time: the id decides between them
+        created_at(app, action_id, datetime(2000, 1, 1, 12, 0))
+    expect = [made[4], made[3], made[2], made[1], made[0]]
+    assert [v.id for v in store.export(admin)] == expect
+    assert [v.id for v in store.export(admin, chunk=2)] == expect
+    assert [v.id for v in store.export(admin, chunk=1, limit=3)] == expect[:3]
+    assert store.count(admin) == 5
+
+
+def test_the_frontend_knows_the_cap() -> None:
+    """One cap, repeated where the page decides whether to offer the CSV."""
+    source = (REPO / "frontend" / "src" / "model" / "log" / "queries.ts").read_text("utf-8")
+    assert f"MAX_EXPORT_ROWS = {model_log.MAX_EXPORT_ROWS:_}" in source

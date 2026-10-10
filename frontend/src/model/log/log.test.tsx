@@ -2,8 +2,10 @@
 // figures and filters (M16.1), one entry as it was (M16.2), and the user's own
 // entries as a dialog with a focus trap (M16.3). The fake routes answer as the
 // server does: naive UTC times, compact queries, filters and pages from the
-// query string, own entries only under /api/model/my-actions, 404 not_found
-// for an id that is not there.
+// query string, key figures over the filtered records as section 2 counts them
+// (``figuresOf``, held to the contract fixture below), own entries only under
+// /api/model/my-actions, 404 not_found for an id that is not there, times with
+// microseconds.
 import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, test, vi } from 'vitest'
@@ -55,8 +57,9 @@ const LAYERS = [
   }),
 ]
 
-/** A naive UTC time ``minutes`` ago, as the server writes it. */
-const ago = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString().slice(0, 19)
+/** A naive UTC time ``minutes`` ago with microseconds, as the server writes it. */
+const ago = (minutes: number) =>
+  `${new Date(Date.now() - minutes * 60_000).toISOString().slice(0, 23)}456`
 
 /** Records as the server returns them: naive UTC, compact query, newest first. */
 function records(): ModelActionView[] {
@@ -116,8 +119,75 @@ const summary = (v: ModelActionView): ModelActionSummary => ({
   locality: v.connection.locality,
   status: v.status,
   decision: v.decision,
+  reject_reason: v.reject_reason ?? null,
+  refusal_code: v.refusal?.code ?? null,
   hits: v.stamp?.count ?? null,
 })
+
+/** Plan section 2 over the records, as ``ModelActionStore.key_figures`` counts. */
+function figuresOf(found: ModelActionView[]): KeyFigures {
+  const n = (decision: string, undone?: boolean) =>
+    found.filter(
+      (v) => v.decision === decision && (undone === undefined || Boolean(v.undone_at) === undone),
+    ).length
+  const accepted = n('accepted')
+  const adjusted = n('adjusted')
+  const rejected = n('rejected')
+  const superseded = n('superseded')
+  const auto = n('auto')
+  const proposalOnly = n('proposal_only')
+  const decided = accepted + adjusted + rejected + superseded
+  return {
+    proposals: decided + auto + proposalOnly,
+    accepted,
+    adjusted,
+    rejected,
+    superseded,
+    proposal_only: proposalOnly,
+    auto,
+    undone: n('auto', true),
+    undone_after_approval: n('accepted', true),
+    acceptance_rate: decided
+      ? Math.round(((accepted + adjusted) / decided) * 10_000) / 10_000
+      : null,
+    not_counted: {
+      refused: found.filter((v) => v.status === 'refused').length,
+      aborted: n('aborted'),
+      failed: n('failed'),
+    },
+  }
+}
+
+/** Records whose decisions are the fixture's (``key_figures.decisions``). */
+function fixtureRecords(): ModelActionView[] {
+  const counts: Record<string, number> = { ...fixture.key_figures.decisions }
+  // The fixture counts undone ones inside their decision; build them apart.
+  counts.auto = (counts.auto ?? 0) - (counts.auto_undone ?? 0)
+  counts.accepted = (counts.accepted ?? 0) - (counts.accepted_undone ?? 0)
+  const ends: Record<string, Partial<ModelActionView>> = {
+    accepted: { status: 'applied', decision: 'accepted' },
+    accepted_undone: { status: 'undone', decision: 'accepted', undone_at: ago(1) },
+    adjusted: { status: 'applied', decision: 'adjusted' },
+    rejected: { status: 'rejected', decision: 'rejected' },
+    superseded: { status: 'superseded', decision: 'superseded' },
+    auto: { status: 'applied', decision: 'auto' },
+    auto_undone: { status: 'undone', decision: 'auto', undone_at: ago(1) },
+    proposal_only: { status: 'applied', decision: 'proposal_only' },
+    aborted: { status: 'aborted', decision: 'aborted' },
+    failed: { status: 'failed', decision: 'failed' },
+  }
+  let id = 500
+  return Object.entries(counts)
+    .flatMap(([end, count]) =>
+      Array.from({ length: count }, () => {
+        id += 1
+        return end === 'refused'
+          ? actionView('unknown_layer', { id, created_at: ago(id - 490) })
+          : actionView('reference', { id, created_at: ago(id - 490), ...ends[end] })
+      }),
+    )
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+}
 
 /** The server's filters (``api/model_log.py``): from inclusive, to exclusive, naive UTC. */
 function matches(v: ModelActionView, params: URLSearchParams): boolean {
@@ -145,7 +215,7 @@ function page(found: ModelActionView[], params: URLSearchParams) {
 const query = (url: string) => new URL(url, 'http://test').searchParams
 
 /** The fake server of the log, signed in as ``me``. */
-function logServer(all: ModelActionView[], me = account()) {
+function logServer(all: ModelActionView[], me = account(), patch: Record<string, object> = {}) {
   const admin = me.role === 'admin'
   const forbidden = () => new Response('{"code":"forbidden","message":"?"}', { status: 403 })
   return fakeApi({
@@ -170,7 +240,8 @@ function logServer(all: ModelActionView[], me = account()) {
             query(url),
           )
         : forbidden(),
-    'GET /api/admin/model-actions/key-figures': () => (admin ? FIGURES : forbidden()),
+    'GET /api/admin/model-actions/key-figures': (_init: unknown, url: string) =>
+      admin ? figuresOf(all.filter((v) => matches(v, query(url)))) : forbidden(),
     ...Object.fromEntries(
       all.map((v) => [`GET /api/admin/model-actions/${v.id}`, () => (admin ? v : forbidden())]),
     ),
@@ -179,6 +250,7 @@ function logServer(all: ModelActionView[], me = account()) {
         all.filter((v) => v.account === me.username),
         query(url),
       ),
+    ...patch,
   })
 }
 
@@ -194,6 +266,16 @@ describe('words', () => {
     )
     expect(outcomeText({ status: 'refused', decision: null })).toBe('abgewiesen')
     expect(outcomeText({ status: 'proposed', decision: null })).toBe('offen')
+    expect(
+      outcomeText({ status: 'rejected', decision: 'rejected', reject_reason: 'wrong_value' }),
+    ).toBe('abgelehnt · falscher Wert')
+    expect(outcomeText({ status: 'refused', decision: null, refusal_code: 'unknown_layer' })).toBe(
+      'abgewiesen · Layer nicht vorhanden',
+    )
+  })
+
+  test('the fake counts key figures as the server does: the fixture from its records', () => {
+    expect(figuresOf(fixtureRecords())).toEqual(FIGURES)
   })
 
   test('key figures: counts with their share of the proposals, undone of auto', () => {
@@ -211,7 +293,7 @@ describe('words', () => {
 })
 
 describe('M16.1 the list', () => {
-  test('every account, newest first, with the key figures as numbers and shares', async () => {
+  test('every account, newest first, over one fixed period', async () => {
     const all = records()
     const calls = logServer(all)
     renderAt(LOG_PATH, <App />)
@@ -241,8 +323,8 @@ describe('M16.1 the list', () => {
       'auto angewendet · zurückgenommen',
       '10',
     ])
-    expect(cells(2)[5]).toHaveTextContent('abgelehnt')
-    expect(cells(3)[5]).toHaveTextContent('abgewiesen')
+    expect(cells(2)[5]).toHaveTextContent('abgelehnt · falscher Wert')
+    expect(cells(3)[5]).toHaveTextContent('abgewiesen · Layer nicht vorhanden')
     expect(cells(3)[6]).toHaveTextContent('–')
     expect(cells(4)[4]).toHaveTextContent('Kette')
     expect(within(cells(1)[0] as HTMLElement).getByRole('link')).toHaveAttribute(
@@ -250,9 +332,33 @@ describe('M16.1 the list', () => {
       '/admin/modellprotokoll/101',
     )
 
+    // The default period is the last 30 days up to the opening of the page,
+    // the same for list and figures.
+    const list = calls.find((c) => c.key === 'GET /api/admin/model-actions')
+    const figuresCall = calls.find((c) => c.key === 'GET /api/admin/model-actions/key-figures')
+    expect(list && figuresCall).toBeTruthy()
+    const requests = vi.mocked(fetch).mock.calls.map(([url]) => String(url))
+    const asked = query(requests.find((u) => u.includes('/key-figures')) ?? '')
+    const listed = query(requests.find((u) => u.includes('/model-actions?')) ?? '')
+    const from = parseTimestamp(asked.get('from') ?? '').getTime()
+    const to = parseTimestamp(asked.get('to') ?? '').getTime()
+    expect(to - from).toBe(30 * 86_400_000)
+    expect(Math.abs(Date.now() - to)).toBeLessThan(60_000)
+    expect([listed.get('from'), listed.get('to')]).toEqual([asked.get('from'), asked.get('to')])
+  })
+
+  test('the key figures of the fixture, as numbers with shares and no chart', async () => {
+    logServer(fixtureRecords())
+    renderAt(LOG_PATH, <App />)
     const figures = await screen.findByRole('region', { name: 'Kennzahlen' })
-    const figure = (key: string) => figures.querySelector(`[data-figure="${key}"]`)?.textContent
-    expect(figure('proposals')).toBe('Vorschläge24')
+    /** What is shown, without the words for assistive technology. */
+    const figure = (key: string) => {
+      const shown = figures.querySelector(`[data-figure="${key}"]`)?.cloneNode(true)
+      if (!(shown instanceof HTMLElement)) return undefined
+      shown.querySelectorAll('.sr-only').forEach((n) => n.remove())
+      return shown.textContent
+    }
+    await waitFor(() => expect(figure('proposals')).toBe('Vorschläge24'))
     expect(figure('accepted')).toBe(`angenommen unverändert13${shareOf(13, 24)}`)
     expect(figure('adjusted')).toBe(`angepasst4${shareOf(4, 24)}`)
     expect(figure('superseded')).toBe(`übergangen2${shareOf(2, 24)}`)
@@ -263,15 +369,10 @@ describe('M16.1 the list', () => {
       'Nicht als Vorschlag gezählt: abgewiesen 3 · abgebrochen 1 · Fehler 2.',
     )
     expect(figures.querySelector('svg, canvas')).toBeNull()
-
-    // The default period is the last 30 days, the same for list and figures.
-    const list = calls.find((c) => c.key === 'GET /api/admin/model-actions')
-    const figuresCall = calls.find((c) => c.key === 'GET /api/admin/model-actions/key-figures')
-    expect(list && figuresCall).toBeTruthy()
-    const requests = vi.mocked(fetch).mock.calls.map(([url]) => String(url))
-    const from = query(requests.find((u) => u.includes('/key-figures')) ?? '').get('from')
-    expect(Date.now() - parseTimestamp(from ?? '').getTime()).toBeGreaterThan(29.9 * 86_400_000)
-    expect(Date.now() - parseTimestamp(from ?? '').getTime()).toBeLessThan(30.1 * 86_400_000)
+    // The share says what it is of, for assistive technology too.
+    expect(figures.querySelector('[data-figure="accepted"] .sr-only')).toHaveTextContent(
+      'der Vorschläge',
+    )
   })
 
   test('list, key figures and CSV follow the same filters', async () => {
@@ -281,6 +382,12 @@ describe('M16.1 the list', () => {
     await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Arbeitsweise' }), 'chain')
     await waitFor(() => expect(screen.getAllByRole('row')).toHaveLength(2))
     expect(screen.getByRole('cell', { name: 'Schulen im Norden' })).toBeInTheDocument()
+    // The figures count the same records: one proposal, superseded.
+    const figures = screen.getByRole('region', { name: 'Kennzahlen' })
+    await waitFor(() =>
+      expect(figures.querySelector('[data-figure="proposals"]')).toHaveTextContent('1'),
+    )
+    expect(figures.querySelector('[data-figure="superseded"]')).toHaveTextContent('1')
 
     await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Arbeitsweise' }), '')
     await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Zeitraum' }), 'alle')
@@ -306,6 +413,11 @@ describe('M16.1 the list', () => {
     const csv = screen.getByRole('link', { name: 'CSV' })
     expect(csv).toHaveAttribute('download')
     expect(query(csv.getAttribute('href') ?? '').get('account')).toBe('m.keller')
+    // List, figures and CSV end at the same moment.
+    const end = last('/model-actions?').get('to')
+    expect(end).toBeTruthy()
+    expect(last('/key-figures').get('to')).toBe(end)
+    expect(query(csv.getAttribute('href') ?? '').get('to')).toBe(end)
     expect(csv.getAttribute('href')).toMatch(/^\/api\/admin\/model-actions\/export\.csv\?/)
 
     await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Stufe' }), '3')
@@ -319,7 +431,7 @@ describe('M16.1 the list', () => {
     const many = Array.from({ length: 120 }, (_, i) =>
       actionView('reference', {
         id: 1000 + i,
-        created_at: `2026-10-10T12:${String(59 - Math.floor(i / 2)).padStart(2, '0')}:0${i % 2}`,
+        created_at: ago(i + 1),
         prompt: `Frage ${i}`,
       }),
     ).sort((a, b) => b.created_at.localeCompare(a.created_at))
@@ -333,6 +445,16 @@ describe('M16.1 the list', () => {
     await screen.findByText('101–120 von 120')
     expect(screen.getAllByRole('row')).toHaveLength(21)
     expect(screen.getByRole('button', { name: 'Ältere' })).toBeDisabled()
+  })
+
+  test('beyond the export cap the CSV is not offered, and the page says why', async () => {
+    logServer(records(), account(), {
+      'GET /api/admin/model-actions': { items: [], total: 60_000 },
+    })
+    renderAt(LOG_PATH, <App />)
+    await screen.findByText(/Bitte den Zeitraum oder die Filter enger wählen/)
+    expect(screen.queryByRole('link', { name: 'CSV' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'CSV' })).toBeDisabled()
   })
 })
 
@@ -385,6 +507,14 @@ describe('M16.2 one entry', () => {
     renderAt(`${LOG_PATH}/999`, <App />)
     expect(await screen.findByRole('alert')).toBeInTheDocument()
   })
+
+  test('an address that names no entry asks for none', async () => {
+    logServer(records())
+    renderAt(`${LOG_PATH}/abc`, <App />)
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    const urls = vi.mocked(fetch).mock.calls.map(([url]) => String(url))
+    expect(urls.some((u) => u.startsWith('/api/admin/model-actions/'))).toBe(false)
+  })
 })
 
 describe('M16.3 my model actions', () => {
@@ -411,6 +541,17 @@ describe('M16.3 my model actions', () => {
     ).toBeVisible()
     const urls = vi.mocked(fetch).mock.calls.map(([url]) => String(url))
     expect(urls.some((u) => u.includes('/api/admin/'))).toBe(false)
+  })
+
+  test("an administrator sees their own entries here too, not everyone's", async () => {
+    logServer(records())
+    renderAt('/', <UserMenu account={account()} />)
+    await userEvent.click(screen.getByRole('button', { name: 'Benutzermenü' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Meine Modellaktionen' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Meine Modellaktionen' })
+    await within(dialog).findByText('Grundschulen nahe Hauptstrasse')
+    expect(within(dialog).getAllByRole('row').slice(1)).toHaveLength(2)
+    expect(within(dialog).queryByText('Kinderreiche Stadtteile')).toBeNull()
   })
 
   test('focus stays in the dialog until Esc closes it', async () => {

@@ -449,12 +449,20 @@ msgstr ""
 msgid "Abfrage · Ziel {target}"
 msgstr ""
 
+#: src/model/log/words.ts
+msgid "Abfrage ausserhalb des Schemas"
+msgstr ""
+
 #: src/queries/SaveQueryDialog.tsx
 msgid "Abfrage speichern"
 msgstr ""
 
 #: src/session/notice.ts
 msgid "Abfrage und Rezepte sind unverändert."
+msgstr ""
+
+#: src/model/log/words.ts
+msgid "Abfrage ungültig"
 msgstr ""
 
 #: src/editor/EditorPanel.tsx
@@ -1382,6 +1390,10 @@ msgid "Der Ergebnis-Layer fehlt"
 msgstr ""
 
 #: src/i18n/errors.ts
+msgid "Der Export umfasst mehr als {max} Einträge. Bitte den Zeitraum oder die Filter enger wählen."
+msgstr ""
+
+#: src/i18n/errors.ts
 msgid "Der gespeicherte Zugangsschlüssel geht nur an die bisherige Adresse. Für eine neue Adresse bitte den Schlüssel neu eintragen oder entfernen."
 msgstr ""
 
@@ -2203,6 +2215,18 @@ msgstr ""
 msgid "Feld der Darstellung"
 msgstr ""
 
+#: src/model/log/words.ts
+msgid "Feld ist kein Text"
+msgstr ""
+
+#: src/model/log/words.ts
+msgid "Feld ist keine Zahl"
+msgstr ""
+
+#: src/model/log/words.ts
+msgid "Feld nicht vorhanden"
+msgstr ""
+
 #: src/admin/LayerPage.tsx
 #: src/admin/wizard.ts
 msgid "Felder"
@@ -2349,6 +2373,10 @@ msgstr ""
 
 #: src/admin/ImportWizard.tsx
 msgid "Geometrie in der Datei"
+msgstr ""
+
+#: src/model/log/words.ts
+msgid "Geometrie ungültig"
 msgstr ""
 
 #: src/admin/ImportRunPage.tsx
@@ -2920,6 +2948,10 @@ msgstr ""
 msgid "Layer in der Datei"
 msgstr ""
 
+#: src/model/log/words.ts
+msgid "Layer nicht vorhanden"
+msgstr ""
+
 #: src/admin/ImportWizard.tsx
 msgid "Layer öffnen"
 msgstr ""
@@ -3194,6 +3226,10 @@ msgstr ""
 msgid "Name der Kennzahl"
 msgstr ""
 
+#: src/model/log/words.ts
+msgid "Namenskonflikt"
+msgstr ""
+
 #: src/admin/CatalogPage.tsx
 #: src/editor/describe.ts
 #: src/editor/EditorPanel.tsx
@@ -3269,6 +3305,10 @@ msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
 msgid "nicht bestanden"
+msgstr ""
+
+#: src/model/log/words.ts
+msgid "nicht darstellbar"
 msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
@@ -3427,6 +3467,10 @@ msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
 msgid "OpenAI-kompatibel, mit /v1. Lokal sind 127.0.0.1, localhost, host.docker.internal und die Namen in GEOTANDEM_LLM_LOCAL_HOSTS; alles andere ist extern."
+msgstr ""
+
+#: src/model/log/words.ts
+msgid "Operation nicht möglich"
 msgstr ""
 
 #: src/editor/EditorPanel.tsx
@@ -3606,6 +3650,10 @@ msgstr ""
 
 #: src/i18n/errors.ts
 msgid "Schlüssel ohne Treffer im Ziel-Layer"
+msgstr ""
+
+#: src/model/log/words.ts
+msgid "Schlüsseltypen passen nicht"
 msgstr ""
 
 #: src/editor/describe.ts
@@ -4231,6 +4279,10 @@ msgstr ""
 msgid "Wert hinzufügen"
 msgstr ""
 
+#: src/model/log/words.ts
+msgid "Wert passt nicht zum Feld"
+msgstr ""
+
 #: src/admin/LayerPage.tsx
 #: src/admin/ProfilePage.tsx
 msgid "Wertebereich"
@@ -4351,12 +4403,24 @@ msgstr ""
 msgid "Zoomen"
 msgstr ""
 
+#: src/model/log/words.ts
+msgid "zu komplex"
+msgstr ""
+
+#: src/model/log/words.ts
+msgid "zu viele Bedingungen"
+msgstr ""
+
 #: src/i18n/errors.ts
 msgid "Zu viele fehlgeschlagene Anmeldungen. Bitte etwas warten und dann nochmals versuchen."
 msgstr ""
 
 #: src/i18n/errors.ts
 msgid "Zu viele hochgeladene Dateien warten auf ihren Import. Bitte zuerst einen abschliessen."
+msgstr ""
+
+#: src/model/log/words.ts
+msgid "zu viele Schritte"
 msgstr ""
 
 #: src/admin/AdminLayout.tsx

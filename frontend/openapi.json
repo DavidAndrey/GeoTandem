@@ -6711,7 +6711,7 @@
           "admin"
         ],
         "summary": "Export Csv",
-        "description": "CSV of the filtered log, prompt text included (D4); cells safe against\nformula injection (``model/record/export.py`` names the columns).",
+        "description": "CSV of the filtered log, prompt text included (D4); cells safe against\nformula injection (``model/record/export.py`` names the columns). Streamed\na row at a time; more than ``MAX_EXPORT_ROWS`` rows are refused (413).",
         "operationId": "export_csv_api_admin_model_actions_export_csv_get",
         "parameters": [
           {
@@ -6873,6 +6873,16 @@
               }
             },
             "description": "Not Implemented"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Content Too Large"
           }
         }
       }
@@ -11163,6 +11173,51 @@
             ],
             "title": "Decision"
           },
+          "reject_reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "misunderstood",
+                  "wrong_layer",
+                  "wrong_value",
+                  "other"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reject Reason"
+          },
+          "refusal_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "invalid_query",
+                  "unknown_layer",
+                  "unknown_attribute",
+                  "unsupported_operation",
+                  "query_too_complex",
+                  "invalid_query_geometry",
+                  "name_clash",
+                  "key_type_mismatch",
+                  "attribute_not_text",
+                  "attribute_not_numeric",
+                  "wrong_value_type",
+                  "model_query_invalid",
+                  "limit_exceeded",
+                  "not_representable",
+                  "step_limit"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refusal Code"
+          },
           "hits": {
             "anyOf": [
               {
@@ -11187,6 +11242,8 @@
           "locality",
           "status",
           "decision",
+          "reject_reason",
+          "refusal_code",
           "hits"
         ],
         "title": "ModelActionSummary",

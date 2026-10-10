@@ -458,6 +458,10 @@ class ModelActionSummary(BaseModel):
     locality: Locality
     status: ActionStatus
     decision: Decision | None
+    reject_reason: RejectReason | None
+    """The chip of a rejection (design M5.3), as the log's column shows it."""
+    refusal_code: RefusalCode | None
+    """Why the application refused the answer (design M3), as the log's column shows it."""
     hits: int | None
 
 

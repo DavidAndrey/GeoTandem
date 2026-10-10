@@ -22,6 +22,7 @@ export function KeyFigureRow({ figures }: { figures: KeyFigures }) {
                   title={figure.of && `${figure.share} ${figure.of}`}
                 >
                   {figure.share}
+                  {figure.of && <span className="sr-only"> {figure.of}</span>}
                 </span>
               )}
             </dd>

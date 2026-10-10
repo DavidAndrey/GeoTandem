@@ -5,6 +5,9 @@ import { api, type ModelLogFilter } from '../../api/client'
 
 export const PAGE = 50
 
+/** Rows of one CSV export, as ``api/model_log.py`` caps them (413 ``export_too_large``). */
+export const MAX_EXPORT_ROWS = 50_000
+
 export const logKeys = {
   list: (filter: ModelLogFilter, offset: number) =>
     ['admin', 'model-log', 'list', filter, offset] as const,
@@ -28,8 +31,9 @@ export const useKeyFigures = (filter: ModelLogFilter) =>
     placeholderData: keepPreviousData,
   })
 
-export const useLogEntry = (id: number) =>
-  useQuery({ queryKey: logKeys.entry(id), queryFn: () => api.admin.modelAction(id) })
+/** ``enabled`` false for an address that names no id: nothing is asked. */
+export const useLogEntry = (id: number, enabled = true) =>
+  useQuery({ queryKey: logKeys.entry(id), queryFn: () => api.admin.modelAction(id), enabled })
 
 /** The account's own entries, a page at a time; fetched while the dialog is open only. */
 export const useMyActions = (enabled: boolean) =>

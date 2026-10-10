@@ -9,9 +9,10 @@ import { Link, useSearchParams } from 'react-router'
 import { api, type Approach, type ModelLogFilter } from '../api/client'
 import { useConnections, useLevels } from '../api/queries'
 import { ErrorNotice, Loading } from '../components/ui'
+import { errorText } from '../i18n/errors'
 import { formatNumber } from '../i18n/locale'
 import { KeyFigureRow } from '../model/log/KeyFigureRow'
-import { PAGE, useKeyFigures, useModelLog } from '../model/log/queries'
+import { MAX_EXPORT_ROWS, PAGE, useKeyFigures, useModelLog } from '../model/log/queries'
 import {
   approachShort,
   approachText,
@@ -41,8 +42,10 @@ const readId = (value: string | null) => {
 
 export function ModelLogPage() {
   const [params, setParams] = useSearchParams()
-  // The period ends when the page opened, so the filter stays one cache key.
-  const [now] = useState(() => Date.now())
+  // The period ends when the page opened or a filter last changed: list pages,
+  // key figures and CSV then hold the same rows while new ones arrive, and the
+  // filter stays one cache key.
+  const [now, setNow] = useState(() => Date.now())
   const period = readPeriod(params.get('zeitraum'))
   const levelId = readId(params.get('stufe'))
   const connectionId = readId(params.get('anbindung'))
@@ -53,6 +56,7 @@ export function ModelLogPage() {
   const filter = useMemo<ModelLogFilter>(
     () => ({
       from: periodStart(period, now),
+      to: new Date(now).toISOString(),
       level_id: levelId,
       connection_id: connectionId,
       approach,
@@ -70,7 +74,10 @@ export function ModelLogPage() {
     const next = new URLSearchParams(params)
     if (value) next.set(key, value)
     else next.delete(key)
-    if (key !== 'ab') next.delete('ab')
+    if (key !== 'ab') {
+      next.delete('ab')
+      setNow(Date.now())
+    }
     setParams(next, { replace: true })
   }
 
@@ -79,6 +86,7 @@ export function ModelLogPage() {
   const first = formatNumber(shown ? offset + 1 : 0)
   const last = formatNumber(offset + shown)
   const all = formatNumber(total)
+  const tooLarge = total > MAX_EXPORT_ROWS
 
   return (
     <section aria-labelledby="model-log-title">
@@ -164,10 +172,26 @@ export function ModelLogPage() {
             <Trans>Konto {account}</Trans> ✕
           </button>
         )}
-        <a className="btn" href={api.admin.modelExportUrl(filter)} download>
-          <Trans>CSV</Trans>
-        </a>
+        {tooLarge ? (
+          <button
+            type="button"
+            className="btn"
+            disabled
+            title={errorText('export_too_large', { max: MAX_EXPORT_ROWS })}
+          >
+            <Trans>CSV</Trans>
+          </button>
+        ) : (
+          <a className="btn" href={api.admin.modelExportUrl(filter)} download>
+            <Trans>CSV</Trans>
+          </a>
+        )}
       </div>
+      {tooLarge && (
+        <p className="text-muted mb-2 text-xs">
+          {errorText('export_too_large', { max: MAX_EXPORT_ROWS })}
+        </p>
+      )}
       <ErrorNotice error={figures.error} />
       {figures.data && <KeyFigureRow figures={figures.data} />}
       {log.isPending && <Loading />}

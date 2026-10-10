@@ -449,6 +449,10 @@ msgstr "Abfrage · Ergebnis {title}"
 msgid "Abfrage · Ziel {target}"
 msgstr "Abfrage · Ziel {target}"
 
+#: src/model/log/words.ts
+msgid "Abfrage ausserhalb des Schemas"
+msgstr "Abfrage ausserhalb des Schemas"
+
 #: src/queries/SaveQueryDialog.tsx
 msgid "Abfrage speichern"
 msgstr "Abfrage speichern"
@@ -456,6 +460,10 @@ msgstr "Abfrage speichern"
 #: src/session/notice.ts
 msgid "Abfrage und Rezepte sind unverändert."
 msgstr "Abfrage und Rezepte sind unverändert."
+
+#: src/model/log/words.ts
+msgid "Abfrage ungültig"
+msgstr "Abfrage ungültig"
 
 #: src/editor/EditorPanel.tsx
 msgid "Abfrage-Editor"
@@ -1382,6 +1390,10 @@ msgid "Der Ergebnis-Layer fehlt"
 msgstr "Der Ergebnis-Layer fehlt"
 
 #: src/i18n/errors.ts
+msgid "Der Export umfasst mehr als {max} Einträge. Bitte den Zeitraum oder die Filter enger wählen."
+msgstr "Der Export umfasst mehr als {max} Einträge. Bitte den Zeitraum oder die Filter enger wählen."
+
+#: src/i18n/errors.ts
 msgid "Der gespeicherte Zugangsschlüssel geht nur an die bisherige Adresse. Für eine neue Adresse bitte den Schlüssel neu eintragen oder entfernen."
 msgstr "Der gespeicherte Zugangsschlüssel geht nur an die bisherige Adresse. Für eine neue Adresse bitte den Schlüssel neu eintragen oder entfernen."
 
@@ -2203,6 +2215,18 @@ msgstr "Feld …"
 msgid "Feld der Darstellung"
 msgstr "Feld der Darstellung"
 
+#: src/model/log/words.ts
+msgid "Feld ist kein Text"
+msgstr "Feld ist kein Text"
+
+#: src/model/log/words.ts
+msgid "Feld ist keine Zahl"
+msgstr "Feld ist keine Zahl"
+
+#: src/model/log/words.ts
+msgid "Feld nicht vorhanden"
+msgstr "Feld nicht vorhanden"
+
 #: src/admin/LayerPage.tsx
 #: src/admin/wizard.ts
 msgid "Felder"
@@ -2350,6 +2374,10 @@ msgstr "Geometrie"
 #: src/admin/ImportWizard.tsx
 msgid "Geometrie in der Datei"
 msgstr "Geometrie in der Datei"
+
+#: src/model/log/words.ts
+msgid "Geometrie ungültig"
+msgstr "Geometrie ungültig"
 
 #: src/admin/ImportRunPage.tsx
 msgid "Geometrien gebildet"
@@ -2920,6 +2948,10 @@ msgstr "Layer hinzufügen"
 msgid "Layer in der Datei"
 msgstr "Layer in der Datei"
 
+#: src/model/log/words.ts
+msgid "Layer nicht vorhanden"
+msgstr "Layer nicht vorhanden"
+
 #: src/admin/ImportWizard.tsx
 msgid "Layer öffnen"
 msgstr "Layer öffnen"
@@ -3194,6 +3226,10 @@ msgstr "Name (optional)"
 msgid "Name der Kennzahl"
 msgstr "Name der Kennzahl"
 
+#: src/model/log/words.ts
+msgid "Namenskonflikt"
+msgstr "Namenskonflikt"
+
 #: src/admin/CatalogPage.tsx
 #: src/editor/describe.ts
 #: src/editor/EditorPanel.tsx
@@ -3270,6 +3306,10 @@ msgstr "nicht am"
 #: src/admin/ConnectionsPage.tsx
 msgid "nicht bestanden"
 msgstr "nicht bestanden"
+
+#: src/model/log/words.ts
+msgid "nicht darstellbar"
+msgstr "nicht darstellbar"
 
 #: src/admin/ConnectionsPage.tsx
 msgid "nicht freigegeben"
@@ -3428,6 +3468,10 @@ msgstr "Ollama-Version"
 #: src/admin/ConnectionsPage.tsx
 msgid "OpenAI-kompatibel, mit /v1. Lokal sind 127.0.0.1, localhost, host.docker.internal und die Namen in GEOTANDEM_LLM_LOCAL_HOSTS; alles andere ist extern."
 msgstr "OpenAI-kompatibel, mit /v1. Lokal sind 127.0.0.1, localhost, host.docker.internal und die Namen in GEOTANDEM_LLM_LOCAL_HOSTS; alles andere ist extern."
+
+#: src/model/log/words.ts
+msgid "Operation nicht möglich"
+msgstr "Operation nicht möglich"
 
 #: src/editor/EditorPanel.tsx
 msgid "Operator"
@@ -3607,6 +3651,10 @@ msgstr "Schlüssel in der Tabelle"
 #: src/i18n/errors.ts
 msgid "Schlüssel ohne Treffer im Ziel-Layer"
 msgstr "Schlüssel ohne Treffer im Ziel-Layer"
+
+#: src/model/log/words.ts
+msgid "Schlüsseltypen passen nicht"
+msgstr "Schlüsseltypen passen nicht"
 
 #: src/editor/describe.ts
 #: src/operations/OperationDialog.tsx
@@ -4231,6 +4279,10 @@ msgstr "Wert"
 msgid "Wert hinzufügen"
 msgstr "Wert hinzufügen"
 
+#: src/model/log/words.ts
+msgid "Wert passt nicht zum Feld"
+msgstr "Wert passt nicht zum Feld"
+
 #: src/admin/LayerPage.tsx
 #: src/admin/ProfilePage.tsx
 msgid "Wertebereich"
@@ -4351,6 +4403,14 @@ msgstr "Ziel-Layer wechseln setzt Attribut-Bedingungen zurück."
 msgid "Zoomen"
 msgstr "Zoomen"
 
+#: src/model/log/words.ts
+msgid "zu komplex"
+msgstr "zu komplex"
+
+#: src/model/log/words.ts
+msgid "zu viele Bedingungen"
+msgstr "zu viele Bedingungen"
+
 #: src/i18n/errors.ts
 msgid "Zu viele fehlgeschlagene Anmeldungen. Bitte etwas warten und dann nochmals versuchen."
 msgstr "Zu viele fehlgeschlagene Anmeldungen. Bitte etwas warten und dann nochmals versuchen."
@@ -4358,6 +4418,10 @@ msgstr "Zu viele fehlgeschlagene Anmeldungen. Bitte etwas warten und dann nochma
 #: src/i18n/errors.ts
 msgid "Zu viele hochgeladene Dateien warten auf ihren Import. Bitte zuerst einen abschliessen."
 msgstr "Zu viele hochgeladene Dateien warten auf ihren Import. Bitte zuerst einen abschliessen."
+
+#: src/model/log/words.ts
+msgid "zu viele Schritte"
+msgstr "zu viele Schritte"
 
 #: src/admin/AdminLayout.tsx
 msgid "Zugang"

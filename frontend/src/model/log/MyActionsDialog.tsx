@@ -16,7 +16,13 @@ const setOpen = (open: boolean) => useMyActionsDialog.setState({ open })
 export function MyActionsDialog() {
   const open = useMyActionsDialog((s) => s.open)
   const mine = useMyActions(open)
-  const items = mine.data?.pages.flatMap((page) => page.items) ?? []
+  // A page asked later starts at an offset: entries that arrived meanwhile push
+  // older ones onto it again. Each entry once, where it first appeared.
+  const items = [
+    ...new Map(
+      (mine.data?.pages.flatMap((page) => page.items) ?? []).map((e) => [e.id, e] as const),
+    ).values(),
+  ]
   return (
     <Modal
       open={open}

@@ -10,13 +10,15 @@ from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Response
+from fastapi.responses import StreamingResponse
 
 from geotandem.api.auth import require_admin
+from geotandem.api.errors import ErrorBody, Problem
 from geotandem.api.model import ERRORS
 from geotandem.api.state import AppState, get_state
 from geotandem.auth.accounts import Account
 from geotandem.model.record import ActionFilters, ModelActionStore
-from geotandem.model.record.export import to_csv
+from geotandem.model.record.export import csv_lines
 from geotandem.model.schemas import (
     MAX_PAGE,
     Approach,
@@ -30,6 +32,14 @@ router = APIRouter(
 )
 
 Admin = Annotated[Account, Depends(require_admin)]
+
+MAX_EXPORT_ROWS = 50_000
+"""Rows of one CSV export; repeated in ``frontend/src/model/log/queries.ts``."""
+
+
+class ExportTooLarge(Problem):
+    status = 413
+    code = "export_too_large"
 
 
 def action_store(state: Annotated[AppState, Depends(get_state)]) -> ModelActionStore:
@@ -101,17 +111,24 @@ def key_figures(filters: Filtered, admin: Admin, store: Store) -> KeyFigures:
 
 @router.get(
     "/export.csv",
-    responses={**ERRORS, 200: {"content": {"text/csv": {}}}},
+    responses={**ERRORS, 413: {"model": ErrorBody}, 200: {"content": {"text/csv": {}}}},
     response_class=Response,
 )
 def export_csv(filters: Filtered, admin: Admin, store: Store) -> Response:
     """CSV of the filtered log, prompt text included (D4); cells safe against
-    formula injection (``model/record/export.py`` names the columns)."""
-    body = to_csv(store.export(admin, filters.for_store()))
+    formula injection (``model/record/export.py`` names the columns). Streamed
+    a row at a time; more than ``MAX_EXPORT_ROWS`` rows are refused (413)."""
+    chosen = filters.for_store()
+    rows = store.count(admin, chosen)
+    if rows > MAX_EXPORT_ROWS:
+        raise ExportTooLarge(
+            f"The export would hold {rows} rows, more than {MAX_EXPORT_ROWS}; narrow the filters.",
+            max=MAX_EXPORT_ROWS,
+            rows=rows,
+        )
     day = datetime.now(UTC).date().isoformat()
-    return Response(
-        # With a byte order mark, so a spreadsheet reads the umlauts as UTF-8.
-        content="﻿" + body,
+    return StreamingResponse(
+        csv_lines(store.export(admin, chosen, limit=MAX_EXPORT_ROWS)),
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="modellprotokoll-{day}.csv"'},
     )

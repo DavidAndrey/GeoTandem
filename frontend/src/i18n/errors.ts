@@ -177,6 +177,10 @@ const MESSAGES: Record<string, Words> = {
     const max = number(d.max_s)
     return t`Die Werkzeugkette lief länger als ${max} Sekunden und wurde angehalten.`
   },
+  export_too_large: (d) => {
+    const max = number(d.max)
+    return t`Der Export umfasst mehr als ${max} Einträge. Bitte den Zeitraum oder die Filter enger wählen.`
+  },
   // Model connections
   connection_name_taken: (d) => {
     const name = text(d.name)

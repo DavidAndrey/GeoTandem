@@ -36,18 +36,50 @@ const REASONS: Record<NonNullable<ModelActionView['reject_reason']>, MessageDesc
 export const reasonText = (reason: NonNullable<ModelActionView['reject_reason']>) =>
   i18n._(REASONS[reason])
 
+type RefusalCode = NonNullable<ModelActionSummary['refusal_code']>
+
+/** Why the application refused an answer (design M3), in a few words for a table cell. */
+const REFUSALS: Record<RefusalCode, MessageDescriptor> = {
+  invalid_query: msg`Abfrage ungültig`,
+  unknown_layer: msg`Layer nicht vorhanden`,
+  unknown_attribute: msg`Feld nicht vorhanden`,
+  unsupported_operation: msg`Operation nicht möglich`,
+  query_too_complex: msg`zu komplex`,
+  invalid_query_geometry: msg`Geometrie ungültig`,
+  name_clash: msg`Namenskonflikt`,
+  key_type_mismatch: msg`Schlüsseltypen passen nicht`,
+  attribute_not_text: msg`Feld ist kein Text`,
+  attribute_not_numeric: msg`Feld ist keine Zahl`,
+  wrong_value_type: msg`Wert passt nicht zum Feld`,
+  model_query_invalid: msg`Abfrage ausserhalb des Schemas`,
+  limit_exceeded: msg`zu viele Bedingungen`,
+  not_representable: msg`nicht darstellbar`,
+  step_limit: msg`zu viele Schritte`,
+}
+
+export const refusalText = (code: RefusalCode) => i18n._(REFUSALS[code])
+
 const UNDONE = msg`zurückgenommen`
+
+type Outcome = Pick<ModelActionSummary, 'status' | 'decision'> &
+  Partial<Pick<ModelActionSummary, 'reject_reason' | 'refusal_code'>>
 
 /**
  * How an entry ended, as the log's column "Entscheidung" says it: the decision
- * ("auto angewendet · zurückgenommen"), else what the record is (refused,
- * answered without a proposal, still open).
+ * ("auto angewendet · zurückgenommen", "abgelehnt · falscher Wert"), else what
+ * the record is ("abgewiesen · Layer nicht vorhanden", answered without a
+ * proposal, still open).
  */
-export function outcomeText(entry: Pick<ModelActionSummary, 'status' | 'decision'>): string {
-  if (entry.decision) {
-    const decision = decisionText(entry.decision)
-    return entry.status === 'undone' ? `${decision} · ${i18n._(UNDONE)}` : decision
-  }
+export function outcomeText(entry: Outcome): string {
+  const parts = [baseOutcome(entry)]
+  if (entry.status === 'undone') parts.push(i18n._(UNDONE))
+  if (entry.reject_reason) parts.push(reasonText(entry.reject_reason))
+  if (entry.refusal_code) parts.push(refusalText(entry.refusal_code))
+  return parts.join(' · ')
+}
+
+function baseOutcome(entry: Outcome): string {
+  if (entry.decision) return decisionText(entry.decision)
   switch (entry.status) {
     case 'refused':
       return t`abgewiesen`
@@ -60,13 +92,9 @@ export function outcomeText(entry: Pick<ModelActionSummary, 'status' | 'decision
   }
 }
 
-/** The whole outcome of a record, with the reason chip of a rejection or the refusal's code. */
-export function entryOutcome(view: ModelActionView): string {
-  const outcome = outcomeText(view)
-  if (view.reject_reason) return `${outcome} · ${reasonText(view.reject_reason)}`
-  if (view.refusal) return `${outcome} · ${view.refusal.code}`
-  return outcome
-}
+/** The outcome of a full record, as the list says it. */
+export const entryOutcome = (view: ModelActionView) =>
+  outcomeText({ ...view, refusal_code: view.refusal?.code ?? null })
 
 export const approachText = (approach: Approach) =>
   approach === 'chain' ? t`Werkzeugkette` : t`Direktabfrage`

@@ -229,6 +229,8 @@ def _summary(row: ModelAction) -> ModelActionSummary:
         locality=row.connection_locality,
         status=row.status,
         decision=row.decision,
+        reject_reason=row.reject_reason,
+        refusal_code=(row.refusal or {}).get("code"),
         hits=row.stamp["count"] if row.stamp else None,
     )
 
@@ -375,23 +377,52 @@ class ModelActionStore:
             )
             return ModelActionPage(items=[_summary(row) for row in rows], total=total or 0)
 
+    def count(
+        self,
+        caller: Account,
+        filters: ActionFilters = ActionFilters(),  # noqa: B008 - frozen
+    ) -> int:
+        """How many records the filters hold for the caller (D4)."""
+        stmt = select(func.count()).select_from(ModelAction).where(*self._where(caller, filters))
+        with Session(reading(self.engine)) as db:
+            return db.scalar(stmt) or 0
+
     def export(
         self,
         caller: Account,
         filters: ActionFilters = ActionFilters(),  # noqa: B008 - frozen
+        *,
+        limit: int | None = None,
+        chunk: int = 500,
     ) -> Iterator[ModelActionView]:
-        """Every record of the filters as a full view, newest first, for the CSV
-        of the log (WP73); the same visibility as the list (D4). Read in batches,
-        so a long period does not hold every record at once."""
-        with Session(reading(self.engine)) as db:
-            rows = db.scalars(
-                select(ModelAction)
-                .where(*self._where(caller, filters))
-                .order_by(ModelAction.created_at.desc(), ModelAction.id.desc())
-                .execution_options(yield_per=500)
-            )
-            for row in rows:
-                yield to_view(row)
+        """Every record of the filters as a full view, newest first, at most
+        ``limit``, for the CSV of the log (WP73); the same visibility as the list
+        (D4). Read ``chunk`` records at a time, each chunk in a session of its own
+        that is closed before its records are handed on (keyset paging on time
+        and id), so a slow reader of the CSV holds no database session."""
+        where = self._where(caller, filters)
+        newest_first = (ModelAction.created_at.desc(), ModelAction.id.desc())
+        after: tuple[datetime, int] | None = None
+        left = limit
+        while left is None or left > 0:
+            size = chunk if left is None else min(chunk, left)
+            stmt = select(ModelAction).where(*where)
+            if after is not None:
+                at, last = after
+                stmt = stmt.where(
+                    (ModelAction.created_at < at)
+                    | ((ModelAction.created_at == at) & (ModelAction.id < last))
+                )
+            with Session(reading(self.engine)) as db:
+                views = [
+                    to_view(row) for row in db.scalars(stmt.order_by(*newest_first).limit(size))
+                ]
+            yield from views
+            if len(views) < size:
+                return
+            after = (views[-1].created_at, views[-1].id)
+            if left is not None:
+                left -= len(views)
 
     def key_figures(
         self,
