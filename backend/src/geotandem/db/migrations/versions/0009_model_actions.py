@@ -43,6 +43,8 @@ def upgrade() -> None:
         sa.Column("reject_reason", sa.String(length=16), nullable=True),
         sa.Column("applied_by_hand", sa.Boolean(), server_default=sa.false(), nullable=False),
         sa.Column("undone_at", sa.DateTime(), nullable=True),
+        # A hand edit of the analysis reported after the action: undo is over (WP70).
+        sa.Column("touched_at", sa.DateTime(), nullable=True),
         sa.Column("previewed_at", sa.DateTime(), nullable=True),
         sa.Column("parent_action_id", sa.Integer(), nullable=True),
         sa.Column("reference", sa.String(length=16), server_default="none", nullable=False),

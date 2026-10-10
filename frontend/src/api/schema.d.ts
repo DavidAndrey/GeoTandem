@@ -965,7 +965,8 @@ export interface paths {
      *     here (H6, C17). Stores the action record and answers at once with it,
      *     ``thinking``; the client polls ``GET /actions/{id}`` and may abort. No
      *     result data: an ``auto`` answer arrives ``approved`` and the client
-     *     executes it (D2). In E2.3 every answer is a proposal (P1). One prompt of an
+     *     executes it (D2); one with an ``off`` class is a proposal the user applies
+     *     by hand (D1). Closes the account's open record (WP70). One prompt of an
      *     account at a time (409 ``busy``); all model calls at once are bounded
      *     (503 ``busy``).
      */
@@ -1006,8 +1007,9 @@ export interface paths {
     }
     /**
      * Preview
-     * @description Count and ids of the stored query, for the user only (P2): an interactive
-     *     session, no class ``off``, status unchanged.
+     * @description Count, the result layer's total and ids of the stored query, for the user
+     *     only (P2): an interactive session (``session_required`` for any token), no
+     *     class ``off`` (``class_not_allowed``), status unchanged.
      */
     get: operations['preview_api_model_actions__action_id__preview_get']
     put?: never
@@ -1051,7 +1053,7 @@ export interface paths {
     /**
      * Approve
      * @description Refused with ``class_not_allowed`` when a class is ``off`` at the level as
-     *     it was (D1, D2).
+     *     it was (D1, D2, M7.3); only ``proposed``.
      */
     post: operations['approve_api_model_actions__action_id__approve_post']
     delete?: never
@@ -1069,7 +1071,10 @@ export interface paths {
     }
     get?: never
     put?: never
-    /** Reject */
+    /**
+     * Reject
+     * @description Only ``proposed``; with the optional reason chip (design M5.3).
+     */
     post: operations['reject_api_model_actions__action_id__reject_post']
     delete?: never
     options?: never
@@ -1089,7 +1094,8 @@ export interface paths {
     /**
      * Execute
      * @description Run the stored query, never a sent one (the route takes no body); only
-     *     ``approved``, by the user or by an ``auto`` cell (D2). The one answer with rows.
+     *     ``approved``, by the user or by an ``auto`` cell (D2): else ``not_approved``,
+     *     and ``already_decided`` once it ran. The one answer with rows.
      */
     post: operations['execute_api_model_actions__action_id__execute_post']
     delete?: never
@@ -1109,7 +1115,9 @@ export interface paths {
     put?: never
     /**
      * Undo
-     * @description For the log: the client restores the analysis itself (D2).
+     * @description For the log: the client restores the analysis itself (D2). Only the
+     *     account's last change made by the model, and ``undo_blocked`` once a hand
+     *     edit after it was reported (``touched``).
      */
     post: operations['undo_api_model_actions__action_id__undo_post']
     delete?: never
@@ -1129,7 +1137,8 @@ export interface paths {
     put?: never
     /**
      * Touched
-     * @description The analysis was changed by hand after this action: undo is over (design rule 7).
+     * @description The analysis was changed by hand after this applied action: undo is over
+     *     (design rule 7). Reporting it again changes nothing.
      */
     post: operations['touched_api_model_actions__action_id__touched_post']
     delete?: never
@@ -8930,6 +8939,15 @@ export interface operations {
           'application/json': components['schemas']['ErrorBody']
         }
       }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
       /** @description Not Found */
       404: {
         headers: {
@@ -8948,6 +8966,15 @@ export interface operations {
           'application/json': components['schemas']['ErrorBody']
         }
       }
+      /** @description Content Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
       /** @description Unprocessable Content */
       422: {
         headers: {
@@ -8959,6 +8986,24 @@ export interface operations {
       }
       /** @description Not Implemented */
       501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Gateway Timeout */
+      504: {
         headers: {
           [name: string]: unknown
         }
@@ -9224,6 +9269,15 @@ export interface operations {
           'application/json': components['schemas']['ErrorBody']
         }
       }
+      /** @description Content Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
       /** @description Unprocessable Content */
       422: {
         headers: {
@@ -9235,6 +9289,24 @@ export interface operations {
       }
       /** @description Not Implemented */
       501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Gateway Timeout */
+      504: {
         headers: {
           [name: string]: unknown
         }

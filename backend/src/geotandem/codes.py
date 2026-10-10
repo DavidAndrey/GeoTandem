@@ -22,6 +22,7 @@ CODES: dict[str, str] = {
     "not_authenticated": "Not signed in, or the sign-in failed.",
     "password_change_required": "The start password must be changed first.",
     "forbidden": "The account's role does not allow this.",
+    "session_required": "Only an interactive session may do this; a token is refused.",
     "cross_origin": "Requests from other sites are not accepted.",
     "setup_closed": "The application is already set up.",
     "setup_token_invalid": "The setup code is wrong.",

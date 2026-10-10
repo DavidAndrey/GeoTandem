@@ -45,6 +45,11 @@ class Forbidden(Problem):
     code = "forbidden"
 
 
+class SessionRequired(Problem):
+    status = 403
+    code = "session_required"
+
+
 class SetupClosed(Problem):
     status = 409
     code = "setup_closed"
@@ -96,8 +101,19 @@ def login_token(request: Request, state: AppState) -> str | None:
     return request.cookies.get(sessions.cookie_name(_secure(request, state)))
 
 
+SESSION = "session"
+"""The credential of a person signed in through the login cookie."""
+
+
 def signed_in(request: Request, state: State) -> Account | None:
-    return sessions.resolve(state.backend.engine, login_token(request, state), lifetime(state))
+    """The account of the login cookie. Notes on the request how it signed in
+    (``request.state.credential``): the login cookie is the only credential
+    today; one added later (a model's or an MCP client's token, E4) notes its
+    own, so a route only for people (``require_interactive``) can tell."""
+    account = sessions.resolve(state.backend.engine, login_token(request, state), lifetime(state))
+    if account is not None:
+        request.state.credential = SESSION
+    return account
 
 
 def require_session(account: Annotated[Account | None, Depends(signed_in)]) -> Account:
@@ -123,6 +139,21 @@ def require_admin(account: Annotated[Account, Depends(require_account)]) -> Acco
 
 CurrentAccount = Annotated[Account, Depends(require_account)]
 CurrentSession = Annotated[Account, Depends(require_session)]
+
+
+def require_interactive(request: Request, account: CurrentAccount) -> Account:
+    """A person at the application, not a program acting for them (plan E2.3-E2.6,
+    P2, F-6.7): signed in through the login cookie and sending no other
+    credential. Any other credential is refused, whatever account it stands
+    for, and so is a request that carries an ``Authorization`` header beside the
+    cookie, the place a model or MCP token travels in (E4)."""
+    credential = getattr(request.state, "credential", None)
+    if credential != SESSION or "authorization" in request.headers:
+        raise SessionRequired("This needs an interactive session; a token is not accepted here.")
+    return account
+
+
+InteractiveAccount = Annotated[Account, Depends(require_interactive)]
 
 
 async def hashing_slot(state: State) -> AsyncIterator[None]:

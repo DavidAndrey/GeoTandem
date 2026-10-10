@@ -100,6 +100,7 @@
   "request_too_large": "The request exceeds details.max_mb.",
   "result_too_large": "More features than max_features would leave the server.",
   "schema_violation": "The body does not match the schema; details.errors lists where.",
+  "session_required": "Only an interactive session may do this; a token is refused.",
   "setup_closed": "The application is already set up.",
   "setup_token_invalid": "The setup code is wrong.",
   "single_column": "Only one column; the delimiter may be wrong.",
