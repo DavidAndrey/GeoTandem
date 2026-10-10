@@ -182,7 +182,7 @@ test('the request limit: a switch, and a number enabled and required only while 
   })
 })
 
-test('switching the limit off sends no threshold; an untouched limit is not sent', async () => {
+test('switching the limit off sends the switch alone: the backend keeps the threshold', async () => {
   const limited = { ...cloud, request_limit_enabled: true, request_limit_per_day: 50 }
   const calls = fakeApi({
     ...signedIn(),
@@ -201,10 +201,7 @@ test('switching the limit off sends no threshold; an untouched limit is not sent
   expect(perDay).toBeDisabled()
   await userEvent.click(within(form).getByRole('button', { name: 'Speichern' }))
   await vi.waitFor(() => expect(bodiesOf(calls, `PATCH ${URL}/2`)).toHaveLength(1))
-  expect(bodiesOf(calls, `PATCH ${URL}/2`)[0]).toEqual({
-    request_limit_enabled: false,
-    request_limit_per_day: null,
-  })
+  expect(bodiesOf(calls, `PATCH ${URL}/2`)[0]).toEqual({ request_limit_enabled: false })
 })
 
 test('data release to an external connection asks for confirmation naming the host', async () => {

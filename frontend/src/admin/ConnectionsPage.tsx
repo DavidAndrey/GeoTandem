@@ -25,18 +25,6 @@ import { formatDateTime } from './format'
 
 const EFFORTS: Effort[] = ['default', 'none', 'low', 'medium', 'high']
 
-// The request limit per connection (plan P5): an administrator's decision,
-// off by default; the threshold is required while it is on.
-interface RequestLimit {
-  request_limit_enabled: boolean
-  request_limit_per_day: number | null
-}
-type Connection = ConnectionInfo
-const limitOf = (c: Connection): RequestLimit => ({
-  request_limit_enabled: c.request_limit_enabled,
-  request_limit_per_day: c.request_limit_per_day ?? null,
-})
-
 const effortLabel = (e: Effort | '') =>
   ({
     '': t`nach Art (lokal: none, extern: default)`,
@@ -174,7 +162,7 @@ const blank: Form = {
   limit_per_day: '',
 }
 
-const fromConnection = (c: Connection): Form => ({
+const fromConnection = (c: ConnectionInfo): Form => ({
   ...blank,
   name: c.name,
   base_url: c.base_url,
@@ -188,15 +176,19 @@ const fromConnection = (c: Connection): Form => ({
   is_default: c.is_default,
   may_receive_data: c.may_receive_data,
   marked_external: c.marked_external,
-  limit_enabled: limitOf(c).request_limit_enabled,
-  limit_per_day: String(limitOf(c).request_limit_per_day ?? ''),
+  limit_enabled: c.request_limit_enabled,
+  limit_per_day: String(c.request_limit_per_day ?? ''),
 })
 
-/** Off: no threshold is kept; on: the threshold the field holds (P5). */
-const requestLimit = (f: Form): RequestLimit => ({
-  request_limit_enabled: f.limit_enabled,
-  request_limit_per_day: f.limit_enabled ? optionalNumber(f.limit_per_day) : null,
-})
+/**
+ * The request limit per connection (plan P5): an administrator's decision, off
+ * by default; the threshold is required while it is on. Switched off, the
+ * switch alone is sent: the backend keeps the threshold for the next time on.
+ */
+const requestLimit = (f: Form) =>
+  f.limit_enabled
+    ? { request_limit_enabled: true, request_limit_per_day: optionalNumber(f.limit_per_day) }
+    : { request_limit_enabled: false }
 
 const hostOf = (url: string) => {
   try {
@@ -219,7 +211,7 @@ const parameters = (f: Form) => ({
 })
 
 function createBody(f: Form): ConnectionWrite {
-  const body: ConnectionWrite & RequestLimit = {
+  return {
     ...parameters(f),
     name: f.name,
     api_key: f.api_key || undefined,
@@ -230,10 +222,9 @@ function createBody(f: Form): ConnectionWrite {
     confirm_data_release: false,
     ...requestLimit(f),
   }
-  return body
 }
 
-function patchBody(f: Form, c: Connection): ConnectionPatch {
+function patchBody(f: Form, c: ConnectionInfo): ConnectionPatch {
   const next = {
     ...parameters(f),
     name: f.name,
@@ -242,14 +233,11 @@ function patchBody(f: Form, c: Connection): ConnectionPatch {
     enabled: f.enabled,
     is_default: f.is_default,
     may_receive_data: f.may_receive_data,
+    ...requestLimit(f),
   }
   const patch: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(next))
-    if (value !== c[key as keyof ConnectionInfo]) patch[key] = value
-  const limit = requestLimit(f)
-  const before = limitOf(c)
-  for (const key of Object.keys(limit) as (keyof RequestLimit)[])
-    if (limit[key] !== before[key]) patch[key] = limit[key]
+    if (value !== (c[key as keyof ConnectionInfo] ?? null)) patch[key] = value
   if (f.api_key) patch.api_key = f.api_key
   else if (f.remove_key) patch.api_key = null
   if (f.confirm_data_release) patch.confirm_data_release = true
