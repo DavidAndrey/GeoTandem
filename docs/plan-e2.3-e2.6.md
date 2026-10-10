@@ -194,6 +194,16 @@ Legend — **Deps**: WPs that must be merged first. **Parallel with**: safe to r
 - Offline proof: the model stub is the only reachable host.
 
 #### Gate E2.3
+**Passed 2026-10-10** on `ep-2.3-6` (tag `e2.3`), run in a Linux container on a Windows host through `GATE_RUNNER_CONTAINER`, Playwright with one worker:
+- lint clean; backend tests all green; frontend 421/422 (the one failure is `src/i18n/locale.test.ts`, which fails the same way on main in that container); `make audit` clean;
+- image, first start, both Playwright passes 45 passed and 1 skipped (E2.1 with a local model), restart;
+- etappe review with findings fixed and re-reviewed (`e23-gate-fixes`).
+
+Open from the gate list (5.2):
+- the run on a Linux host (`make gate`, default workers);
+- the real-model run (`GATE_LLM_MODEL`);
+- the design walk against the screenshots (5.5, E2.3 states).
+
 See section 5.2. Entry: WP62–WP69 merged. Done-when (etappen.md): one prompt produces the same query object that was built by hand in E1; no write operation passes on this path.
 
 ### Etappe E2.4 — Enforcement
