@@ -50,11 +50,16 @@ export function ModelChoice() {
         className="btn flex items-center gap-2 text-sm font-normal"
         aria-label={t`Modellunterstützung wählen`}
       >
-        {connection && (
+        {connection ? (
           <>
             <span>{connection.name}</span>
             <LocalityBadge locality={connection.locality} host={connection.host} />
           </>
+        ) : (
+          // Connections exist, none is active for this account (design M1.3).
+          <span className="text-muted">
+            <Trans>Keine Modellanbindung</Trans>
+          </span>
         )}
         <span className="text-muted">·</span>
         <span>{t`Stufe: ${levelName}`}</span>
