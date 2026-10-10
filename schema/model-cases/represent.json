@@ -1,6 +1,69 @@
 {
-  "_about": "Shared cases of to_analysis (plan E2.3-E2.6, D3, WP64; the TypeScript inverse of WP80 must agree). A query is representable exactly when to_analysis finds an analysis and resultQuery of that analysis (frontend/src/analysis/query.ts) has the query's canonical form. 'analysis' is the query part of the frontend state (QueryPart of analysis/model.ts: result, tree, restriction) plus the result layer's symbology; node ids are left out and not compared. Where several analyses give one query, to_analysis picks: the root is an 'and' group, never negated, an 'and' at the top gives the root's children; the restriction is the last of exactly two 'and' arguments at the top, or the whole 'where'; 'not' of 'within' is 'outside', of 'dwithin' 'far', otherwise 'not' sets the node's flag and an already negated node is wrapped in a negated group of one; 'and' of a 'ge' and a 'le' compare on one attribute with ISO dates in order is one date range row. 'part' of a case that is not representable names the first top-level field (in schema order) or condition op the controls cannot show; it is the refusal's details.part.",
+  "_about": "Shared cases of to_analysis (plan E2.3-E2.6, D3, WP64; the TypeScript inverse of WP80 must agree). INPUTS of every case: its 'query' and the top-level 'catalog' (kind and field types per layer, as the controls know them from the layer list; modelled on the sample data, with date fields added). A query is representable exactly when to_analysis finds an analysis and resultQuery of that analysis (frontend/src/analysis/query.ts) has the query's canonical form. 'analysis' is the query part of the frontend state (QueryPart of analysis/model.ts: result, tree, restriction) plus the result layer's symbology; node ids are left out and not compared. The controls' limits: the result is a vector layer; a row names a field of its layer with an operator operatorsFor (editor/describe.ts) offers for the field's type, a number range only on a number field, a date range only on a date field; a relation or reference names another vector layer, never the result layer; a relation's filter is one attribute row of the related layer, never negated (no NICHT toggle there). Where several analyses give one query, to_analysis picks: the root is an 'and' group, never negated, an 'and' at the top gives the root's children; the restriction is the last of exactly two 'and' arguments at the top, or the whole 'where'; 'not' of 'within' is 'outside', of 'dwithin' 'far', otherwise 'not' sets the node's flag and an already negated node is wrapped in a negated group of one; 'and' of a 'ge' and a 'le' compare on one date field with ISO dates in order is one date range row. 'conditions' is the count the limit of the model path uses (MAX_CONDITIONS 8, also for a follow-up's analysis, P6): one per row of the tree (an attribute row, a date range row, a relation with its filter, a reference row) and one for a restriction; groups, and, or, not count nothing. 'part' of a case that is not representable names the first top-level field (in schema order) or condition op the controls cannot show; it is the refusal's details.part.",
   "version": 1,
+  "catalog": {
+    "schulen": {
+      "kind": "vector",
+      "attributes": {
+        "name": "text",
+        "gem_nr": "integer",
+        "typ": "text",
+        "kindergarten": "boolean",
+        "primarstufe": "boolean",
+        "sekundarstufe": "boolean",
+        "sprache": "text",
+        "standorte": "integer",
+        "eroeffnet": "date"
+      }
+    },
+    "strassen": {
+      "kind": "vector",
+      "attributes": {
+        "name": "text",
+        "klasse": "text"
+      }
+    },
+    "gemeinden": {
+      "kind": "vector",
+      "attributes": {
+        "gem_nr": "integer",
+        "name": "text",
+        "gegruendet": "date"
+      }
+    },
+    "gemeinden_steuern": {
+      "kind": "vector",
+      "attributes": {
+        "gem_nr": "integer",
+        "steueranlage": "real"
+      }
+    },
+    "gewaesser": {
+      "kind": "vector",
+      "attributes": {
+        "name": "text",
+        "typ": "text"
+      }
+    },
+    "haltestellen": {
+      "kind": "vector",
+      "attributes": {
+        "name": "text",
+        "verkehrsmittel": "text",
+        "kategorie": "text",
+        "einwohner": "integer",
+        "arbeitsplaetze": "integer"
+      }
+    },
+    "gemeindedaten": {
+      "kind": "table",
+      "attributes": {
+        "gem_nr": "integer",
+        "steueranlage": "real",
+        "einwohner": "integer"
+      }
+    }
+  },
   "representable": [
     {
       "id": "reference",
@@ -103,7 +166,8 @@
         },
         "restriction": null,
         "symbology": null
-      }
+      },
+      "conditions": 3
     },
     {
       "id": "no_condition",
@@ -121,7 +185,8 @@
         },
         "restriction": null,
         "symbology": null
-      }
+      },
+      "conditions": 0
     },
     {
       "id": "one_compare",
@@ -157,7 +222,8 @@
         },
         "restriction": null,
         "symbology": null
-      }
+      },
+      "conditions": 1
     },
     {
       "id": "boolean_value",
@@ -191,7 +257,8 @@
         },
         "restriction": null,
         "symbology": null
-      }
+      },
+      "conditions": 1
     },
     {
       "id": "or_group",
@@ -254,7 +321,8 @@
         },
         "restriction": null,
         "symbology": null
-      }
+      },
+      "conditions": 2
     },
     {
       "id": "nested_groups",
@@ -371,7 +439,8 @@
         },
         "restriction": null,
         "symbology": null
-      }
+      },
+      "conditions": 4
     },
     {
       "id": "negated_compare",
@@ -408,7 +477,8 @@
         },
         "restriction": null,
         "symbology": null
-      }
+      },
+      "conditions": 1
     },
     {
       "id": "double_negation",
@@ -456,7 +526,8 @@
         },
         "restriction": null,
         "symbology": null
-      }
+      },
+      "conditions": 1
     },
     {
       "id": "has_a_value",
@@ -491,7 +562,8 @@
         },
         "restriction": null,
         "symbology": null
-      }
+      },
+      "conditions": 1
     },
     {
       "id": "numeric_range",
@@ -526,7 +598,8 @@
         },
         "restriction": null,
         "symbology": null
-      }
+      },
+      "conditions": 1
     },
     {
       "id": "date_range",
@@ -571,11 +644,12 @@
         },
         "restriction": null,
         "symbology": null
-      }
+      },
+      "conditions": 1
     },
     {
-      "id": "text_bounds_are_two_rows",
-      "note": "ge and le on text that is not an ISO date: two rows, not a date range",
+      "id": "integer_bounds_are_two_rows",
+      "note": "ge and le on a number field: two rows, not a date range",
       "query": {
         "source": "schulen",
         "where": {
@@ -583,15 +657,15 @@
           "args": [
             {
               "op": "compare",
-              "attr": "name",
+              "attr": "standorte",
               "cmp": "ge",
-              "value": "A"
+              "value": 2
             },
             {
               "op": "compare",
-              "attr": "name",
+              "attr": "standorte",
               "cmp": "le",
-              "value": "M"
+              "value": 4
             }
           ]
         }
@@ -606,9 +680,9 @@
             {
               "kind": "attribute",
               "not": false,
-              "attr": "name",
+              "attr": "standorte",
               "operator": "ge",
-              "value": "A",
+              "value": 2,
               "min": null,
               "max": null,
               "values": []
@@ -616,9 +690,9 @@
             {
               "kind": "attribute",
               "not": false,
-              "attr": "name",
+              "attr": "standorte",
               "operator": "le",
-              "value": "M",
+              "value": 4,
               "min": null,
               "max": null,
               "values": []
@@ -627,7 +701,8 @@
         },
         "restriction": null,
         "symbology": null
-      }
+      },
+      "conditions": 2
     },
     {
       "id": "text_match",
@@ -682,7 +757,8 @@
         },
         "restriction": null,
         "symbology": null
-      }
+      },
+      "conditions": 2
     },
     {
       "id": "outside_and_far",
@@ -738,7 +814,8 @@
         },
         "restriction": null,
         "symbology": null
-      }
+      },
+      "conditions": 2
     },
     {
       "id": "negated_outside",
@@ -776,7 +853,8 @@
         },
         "restriction": null,
         "symbology": null
-      }
+      },
+      "conditions": 1
     },
     {
       "id": "intersects_and_contains_with_filters",
@@ -790,13 +868,10 @@
               "layer": "gewaesser",
               "predicate": "intersects",
               "where": {
-                "op": "not",
-                "arg": {
-                  "op": "compare",
-                  "attr": "typ",
-                  "cmp": "eq",
-                  "value": "bach"
-                }
+                "op": "compare",
+                "attr": "typ",
+                "cmp": "ne",
+                "value": "bach"
               }
             },
             {
@@ -839,9 +914,9 @@
               "distance_m": null,
               "filter": {
                 "kind": "attribute",
-                "not": true,
+                "not": false,
                 "attr": "typ",
-                "operator": "eq",
+                "operator": "ne",
                 "value": "bach",
                 "min": null,
                 "max": null,
@@ -869,7 +944,8 @@
         },
         "restriction": null,
         "symbology": null
-      }
+      },
+      "conditions": 2
     },
     {
       "id": "reference_feature",
@@ -901,7 +977,8 @@
         },
         "restriction": null,
         "symbology": null
-      }
+      },
+      "conditions": 1
     },
     {
       "id": "view_restriction_only",
@@ -935,7 +1012,8 @@
           ]
         },
         "symbology": null
-      }
+      },
+      "conditions": 1
     },
     {
       "id": "rows_and_shape_restriction",
@@ -1051,7 +1129,8 @@
           }
         },
         "symbology": null
-      }
+      },
+      "conditions": 3
     },
     {
       "id": "one_row_and_view_restriction",
@@ -1110,7 +1189,8 @@
           ]
         },
         "symbology": null
-      }
+      },
+      "conditions": 2
     },
     {
       "id": "symbology",
@@ -1155,7 +1235,8 @@
           "attr": "typ",
           "colors": {}
         }
-      }
+      },
+      "conditions": 1
     }
   ],
   "not_representable": [
@@ -1539,6 +1620,184 @@
         }
       },
       "part": "related"
+    },
+    {
+      "id": "text_ordering",
+      "note": "text fields have no < ≤ > ≥",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "compare",
+          "attr": "name",
+          "cmp": "lt",
+          "value": "M"
+        }
+      },
+      "part": "compare"
+    },
+    {
+      "id": "text_bounds",
+      "note": "ge and le on text: no date range, and text has no ge or le",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "name",
+              "cmp": "ge",
+              "value": "2020-01-01"
+            },
+            {
+              "op": "compare",
+              "attr": "name",
+              "cmp": "le",
+              "value": "2020-12-31"
+            }
+          ]
+        }
+      },
+      "part": "compare"
+    },
+    {
+      "id": "boolean_ne",
+      "note": "a boolean field offers = and 'ist leer' only",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "compare",
+          "attr": "kindergarten",
+          "cmp": "ne",
+          "value": true
+        }
+      },
+      "part": "compare"
+    },
+    {
+      "id": "date_in_list",
+      "note": "a date field offers no 'ist eins von'",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "in",
+          "attr": "eroeffnet",
+          "values": [
+            "2020-01-01"
+          ]
+        }
+      },
+      "part": "in"
+    },
+    {
+      "id": "number_range_on_a_date",
+      "note": "a date range is ge and le with ISO dates",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "between",
+          "attr": "eroeffnet",
+          "min": 1,
+          "max": 2
+        }
+      },
+      "part": "between"
+    },
+    {
+      "id": "text_match_on_a_number",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "text_match",
+          "attr": "standorte",
+          "text": "1"
+        }
+      },
+      "part": "text_match"
+    },
+    {
+      "id": "unknown_field",
+      "note": "fid is no field the editor lists",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "compare",
+          "attr": "fid",
+          "cmp": "eq",
+          "value": 1
+        }
+      },
+      "part": "compare"
+    },
+    {
+      "id": "negated_relation_filter",
+      "note": "the filter of a relation has no NICHT toggle",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "related",
+          "layer": "gemeinden",
+          "predicate": "within",
+          "where": {
+            "op": "not",
+            "arg": {
+              "op": "compare",
+              "attr": "name",
+              "cmp": "eq",
+              "value": "Bern"
+            }
+          }
+        }
+      },
+      "part": "related"
+    },
+    {
+      "id": "relation_to_the_result_layer",
+      "note": "the reference layer list leaves out the result layer",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "related",
+          "layer": "schulen",
+          "predicate": "dwithin",
+          "distance_m": 500
+        }
+      },
+      "part": "related"
+    },
+    {
+      "id": "reference_on_the_result_layer",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "near_feature",
+          "layer": "schulen",
+          "fid": 3,
+          "distance_m": 100
+        }
+      },
+      "part": "near_feature"
+    },
+    {
+      "id": "relation_to_a_table_layer",
+      "note": "only vector layers are offered",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "related",
+          "layer": "gemeindedaten",
+          "predicate": "intersects"
+        }
+      },
+      "part": "related"
+    },
+    {
+      "id": "table_layer_as_result",
+      "note": "a table layer is never the result (B11)",
+      "query": {
+        "source": "gemeindedaten"
+      },
+      "part": "source"
     }
   ]
 }

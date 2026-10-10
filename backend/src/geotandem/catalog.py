@@ -7,7 +7,7 @@ from collections.abc import Collection
 from datetime import datetime
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, PrivateAttr, model_validator
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, selectinload
 
@@ -214,6 +214,12 @@ class ModelProfile(BaseModel):
     """Characters of the canonical form, as the model receives it."""
     tokens_estimate: int
     """A rough upper estimate of its size in tokens (S5, ``CHARS_PER_TOKEN``)."""
+    _text: str = PrivateAttr(default="")
+
+    @property
+    def text(self) -> str:
+        """The canonical form the hash is taken over: what the model receives (S4)."""
+        return self._text
 
 
 def profile(layer: LayerInfo) -> LayerProfile | None:
@@ -269,9 +275,11 @@ def model_profile(engine: Engine, visible: Collection[str]) -> ModelProfile:
         "layers": [p.model_dump(exclude_none=True) for p in layers],
     }
     text = _canonical(body)
-    return ModelProfile(
+    found = ModelProfile(
         layers=layers,
         hash=hashlib.sha256(text.encode()).hexdigest(),
         size_chars=len(text),
         tokens_estimate=math.ceil(len(text) / CHARS_PER_TOKEN),
     )
+    found._text = text
+    return found

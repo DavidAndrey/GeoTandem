@@ -2,19 +2,24 @@
 
 What the prompt demands and what is accepted are the same set of answers:
 ``answer_format`` cuts ``answer_schema()`` down to the kinds of one approach,
-and ``parse_answer`` accepts exactly those. A reply that is not JSON, does not
-fit the schema or is of another approach's kind is ``model_unreadable``, with
-the verbatim cause in ``details.cause``. The cause is logged on the record and
-never shown to the model again.
+and for the direct approach the query object down to what the controls can
+show (D3); ``parse_answer`` accepts exactly those kinds. A reply that is not
+JSON, nests too deep, does not fit the schema or is of another approach's kind
+is ``model_unreadable``. Its ``details.cause`` names error types and schema
+locations only, never the model's text: the record shows it to the user and
+the log keeps it (C15).
 """
 
+import copy
 import json
+from functools import cache
 from typing import Any, Final
 
 from pydantic import TypeAdapter, ValidationError
 
 from geotandem.llm import Completion
 from geotandem.model.errors import ActionError
+from geotandem.model.represent import ALLOWED_FIELDS
 from geotandem.model.schemas import (
     Approach,
     CannotAnswer,
@@ -31,6 +36,9 @@ KINDS: Final[dict[Approach, tuple[str, ...]]] = {
 }
 """The answers each approach accepts (D7, P4)."""
 
+NOT_IN_CONTROLS: Final = ("BBox", "GeometryFilter")
+"""Conditions only the map writes (view, drawn area): never the model's."""
+
 _ANSWER = TypeAdapter[Any](ModelAnswer)
 
 Answer = QueryAnswer | Clarification | CannotAnswer | PlanAnswer
@@ -38,7 +46,22 @@ Answer = QueryAnswer | Clarification | CannotAnswer | PlanAnswer
 
 def answer_format(approach: Approach) -> dict[str, Any]:
     """``answer_schema()`` with only the kinds of ``approach``: what the prompt
-    shows and what the call sends as constrained output (D7)."""
+    shows and what the call sends as constrained output (D7). A copy."""
+    return copy.deepcopy(_format(approach))
+
+
+def format_text(approach: Approach) -> str:
+    """``answer_format`` as compact JSON, as the prompt carries it."""
+    return _format_text(approach)
+
+
+@cache
+def _format_text(approach: Approach) -> str:
+    return json.dumps(_format(approach), separators=(",", ":"), ensure_ascii=False)
+
+
+@cache
+def _format(approach: Approach) -> dict[str, Any]:
     schema = answer_schema()
     defs: dict[str, Any] = schema["$defs"]
     by_kind = {
@@ -52,8 +75,49 @@ def answer_format(approach: Approach) -> dict[str, Any]:
         discriminator["mapping"] = {
             kind: ref for kind, ref in discriminator["mapping"].items() if ref in keep
         }
+    if approach == "direct":
+        _controls_only(defs)
     schema["$defs"] = {name: defs[name] for name in sorted(_reachable(schema, defs))}
+    _drop_titles(schema)
     return schema
+
+
+def _controls_only(defs: dict[str, Any]) -> None:
+    """The query object as the controls write it (D3): their fields, ``output``
+    always ``map``, no view or drawn area, text matches as the editor offers them."""
+    query = defs["QueryObject"]
+    query["properties"] = {k: v for k, v in query["properties"].items() if k in ALLOWED_FIELDS}
+    query["properties"]["output"] = {"const": "map", "default": "map", "type": "string"}
+    text = defs["TextMatch"]["properties"]
+    text["mode"]["enum"] = ["contains", "starts_with", "ends_with"]
+    text["case_sensitive"] = {"const": False, "default": False, "type": "boolean"}
+    dropped = {f"#/$defs/{name}" for name in NOT_IN_CONTROLS}
+    stack: list[Any] = [defs]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, dict):
+            if isinstance(node.get("oneOf"), list):
+                node["oneOf"] = [v for v in node["oneOf"] if v.get("$ref") not in dropped]
+            stack.extend(node.values())
+        elif isinstance(node, list):
+            stack.extend(node)
+
+
+def _drop_titles(schema: Any) -> None:
+    """Titles repeat the property names: tokens without meaning."""
+    if isinstance(schema, dict):
+        title = schema.get("title")
+        if isinstance(title, str):
+            del schema["title"]
+        for key, value in schema.items():
+            if key != "properties":
+                _drop_titles(value)
+            else:
+                for prop in value.values():
+                    _drop_titles(prop)
+    elif isinstance(schema, list):
+        for value in schema:
+            _drop_titles(value)
 
 
 def _reachable(schema: dict[str, Any], defs: dict[str, Any]) -> set[str]:
@@ -75,6 +139,25 @@ def _reachable(schema: dict[str, Any], defs: dict[str, Any]) -> set[str]:
     return found
 
 
+@cache
+def _schema_names() -> frozenset[str]:
+    """Property names and constants of the answer schema: the only words of a
+    location the cause may repeat."""
+    names: set[str] = set()
+    stack: list[Any] = [answer_schema()]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, dict):
+            if isinstance(node.get("properties"), dict):
+                names.update(node["properties"])
+            if isinstance(node.get("const"), str):
+                names.add(node["const"])
+            stack.extend(node.values())
+        elif isinstance(node, list):
+            stack.extend(node)
+    return frozenset(names)
+
+
 def unreadable(cause: str) -> ActionError:
     return ActionError(
         "model_unreadable",
@@ -86,14 +169,17 @@ def unreadable(cause: str) -> ActionError:
 
 def parse_answer(completion: Completion, approach: Approach) -> Answer:
     """The completion as an answer of ``approach``; ``model_unreadable`` otherwise."""
-    data = completion.parsed
-    if data is None:
-        try:
-            data = json.loads(completion.text)
-        except json.JSONDecodeError as exc:
-            raise unreadable(completion.parse_error or str(exc)) from None
     try:
+        data = completion.parsed
+        if data is None:
+            try:
+                data = json.loads(completion.text)
+            except json.JSONDecodeError as exc:
+                # The decoder's message names a position, never the text.
+                raise unreadable(f"not JSON: {exc.msg} at char {exc.pos}") from None
         answer: Answer = _ANSWER.validate_python(data)
+    except RecursionError:
+        raise unreadable("nested too deeply") from None
     except ValidationError as exc:
         raise unreadable(_causes(exc)) from None
     if answer.kind not in KINDS[approach]:
@@ -102,7 +188,13 @@ def parse_answer(completion: Completion, approach: Approach) -> Answer:
 
 
 def _causes(exc: ValidationError) -> str:
+    known = _schema_names()
+
+    def where(loc: tuple[int | str, ...]) -> str:
+        parts = [str(p) if isinstance(p, int) or p in known else "?" for p in loc]
+        return ".".join(parts) or "(answer)"
+
     return "; ".join(
-        f"{'.'.join(map(str, e['loc'])) or '(answer)'}: {e['msg']}"
-        for e in exc.errors(include_url=False, include_input=False)
+        f"{where(e['loc'])}: {e['type']}"
+        for e in exc.errors(include_url=False, include_input=False, include_context=False)
     )

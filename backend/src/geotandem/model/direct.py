@@ -1,6 +1,8 @@
 """The direct query (*Direktabfrage*, F-5.4): one prompt, one model call, one
 answer checked (plan WP64). No HTTP, no store: the prompt flow (WP65) resolves
-level and connection, builds the client, stores the record and maps errors.
+level and connection, builds the client and the account's layer profile
+(``catalog.model_profile`` over the account's view), records the profile's hash
+on the ``thinking`` record, and maps errors.
 
 ``DirectQuery.run`` returns a ``DirectAnswer``: the parsed answer, and for a
 ``query`` answer either the validated query with its governance or the
@@ -11,16 +13,14 @@ a class that is ``off`` makes a proposal the user applies by hand, never a
 refusal.
 """
 
-import hashlib
 from dataclasses import dataclass
 
-from geotandem.catalog import model_profile
+from geotandem.catalog import ModelProfile
 from geotandem.levels import CellMode, Level, OpClass, strictest
 from geotandem.llm import LLMClient
 from geotandem.model.prompt import FollowUp, build_prompt
 from geotandem.model.result import parse_answer
 from geotandem.model.schemas import (
-    Approach,
     CannotAnswer,
     Clarification,
     Governance,
@@ -31,10 +31,6 @@ from geotandem.model.schemas import (
 from geotandem.model.validate import Validated, validate_model_query
 from geotandem.tools import ToolContext
 from geotandem_query import QueryObject
-
-
-def sha256(text: str) -> str:
-    return hashlib.sha256(text.encode()).hexdigest()
 
 
 def governance(level: Level, classes: frozenset[OpClass]) -> Governance:
@@ -56,11 +52,6 @@ class DirectAnswer:
     """The validated query of a ``query`` answer, ``None`` when refused."""
     governance: Governance | None
     refusal: Refusal | None
-    profile_hash: str
-    level_prompt_hash: str
-    """Of the level's system prompt as it was sent (H7)."""
-    prompt_hash: str
-    """Of the prompt text."""
     tokens_estimate: int
     latency_ms: int
     prompt_tokens: int | None
@@ -78,26 +69,24 @@ class DirectQuery:
     """The connection's declared context length (C11); ``None``: not declared."""
 
     def run(
-        self, text: str, *, approach: Approach = "direct", follow_up: FollowUp | None = None
+        self, text: str, *, profile: ModelProfile, follow_up: FollowUp | None = None
     ) -> DirectAnswer:
-        if approach != "direct":
-            raise ValueError("DirectQuery answers the direct approach only")
-        view = self.context.backend
-        profile = model_profile(view.engine, view.layer_names())
+        """Ask about ``text``. ``profile`` is the account's layer profile: the
+        model sees exactly it, and its answer is checked in its world."""
         prompt = build_prompt(
             text,
-            approach=approach,
+            approach="direct",
             level=self.level,
             profile=profile,
             follow_up=follow_up,
             context_length=self.context_length,
         )
         completion = self.client.complete(prompt.messages, schema=prompt.schema)
-        answer = parse_answer(completion, approach)
+        answer = parse_answer(completion, "direct")
         assert not isinstance(answer, PlanAnswer)  # parse_answer took the direct kinds only
         query = refusal = rules = None
         if isinstance(answer, QueryAnswer):
-            checked = validate_model_query(answer.query, self.context)
+            checked = validate_model_query(answer.query, self.context, profile)
             if isinstance(checked, Validated):
                 query, rules = checked.query, governance(self.level, checked.classes)
             else:
@@ -107,9 +96,6 @@ class DirectQuery:
             query=query,
             governance=rules,
             refusal=refusal,
-            profile_hash=prompt.profile_hash,
-            level_prompt_hash=sha256(self.level.system_prompt),
-            prompt_hash=sha256(text),
             tokens_estimate=prompt.tokens_estimate,
             latency_ms=completion.latency_ms,
             prompt_tokens=completion.prompt_tokens,
