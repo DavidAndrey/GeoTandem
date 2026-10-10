@@ -28,6 +28,7 @@ import {
 import { strays } from '../../test/pseudo'
 import { renderAt } from '../../test/render'
 import { Workplace } from '../../workplace/Workplace'
+import { useMyActionsDialog } from '../log/dialog'
 import { useModel } from '../store'
 import { useHandover } from './handover'
 import { usePanel } from './state'
@@ -316,7 +317,7 @@ describe('request (P7)', () => {
 
 describe('answer (M2, M4)', () => {
   test('explanation, assumptions with ≈, the readable query, the status; no undo yet', async () => {
-    await answered('reference', { latency_ms: null })
+    const { user } = await answered('reference', { latency_ms: null })
     const card = await screen.findByRole('article', { name: 'Antwort' })
     // M4.1: proposal-only in E2.3 (P1).
     expect(within(card).getByRole('status')).toHaveTextContent('Vorschlag· von Hand übernehmen')
@@ -338,8 +339,7 @@ describe('answer (M2, M4)', () => {
     expect(within(card).getByRole('group', { name: 'Bedingungen' })).toBeInTheDocument()
     expect(within(card).getByText('Technisch (Abfrageobjekt JSON)')).toBeInTheDocument()
     expect(within(card).getByRole('button', { name: 'In Editor übernehmen' })).toBeEnabled()
-    // The log arrives with WP73; a proposal only has no approval, preview or undo (M4.1).
-    expect(within(card).getByRole('button', { name: 'Protokoll' })).toBeDisabled()
+    // A proposal only has no approval, preview or undo (M4.1).
     expect(within(card).queryByRole('button', { name: 'Zurücknehmen' })).toBeNull()
     expect(within(card).queryByRole('button', { name: 'Annehmen' })).toBeNull()
     expect(within(card).queryByRole('region', { name: 'Freigabe' })).toBeNull()
@@ -348,6 +348,10 @@ describe('answer (M2, M4)', () => {
     )
     // The analysis is untouched until the user applies the proposal.
     expect(useAnalysis.getState().tree.children).toEqual([])
+    // "Protokoll" opens the account's own log (M16.3, WP73).
+    expect(useMyActionsDialog.getState().open).toBe(false)
+    await user.click(within(card).getByRole('button', { name: 'Protokoll' }))
+    expect(useMyActionsDialog.getState().open).toBe(true)
   })
 
   test('In Editor übernehmen → B2 with marks; only Übernehmen applies, reported as proposal_only', async () => {

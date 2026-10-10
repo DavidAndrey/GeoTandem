@@ -286,7 +286,7 @@ Route = tuple[str, str]
 
 ACTION_ROUTES: dict[Route, str] = {
     ("GET", ""): "Prüfen",
-    ("GET", "preview"): "Prüfen",
+    ("POST", "preview"): "Prüfen",
     ("POST", "decide"): "Assistenz",
     ("POST", "approve"): "Prüfen",
     ("POST", "reject"): "Prüfen",
@@ -449,7 +449,7 @@ async def test_a_record_keeps_its_level_when_the_level_is_edited_or_deleted(
     for method, step, code in (
         ("POST", "approve", "class_not_allowed"),
         ("POST", "execute", "not_approved"),
-        ("GET", "preview", "class_not_allowed"),
+        ("POST", "preview", "class_not_allowed"),
     ):
         response = await client.request(method, url(hand_only, step))
         assert (response.status_code, response.json()["code"]) == (409, code), step
@@ -496,7 +496,7 @@ async def test_nothing_runs_while_the_model_thinks(
     for method, step, body in (
         ("POST", "execute", None),
         ("POST", "approve", None),
-        ("GET", "preview", None),
+        ("POST", "preview", None),
         ("POST", "reject", {}),
         ("POST", "decide", BODIES["decide"]),
         ("POST", "undo", None),
@@ -521,7 +521,7 @@ async def test_nothing_runs_while_a_record_is_running(
     action_id = stored(app, "admin", "Automatisch")
     ModelActionStore(app.state.geotandem.backend.engine).run(account_of(app, "admin"), action_id)
     ran.clear()
-    for method, step in (("POST", "execute"), ("GET", "preview"), ("POST", "approve")):
+    for method, step in (("POST", "execute"), ("POST", "preview"), ("POST", "approve")):
         response = await client.request(method, url(action_id, step))
         assert (response.status_code, response.json()["code"]) == (409, "not_approved"), step
     assert ran == []
@@ -574,7 +574,7 @@ async def test_bodies_with_a_level_or_a_status_change_nothing(
     assert (approve.status_code, approve.json()["code"]) == (409, "class_not_allowed")
     execute = await client.post(url(waits, "execute"), json={**smuggled, "status": "approved"})
     assert (execute.status_code, execute.json()["code"]) == (409, "not_approved")
-    preview = await client.request("GET", url(hand_only, "preview"), json=smuggled)
+    preview = await client.request("POST", url(hand_only, "preview"), json=smuggled)
     assert (preview.status_code, preview.json()["code"]) == (409, "class_not_allowed")
 
     assert ran == []
@@ -656,7 +656,7 @@ async def test_a_token_never_previews_approves_rejects_or_hands_over(
     waits = stored(app, "admin", "Prüfen")
     hand_only = stored(app, "admin", "Assistenz")
     steps = [
-        ("GET", url(waits, "preview"), None),
+        ("POST", url(waits, "preview"), None),
         ("POST", url(waits, "approve"), None),
         ("POST", url(waits, "reject"), {}),
         ("POST", url(hand_only, "decide"), BODIES["decide"]),
@@ -1045,7 +1045,7 @@ async def test_walking_every_model_route_writes_the_action_record_only(
     with writes(app, written):
         first = await ask(client, app, model, PLAIN)
         second = await ask(client, app, model, PLAIN)
-        assert (await client.get(url(second["id"], "preview"))).status_code == 200
+        assert (await client.post(url(second["id"], "preview"))).status_code == 200
         assert (await client.post(url(second["id"], "execute"))).status_code == 200
         assert (await client.post(url(second["id"], "touched"))).status_code == 200
         assert (await client.post(url(first["id"], "execute"))).status_code == 409  # superseded
@@ -1183,7 +1183,7 @@ async def attack_preview(s: Scene) -> None:
     """No preview for a level with ``off`` parts (P2, M4.1), by the snapshot."""
     hand_only = stored(s.app, "b.muster", "Assistenz")
     await edit_levels(s.client, lambda lv: {**lv, "matrix": all_cells("auto")})
-    response = await s.other.get(url(hand_only, "preview"))
+    response = await s.other.post(url(hand_only, "preview"))
     assert (response.status_code, response.json()["code"]) == (409, "class_not_allowed")
     assert s.ran == []
     assert (await s.other.get(url(hand_only))).json()["previewed_at"] is None
@@ -1192,7 +1192,7 @@ async def attack_preview(s: Scene) -> None:
 GUARDED: dict[tuple[str, str], Callable[[Scene], Awaitable[None]]] = {
     ("POST", "/api/model/prompt"): attack_prompt,
     ("POST", "/api/model/actions/{action_id}/execute"): attack_execute,
-    ("GET", "/api/model/actions/{action_id}/preview"): attack_preview,
+    ("POST", "/api/model/actions/{action_id}/preview"): attack_preview,
 }
 """Every built route that calls the model or runs a model record, with the
 attack that shows it checks level and connection in the backend."""

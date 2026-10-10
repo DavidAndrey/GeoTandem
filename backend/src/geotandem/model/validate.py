@@ -38,7 +38,7 @@ from geotandem.engine import QueryError, validate_query
 from geotandem.engine.compile import FID, GEOM
 from geotandem.levels import OpClass, classify
 from geotandem.model.represent import NotRepresentable, catalog_of, count_conditions, to_analysis
-from geotandem.model.schemas import MAX_CONDITIONS, Refusal
+from geotandem.model.schemas import MAX_CONDITIONS, MAX_LISTED, Refusal
 from geotandem.tools import ToolContext
 from geotandem_query import QueryObject
 
@@ -121,5 +121,5 @@ def _invalid(errors: list[dict[str, Any]]) -> Refusal:
     return Refusal(
         code="model_query_invalid",
         message="The model's query does not match the query-object schema.",
-        details={"errors": errors},
+        details={"errors": errors[:MAX_LISTED], "error_count": len(errors)},
     )

@@ -421,6 +421,16 @@ async def test_enforcement_matrix(
     row: Row,
     path: str,
 ) -> None:
+    """Plan 5.3: every cell of every class, the fixture's mixed levels, each
+    path. The ``derive`` and ``display`` cells cannot be reached by a direct
+    answer: a buffer or a symbology is refused as ``not_representable`` before
+    any record holds a query (D3,
+    ``test_the_direct_path_never_stores_what_the_controls_cannot_show``). Their
+    rows here run on records stored as the service stores an answer (``seed``),
+    which proves the store and the routes; the path through the model arrives
+    with the chain, and E2.5 reruns this matrix for it (plan 5.3). The disabled
+    connection and the level that is not selectable are crossed with the cells
+    in ``test_the_matrix_with_a_disabled_connection_or_a_closed_level``."""
     record = await set_up(client, app, model, row)
     cell = row.cell
     action_id = record["id"]
@@ -461,7 +471,7 @@ async def test_enforcement_matrix(
         assert ran == before
 
     elif path == "preview":
-        previewed = await client.get(url(action_id, "preview"))
+        previewed = await client.post(url(action_id, "preview"))
         after = (await client.get(url(action_id))).json()
         if cell is CellMode.OFF:
             assert (previewed.status_code, previewed.json()["code"]) == (409, "class_not_allowed")
@@ -482,7 +492,7 @@ async def test_enforcement_matrix(
             ("POST", "approve"),
             ("POST", "reject"),
             ("POST", "execute"),
-            ("GET", "preview"),
+            ("POST", "preview"),
             ("POST", "undo"),
             ("POST", "touched"),
         ):
@@ -574,6 +584,78 @@ async def test_a_level_users_may_not_choose_never_governs_their_answer(
     assert ran == []
 
 
+@pytest.mark.parametrize("closed", ["connection", "level"])
+@pytest.mark.parametrize("cell", list(CellMode), ids=[c.value for c in CellMode])
+async def test_the_matrix_with_a_disabled_connection_or_a_closed_level(
+    client: httpx.AsyncClient,
+    app: FastAPI,
+    model: Model,
+    other: httpx.AsyncClient,
+    ran: list[str],
+    cell: CellMode,
+    closed: str,
+) -> None:
+    """Plan 5.3's paths "disabled connection" and "non-selectable level", for
+    each cell of the query class. A user chooses a level of that cell and a
+    connection, asks, then the administrator disables the connection or closes
+    the level. The record keeps both as they were: its cell alone decides what
+    runs, and nothing asks the model. The next prompt never uses what was
+    closed: another connection answers, or the default level governs."""
+    await connect(client)
+    extra = await connect(client, name="Extra", is_default=False)
+    level = {"name": "Zelle", "selectable": True, "matrix": matrix(query=cell.value)}
+    ids = await install_levels(client, [PRUEFEN, level])
+    chosen = await other.put(OPTIONS, json={"level_id": ids["Zelle"], "connection_id": extra["id"]})
+    assert chosen.status_code == 200, chosen.text
+    record = await ask(other, app, model, PLAIN)
+    assert (record["level"]["name"], record["connection"]["name"]) == ("Zelle", "Extra")
+    assert record["governance"]["cell"] == cell.value
+
+    if closed == "connection":
+        changed = await client.patch(f"{CONNECTIONS}/{extra['id']}", json={"enabled": False})
+        assert changed.status_code == 200, changed.text
+    else:
+        await install_levels(client, [PRUEFEN, {**level, "selectable": False}])
+    calls = len(model.fake.calls)
+    ran.clear()
+
+    await run_surface(other, record, cell, ran)
+    assert len(model.fake.calls) == calls
+
+    after = await ask(other, app, model, PLAIN)
+    if closed == "connection":
+        assert (after["connection"]["name"], after["level"]["name"]) == ("Lokal", "Zelle")
+        assert after["governance"]["cell"] == cell.value
+    else:
+        assert (after["connection"]["name"], after["level"]["name"]) == ("Extra", "Prüfen")
+        assert (after["status"], after["governance"]["cell"]) == ("proposed", "approve")
+
+
+async def test_an_id_beyond_any_record_is_refused_not_an_error(
+    client: httpx.AsyncClient, app: FastAPI, model: Model
+) -> None:
+    """Review #38: ids past a 64-bit integer, or below 1, are 422 (or 404
+    within the range), never a 500 from the database."""
+    await connect(client)
+    for action_id in (0, -1, 2**63, 2**80):
+        for method, step in (("GET", ""), ("POST", "approve"), ("POST", "preview")):
+            response = await client.request(method, url(action_id, step), json={})
+            assert response.status_code == 422, (action_id, step, response.text)
+        logged = await client.get(f"/api/admin/model-actions/{action_id}")
+        assert logged.status_code == 422, logged.text
+    largest = await client.get(url(2**63 - 1))
+    assert (largest.status_code, largest.json()["code"]) == (404, "not_found")
+    for name in ("level_id", "connection_id"):
+        listed = await client.get("/api/admin/model-actions", params={name: str(2**64)})
+        assert listed.status_code == 422, listed.text
+    for parent in (0, 2**63):
+        prompt = await client.post(PROMPT, json={"text": "?", "parent_action_id": parent})
+        assert prompt.status_code == 422, prompt.text
+    far = await client.post(PROMPT, json={"text": "?", "parent_action_id": 2**63 - 1})
+    assert (far.status_code, far.json()["code"]) == (404, "not_found")
+    assert model.fake.calls == []
+
+
 @pytest.mark.parametrize("query", [DERIVE, DISPLAY], ids=["derive", "display"])
 async def test_the_direct_path_never_stores_what_the_controls_cannot_show(
     client: httpx.AsyncClient, app: FastAPI, model: Model, ran: list[str], query: Body
@@ -589,7 +671,7 @@ async def test_the_direct_path_never_stores_what_the_controls_cannot_show(
     for step in ("approve", "execute"):
         response = await client.post(url(record["id"], step))
         assert (response.status_code, response.json()["code"]) == (409, "already_decided")
-    preview = await client.get(url(record["id"], "preview"))
+    preview = await client.post(url(record["id"], "preview"))
     assert (preview.status_code, preview.json()["code"]) == (409, "already_decided")
     assert ran == []
 
@@ -650,7 +732,7 @@ async def test_execute_runs_as_the_caller(
     assert (await client.post(url(record["id"], "approve"))).status_code == 200
     set_visible(backend_of_client.engine, "strassen", "user", False)
     ran.clear()
-    for method, step in (("GET", "preview"), ("POST", "execute")):
+    for method, step in (("POST", "preview"), ("POST", "execute")):
         response = await client.request(method, url(record["id"], step))
         assert (response.status_code, response.json()["code"]) == (400, "unknown_layer"), step
     assert ran == []
@@ -780,15 +862,15 @@ async def test_the_preview_is_for_an_interactive_session_only(
     token = {"Authorization": "Bearer gt_mcp_4f1c9a7e2b8d4c6a9e1f3b5d7c9a1e3f"}
 
     # A token beside the login cookie, or a token alone.
-    with_cookie = await client.get(url(record["id"], "preview"), headers=token)
+    with_cookie = await client.post(url(record["id"], "preview"), headers=token)
     assert (with_cookie.status_code, with_cookie.json()["code"]) == (403, "session_required")
     for scheme in ("bearer", "Token", "Negotiate"):
         other_scheme = {"Authorization": f"{scheme} gt_mcp_4f1c9a7e"}
-        refused = await client.get(url(record["id"], "preview"), headers=other_scheme)
+        refused = await client.post(url(record["id"], "preview"), headers=other_scheme)
         assert (refused.status_code, refused.json()["code"]) == (403, "session_required")
     alone = httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test")
     async with alone:
-        response = await alone.get(url(record["id"], "preview"), headers=token)
+        response = await alone.post(url(record["id"], "preview"), headers=token)
     assert (response.status_code, response.json()["code"]) == (401, "not_authenticated")
 
     # A credential that signs in an account but is not the login cookie, as a
@@ -801,7 +883,7 @@ async def test_the_preview_is_for_an_interactive_session_only(
 
     app.dependency_overrides[signed_in] = by_token
     try:
-        refused = await client.get(url(record["id"], "preview"))
+        refused = await client.post(url(record["id"], "preview"))
         assert (refused.status_code, refused.json()["code"]) == (403, "session_required")
         assert (await client.get(url(record["id"]))).status_code == 200
     finally:
@@ -809,30 +891,42 @@ async def test_the_preview_is_for_an_interactive_session_only(
     assert ran == []
     assert (await client.get(url(record["id"]))).json()["previewed_at"] is None
 
-    allowed = await client.get(url(record["id"], "preview"))
+    # A change of the record (``previewed_at``): a POST, under the origin check (#39).
+    assert (await client.get(url(record["id"], "preview"))).status_code in (404, 405)
+    elsewhere = await client.post(
+        url(record["id"], "preview"), headers={"Origin": "https://evil.example"}
+    )
+    assert elsewhere.status_code == 403
+    assert ran == []
+    assert (await client.get(url(record["id"]))).json()["previewed_at"] is None
+
+    allowed = await client.post(url(record["id"], "preview"))
     assert allowed.status_code == 200, allowed.text
     # A reverse proxy's Basic authentication in front is no token.
     proxy = {"Authorization": "Basic cHJveHk6c2VjcmV0"}
-    behind_proxy = await client.get(url(record["id"], "preview"), headers=proxy)
+    behind_proxy = await client.post(url(record["id"], "preview"), headers=proxy)
     assert behind_proxy.status_code == 200, behind_proxy.text
 
 
 async def test_the_preview_changes_no_status_and_never_reaches_the_model(
-    client: httpx.AsyncClient, app: FastAPI, model: Model, auto: dict[str, int]
+    client: httpx.AsyncClient, app: FastAPI, model: Model, auto: dict[str, int], ran: list[str]
 ) -> None:
     record = await ask(client, app, model, NEAR)
     calls = list(model.fake.calls)
-    first = await client.get(url(record["id"], "preview"))
-    second = await client.get(url(record["id"], "preview"))
+    first = await client.post(url(record["id"], "preview"))
+    second = await client.post(url(record["id"], "preview"))
     assert first.json() == second.json()
     view = (await client.get(url(record["id"]))).json()
     assert (view["status"], view["decision"]) == ("approved", None)
     assert view["previewed_at"] is not None
     assert model.fake.calls == calls
-    # execute re-runs the stored query, never the preview's result (P2 rule 5).
+    # execute re-runs the stored query, never the preview's result (P2 rule 5):
+    # the engine runs again.
+    ran.clear()
     executed = (await client.post(url(record["id"], "execute"))).json()
+    assert len(ran) == 1
     assert sorted(f["id"] for f in executed["result"]["features"]) == first.json()["ids"]
-    after = await client.get(url(record["id"], "preview"))
+    after = await client.post(url(record["id"], "preview"))
     assert (after.status_code, after.json()["code"]) == (409, "already_decided")
 
 
@@ -949,7 +1043,7 @@ async def test_an_administrator_reads_but_does_not_decide_another_accounts_recor
     await sign_in(client, "admin", ADMIN_PASSWORD)
     assert (await client.get(url(record["id"]))).status_code == 200
     ran.clear()
-    for method, step in (("POST", "approve"), ("POST", "execute"), ("GET", "preview")):
+    for method, step in (("POST", "approve"), ("POST", "execute"), ("POST", "preview")):
         response = await client.request(method, url(record["id"], step))
         assert (response.status_code, response.json()["code"]) == (404, "not_found"), step
     assert ran == []

@@ -234,7 +234,7 @@ const decisionThen = (page: Page) => page.locator('div:has(> dt:text-is("Entsche
 /** The matrix as the entry page writes it: "catalog aus · query aus · …". */
 const matrixText = (matrix: Record<string, string>) =>
   ['catalog', 'query', 'spatial', 'derive', 'display']
-    .map((c) => `${c} ${{ off: 'aus', approve: 'Freigabe', auto: 'automatisch' }[matrix[c]]}`)
+    .map((c) => `${c} ${{ off: 'aus', approve: 'Freigabe', auto: 'auto' }[matrix[c]]}`)
     .join(' · ')
 
 /** Every log entry of the filter, through the admin API, all pages. */
@@ -337,7 +337,7 @@ test.describe('E2.4 against the model stub', { tag: '@stub' }, () => {
     await expect(hits(page)).toHaveText('137 von 137')
 
     // Past the surface: no preview, no approval, no run for an off class.
-    expect(await direct(page, 'GET', `/api/model/actions/${id}/preview`)).toMatchObject({
+    expect(await direct(page, 'POST', `/api/model/actions/${id}/preview`)).toMatchObject({
       code: 'class_not_allowed',
     })
     expect(await direct(page, 'POST', `/api/model/actions/${id}/approve`)).toMatchObject({
@@ -648,7 +648,7 @@ test.describe('E2.4 against the model stub', { tag: '@stub' }, () => {
       await expect(decisionThen(page)).toContainText(decision)
     }
     // The same level, two matrices: the first Teilautonom entry keeps spatial auto.
-    expect(matrixText(fixture['Teilautonom'])).toContain('spatial automatisch')
+    expect(matrixText(fixture['Teilautonom'])).toContain('spatial auto')
     expect(matrixText(now['Teilautonom'])).toContain('spatial Freigabe')
 
     // The key figures moved by exactly what this run decided.

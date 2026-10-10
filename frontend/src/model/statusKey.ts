@@ -8,7 +8,7 @@
 import { i18n, type MessageDescriptor } from '@lingui/core'
 import { msg } from '@lingui/core/macro'
 import type { ActionStatus, ModelActionView } from '../api/client'
-import { ENFORCEMENT } from './enforcement'
+import { proposalOnly } from './approval/governance'
 
 /** The states the design names; more than ``ActionStatus``, which has no "veraltet". */
 export type StatusKey =
@@ -94,12 +94,6 @@ export const FRAME: Record<LineStyle, string> = {
 export interface StatusOptions {
   /** The answer no longer fits the analysis (design M11.3 "veraltet"). */
   stale?: boolean
-  /**
-   * No approval path: a proposal is applied by hand only. Defaults to the
-   * etappe (``ENFORCEMENT``, plan P1), so nothing shows "wartet auf Freigabe"
-   * before approvals exist.
-   */
-  proposalOnly?: boolean
 }
 
 /** The design's status of an action record. */
@@ -114,9 +108,8 @@ export function statusKey(view: ModelActionView, options: StatusOptions = {}): S
     case 'answered':
       return view.answer?.kind === 'clarification' ? 'clarification' : 'message'
     case 'proposed':
-      return (options.proposalOnly ?? !ENFORCEMENT) || view.governance?.cell === 'off'
-        ? 'proposal'
-        : 'awaiting'
+      // The server's flag (D1): applied by hand only, else it waits for approval.
+      return proposalOnly(view) ? 'proposal' : 'awaiting'
     case 'approved':
       return 'approved'
     case 'running':

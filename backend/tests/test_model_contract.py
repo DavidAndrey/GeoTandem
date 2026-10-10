@@ -53,7 +53,7 @@ for its WPs (plan 5.2), so no code stays declared but never sent."""
 ROUTES = [
     ("POST", "/api/model/prompt"),
     ("GET", "/api/model/actions/1"),
-    ("GET", "/api/model/actions/1/preview"),
+    ("POST", "/api/model/actions/1/preview"),
     ("POST", "/api/model/actions/1/decide"),
     ("POST", "/api/model/actions/1/approve"),
     ("POST", "/api/model/actions/1/reject"),
@@ -79,7 +79,7 @@ BUILT = {
     ("GET", "/api/model/actions/1"): "WP65",
     ("POST", "/api/model/actions/1/decide"): "WP65",
     ("POST", "/api/model/actions/1/abort"): "WP65",
-    ("GET", "/api/model/actions/1/preview"): "WP70",
+    ("POST", "/api/model/actions/1/preview"): "WP70",
     ("POST", "/api/model/actions/1/approve"): "WP70",
     ("POST", "/api/model/actions/1/reject"): "WP70",
     ("POST", "/api/model/actions/1/execute"): "WP70",

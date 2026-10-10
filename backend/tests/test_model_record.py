@@ -38,6 +38,7 @@ from geotandem.model.record import (
     connection_snapshot,
     level_snapshot,
 )
+from geotandem.model.record.store import MAX_RAW_QUERY_BYTES
 from geotandem.model.schemas import (
     ActionStatus,
     CannotAnswer,
@@ -595,6 +596,21 @@ def test_a_refusal_keeps_the_answer_and_is_no_decision(
         anna, new(store, anna).id, CannotAnswer(kind="cannot_answer", explanation="Kein Layer.")
     )
     assert (answered.status, answered.decision) == ("answered", None)
+
+
+def test_a_refused_answer_keeps_its_raw_query_up_to_a_bound(
+    store: ModelActionStore, people: dict[str, Account]
+) -> None:
+    """Review #35: up to 64 kB of canonical JSON as it came, beyond as omitted."""
+    anna = people["anna"]
+    room = MAX_RAW_QUERY_BYTES - len('{"junk":""}')
+    for size, kept in ((room, True), (room + 1, False)):
+        raw = {"junk": "x" * size}
+        answer = QueryAnswer(kind="query", explanation="Zu gross.", query=raw)
+        refused = store.refuse(anna, new(store, anna).id, REFUSAL, answer=answer)
+        assert isinstance(refused.answer, QueryAnswer)
+        assert refused.answer.query == (raw if kept else {"omitted": "too large"})
+        assert refused.answer.explanation == "Zu gross."
 
 
 # --- as it was (H7) -------------------------------------------------------------

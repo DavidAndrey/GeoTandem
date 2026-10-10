@@ -12,13 +12,14 @@ administrators included.
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Path, Query
 
 from geotandem.api.auth import CurrentAccount, InteractiveAccount
 from geotandem.api.errors import ErrorBody, Problem
 from geotandem.api.routes import QuerySlot
 from geotandem.api.state import AppState, get_state
 from geotandem.model.schemas import (
+    MAX_ID,
     MAX_PAGE,
     ActionPreview,
     Comparison,
@@ -33,6 +34,10 @@ from geotandem.model.schemas import (
 from geotandem.model.service import PromptFlow
 
 router = APIRouter(prefix="/api/model", tags=["model"])
+
+ActionId = Annotated[int, Path(ge=1, le=MAX_ID)]
+"""A record's id in a path: one beyond a 64-bit integer is refused (422), never
+sent to the database (review #38)."""
 
 ERRORS: dict[int | str, dict[str, Any]] = {
     status: {"model": ErrorBody} for status in (400, 404, 409, 422, 501)
@@ -97,27 +102,29 @@ def prompt(body: PromptRequest, account: CurrentAccount, flow: Flow) -> ModelAct
 
 
 @router.get("/actions/{action_id}", responses=ERRORS)
-def action(action_id: int, account: CurrentAccount, flow: Flow) -> ModelActionView:
+def action(action_id: ActionId, account: CurrentAccount, flow: Flow) -> ModelActionView:
     """One own record, or any for an administrator (D4); polled while the model
     thinks (P7) and while a chain runs (P4)."""
     return flow.get(account, action_id)
 
 
-@router.get(
+@router.post(
     "/actions/{action_id}/preview",
     responses={**RUNS, 403: {"model": ErrorBody}},
     dependencies=[QuerySlot],
 )
-def preview(action_id: int, account: InteractiveAccount, flow: Flow) -> ActionPreview:
+def preview(action_id: ActionId, account: InteractiveAccount, flow: Flow) -> ActionPreview:
     """Count, the result layer's total and ids of the stored query, for the user
     only (P2): an interactive session (``session_required`` for any token), no
-    class ``off`` (``class_not_allowed``), status unchanged."""
+    class ``off`` (``class_not_allowed``), status unchanged. A ``POST``: it
+    writes ``previewed_at``, so it is a change the origin check covers (review
+    #39)."""
     return flow.preview(account, action_id)
 
 
 @router.post("/actions/{action_id}/decide", responses=DECISIONS)
 def decide(
-    action_id: int, body: DecideRequest, account: InteractiveAccount, flow: Flow
+    action_id: ActionId, body: DecideRequest, account: InteractiveAccount, flow: Flow
 ) -> ModelActionView:
     """Applied by hand or edited and applied through Modus A (P1, D2); the
     owner's alone. ``adjusted`` names the query the user applied, logged only;
@@ -126,7 +133,7 @@ def decide(
 
 
 @router.post("/actions/{action_id}/approve", responses=DECISIONS)
-def approve(action_id: int, account: InteractiveAccount, flow: Flow) -> ModelActionView:
+def approve(action_id: ActionId, account: InteractiveAccount, flow: Flow) -> ModelActionView:
     """Refused with ``class_not_allowed`` when a class is ``off`` at the level as
     it was (D1, D2, M7.3); only ``proposed``."""
     return flow.approve(account, action_id)
@@ -134,14 +141,14 @@ def approve(action_id: int, account: InteractiveAccount, flow: Flow) -> ModelAct
 
 @router.post("/actions/{action_id}/reject", responses=DECISIONS)
 def reject(
-    action_id: int, body: RejectRequest, account: InteractiveAccount, flow: Flow
+    action_id: ActionId, body: RejectRequest, account: InteractiveAccount, flow: Flow
 ) -> ModelActionView:
     """Only ``proposed``; with the optional reason chip (design M5.3)."""
     return flow.reject(account, action_id, body)
 
 
 @router.post("/actions/{action_id}/execute", responses=RUNS, dependencies=[QuerySlot])
-def execute(action_id: int, account: CurrentAccount, flow: Flow) -> ExecuteResponse:
+def execute(action_id: ActionId, account: CurrentAccount, flow: Flow) -> ExecuteResponse:
     """Run the stored query, never a sent one (the route takes no body); only
     ``approved``, by the user or by an ``auto`` cell (D2): else ``not_approved``,
     and ``already_decided`` once it ran. The one answer with rows."""
@@ -149,7 +156,7 @@ def execute(action_id: int, account: CurrentAccount, flow: Flow) -> ExecuteRespo
 
 
 @router.post("/actions/{action_id}/undo", responses=ERRORS)
-def undo(action_id: int, account: CurrentAccount, flow: Flow) -> ModelActionView:
+def undo(action_id: ActionId, account: CurrentAccount, flow: Flow) -> ModelActionView:
     """For the log: the client restores the analysis itself (D2). Only the
     account's last change made by the model, and ``undo_blocked`` once a hand
     edit after it was reported (``touched``)."""
@@ -157,14 +164,14 @@ def undo(action_id: int, account: CurrentAccount, flow: Flow) -> ModelActionView
 
 
 @router.post("/actions/{action_id}/touched", responses=ERRORS)
-def touched(action_id: int, account: CurrentAccount, flow: Flow) -> ModelActionView:
+def touched(action_id: ActionId, account: CurrentAccount, flow: Flow) -> ModelActionView:
     """The analysis was changed by hand after this applied action: undo is over
     (design rule 7). Reporting it again changes nothing."""
     return flow.touched(account, action_id)
 
 
 @router.post("/actions/{action_id}/abort", responses=ERRORS)
-def abort(action_id: int, account: CurrentAccount, flow: Flow) -> ModelActionView:
+def abort(action_id: ActionId, account: CurrentAccount, flow: Flow) -> ModelActionView:
     """While thinking: ``aborted``; the model's late answer is dropped. A running
     chain stops before its next step and becomes ``limited`` with its last
     complete result adoptable (P4, WP75)."""
@@ -172,30 +179,30 @@ def abort(action_id: int, account: CurrentAccount, flow: Flow) -> ModelActionVie
 
 
 @router.patch("/actions/{action_id}/plan", responses=ERRORS)
-def edit_plan(action_id: int, body: PlanEdit, account: CurrentAccount) -> ModelActionView:
+def edit_plan(action_id: ActionId, body: PlanEdit, account: CurrentAccount) -> ModelActionView:
     raise NotBuilt("WP75")
 
 
 @router.post("/actions/{action_id}/run", status_code=202, responses=CALLS_MODEL)
-def run(action_id: int, account: CurrentAccount) -> ModelActionView:
+def run(action_id: ActionId, account: CurrentAccount) -> ModelActionView:
     raise NotBuilt("WP75")
 
 
 @router.post("/actions/{action_id}/adopt", responses=ERRORS)
-def adopt(action_id: int, account: CurrentAccount) -> ExecuteResponse:
+def adopt(action_id: ActionId, account: CurrentAccount) -> ExecuteResponse:
     """A ``done`` or ``limited`` chain's result becomes the analysis (design "Kette übernehmen")."""
     raise NotBuilt("WP75")
 
 
 @router.post("/actions/{action_id}/compare", status_code=202, responses=CALLS_MODEL)
-def compare(action_id: int, account: CurrentAccount) -> ModelActionView:
+def compare(action_id: ActionId, account: CurrentAccount) -> ModelActionView:
     """Ask again with the other approach (design M10.1): a new action with
     ``compare_of``, polled like any other."""
     raise NotBuilt("WP76")
 
 
 @router.get("/actions/{action_id}/comparison", responses=ERRORS)
-def comparison(action_id: int, account: CurrentAccount) -> Comparison:
+def comparison(action_id: ActionId, account: CurrentAccount) -> Comparison:
     """Once both are done: the difference, by feature ids (design M10.2, M10.3)."""
     raise NotBuilt("WP76")
 

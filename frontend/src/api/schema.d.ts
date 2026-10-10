@@ -1007,15 +1007,17 @@ export interface paths {
       path?: never
       cookie?: never
     }
+    get?: never
+    put?: never
     /**
      * Preview
      * @description Count, the result layer's total and ids of the stored query, for the user
      *     only (P2): an interactive session (``session_required`` for any token), no
-     *     class ``off`` (``class_not_allowed``), status unchanged.
+     *     class ``off`` (``class_not_allowed``), status unchanged. A ``POST``: it
+     *     writes ``previewed_at``, so it is a change the origin check covers (review
+     *     #39).
      */
-    get: operations['preview_api_model_actions__action_id__preview_get']
-    put?: never
-    post?: never
+    post: operations['preview_api_model_actions__action_id__preview_post']
     delete?: never
     options?: never
     head?: never
@@ -1359,7 +1361,8 @@ export interface paths {
     }
     /**
      * Action
-     * @description Any account's record as it was (design M16.2); 404 when there is none.
+     * @description Any account's record as it was (design M16.2), a failure's technical
+     *     details included (D4); 404 when there is none.
      */
     get: operations['action_api_admin_model_actions__action_id__get']
     put?: never
@@ -3194,6 +3197,11 @@ export interface components {
         | null
       /** Reject Reason */
       reject_reason?: ('misunderstood' | 'wrong_layer' | 'wrong_value' | 'other') | null
+      /**
+       * Proposal Only
+       * @default false
+       */
+      proposal_only: boolean
       /**
        * Applied By Hand
        * @default false
@@ -8963,7 +8971,7 @@ export interface operations {
       }
     }
   }
-  preview_api_model_actions__action_id__preview_get: {
+  preview_api_model_actions__action_id__preview_post: {
     parameters: {
       query?: never
       header?: never

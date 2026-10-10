@@ -19,6 +19,7 @@ Logs carry ids and codes only, never prompt or answer text (C15).
 from __future__ import annotations
 
 import hashlib
+import json
 from collections.abc import Callable, Collection, Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -84,6 +85,10 @@ DECIDED: Mapping[str, frozenset[Decision]] = {
 }
 """The decisions a status can carry. Every other status carries none: open,
 or (``refused``, ``answered``) ended without anything to decide (section 2)."""
+
+MAX_RAW_QUERY_BYTES = 64 * 1024
+"""The most of a refused answer's raw query a record keeps, as canonical JSON
+(UTF-8); a larger one is kept as ``{"omitted": "too large"}`` (review #35)."""
 
 UNDOABLE: frozenset[Decision] = frozenset({"accepted", "auto"})
 """What undo takes back: a change the model made, never the user's own (D2)."""
@@ -164,13 +169,36 @@ def _json(model: Any) -> Any:
     return None if model is None else model.model_dump(mode="json", by_alias=True)
 
 
+def _bounded(answer: AnyAnswer | None) -> Any:
+    """A refused answer as the record keeps it (design M3): its raw query only up
+    to ``MAX_RAW_QUERY_BYTES`` of canonical JSON (review #35). Everything else
+    of an answer is bounded by its schema."""
+    data = _json(answer)
+    if isinstance(data, dict) and isinstance(data.get("query"), dict):
+        text = json.dumps(data["query"], sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        if len(text.encode()) > MAX_RAW_QUERY_BYTES:
+            data["query"] = {"omitted": "too large"}
+    return data
+
+
 def _query_json(query: QueryObject | None) -> dict[str, Any] | None:
     """A query as the editor writes it (``compact``), as every view returns it."""
     return None if query is None else compact(query)
 
 
-def to_view(row: ModelAction) -> ModelActionView:
-    """The record as its owner or an administrator sees it; never rows (D10)."""
+def _error_for(error: dict[str, Any] | None, detail: bool) -> dict[str, Any] | None:
+    """A failure as a view carries it: code and message, and its ``details``
+    (the transport's ``cause``, what did not parse) only for ``detail``, the
+    administrator's log (D4, review #37)."""
+    if error is None or detail:
+        return error
+    return {"code": error.get("code"), "message": error.get("message"), "details": {}}
+
+
+def to_view(row: ModelAction, *, detail: bool = False) -> ModelActionView:
+    """The record as its owner or an administrator sees it; never rows (D10).
+    ``detail``: the administrator's log entry (design M16.2), with a failure's
+    technical details; every other view has its code and message only."""
     return ModelActionView.model_validate(
         {
             "id": row.id,
@@ -182,6 +210,7 @@ def to_view(row: ModelAction) -> ModelActionView:
             "status": row.status,
             "decision": row.decision,
             "reject_reason": row.reject_reason,
+            "proposal_only": row.proposal_only,
             "applied_by_hand": row.applied_by_hand,
             "undone_at": row.undone_at,
             "touched_at": row.touched_at,
@@ -209,7 +238,7 @@ def to_view(row: ModelAction) -> ModelActionView:
             "applied_query": row.applied_query,
             "governance": row.governance,
             "refusal": row.refusal,
-            "error": row.error,
+            "error": _error_for(row.error, detail),
             "replans": row.replans,
             "stop_reason": row.stop_reason,
             "stamp": row.stamp,
@@ -346,9 +375,10 @@ class ModelActionStore:
             raise _not_found(action_id)
         return row
 
-    def get(self, caller: Account, action_id: int) -> ModelActionView:
+    def get(self, caller: Account, action_id: int, *, detail: bool = False) -> ModelActionView:
+        """``detail``: the administrator's log entry (``to_view``)."""
         with Session(reading(self.engine)) as db:
-            return to_view(self._visible(db, caller, action_id))
+            return to_view(self._visible(db, caller, action_id), detail=detail and _admin(caller))
 
     def ready(
         self, caller: Account, action_id: int, step: str, sources: Collection[str]
@@ -727,12 +757,21 @@ class ModelActionStore:
     def _audit(actor: str | None, rows: Iterable[ModelAction]) -> None:
         """``actor`` ``None``: the application itself (the start-up check)."""
         for row in rows:
+            # A failure's code and cause, which the user's view leaves out (#37);
+            # the cause names no prompt or answer text (C13, C15).
+            error = row.error or {}
+            failure = (
+                {"code": error.get("code"), "cause": (error.get("details") or {}).get("cause")}
+                if error
+                else {}
+            )
             audit.event(
                 "model_action_decided",
                 username=actor or "system",
                 action_id=row.id,
                 status=row.status,
                 decision=row.decision,
+                **failure,
             )
 
     # from thinking (P7)
@@ -756,7 +795,7 @@ class ModelActionStore:
             lambda _: {
                 "status": "refused",
                 "refusal": _json(refusal),
-                "answer": _json(answer),
+                "answer": _bounded(answer),
                 "latency_ms": latency_ms,
             },
         )

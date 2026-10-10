@@ -59,29 +59,34 @@ export function conditionCount(n: number) {
 /** "Attributfilter, Raumfilter". */
 export const classList = (classes: readonly OpClass[]) => classes.map(classLabel).join(', ')
 
-/** A query answer waiting for the user's approval (M5): a cell ``approve``, no class ``off``. */
+/**
+ * The model may only propose (M4, D1, plan section 2): the server's stored
+ * ``proposal_only`` (a class of the answer was ``off`` at the level as it
+ * was). The user applies such a proposal by hand, ``approve`` is refused, and
+ * an overtaken one ends ``proposal_only``. The one predicate for it: status,
+ * approval, auto run and the decision of an overtaken record all ask this,
+ * never the matrix.
+ */
+export const proposalOnly = (view: ModelActionView): boolean => view.proposal_only
+
+/** A query answer waiting for the user's approval (M5): a cell ``approve``, not proposal-only. */
 export const needsApproval = (view: ModelActionView): boolean =>
   view.status === 'proposed' &&
   view.answer?.kind === 'query' &&
-  view.governance !== null &&
-  view.governance !== undefined &&
-  view.governance.off.length === 0 &&
-  view.governance.cell === 'approve'
+  !proposalOnly(view) &&
+  view.governance?.cell === 'approve'
 
-/**
- * The model may only propose (M4, D1): a class is ``off`` at the level as it
- * was, so the user applies the proposal by hand in the editor.
- */
-export const proposalOnly = (view: ModelActionView): boolean =>
-  view.status === 'proposed' && view.answer?.kind === 'query' && !needsApproval(view)
+/** A query proposal the user applies by hand in the editor (M4.1): proposal-only, still open. */
+export const byHandOnly = (view: ModelActionView): boolean =>
+  view.status === 'proposed' && view.answer?.kind === 'query' && proposalOnly(view)
 
 /** An ``auto`` answer the server stored ``approved``: the client executes it at once (P7). */
 export const autoReady = (view: ModelActionView): boolean =>
   view.status === 'approved' &&
   view.decision === null &&
   view.answer?.kind === 'query' &&
-  view.governance?.cell === 'auto' &&
-  view.governance.off.length === 0
+  !proposalOnly(view) &&
+  view.governance?.cell === 'auto'
 
 /** The classes of an answer whose cells differ (M6.3): the list says why the strictest governs. */
 export const mixed = (view: ModelActionView): boolean => {

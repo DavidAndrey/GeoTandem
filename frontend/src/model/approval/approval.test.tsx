@@ -3,6 +3,7 @@
 // enforcement routes as the record store does (WP63/WP70). Server-shaped
 // data throughout: compact queries, naive UTC times.
 import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
+import { QueryClient } from '@tanstack/react-query'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import type { AttributeRow } from '../../analysis/model'
@@ -36,13 +37,13 @@ import {
   tick,
 } from '../../test/prompt-panel'
 import { strays } from '../../test/pseudo'
-import { renderAt } from '../../test/render'
+import { fakeApi, renderAt } from '../../test/render'
 import { ModelChoice } from '../../workplace/ModelChoice'
 import { Workplace } from '../../workplace/Workplace'
 import { useModel } from '../store'
-import { canTakeOver } from '../panel/handover'
+import { canTakeOver, takeOver } from '../panel/handover'
 import { clearHistory } from '../panel/state'
-import { startRejecting, useApproval } from './flow'
+import { startRejecting, useApproval, watchModel } from './flow'
 
 beforeEach(resetStores)
 afterEach(done)
@@ -227,6 +228,20 @@ describe('approval (M5)', () => {
     expect(within(card).queryByRole('button', { name: /Wiederholen|Zurücknehmen/ })).toBeNull()
   })
 
+  test("the run's rows are the hits: the applied query is not run again (D2)", async () => {
+    const { user, card, calls, answer } = await answered()
+    const ids = () => calls.filter((c) => c.key === 'POST /api/query/ids')
+    await user.click(within(card).getByRole('button', { name: 'Annehmen' }))
+    await waitFor(() => expect(rows(useAnalysis.getState().tree)).toHaveLength(3))
+    await waitFor(() => expect(useModel.getState().views[answer.id]?.status).toBe('applied'))
+    await tick(1000)
+    // The map's hits came with execute: no second run of the same query.
+    expect(ids()).toEqual([])
+    // A hand change after it is asked for as ever.
+    act(() => useAnalysis.getState().setRestriction({ kind: 'view', bbox: [7.8, 46.8, 8, 47] }))
+    await waitFor(() => expect(ids()).toHaveLength(1))
+  })
+
   test('M5.2: a hand edit meanwhile is named and the list recomputed; Klassik stays usable', async () => {
     const { card } = await answered()
     const approval = within(card).getByRole('region', { name: 'Freigabe' })
@@ -310,7 +325,7 @@ describe('approval (M5)', () => {
     })
     await user.click(within(card).getByRole('button', { name: 'Annehmen' }))
     expect(await within(card).findByRole('alert')).toHaveTextContent(
-      'Auf der Stufe „Prüfen" ist „spatial" nicht erlaubt.',
+      'Auf der Stufe „Prüfen" ist „Raumfilter" nicht erlaubt.',
     )
     expect(useAnalysis.getState().tree.children).toEqual([])
     cleanup()
@@ -596,6 +611,29 @@ describe('auto (M6)', () => {
     expect(useModel.getState().views[answer.id]?.decision).toBe('auto')
   })
 
+  test("a change the server already knows as touched applies without undo: the server's word wins", async () => {
+    const answer = AUTO()
+    const { calls, card, server } = await answered('Teilautonom', answer, {
+      routes: (server: ModelServer) => ({
+        [`POST /api/model/actions/${answer.id}/execute`]: () => {
+          const response = server.execute(answer.id)
+          if (isFakeError(response)) return answerOf(response)
+          // Another window of the account reported a hand edit after it at once.
+          return json({ ...response, action: server.touched(answer.id) })
+        },
+      }),
+    })
+    await waitFor(() => expect(rows(useAnalysis.getState().tree)).toHaveLength(3))
+    const touchedAt = server.record(answer.id)?.touched_at
+    expect(touchedAt).toBeTruthy()
+    expect(useApproval.getState().last).toMatchObject({ action: answer.id, touched: true })
+    await waitFor(() => expect(useModel.getState().views[answer.id]?.touched_at).toBe(touchedAt))
+    expect(await within(card).findByRole('button', { name: 'Rückgängig' })).toBeDisabled()
+    // This window changed nothing by hand: it reports nothing.
+    expect(bodies(calls, 'touched')).toEqual([])
+    expect(server.undo(answer.id)).toMatchObject({ status: 409, body: { code: 'undo_blocked' } })
+  })
+
   test('undo the server refuses (undo_blocked) ends undo here too', async () => {
     const answer = AUTO()
     const { user, card, server } = await answered('Teilautonom', answer)
@@ -647,6 +685,39 @@ describe('auto (M6)', () => {
     expect(within(card).queryByRole('region', { name: 'Freigabe' })).toBeNull()
     await tick(2000)
     expect(calls.filter((c) => /preview|approve|execute/.test(c.key))).toEqual([])
+  })
+})
+
+describe('watchModel', () => {
+  test('the hand-over closes before the approval judges: an applied hand-over ends the undo', () => {
+    // Fails if watchModel subscribes watchApproval before watchHandover: the
+    // judgement would still see the hand-over open and let the change pass.
+    const answer = actionView('reference')
+    const calls = fakeApi({
+      'POST /api/model/actions/99/touched': () => json({}),
+      [`POST /api/model/actions/${answer.id}/decide`]: () => json({}),
+    })
+    const stop = watchModel(new QueryClient())
+    try {
+      // An earlier model change whose undo is still open.
+      useApproval.setState({
+        last: {
+          action: 99,
+          before: useAnalysis.getState().snapshot(),
+          auto: true,
+          touched: false,
+          hidden: true,
+        },
+      })
+      expect(takeOver(answer)).toBe(true)
+      expect(useApproval.getState().last?.touched).toBe(false)
+      // "Übernehmen" in the editor: the draft becomes the analysis.
+      useAnalysis.getState().apply()
+      expect(useApproval.getState().last?.touched).toBe(true)
+      expect(calls.filter((c) => c.key.endsWith('/99/touched'))).toHaveLength(1)
+    } finally {
+      stop()
+    }
   })
 })
 

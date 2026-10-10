@@ -6,7 +6,7 @@ import { create } from 'zustand'
 import { resultQuery } from '../../analysis/query'
 import { currentAnalysis, useAnalysis } from '../../analysis/store'
 import { api, ApiRequestError, type ModelActionView, type PromptRequest } from '../../api/client'
-import { POLLED, useModel, type Approach } from '../store'
+import { POLLED, sameGeneration, useModel, type Approach } from '../store'
 
 /** The prompt field, for actions that hand it the focus ("Prompt ändern"). */
 export const PROMPT_INPUT = 'prompt-input'
@@ -85,12 +85,16 @@ export async function send(text: string, approach: Approach, parent: number | nu
           parent_action_id: parent,
           analysis: resultQuery(currentAnalysis(useAnalysis.getState())),
         }
+  // A reset meanwhile (sign-out): the answer is the last account's, never this dialogue's.
+  const current = sameGeneration()
   try {
     const view = await api.model.prompt(body)
+    if (!current()) return
     usePanel.setState((s) => ({ sending: false, started: { ...s.started, [view.id]: Date.now() } }))
     useModel.getState().sent(view)
   } catch (error) {
     const running = await stillRunning(error)
+    if (!current()) return
     if (running) {
       usePanel.setState({ sending: false })
       useModel.getState().resumed(running)

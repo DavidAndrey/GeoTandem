@@ -22,16 +22,28 @@
 //   while the hand-over is open, changes are judged when it closes (applied =
 //   a hand edit, "Verwerfen" with the analysis as before = none).
 // - An answer whose record left the dialogue ("Verlauf leeren") changes
-//   nothing here any more.
+//   nothing here any more, and neither does one that arrives after the model
+//   state was reset (sign-out, sign-in: ``resetModelState``), parked or not.
+// - The rows ``execute`` answers are the analysis's hits (D2): they seed the
+//   cache the map and the table read (``seedHits``), so the applied query is
+//   not run a second time and the log's stamp is what the user sees.
 import { t } from '@lingui/core/macro'
+import type { QueryClient } from '@tanstack/react-query'
 import { create } from 'zustand'
 import type { Analysis } from '../../analysis/model'
-import { canBeResult, resultQuery } from '../../analysis/query'
+import { canBeResult, resultLayer, resultQuery } from '../../analysis/query'
 import { useAnalysis, type AnalysisSnapshot } from '../../analysis/store'
-import { api, ApiRequestError, type ModelActionView, type RejectReason } from '../../api/client'
+import {
+  api,
+  ApiRequestError,
+  type ModelActionView,
+  type QueryResult,
+  type RejectReason,
+} from '../../api/client'
+import { seedHits } from '../../map/data'
 import { proposalDraft } from '../panel/draft'
-import { useHandover } from '../panel/handover'
-import { useModel, type ModelState } from '../store'
+import { useHandover, watchHandover } from '../panel/handover'
+import { sameGeneration, useModel, type ModelState } from '../store'
 import { autoReady, needsApproval } from './governance'
 
 export type Step = 'approve' | 'execute' | 'reject' | 'undo'
@@ -81,7 +93,14 @@ export const useApproval = create<ApprovalState>()(initial)
 /** Work waiting for the editor to close (see ``whenEditorClosed``). */
 let waiting: (() => void)[] = []
 
-/** A fresh workplace (and the tests' starting point). */
+/** The workplace's query cache while it is mounted (``watchModel``): ``execute`` seeds its hits. */
+let results: QueryClient | null = null
+
+/**
+ * A fresh workplace (and the tests' starting point): the last change and its
+ * snapshot, what undo put back, the baselines and the parked work all go.
+ * Part of ``resetModelState``.
+ */
 export const resetApproval = () => {
   waiting = []
   useApproval.setState(initial())
@@ -140,8 +159,34 @@ function changeAnalysis(change: () => void) {
   }
 }
 
-/** The executed record's stored query becomes the analysis, its conditions marked "Modell". */
-function apply(view: ModelActionView): boolean {
+/** The ids of a run's features, or ``null`` if one has none (then the hits are asked for). */
+function hitIds(result: QueryResult): number[] | null {
+  const ids = result.features.map((f) => f.id)
+  return ids.every((id): id is number => typeof id === 'number') ? ids : null
+}
+
+/**
+ * The run's features as the analysis's hits (D2). The applied analysis's
+ * result query is the stored query: its result layer is the catalog layer the
+ * query names, its conditions the query's where clause, shown without loss
+ * (D3, ``proposalDraft``). Seeded before React renders the new analysis, so
+ * ``useHits`` finds them instead of asking.
+ */
+function seedResult(result: QueryResult | undefined) {
+  if (!results || !result) return
+  const analysis = committed()
+  const layer = resultLayer(analysis)
+  const query = resultQuery(analysis)
+  const ids = hitIds(result)
+  if (layer?.source.kind !== 'catalog' || !query?.where || !ids) return
+  seedHits(results, query, ids)
+}
+
+/**
+ * The executed record's stored query becomes the analysis, its conditions
+ * marked "Modell"; ``result``, the run's rows, are its hits.
+ */
+function apply(view: ModelActionView, result?: QueryResult): boolean {
   const draft = proposalDraft(view.query, view.id)
   if (!draft || !canApply(view)) return false
   const before = useAnalysis.getState().snapshot()
@@ -151,6 +196,7 @@ function apply(view: ModelActionView): boolean {
       .getState()
       .applyQuery({ result: draft.result, tree: draft.tree, restriction: null }, null)
     useAnalysis.getState().markOrigin()
+    seedResult(result)
   })
   useApproval.setState({
     last: {
@@ -171,14 +217,17 @@ const inDialogue = (action: number) => useModel.getState().dialogue.includes(act
 /**
  * Runs ``apply`` now, or once the editor closes when it holds a draft: an
  * answer must never drop the user's open work (applyQuery and restore both
- * end the draft).
+ * end the draft). Parked work of a model state reset since never runs.
  */
 function whenEditorClosed(action: number, kind: 'execute' | 'undo', apply: () => void) {
   if (useAnalysis.getState().draft === null) {
     apply()
     return
   }
-  waiting.push(apply)
+  const current = sameGeneration()
+  waiting.push(() => {
+    if (current()) apply()
+  })
   useApproval.setState((s) => ({ parked: { ...s.parked, [action]: kind } }))
 }
 
@@ -193,15 +242,22 @@ function flushParked() {
 const notApplicable = () =>
   new Error(t`Diese Abfrage lässt sich nicht im Editor darstellen und darum nicht anwenden.`)
 
+/**
+ * One request of the flow, ``busy`` while it runs. ``null`` when it failed,
+ * and when the model state was reset meanwhile: the answer is of the workplace
+ * before (another account's, perhaps) and changes nothing here.
+ */
 async function step<T>(action: number, name: Step, run: () => Promise<T>): Promise<T | null> {
+  const current = sameGeneration()
   useApproval.setState({ busy: { action, step: name }, failure: null })
   try {
-    return await run()
+    const answer = await run()
+    return current() ? answer : null
   } catch (error) {
-    useApproval.setState({ failure: { action, step: name, error } })
+    if (current()) useApproval.setState({ failure: { action, step: name, error } })
     return null
   } finally {
-    useApproval.setState((s) => (s.busy?.action === action ? { busy: null } : s))
+    if (current()) useApproval.setState((s) => (s.busy?.action === action ? { busy: null } : s))
   }
 }
 
@@ -217,7 +273,7 @@ export async function execute(view: ModelActionView) {
   const done = response.action
   whenEditorClosed(done.id, 'execute', () => {
     if (!inDialogue(done.id)) return
-    if (!apply({ ...done, query: done.query ?? view.query })) {
+    if (!apply({ ...done, query: done.query ?? view.query }, response.result)) {
       useApproval.setState({
         failure: { action: view.id, step: 'execute', error: notApplicable() },
       })
@@ -309,11 +365,11 @@ function rememberBaselines(model: ModelState) {
 }
 
 /**
- * Mounted once by the workplace (beside ``watchHandover``): executes auto
- * answers as they arrive, remembers what each proposal was made against, and
- * reports the first hand edit after a model change. Returns the unsubscribe.
+ * Executes auto answers as they arrive, remembers what each proposal was made
+ * against, and reports the first hand edit after a model change. Mounted by
+ * ``watchModel`` after ``watchHandover``. Returns the unsubscribe.
  */
-export function watchApproval(): () => void {
+function watchApproval(): () => void {
   const onModel = (model: ModelState) => {
     rememberBaselines(model)
     runAuto(model)
@@ -350,5 +406,27 @@ export function watchApproval(): () => void {
   return () => {
     offModel()
     offAnalysis()
+  }
+}
+
+/**
+ * Mounted once by the workplace with its query cache: the hand-over and the
+ * approval flow watching the analysis. The order is load-bearing: zustand
+ * calls its listeners in the order they subscribed, and the hand-edit
+ * judgement of ``watchApproval`` skips changes while a hand-over is open.
+ * When the editor closes on a hand-over, ``watchHandover`` must close it
+ * first, so that an applied hand-over counts as the hand edit it is (design
+ * rule 7: the undo of the last model change ends); subscribed the other way
+ * round, the judgement would still see the hand-over open and let it pass.
+ * Returns the unsubscribe.
+ */
+export function watchModel(client: QueryClient): () => void {
+  results = client
+  const offHandover = watchHandover()
+  const offApproval = watchApproval()
+  return () => {
+    offApproval()
+    offHandover()
+    if (results === client) results = null
   }
 }

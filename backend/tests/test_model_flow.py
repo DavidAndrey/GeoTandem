@@ -27,7 +27,7 @@ import httpx
 import pytest
 from api_helpers import ADMIN_PASSWORD, USER_PASSWORD, Events, sign_in, sign_in_as
 from fastapi import Depends, FastAPI
-from llm_stub import OllamaStub, chat
+from llm_stub import OllamaStub, chat, dripping, flooding, raw_endpoint
 from model_fixtures import REPO, case, cases, completion, fixture
 from pydantic import TypeAdapter
 from sqlalchemy import func, select
@@ -579,6 +579,132 @@ async def test_model_calls_at_once_are_bounded(
     assert (await ask(other, "clarification")).status_code == 202
 
 
+async def test_an_account_waiting_for_its_answer_is_told_so_before_any_slot(
+    client: httpx.AsyncClient, model: Model, app: FastAPI
+) -> None:
+    """Review #36: with every slot taken by the account's own call, its next
+    prompt is 409 ``busy`` (its own), never 503 (everyone's)."""
+    app.state.geotandem.model_calls = ModelCalls(1)
+    model.script("clarification")
+    model.released.clear()
+    first = await ask(client, "clarification")
+    assert first.status_code == 202
+
+    again = await ask(client, "clarification")
+
+    assert (again.status_code, again.json()["code"]) == (409, "busy")
+    assert again.json()["details"] == {"reason": "running", "id": first.json()["id"]}
+    model.released.set()
+    await model.settle()
+
+
+# --- a call bounded in time and size (security review #34) ---------------------------
+
+
+async def until_settled(client: httpx.AsyncClient, action_id: int, within_s: float) -> Body:
+    """The record once it left ``thinking``; fails after ``within_s``."""
+    end = time.monotonic() + within_s
+    while time.monotonic() < end:
+        record: Body = (await client.get(action_url(action_id))).json()
+        if record["status"] != "thinking":
+            return record
+        await asyncio.sleep(0.05)
+    raise AssertionError(f"model action {action_id} still thinking after {within_s} s")
+
+
+def test_a_lingering_call_is_given_up_at_its_deadline() -> None:
+    """The second line: should a call's thread outlive its deadline, the account
+    entry and the slot are free at the deadline (plus the grace), the record is
+    closed, and the thread, once it ends, finds itself cancelled and gives
+    nothing back twice (the slots are a bounded semaphore)."""
+    calls = ModelCalls(1, grace_s=0)
+    stuck, expired = threading.Event(), threading.Event()
+    cancelled: list[bool] = []
+
+    def call(cancel: threading.Event) -> None:
+        stuck.wait(10)
+        cancelled.append(cancel.is_set())
+        calls.finish(7, 1)
+
+    calls.take()
+    calls.start(7, 1, call, deadline=time.monotonic() + 0.2, expire=expired.set)
+    assert calls.in_flight(7) == 1
+    assert expired.wait(5)
+    assert calls.in_flight(7) is None
+    calls.take()  # the slot is free again; ModelCallsBusy otherwise
+
+    stuck.set()
+    calls.wait(5)
+    assert cancelled == [True]
+    calls.give_back()  # the one slot, given back once: a second release would raise
+    calls.shutdown()
+
+
+async def test_a_call_that_outlives_its_deadline_frees_the_account(
+    client: httpx.AsyncClient, model: Model, app: FastAPI
+) -> None:
+    """Through the API: the model never answers, the record ends ``llm_timeout``
+    at the deadline, the account asks again; the late answer is dropped."""
+    app.state.geotandem.model_calls = ModelCalls(1, grace_s=0.1)
+    patched = await client.patch(f"{CONNECTIONS}/{model.connection['id']}", json={"timeout_s": 0.5})
+    assert patched.status_code == 200, patched.text
+    model.script("clarification", "clarification")
+    model.released.clear()
+
+    first = (await ask(client, "clarification")).json()["id"]
+    record = await until_settled(client, first, within_s=5)
+    assert (record["status"], record["error"]["code"]) == ("failed", "llm_timeout")
+    assert record["error"]["details"] == {}  # the cause is for the log (#37)
+    again = await ask(client, "clarification")
+    assert again.status_code == 202, again.text
+
+    model.released.set()
+    await model.settle()
+    assert (await client.get(action_url(first))).json()["status"] == "failed"
+
+
+@pytest.fixture
+def adapter(app: FastAPI) -> None:
+    """The real adapter behind the client factory, for an endpoint on a socket."""
+    app.state.geotandem.client_factory = OpenAICompatClient
+
+
+async def test_a_trickling_model_fails_by_the_deadline_and_the_account_asks_again(
+    client: httpx.AsyncClient, app: FastAPI, adapter: None
+) -> None:
+    """A byte a second keeps every read alive; the deadline ends the call."""
+    with raw_endpoint(dripping()) as base_url:
+        await connect(client, base_url=base_url, timeout_s=2)
+        started = time.monotonic()
+        first = (await ask(client, "clarification")).json()["id"]
+        record = await until_settled(client, first, within_s=10)
+        took = time.monotonic() - started
+        assert (record["status"], record["error"]["code"]) == ("failed", "llm_timeout")
+        assert took < 2 + 1.5
+        again = await ask(client, "clarification")
+        assert again.status_code == 202, again.text
+        await settle(app)
+
+
+async def test_an_answer_past_the_cap_fails_and_only_the_log_says_why(
+    client: httpx.AsyncClient, app: FastAPI, adapter: None, events: Events
+) -> None:
+    """Review #34 and #37: the user's view has the code and the message, the
+    administrator's log entry and the security log the transport's cause."""
+    with raw_endpoint(flooding(4 * 1024 * 1024)) as base_url:
+        await connect(client, base_url=base_url, timeout_s=30)
+        action_id = (await ask(client, "clarification")).json()["id"]
+        await settle(app)
+    # The record's own view (the author's, here an administrator's): no details.
+    own = (await client.get(action_url(action_id))).json()
+    assert (own["status"], own["error"]["code"]) == ("failed", "llm_bad_response")
+    assert own["error"]["details"] == {} and own["error"]["message"]
+    logged = (await client.get(f"/api/admin/model-actions/{action_id}")).json()
+    assert logged["error"]["details"]["cause"] == "too large"
+    decided = [e for e in events if e["event"] == "model_action_decided"]
+    assert (decided[-1]["code"], decided[-1]["cause"]) == ("llm_bad_response", "too large")
+
+
 # --- refused before any call: no record --------------------------------------------
 
 
@@ -716,6 +842,29 @@ async def test_the_limit_counts_over_all_accounts(client: httpx.AsyncClient, mod
     await outcome(client, model, "clarification")
     await sign_in_as(client, "m.keller")
     assert (await ask(client, "clarification")).status_code == 429
+
+
+async def test_the_limit_counts_per_connection(
+    client: httpx.AsyncClient, model: Model, users: Users
+) -> None:
+    """P5: the requests of one connection count for it alone, whichever way."""
+    await limit(client, model, request_limit_enabled=True, request_limit_per_day=1)
+    second = await connect(client, name="Zweite", is_default=False)
+    await limit_of(client, second, request_limit_enabled=True, request_limit_per_day=2)
+    [other] = await users(1)
+    chosen = await other.put("/api/llm/options", json={"connection_id": second["id"]})
+    assert chosen.status_code == 200, chosen.text
+
+    await outcome(client, model, "clarification")  # the first's one request
+    assert (await ask(client, "clarification")).status_code == 429
+    for _ in range(2):  # the second's two, untouched by the first's
+        assert (await outcome(other, model, "clarification"))["connection"]["id"] == second["id"]
+    assert (await ask(other, "clarification")).status_code == 429
+
+
+async def limit_of(client: httpx.AsyncClient, connection: Body, **fields: Any) -> None:
+    response = await client.patch(f"{CONNECTIONS}/{connection['id']}", json=fields)
+    assert response.status_code == 200, response.text
 
 
 async def test_the_limit_starts_again_with_the_day(

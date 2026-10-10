@@ -6,7 +6,6 @@ import { afterEach, describe, expect, test } from 'vitest'
 import type { ActionStatus, ModelActionView } from '../api/client'
 import { actionView, thinkingView } from '../test/model-mocks'
 import { inPseudo, strays, unmarked } from '../test/pseudo'
-import { ENFORCEMENT } from './enforcement'
 import { StatusLabel } from './status'
 import {
   lineStyle,
@@ -122,7 +121,6 @@ describe('statusKey', () => {
       [actionView('reference'), 'awaiting'],
       [actionView('reference', {}, 'Assistenz'), 'proposal'],
     ],
-    // The mocks send ``proposed`` before enforcement (P1), as the E2.3 server does.
     approved: [[ref({ status: 'approved' }, 'Teilautonom'), 'approved']],
     running: [[ref({ approach: 'chain', status: 'running' }), 'running']],
     done: [[ref({ status: 'done' }), 'done']],
@@ -149,16 +147,19 @@ describe('statusKey', () => {
     Object.entries(BY_STATUS).flatMap(([status, rows]) =>
       rows.map(([view, key]) => [status, key, view] as const),
     ),
-  )('%s → %s (with enforcement, E2.4)', (status, key, view) => {
+  )('%s → %s', (status, key, view) => {
     expect(view.status).toBe(status)
-    expect(statusKey(view, { proposalOnly: false })).toBe(key)
+    expect(statusKey(view)).toBe(key)
   })
 
-  test('with enforcement (E2.4) a proposal waits for approval unless a class is off', () => {
-    expect(ENFORCEMENT).toBe(true)
+  test('a proposal waits for approval unless the server stored it proposal-only (D1)', () => {
     expect(statusKey(actionView('reference'))).toBe('awaiting')
     expect(statusKey(actionView('reference', {}, 'Assistenz'))).toBe('proposal')
-    expect(statusKey(actionView('reference'), { proposalOnly: true })).toBe('proposal')
+    // The record's flag decides, not the matrix: the level as it was is the server's.
+    expect(statusKey(actionView('reference', { proposal_only: true }))).toBe('proposal')
+    expect(statusKey(actionView('reference', { proposal_only: false }, 'Assistenz'))).toBe(
+      'awaiting',
+    )
   })
 
   test('stale (M11.3) wins', () => {

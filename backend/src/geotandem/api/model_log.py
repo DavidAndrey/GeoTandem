@@ -14,12 +14,13 @@ from fastapi.responses import StreamingResponse
 
 from geotandem.api.auth import require_admin
 from geotandem.api.errors import ErrorBody, Problem
-from geotandem.api.model import ERRORS
+from geotandem.api.model import ERRORS, ActionId
 from geotandem.api.state import AppState, get_state
 from geotandem.auth.accounts import Account
 from geotandem.model.record import ActionFilters, ModelActionStore
 from geotandem.model.record.export import csv_lines
 from geotandem.model.schemas import (
+    MAX_ID,
     MAX_PAGE,
     Approach,
     KeyFigures,
@@ -64,8 +65,8 @@ class Filters:
         self,
         since: Annotated[datetime | None, Query(alias="from")] = None,
         until: Annotated[datetime | None, Query(alias="to")] = None,
-        level_id: int | None = None,
-        connection_id: int | None = None,
+        level_id: Annotated[int | None, Query(ge=1, le=MAX_ID)] = None,
+        connection_id: Annotated[int | None, Query(ge=1, le=MAX_ID)] = None,
         approach: Approach | None = None,
         account: str | None = None,
     ) -> None:
@@ -135,6 +136,7 @@ def export_csv(filters: Filtered, admin: Admin, store: Store) -> Response:
 
 
 @router.get("/{action_id}", responses=ERRORS)
-def action(action_id: int, admin: Admin, store: Store) -> ModelActionView:
-    """Any account's record as it was (design M16.2); 404 when there is none."""
-    return store.get(admin, action_id)
+def action(action_id: ActionId, admin: Admin, store: Store) -> ModelActionView:
+    """Any account's record as it was (design M16.2), a failure's technical
+    details included (D4); 404 when there is none."""
+    return store.get(admin, action_id, detail=True)

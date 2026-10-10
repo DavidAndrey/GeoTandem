@@ -5,6 +5,7 @@ import { Trans } from '@lingui/react/macro'
 import { t } from '@lingui/core/macro'
 import { useShallow } from 'zustand/react/shallow'
 import { Tabs } from 'radix-ui'
+import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect } from 'react'
 import type { DisplayLayer, GeoJSONGeometry, ReferenceRow } from '../analysis/model'
 import { layerQuery, resultQuery, resultWhere, rowQueries } from '../analysis/query'
@@ -12,11 +13,10 @@ import { currentAnalysis, useAnalysis } from '../analysis/store'
 import type { LayerInfo } from '../api/client'
 import { useLayers, useMapConfig } from '../api/queries'
 import { EditorPanel } from '../editor/EditorPanel'
-import { watchApproval } from '../model/approval/flow'
+import { watchModel } from '../model/approval/flow'
 import { NoticeBar } from '../model/approval/NoticeBar'
 import { PendingProposal } from '../model/approval/Pending'
 import { PreviewCaption, PreviewLayer } from '../model/approval/Preview'
-import { watchHandover } from '../model/panel/handover'
 import { useActionPolling } from '../model/panel/poll'
 import { useActiveModel } from '../model/panel/active'
 import { PromptPanel, PromptUnavailable } from '../model/panel/PromptPanel'
@@ -49,9 +49,10 @@ export function Workplace() {
   const available = connection !== null
   const prompt = useModel((s) => s.open) && available && !editing
   const setOpen = useModel((s) => s.setOpen)
+  const client = useQueryClient()
   useActionPolling()
-  useEffect(watchHandover, [])
-  useEffect(watchApproval, [])
+  // The hand-over before the approval flow, in this order (see ``watchModel``).
+  useEffect(() => watchModel(client), [client])
   return (
     <div
       className={`grid h-full gap-4 ${editing || prompt ? 'grid-cols-[250px_460px_minmax(0,1fr)]' : 'grid-cols-[250px_minmax(0,1fr)]'}`}

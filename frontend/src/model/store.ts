@@ -8,7 +8,7 @@
 // dialogue is only a list of the records this workplace has seen.
 import { create } from 'zustand'
 import type { ActionStatus, Decision, ModelActionView } from '../api/client'
-import { ENFORCEMENT } from './enforcement'
+import { proposalOnly } from './approval/governance'
 
 export type Approach = ModelActionView['approach']
 
@@ -69,9 +69,8 @@ export const initialModel = (): ModelState => ({
 })
 
 /** How the server decides an open record a new prompt overtakes (plan section 2). */
-export function overtaken(view: ModelActionView, enforcement = ENFORCEMENT): Decision {
-  return !enforcement || view.governance?.cell === 'off' ? 'proposal_only' : 'superseded'
-}
+export const overtaken = (view: ModelActionView): Decision =>
+  proposalOnly(view) ? 'proposal_only' : 'superseded'
 
 /**
  * A prompt was accepted (``POST /api/model/prompt`` answered 202 with the record
@@ -151,6 +150,19 @@ export const dialogueViews = (state: ModelState): ModelActionView[] =>
     return view ? [view] : []
   })
 
+/**
+ * Counts the resets of the model state (``reset``, ``resetModelState``): an
+ * answer that arrives after one belongs to the workplace before it, perhaps
+ * of another account, and changes nothing here.
+ */
+let generation = 0
+
+/** A check that nothing reset the model state since it was made: ask it after an ``await``. */
+export function sameGeneration(): () => boolean {
+  const then = generation
+  return () => generation === then
+}
+
 interface ModelStore extends ModelState {
   setOpen: (open: boolean) => void
   setDraft: (draft: string) => void
@@ -175,5 +187,8 @@ export const useModel = create<ModelStore>()((set) => ({
   setReference: (reference) =>
     set((s) => (reference === null || s.dialogue.includes(reference) ? { reference } : s)),
   clearDialogue: () => set(cleared),
-  reset: () => set(initialModel()),
+  reset: () => {
+    generation += 1
+    set(initialModel())
+  },
 }))

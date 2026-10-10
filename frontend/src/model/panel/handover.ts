@@ -28,7 +28,7 @@ import { api, type DecideRequest, type ModelActionView } from '../../api/client'
 import { useMapView } from '../../map/view'
 import { compactQuery } from '../readable'
 import { needsApproval } from '../approval/governance'
-import { useModel } from '../store'
+import { sameGeneration, useModel } from '../store'
 import { assumptionRow, proposalDraft } from './draft'
 
 export interface Handover {
@@ -59,6 +59,9 @@ interface HandoverState {
 }
 
 export const useHandover = create<HandoverState>()(() => ({ open: null, failed: null }))
+
+/** No proposal in the editor, no decision to report again (part of ``resetModelState``). */
+export const resetHandover = () => useHandover.setState({ open: null, failed: null })
 
 /**
  * Whether the editor can take the proposal: representable (D3; the server
@@ -188,11 +191,13 @@ export function decisionFor(handover: Handover, applied: AnalysisState): DecideR
 
 /** Reports a decision; a failure stays visible with "Erneut vermerken". */
 export async function report(action: number, body: DecideRequest) {
+  const current = sameGeneration()
   useHandover.setState({ failed: null })
   try {
     useModel.getState().received(await api.model.decide(action, body))
   } catch (error) {
-    useHandover.setState({ failed: { action, body, error } })
+    // Reset meanwhile (sign-out): the failure is no longer this workplace's.
+    if (current()) useHandover.setState({ failed: { action, body, error } })
   }
 }
 

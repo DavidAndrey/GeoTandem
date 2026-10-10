@@ -6,7 +6,6 @@ import { vi } from 'vitest'
 import { useAnalysis } from '../analysis/store'
 import type { LLMOptions, ModelActionView, RejectReason } from '../api/client'
 import { useMapView } from '../map/view'
-import { resetApproval } from '../model/approval/flow'
 import { attribute, layer, signedIn } from './fixtures'
 import {
   actionView,
@@ -18,10 +17,10 @@ import {
 } from './model-mocks'
 import { fakeApi, renderAt } from './render'
 import { Workplace } from '../workplace/Workplace'
+import { resetModelState } from '../model/reset'
 import { useModel } from '../model/store'
-import { useHandover } from '../model/panel/handover'
 import { POLL_MS } from '../model/panel/poll'
-import { PROMPT_INPUT, resetPanel } from '../model/panel/state'
+import { PROMPT_INPUT } from '../model/panel/state'
 
 export const LAYERS = [
   layer({
@@ -115,7 +114,7 @@ export function enforcement(server: ModelServer, ...ids: number[]): Routes {
     ids.flatMap((id) => {
       const base = `/api/model/actions/${id}`
       return [
-        [`GET ${base}/preview`, () => answer(server.preview(id))],
+        [`POST ${base}/preview`, () => answer(server.preview(id))],
         [`POST ${base}/approve`, () => answer(server.approve(id))],
         [
           `POST ${base}/reject`,
@@ -138,11 +137,8 @@ export function enforcement(server: ModelServer, ...ids: number[]): Routes {
 /** A fresh workplace with the three layers on the map, schools the result. */
 export function resetStores() {
   useAnalysis.getState().reset()
-  useModel.getState().reset()
-  useHandover.setState({ open: null, failed: null })
+  resetModelState()
   useMapView.getState().setActiveRow(null)
-  resetPanel()
-  resetApproval()
   const analysis = useAnalysis.getState()
   analysis.addLayer('gemeinden_steuern')
   analysis.addLayer('strassen')

@@ -200,8 +200,10 @@ export const api = {
       request<ModelActionPage>(`/api/model/my-actions${logParams({}, { offset, limit })}`),
     // Enforcement (plan D2, WP70): the transitions of a record. ``execute`` takes
     // no body: the server runs the stored query, never one the client sends.
-    /** Count and ids of the stored query, for the user only (P2). */
-    preview: (id: number) => request<ActionPreview>(`/api/model/actions/${id}/preview`),
+    /** Count and ids of the stored query, for the user only (P2). A POST: it
+     * stamps ``previewed_at`` on the record (security review #39). */
+    preview: (id: number) =>
+      request<ActionPreview>(`/api/model/actions/${id}/preview`, { method: 'POST' }),
     approve: (id: number) =>
       request<ModelActionView>(`/api/model/actions/${id}/approve`, { method: 'POST' }),
     reject: (id: number, reason: RejectReason | null = null) =>
