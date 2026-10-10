@@ -13,6 +13,7 @@ import { actionView, thinkingView, type CaseId } from '../../test/model-mocks'
 import {
   ask as typeAndSend,
   backend,
+  decideRoute,
   done,
   thinking,
   EXTERNAL,
@@ -28,6 +29,8 @@ import { strays } from '../../test/pseudo'
 import { renderAt } from '../../test/render'
 import { Workplace } from '../../workplace/Workplace'
 import { useModel } from '../store'
+import { useHandover } from './handover'
+import { usePanel } from './state'
 
 beforeEach(resetStores)
 afterEach(done)
@@ -55,6 +58,25 @@ async function answered(id: CaseId, patch = {}) {
   return { user, calls, answer }
 }
 
+const decides = (calls: { key: string; body: unknown }[]) =>
+  calls.filter((c) => c.key.endsWith('/decide')).map((c) => c.body)
+
+/** The reference answer, taken over into B2; ``decide`` as the backend answers it. */
+async function takenOver(routes = {}) {
+  const user = fakeTimers()
+  const calls = backend({
+    ...promptFlow(thinkingView('reference'), REFERENCE),
+    ...decideRoute(REFERENCE.id),
+    ...routes,
+  })
+  await openPanel()
+  await ask(user)
+  await tick()
+  await user.click(await screen.findByRole('button', { name: 'In Editor übernehmen' }))
+  const editor = await screen.findByRole('region', { name: 'Abfrage-Editor' })
+  return { user, calls, editor }
+}
+
 describe('entry (M1)', () => {
   test('M1.1: intro, examples from the visible layers, status line; a click only fills', async () => {
     const calls = backend()
@@ -80,8 +102,12 @@ describe('entry (M1)', () => {
     expect(posts(calls)).toEqual([])
 
     // The approach: Direktabfrage chosen, the chain disabled until E2.5.
-    expect(screen.getByRole('radio', { name: 'Direktabfrage' })).toBeChecked()
+    const direct = screen.getByRole('radio', { name: 'Direktabfrage' })
+    expect(direct).toBeChecked()
+    // Not by colour alone: the chosen segment is underlined 2 px and set bold.
+    expect(direct.className).toMatch(/\bborder-b-2\b.*\bfont-semibold\b/)
     const chain = screen.getByRole('radio', { name: 'Werkzeugkette' })
+    expect(chain.className).not.toMatch(/\bborder-b-2\b/)
     expect(chain).toBeDisabled()
     expect(chain).toHaveAccessibleDescription('ab E2.5')
     expect(
@@ -192,13 +218,64 @@ describe('request (P7)', () => {
     await tick(5000)
     expect(polls(calls, thinking.id)).toEqual([])
   })
+
+  test('abort and its fallback both failing: polling goes on and "Erneut nachfragen" shows', async () => {
+    const user = fakeTimers()
+    const thinking = thinkingView('reference')
+    let down = true
+    const calls = backend({
+      'POST /api/model/prompt': () => json(thinking, 202),
+      [`GET /api/model/actions/${thinking.id}`]: () =>
+        down ? json({ code: 'internal_error', message: 'down', details: {} }, 500) : REFERENCE,
+      [`POST /api/model/actions/${thinking.id}/abort`]: () =>
+        json({ code: 'internal_error', message: 'down', details: {} }, 500),
+    })
+    await openPanel()
+    await ask(user)
+    await user.click(await screen.findByRole('button', { name: 'Abbrechen' }))
+    expect(await screen.findByRole('button', { name: 'Erneut nachfragen' })).toBeInTheDocument()
+    expect(usePanel.getState().pollError?.id).toBe(thinking.id)
+    // The server is back: the polling that went on brings the record.
+    down = false
+    const before = polls(calls, thinking.id).length
+    await tick()
+    expect(polls(calls, thinking.id).length).toBeGreaterThan(before)
+    expect(await screen.findByRole('button', { name: 'In Editor übernehmen' })).toBeEnabled()
+    expect(usePanel.getState().pollError).toBeNull()
+  })
+
+  test('a poll answered while an abort runs is not dropped for good', async () => {
+    const user = fakeTimers()
+    const thinking = thinkingView('reference')
+    let polled = 0
+    const calls = backend({
+      'POST /api/model/prompt': () => json(thinking, 202),
+      [`GET /api/model/actions/${thinking.id}`]: () => {
+        polled += 1
+        // An abort starts while this poll is in flight (the race).
+        if (polled === 1) usePanel.setState({ aborting: thinking.id })
+        return polled === 1 ? thinking : REFERENCE
+      },
+    })
+    await openPanel()
+    await ask(user)
+    await tick()
+    // The abort ended without an answer of its own (e.g. it failed).
+    usePanel.setState({ aborting: null })
+    await tick()
+    expect(polls(calls, thinking.id)).toHaveLength(2)
+    expect(await screen.findByRole('button', { name: 'In Editor übernehmen' })).toBeEnabled()
+  })
 })
 
 describe('answer (M2, M4)', () => {
   test('explanation, assumptions with ≈, the readable query, the status; no undo yet', async () => {
-    await answered('reference')
+    await answered('reference', { latency_ms: null })
     const card = await screen.findByRole('article', { name: 'Antwort' })
-    expect(within(card).getByRole('status')).toHaveTextContent('Vorschlag')
+    // M4.1: proposal-only in E2.3 (P1).
+    expect(within(card).getByRole('status')).toHaveTextContent('Vorschlag· von Hand übernehmen')
+    // No duration known: the approach alone.
+    expect(within(card).getByText('Direktabfrage')).toBeInTheDocument()
     const assumptions = within(card).getByRole('region', { name: 'Annahmen' })
     expect(assumptions).toHaveTextContent('Annahmen · 3')
     expect(
@@ -224,39 +301,23 @@ describe('answer (M2, M4)', () => {
   })
 
   test('In Editor übernehmen → B2 with marks; only Übernehmen applies, reported as proposal_only', async () => {
-    const applied = actionView('reference', {
-      status: 'applied',
-      decision: 'proposal_only',
-      applied_by_hand: true,
-      decided_at: '2026-10-10T14:07:00Z',
-    })
-    const user = fakeTimers()
-    const calls = backend({
-      ...promptFlow(thinkingView('reference'), REFERENCE),
-      [`POST /api/model/actions/${REFERENCE.id}/decide`]: applied,
-    })
-    await openPanel()
-    await ask(user)
-    await tick()
-    await user.click(await screen.findByRole('button', { name: 'In Editor übernehmen' }))
-
+    const { user, calls, editor } = await takenOver()
     // B2 in place of the panel, Klassik chosen (design M4.2).
-    const editor = await screen.findByRole('region', { name: 'Abfrage-Editor' })
     expect(screen.queryByRole('region', { name: 'Prompt' })).toBeNull()
     expect(screen.getByRole('tab', { name: 'Klassik' })).toHaveAttribute('aria-selected', 'true')
     expect(within(editor).getByRole('note')).toHaveTextContent(
       /Entwurf aus Vorschlag .*Noch nicht in der Analyse/,
     )
+    expect(within(editor).getByRole('note')).not.toHaveTextContent('Nur in')
     expect(within(editor).getAllByText('Modell')).toHaveLength(3)
     expect(useAnalysis.getState().tree.children).toEqual([])
-    expect(calls.filter((c) => c.key.endsWith('/decide'))).toEqual([])
+    expect(decides(calls)).toEqual([])
 
     await user.click(within(editor).getByRole('button', { name: 'Übernehmen' }))
     expect(rows(useAnalysis.getState().tree)).toHaveLength(3)
+    // The applied query equals the model's (canonical form): applied by hand.
     await waitFor(() =>
-      expect(calls.filter((c) => c.key.endsWith('/decide')).map((c) => c.body)).toEqual([
-        { decision: 'proposal_only', applied_by_hand: true },
-      ]),
+      expect(decides(calls)).toEqual([{ decision: 'proposal_only', applied_by_hand: true }]),
     )
     // The sidebar's compact tree carries the mark per condition (M2.2, P3).
     const overview = screen.getByLabelText('Bedingungen (Übersicht)')
@@ -266,23 +327,14 @@ describe('answer (M2, M4)', () => {
     const card = await screen.findByRole('article', { name: 'Antwort' })
     expect(within(card).getByRole('status')).toHaveTextContent('von Hand übernommen')
     expect(within(card).getByRole('button', { name: 'Im Editor öffnen' })).toBeEnabled()
+    // Applied: the analysis's hits (M2.2); the fake counts 10 of 10.
+    expect(await within(card).findByLabelText('Trefferzahl der Analyse')).toHaveTextContent(
+      '10 von 10',
+    )
   })
 
-  test('an edited draft is reported as adjusted with the applied query', async () => {
-    const user = fakeTimers()
-    const calls = backend({
-      ...promptFlow(thinkingView('reference'), REFERENCE),
-      [`POST /api/model/actions/${REFERENCE.id}/decide`]: actionView('reference', {
-        status: 'applied',
-        decision: 'adjusted',
-        applied_by_hand: true,
-      }),
-    })
-    await openPanel()
-    await ask(user)
-    await tick()
-    await user.click(await screen.findByRole('button', { name: 'In Editor übernehmen' }))
-    const editor = await screen.findByRole('region', { name: 'Abfrage-Editor' })
+  test('an edited draft is reported as adjusted with the applied query, not as by hand', async () => {
+    const { user, calls, editor } = await takenOver()
     const distance = within(editor).getByRole('spinbutton', { name: 'Distanz in Metern' })
     await user.clear(distance)
     await user.type(distance, '300')
@@ -290,32 +342,81 @@ describe('answer (M2, M4)', () => {
     expect(within(editor).getAllByText('Modell')).toHaveLength(2)
     await user.click(within(editor).getByRole('button', { name: 'Übernehmen' }))
 
-    await waitFor(() => expect(calls.filter((c) => c.key.endsWith('/decide'))).toHaveLength(1))
-    const body = calls.find((c) => c.key.endsWith('/decide'))?.body as {
+    await waitFor(() => expect(decides(calls)).toHaveLength(1))
+    const body = decides(calls)[0] as {
       decision: string
       query: { where: { args: { distance_m?: number }[] } }
     }
+    // The fake backend refuses ``adjusted`` with ``applied_by_hand`` (400), as WP65 does.
+    expect(body).not.toHaveProperty('applied_by_hand')
     expect(body.decision).toBe('adjusted')
     expect(body.query.where.args[1]?.distance_m).toBe(300)
+    await waitFor(() => expect(useModel.getState().views[REFERENCE.id]?.status).toBe('applied'))
+    expect(useHandover.getState().failed).toBeNull()
   })
 
-  test('Verwerfen leaves the analysis as it was and reports nothing', async () => {
-    const user = fakeTimers()
-    const calls = backend(promptFlow(thinkingView('reference'), REFERENCE))
-    useAnalysis.setState({ result: 'strassen' })
-    await openPanel()
-    await ask(user)
-    await tick()
-    await user.click(await screen.findByRole('button', { name: 'In Editor übernehmen' }))
-    expect(useAnalysis.getState().result).toBe('schulen')
-    const editor = await screen.findByRole('region', { name: 'Abfrage-Editor' })
+  test('"Nur in" is set aside while the proposal is in B2; Verwerfen brings it back', async () => {
+    const restriction = {
+      kind: 'view' as const,
+      bbox: [7.8, 46.8, 8, 47] as [number, number, number, number],
+    }
+    useAnalysis.getState().setRestriction(restriction)
+    const { user, editor } = await takenOver()
+    expect(within(editor).getByRole('note')).toHaveTextContent('„Nur in“ entfällt')
+    expect(useAnalysis.getState().restriction).toBeNull()
+    await user.click(within(editor).getByRole('button', { name: 'Verwerfen' }))
+    expect(useAnalysis.getState().restriction).toEqual(restriction)
+  })
+
+  test('applied without "Nur in", the query is the model\'s; one set meanwhile makes it adjusted', async () => {
+    useAnalysis.getState().setRestriction({ kind: 'view', bbox: [7.8, 46.8, 8, 47] })
+    const { user, calls, editor } = await takenOver()
+    // Safety net: anything that makes the applied query differ is reported.
+    act(() => useAnalysis.getState().setRestriction({ kind: 'view', bbox: [7.9, 46.9, 8, 47] }))
+    await user.click(within(editor).getByRole('button', { name: 'Übernehmen' }))
+    await waitFor(() => expect(decides(calls)).toHaveLength(1))
+    const body = decides(calls)[0] as { decision: string; query: { where: { args: unknown[] } } }
+    expect(body.decision).toBe('adjusted')
+    expect(body.query.where.args).toContainEqual({ op: 'bbox', bbox: [7.9, 46.9, 8, 47] })
+  })
+
+  test('Verwerfen puts back result layer, added layer and the unsaved mark, also after a result change in B2', async () => {
+    const analysis = useAnalysis.getState()
+    analysis.removeLayer('schulen')
+    analysis.setResult('strassen')
+    analysis.markSaved()
+    const { user, calls, editor } = await takenOver()
+    expect(useAnalysis.getState().layers.map((l) => l.id)).toContain('schulen')
+    expect(useAnalysis.getState().dirty).toBe(true)
+    // The result layer changed in B2 (ResultSelect).
+    act(() => void useAnalysis.getState().setResult('gemeinden_steuern'))
     await user.click(within(editor).getByRole('button', { name: 'Verwerfen' }))
 
-    expect(useAnalysis.getState().result).toBe('strassen')
-    expect(useAnalysis.getState().tree.children).toEqual([])
-    expect(useAnalysis.getState().origin.marks).toEqual({})
+    const after = useAnalysis.getState()
+    expect(after.result).toBe('strassen')
+    expect(after.layers.map((l) => l.id)).not.toContain('schulen')
+    expect(after.dirty).toBe(false)
+    expect(after.tree.children).toEqual([])
+    expect(after.origin.marks).toEqual({})
     await tick(2000)
-    expect(calls.filter((c) => c.key.endsWith('/decide'))).toEqual([])
+    expect(decides(calls)).toEqual([])
+  })
+
+  test('a decision the server did not take can be reported again, not taken over twice', async () => {
+    const { user, calls, editor } = await takenOver({
+      [`POST /api/model/actions/${REFERENCE.id}/decide`]: () =>
+        json({ code: 'internal_error', message: 'down', details: {} }, 500),
+    })
+    await user.click(within(editor).getByRole('button', { name: 'Übernehmen' }))
+    await waitFor(() => expect(decides(calls)).toHaveLength(1))
+    await user.click(screen.getByRole('tab', { name: 'Prompt' }))
+    const card = await screen.findByRole('article', { name: 'Antwort' })
+    expect(await within(card).findByRole('button', { name: 'Erneut vermerken' })).toBeEnabled()
+    expect(within(card).getByRole('button', { name: 'In Editor übernehmen' })).toBeDisabled()
+    expect(within(card).queryByRole('button', { name: /^Annahme ändern/ })).toBeNull()
+    await user.click(within(card).getByRole('button', { name: 'Erneut vermerken' }))
+    await waitFor(() => expect(decides(calls)).toHaveLength(2))
+    expect(decides(calls)[1]).toEqual(decides(calls)[0])
   })
 })
 
@@ -407,8 +508,30 @@ describe('errors (M14)', () => {
     expect(alert).toHaveTextContent('Grenzwert erreicht')
     expect(alert).toHaveTextContent('Die 50 Anfragen pro Tag an diese Anbindung sind aufgebraucht.')
     expect(alert).toHaveTextContent('Ihr Stand ist unverändert.')
+    expect(alert).toHaveTextContent('Wieder verfügbar ab 00:00 (Zeit des Servers).')
     expect(screen.queryByRole('button', { name: 'Erneut versuchen' })).toBeNull()
     expect(screen.getByRole('textbox', { name: 'Prompt' })).toHaveValue(PROMPT)
+  })
+
+  test('a request refused after a proposal leaves the proposal open above it', async () => {
+    const user = fakeTimers()
+    let sent = 0
+    backend({
+      ...promptFlow(thinkingView('reference'), REFERENCE),
+      'POST /api/model/prompt': () =>
+        sent++ === 0
+          ? json(thinkingView('reference'), 202)
+          : json({ code: 'quota_exceeded', message: 'limit', details: { limit: 50 } }, 429),
+    })
+    await openPanel()
+    await ask(user)
+    await tick()
+    await screen.findByRole('button', { name: 'In Editor übernehmen' })
+    await ask(user, 'Und die Kitas?')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Grenzwert erreicht')
+    // "Ihr Stand ist unverändert" includes the dialogue: the proposal is still takeable.
+    expect(screen.getByRole('button', { name: 'In Editor übernehmen' })).toBeEnabled()
+    expect(screen.getAllByRole('article', { name: 'Antwort' })).toHaveLength(2)
   })
 })
 

@@ -111,7 +111,13 @@ export async function abort(id: number) {
     try {
       received(await api.model.action(id))
     } catch {
-      usePanel.setState({ abortError: error })
+      // Neither answered: say so, and poll on (a new round) so the record still
+      // arrives; "Erneut nachfragen" restarts it by hand.
+      usePanel.setState((s) => ({
+        abortError: error,
+        pollError: { id, error },
+        pollRound: s.pollRound + 1,
+      }))
     }
   } finally {
     usePanel.setState({ aborting: null })

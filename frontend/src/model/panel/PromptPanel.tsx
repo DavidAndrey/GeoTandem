@@ -218,7 +218,8 @@ function Composer() {
               aria-checked={approach === value}
               aria-describedby={value === 'chain' && !CHAIN_AVAILABLE ? 'chain-later' : undefined}
               disabled={locked || (value === 'chain' && !CHAIN_AVAILABLE)}
-              className={`border px-2 first:rounded-l last:rounded-r disabled:opacity-45 ${approach === value ? 'border-accent text-accent-700' : 'border-neutral-400'}`}
+              // The chosen segment: 2 px accent underline (design pattern), not colour alone.
+              className={`border px-2 first:rounded-l last:rounded-r disabled:opacity-45 ${approach === value ? 'border-accent text-accent-700 border-b-2 font-semibold' : 'border-neutral-400'}`}
               onClick={() => setApproach(value)}
             >
               {value === 'direct' ? t`Direktabfrage` : t`Werkzeugkette`}
@@ -244,7 +245,8 @@ function Composer() {
       </div>
       <p className="text-muted min-w-0 text-xs break-words">
         {where && `${where} · `}
-        {t`Stufe ${levelName}`} · <Trans>Ihre Eingaben werden protokolliert</Trans>
+        {levelName && `${t`Stufe ${levelName}`} · `}
+        <Trans>Ihre Eingaben werden protokolliert</Trans>
       </p>
     </form>
   )

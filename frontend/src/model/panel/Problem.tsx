@@ -59,6 +59,10 @@ export function ProblemCard({ problem, onRetry }: { problem: Problem; onRetry: (
         </p>
         {LIMIT.includes(code) && (
           <p className="text-muted text-xs">
+            {/* The limit counts per calendar day of the server's time zone (P5). */}
+            {code === 'quota_exceeded' && (
+              <Trans>Wieder verfügbar ab 00:00 (Zeit des Servers).</Trans>
+            )}{' '}
             <Trans>Klassik bleibt nutzbar.</Trans>
           </p>
         )}

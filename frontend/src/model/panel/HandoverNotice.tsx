@@ -17,6 +17,15 @@ export function HandoverNotice() {
       <p>
         <Trans>Noch nicht in der Analyse. „Übernehmen“ gilt als Ihre Änderung.</Trans>
       </p>
+      {/* The applied query is the model's exactly (P1, D2); "Verwerfen" brings it back. */}
+      {handover.before.restriction && (
+        <p>
+          <Trans>
+            „Nur in“ entfällt: Der Vorschlag gilt ohne Ihre Einschränkung auf Ausschnitt oder
+            Fläche. „Verwerfen“ stellt sie wieder her.
+          </Trans>
+        </p>
+      )}
     </div>
   )
 }

@@ -36,8 +36,14 @@ export function useActionPolling() {
       }
       try {
         const view = await api.model.action(id)
-        if (stopped || usePanel.getState().aborting === id) return
+        if (stopped) return
+        // An abort started meanwhile: its answer decides; poll again in case it fails.
+        if (usePanel.getState().aborting === id) {
+          timer = setTimeout(tick, POLL_MS)
+          return
+        }
         failures = 0
+        if (usePanel.getState().pollError?.id === id) usePanel.setState({ pollError: null })
         received(view)
         if (POLLED.includes(view.status)) timer = setTimeout(tick, POLL_MS)
       } catch (error) {

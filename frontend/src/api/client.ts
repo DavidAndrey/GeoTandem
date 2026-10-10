@@ -67,7 +67,9 @@ export type KeyFigures = Schemas['KeyFigures']
 export type ExecuteResponse = Schemas['ExecuteResponse']
 export type ModelView = Schemas['ModelView']
 export type StopReason = NonNullable<ModelActionView['stop_reason']>
-export type DecideRequest = Schemas['DecideRequest']
+/** ``applied_by_hand`` has a server default (false) and goes only with ``proposal_only``. */
+export type DecideRequest = Omit<Schemas['DecideRequest'], 'applied_by_hand'> &
+  Partial<Pick<Schemas['DecideRequest'], 'applied_by_hand'>>
 export type Assumption = Schemas['Assumption']
 
 export class ApiRequestError extends Error {

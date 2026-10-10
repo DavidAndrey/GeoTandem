@@ -7,6 +7,7 @@ import { useAnalysis } from '../analysis/store'
 import type { LLMOptions, ModelActionView } from '../api/client'
 import { useMapView } from '../map/view'
 import { attribute, layer, signedIn } from './fixtures'
+import { actionView } from './model-mocks'
 import { fakeApi, renderAt } from './render'
 import { Workplace } from '../workplace/Workplace'
 import { useModel } from '../model/store'
@@ -146,6 +147,32 @@ export function promptFlow(thinking: ModelActionView, ...answers: ModelActionVie
     'POST /api/model/prompt': () => json(thinking, 202),
     [`GET /api/model/actions/${thinking.id}`]: () =>
       answers[Math.min(polls++, answers.length - 1)] as ModelActionView,
+  }
+}
+
+/**
+ * ``decide`` as the backend answers it (WP65, store.py): ``applied_by_hand``
+ * belongs to ``proposal_only``; an adjusted query with it is refused with 400.
+ */
+export function decideRoute(id: number) {
+  return {
+    [`POST /api/model/actions/${id}/decide`]: (init: RequestInit | undefined) => {
+      const body = JSON.parse(String(init?.body)) as {
+        decision: 'proposal_only' | 'adjusted'
+        applied_by_hand?: boolean
+        query?: ModelActionView['applied_query']
+      }
+      if (body.decision === 'adjusted' && body.applied_by_hand)
+        return json({ code: 'bad_request', message: 'adjusted is not by hand', details: {} }, 400)
+      return actionView('reference', {
+        id,
+        status: 'applied',
+        decision: body.decision,
+        applied_by_hand: body.applied_by_hand ?? false,
+        applied_query: body.query ?? null,
+        decided_at: '2026-10-10T14:07:00Z',
+      })
+    },
   }
 }
 

@@ -1,19 +1,24 @@
 // "In Editor übernehmen" (design M4.1 → M4.2, plan P1): the proposal opens as
 // the editor's draft (B2) in place of the panel. Nothing changes the analysis
 // until the editor's own "Übernehmen" does, as the user's act; that is then
-// reported with ``decide``. "Verwerfen" leaves the analysis as it was and
+// reported with ``decide``. "Verwerfen" puts everything back as it was and
 // reports nothing: the proposal stays open in the dialogue.
 //
+// The applied query is the model's query exactly (P1, D2, F-5.16): the result
+// layer becomes the proposal's, and a "Nur in" restriction of the analysis is
+// set aside while the proposal is in the editor (the notice says so); it comes
+// back on "Verwerfen".
+//
 // Decision (plan section 2): ``proposal_only`` with ``applied_by_hand`` if the
-// draft went in as proposed, ``adjusted`` with the applied query if the user
-// changed it first. "Changed" is read from the touched marks (P3): a proposed
-// row whose mark "Modell" did not survive "Übernehmen" was edited or removed.
-// The marks cannot see a row added or an UND/ODER switched, so the condition
-// and the result layer are compared as well. A value changed and changed back
-// counts as an edit, as it does for the mark the user sees.
+// draft went in as proposed, ``adjusted`` with the applied query (and without
+// ``applied_by_hand``, which belongs to ``proposal_only``) if it did not.
+// "As proposed" needs both: every proposed row kept its mark "Modell" (P3; a
+// value changed and changed back counts as an edit, as it does for the mark
+// the user sees), and the applied query object equals the proposed one in
+// canonical form (catches rows added, UND/ODER switched, another result layer).
 import { create } from 'zustand'
-import type { DisplayLayer, Group } from '../../analysis/model'
-import { canBeResult, nodeCondition, resultQuery } from '../../analysis/query'
+import type { Group, Restriction } from '../../analysis/model'
+import { canBeResult, resultQuery } from '../../analysis/query'
 import { currentAnalysis, useAnalysis } from '../../analysis/store'
 import { rows } from '../../analysis/tree'
 import { api, type DecideRequest, type ModelActionView } from '../../api/client'
@@ -25,11 +30,18 @@ export interface Handover {
   action: number
   /** When the proposal was made, for "Entwurf aus Vorschlag 14:05". */
   at: string
+  /** The query the model proposed, as the record holds it. */
+  query: unknown
   proposal: Group
   result: string
-  /** To put back on "Verwerfen": the result layer before, and whether the layer was added. */
-  previousResult: string | null
-  added: boolean
+  /** What "Verwerfen" puts back. */
+  before: {
+    result: string | null
+    restriction: Restriction
+    dirty: boolean
+    /** The result layer was added for the proposal. */
+    added: boolean
+  }
 }
 
 interface HandoverState {
@@ -41,17 +53,15 @@ interface HandoverState {
 
 export const useHandover = create<HandoverState>()(() => ({ open: null, failed: null }))
 
-const catalogLayer = (layer: string): DisplayLayer => ({
-  id: layer,
-  source: { kind: 'catalog', layer },
-  visible: true,
-  opacity: 1,
-  symbology: null,
-})
-
-/** Whether the editor can take the proposal (D3); the server refuses the others. */
+/**
+ * Whether the editor can take the proposal: representable (D3; the server
+ * refuses the others), and not already applied with its decision still to be
+ * reported (a retry, not a second take-over).
+ */
 export const canTakeOver = (view: ModelActionView) =>
-  view.status === 'proposed' && proposalDraft(view.query, view.id) !== null
+  view.status === 'proposed' &&
+  useHandover.getState().failed?.action !== view.id &&
+  proposalDraft(view.query, view.id) !== null
 
 /**
  * Opens the proposal in the editor, its rows marked "Modell", ``row`` (an
@@ -60,25 +70,28 @@ export const canTakeOver = (view: ModelActionView) =>
 export function takeOver(view: ModelActionView, row: string | null = null): boolean {
   const draft = proposalDraft(view.query, view.id)
   const analysis = useAnalysis.getState()
-  if (!draft || analysis.draft !== null) return false
+  if (!draft || !canTakeOver(view) || analysis.draft !== null) return false
   const shown = analysis.layers.find((l) => l.id === draft.result)
   if (shown && !canBeResult(shown)) return false
-  // The result layer is not part of the draft; "Verwerfen" puts it back (watchHandover).
-  useAnalysis.setState((s) => ({
-    layers: shown ? s.layers : [catalogLayer(draft.result), ...s.layers],
-    result: draft.result,
-    draft: draft.tree,
-    ...(shown ? {} : { dirty: true }),
-  }))
+  const before = {
+    result: analysis.result,
+    restriction: analysis.restriction,
+    dirty: analysis.dirty,
+    added: !shown,
+  }
+  if (!shown) analysis.addLayer(draft.result, true)
+  // Result layer and restriction are not part of a draft: set here, put back by
+  // "Verwerfen" (watchHandover).
+  useAnalysis.setState({ result: draft.result, restriction: null, draft: draft.tree })
   useAnalysis.getState().markOrigin()
   useHandover.setState({
     open: {
       action: view.id,
       at: view.created_at,
+      query: view.query,
       proposal: draft.tree,
       result: draft.result,
-      previousResult: analysis.result,
-      added: !shown,
+      before,
     },
     failed: null,
   })
@@ -100,7 +113,7 @@ function assumptionTarget(view: ModelActionView, path: readonly number[]): strin
 
 /** Whether an assumption's "ändern" has a condition to open. */
 export const canEditAssumption = (view: ModelActionView, path: readonly number[]) =>
-  assumptionTarget(view, path) !== null
+  assumptionTarget(view, path) !== null && (view.status !== 'proposed' || canTakeOver(view))
 
 /**
  * "ändern" next to an assumption (design M12.1): the condition it is about,
@@ -119,20 +132,42 @@ export function editAssumption(view: ModelActionView, path: readonly number[]): 
   return true
 }
 
+/** JSON with sorted keys: two query objects that mean the same compare equal. */
+function canonical(value: unknown): string {
+  const sort = (v: unknown): unknown =>
+    Array.isArray(v)
+      ? v.map(sort)
+      : v !== null && typeof v === 'object'
+        ? Object.fromEntries(
+            Object.keys(v)
+              .sort()
+              .map((k) => [k, sort((v as Record<string, unknown>)[k])]),
+          )
+        : v
+  return JSON.stringify(sort(value))
+}
+
+/**
+ * The parts of a query object the editor decides. A layer's symbology is
+ * display state the analysis adds to every query of it, and ``output`` is
+ * ``map`` unless named.
+ */
+function decided(query: unknown): unknown {
+  if (query === null || typeof query !== 'object') return query
+  const parts: Record<string, unknown> = { output: 'map', ...query }
+  delete parts.symbology
+  return parts
+}
+
 type AnalysisState = ReturnType<typeof useAnalysis.getState>
 
 /** What "Übernehmen" of the handed-over draft amounts to (see the head of this file). */
 export function decisionFor(handover: Handover, applied: AnalysisState): DecideRequest {
+  const query = resultQuery(currentAnalysis(applied))
   const marksKept = rows(handover.proposal).every((row) => applied.origin.marks[row.id])
-  const same =
-    applied.result === handover.result &&
-    JSON.stringify(nodeCondition(handover.proposal)) === JSON.stringify(nodeCondition(applied.tree))
-  if (marksKept && same) return { decision: 'proposal_only', applied_by_hand: true }
-  return {
-    decision: 'adjusted',
-    applied_by_hand: true,
-    query: resultQuery(currentAnalysis(applied)),
-  }
+  if (marksKept && canonical(decided(query)) === canonical(decided(handover.query)))
+    return { decision: 'proposal_only', applied_by_hand: true }
+  return { decision: 'adjusted', query }
 }
 
 /** Reports a decision; a failure stays visible with "Erneut vermerken". */
@@ -147,8 +182,10 @@ export async function report(action: number, body: DecideRequest) {
 
 /**
  * Watches the editor close while a proposal is in it: "Übernehmen" (the tree
- * is the draft) reports the decision, anything else puts the result layer
- * back. Returns the unsubscribe function.
+ * is the draft) reports the decision; "Verwerfen" (tree and saved-query link
+ * unchanged) puts back result layer, restriction and the unsaved mark; a
+ * saved query or session loaded meanwhile replaced all of it and is left
+ * alone. Returns the unsubscribe function.
  */
 export function watchHandover(): () => void {
   return useAnalysis.subscribe((next, previous) => {
@@ -159,11 +196,13 @@ export function watchHandover(): () => void {
       void report(handover.action, decisionFor(handover, next))
       return
     }
-    // Discarded; a saved query or session loaded meanwhile brings its own layer.
-    if (next.result !== handover.result) return
+    if (next.tree !== previous.tree || next.queryRef !== previous.queryRef) return
+    const { before } = handover
     useAnalysis.setState((s) => ({
-      result: handover.previousResult,
-      layers: handover.added ? s.layers.filter((l) => l.id !== handover.result) : s.layers,
+      result: before.result,
+      restriction: before.restriction,
+      dirty: before.dirty,
+      layers: before.added ? s.layers.filter((l) => l.id !== handover.result) : s.layers,
     }))
   })
 }

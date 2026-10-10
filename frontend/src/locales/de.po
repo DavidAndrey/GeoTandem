@@ -31,6 +31,10 @@ msgstr "· nicht anwendbar"
 msgid "· nicht beantwortbar"
 msgstr "· nicht beantwortbar"
 
+#: src/model/panel/Answer.tsx
+msgid "· von Hand übernehmen"
+msgstr "· von Hand übernehmen"
+
 #: src/i18n/errors.ts
 msgid "„{layer}.{attribute}\" ist kein Feld eines Layers mit Geometrie."
 msgstr "„{layer}.{attribute}\" ist kein Feld eines Layers mit Geometrie."
@@ -90,6 +94,10 @@ msgstr "„{title}\" entfernen?"
 #: src/session/SessionsDialog.tsx
 msgid "„Daten neu\": ein beteiligter Layer wurde seit dem Speichern aktualisiert. Sitzungen sind privat."
 msgstr "„Daten neu\": ein beteiligter Layer wurde seit dem Speichern aktualisiert. Sitzungen sind privat."
+
+#: src/model/panel/HandoverNotice.tsx
+msgid "„Nur in“ entfällt: Der Vorschlag gilt ohne Ihre Einschränkung auf Ausschnitt oder Fläche. „Verwerfen“ stellt sie wieder her."
+msgstr "„Nur in“ entfällt: Der Vorschlag gilt ohne Ihre Einschränkung auf Ausschnitt oder Fläche. „Verwerfen“ stellt sie wieder her."
 
 #: src/table/TableDock.tsx
 msgid "(Ergebnis)"
@@ -3665,6 +3673,10 @@ msgstr "Trefferquote"
 msgid "Trefferzahl"
 msgstr "Trefferzahl"
 
+#: src/model/panel/Answer.tsx
+msgid "Trefferzahl der Analyse"
+msgstr "Trefferzahl der Analyse"
+
 #: src/admin/ImportWizard.tsx
 msgid "Trennzeichen"
 msgstr "Trennzeichen"
@@ -3943,6 +3955,10 @@ msgstr "Wie der Layer auf der Karte erscheint (F-4.8)."
 #: src/admin/ImportWizard.tsx
 msgid "Wie ist der Raumbezug angegeben?"
 msgstr "Wie ist der Raumbezug angegeben?"
+
+#: src/model/panel/Problem.tsx
+msgid "Wieder verfügbar ab 00:00 (Zeit des Servers)."
+msgstr "Wieder verfügbar ab 00:00 (Zeit des Servers)."
 
 #: src/session/notice.ts
 msgid "Wiederhergestellt · {count}, identisch mit dem Speicherstand"

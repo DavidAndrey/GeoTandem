@@ -6,16 +6,19 @@ import { Trans } from '@lingui/react/macro'
 import { t } from '@lingui/core/macro'
 import { useEffect, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { useAnalysis } from '../../analysis/store'
+import { currentAnalysis, useAnalysis } from '../../analysis/store'
 import type { Assumption as AssumptionData, ModelActionView, ModelAnswer } from '../../api/client'
 import { ErrorNotice } from '../../components/ui'
+import { useCounts } from '../../editor/useCounts'
 import { errorText } from '../../i18n/errors'
 import { formatNumber } from '../../i18n/locale'
+import { hitsOf } from '../../i18n/phrases'
 import { StatusLabel } from '../status'
 import { dialogueViews, useModel } from '../store'
 import { FRAME, lineStyle, statusKey } from '../statusKey'
 import { QueryTree } from '../tree'
 import { CHAIN_AVAILABLE } from './chain'
+import { proposalDraft } from './draft'
 import {
   canEditAssumption,
   canTakeOver,
@@ -41,9 +44,11 @@ export function Dialogue() {
       {views.map((view, i) => (
         <li key={view.id} className="flex flex-col gap-2">
           <PromptLine prompt={view.prompt} at={view.created_at} />
-          {i === views.length - 1 && !failure ? <Answer view={view} /> : <Earlier view={view} />}
+          {i === views.length - 1 ? <Answer view={view} /> : <Earlier view={view} />}
         </li>
       ))}
+      {/* A request refused before any record: the latest answer stays open above,
+          since "Ihr Stand ist unverändert" includes the dialogue. */}
       {failure && (
         <li className="flex flex-col gap-2">
           <PromptLine prompt={failure.prompt} at={null} />
@@ -118,7 +123,8 @@ const unchanged = () => (
 
 /** Seconds since ``since`` (ms), counting up once a second. */
 function useElapsed(since: number): number {
-  const [now, setNow] = useState(since)
+  // From the clock, not ``since``: a remount (panel reopened) shows the time at once.
+  const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(timer)
@@ -268,11 +274,23 @@ function Proposal({ view, answer }: { view: ModelActionView; answer: QueryAnswer
   const count = formatNumber(answer.assumptions.length)
   return (
     <article aria-label={t`Antwort`} className={`card flex flex-col gap-2 p-3 ${FRAME[line]}`}>
-      <p className="flex items-center gap-2">
-        <StatusLabel status={key} detail={applied ? clockTime(view.decided_at) : undefined} live />
+      <p className="flex flex-wrap items-center gap-2">
+        <StatusLabel
+          status={key}
+          detail={
+            applied
+              ? clockTime(view.decided_at)
+              : view.status === 'proposed'
+                ? t`· von Hand übernehmen`
+                : undefined
+          }
+          live
+        />
         <span className="text-muted ml-auto text-xs">
           {took ? t`${approach} · ${took}` : approach}
         </span>
+        {/* Applied: the analysis's hits (M2.2). Before, E2.3 has no preview count (P2: E2.4). */}
+        {applied && <AppliedCount />}
       </p>
       <p>{answer.explanation}</p>
       {answer.assumptions.length > 0 && (
@@ -338,6 +356,18 @@ function Assumption({ view, assumption }: { view: ModelActionView; assumption: A
   )
 }
 
+/** "10 von 137": the hits of the analysis the answer was applied to. */
+function AppliedCount() {
+  const analysis = useAnalysis(useShallow(currentAnalysis))
+  const counts = useCounts(analysis)
+  if (!counts.data) return null
+  return (
+    <span className="text-sm tabular-nums" aria-label={t`Trefferzahl der Analyse`}>
+      {hitsOf(counts.data.hits, counts.data.total)}
+    </span>
+  )
+}
+
 /** M4.1: why there is no approval, preview or undo yet (P1). */
 function ProposalOnly({ view }: { view: ModelActionView }) {
   const level = view.level.name
@@ -356,7 +386,10 @@ function ProposalOnly({ view }: { view: ModelActionView }) {
 function Actions({ view }: { view: ModelActionView }) {
   const editing = useAnalysis((s) => s.draft !== null)
   const setOpen = useModel((s) => s.setOpen)
-  const takeable = canTakeOver(view)
+  // Applied, its decision not yet reported: "Erneut vermerken", not a second take-over.
+  const reporting = useHandover((s) => s.failed?.action === view.id)
+  const representable = proposalDraft(view.query, view.id) !== null
+  const takeable = !reporting && canTakeOver(view)
   return (
     <div className="flex flex-wrap items-center gap-2">
       {view.status === 'proposed' && (
@@ -388,7 +421,7 @@ function Actions({ view }: { view: ModelActionView }) {
       <span id={`log-${view.id}`} className="text-muted text-xs">
         <Trans>ab E2.4</Trans>
       </span>
-      {view.status === 'proposed' && !takeable && (
+      {view.status === 'proposed' && !representable && (
         <p className="text-muted w-full text-xs">
           <Trans>Diese Abfrage lässt sich nicht im Editor darstellen.</Trans>
         </p>
