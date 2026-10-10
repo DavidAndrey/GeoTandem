@@ -15,16 +15,19 @@ import { describe } from '../editor/describe'
 import { useCounts } from '../editor/useCounts'
 import { labelsFor } from '../editor/fields'
 import { useMapView } from '../map/view'
+import { isMarked } from '../model/origin'
 import { ResultSelect } from './ResultSelect'
 
 export function QueryPanel() {
   const analysis = useAnalysis(useShallow(currentAnalysis))
-  const { edit, addNode, draft, setRestriction } = useAnalysis(
+  const { edit, addNode, draft, setRestriction, origin } = useAnalysis(
     useShallow((s) => ({
       edit: s.edit,
       addNode: s.addNode,
       draft: s.draft,
       setRestriction: s.setRestriction,
+      // The origin mark "Modell" per condition (design M2.2, plan P3).
+      origin: s.origin,
     })),
   )
   const { bbox, drawing, setDrawing } = useMapView(
@@ -64,6 +67,7 @@ export function QueryPanel() {
                 nodes={analysis.tree.children}
                 describe={(n) => describe(n, labels, filterLabels)}
                 counts={counts.data?.rows}
+                marked={(row) => isMarked(origin, row)}
               />
             </>
           )}
