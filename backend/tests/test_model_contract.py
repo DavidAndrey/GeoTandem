@@ -42,7 +42,6 @@ WITH_ANSWER = [c["id"] for c in cases() if "answer" in c]
 SOURCE = REPO / "backend" / "src" / "geotandem"
 
 PENDING_CODES = {
-    "undo_blocked": "WP70",
     "step_limit": "WP75",
     "time_limit": "WP75",
     "stale_reference": "WP81",
@@ -80,9 +79,15 @@ BUILT = {
     ("GET", "/api/model/actions/1"): "WP65",
     ("POST", "/api/model/actions/1/decide"): "WP65",
     ("POST", "/api/model/actions/1/abort"): "WP65",
+    ("GET", "/api/model/actions/1/preview"): "WP70",
+    ("POST", "/api/model/actions/1/approve"): "WP70",
+    ("POST", "/api/model/actions/1/reject"): "WP70",
+    ("POST", "/api/model/actions/1/execute"): "WP70",
+    ("POST", "/api/model/actions/1/undo"): "WP70",
+    ("POST", "/api/model/actions/1/touched"): "WP70",
 }
 """Routes whose work package has landed: they no longer answer 501
-(``test_model_flow.py`` tests them)."""
+(``test_model_flow.py`` and ``test_model_enforcement.py`` test them)."""
 BODIES: dict[str, dict[str, Any]] = {
     "/api/model/prompt": {"text": "Primarschulen in Köniz"},
     "/api/model/actions/1/decide": {"decision": "proposal_only"},

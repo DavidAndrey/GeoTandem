@@ -1110,6 +1110,10 @@ msgid "Das Feld „{attribute}\" ist keine Zahl."
 msgstr "Das Feld „{attribute}\" ist keine Zahl."
 
 #: src/i18n/errors.ts
+msgid "Das geht nur in einer angemeldeten Sitzung im Browser, nicht mit einem Zugangsschlüssel."
+msgstr "Das geht nur in einer angemeldeten Sitzung im Browser, nicht mit einem Zugangsschlüssel."
+
+#: src/i18n/errors.ts
 msgid "Das Gesuchte gibt es nicht (mehr)."
 msgstr "Das Gesuchte gibt es nicht (mehr)."
 

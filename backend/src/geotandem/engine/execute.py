@@ -90,12 +90,23 @@ def stamp_query(
     picks the same features as ``run_query``.
     """
     compiled = compile_query(query, backend, COUNT_CAP, unsupported)
-    ids = _ids(compiled, backend, limits)
+    return _stamp(_ids(compiled, backend, limits), query, _versions(compiled, backend))
+
+
+def stamp_of(result: QueryResult) -> ResultStamp:
+    """The stamp of a result already run: what ``stamp_query`` gives for its
+    query on the same data, without running it again."""
+    ids = sorted(feature.id for feature in result.features)
+    return _stamp(ids, result.query, result.meta.data_versions)
+
+
+def _stamp(ids: list[int], query: QueryObject, versions: dict[str, str | None]) -> ResultStamp:
+    """``ids`` sorted."""
     return ResultStamp(
         count=len(ids),
         ids_hash=hashlib.sha256(",".join(map(str, ids)).encode()).hexdigest(),
         query_hash=query_hash(query),
-        data_versions=_versions(compiled, backend),
+        data_versions=versions,
     )
 
 

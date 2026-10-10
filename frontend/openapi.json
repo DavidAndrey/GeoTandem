@@ -4848,7 +4848,7 @@
           "model"
         ],
         "summary": "Prompt",
-        "description": "Ask the model (F-5.1). Level and connection are the account's, resolved\nhere (H6, C17). Stores the action record and answers at once with it,\n``thinking``; the client polls ``GET /actions/{id}`` and may abort. No\nresult data: an ``auto`` answer arrives ``approved`` and the client\nexecutes it (D2). In E2.3 every answer is a proposal (P1). One prompt of an\naccount at a time (409 ``busy``); all model calls at once are bounded\n(503 ``busy``).",
+        "description": "Ask the model (F-5.1). Level and connection are the account's, resolved\nhere (H6, C17). Stores the action record and answers at once with it,\n``thinking``; the client polls ``GET /actions/{id}`` and may abort. No\nresult data: an ``auto`` answer arrives ``approved`` and the client\nexecutes it (D2); one with an ``off`` class is a proposal the user applies\nby hand (D1). Closes the account's open record (WP70). One prompt of an\naccount at a time (409 ``busy``); all model calls at once are bounded\n(503 ``busy``).",
         "operationId": "prompt_api_model_prompt_post",
         "requestBody": {
           "content": {
@@ -5053,7 +5053,7 @@
           "model"
         ],
         "summary": "Preview",
-        "description": "Count and ids of the stored query, for the user only (P2): an interactive\nsession, no class ``off``, status unchanged.",
+        "description": "Count, the result layer's total and ids of the stored query, for the user\nonly (P2): an interactive session (``session_required`` for any token), no\nclass ``off`` (``class_not_allowed``), status unchanged.",
         "operationId": "preview_api_model_actions__action_id__preview_get",
         "parameters": [
           {
@@ -5126,6 +5126,46 @@
               }
             },
             "description": "Not Implemented"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Gateway Timeout"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
           }
         }
       }
@@ -5229,7 +5269,7 @@
           "model"
         ],
         "summary": "Approve",
-        "description": "Refused with ``class_not_allowed`` when a class is ``off`` at the level as\nit was (D1, D2).",
+        "description": "Refused with ``class_not_allowed`` when a class is ``off`` at the level as\nit was (D1, D2, M7.3); only ``proposed``.",
         "operationId": "approve_api_model_actions__action_id__approve_post",
         "parameters": [
           {
@@ -5312,6 +5352,7 @@
           "model"
         ],
         "summary": "Reject",
+        "description": "Only ``proposed``; with the optional reason chip (design M5.3).",
         "operationId": "reject_api_model_actions__action_id__reject_post",
         "parameters": [
           {
@@ -5404,7 +5445,7 @@
           "model"
         ],
         "summary": "Execute",
-        "description": "Run the stored query, never a sent one (the route takes no body); only\n``approved``, by the user or by an ``auto`` cell (D2). The one answer with rows.",
+        "description": "Run the stored query, never a sent one (the route takes no body); only\n``approved``, by the user or by an ``auto`` cell (D2): else ``not_approved``,\nand ``already_decided`` once it ran. The one answer with rows.",
         "operationId": "execute_api_model_actions__action_id__execute_post",
         "parameters": [
           {
@@ -5477,6 +5518,36 @@
               }
             },
             "description": "Not Implemented"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Gateway Timeout"
           }
         }
       }
@@ -5487,7 +5558,7 @@
           "model"
         ],
         "summary": "Undo",
-        "description": "For the log: the client restores the analysis itself (D2).",
+        "description": "For the log: the client restores the analysis itself (D2). Only the\naccount's last change made by the model, and ``undo_blocked`` once a hand\nedit after it was reported (``touched``).",
         "operationId": "undo_api_model_actions__action_id__undo_post",
         "parameters": [
           {
@@ -5570,7 +5641,7 @@
           "model"
         ],
         "summary": "Touched",
-        "description": "The analysis was changed by hand after this action: undo is over (design rule 7).",
+        "description": "The analysis was changed by hand after this applied action: undo is over\n(design rule 7). Reporting it again changes nothing.",
         "operationId": "touched_api_model_actions__action_id__touched_post",
         "parameters": [
           {
@@ -11300,6 +11371,18 @@
               }
             ],
             "title": "Undone At"
+          },
+          "touched_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Touched At"
           },
           "previewed_at": {
             "anyOf": [

@@ -42,6 +42,8 @@ const MESSAGES: Record<string, Words> = {
     t`Benutzername oder Passwort stimmt nicht, das Konto ist gesperrt, oder die Anmeldung ist abgelaufen.`,
   password_change_required: () => t`Bitte zuerst das Startpasswort ändern.`,
   forbidden: () => t`Dafür braucht es die Rolle Administrator.`,
+  session_required: () =>
+    t`Das geht nur in einer angemeldeten Sitzung im Browser, nicht mit einem Zugangsschlüssel.`,
   cross_origin: () => t`Anfragen von anderen Seiten werden nicht angenommen.`,
   setup_closed: () => t`Die Anwendung ist bereits eingerichtet.`,
   setup_token_invalid: () => t`Der Einrichtungscode stimmt nicht.`,

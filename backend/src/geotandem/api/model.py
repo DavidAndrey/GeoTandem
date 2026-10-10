@@ -1,18 +1,22 @@
 """Modus B over HTTP: prompt, decide, run (plan E2.3-E2.6, section 6).
 
 Frozen in WP62 with every route, its auth and its answer; each body answers
-501 ``not_implemented`` until its WP fills it in (WP70, WP73, WP75, WP76).
+501 ``not_implemented`` until its WP fills it in (WP73, WP75, WP76).
 WP65 built the prompt of the direct query, the record, ``decide`` and
-``abort`` (``model/service.py``). Every route needs a signed-in account; a
-record of another account is ``not_found`` (404, never 403), as for sessions.
+``abort``; WP70 the enforcement: ``approve``, ``reject``, ``execute``,
+``undo``, ``touched`` and the preview (``model/service.py``). Every route
+needs a signed-in account; a record of another account is ``not_found``
+(404, never 403), as for sessions, and changing one is the owner's alone,
+administrators included.
 """
 
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query
 
-from geotandem.api.auth import CurrentAccount
+from geotandem.api.auth import CurrentAccount, InteractiveAccount
 from geotandem.api.errors import ErrorBody, Problem
+from geotandem.api.routes import QuerySlot
 from geotandem.api.state import AppState, get_state
 from geotandem.model.schemas import (
     MAX_PAGE,
@@ -39,6 +43,12 @@ CALLS_MODEL: dict[int | str, dict[str, Any]] = {
 }
 """Routes that call the model: quota, the endpoint's failure, every model-call
 slot taken, the endpoint's timeout (design M14)."""
+RUNS: dict[int | str, dict[str, Any]] = {
+    **ERRORS,
+    **{status: {"model": ErrorBody} for status in (413, 503, 504)},
+}
+"""Routes that run the stored query: the result-size limit (``execute``), every
+query slot taken, the query's time limit (as ``/api/query``)."""
 
 
 class NotBuilt(Problem):
@@ -72,7 +82,8 @@ def prompt(body: PromptRequest, account: CurrentAccount, flow: Flow) -> ModelAct
     here (H6, C17). Stores the action record and answers at once with it,
     ``thinking``; the client polls ``GET /actions/{id}`` and may abort. No
     result data: an ``auto`` answer arrives ``approved`` and the client
-    executes it (D2). In E2.3 every answer is a proposal (P1). One prompt of an
+    executes it (D2); one with an ``off`` class is a proposal the user applies
+    by hand (D1). Closes the account's open record (WP70). One prompt of an
     account at a time (409 ``busy``); all model calls at once are bounded
     (503 ``busy``)."""
     if body.approach == "chain":
@@ -87,11 +98,16 @@ def action(action_id: int, account: CurrentAccount, flow: Flow) -> ModelActionVi
     return flow.get(account, action_id)
 
 
-@router.get("/actions/{action_id}/preview", responses=ERRORS)
-def preview(action_id: int, account: CurrentAccount) -> ActionPreview:
-    """Count and ids of the stored query, for the user only (P2): an interactive
-    session, no class ``off``, status unchanged."""
-    raise NotBuilt("WP70")
+@router.get(
+    "/actions/{action_id}/preview",
+    responses={**RUNS, 403: {"model": ErrorBody}},
+    dependencies=[QuerySlot],
+)
+def preview(action_id: int, account: InteractiveAccount, flow: Flow) -> ActionPreview:
+    """Count, the result layer's total and ids of the stored query, for the user
+    only (P2): an interactive session (``session_required`` for any token), no
+    class ``off`` (``class_not_allowed``), status unchanged."""
+    return flow.preview(account, action_id)
 
 
 @router.post("/actions/{action_id}/decide", responses=ERRORS)
@@ -104,34 +120,41 @@ def decide(
 
 
 @router.post("/actions/{action_id}/approve", responses=ERRORS)
-def approve(action_id: int, account: CurrentAccount) -> ModelActionView:
+def approve(action_id: int, account: CurrentAccount, flow: Flow) -> ModelActionView:
     """Refused with ``class_not_allowed`` when a class is ``off`` at the level as
-    it was (D1, D2)."""
-    raise NotBuilt("WP70")
+    it was (D1, D2, M7.3); only ``proposed``."""
+    return flow.approve(account, action_id)
 
 
 @router.post("/actions/{action_id}/reject", responses=ERRORS)
-def reject(action_id: int, body: RejectRequest, account: CurrentAccount) -> ModelActionView:
-    raise NotBuilt("WP70")
+def reject(
+    action_id: int, body: RejectRequest, account: CurrentAccount, flow: Flow
+) -> ModelActionView:
+    """Only ``proposed``; with the optional reason chip (design M5.3)."""
+    return flow.reject(account, action_id, body)
 
 
-@router.post("/actions/{action_id}/execute", responses=ERRORS)
-def execute(action_id: int, account: CurrentAccount) -> ExecuteResponse:
+@router.post("/actions/{action_id}/execute", responses=RUNS, dependencies=[QuerySlot])
+def execute(action_id: int, account: CurrentAccount, flow: Flow) -> ExecuteResponse:
     """Run the stored query, never a sent one (the route takes no body); only
-    ``approved``, by the user or by an ``auto`` cell (D2). The one answer with rows."""
-    raise NotBuilt("WP70")
+    ``approved``, by the user or by an ``auto`` cell (D2): else ``not_approved``,
+    and ``already_decided`` once it ran. The one answer with rows."""
+    return flow.execute(account, action_id)
 
 
 @router.post("/actions/{action_id}/undo", responses=ERRORS)
-def undo(action_id: int, account: CurrentAccount) -> ModelActionView:
-    """For the log: the client restores the analysis itself (D2)."""
-    raise NotBuilt("WP70")
+def undo(action_id: int, account: CurrentAccount, flow: Flow) -> ModelActionView:
+    """For the log: the client restores the analysis itself (D2). Only the
+    account's last change made by the model, and ``undo_blocked`` once a hand
+    edit after it was reported (``touched``)."""
+    return flow.undo(account, action_id)
 
 
 @router.post("/actions/{action_id}/touched", responses=ERRORS)
-def touched(action_id: int, account: CurrentAccount) -> ModelActionView:
-    """The analysis was changed by hand after this action: undo is over (design rule 7)."""
-    raise NotBuilt("WP70")
+def touched(action_id: int, account: CurrentAccount, flow: Flow) -> ModelActionView:
+    """The analysis was changed by hand after this applied action: undo is over
+    (design rule 7). Reporting it again changes nothing."""
+    return flow.touched(account, action_id)
 
 
 @router.post("/actions/{action_id}/abort", responses=ERRORS)

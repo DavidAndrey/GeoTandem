@@ -5,6 +5,7 @@ from geotandem.engine.execute import (
     count_query,
     ids_query,
     run_query,
+    stamp_of,
     stamp_query,
     validate_query,
 )
@@ -19,6 +20,7 @@ __all__ = [
     "count_query",
     "ids_query",
     "run_query",
+    "stamp_of",
     "stamp_query",
     "validate_query",
 ]

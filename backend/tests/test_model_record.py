@@ -66,7 +66,13 @@ PLAN = PlanAnswer.model_validate(case("chain_reference")["answer"])
 CLARIFICATION = Clarification.model_validate(case("clarification")["answer"])
 STAMP = ResultStamp(count=10, ids_hash="a" * 64, query_hash="b" * 64, data_versions={})
 REFUSAL = Refusal(code="unknown_layer", message="Unknown layer.", details={"layer": "x"})
-ILLEGAL = {"already_decided", "not_approved", "nothing_to_undo", "class_not_allowed"}
+ILLEGAL = {
+    "already_decided",
+    "not_approved",
+    "nothing_to_undo",
+    "undo_blocked",
+    "class_not_allowed",
+}
 
 
 def governance(cell: str, off: tuple[OpClass, ...] = ()) -> Governance:
@@ -230,6 +236,7 @@ STEPS: dict[str, Step] = {
     "stop": lambda s, a, i: s.stop(a, i, "step_limit", STAMP),
     "adopt": lambda s, a, i: s.adopt(a, i, STAMP),
     "undo": lambda s, a, i: s.undo(a, i),
+    "touched": lambda s, a, i: s.touch(a, i),
     "preview": lambda s, a, i: s.mark_previewed(a, i),
     "new_prompt": lambda s, a, i: s.supersede_open(a),
     "restart": lambda s, a, i: s.close_stale(datetime(2100, 1, 1)),
@@ -281,7 +288,7 @@ LIKELY: dict[str, list[str]] = {
     "running": ["finish", "stop"],
     "done": ["adopt", "new_prompt"],
     "limited": ["adopt", "new_prompt"],
-    "applied": ["undo"],
+    "applied": ["undo", "undo", "touched"],
 }
 """A hint for the walk only, so it gets deep into the diagram; the check does not
 rely on it, and half of the steps are drawn from all of them."""

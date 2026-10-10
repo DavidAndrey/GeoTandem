@@ -403,6 +403,9 @@ class ModelActionView(BaseModel):
     reject_reason: RejectReason | None = None
     applied_by_hand: bool = False
     undone_at: datetime | None = None
+    touched_at: datetime | None = None
+    """When the client first reported a hand edit of the analysis after this
+    applied action: from then on it cannot be undone (``undo_blocked``)."""
     previewed_at: datetime | None = None
     parent_action_id: int | None = None
     reference: Reference = "none"

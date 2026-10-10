@@ -1,12 +1,12 @@
-"""The prompt flow of the direct query, proposal-only (plan E2.3-E2.6, WP65).
+"""The prompt flow of the direct query (plan E2.3-E2.6, WP65).
 
 Through the API, with the model faked behind the client factory and scripted
 from the contract fixture: every case ends in its status and code, the 202
 leaves while the model thinks, abort drops a late answer and keeps a queued
 call from the model, one prompt per account and a bounded number of calls run
-at once, the request limit counts per connection and day (P5), every level
-only proposes (P1), another account's record does not exist, and no log line
-holds the prompt.
+at once, the request limit counts per connection and day (P5), each level
+governs the answer (WP70), another account's record does not exist, and no
+log line holds the prompt.
 
 The model call runs in a thread of ``ModelCalls``, after the 202: a test waits
 for it with ``settle`` (``ModelCalls.wait``), and one that must see the record
@@ -368,26 +368,30 @@ def test_the_fixture_and_the_frontend_agree_on_the_model_call_limit() -> None:
     assert fixture()["limits"]["model_call_s"] == MODEL_CALL_S
 
 
-async def test_every_level_only_proposes_in_e2_3(
+async def test_each_level_governs_the_answer_and_a_new_prompt_closes_it(
     client: httpx.AsyncClient, model: Model, areas: None
 ) -> None:
-    """P1: also where every cell is ``auto``; an overtaken proposal ends
-    ``proposal_only``, never ``superseded``."""
+    """E2.4 replaces P1 (WP70): ``off`` proposes for the hand, ``approve`` waits,
+    ``auto`` arrives approved. A new prompt closes the open record: a
+    proposal-only one ends ``proposal_only``, never ``superseded``."""
     levels = (await client.get("/api/llm/options")).json()["levels"]
     assert [lv["name"] for lv in levels] == ["Assistenz", "Prüfen", "Automatisch"]
     cells = {"Assistenz": CellMode.OFF, "Prüfen": CellMode.APPROVE, "Automatisch": CellMode.AUTO}
+    statuses = {"Assistenz": "proposed", "Prüfen": "proposed", "Automatisch": "approved"}
     earlier: list[int] = []
     for level in levels:
         chosen = await client.put("/api/llm/options", json={"level_id": level["id"]})
         assert chosen.status_code == 200, chosen.text
         record = await outcome(client, model, "reference")
-        assert record["status"] == "proposed", level["name"]
+        assert record["status"] == statuses[level["name"]], level["name"]
         assert record["level"]["name"] == level["name"]
         assert record["governance"]["cell"] == cells[level["name"]]
         earlier.append(record["id"])
-    for action_id in earlier[:-1]:
-        before = (await client.get(action_url(action_id))).json()
-        assert (before["status"], before["decision"]) == ("superseded", "proposal_only")
+    closed = [(await client.get(action_url(i))).json() for i in earlier[:-1]]
+    assert [(c["status"], c["decision"]) for c in closed] == [
+        ("superseded", "proposal_only"),
+        ("superseded", "superseded"),
+    ]
 
 
 # --- 202 at once, polling and abort (P7) -------------------------------------------

@@ -21,7 +21,7 @@ from __future__ import annotations
 import hashlib
 from collections.abc import Callable, Collection, Iterable, Mapping
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 
 from sqlalchemy import ColumnElement, Engine, case, func, select, update
@@ -184,6 +184,7 @@ def to_view(row: ModelAction) -> ModelActionView:
             "reject_reason": row.reject_reason,
             "applied_by_hand": row.applied_by_hand,
             "undone_at": row.undone_at,
+            "touched_at": row.touched_at,
             "previewed_at": row.previewed_at,
             "parent_action_id": row.parent_action_id,
             "reference": row.reference,
@@ -272,6 +273,40 @@ def _nothing_to_undo(row: ModelAction, why: str) -> ActionError:
     )
 
 
+def _undo_blocked(row: ModelAction) -> ActionError:
+    return ActionError(
+        "undo_blocked",
+        f"Model action {row.id} cannot be undone: the analysis was changed by hand after it.",
+        http_status=409,
+        id=row.id,
+        touched_at=row.touched_at.isoformat() if row.touched_at else None,
+    )
+
+
+def _allowed(row: ModelAction) -> None:
+    """Refuse when a class of the answer is ``off`` at the level as it was (D1, M7.3):
+    the stored governance, written with the stored query from its ``classify``
+    at the snapshotted level, never the account's level now."""
+    off = (row.governance or {}).get("off") or []
+    if off:
+        raise ActionError(
+            "class_not_allowed",
+            f"The level of model action {row.id} does not allow '{off[0]}'.",
+            http_status=409,
+            id=row.id,
+            part=off[0],
+            op_class=off[0],
+            level=row.level_name,
+        )
+
+
+def _answered_at(row: ModelAction) -> datetime:
+    """When the model's answer arrived: the call's start plus its latency. Never
+    before ``created_at``; without a recorded call, ``created_at``."""
+    start = max(row.created_at, row.called_at or row.created_at)
+    return start + timedelta(milliseconds=row.latency_ms or 0)
+
+
 def _cell(row: ModelAction) -> str | None:
     """The cell that governed the answer, if there was one."""
     cell = (row.governance or {}).get("cell")
@@ -312,6 +347,20 @@ class ModelActionStore:
     def get(self, caller: Account, action_id: int) -> ModelActionView:
         with Session(reading(self.engine)) as db:
             return to_view(self._visible(db, caller, action_id))
+
+    def ready(
+        self, caller: Account, action_id: int, step: str, sources: Collection[str]
+    ) -> ModelActionView:
+        """The caller's own record, when ``step`` may follow from its status and no
+        class is ``off`` (D1); changes nothing. What ``execute`` and the preview
+        check before the engine runs, so a refused step runs no query; the step
+        itself checks again as it is written (compare-and-set)."""
+        with Session(reading(self.engine)) as db:
+            row = self._own(db, caller, action_id)
+            if row.status not in sources:
+                raise _wrong_state(row, step)
+            _allowed(row)
+            return to_view(row)
 
     def thread(self, caller: Account, action_id: int, depth: int) -> list[ModelActionView]:
         """The caller's record ``action_id`` and its parents, at most ``depth``,
@@ -494,8 +543,11 @@ class ModelActionStore:
         ``failed`` (the model's answer is lost) and every ``running`` one
         ``limited``/``interrupted`` with its last complete result adoptable,
         whatever their age. An ``auto`` answer never executed (``approved``, cell
-        ``auto``) created before ``older_than`` is ``superseded``: its window may
-        still be open. A record the user approved stays approved."""
+        ``auto``) that arrived before ``older_than`` is ``superseded``; one that
+        arrived later may still have its window open. The record keeps no
+        arrival time of its own: it is the call's start (``called_at``, else
+        ``created_at``) plus the call's ``latency_ms`` (``_answered_at``). A
+        record the user approved stays approved."""
         now = self.clock()
         error = {
             "code": "llm_timeout",
@@ -521,7 +573,10 @@ class ModelActionStore:
             closed = [
                 row
                 for row in rows
-                if (row.status != "approved" or _cell(row) == "auto")
+                if (
+                    row.status != "approved"
+                    or (_cell(row) == "auto" and _answered_at(row) < older_than)
+                )
                 and self._settle(db, row, stale, change)
             ]
         self._audit(None, [row for row in closed if row.decision is not None])
@@ -725,17 +780,7 @@ class ModelActionStore:
         """Never with an ``off`` class at the level as it was (D2, M7.3)."""
 
         def change(row: ModelAction) -> dict[str, Any]:
-            off = (row.governance or {}).get("off") or []
-            if off:
-                raise ActionError(
-                    "class_not_allowed",
-                    f"The level of model action {row.id} does not allow '{off[0]}'.",
-                    http_status=409,
-                    id=row.id,
-                    part=off[0],
-                    op_class=off[0],
-                    level=row.level_name,
-                )
+            _allowed(row)
             return {"status": "approved"}
 
         return self._move(caller, action_id, "approve", ["proposed"], change)
@@ -796,6 +841,7 @@ class ModelActionStore:
         """The stored query ran (D2): ``auto`` when nobody was asked, else ``accepted``."""
 
         def change(row: ModelAction) -> dict[str, Any]:
+            _allowed(row)  # never approved so (propose, approve); held here as well
             # Arrived approved, nobody was asked: exactly the auto answers (propose).
             auto = _cell(row) == "auto" and not row.proposal_only
             return {
@@ -854,11 +900,14 @@ class ModelActionStore:
 
     def undo(self, caller: Account, action_id: int) -> ModelActionView:
         """For the log only (D2): the decision stays, ``undone_at`` is set. Only the
-        account's last change made by the model is taken back, and only once."""
+        account's last change made by the model is taken back, and only once;
+        never after the client reported a hand edit of the analysis (``touch``)."""
 
         def change(row: ModelAction) -> dict[str, Any]:
             if row.decision not in UNDOABLE:
                 raise _nothing_to_undo(row, "it was applied by the user, not by the model")
+            if row.touched_at is not None:
+                raise _undo_blocked(row)
             db = object_session(row)
             assert db is not None
             latest = db.scalar(
@@ -891,12 +940,29 @@ class ModelActionStore:
 
     # no change of status
 
-    def mark_previewed(self, caller: Account, action_id: int) -> ModelActionView:
-        """The user's preview ran (P2); the log shows it, the status stays."""
+    def touch(self, caller: Account, action_id: int) -> ModelActionView:
+        """The client reports a hand edit of the analysis after this applied action
+        (design rule 7): its undo is over (``undo_blocked``). The first report's
+        time stays; a record that changed nothing is ``nothing_to_undo``."""
+
+        def refuse(row: ModelAction, step: str) -> ActionError:
+            return _nothing_to_undo(row, f"it is no applied change ({row.status})")
+
         return self._move(
             caller,
             action_id,
-            "preview",
-            ["proposed", "approved"],
-            lambda _: {"previewed_at": self.clock()},
+            "touched",
+            ["applied"],
+            lambda row: {"touched_at": row.touched_at or self.clock()},
+            refuse,
         )
+
+    def mark_previewed(self, caller: Account, action_id: int) -> ModelActionView:
+        """The user's preview ran (P2); the log shows it, the status stays. Never
+        for an answer with an ``off`` class: it has no preview (design M4.1)."""
+
+        def change(row: ModelAction) -> dict[str, Any]:
+            _allowed(row)
+            return {"previewed_at": self.clock()}
+
+        return self._move(caller, action_id, "preview", ["proposed", "approved"], change)

@@ -313,6 +313,9 @@ class ModelAction(Base):
     reject_reason: Mapped[str | None] = mapped_column(String(16))
     applied_by_hand: Mapped[bool] = mapped_column(default=False, server_default=false())
     undone_at: Mapped[datetime | None]
+    touched_at: Mapped[datetime | None]
+    """When the client first reported a hand edit of the analysis after this
+    applied action: from then on it cannot be undone (WP70)."""
     previewed_at: Mapped[datetime | None]
     parent_action_id: Mapped[int | None] = mapped_column(
         ForeignKey("model_action.id", ondelete="SET NULL"), index=True

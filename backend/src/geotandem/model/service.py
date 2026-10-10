@@ -1,4 +1,5 @@
-"""The prompt flow of the direct query, proposal-only (plan E2.3-E2.6, WP65).
+"""The prompt flow of the direct query and its enforcement (plan E2.3-E2.6,
+WP65, WP70).
 
 ``POST /api/model/prompt`` in steps, everything that can refuse the request
 first, so a refused request leaves no record and reaches no model:
@@ -20,18 +21,24 @@ first, so a refused request leaves no record and reaches no model:
    administrator switched it on (P5): the requests of the current calendar
    day (the server's time zone) that reached the model call or may still
    reach it, counted from the action table over all accounts ⇒
-   ``quota_exceeded``. Then the record, ``thinking``, with ``proposal_only``:
-   in E2.3 every level only proposes (P1). Creating it closes the account's
-   open proposal.
+   ``quota_exceeded``. Then the record, ``thinking``. Creating it closes the
+   account's open record (``proposed``, ``approved`` never executed, ``done``,
+   ``limited``): ``superseded``, or ``proposal_only`` when a class of it was
+   ``off`` (WP70).
 
 The 202 leaves at once (P7); the model call runs in a thread of
 ``ModelCalls``, never in the threads that answer requests. It has a wall-clock
 deadline from the prompt on: the connection's timeout, at most
 ``MODEL_CALL_S``, for every attempt and retry together (``LLMClient``). Its
 outcome is stored as one edge out of ``thinking``: ``refused``, ``answered``,
-``proposed``, or ``failed`` with the seam's ``llm_*`` code,
+``proposed``, ``approved``, or ``failed`` with the seam's ``llm_*`` code,
 ``model_unreadable`` or, when the outcome cannot be stored,
-``internal_error``. An abort sets the call's cancel event: a call not started
+``internal_error``. A query answer is governed by the level as it was when
+asked (D1, D2, M6.3): its classes (``classify``) and their cells, the
+strictest cell for the whole answer. Any class ``off``: a proposal the user
+applies by hand (``proposal_only``); else any ``approve``: ``proposed``, it
+waits for ``approve``; all ``auto``: ``approved`` at once, and the client
+calls ``execute`` (P7). An abort sets the call's cancel event: a call not started
 yet never reaches the model, an answer that arrives later is dropped (and the
 store's compare-and-set would drop it too). The HTTP call itself is not
 cancelled: it ends by its deadline, and until then the account's next prompt
@@ -43,6 +50,15 @@ record (404 otherwise). The model gets the turns of the parent chain, at most
 (M12.2) carries its question. The derived reference, the sent ``analysis``
 and ``stale_reference`` arrive with WP81; until then ``reference`` stays
 ``none``.
+
+Enforcement (WP70): every step after the prompt works on the stored record
+alone, with the level as it was snapshotted (M7.3); the account's level now
+is never consulted. ``approve`` is refused with ``class_not_allowed`` for an
+``off`` class; ``execute`` runs the stored query, never one sent along, only
+for ``approved``, as the caller through the engine with its limits, and is
+the one answer with rows; the preview (P2) counts the stored query for the
+user, never for the model, and changes no status. Undo is for the log only:
+the client restores the analysis itself.
 
 Logs carry ids and codes only, never the prompt or the answer (C15).
 """
@@ -67,6 +83,8 @@ from geotandem.catalog import ModelProfile, model_profile
 from geotandem.connections import ConnectionInfo, ConnectionProblem, Connections
 from geotandem.data import DataBackend, Limits, Op
 from geotandem.db.orm import ModelAction
+from geotandem.engine import count_query, ids_query, run_query, stamp_of
+from geotandem.engine.errors import QueryTimedOut
 from geotandem.levels import Level, active_level
 from geotandem.llm import ClientFactory, Endpoint, LLMError
 from geotandem.model.direct import DirectAnswer, DirectQuery, direct_prompt
@@ -81,12 +99,16 @@ from geotandem.model.record import (
 )
 from geotandem.model.schemas import (
     MAX_TURNS,
+    ActionPreview,
     DecideRequest,
+    ExecuteResponse,
     ModelActionView,
     PromptRequest,
     QueryAnswer,
+    RejectRequest,
 )
 from geotandem.tools import ToolContext
+from geotandem_query import QueryObject
 
 log = logging.getLogger(__name__)
 
@@ -180,6 +202,21 @@ class ModelCalls:
         self._accounts: dict[int, int] = {}
         """Account id → the action whose call it has in flight."""
         self._running: set[Future[None]] = set()
+        self._executing: set[int] = set()
+        """Actions whose stored query runs now (``PromptFlow.execute``)."""
+
+    def claim(self, action_id: int) -> bool:
+        """The action's ``execute`` may run: ``False`` while another runs it. The
+        application is one process, so this holds across its threads."""
+        with self._lock:
+            if action_id in self._executing:
+                return False
+            self._executing.add(action_id)
+            return True
+
+    def release(self, action_id: int) -> None:
+        with self._lock:
+            self._executing.discard(action_id)
 
     def take(self) -> None:
         """A slot for one call, without waiting; given back when the call ends."""
@@ -318,7 +355,6 @@ class PromptFlow:
             connection=connection_snapshot(connection),
             profile_hash=profile.hash,
             parent_action_id=request.parent_action_id,
-            proposal_only=True,  # P1: every level only proposes in E2.3
         )
         self.calls.take()
         try:
@@ -471,7 +507,7 @@ class PromptFlow:
         code = (view.refusal.code if view.refusal else None) or (view.error or {}).get("code")
         log.info("model action %d: %s%s", action_id, view.status, f" ({code})" if code else "")
 
-    # --- the record (D4, P1) -----------------------------------------------------
+    # --- the record (D4) ---------------------------------------------------------
 
     def get(self, caller: Account, action_id: int) -> ModelActionView:
         """Own records, an administrator's every record (D4); polled (P7)."""
@@ -497,3 +533,100 @@ class PromptFlow:
         self.calls.cancel(action_id)
         log.info("model action %d: aborted", action_id)
         return view
+
+    # --- enforcement (D2, P2, WP70) ----------------------------------------------
+
+    def approve(self, caller: Account, action_id: int) -> ModelActionView:
+        """``proposed`` to ``approved``; ``class_not_allowed`` for an ``off`` class
+        at the level as it was (D1, M7.3)."""
+        view = self.store.approve(caller, action_id)
+        log.info("model action %d: approved", action_id)
+        return view
+
+    def reject(self, caller: Account, action_id: int, request: RejectRequest) -> ModelActionView:
+        view = self.store.reject(caller, action_id, request.reason)
+        log.info("model action %d: rejected (%s)", action_id, request.reason or "no reason")
+        return view
+
+    def execute(self, caller: Account, action_id: int) -> ExecuteResponse:
+        """Run the stored query (D2): only an ``approved`` record of the caller's,
+        as the caller (visibility, limits); the stamp is kept, the rows go to the
+        user only. The decision is ``auto`` when nobody was asked, else
+        ``accepted``. A refused step runs nothing; a replay is ``already_decided``,
+        and so is an ``execute`` while another of the same action runs: the
+        action is claimed (``ModelCalls.claim``), so its query runs once. The
+        record is checked before the claim (another account's is ``not_found``,
+        never "busy") and again under it (one executed meanwhile runs nothing)."""
+        self.store.ready(caller, action_id, "execute", ["approved"])
+        if not self.calls.claim(action_id):
+            raise ActionError(
+                "already_decided",
+                f"Model action {action_id} is being executed already.",
+                http_status=409,
+                id=action_id,
+                status="approved",
+            )
+        try:
+            ready = self.store.ready(caller, action_id, "execute", ["approved"])
+            query = _stored(ready, "execute")
+            visible = view_for(self.backend, caller)
+            result = run_query(query, visible, self.limits, self.unsupported)
+            view = self.store.execute(caller, action_id, stamp_of(result))
+        finally:
+            self.calls.release(action_id)
+        log.info(
+            "model action %d: executed (%s), %d features",
+            action_id,
+            view.decision,
+            result.meta.feature_count,
+        )
+        return ExecuteResponse(action=view, result=result)
+
+    def preview(self, caller: Account, action_id: int) -> ActionPreview:
+        """Hits, the result layer's total and the hits' ids of the stored query, as
+        the caller (P2): for the user's dashed preview, never for the model.
+        Only while the record waits (``proposed``, ``approved``) and has no
+        class ``off``; ``previewed_at`` is set, the status stays. Both counts
+        share one time limit, as ``/api/query/count`` does."""
+        ready = self.store.ready(caller, action_id, "preview", ["proposed", "approved"])
+        query = _stored(ready, "preview")
+        view = view_for(self.backend, caller)
+        budget = self.limits.timeout_s
+        deadline = time.monotonic() + budget
+        ids = ids_query(query, view, self.limits, self.unsupported)
+        left = deadline - time.monotonic()
+        if left <= 0:
+            raise QueryTimedOut(
+                f"The preview took longer than {budget:g} s and was stopped.", timeout_s=budget
+            )
+        whole = QueryObject(source=query.source)
+        total = count_query(whole, view, replace(self.limits, timeout_s=left), self.unsupported)
+        self.store.mark_previewed(caller, action_id)
+        log.info("model action %d: previewed", action_id)
+        return ActionPreview(count=len(ids), total=total, ids=ids)
+
+    def undo(self, caller: Account, action_id: int) -> ModelActionView:
+        """For the log (D2): the account's last change made by the model, while no
+        hand edit followed it (``undo_blocked``)."""
+        view = self.store.undo(caller, action_id)
+        log.info("model action %d: undone", action_id)
+        return view
+
+    def touched(self, caller: Account, action_id: int) -> ModelActionView:
+        """The client edited the analysis by hand after this applied action."""
+        view = self.store.touch(caller, action_id)
+        log.info("model action %d: edited by hand after it", action_id)
+        return view
+
+
+def _stored(view: ModelActionView, step: str) -> QueryObject:
+    """The query the record keeps; a chain's result has its own steps (WP75)."""
+    if view.query is None:
+        raise ActionError(
+            "not_approved",
+            f"Model action {view.id} has no query of its own; '{step}' does not apply.",
+            http_status=409,
+            id=view.id,
+            status=view.status,
+        )
+    return view.query
