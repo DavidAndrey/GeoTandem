@@ -6,7 +6,7 @@ request, not only by the interface.
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from geotandem.api.auth import CurrentAccount
 from geotandem.api.errors import ErrorBody
@@ -47,7 +47,11 @@ class LLMOptions(ConnectionChoice):
 
 
 class Choice(BaseModel):
-    """Only the fields sent change; ``null`` returns to the default."""
+    """Only the fields sent change; ``null`` returns to the default. Nothing else
+    is accepted (422): a matrix, a level's cells or a connection's address sent
+    along would be ignored, but refusing them says so (WP71)."""
+
+    model_config = ConfigDict(extra="forbid")
 
     connection_id: int | None = Field(default=None, description="None: the default.")
     level_id: int | None = Field(default=None, description="None: the default.")

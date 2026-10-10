@@ -1032,7 +1032,8 @@ export interface paths {
     /**
      * Decide
      * @description Applied by hand or edited and applied through Modus A (P1, D2); the
-     *     owner's alone. ``adjusted`` names the query the user applied, logged only.
+     *     owner's alone. ``adjusted`` names the query the user applied, logged only;
+     *     ``proposal_only`` only for a proposal with an ``off`` class (section 2).
      */
     post: operations['decide_api_model_actions__action_id__decide_post']
     delete?: never
@@ -1850,7 +1851,9 @@ export interface components {
     }
     /**
      * Choice
-     * @description Only the fields sent change; ``null`` returns to the default.
+     * @description Only the fields sent change; ``null`` returns to the default. Nothing else
+     *     is accepted (422): a matrix, a level's cells or a connection's address sent
+     *     along would be ignored, but refusing them says so (WP71).
      */
     Choice: {
       /**
@@ -9083,6 +9086,15 @@ export interface operations {
           'application/json': components['schemas']['ErrorBody']
         }
       }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
       /** @description Not Found */
       404: {
         headers: {
@@ -9143,6 +9155,15 @@ export interface operations {
       }
       /** @description Bad Request */
       400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Forbidden */
+      403: {
         headers: {
           [name: string]: unknown
         }
@@ -9214,6 +9235,15 @@ export interface operations {
       }
       /** @description Bad Request */
       400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Forbidden */
+      403: {
         headers: {
           [name: string]: unknown
         }

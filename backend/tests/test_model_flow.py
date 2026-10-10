@@ -805,7 +805,13 @@ async def test_switching_the_limit_is_audited_and_keeps_the_number(
 async def test_a_proposal_is_applied_by_hand(
     client: httpx.AsyncClient, model: Model, areas: None
 ) -> None:
+    """Under a level with ``off`` parts (D1); one that waits for approval is no
+    hand-over (WP71, ``test_model_bypass.py``)."""
+    levels = (await client.get("/api/llm/options")).json()["levels"]
+    assistenz = next(lv["id"] for lv in levels if lv["name"] == "Assistenz")
+    assert (await client.put("/api/llm/options", json={"level_id": assistenz})).status_code == 200
     record = await outcome(client, model, "reference")
+    assert record["governance"]["off"] != []
     url = action_url(record["id"], "decide")
 
     decided = await client.post(url, json={"decision": "proposal_only", "applied_by_hand": True})

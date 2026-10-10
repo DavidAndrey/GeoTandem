@@ -5176,7 +5176,7 @@
           "model"
         ],
         "summary": "Decide",
-        "description": "Applied by hand or edited and applied through Modus A (P1, D2); the\nowner's alone. ``adjusted`` names the query the user applied, logged only.",
+        "description": "Applied by hand or edited and applied through Modus A (P1, D2); the\nowner's alone. ``adjusted`` names the query the user applied, logged only;\n``proposal_only`` only for a proposal with an ``off`` class (section 2).",
         "operationId": "decide_api_model_actions__action_id__decide_post",
         "parameters": [
           {
@@ -5259,6 +5259,16 @@
               }
             },
             "description": "Not Implemented"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
           }
         }
       }
@@ -5342,6 +5352,16 @@
               }
             },
             "description": "Not Implemented"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
           }
         }
       }
@@ -5435,6 +5455,16 @@
               }
             },
             "description": "Not Implemented"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
           }
         }
       }
@@ -8296,9 +8326,10 @@
             "description": "None: the default."
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "title": "Choice",
-        "description": "Only the fields sent change; ``null`` returns to the default."
+        "description": "Only the fields sent change; ``null`` returns to the default. Nothing else\nis accepted (422): a matrix, a level's cells or a connection's address sent\nalong would be ignored, but refusing them says so (WP71)."
       },
       "Clarification": {
         "properties": {

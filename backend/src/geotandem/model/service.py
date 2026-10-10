@@ -83,6 +83,7 @@ from geotandem.catalog import ModelProfile, model_profile
 from geotandem.connections import ConnectionInfo, ConnectionProblem, Connections
 from geotandem.data import DataBackend, Limits, Op
 from geotandem.db.orm import ModelAction
+from geotandem.db.spatialite import reading
 from geotandem.engine import count_query, ids_query, run_query, stamp_of
 from geotandem.engine.errors import QueryTimedOut
 from geotandem.levels import Level, active_level
@@ -317,14 +318,16 @@ class PromptFlow:
         if request.approach != "direct":
             raise ValueError("the tool chain arrives with WP75")
         level = active_level(self.backend.engine, caller.id, admin=caller.role == "admin")
-        connection = self.connections.active(caller.id)
-        if connection is None:
+        # One read: the snapshot is of the connection the call goes to (WP71).
+        active = self.connections.active_call(caller.id)
+        if active is None:
             raise ConnectionProblem(
                 409,
                 "connection_not_available",
                 "No model connection is set up for this account.",
                 reason="none",
             )
+        connection, endpoint = active
         view, profile = profile_for(self.backend, caller)
         follow_up = None
         if request.parent_action_id is not None:
@@ -338,7 +341,6 @@ class PromptFlow:
             follow_up=follow_up,
             context_length=connection.context_length,
         )
-        endpoint = self.connections.endpoint(connection.id)
         timeout_s = min(endpoint.timeout_s, MODEL_CALL_S)
         call = _Call(
             endpoint=replace(endpoint, timeout_s=timeout_s),
@@ -514,7 +516,12 @@ class PromptFlow:
         return self.store.get(caller, action_id)
 
     def decide(self, caller: Account, action_id: int, request: DecideRequest) -> ModelActionView:
-        """The hand-over (P1); the store keeps its rules."""
+        """The hand-over (P1); the store keeps its rules. ``proposal_only`` is the
+        decision of a proposal the model could only make (plan section 2: the
+        level had an ``off`` part); one that waits for ``approve`` is approved,
+        rejected or adjusted, never logged as a hand-over (WP71)."""
+        if request.decision == "proposal_only" and request.query is None:  # else bad_request
+            self._proposal_only(caller, action_id)
         view = self.store.decide(
             caller,
             action_id,
@@ -524,6 +531,28 @@ class PromptFlow:
         )
         log.info("model action %d: decided %s", action_id, view.decision)
         return view
+
+    def _proposal_only(self, caller: Account, action_id: int) -> None:
+        """Refuse ``proposal_only`` for an own record that is no proposal-only one.
+        The flag is final once the answer is stored (``propose``, the one edge
+        out of ``thinking`` that sets it), so nothing can overtake this read; a
+        record still ``thinking`` is refused, as the store refuses it."""
+        with Session(reading(self.backend.engine)) as db:
+            row = db.execute(
+                select(ModelAction.status, ModelAction.proposal_only).where(
+                    ModelAction.id == action_id, ModelAction.user_id == caller.id
+                )
+            ).one_or_none()
+        if row is None or row.proposal_only or row.status not in ("thinking", "proposed"):
+            return  # another account's, a proposal-only one, or decided: the store answers
+        raise ActionError(
+            "not_approved",
+            f"Model action {action_id} waits for approval: 'proposal_only' is for a "
+            "proposal whose level has an 'off' part.",
+            http_status=409,
+            id=action_id,
+            status=row.status,
+        )
 
     def abort(self, caller: Account, action_id: int) -> ModelActionView:
         """While the model thinks (M2.1): ``aborted``. A call not started yet never

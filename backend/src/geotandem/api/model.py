@@ -49,6 +49,11 @@ RUNS: dict[int | str, dict[str, Any]] = {
 }
 """Routes that run the stored query: the result-size limit (``execute``), every
 query slot taken, the query's time limit (as ``/api/query``)."""
+DECISIONS: dict[int | str, dict[str, Any]] = {**ERRORS, 403: {"model": ErrorBody}}
+"""Routes of the person's decision (F-6.2, section 2): ``approve``, ``reject``,
+``decide``. An interactive session only (``session_required``), as for the
+preview (P2): a program acting for the account, a model's or an MCP client's
+token (E4), never approves, rejects or hands over (WP71)."""
 
 
 class NotBuilt(Problem):
@@ -110,25 +115,26 @@ def preview(action_id: int, account: InteractiveAccount, flow: Flow) -> ActionPr
     return flow.preview(account, action_id)
 
 
-@router.post("/actions/{action_id}/decide", responses=ERRORS)
+@router.post("/actions/{action_id}/decide", responses=DECISIONS)
 def decide(
-    action_id: int, body: DecideRequest, account: CurrentAccount, flow: Flow
+    action_id: int, body: DecideRequest, account: InteractiveAccount, flow: Flow
 ) -> ModelActionView:
     """Applied by hand or edited and applied through Modus A (P1, D2); the
-    owner's alone. ``adjusted`` names the query the user applied, logged only."""
+    owner's alone. ``adjusted`` names the query the user applied, logged only;
+    ``proposal_only`` only for a proposal with an ``off`` class (section 2)."""
     return flow.decide(account, action_id, body)
 
 
-@router.post("/actions/{action_id}/approve", responses=ERRORS)
-def approve(action_id: int, account: CurrentAccount, flow: Flow) -> ModelActionView:
+@router.post("/actions/{action_id}/approve", responses=DECISIONS)
+def approve(action_id: int, account: InteractiveAccount, flow: Flow) -> ModelActionView:
     """Refused with ``class_not_allowed`` when a class is ``off`` at the level as
     it was (D1, D2, M7.3); only ``proposed``."""
     return flow.approve(account, action_id)
 
 
-@router.post("/actions/{action_id}/reject", responses=ERRORS)
+@router.post("/actions/{action_id}/reject", responses=DECISIONS)
 def reject(
-    action_id: int, body: RejectRequest, account: CurrentAccount, flow: Flow
+    action_id: int, body: RejectRequest, account: InteractiveAccount, flow: Flow
 ) -> ModelActionView:
     """Only ``proposed``; with the optional reason chip (design M5.3)."""
     return flow.reject(account, action_id, body)
