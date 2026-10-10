@@ -37,7 +37,7 @@ from geotandem.importing.run import (
 from geotandem.levels import CellMode, Level, OpClass, classify
 from geotandem.llm import Completion, LLMError
 from geotandem.llm.fake import FakeLLMClient
-from geotandem.model.direct import DirectAnswer, DirectQuery
+from geotandem.model.direct import DirectAnswer, DirectQuery, direct_prompt
 from geotandem.model.errors import ActionError
 from geotandem.model.prompt import ANSWER_TOKENS, FollowUp, Turn, build_prompt, estimate_tokens
 from geotandem.model.represent import (
@@ -45,7 +45,6 @@ from geotandem.model.represent import (
     NotRepresentable,
     QueryPart,
     count_conditions,
-    representable,
     to_analysis,
     to_query,
 )
@@ -155,9 +154,28 @@ def ask(
     context_length: int | None = None,
 ) -> tuple[DirectAnswer, FakeLLMClient]:
     model = scripted(case_id)
-    direct = DirectQuery(model, context_of(world, role), on, context_length)
+    direct = DirectQuery(model, context_of(world, role), on)
     prompt = case(case_id)["prompt"]
-    return direct.run(prompt, profile=profile_of(world, role), follow_up=follow_up), model
+    profile = profile_of(world, role)
+    return run_direct(direct, prompt, profile, follow_up, context_length), model
+
+
+def run_direct(
+    direct: DirectQuery,
+    text: str,
+    profile: ModelProfile,
+    follow_up: FollowUp | None = None,
+    context_length: int | None = None,
+) -> DirectAnswer:
+    """What the prompt flow does: build the prompt, then ask."""
+    prompt = direct_prompt(
+        text,
+        level=direct.level,
+        profile=profile,
+        follow_up=follow_up,
+        context_length=context_length,
+    )
+    return direct.ask(prompt, profile=profile)
 
 
 def follow_up_of(c: dict[str, Any]) -> FollowUp | None:
@@ -394,7 +412,7 @@ def test_the_direct_format_offers_what_the_controls_show() -> None:
     for gone in ("PlanAnswer", "BBox", "GeometryFilter", "Buffer", "AttributeJoin", "OrderBy"):
         assert gone not in defs
     query = defs["QueryObject"]["properties"]
-    assert set(query) == {"schema_version", "source", "where", "symbology", "output"}
+    assert set(query) == {"schema_version", "source", "where", "output"}
     assert query["output"]["const"] == "map"
     assert defs["TextMatch"]["properties"]["mode"]["enum"] == [
         "contains",
@@ -443,18 +461,20 @@ def test_an_unreadable_answer_names_its_cause_never_its_text(text: str, cause: s
 
 
 def test_the_prompt_holds_level_profile_and_format(world: DataBackend) -> None:
-    result, model = ask(world, "reference")
+    _, model = ask(world, "reference")
     [call] = model.calls
     system, user = call.messages
     profile = profile_of(world)
+    prompt = direct_prompt(case("reference")["prompt"], level=CHECK, profile=profile)
     assert system.role == "system" and user.role == "user"
     assert system.content.startswith(CHECK.system_prompt)
     assert profile.text in system.content and profile.text
     assert format_text("direct") in system.content
     assert call.schema == answer_format("direct")
     assert user.content == case("reference")["prompt"]
-    assert result.tokens_estimate == estimate_tokens(call.messages)
-    assert result.tokens_estimate > ANSWER_TOKENS
+    assert prompt.messages == call.messages
+    assert prompt.tokens_estimate == estimate_tokens(call.messages)
+    assert prompt.tokens_estimate > ANSWER_TOKENS
 
 
 def test_the_profile_is_the_accounts(world: DataBackend, hidden: str) -> None:
@@ -509,9 +529,11 @@ def test_turns_of_other_answers() -> None:
 def test_too_large_a_context_is_refused_before_any_call(world: DataBackend) -> None:
     c = case("context_too_large")
     model = FakeLLMClient()
-    direct = DirectQuery(model, context_of(world), CHECK, c["setup"]["context_length"])
+    direct = DirectQuery(model, context_of(world), CHECK)
     with pytest.raises(ActionError) as caught:
-        direct.run(c["prompt"], profile=profile_of(world))
+        run_direct(
+            direct, c["prompt"], profile_of(world), context_length=c["setup"]["context_length"]
+        )
     assert caught.value.code == c["expect"]["error_code"]
     assert caught.value.status == c["expect"]["http"]
     assert caught.value.details["context_length"] == 200
@@ -572,8 +594,8 @@ def test_no_row_value_reaches_the_model(tmp_path: Path) -> None:
         turns=[Turn.of(parent["prompt"], QueryAnswer.model_validate(parent["answer"]))],
     )
     profile = profile_of(backend)
-    first = direct.run("Welche Punkte haben eine Kategorie?", profile=profile, follow_up=follow_up)
-    second = direct.run("Und nach Farbe?", profile=profile, follow_up=follow_up)
+    first = run_direct(direct, "Welche Punkte haben eine Kategorie?", profile, follow_up)
+    second = run_direct(direct, "Und nach Farbe?", profile, follow_up)
     assert first.query is not None  # the layer is there and the query valid
     assert second.refusal is not None and second.refusal.code == "unknown_attribute"
     sent = "".join(m.content for call in model.calls for m in call.messages)
@@ -612,7 +634,6 @@ def test_queries_the_controls_write_are_representable(item: dict[str, Any]) -> N
     assert count_conditions(part) == item["conditions"]
     assert canonical_json(to_query(part)) == canonical_json(query)
     assert to_analysis(to_query(part), CATALOG) == part  # analysis → query → analysis
-    assert representable(query, CATALOG)
 
 
 @pytest.mark.parametrize("item", REPRESENT["not_representable"], ids=lambda c: c["id"])
@@ -621,7 +642,6 @@ def test_queries_the_controls_cannot_write_are_not(item: dict[str, Any]) -> None
     with pytest.raises(NotRepresentable) as caught:
         to_analysis(query, CATALOG)
     assert caught.value.part == item["part"]
-    assert not representable(query, CATALOG)
 
 
 def test_incomplete_rows_drop_out_of_the_query() -> None:

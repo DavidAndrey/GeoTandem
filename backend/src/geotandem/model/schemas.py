@@ -21,12 +21,20 @@ the user, and a step's ``model_view`` holds only what D9 allows.
 from datetime import datetime
 from typing import Annotated, Any, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, TypeAdapter, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    TypeAdapter,
+    field_serializer,
+    model_validator,
+)
 
 from geotandem.engine.result import QueryResult, ResultStamp
 from geotandem.levels import CellMode, OpClass
 from geotandem.llm import Locality
-from geotandem_query import QueryObject
+from geotandem_query import QueryObject, compact
 
 MAX_PROMPT = 4000
 """Characters of one prompt."""
@@ -421,6 +429,12 @@ class ModelActionView(BaseModel):
     stop_reason: StopReason | None = None
     stamp: ResultStamp | None = None
     latency_ms: int | None = None
+
+    @field_serializer("query", "applied_query")
+    def _as_written(self, query: QueryObject | None):  # type: ignore[no-untyped-def]
+        """As the editor writes a query (``compact``): no unset field, no empty
+        default. Unannotated, so the schema stays the query object's."""
+        return None if query is None else compact(query)
 
 
 class ExecuteResponse(BaseModel):

@@ -341,6 +341,9 @@ class ModelAction(Base):
     replans: Mapped[int] = mapped_column(default=0, server_default="0")
     stamp: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     latency_ms: Mapped[int | None]
+    called_at: Mapped[datetime | None]
+    """When the model call started; ``None`` for a request aborted before it.
+    The request limit counts only requests that reached the call (P5)."""
 
 
 class AppMeta(Base):

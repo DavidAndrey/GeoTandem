@@ -17,6 +17,7 @@ import asyncio
 import json
 import logging
 import threading
+import time
 from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta, timezone
@@ -27,7 +28,7 @@ import pytest
 from api_helpers import ADMIN_PASSWORD, USER_PASSWORD, Events, sign_in, sign_in_as
 from fastapi import Depends, FastAPI
 from llm_stub import OllamaStub, chat
-from model_fixtures import REPO, case, cases, completion
+from model_fixtures import REPO, case, cases, completion, fixture
 from pydantic import TypeAdapter
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -54,16 +55,17 @@ from geotandem.model.record import (
     text_hash,
     utc_now,
 )
-from geotandem.model.schemas import ConnectionSnapshot, LevelSnapshot, ModelAnswer
+from geotandem.model.schemas import MAX_TURNS, ConnectionSnapshot, LevelSnapshot, ModelAnswer
 from geotandem.model.service import (
     MODEL_CALL_S,
+    STALE_MARGIN_S,
     ModelCalls,
     PromptFlow,
     day_start,
     profile_for,
 )
 from geotandem.sample import DATA_DIR
-from geotandem_query import QueryObject
+from geotandem_query import QueryObject, compact
 
 PROMPT = "/api/model/prompt"
 CONNECTIONS = "/api/admin/llm/connections"
@@ -80,6 +82,11 @@ def same_answer(stored: Body | None, case_id: str) -> bool:
     return stored is not None and ANSWER.validate_python(stored) == ANSWER.validate_python(
         case(case_id)["answer"]
     )
+
+
+def canonical(data: Any) -> str:
+    """JSON with sorted keys, nothing else normalised."""
+    return json.dumps(data, sort_keys=True, ensure_ascii=False)
 
 
 def action_url(action_id: int, step: str = "") -> str:
@@ -117,10 +124,13 @@ class Model:
         schema: dict[str, Any] | None = None,
         schema_name: str = "answer",
         tools: Sequence[ToolSpec] = (),
+        deadline: float | None = None,
     ) -> Completion:
         self.asked.set()
         assert self.released.wait(10), "the test never released the model"
-        return self.fake.complete(messages, schema=schema, schema_name=schema_name, tools=tools)
+        return self.fake.complete(
+            messages, schema=schema, schema_name=schema_name, tools=tools, deadline=deadline
+        )
 
     def models(self) -> list[ModelInfo]:
         return []
@@ -319,7 +329,9 @@ async def test_the_reference_question_is_proposed_with_what_it_was_asked_under(
 
     expect = case("reference")["expect"]
     assert record["status"] == "proposed" and record["decision"] is None
-    assert QueryObject.model_validate(record["query"]) == QueryObject.model_validate(REFERENCE)
+    # As the editor wrote it in E1, to the byte once keys are sorted: no null,
+    # no empty default, 500 not 500.0 (the frontend compares it so).
+    assert canonical(record["query"]) == canonical(REFERENCE)
     assert set(record["governance"]["classes"]) == set(expect["classes"])
     state: AppState = app.state.geotandem
     admin = account_of(app, "admin")
@@ -343,8 +355,17 @@ async def test_the_call_waits_at_most_the_model_call_limit(
     url = f"{CONNECTIONS}/{model.connection['id']}"
     for timeout, expected in ((600, MODEL_CALL_S), (30, 30)):
         assert (await client.patch(url, json={"timeout_s": timeout})).status_code == 200
+        before = time.monotonic()
         await outcome(client, model, "clarification")
         assert model.endpoints[-1].timeout_s == expected
+        # One deadline for the whole call, retries included, from the prompt on.
+        deadline = model.fake.calls[-1].deadline
+        assert deadline is not None and before + expected <= deadline <= time.monotonic() + expected
+
+
+def test_the_fixture_and_the_frontend_agree_on_the_model_call_limit() -> None:
+    """One limit, repeated in ``panel/state.ts``: its own test holds it to the fixture too."""
+    assert fixture()["limits"]["model_call_s"] == MODEL_CALL_S
 
 
 async def test_every_level_only_proposes_in_e2_3(
@@ -656,6 +677,27 @@ async def test_parallel_prompts_at_the_limit_pass_exactly_up_to_it(
     assert records(app) == allowed and len(model.fake.calls) == allowed
 
 
+async def test_a_request_aborted_before_its_call_does_not_count(
+    client: httpx.AsyncClient, model: Model, app: FastAPI
+) -> None:
+    """P5 counts what reached the model call; a queued request aborted first did not."""
+    calls = ModelCalls(1)
+    app.state.geotandem.model_calls = calls
+    busy = threading.Event()
+    calls._executor.submit(busy.wait, 10)  # the one thread taken outside the flow
+    await limit(client, model, request_limit_enabled=True, request_limit_per_day=1)
+
+    queued = (await ask(client, "clarification")).json()["id"]
+    assert (await client.post(action_url(queued, "abort"))).status_code == 200
+    busy.set()
+    await model.settle()
+    assert model.fake.calls == []
+
+    await outcome(client, model, "clarification")  # the day's one request
+    assert (await ask(client, "clarification")).status_code == 429
+    assert records(app) == 2
+
+
 async def test_a_limit_that_is_off_is_never_checked(
     client: httpx.AsyncClient, model: Model, app: FastAPI
 ) -> None:
@@ -799,9 +841,12 @@ async def test_an_adjusted_proposal_logs_the_users_query(
         "adjusted",
         False,
     )
-    assert QueryObject.model_validate(body["applied_query"]) == QueryObject.model_validate(edited)
+    assert canonical(body["applied_query"]) == canonical(
+        compact(QueryObject.model_validate(edited))
+    )
+    assert "null" not in canonical(body["applied_query"])
     # The model's query stays what the model proposed.
-    assert QueryObject.model_validate(body["query"]) == QueryObject.model_validate(REFERENCE)
+    assert canonical(body["query"]) == canonical(REFERENCE)
 
 
 async def test_only_a_proposal_is_decided(client: httpx.AsyncClient, model: Model) -> None:
@@ -846,26 +891,113 @@ async def test_another_accounts_record_does_not_exist(
     assert (await client.post(action_url(theirs["id"], "abort"))).status_code == 404
 
 
-async def test_a_follow_up_is_linked_to_its_parent_without_context_yet(
+async def test_the_reply_to_a_clarification_carries_its_question(
     client: httpx.AsyncClient, model: Model
 ) -> None:
-    """P6: the link is stored; turns and the derived reference arrive with WP81."""
+    """P6, M12.2: the option alone ("500 m") means nothing; the model gets the
+    parent chain as turns. The derived reference arrives with WP81."""
+    clarification = case("clarification")
     parent = await outcome(client, model, "clarification")
     model.fake.calls.clear()
+    option = clarification["answer"]["options"][1]
 
-    record = await outcome(
-        client,
-        model,
-        "cannot_answer",
-        parent_action_id=parent["id"],
-        analysis=case("follow_up")["analysis"],
-    )
+    model.script("cannot_answer")
+    response = await client.post(PROMPT, json={"text": option, "parent_action_id": parent["id"]})
+    assert response.status_code == 202, response.text
+    await model.settle()
+    record = (await client.get(action_url(response.json()["id"]))).json()
 
     assert record["parent_action_id"] == parent["id"]
     assert record["reference"] == "none"
     [call] = model.fake.calls
-    assert [m.role for m in call.messages] == ["system", "user"]
-    assert call.messages[1].content == case("cannot_answer")["prompt"]
+    assert [m.role for m in call.messages] == ["system", "user", "assistant", "user"]
+    assert call.messages[1].content == clarification["prompt"]
+    assert clarification["answer"]["question"] in call.messages[2].content
+    assert all(o in call.messages[2].content for o in clarification["answer"]["options"])
+    assert call.messages[3].content == option
+
+
+async def test_the_turns_reach_back_over_own_records_only(
+    client: httpx.AsyncClient, model: Model
+) -> None:
+    """At most ``MAX_TURNS`` records back, oldest first, with the user's decision."""
+    parent: int | None = None
+    for i in range(MAX_TURNS + 1):
+        model.script("clarification")
+        extra = {} if parent is None else {"parent_action_id": parent}
+        response = await client.post(PROMPT, json={"text": f"Frage {i}", **extra})
+        assert response.status_code == 202, response.text
+        await model.settle()
+        parent = response.json()["id"]
+    model.fake.calls.clear()
+
+    await outcome(client, model, "cannot_answer", parent_action_id=parent)
+
+    [call] = model.fake.calls
+    users = [m.content for m in call.messages if m.role == "user"]
+    assert users[:-1] == [f"Frage {i}" for i in range(1, MAX_TURNS + 1)]
+
+
+async def test_an_aborted_call_holds_the_account_until_it_ends(
+    client: httpx.AsyncClient, model: Model
+) -> None:
+    """Abort frees the screen, not the model: the next prompt waits (409 with the
+    aborted record's id) while its call still runs, and passes once it ended."""
+    model.script("clarification", "clarification")
+    model.released.clear()
+    first = (await ask(client, "clarification")).json()["id"]
+    assert await asyncio.to_thread(model.asked.wait, 10)
+    assert (await client.post(action_url(first, "abort"))).status_code == 200
+
+    again = await ask(client, "clarification")
+    assert (again.status_code, again.json()["code"]) == (409, "busy")
+    assert again.json()["details"] == {"reason": "running", "id": first}
+
+    model.released.set()
+    await model.settle()
+    assert (await ask(client, "clarification")).status_code == 202
+    await model.settle()
+
+
+async def test_an_outcome_that_cannot_be_stored_ends_failed(
+    client: httpx.AsyncClient, model: Model, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Never a ``thinking`` record left behind: it would hold the account."""
+
+    def broken(*_: Any, **__: Any) -> None:
+        raise RuntimeError("the database went away")
+
+    monkeypatch.setattr(ModelActionStore, "answer", broken)
+    record = await outcome(client, model, "clarification")
+
+    assert (record["status"], record["decision"]) == ("failed", "failed")
+    assert record["error"]["code"] == "internal_error"
+    monkeypatch.undo()
+    assert (await ask(client, "clarification")).status_code == 202
+    await model.settle()
+
+
+async def test_a_thinking_record_no_call_will_finish_is_closed(
+    client: httpx.AsyncClient, model: Model, app: FastAPI
+) -> None:
+    """Older than the call limit and a margin, and no call in flight: stale."""
+    engine = app.state.geotandem.backend.engine
+    admin = account_of(app, "admin")
+    then = utc_now() - timedelta(seconds=MODEL_CALL_S + STALE_MARGIN_S + 1)
+    stuck = ModelActionStore(engine, lambda: then).create(admin, new_action(), supersede=False)
+    recent = ModelActionStore(engine).create(admin, new_action(), supersede=False)
+
+    held = await ask(client, "clarification")
+    assert (held.status_code, held.json()["details"]["id"]) == (409, recent.id)
+
+    store = ModelActionStore(engine)
+    closed = store.get(admin, stuck.id)
+    assert (closed.status, closed.decision) == ("failed", "failed")
+    assert closed.error is not None and closed.error["code"] == "llm_timeout"
+    store.fail(admin, recent.id, {"code": "llm_timeout", "message": "-", "details": {}})
+    model.script("clarification")
+    assert (await ask(client, "clarification")).status_code == 202
+    await model.settle()
 
 
 # --- logs (C15) ------------------------------------------------------------------
@@ -910,22 +1042,26 @@ async def test_no_log_line_holds_the_prompt_or_the_answer(
 # --- start-up (P7) ---------------------------------------------------------------
 
 
-def test_start_closes_everything_the_last_shutdown_left_thinking(settings: Settings) -> None:
-    """One process: nothing in flight survives a restart, whatever its age."""
-    engine = bootstrap(settings)
-    anna = accounts.create(engine, "anna", USER_PASSWORD, "user")
-    new = NewAction(
+def new_action(connection_id: int = 1) -> NewAction:
+    return NewAction(
         prompt="Primarschulen in Köniz",
         approach="direct",
         level=LevelSnapshot(
             id=1, name="Prüfen", matrix={c: CellMode.APPROVE for c in OpClass}, prompt_hash="1" * 64
         ),
         connection=ConnectionSnapshot(
-            id=1, name="Lokal", model="qwen3:8b", host="127.0.0.1", locality="local"
+            id=connection_id, name="Lokal", model="qwen3:8b", host="127.0.0.1", locality="local"
         ),
         profile_hash="p" * 64,
         proposal_only=True,
     )
+
+
+def test_start_closes_everything_the_last_shutdown_left_thinking(settings: Settings) -> None:
+    """One process: nothing in flight survives a restart, whatever its age."""
+    engine = bootstrap(settings)
+    anna = accounts.create(engine, "anna", USER_PASSWORD, "user")
+    new = new_action()
     then = utc_now() - timedelta(seconds=MODEL_CALL_S + 1)
     lost = ModelActionStore(engine, lambda: then).create(anna, new)
     recent = ModelActionStore(engine).create(anna, new, supersede=False)
