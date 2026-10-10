@@ -26,7 +26,7 @@ Nothing here runs the query: no row is read.
 """
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Final
 
 from pydantic import ValidationError
 from sqlalchemy import Column, MetaData, Table
@@ -73,19 +73,38 @@ class ModelWorld(LayerView):
         return self._tables[name]
 
 
+def refusal_of(exc: QueryError) -> Refusal:
+    """The engine's error as a refusal: its code passes through (``RefusalCode``)."""
+    return Refusal.model_validate(
+        {"code": exc.code, "message": exc.message, "details": exc.details}
+    )
+
+
+def schema_errors(exc: ValidationError) -> list[dict[str, Any]]:
+    """Where and why a document missed its schema, without its input."""
+    return [
+        {"loc": list(e["loc"]), "msg": e["msg"], "type": e["type"]}
+        for e in exc.errors(include_url=False, include_input=False, include_context=False)
+    ]
+
+
 def check_query(
-    query: QueryObject, context: ToolContext, profile: ModelProfile
+    query: QueryObject,
+    context: ToolContext,
+    profile: ModelProfile,
+    *,
+    shown: QueryObject | None = None,
 ) -> Validated | Refusal:
-    """Steps 2 to 4 for a schema-valid query: a model's, or a follow-up's analysis (P6)."""
+    """Steps 2 to 4 for a schema-valid query: a model's, or a follow-up's analysis (P6).
+    ``shown`` is the part the controls show, when it is not the whole query (a
+    chain's buffer: what it buffers); the engine checks the whole query once."""
     world = ModelWorld(context.backend, profile)
     try:
         validate_query(query, world, context.limits, context.unsupported)
     except QueryError as exc:
-        return Refusal.model_validate(
-            {"code": exc.code, "message": exc.message, "details": exc.details}
-        )
+        return refusal_of(exc)
     try:
-        part = to_analysis(query, catalog_of(profile))
+        part = to_analysis(shown or query, catalog_of(profile))
     except NotRepresentable as exc:
         return Refusal(code="not_representable", message=str(exc), details={"part": exc.part})
     value = count_conditions(part)
@@ -106,20 +125,23 @@ def validate_model_query(
     try:
         query = QueryObject.model_validate(raw)
     except ValidationError as exc:
-        return _invalid(
-            [
-                {"loc": list(e["loc"]), "msg": e["msg"], "type": e["type"]}
-                for e in exc.errors(include_url=False, include_input=False, include_context=False)
-            ]
-        )
+        return invalid(schema_errors(exc))
     except RecursionError:
-        return _invalid([{"loc": [], "msg": "Nested too deeply", "type": "recursion_loop"}])
+        return invalid([NESTED])
     return check_query(query, context, profile)
 
 
-def _invalid(errors: list[dict[str, Any]]) -> Refusal:
+NESTED: Final = {"loc": [], "msg": "Nested too deeply", "type": "recursion_loop"}
+
+
+def invalid(
+    errors: list[dict[str, Any]],
+    message: str = "The model's query does not match the query-object schema.",
+    **details: Any,
+) -> Refusal:
+    """``model_query_invalid``: the first ``MAX_LISTED`` errors and how many there were."""
     return Refusal(
         code="model_query_invalid",
-        message="The model's query does not match the query-object schema.",
-        details={"errors": errors[:MAX_LISTED], "error_count": len(errors)},
+        message=message,
+        details={**details, "errors": errors[:MAX_LISTED], "error_count": len(errors)},
     )

@@ -820,11 +820,19 @@ TOOL_EFFECTS: dict[str, str] = {
     "list_layers": "read",
     "describe_layer": "read",
     "run_query": "state",
+    # The chain's steps (WP74): each builds a query object, runs nothing.
+    "filter": "state",
+    "buffer": "state",
+    "within": "state",
+    "outside": "state",
+    "intersects": "state",
+    "near": "state",
 }
 """Every tool of the registry and what it does. ``state`` makes a new analysis
 state, computed by the engine on a read-only connection (``PRAGMA
-query_only``); no tool writes. The chain tools of WP74 join here, each with its
-effect; the direct path offers the model none."""
+query_only``), or, for a chain step, a new query object; no tool writes. The
+direct path offers the model none; the chain plans its steps as structured
+output (P4) and offers none either."""
 
 READ_ONLY_IMPORTS: dict[str, set[str]] = {
     # Who asks, and which layers they see: the names, for a read-only view.
@@ -850,10 +858,11 @@ READ_ONLY_IMPORTS: dict[str, set[str]] = {
         "ids_query",
         "run_query",
         "stamp_of",
+        "stamp_query",
         "validate_query",
     },
     "geotandem.engine.compile": {"FID", "GEOM"},
-    "geotandem.engine.errors": {"QueryTimedOut", "UnknownLayer"},
+    "geotandem.engine.errors": {"QueryTimedOut", "ResultTooLarge", "UnknownLayer"},
     "geotandem.engine.result": {"QueryResult", "ResultStamp"},
     # Levels: read and resolved, never chosen or saved here.
     "geotandem.levels": {"CellMode", "Level", "OpClass", "active_level", "classify", "strictest"},

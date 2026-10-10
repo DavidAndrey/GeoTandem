@@ -42,8 +42,6 @@ WITH_ANSWER = [c["id"] for c in cases() if "answer" in c]
 SOURCE = REPO / "backend" / "src" / "geotandem"
 
 PENDING_CODES = {
-    "step_limit": "WP75",
-    "time_limit": "WP75",
     "stale_reference": "WP81",
 }
 """Codes the contract names but no service raises yet, with the WP that must.

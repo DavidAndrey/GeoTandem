@@ -45,7 +45,15 @@ ignore_missing_imports = true
 exclude = ["/migrations/"]
 
 [[tool.mypy.overrides]]
-module = ["geotandem_query.*", "geotandem.data.*", "geotandem.engine.*", "geotandem.llm.*"]
+module = [
+    "geotandem_query.*",
+    "geotandem.data.*",
+    "geotandem.engine.*",
+    "geotandem.llm.*",
+    # What the model sees of a chain step (D9, D10, plan WP74).
+    "geotandem.model.chain.*",
+    "geotandem.tools.chain",
+]
 strict = true
 
 [tool.pytest.ini_options]
