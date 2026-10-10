@@ -122,7 +122,8 @@ describe('statusKey', () => {
       [actionView('reference'), 'awaiting'],
       [actionView('reference', {}, 'Assistenz'), 'proposal'],
     ],
-    approved: [[actionView('reference', {}, 'Teilautonom'), 'approved']],
+    // The mocks send ``proposed`` before enforcement (P1), as the E2.3 server does.
+    approved: [[ref({ status: 'approved' }, 'Teilautonom'), 'approved']],
     running: [[ref({ approach: 'chain', status: 'running' }), 'running']],
     done: [[ref({ status: 'done' }), 'done']],
     limited: [

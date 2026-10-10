@@ -1,11 +1,19 @@
-// A query object read back into condition rows, for display only (design M2,
-// M5: "lesbare Abfrage im Bedingungsbaum-Stil"). The rows are those of the
-// editor (analysis/model.ts), so the existing words (editor/describe.ts) say
-// them; a condition the controls cannot show stays as JSON, never guessed.
+// A query object read back into condition rows (design M2, M5: "lesbare
+// Abfrage im Bedingungsbaum-Stil"). The rows are those of the editor
+// (analysis/model.ts), so the existing words (editor/describe.ts) say them; a
+// condition the controls cannot show stays as JSON, never guessed.
+//
+// Two readers: the answer's tree shows it, and the draft of a proposal
+// (panel/draft.ts) takes its rows into the editor, from where the user's
+// "Übernehmen" brings them into the analysis. So the rows must write back
+// exactly the query they were read from (``resultQuery``); the shared case
+// list of plan D3 (schema/model-cases/represent.json, represent.test.ts) holds
+// both sides to it. This is the narrow inverse of E2.3, not WP80's general
+// ``toAnalysis``.
 //
 // Input is raw JSON on purpose: a refused answer keeps its query as the model
-// wrote it (plan WP62), and it must still be viewable. This is not the
-// inverse ``toAnalysis`` of plan D3 (WP80): nothing here enters the analysis.
+// wrote it (plan WP62), and it must still be viewable. Keys that are null or
+// empty mean "not set" (``compactQuery``), however the JSON came.
 import type {
   AttributeOperator,
   AttributeRow,
@@ -34,8 +42,45 @@ const isObject = (value: unknown): value is Json =>
 const isScalar = (value: unknown): value is Scalar =>
   typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
 
+/**
+ * A query object without the keys that set nothing: ``null``, an empty list or
+ * an empty object, at any depth. The editor writes none of them; a server or
+ * a model may send them all (``buffer: null``, ``columns: []``).
+ */
+export function compactQuery(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(compactQuery)
+  if (!isObject(value)) return value
+  const kept: Json = {}
+  for (const [key, inner] of Object.entries(value)) {
+    if (inner === null || inner === undefined) continue
+    const compacted = compactQuery(inner)
+    if (Array.isArray(compacted) && compacted.length === 0) continue
+    if (isObject(compacted) && Object.keys(compacted).length === 0) continue
+    kept[key] = compacted
+  }
+  return kept
+}
+
 const COMPARE: readonly string[] = ['eq', 'ne', 'lt', 'le', 'gt', 'ge']
 const TEXT_MODES: readonly string[] = ['contains', 'starts_with', 'ends_with']
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
+
+/**
+ * ``and`` of a ``ge`` and a ``le`` on one attribute, ISO dates in order: the one
+ * date range row the editor writes so (analysis/query.ts, plan E1.8 G3). On a
+ * field that is no date the server refuses such a query (text has no ≥ or ≤).
+ */
+function readDateRange(c: Json, id: string): AttributeRow | null {
+  if (c.op !== 'and' || !Array.isArray(c.args) || c.args.length !== 2) return null
+  const [low, high] = c.args as unknown[]
+  if (!isObject(low) || !isObject(high) || low.op !== 'compare' || high.op !== 'compare')
+    return null
+  if (low.cmp !== 'ge' || high.cmp !== 'le' || typeof low.attr !== 'string') return null
+  const [from, to] = [low.value, high.value]
+  if (low.attr !== high.attr || typeof from !== 'string' || typeof to !== 'string') return null
+  if (!ISO_DATE.test(from) || !ISO_DATE.test(to) || from > to) return null
+  return attributeRow(id, low.attr, { operator: 'between', min: from, max: to })
+}
 
 const attributeRow = (id: string, attr: string, patch: Partial<AttributeRow>): AttributeRow => ({
   id,
@@ -52,9 +97,11 @@ const attributeRow = (id: string, attr: string, patch: Partial<AttributeRow>): A
 
 function readAttribute(c: Json, id: string): AttributeRow | null {
   if (c.op === 'not' && isObject(c.arg)) {
-    const row = readAttribute(c.arg, id)
-    return row && { ...row, not: !row.not }
+    // ``not`` of a ``not`` is no row the editor writes (the server refuses it, D3).
+    const row = c.arg.op === 'not' ? null : readAttribute(c.arg, id)
+    return row && { ...row, not: true }
   }
+  if (c.op === 'and') return readDateRange(c, id)
   const attr = c.attr
   if (typeof attr !== 'string') return null
   switch (c.op) {
@@ -66,14 +113,17 @@ function readAttribute(c: Json, id: string): AttributeRow | null {
       return typeof c.min === 'number' && typeof c.max === 'number'
         ? attributeRow(id, attr, { operator: 'between', min: c.min, max: c.max })
         : null
-    case 'text_match':
-      // The controls match without case only (query.ts); the schema's default is the same.
-      return typeof c.mode === 'string' &&
-        TEXT_MODES.includes(c.mode) &&
+    case 'text_match': {
+      // The controls match without case only (query.ts); the schema's defaults are
+      // "contains" and the same.
+      const mode = c.mode ?? 'contains'
+      return typeof mode === 'string' &&
+        TEXT_MODES.includes(mode) &&
         typeof c.text === 'string' &&
         (c.case_sensitive === undefined || c.case_sensitive === false)
-        ? attributeRow(id, attr, { operator: c.mode as AttributeOperator, value: c.text })
+        ? attributeRow(id, attr, { operator: mode as AttributeOperator, value: c.text })
         : null
+    }
     case 'is_null':
       return attributeRow(id, attr, { operator: 'is_empty' })
     case 'in':
@@ -132,6 +182,8 @@ function readReference(c: Json, id: string): ReferenceRow | null {
 export function readCondition(c: unknown, id: string): ReadNode {
   const opaque: Opaque = { id, kind: 'opaque', json: JSON.stringify(c) }
   if (!isObject(c)) return opaque
+  const range = readDateRange(c, id)
+  if (range) return range
   if (c.op === 'and' || c.op === 'or') {
     if (!Array.isArray(c.args)) return opaque
     return {
@@ -143,6 +195,9 @@ export function readCondition(c: unknown, id: string): ReadNode {
     }
   }
   if (c.op === 'not') {
+    // ``not`` of a ``not``: the editor writes it only as a negated group around
+    // one negated row, which a draft does not rebuild; the server refuses it (D3).
+    if (isObject(c.arg) && c.arg.op === 'not') return opaque
     // "liegt ausserhalb" and "> Distanz zu" are negations in the schema (v1).
     const related = isObject(c.arg) ? readRelated(c.arg, id) : null
     if (related?.operator === 'in') return { ...related, operator: 'outside' }
@@ -164,9 +219,10 @@ export function readCondition(c: unknown, id: string): ReadNode {
 const SHOWN = ['schema_version', 'source', 'output', 'where']
 
 /** A query object as a readable tree under one root group. */
-export function readQuery(query: unknown): ReadQuery {
+export function readQuery(raw: unknown): ReadQuery {
   // The root's id is the analysis's (query.ts ``emptyTree``).
   const root: ReadGroup = { id: 'root', kind: 'group', op: 'and', not: false, children: [] }
+  const query = compactQuery(raw)
   if (!isObject(query)) return { source: null, tree: root, extra: [] }
   const extra = Object.keys(query).filter((key) => !SHOWN.includes(key))
   const source = typeof query.source === 'string' ? query.source : null

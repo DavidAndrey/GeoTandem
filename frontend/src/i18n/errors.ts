@@ -24,8 +24,11 @@ const MESSAGES: Record<string, Words> = {
   },
   schema_violation: () => t`Die Anfrage hat nicht die erwartete Form.`,
   unknown_tool: () => t`Dieses Werkzeug gibt es nicht.`,
-  busy: () =>
-    t`Gerade sind zu viele Anfragen gleichzeitig unterwegs. Bitte gleich nochmals versuchen.`,
+  busy: (d) =>
+    // ``running``: the account's previous prompt, an aborted one too, still holds the model.
+    d.reason === 'running'
+      ? t`Ihre vorige Anfrage ist beim Modell noch nicht zu Ende. Bitte gleich nochmals versuchen.`
+      : t`Gerade sind zu viele Anfragen gleichzeitig unterwegs. Bitte gleich nochmals versuchen.`,
   request_too_large: (d) => {
     const mb = number(d.max_mb)
     return t`Die Anfrage ist grösser als ${mb} MB.`

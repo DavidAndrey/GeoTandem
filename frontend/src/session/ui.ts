@@ -5,7 +5,7 @@ import { create } from 'zustand'
 import { useAnalysis } from '../analysis/store'
 import { newSession, saveSession } from './actions'
 import { useSession } from './store'
-import { dateTimeFormat } from '../i18n/locale'
+import { dateTimeFormat, parseTimestamp } from '../i18n/locale'
 
 /** What waits behind the C5 question; the dialog words it ("Speichern und öffnen"). */
 export type GuardedAction = 'open' | 'new' | 'logout'
@@ -72,7 +72,7 @@ export function guarded(action: GuardedAction, run: () => void) {
 
 /** "heute 14:02", "gestern", "28.09." (design C3). The server writes UTC without a zone. */
 function when(iso: string, now: Date) {
-  const date = new Date(/[zZ]|[+-]\d\d:\d\d$/.test(iso) ? iso : `${iso}Z`)
+  const date = parseTimestamp(iso)
   const day = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
   const days = Math.round((day(now) - day(date)) / 86_400_000)
   const time = dateTimeFormat({ hour: '2-digit', minute: '2-digit' }).format(date)

@@ -81,9 +81,16 @@ function ExternalNotice({ host }: { host: string }) {
  * What the model sees (M1 data-release line). In E2.3 the model gets the layer
  * profile and the prompt and never rows, whatever the data-release flag says
  * (plan D9, D10: the flag starts to bite with a tool that returns row content).
+ * The profile is more than names: it carries the code lists and value ranges an
+ * administrator confirmed for the model (S2), so the line says so.
  */
 function DataRelease() {
-  return <Trans>Das Modell sieht Layer- und Feldnamen, keine Geodaten-Inhalte.</Trans>
+  return (
+    <Trans>
+      Das Modell sieht Layer- und Feldnamen sowie die freigegebenen Wertelisten und Wertebereiche,
+      keine einzelnen Objekte oder Geometrien.
+    </Trans>
+  )
 }
 
 /** M1.1: what to ask, and examples from the visible layers. */

@@ -2,8 +2,9 @@
 // the readable tree (model/readable.ts) become the analysis's rows. Only an
 // object the controls show without loss becomes a draft; the server refuses
 // any other with ``not_representable`` (D3), so ``null`` here means "not for
-// the editor", never a guess. This is the narrow case of E2.3; the general
-// inverse ``toAnalysis`` with its shared case list is WP80's.
+// the editor", never a guess. Both sides agree on the shared case list
+// (schema/model-cases/represent.json, model/represent.test.ts). This is the
+// narrow case of E2.3; the general inverse ``toAnalysis`` is WP80's.
 import type { Group, Node } from '../../analysis/model'
 import { readQuery, type ReadNode } from '../readable'
 

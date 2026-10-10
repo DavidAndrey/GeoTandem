@@ -151,10 +151,13 @@ export function promptFlow(thinking: ModelActionView, ...answers: ModelActionVie
 }
 
 /**
- * ``decide`` as the backend answers it (WP65, store.py): ``applied_by_hand``
- * belongs to ``proposal_only``; an adjusted query with it is refused with 400.
+ * ``decide`` as the backend answers it (WP65, store.py): only a record still
+ * ``proposed`` is decided, once (409 ``already_decided`` after, or for a record
+ * in ``status``); ``applied_by_hand`` belongs to ``proposal_only``, and an
+ * adjusted query with it is refused with 400.
  */
-export function decideRoute(id: number) {
+export function decideRoute(id: number, status: ModelActionView['status'] = 'proposed') {
+  let current = status
   return {
     [`POST /api/model/actions/${id}/decide`]: (init: RequestInit | undefined) => {
       const body = JSON.parse(String(init?.body)) as {
@@ -162,15 +165,25 @@ export function decideRoute(id: number) {
         applied_by_hand?: boolean
         query?: ModelActionView['applied_query']
       }
+      if (current !== 'proposed')
+        return json(
+          {
+            code: 'already_decided',
+            message: `Model action ${id} is decided already (${current}).`,
+            details: { id, status: current },
+          },
+          409,
+        )
       if (body.decision === 'adjusted' && body.applied_by_hand)
         return json({ code: 'bad_request', message: 'adjusted is not by hand', details: {} }, 400)
+      current = 'applied'
       return actionView('reference', {
         id,
         status: 'applied',
         decision: body.decision,
         applied_by_hand: body.applied_by_hand ?? false,
         applied_query: body.query ?? null,
-        decided_at: '2026-10-10T14:07:00Z',
+        decided_at: '2026-10-10T14:07:00',
       })
     },
   }

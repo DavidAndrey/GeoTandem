@@ -13,7 +13,7 @@ import { CompactTree } from '../editor/CompactTree'
 import { describe } from '../editor/describe'
 import { labelsFor } from '../editor/fields'
 import { isMarked, type Origin } from './origin'
-import { readQuery, type ReadGroup } from './readable'
+import { compactQuery, readQuery, type ReadGroup } from './readable'
 import { FRAME, type LineStyle } from './statusKey'
 
 /** A catalog layer as the result of a query object. */
@@ -101,7 +101,7 @@ export function QueryTree({ query, line }: { query: unknown; line?: LineStyle })
           <Trans>Technisch (Abfrageobjekt JSON)</Trans>
         </summary>
         <pre className="mt-1 overflow-auto bg-neutral-200 p-2 font-mono">
-          {JSON.stringify(query, null, 2)}
+          {JSON.stringify(compactQuery(query), null, 2)}
         </pre>
       </details>
     </div>

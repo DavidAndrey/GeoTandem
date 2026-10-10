@@ -5,6 +5,8 @@ import { expect, test } from 'vitest'
 import openapi from '../../openapi.json'
 import { actionView, modelCase, promptRoutes, RECORD_CASES, type CaseId } from './model-mocks'
 import type { ModelActionView } from '../api/client'
+import { ENFORCEMENT } from '../model/enforcement'
+import { decideRoute } from './prompt-panel'
 import { assertValidQuery } from './schema'
 
 const ajv = new Ajv2020({ strict: false, allErrors: true })
@@ -13,6 +15,8 @@ const found = ajv.getSchema('openapi#/components/schemas/ModelActionView')
 if (!found) throw new Error('ModelActionView is missing from openapi.json')
 const validView = found
 const LEVELS = ['Assistenz', 'Prüfen', 'Teilautonom', 'Automatisch'] as const
+/** An answer whose cells are all ``auto``: approved with enforcement, else a proposal (P1). */
+const AUTO = ENFORCEMENT ? 'approved' : 'proposed'
 
 test.each(RECORD_CASES as CaseId[])('%s is a valid record at every level', (id) => {
   for (const level of LEVELS) {
@@ -37,11 +41,34 @@ test('the level decides between a proposal and an auto answer', () => {
     needs_approval: ['query', 'spatial'],
     off: [],
   })
-  expect(actionView('reference', {}, 'Automatisch').status).toBe('approved')
+  expect(actionView('reference', {}, 'Automatisch').status).toBe(AUTO)
   expect(actionView('reference', {}, 'Assistenz').governance?.off).toEqual(['query', 'spatial'])
   // Not listed for the case: derived from the cell, as the backend will.
   expect(modelCase('follow_up').expect.status).not.toHaveProperty('Automatisch')
-  expect(actionView('follow_up', {}, 'Automatisch').status).toBe('approved')
+  expect(actionView('follow_up', {}, 'Automatisch').status).toBe(AUTO)
+})
+
+test.skipIf(ENFORCEMENT)('before enforcement nothing arrives approved (P1), as from E2.3', () => {
+  for (const id of RECORD_CASES as CaseId[])
+    for (const level of LEVELS) expect(actionView(id, {}, level).status).not.toBe('approved')
+})
+
+test('the fake decide takes a proposal once, as the server does', async () => {
+  const post = (status?: ModelActionView['status']) =>
+    Object.values(decideRoute(3, status))[0] as (init: RequestInit) => ModelActionView | Response
+  const body = { body: JSON.stringify({ decision: 'proposal_only', applied_by_hand: true }) }
+  const once = post()
+  expect(once(body)).toMatchObject({ status: 'applied', decision: 'proposal_only' })
+  const again = once(body) as Response
+  expect(again.status).toBe(409)
+  expect(await again.json()).toMatchObject({ code: 'already_decided' })
+  expect((post('answered')(body) as Response).status).toBe(409)
+})
+
+test('times are naive UTC, as the server writes them', () => {
+  const view = actionView('aborted')
+  for (const time of [view.created_at, view.decided_at])
+    expect(time).toMatch(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d$/)
 })
 
 test('a refusal keeps its code and shows no query', () => {
@@ -71,5 +98,5 @@ test('the prompt answers 202 thinking; polling brings the answer (P7)', async ()
 test('a chain is governed by its steps: approve at Prüfen, proposal only at Assistenz', () => {
   expect(actionView('chain_reference').governance?.cell).toBe('approve')
   expect(actionView('chain_reference', {}, 'Assistenz').governance?.cell).toBe('off')
-  expect(actionView('chain_reference', {}, 'Automatisch').status).toBe('approved')
+  expect(actionView('chain_reference', {}, 'Automatisch').status).toBe(AUTO)
 })
