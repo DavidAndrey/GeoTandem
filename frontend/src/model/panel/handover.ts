@@ -16,6 +16,9 @@
 // value changed and changed back counts as an edit, as it does for the mark
 // the user sees), and the applied query object equals the proposed one in
 // canonical form (catches rows added, UND/ODER switched, another result layer).
+// *Anpassen …* of an approval (design M5.1, E2.4) hands over the same way, but
+// the level asked for a decision, not a hand-over: whatever the editor applies
+// is ``adjusted`` (``proposal_only`` belongs to levels with ``off`` parts).
 import { create } from 'zustand'
 import type { Group, Restriction } from '../../analysis/model'
 import { canBeResult, resultQuery } from '../../analysis/query'
@@ -24,6 +27,7 @@ import { rows } from '../../analysis/tree'
 import { api, type DecideRequest, type ModelActionView } from '../../api/client'
 import { useMapView } from '../../map/view'
 import { compactQuery } from '../readable'
+import { needsApproval } from '../approval/governance'
 import { useModel } from '../store'
 import { assumptionRow, proposalDraft } from './draft'
 
@@ -35,6 +39,8 @@ export interface Handover {
   query: unknown
   proposal: Group
   result: string
+  /** From an approval's *Anpassen …*: applied, it is always ``adjusted``. */
+  adjust: boolean
   /** What "Verwerfen" puts back. */
   before: {
     result: string | null
@@ -80,11 +86,8 @@ export function takeOver(view: ModelActionView, row: string | null = null): bool
     dirty: analysis.dirty,
     added: !shown,
   }
-  if (!shown) analysis.addLayer(draft.result, true)
-  // Result layer and restriction are not part of a draft: set here, put back by
-  // "Verwerfen" (watchHandover).
-  useAnalysis.setState({ result: draft.result, restriction: null, draft: draft.tree })
-  useAnalysis.getState().markOrigin()
+  // Open before the analysis changes: what follows belongs to the hand-over, and
+  // the undo rule judges it only when the editor closes (approval/flow.ts).
   useHandover.setState({
     open: {
       action: view.id,
@@ -92,10 +95,16 @@ export function takeOver(view: ModelActionView, row: string | null = null): bool
       query: view.query,
       proposal: draft.tree,
       result: draft.result,
+      adjust: needsApproval(view),
       before,
     },
     failed: null,
   })
+  if (!shown) analysis.addLayer(draft.result, true)
+  // Result layer and restriction are not part of a draft: set here, put back by
+  // "Verwerfen" (watchHandover).
+  useAnalysis.setState({ result: draft.result, restriction: null, draft: draft.tree })
+  useAnalysis.getState().markOrigin()
   useMapView.getState().setActiveRow(row)
   // "In Editor übernehmen" switches to Klassik; B2 takes the panel's place.
   useModel.getState().setOpen(false)
@@ -168,7 +177,11 @@ type AnalysisState = ReturnType<typeof useAnalysis.getState>
 export function decisionFor(handover: Handover, applied: AnalysisState): DecideRequest {
   const query = resultQuery(currentAnalysis(applied))
   const marksKept = rows(handover.proposal).every((row) => applied.origin.marks[row.id])
-  if (marksKept && canonical(decided(query)) === canonical(decided(handover.query)))
+  if (
+    !handover.adjust &&
+    marksKept &&
+    canonical(decided(query)) === canonical(decided(handover.query))
+  )
     return { decision: 'proposal_only', applied_by_hand: true }
   return { decision: 'adjusted', query }
 }

@@ -164,6 +164,21 @@ async def test_users_choose_among_selectable_levels(client: httpx.AsyncClient) -
     assert back.json()["active_level_id"] == pruefen["id"]
 
 
+async def test_the_options_carry_each_levels_matrix(client: httpx.AsyncClient) -> None:
+    """The header shows what the model may do at each level (design M7.1, M7.2)."""
+    shipped = await levels(client)
+    offered = await options(client)
+    assert [(lv["id"], lv["matrix"]) for lv in offered["levels"]] == [
+        (lv["id"], lv["matrix"]) for lv in shipped
+    ]
+    # Read from the level as saved, never from its name.
+    assistenz, pruefen, automatisch = shipped
+    changed = {**pruefen, "matrix": {**pruefen["matrix"], "derive": "off"}}
+    assert (await put(client, [assistenz, changed, automatisch])).status_code == 200
+    matrix = {lv["name"]: lv["matrix"] for lv in (await options(client))["levels"]}
+    assert matrix["Prüfen"]["derive"] == "off"
+
+
 async def test_administrators_may_use_every_level(client: httpx.AsyncClient) -> None:
     *_, automatisch = await levels(client)
     offered = await options(client)

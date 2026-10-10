@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, expect, test, vi } from 'vitest'
 import type { LLMOptions } from '../api/client'
 import { signedIn } from '../test/fixtures'
+import { levelOption } from '../test/model-mocks'
 import { fakeApi, renderAt } from '../test/render'
 import { ModelChoice } from './ModelChoice'
 
@@ -30,8 +31,8 @@ const options: LLMOptions = {
   chosen_connection_id: 2,
   active_connection_id: 2,
   levels: [
-    { id: 1, name: 'Assistenz', description: 'Erklärt nur.', selectable: true },
-    { id: 2, name: 'Prüfen', description: 'Mit Freigabe.', selectable: true },
+    { ...levelOption('Assistenz'), description: 'Erklärt nur.' },
+    { ...levelOption('Prüfen'), description: 'Mit Freigabe.' },
   ],
   chosen_level_id: null,
   active_level_id: 2,

@@ -1,7 +1,8 @@
 // The dialogue of the prompt panel (design M2, M3, M4, M14): each prompt with
 // its answer. The latest answer is shown whole, earlier ones as one line with
 // their status. The answer says what the model proposes, what it assumed and
-// what has happened; it never changes the analysis itself (P1).
+// what has happened. It never changes the analysis itself: the approval
+// (model/approval/) and the hand-over to the editor (handover.ts) do.
 import { Trans } from '@lingui/react/macro'
 import { t } from '@lingui/core/macro'
 import { useEffect, useState } from 'react'
@@ -13,6 +14,8 @@ import { useCounts } from '../../editor/useCounts'
 import { errorText } from '../../i18n/errors'
 import { formatNumber, parseTimestamp } from '../../i18n/locale'
 import { hitsOf } from '../../i18n/phrases'
+import { Approval, Approved, Rejected, Undone, UndoAction } from '../approval/Approval'
+import { classList, needsApproval, proposalOnly } from '../approval/governance'
 import { StatusLabel } from '../status'
 import { dialogueViews, useModel } from '../store'
 import { FRAME, lineStyle, statusKey } from '../statusKey'
@@ -263,11 +266,16 @@ function seconds(ms: number | null | undefined): string | null {
   return t`${s} s`
 }
 
-/** M2.2, M4.1: a proposed query, applied by hand in E2.3 (P1). */
+/**
+ * A query answer through its life: waiting for approval (M5), proposal only
+ * (M4.1), approved and running (P7), applied (M2.2, M6.1), undone (M2.3,
+ * M6.2) or rejected (M5.3).
+ */
 function Proposal({ view, answer }: { view: ModelActionView; answer: QueryAnswer }) {
   const key = statusKey(view)
   const line = lineStyle(key)
   const applied = view.status === 'applied'
+  const handOnly = proposalOnly(view)
   const failed = useHandover((s) => (s.failed?.action === view.id ? s.failed : null))
   const took = seconds(view.latency_ms)
   const approach = approachText(view.approach)
@@ -278,18 +286,20 @@ function Proposal({ view, answer }: { view: ModelActionView; answer: QueryAnswer
         <StatusLabel
           status={key}
           detail={
-            applied
+            applied || view.status === 'rejected'
               ? clockTime(view.decided_at)
-              : view.status === 'proposed'
-                ? t`· von Hand übernehmen`
-                : undefined
+              : view.status === 'undone'
+                ? clockTime(view.undone_at)
+                : handOnly
+                  ? t`· von Hand übernehmen`
+                  : undefined
           }
           live
         />
         <span className="text-muted ml-auto text-xs">
           {took ? t`${approach} · ${took}` : approach}
         </span>
-        {/* Applied: the analysis's hits (M2.2). Before, E2.3 has no preview count (P2: E2.4). */}
+        {/* Applied: the analysis's hits (M2.2); before, the approval shows the preview (P2). */}
         {applied && <AppliedCount />}
       </p>
       <p>{answer.explanation}</p>
@@ -304,8 +314,12 @@ function Proposal({ view, answer }: { view: ModelActionView; answer: QueryAnswer
         </section>
       )}
       <QueryTree query={view.query ?? answer.query} line={line} />
+      {needsApproval(view) && <Approval view={view} />}
+      {view.status === 'approved' && <Approved view={view} />}
+      {view.status === 'undone' && <Undone view={view} />}
+      {view.status === 'rejected' && <Rejected view={view} />}
       <Actions view={view} />
-      {view.status === 'proposed' && <ProposalOnly view={view} />}
+      {handOnly && <ProposalOnly view={view} />}
       {failed && (
         <div className="flex flex-col gap-1 text-sm">
           <ErrorNotice error={failed.error} />
@@ -368,20 +382,26 @@ function AppliedCount() {
   )
 }
 
-/** M4.1: why there is no approval, preview or undo yet (P1). */
+/**
+ * M4.1: why there is no approval, preview or undo: a class of the answer is
+ * ``off`` at the level as it was (D1). The level's name is the admin's text.
+ */
 function ProposalOnly({ view }: { view: ModelActionView }) {
   const level = view.level.name
+  const off = classList(view.governance?.off ?? [])
   return (
     <p className="text-muted text-xs">
-      {t`Stufe ${level}: Das Modell wendet in dieser Ausbaustufe nichts selbst an. Keine Vorschau, keine Freigabe, kein Zurücknehmen; „Übernehmen“ im Editor ist Ihre Änderung.`}
+      {off
+        ? t`Stufe ${level}: Das Modell darf hier nur vorschlagen (aus: ${off}). Keine Vorschau, keine Freigabe, kein Zurücknehmen; „Übernehmen“ im Editor ist Ihre Änderung.`
+        : t`Stufe ${level}: Das Modell darf hier nur vorschlagen. Keine Vorschau, keine Freigabe, kein Zurücknehmen; „Übernehmen“ im Editor ist Ihre Änderung.`}
     </p>
   )
 }
 
 /**
- * The answer's actions. "Zurücknehmen" (M2.2) is absent: in E2.3 nothing is
- * applied by the model, only by hand (P1, design M4.1 "ohne Rücknahme"); it
- * arrives with E2.4. "Protokoll" is disabled until the log pages (WP73).
+ * The answer's actions. "Zurücknehmen" (M2.2) only for a change the model
+ * made (never for one applied by hand, design M4.1 "ohne Rücknahme").
+ * "Protokoll" is disabled until the log pages (WP73).
  */
 function Actions({ view }: { view: ModelActionView }) {
   const editing = useAnalysis((s) => s.draft !== null)
@@ -392,7 +412,7 @@ function Actions({ view }: { view: ModelActionView }) {
   const takeable = !reporting && canTakeOver(view)
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {view.status === 'proposed' && (
+      {proposalOnly(view) && (
         <button
           type="button"
           className="btn btn-primary"
@@ -415,13 +435,14 @@ function Actions({ view }: { view: ModelActionView }) {
           <Trans>Im Editor öffnen</Trans>
         </button>
       )}
+      <UndoAction view={view} />
       <button type="button" className="btn" disabled aria-describedby={`log-${view.id}`}>
         <Trans>Protokoll</Trans>
       </button>
       <span id={`log-${view.id}`} className="text-muted text-xs">
         <Trans>ab E2.4</Trans>
       </span>
-      {view.status === 'proposed' && !representable && (
+      {proposalOnly(view) && !representable && (
         <p className="text-muted w-full text-xs">
           <Trans>Diese Abfrage lässt sich nicht im Editor darstellen.</Trans>
         </p>

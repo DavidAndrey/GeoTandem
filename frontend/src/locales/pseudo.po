@@ -11,6 +11,11 @@ msgstr ""
 msgid " (Tabelle)"
 msgstr ""
 
+#. Short level cell: off
+#: src/model/approval/governance.ts
+msgid "–"
+msgstr ""
+
 #: src/admin/ProfilePage.tsx
 msgid "– wählen –"
 msgstr ""
@@ -158,6 +163,10 @@ msgstr ""
 msgid "{condition} ({filter})"
 msgstr ""
 
+#: src/model/approval/Pending.tsx
+msgid "{conditions} · Vorschau {count}"
+msgstr ""
+
 #: src/session/SaveAsDialog.tsx
 msgid "{conditions} Bed."
 msgstr ""
@@ -254,6 +263,10 @@ msgstr ""
 msgid "{matched} / {total} Objekte finden einen Partner"
 msgstr ""
 
+#: src/model/approval/governance.ts
+msgid "{n, plural, one {{count} Bedingung} other {{count} Bedingungen}}"
+msgstr ""
+
 #: src/admin/wizard.ts
 msgid "{n, plural, one {{count} Datensatz gelesen} other {{count} Datensätze gelesen}}"
 msgstr ""
@@ -302,8 +315,16 @@ msgstr ""
 msgid "{n} Treffer"
 msgstr ""
 
+#: src/model/approval/Approval.tsx
+msgid "{name} · {mode}"
+msgstr ""
+
 #: src/model/panel/PromptPanel.tsx
 msgid "{name} · extern · {host}"
+msgstr ""
+
+#: src/model/approval/Level.tsx
+msgid "{name}: {cell}"
 msgstr ""
 
 #. Spatial condition: relation ("liegt in"), layer
@@ -357,6 +378,10 @@ msgstr ""
 msgid "{unlabelled, plural, one {# Feld ohne Bezeichnung} other {# Felder ohne Bezeichnung}}"
 msgstr ""
 
+#: src/model/approval/changes.ts
+msgid "{was} → {is}"
+msgstr ""
+
 #: src/admin/ModelActionPage.tsx
 msgid "{when} · {account}"
 msgstr ""
@@ -398,8 +423,14 @@ msgid "≤ Distanz zu"
 msgstr ""
 
 #. Badge: attribute condition
+#. Short level cell: auto
 #: src/editor/CompactTree.tsx
+#: src/model/approval/governance.ts
 msgid "A"
+msgstr ""
+
+#: src/workplace/ModelChoice.tsx
+msgid "A = auto · F = Freigabe · – = aus; Spalten: catalog · query · spatial · derive · display"
 msgstr ""
 
 #: src/editor/describe.ts
@@ -426,6 +457,7 @@ msgstr ""
 #: src/admin/UsersPage.tsx
 #: src/auth/PasswordForm.tsx
 #: src/components/ui.tsx
+#: src/model/approval/Level.tsx
 #: src/model/panel/Answer.tsx
 #: src/operations/OperationDialog.tsx
 #: src/queries/SaveQueryDialog.tsx
@@ -496,6 +528,10 @@ msgstr ""
 msgid "Abgeleitet · Sitzung"
 msgstr ""
 
+#: src/model/approval/governance.ts
+msgid "Abgeleitete Layer"
+msgstr ""
+
 #: src/session/SaveAsDialog.tsx
 msgid "Abgeleitete Layer (als Rezept)"
 msgstr ""
@@ -519,6 +555,10 @@ msgstr ""
 
 #: src/admin/ImportRunPage.tsx
 msgid "Ablauf"
+msgstr ""
+
+#: src/model/approval/Approval.tsx
+msgid "Ablehnen"
 msgstr ""
 
 #: src/auth/UserMenu.tsx
@@ -715,7 +755,8 @@ msgstr ""
 msgid "Anderen Ergebnis-Layer wählen"
 msgstr ""
 
-#: src/model/log/words.ts
+#: src/model/approval/governance.ts
+msgctxt "reject reason"
 msgid "anderes"
 msgstr ""
 
@@ -725,6 +766,14 @@ msgstr ""
 
 #: src/model/panel/Answer.tsx
 msgid "ändern"
+msgstr ""
+
+#: src/model/approval/NoticeBar.tsx
+msgid "Änderung ansehen"
+msgstr ""
+
+#: src/model/approval/Approval.tsx
+msgid "Änderungen"
 msgstr ""
 
 #: src/model/panel/Problem.tsx
@@ -796,6 +845,14 @@ msgstr ""
 msgid "Annahmequote"
 msgstr ""
 
+#: src/model/approval/Approval.tsx
+msgid "Annehmen"
+msgstr ""
+
+#: src/model/approval/Approval.tsx
+msgid "Anpassen …"
+msgstr ""
+
 #: src/model/panel/Answer.tsx
 #: src/model/panel/Problem.tsx
 msgid "Antwort"
@@ -811,6 +868,10 @@ msgstr ""
 
 #: src/model/panel/Answer.tsx
 msgid "Antworten"
+msgstr ""
+
+#: src/model/approval/Approval.tsx
+msgid "Anwenden"
 msgstr ""
 
 #: src/admin/VisibilityPage.tsx
@@ -862,6 +923,10 @@ msgstr ""
 msgid "Attribute von {title}"
 msgstr ""
 
+#: src/model/approval/governance.ts
+msgid "Attributfilter"
+msgstr ""
+
 #: src/table/TableDock.tsx
 #: src/workplace/Workplace.tsx
 msgid "Attributtabelle"
@@ -908,6 +973,15 @@ msgstr ""
 msgid "aus"
 msgstr ""
 
+#: src/model/approval/governance.ts
+msgctxt "level cell"
+msgid "aus"
+msgstr ""
+
+#: src/model/approval/Level.tsx
+msgid "aus = nur Vorschlag, von Hand übernehmbar · Freigabe = Sie entscheiden · auto = Modell wendet an, Sie können zurücknehmen"
+msgstr ""
+
 #: src/workplace/LayerPanel.tsx
 msgid "Aus Analyse entfernen"
 msgstr ""
@@ -926,6 +1000,11 @@ msgstr ""
 
 #: src/queries/SavedQueries.tsx
 msgid "Auswählen ersetzt die aktuelle Abfrage (bei Änderungen mit Rückfrage)."
+msgstr ""
+
+#: src/model/approval/governance.ts
+msgctxt "level cell"
+msgid "auto"
 msgstr ""
 
 #: src/model/log/words.ts
@@ -1116,6 +1195,18 @@ msgstr ""
 msgid "Bitte zuerst das Startpasswort ändern."
 msgstr ""
 
+#: src/model/approval/Approval.tsx
+msgid "Bleibt als Eintrag im Verlauf, ohne Aktion. Neuer Versuch über das Eingabefeld."
+msgstr ""
+
+#: src/model/approval/Approval.tsx
+msgid "Braucht Freigabe: {needs} (Stufe {levelName})"
+msgstr ""
+
+#: src/model/approval/Approval.tsx
+msgid "Braucht Freigabe: {needs}. Die strengste Festlegung gilt für die ganze Antwort."
+msgstr ""
+
 #: src/admin/ConnectionsPage.tsx
 msgid "Budget für den Layer-Steckbrief; wird nicht gesendet."
 msgstr ""
@@ -1154,6 +1245,7 @@ msgid "Darf Dateninhalte erhalten (sonst nur Metadaten)"
 msgstr ""
 
 #: src/admin/LevelsPage.tsx
+#: src/model/approval/governance.ts
 #: src/operations/OperationDialog.tsx
 msgid "Darstellung"
 msgstr ""
@@ -1413,6 +1505,10 @@ msgstr ""
 msgid "Der gespeicherte Zustand ergibt nicht mehr genau die gespeicherte Abfrage."
 msgstr ""
 
+#: src/model/approval/Approval.tsx
+msgid "Der Grund geht ins Protokoll. Die Analyse bleibt unverändert."
+msgstr ""
+
 #: src/admin/CatalogPage.tsx
 msgid "Der Katalog ist leer."
 msgstr ""
@@ -1548,6 +1644,14 @@ msgstr ""
 
 #: src/session/SessionDialogs.tsx
 msgid "Die Analyse hat Änderungen, die noch nicht gespeichert sind."
+msgstr ""
+
+#: src/model/approval/Approval.tsx
+msgid "Die Analyse ist auf den Stand davor zurückgesetzt. Bleibt als Eintrag im Verlauf, ohne Aktion; kein „Wiederholen“."
+msgstr ""
+
+#: src/model/approval/Approval.tsx
+msgid "Die Analyse ist auf den Stand vor dem Annehmen zurückgesetzt. Bleibt als Eintrag im Verlauf, ohne Aktion; kein „Wiederholen“."
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -1730,6 +1834,11 @@ msgstr ""
 msgid "Diese Abfrage lässt sich in den Bedienelementen nicht vollständig darstellen."
 msgstr ""
 
+#: src/model/approval/flow.ts
+msgid "Diese Abfrage lässt sich nicht im Editor darstellen und darum nicht anwenden."
+msgstr ""
+
+#: src/model/approval/Approval.tsx
 #: src/model/panel/Answer.tsx
 msgid "Diese Abfrage lässt sich nicht im Editor darstellen."
 msgstr ""
@@ -1871,6 +1980,10 @@ msgstr ""
 msgid "Ein Schlüssel ist gespeichert. Leer lassen, um ihn zu behalten."
 msgstr ""
 
+#: src/model/approval/Level.tsx
+msgid "Ein Vorschlag wartet noch auf Freigabe. Er bleibt an die Stufe {bound} gebunden, unter der er gestellt wurde, und wird nicht automatisch angewendet."
+msgstr ""
+
 #: src/i18n/errors.ts
 msgid "Eine Anbindung „{name}\" gibt es schon."
 msgstr ""
@@ -1966,6 +2079,10 @@ msgstr ""
 msgid "Endgültig löschen"
 msgstr ""
 
+#: src/model/approval/Approval.tsx
+msgid "entfällt:"
+msgstr ""
+
 #: src/workplace/LayerPanel.tsx
 msgid "Entfernen"
 msgstr ""
@@ -2049,6 +2166,10 @@ msgstr ""
 msgid "Ergebnis-Layer wechseln?"
 msgstr ""
 
+#: src/model/approval/changes.ts
+msgid "Ergebnis-Layer: {from} → {to}"
+msgstr ""
+
 #: src/session/SaveAsDialog.tsx
 msgid "Ergebnis-Stempel"
 msgstr ""
@@ -2075,6 +2196,10 @@ msgstr ""
 
 #: src/admin/ImportWizard.tsx
 msgid "erledigt"
+msgstr ""
+
+#: src/model/approval/Approval.tsx
+msgid "Erneut ausführen"
 msgstr ""
 
 #: src/admin/ImportRunPage.tsx
@@ -2109,6 +2234,10 @@ msgstr ""
 
 #: src/admin/ImportWizard.tsx
 msgid "Ersetzt den Inhalt von <0>{targetTitle}</0>; Bezeichnungen und Beschreibungen gleichnamiger Felder bleiben erhalten."
+msgstr ""
+
+#: src/model/approval/Approval.tsx
+msgid "Erst den Editor schliessen: Zurücknehmen würde den Entwurf verwerfen."
 msgstr ""
 
 #: src/editor/EditorPanel.tsx
@@ -2155,6 +2284,10 @@ msgstr ""
 msgid "Es wurde nur eine Spalte gefunden; vielleicht stimmt das Trennzeichen nicht."
 msgstr ""
 
+#: src/model/approval/Approval.tsx
+msgid "Esc = Ablehnen"
+msgstr ""
+
 #: src/table/TableDock.tsx
 msgid "Export · ab E5"
 msgstr ""
@@ -2175,15 +2308,24 @@ msgstr ""
 msgid "Externe Anbindung"
 msgstr ""
 
+#. Short level cell: Freigabe (approval)
+#: src/model/approval/governance.ts
+msgid "F"
+msgstr ""
+
 #: src/table/TableDock.tsx
 msgid "Fachliche Namen aus dem Datenkatalog · Auswahl wird mit der Sitzung gespeichert"
 msgstr ""
 
-#: src/model/log/words.ts
+#: src/model/approval/governance.ts
+msgid "falsch verstanden"
+msgstr ""
+
+#: src/model/approval/governance.ts
 msgid "falscher Layer"
 msgstr ""
 
-#: src/model/log/words.ts
+#: src/model/approval/governance.ts
 msgid "falscher Wert"
 msgstr ""
 
@@ -2260,6 +2402,10 @@ msgstr ""
 msgid "fertig"
 msgstr ""
 
+#: src/model/approval/Level.tsx
+msgid "Festlegung"
+msgstr ""
+
 #: src/editor/EditorPanel.tsx
 msgid "Filter entfernen"
 msgstr ""
@@ -2292,7 +2438,7 @@ msgid "Frage, Layer-Steckbrief und Verlauf sind zu lang für das Modell. Bitte o
 msgstr ""
 
 #: src/model/panel/PromptPanel.tsx
-msgid "Fragen Sie in eigenen Worten nach den sichtbaren Layern. Das Modell schlägt eine Abfrage vor; die Analyse ändert sich erst, wenn Sie den Vorschlag im Editor übernehmen."
+msgid "Fragen Sie in eigenen Worten nach den sichtbaren Layern. Das Modell schlägt eine Abfrage vor. Je nach Stufe geben Sie den Vorschlag frei, übernehmen ihn im Editor, oder das Modell wendet ihn an und Sie können ihn zurücknehmen."
 msgstr ""
 
 #: src/session/SaveAsDialog.tsx
@@ -2300,8 +2446,18 @@ msgid "Fragestellung, Annahmen …"
 msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
+#: src/model/approval/Approval.tsx
 #: src/model/log/words.ts
 msgid "Freigabe"
+msgstr ""
+
+#: src/model/approval/governance.ts
+msgctxt "level cell"
+msgid "Freigabe"
+msgstr ""
+
+#: src/model/approval/Approval.tsx
+msgid "Freigabe · Änderung gegenüber jetzt"
 msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
@@ -2356,6 +2512,10 @@ msgstr ""
 #: src/queries/ManageQueriesDialog.tsx
 #: src/session/SessionsDialog.tsx
 msgid "Geändert"
+msgstr ""
+
+#: src/model/approval/Approval.tsx
+msgid "geändert:"
 msgstr ""
 
 #: src/operations/OperationDialog.tsx
@@ -2444,6 +2604,10 @@ msgstr ""
 msgid "gesperrt"
 msgstr ""
 
+#: src/model/approval/Approval.tsx
+msgid "Gestellt unter Stufe {levelName}; dieser Vorschlag folgt weiter ihr und wird nicht automatisch angewendet."
+msgstr ""
+
 #: src/session/ui.ts
 msgid "gestern"
 msgstr ""
@@ -2494,6 +2658,18 @@ msgstr ""
 
 #: src/admin/ImportRunPage.tsx
 msgid "Grund"
+msgstr ""
+
+#: src/model/approval/Approval.tsx
+msgid "Grund (optional)"
+msgstr ""
+
+#: src/model/approval/Approval.tsx
+msgid "Grund (optional):"
+msgstr ""
+
+#: src/model/approval/Approval.tsx
+msgid "Grund:"
 msgstr ""
 
 #: src/editor/EditorPanel.tsx
@@ -2548,6 +2724,14 @@ msgstr ""
 msgid "Hintergrundkarte ein/aus"
 msgstr ""
 
+#: src/model/approval/NoticeBar.tsx
+msgid "Hinweis ausblenden"
+msgstr ""
+
+#: src/model/approval/NoticeBar.tsx
+msgid "Hinweis ausblenden; Rückgängig bleibt in der Antwort"
+msgstr ""
+
 #: src/session/OpenNotice.tsx
 msgid "Hinweis schliessen"
 msgstr ""
@@ -2568,6 +2752,7 @@ msgstr ""
 msgid "Ich bestätige: Dateninhalte dürfen nach aussen gehen."
 msgstr ""
 
+#: src/model/approval/Approval.tsx
 #: src/model/panel/Problem.tsx
 msgid "Ihr Stand ist unverändert."
 msgstr ""
@@ -2701,6 +2886,10 @@ msgstr ""
 msgid "Kartenwerkzeuge"
 msgstr ""
 
+#: src/model/approval/governance.ts
+msgid "Katalog lesen"
+msgstr ""
+
 #: src/operations/OperationDialog.tsx
 msgid "Kategorien"
 msgstr ""
@@ -2740,8 +2929,16 @@ msgstr ""
 msgid "keine"
 msgstr ""
 
+#: src/model/approval/Approval.tsx
+msgid "keine Abfrage"
+msgstr ""
+
 #: src/queries/ManageQueriesDialog.tsx
 msgid "Keine Abfrage passt."
+msgstr ""
+
+#: src/model/approval/Approval.tsx
+msgid "Keine Änderung: Die Analyse entspricht dem Vorschlag schon."
 msgstr ""
 
 #: src/model/tree.tsx
@@ -2801,8 +2998,16 @@ msgstr ""
 msgid "Keine Treffer."
 msgstr ""
 
+#: src/model/approval/Approval.tsx
+msgid "Keine Vorschau verfügbar; die Analyse ändert sich erst mit „Annehmen“."
+msgstr ""
+
 #: src/i18n/errors.ts
 msgid "Keinem Datensatz lässt sich eine Geometrie zuordnen."
+msgstr ""
+
+#: src/model/approval/changes.ts
+msgid "keiner"
 msgstr ""
 
 #: src/operations/OperationDialog.tsx
@@ -2822,8 +3027,16 @@ msgstr ""
 msgid "Kette"
 msgstr ""
 
+#: src/model/approval/Level.tsx
+msgid "Klasse"
+msgstr ""
+
 #: src/operations/OperationDialog.tsx
 msgid "Klassen"
+msgstr ""
+
+#: src/model/approval/Approval.tsx
+msgid "Klassen dieser Antwort"
 msgstr ""
 
 #: src/workplace/Workplace.tsx
@@ -3111,10 +3324,6 @@ msgstr ""
 msgid "Minimum {field}"
 msgstr ""
 
-#: src/model/log/words.ts
-msgid "missverstanden"
-msgstr ""
-
 #: src/session/OpenNotice.tsx
 msgid "Mit aktuellen Daten übernehmen"
 msgstr ""
@@ -3156,6 +3365,22 @@ msgstr ""
 #: src/model/log/words.ts
 #: src/model/statusKey.ts
 msgid "Modell arbeitet …"
+msgstr ""
+
+#: src/model/approval/NoticeBar.tsx
+msgid "Modell hat angewendet"
+msgstr ""
+
+#: src/model/approval/NoticeBar.tsx
+msgid "Modell hat angewendet: {said}"
+msgstr ""
+
+#: src/model/approval/NoticeBar.tsx
+msgid "Modell hat angewendet: {said} · {hits}"
+msgstr ""
+
+#: src/model/approval/NoticeBar.tsx
+msgid "Modell hat angewendet. Rückgängig und die Änderung in der Hinweisleiste an der Karte."
 msgstr ""
 
 #: src/model/panel/Problem.tsx
@@ -3246,6 +3471,10 @@ msgstr ""
 
 #: src/admin/ImportLogPage.tsx
 msgid "Neu"
+msgstr ""
+
+#: src/model/approval/Approval.tsx
+msgid "neu:"
 msgstr ""
 
 #: src/queries/SavedQueries.tsx
@@ -3392,10 +3621,12 @@ msgid "Nur gefilterte Objekte (Treffer der Abfrage)"
 msgstr ""
 
 #: src/editor/CompactTree.tsx
+#: src/model/approval/changes.ts
 msgid "nur im Kartenausschnitt"
 msgstr ""
 
 #: src/editor/CompactTree.tsx
+#: src/model/approval/changes.ts
 msgid "nur in der Fläche"
 msgstr ""
 
@@ -3432,6 +3663,7 @@ msgid "Objekte ohne Partner behalten"
 msgstr ""
 
 #: src/editor/EditorPanel.tsx
+#: src/model/approval/changes.ts
 #: src/model/tree.tsx
 #: src/workplace/QueryPanel.tsx
 msgid "ODER"
@@ -3451,6 +3683,10 @@ msgstr ""
 
 #: src/queries/useChooseQuery.ts
 msgid "Ohne {conditions}: ihr Layer ist nicht verfügbar."
+msgstr ""
+
+#: src/model/approval/Approval.tsx
+msgid "Ohne Grund abgelehnt."
 msgstr ""
 
 #: src/editor/CompactTree.tsx
@@ -3596,6 +3832,10 @@ msgstr ""
 msgid "Raum"
 msgstr ""
 
+#: src/model/approval/governance.ts
+msgid "Raumfilter"
+msgstr ""
+
 #: src/admin/LevelsPage.tsx
 msgid "Räumliche Beziehungen"
 msgstr ""
@@ -3615,6 +3855,11 @@ msgstr ""
 #: src/admin/ModelActionPage.tsx
 #: src/model/statusKey.ts
 msgid "Rückfrage"
+msgstr ""
+
+#: src/model/approval/Approval.tsx
+#: src/model/approval/NoticeBar.tsx
+msgid "Rückgängig"
 msgstr ""
 
 #: src/auth/UserMenu.tsx
@@ -3676,6 +3921,10 @@ msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
 msgid "Seed"
+msgstr ""
+
+#: src/model/approval/Approval.tsx
+msgid "Seit der Modelländerung von Hand geändert. Bitte im Editor zurücksetzen."
 msgstr ""
 
 #: src/admin/ModelLogPage.tsx
@@ -3803,6 +4052,10 @@ msgstr ""
 msgid "Stand"
 msgstr ""
 
+#: src/model/approval/Approval.tsx
+msgid "Stand hat sich seit dem Vorschlag geändert"
+msgstr ""
+
 #: src/admin/ModelActionPage.tsx
 msgid "Stand von Hand geändert"
 msgstr ""
@@ -3856,7 +4109,11 @@ msgid "Stufe"
 msgstr ""
 
 #: src/model/panel/Answer.tsx
-msgid "Stufe {level}: Das Modell wendet in dieser Ausbaustufe nichts selbst an. Keine Vorschau, keine Freigabe, kein Zurücknehmen; „Übernehmen“ im Editor ist Ihre Änderung."
+msgid "Stufe {level}: Das Modell darf hier nur vorschlagen (aus: {off}). Keine Vorschau, keine Freigabe, kein Zurücknehmen; „Übernehmen“ im Editor ist Ihre Änderung."
+msgstr ""
+
+#: src/model/panel/Answer.tsx
+msgid "Stufe {level}: Das Modell darf hier nur vorschlagen. Keine Vorschau, keine Freigabe, kein Zurücknehmen; „Übernehmen“ im Editor ist Ihre Änderung."
 msgstr ""
 
 #: src/admin/ModelLogPage.tsx
@@ -3865,6 +4122,14 @@ msgstr ""
 
 #: src/model/panel/PromptPanel.tsx
 msgid "Stufe {levelName}"
+msgstr ""
+
+#: src/model/approval/Level.tsx
+msgid "Stufe {name} · nur lesbar; geändert wird sie in der Administration."
+msgstr ""
+
+#: src/model/approval/Level.tsx
+msgid "Stufe auf {name} wechseln?"
 msgstr ""
 
 #: src/admin/ModelActionPage.tsx
@@ -3998,6 +4263,14 @@ msgstr ""
 msgid "Treffer im Entwurf"
 msgstr ""
 
+#: src/model/approval/Approval.tsx
+msgid "Treffer: {from} → {to} (Vorschau, gestrichelt auf der Karte)"
+msgstr ""
+
+#: src/model/approval/NoticeBar.tsx
+msgid "Treffer: {hitsBefore} → {hitsAfter}"
+msgstr ""
+
 #: src/operations/OperationDialog.tsx
 msgid "Trefferquote"
 msgstr ""
@@ -4008,6 +4281,14 @@ msgstr ""
 
 #: src/model/panel/Answer.tsx
 msgid "Trefferzahl der Analyse"
+msgstr ""
+
+#: src/model/approval/Approval.tsx
+msgid "Trefferzahl der Vorschau"
+msgstr ""
+
+#: src/model/approval/NoticeBar.tsx
+msgid "Trefferzahl vorher und nachher"
 msgstr ""
 
 #: src/admin/ImportWizard.tsx
@@ -4071,6 +4352,7 @@ msgid "Unbekannte Spalten: {columns}."
 msgstr ""
 
 #: src/editor/EditorPanel.tsx
+#: src/model/approval/changes.ts
 #: src/model/tree.tsx
 #: src/workplace/QueryPanel.tsx
 msgid "UND"
@@ -4132,6 +4414,10 @@ msgstr ""
 msgid "Verknüpfung"
 msgstr ""
 
+#: src/model/approval/changes.ts
+msgid "Verknüpfung: {from} → {to}"
+msgstr ""
+
 #: src/model/panel/Answer.tsx
 msgid "Verlauf"
 msgstr ""
@@ -4171,6 +4457,10 @@ msgstr ""
 msgid "Von"
 msgstr ""
 
+#: src/model/approval/Approval.tsx
+msgid "Von Hand geändert. Änderungsliste neu berechnet."
+msgstr ""
+
 #: src/admin/ModelActionPage.tsx
 #: src/model/statusKey.ts
 msgid "von Hand übernommen"
@@ -4194,6 +4484,10 @@ msgstr ""
 msgid "Vorgang"
 msgstr ""
 
+#: src/model/approval/Approval.tsx
+msgid "vorher: {what} · {hits}"
+msgstr ""
+
 #: src/admin/ImportWizard.tsx
 #: src/admin/LayerPage.tsx
 msgid "Vorschau"
@@ -4201,6 +4495,14 @@ msgstr ""
 
 #: src/admin/ModelActionPage.tsx
 msgid "Vorschau {previewed}"
+msgstr ""
+
+#: src/model/approval/Preview.tsx
+msgid "Vorschau gestrichelt · noch nicht angewendet"
+msgstr ""
+
+#: src/model/approval/Approval.tsx
+msgid "Vorschau lädt …"
 msgstr ""
 
 #: src/model/statusKey.ts
@@ -4211,8 +4513,20 @@ msgstr ""
 msgid "Vorschlag für {field} bestätigen"
 msgstr ""
 
+#: src/model/approval/Pending.tsx
+msgid "Vorschlag offen"
+msgstr ""
+
 #: src/model/log/words.ts
 msgid "Vorschläge"
+msgstr ""
+
+#: src/model/approval/Approval.tsx
+msgid "war angewendet · {hits} Treffer"
+msgstr ""
+
+#: src/model/approval/Approval.tsx
+msgid "war automatisch angewendet · {hits} Treffer"
 msgstr ""
 
 #: src/admin/ImportRunPage.tsx
@@ -4222,6 +4536,10 @@ msgstr ""
 
 #: src/model/statusKey.ts
 msgid "wartet auf Freigabe"
+msgstr ""
+
+#: src/model/approval/Level.tsx
+msgid "Was darf das Modell hier?"
 msgstr ""
 
 #: src/admin/LevelsPage.tsx
@@ -4237,6 +4555,7 @@ msgstr ""
 msgid "Was fehlt"
 msgstr ""
 
+#: src/model/approval/Level.tsx
 #: src/workplace/ResultSelect.tsx
 msgid "Wechseln"
 msgstr ""
@@ -4320,6 +4639,22 @@ msgstr ""
 msgid "Wiederhergestellt · {count}, identisch mit dem Speicherstand"
 msgstr ""
 
+#: src/model/approval/Approval.tsx
+msgid "Wird abgelehnt …"
+msgstr ""
+
+#: src/model/approval/Approval.tsx
+msgid "Wird angewendet …"
+msgstr ""
+
+#: src/model/approval/Approval.tsx
+msgid "Wird angewendet, sobald der Editor geschlossen ist."
+msgstr ""
+
+#: src/model/approval/Pending.tsx
+msgid "wird erst bei Annehmen übernommen"
+msgstr ""
+
 #: src/session/SaveAsDialog.tsx
 msgid "Wird gespeichert"
 msgstr ""
@@ -4330,6 +4665,10 @@ msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
 msgid "Wird verschlüsselt gespeichert und nie wieder angezeigt."
+msgstr ""
+
+#: src/model/approval/Approval.tsx
+msgid "Wird zurückgenommen, sobald der Editor geschlossen ist."
 msgstr ""
 
 #: src/editor/EditorPanel.tsx
@@ -4456,6 +4795,7 @@ msgid "Zuordnung"
 msgstr ""
 
 #: src/admin/ImportWizard.tsx
+#: src/model/approval/Approval.tsx
 msgid "Zurück"
 msgstr ""
 
@@ -4466,6 +4806,14 @@ msgstr ""
 
 #: src/admin/ModelActionPage.tsx
 msgid "zurückgenommen {undone}"
+msgstr ""
+
+#: src/model/approval/Approval.tsx
+msgid "Zurücknehmen"
+msgstr ""
+
+#: src/model/approval/Approval.tsx
+msgid "Zurücknehmen geht nur für die letzte Modelländerung."
 msgstr ""
 
 #: src/i18n/errors.ts

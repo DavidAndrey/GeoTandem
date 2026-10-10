@@ -1,6 +1,6 @@
 import { beforeEach, expect, test } from 'vitest'
 import { assertValidQuery } from '../test/schema'
-import { resultQuery } from './query'
+import { emptyTree, resultQuery } from './query'
 import { currentAnalysis, nextSort, useAnalysis } from './store'
 import { newAttributeRow, newSpatialRow } from './tree'
 
@@ -113,4 +113,27 @@ test('removing a layer drops its tab, columns and sort', () => {
   store().setColumns('strassen', { order: [], hidden: ['klasse'] })
   store().removeLayer('strassen')
   expect(store().table).toEqual({ tab: null, mode: 'hits', onlyView: false, columns: {}, sort: {} })
+})
+
+test('a snapshot comes back whole, origin marks included; load would clear them (WP72)', () => {
+  store().addLayer('schulen')
+  const row = { ...newAttributeRow('typ'), operator: 'in' as const, values: ['primar'] }
+  store().edit()
+  store().addNode('root', row)
+  store().apply()
+  store().markOrigin()
+  store().setRestriction({ kind: 'view', bbox: [7.8, 46.8, 8, 47] })
+  const before = structuredClone(store().snapshot())
+  expect(before.origin.marks).toEqual({ [row.id]: true })
+
+  store().applyQuery({ result: 'schulen', tree: emptyTree(), restriction: null }, null)
+  store().addLayer('strassen')
+  expect(store().origin.marks).toEqual({})
+  store().restore(before)
+  expect(store().snapshot()).toEqual(before)
+  expect(store().draft).toBeNull()
+
+  // ``load`` is for sessions: it brings no marks.
+  store().load({ ...currentAnalysis(store()) })
+  expect(store().origin.marks).toEqual({})
 })

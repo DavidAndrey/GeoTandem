@@ -76,8 +76,8 @@ test('at most one open proposal: a new prompt supersedes the open one (M5.2)', (
   const next = again(thinkingView('follow_up'), 50)
   store().sent(next)
   expect(store().pending).toBeNull()
-  // Decided as the server does: proposal-only until enforcement exists (P1).
-  expect(store().views[first.id]).toMatchObject({ status: 'superseded', decision: 'proposal_only' })
+  // Decided as the server does (section 2): the level asked for a decision, none came.
+  expect(store().views[first.id]).toMatchObject({ status: 'superseded', decision: 'superseded' })
 
   store().received(again(actionView('follow_up'), 50))
   expect(store().pending).toBe(50)

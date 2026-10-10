@@ -13,7 +13,14 @@ from geotandem.api.errors import ErrorBody
 from geotandem.api.state import AppState, get_state
 from geotandem.auth.accounts import Account
 from geotandem.connections import ConnectionChoice
-from geotandem.levels import active_level, choose_level, chosen_level_id, load_levels
+from geotandem.levels import (
+    CellMode,
+    OpClass,
+    active_level,
+    choose_level,
+    chosen_level_id,
+    load_levels,
+)
 
 router = APIRouter(prefix="/api/llm", tags=["llm"])
 State = Annotated[AppState, Depends(get_state)]
@@ -27,6 +34,8 @@ class LevelOption(BaseModel):
     description: str
     selectable: bool
     """False only in an administrator's list: users never see such a level (H6)."""
+    matrix: dict[OpClass, CellMode]
+    """What the model may do at this level, read only (design M7.1, M7.2)."""
 
 
 class LLMOptions(ConnectionChoice):
@@ -56,6 +65,7 @@ def _options(state: AppState, account: Account) -> LLMOptions:
                 name=level.name,
                 description=level.description,
                 selectable=level.selectable,
+                matrix=level.matrix,
             )
             for level in load_levels(engine)
             if level.id is not None and (level.selectable or admin)

@@ -2977,6 +2977,10 @@ export interface components {
       description: string
       /** Selectable */
       selectable: boolean
+      /** Matrix */
+      matrix: {
+        [key: string]: components['schemas']['CellMode']
+      }
     }
     /**
      * LevelSet

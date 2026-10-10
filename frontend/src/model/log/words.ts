@@ -12,6 +12,7 @@ import type {
   ModelActionView,
 } from '../../api/client'
 import { formatNumber } from '../../i18n/locale'
+import { reasonText } from '../approval/governance'
 
 const DECISIONS: Record<Decision, MessageDescriptor> = {
   accepted: msg`angenommen`,
@@ -26,15 +27,8 @@ const DECISIONS: Record<Decision, MessageDescriptor> = {
 
 export const decisionText = (decision: Decision) => i18n._(DECISIONS[decision])
 
-const REASONS: Record<NonNullable<ModelActionView['reject_reason']>, MessageDescriptor> = {
-  misunderstood: msg`missverstanden`,
-  wrong_layer: msg`falscher Layer`,
-  wrong_value: msg`falscher Wert`,
-  other: msg`anderes`,
-}
-
-export const reasonText = (reason: NonNullable<ModelActionView['reject_reason']>) =>
-  i18n._(REASONS[reason])
+// The reject reasons' words are the approval's (design M5.3): one set for both.
+export { reasonText }
 
 type RefusalCode = NonNullable<ModelActionSummary['refusal_code']>
 

@@ -154,10 +154,11 @@ describe('statusKey', () => {
     expect(statusKey(view, { proposalOnly: false })).toBe(key)
   })
 
-  test.skipIf(ENFORCEMENT)('before enforcement (P1) nothing waits for an approval', () => {
-    expect(statusKey(actionView('reference'))).toBe('proposal')
+  test('with enforcement (E2.4) a proposal waits for approval unless a class is off', () => {
+    expect(ENFORCEMENT).toBe(true)
+    expect(statusKey(actionView('reference'))).toBe('awaiting')
+    expect(statusKey(actionView('reference', {}, 'Assistenz'))).toBe('proposal')
     expect(statusKey(actionView('reference'), { proposalOnly: true })).toBe('proposal')
-    expect(statusKey(ref({ status: 'applied', decision: 'accepted' }))).toBe('applied')
   })
 
   test('stale (M11.3) wins', () => {
