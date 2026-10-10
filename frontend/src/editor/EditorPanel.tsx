@@ -7,7 +7,7 @@ import { Trans } from '@lingui/react/macro'
 import { msg, t } from '@lingui/core/macro'
 import { Crosshair, Plus, X } from 'lucide-react'
 import { DropdownMenu } from 'radix-ui'
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import type {
   AttributeRow,
@@ -25,7 +25,10 @@ import type { LayerInfo } from '../api/client'
 import { useLayers } from '../api/queries'
 import { ErrorNotice } from '../components/ui'
 import { useMapView } from '../map/view'
+import { HandoverNotice } from '../model/panel/HandoverNotice'
+import { isMarked } from '../model/origin'
 import { ResultSelect } from '../workplace/ResultSelect'
+import { OriginMark } from './CompactTree'
 import {
   formatScalar,
   needsDistance,
@@ -53,6 +56,14 @@ export function EditorPanel() {
     if (keep) apply()
     else discard()
   }
+  // Opened at one condition (design M12.1 "ändern"): its first control gets the focus.
+  useEffect(() => {
+    const row = useMapView.getState().activeRow
+    if (row)
+      document
+        .querySelector<HTMLElement>(`[data-row-id="${row}"] select, [data-row-id="${row}"] input`)
+        ?.focus()
+  }, [])
 
   return (
     <section
@@ -88,6 +99,7 @@ export function EditorPanel() {
             counts={counts.data?.rows}
           />
         )}
+        <HandoverNotice />
         <ErrorNotice error={counts.error} />
       </div>
       <div className="border-divider flex gap-2 border-t px-4 py-2">
@@ -226,6 +238,7 @@ function RowEditor({
   counts,
 }: { row: AttributeRow | SpatialRow | ReferenceRow } & Context) {
   const removeNode = useAnalysis((s) => s.removeNode)
+  const marked = useAnalysis((s) => isMarked(s.origin, row))
   const { activeRow, setActiveRow } = useMapView(
     useShallow((s) => ({ activeRow: s.activeRow, setActiveRow: s.setActiveRow })),
   )
@@ -235,12 +248,15 @@ function RowEditor({
     <div
       role="group"
       aria-label={t`Bedingung ${badge}`}
+      data-row-id={row.id}
       className={`flex flex-wrap items-center gap-1.5 rounded-[var(--radius-md)] border px-2 py-1 text-sm ${activeRow === row.id ? 'border-accent' : 'border-transparent'}`}
       onFocus={() => setActiveRow(row.id)}
     >
       <span className="text-muted rounded-full border border-dashed border-neutral-400 px-1.5 text-[11px]">
         {badge}
       </span>
+      {/* Set by the model and not changed by hand since (design M15.1, plan P3). */}
+      {marked && <OriginMark />}
       <NotToggle node={row} />
       {row.kind === 'attribute' && <AttributeEditor row={row} fields={fields} />}
       {row.kind === 'spatial' && <SpatialEditor row={row} catalog={catalog} />}

@@ -67,6 +67,8 @@ export type KeyFigures = Schemas['KeyFigures']
 export type ExecuteResponse = Schemas['ExecuteResponse']
 export type ModelView = Schemas['ModelView']
 export type StopReason = NonNullable<ModelActionView['stop_reason']>
+export type DecideRequest = Schemas['DecideRequest']
+export type Assumption = Schemas['Assumption']
 
 export class ApiRequestError extends Error {
   readonly status: number
@@ -160,6 +162,17 @@ export const api = {
       request<SavedQuerySummary>(`/api/queries/${enc(id)}/duplicate`, { method: 'POST' }),
     usage: (id: string) => request<Schemas['Usage']>(`/api/queries/${enc(id)}/usage`),
     remove: (id: string) => request<undefined>(`/api/queries/${enc(id)}`, { method: 'DELETE' }),
+  },
+  // Modus B (plan section 6): a prompt answers 202 with the record ``thinking``;
+  // the client polls the record until the model has answered (P7).
+  model: {
+    prompt: (body: PromptRequest) =>
+      request<ModelActionView>('/api/model/prompt', json('POST', body)),
+    action: (id: number) => request<ModelActionView>(`/api/model/actions/${id}`),
+    decide: (id: number, body: DecideRequest) =>
+      request<ModelActionView>(`/api/model/actions/${id}/decide`, json('POST', body)),
+    abort: (id: number) =>
+      request<ModelActionView>(`/api/model/actions/${id}/abort`, { method: 'POST' }),
   },
   sampleRows: (layer: string, limit = 50) =>
     request<QueryResult>('/api/query', json('POST', { source: layer, output: 'table', limit })),

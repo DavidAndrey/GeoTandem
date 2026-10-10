@@ -19,6 +19,10 @@ msgstr ""
 msgid "· geändert"
 msgstr ""
 
+#: src/model/panel/Answer.tsx
+msgid "· nicht anwendbar"
+msgstr ""
+
 #: src/i18n/errors.ts
 msgid "„{layer}.{attribute}\" ist kein Feld eines Layers mit Geometrie."
 msgstr ""
@@ -107,6 +111,14 @@ msgstr ""
 #. placeholder {0}: usage.data.sessions
 #: src/queries/ManageQueriesDialog.tsx
 msgid "{0, plural, one {Die Abfrage wird in # Sitzung verwendet. Diese behält ihre Bedingungen; nur der Name geht verloren.} other {Die Abfrage wird in # Sitzungen verwendet. Diese behalten ihre Bedingungen; nur der Name geht verloren.}}"
+msgstr ""
+
+#: src/model/panel/examples.ts
+msgid "{a} mit {field} über …"
+msgstr ""
+
+#: src/model/panel/Answer.tsx
+msgid "{approach} · {took}"
 msgstr ""
 
 #: src/workplace/ResultSelect.tsx
@@ -258,13 +270,22 @@ msgstr ""
 msgid "{n, plural, one {{count} Zeile wiederholt einen Schlüssel; sie teilt dessen Geometrie.} other {{count} Zeilen wiederholen einen Schlüssel; sie teilen dessen Geometrie.}}"
 msgstr ""
 
+#: src/model/panel/PromptPanel.tsx
+msgid "{name} · extern · {host}"
+msgstr ""
+
 #. Spatial condition: relation ("liegt in"), layer
 #: src/editor/describe.ts
 msgid "{op} {layer}"
 msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
+#: src/model/panel/Answer.tsx
 msgid "{s} s"
+msgstr ""
+
+#: src/model/panel/Answer.tsx
+msgid "{shown} / max. {max}"
 msgstr ""
 
 #: src/i18n/phrases.ts
@@ -353,12 +374,21 @@ msgstr ""
 msgid "ab {stage}"
 msgstr ""
 
+#: src/model/panel/Answer.tsx
+msgid "ab E2.4"
+msgstr ""
+
+#: src/model/panel/PromptPanel.tsx
+msgid "ab E2.5"
+msgstr ""
+
 #: src/admin/ConnectionsPage.tsx
 #: src/admin/DuplicateLayerDialog.tsx
 #: src/admin/ImportWizard.tsx
 #: src/admin/UsersPage.tsx
 #: src/auth/PasswordForm.tsx
 #: src/components/ui.tsx
+#: src/model/panel/Answer.tsx
 #: src/operations/OperationDialog.tsx
 #: src/queries/SaveQueryDialog.tsx
 #: src/session/SaveAsDialog.tsx
@@ -429,12 +459,20 @@ msgstr ""
 msgid "abgewiesen"
 msgstr ""
 
+#: src/model/panel/Answer.tsx
+msgid "Abgewiesene Abfrage ansehen"
+msgstr ""
+
 #: src/admin/ImportRunPage.tsx
 msgid "Ablauf"
 msgstr ""
 
 #: src/auth/UserMenu.tsx
 msgid "Abmelden"
+msgstr ""
+
+#: src/model/panel/Problem.tsx
+msgid "Admin: <0>Modellanbindungen ›</0>"
 msgstr ""
 
 #: src/admin/AdminLayout.tsx
@@ -567,8 +605,16 @@ msgctxt "date"
 msgid "am"
 msgstr ""
 
+#: src/model/panel/Answer.tsx
+msgid "Analyse bleibt unverändert"
+msgstr ""
+
 #: src/session/SaveAsDialog.tsx
 msgid "Analyse unter einem Namen speichern"
+msgstr ""
+
+#: src/model/panel/Answer.tsx
+msgid "Analyse unverändert"
 msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
@@ -584,12 +630,20 @@ msgstr ""
 msgid "Anbindung bearbeiten"
 msgstr ""
 
+#: src/model/panel/Problem.tsx
+msgid "Anbindung wechseln"
+msgstr ""
+
 #: src/queries/SavedQueries.tsx
 msgid "Andere Ziel-Layer"
 msgstr ""
 
 #: src/session/OpenNotice.tsx
 msgid "Anderen Ergebnis-Layer wählen"
+msgstr ""
+
+#: src/model/panel/Problem.tsx
+msgid "Anfrage nicht ausgeführt"
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -612,8 +666,25 @@ msgstr ""
 msgid "Anmelden"
 msgstr ""
 
+#: src/model/panel/Answer.tsx
+msgid "Annahmen"
+msgstr ""
+
+#: src/model/panel/Answer.tsx
+msgid "Annahmen · {count}"
+msgstr ""
+
+#: src/model/panel/Answer.tsx
+#: src/model/panel/Problem.tsx
+msgid "Antwort"
+msgstr ""
+
 #: src/admin/ConnectionsPage.tsx
 msgid "Antwort nach JSON-Schema"
+msgstr ""
+
+#: src/model/panel/Problem.tsx
+msgid "Antwort nicht lesbar"
 msgstr ""
 
 #: src/admin/VisibilityPage.tsx
@@ -641,6 +712,7 @@ msgstr ""
 msgid "API-Schlüssel"
 msgstr ""
 
+#: src/model/panel/PromptPanel.tsx
 #: src/workplace/Workplace.tsx
 msgid "Arbeitsweise"
 msgstr ""
@@ -799,6 +871,10 @@ msgstr ""
 
 #: src/auth/SetupPage.tsx
 msgid "Beispieldatensatz „Bern-Mittelland\" laden"
+msgstr ""
+
+#: src/model/panel/PromptPanel.tsx
+msgid "Beispiele aus den sichtbaren Layern"
 msgstr ""
 
 #: src/admin/AdminLayout.tsx
@@ -1032,6 +1108,10 @@ msgstr ""
 msgid "Das Modell ruft keine Werkzeuge auf; für Werkzeugketten ist es so nicht geeignet."
 msgstr ""
 
+#: src/model/panel/PromptPanel.tsx
+msgid "Das Modell sieht Layer- und Feldnamen, keine Geodaten-Inhalte."
+msgstr ""
+
 #: src/auth/rules.ts
 msgid "Das neue Passwort braucht mindestens {MIN_PASSWORD_LENGTH} Zeichen."
 msgstr ""
@@ -1211,6 +1291,10 @@ msgstr ""
 msgid "Der Name „{attribute}\" ist schon vergeben; bitte einen anderen Namen oder ein Präfix wählen."
 msgstr ""
 
+#: src/model/panel/PromptPanel.tsx
+msgid "Der Prompt-Text verlässt das Haus"
+msgstr ""
+
 #: src/i18n/errors.ts
 msgid "Der Stand ist zu gross, um gespeichert zu werden."
 msgstr ""
@@ -1239,6 +1323,11 @@ msgstr ""
 msgid "Der Zugangsschlüssel wurde abgelehnt."
 msgstr ""
 
+#: src/model/panel/Answer.tsx
+#: src/model/panel/Problem.tsx
+msgid "Details"
+msgstr ""
+
 #: src/admin/format.ts
 msgid "Details zu {field}"
 msgstr ""
@@ -1253,6 +1342,10 @@ msgstr ""
 
 #: src/i18n/errors.ts
 msgid "Die Abfrage hat zu lange gedauert und wurde abgebrochen."
+msgstr ""
+
+#: src/model/panel/Answer.tsx
+msgid "Die Abfrage ist übernommen, die Entscheidung aber noch nicht im Protokoll vermerkt."
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -1295,12 +1388,20 @@ msgstr ""
 msgid "Die Analyse wurde seither von Hand geändert; die Modelländerung lässt sich nicht mehr zurücknehmen."
 msgstr ""
 
+#: src/model/panel/Problem.tsx
+msgid "Die Anbindung „{name}“ antwortet nicht."
+msgstr ""
+
 #: src/i18n/errors.ts
 msgid "Die Anfrage hat nicht die erwartete Form."
 msgstr ""
 
 #: src/i18n/errors.ts
 msgid "Die Anfrage ist grösser als {mb} MB."
+msgstr ""
+
+#: src/model/panel/Answer.tsx
+msgid "Die Anfrage wurde abgebrochen. Ihr Stand ist unverändert."
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -1463,6 +1564,10 @@ msgstr ""
 msgid "Diese Abfrage lässt sich in den Bedienelementen nicht vollständig darstellen."
 msgstr ""
 
+#: src/model/panel/Answer.tsx
+msgid "Diese Abfrage lässt sich nicht im Editor darstellen."
+msgstr ""
+
 #: src/queries/actions.ts
 msgid "Diese Abfrage wurde mit einem unbekannten Format gespeichert."
 msgstr ""
@@ -1537,6 +1642,11 @@ msgstr ""
 
 #: src/i18n/errors.ts
 msgid "Dieses Werkzeug gibt es nicht."
+msgstr ""
+
+#: src/model/panel/Answer.tsx
+#: src/model/panel/PromptPanel.tsx
+msgid "Direktabfrage"
 msgstr ""
 
 #: src/operations/OperationDialog.tsx
@@ -1622,6 +1732,10 @@ msgstr ""
 msgid "Einen Layer „{layer}\" gibt es schon."
 msgstr ""
 
+#: src/model/panel/PromptPanel.tsx
+msgid "Eingabe gesperrt, solange das Modell arbeitet"
+msgstr ""
+
 #: src/admin/SystemPage.tsx
 msgid "Eingeschränkt"
 msgstr ""
@@ -1699,8 +1813,16 @@ msgstr ""
 msgid "Entsperren"
 msgstr ""
 
+#: src/model/panel/HandoverNotice.tsx
+msgid "Entwurf aus Vorschlag {time}"
+msgstr ""
+
 #: src/admin/ImportWizard.tsx
 msgid "EPSG-Code"
+msgstr ""
+
+#: src/model/panel/PromptPanel.tsx
+msgid "Er geht an <0>{host}</0>."
 msgstr ""
 
 #: src/admin/format.ts
@@ -1767,6 +1889,19 @@ msgstr ""
 
 #: src/admin/ImportRunPage.tsx
 msgid "Erneut importieren"
+msgstr ""
+
+#: src/model/panel/Answer.tsx
+msgid "Erneut nachfragen"
+msgstr ""
+
+#: src/model/panel/Answer.tsx
+msgid "Erneut vermerken"
+msgstr ""
+
+#: src/model/panel/Answer.tsx
+#: src/model/panel/Problem.tsx
+msgid "Erneut versuchen"
 msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
@@ -1836,6 +1971,10 @@ msgstr ""
 
 #: src/components/LocalityBadge.tsx
 msgid "Extern: Anfragen gehen an {host}"
+msgstr ""
+
+#: src/model/panel/PromptPanel.tsx
+msgid "Externe Anbindung"
 msgstr ""
 
 #: src/table/TableDock.tsx
@@ -1916,8 +2055,16 @@ msgctxt "geometry"
 msgid "Fläche"
 msgstr ""
 
+#: src/model/panel/PromptPanel.tsx
+msgid "Frage zu den sichtbaren Layern …"
+msgstr ""
+
 #: src/i18n/errors.ts
 msgid "Frage, Layer-Steckbrief und Verlauf sind zu lang für das Modell. Bitte ohne Bezug auf frühere Antworten fragen."
+msgstr ""
+
+#: src/model/panel/PromptPanel.tsx
+msgid "Fragen Sie in eigenen Worten nach den sichtbaren Layern. Das Modell schlägt eine Abfrage vor; die Analyse ändert sich erst, wenn Sie den Vorschlag im Editor übernehmen."
 msgstr ""
 
 #: src/session/SaveAsDialog.tsx
@@ -2096,6 +2243,10 @@ msgstr ""
 msgid "Gleichnamige Felder erhalten das Präfix „{prefix}\"."
 msgstr ""
 
+#: src/model/panel/Problem.tsx
+msgid "Grenzwert erreicht"
+msgstr ""
+
 #: src/admin/ProfilePage.tsx
 msgid "Grösse"
 msgstr ""
@@ -2176,12 +2327,24 @@ msgstr ""
 msgid "Ich bestätige: Dateninhalte dürfen nach aussen gehen."
 msgstr ""
 
+#: src/model/panel/Problem.tsx
+msgid "Ihr Stand ist unverändert."
+msgstr ""
+
+#: src/model/panel/PromptPanel.tsx
+msgid "Ihre Eingaben werden protokolliert"
+msgstr ""
+
 #: src/admin/ImportRunPage.tsx
 msgid "Im Assistenten abgebrochen."
 msgstr ""
 
 #: src/workplace/LayerPanel.tsx
 msgid "Im Datenkatalog öffnen"
+msgstr ""
+
+#: src/model/panel/Answer.tsx
+msgid "Im Editor öffnen"
 msgstr ""
 
 #: src/admin/ImportRunPage.tsx
@@ -2207,6 +2370,10 @@ msgstr ""
 #: src/admin/AdminLayout.tsx
 #: src/admin/ImportLogPage.tsx
 msgid "Importprotokoll"
+msgstr ""
+
+#: src/model/panel/Answer.tsx
+msgid "In Editor übernehmen"
 msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
@@ -2382,6 +2549,14 @@ msgstr ""
 
 #: src/workplace/Workplace.tsx
 msgid "Klassik"
+msgstr ""
+
+#: src/model/panel/Problem.tsx
+msgid "Klassik bleibt nutzbar."
+msgstr ""
+
+#: src/model/panel/PromptPanel.tsx
+msgid "Klick setzt den Text ins Feld, gesendet wird erst mit Senden."
 msgstr ""
 
 #: src/map/Measurement.tsx
@@ -2639,8 +2814,16 @@ msgstr ""
 msgid "mit Freigabe"
 msgstr ""
 
+#: src/model/panel/PromptPanel.tsx
+msgid "Mit Layern auf der Karte erscheinen hier Beispiele."
+msgstr ""
+
 #: src/admin/format.ts
 msgid "mit Warnungen"
+msgstr ""
+
+#: src/model/panel/Answer.tsx
+msgid "Mit Werkzeugkette versuchen ›"
 msgstr ""
 
 #: src/operations/OperationDialog.tsx
@@ -2661,6 +2844,10 @@ msgstr ""
 msgid "Modell arbeitet …"
 msgstr ""
 
+#: src/model/panel/Problem.tsx
+msgid "Modell nicht erreichbar"
+msgstr ""
+
 #: src/admin/ConnectionsPage.tsx
 msgid "Modell vorhanden"
 msgstr ""
@@ -2668,6 +2855,10 @@ msgstr ""
 #: src/admin/AdminLayout.tsx
 #: src/admin/ConnectionsPage.tsx
 msgid "Modellanbindungen"
+msgstr ""
+
+#: src/model/panel/PromptPanel.tsx
+msgid "Modellanbindungen ›"
 msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
@@ -2681,6 +2872,10 @@ msgstr ""
 #: src/editor/describe.ts
 msgctxt "date"
 msgid "nach"
+msgstr ""
+
+#: src/model/panel/Problem.tsx
+msgid "Nach {max} kam keine Antwort. Die Anfrage wurde abgebrochen."
 msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
@@ -2820,6 +3015,10 @@ msgstr ""
 msgid "Noch keine Sitzung gespeichert."
 msgstr ""
 
+#: src/model/panel/HandoverNotice.tsx
+msgid "Noch nicht in der Analyse. „Übernehmen“ gilt als Ihre Änderung."
+msgstr ""
+
 #: src/admin/ConnectionsPage.tsx
 msgid "none (ohne Nachdenken)"
 msgstr ""
@@ -2943,8 +3142,30 @@ msgstr ""
 msgid "Passwort zurücksetzen"
 msgstr ""
 
+#: src/model/panel/Answer.tsx
+#: src/model/panel/PromptPanel.tsx
 #: src/workplace/Workplace.tsx
-msgid "Prompt · ab E2"
+msgid "Prompt"
+msgstr ""
+
+#: src/model/panel/Answer.tsx
+msgid "Prompt · {time}"
+msgstr ""
+
+#: src/model/panel/Answer.tsx
+msgid "Prompt ändern"
+msgstr ""
+
+#: src/model/panel/PromptPanel.tsx
+msgid "Prompt eingeben"
+msgstr ""
+
+#: src/model/panel/PromptPanel.tsx
+msgid "Prompt nicht verfügbar: keine Modellanbindung aktiv. Klassik ist voll nutzbar."
+msgstr ""
+
+#: src/model/panel/Answer.tsx
+msgid "Protokoll"
 msgstr ""
 
 #: src/admin/wizard.ts
@@ -3086,6 +3307,10 @@ msgstr ""
 msgid "Semikolon"
 msgstr ""
 
+#: src/model/panel/PromptPanel.tsx
+msgid "Senden"
+msgstr ""
+
 #: src/admin/ImportWizard.tsx
 msgid "Senkrechter Strich"
 msgstr ""
@@ -3225,8 +3450,21 @@ msgstr ""
 msgid "Strecke"
 msgstr ""
 
+#. Keyboard shortcut: Ctrl+Enter
+#: src/model/panel/PromptPanel.tsx
+msgid "Strg+↵"
+msgstr ""
+
 #: src/admin/LevelsPage.tsx
 msgid "Stufe"
+msgstr ""
+
+#: src/model/panel/Answer.tsx
+msgid "Stufe {level}: Das Modell wendet in dieser Ausbaustufe nichts selbst an. Keine Vorschau, keine Freigabe, kein Zurücknehmen; „Übernehmen“ im Editor ist Ihre Änderung."
+msgstr ""
+
+#: src/model/panel/PromptPanel.tsx
+msgid "Stufe {levelName}"
 msgstr ""
 
 #: src/workplace/ModelChoice.tsx
@@ -3475,6 +3713,14 @@ msgstr ""
 msgid "Verknüpfung"
 msgstr ""
 
+#: src/model/panel/Answer.tsx
+msgid "Verlauf"
+msgstr ""
+
+#: src/model/panel/PromptPanel.tsx
+msgid "Verlauf leeren"
+msgstr ""
+
 #: src/admin/UsersPage.tsx
 msgid "Verstanden"
 msgstr ""
@@ -3575,6 +3821,14 @@ msgstr ""
 msgid "weitere Treffer — genauer suchen"
 msgstr ""
 
+#: src/model/panel/examples.ts
+msgid "Welche {a} liegen in {b}?"
+msgstr ""
+
+#: src/model/panel/examples.ts
+msgid "Welche {a} liegen nahe an {b}?"
+msgstr ""
+
 #: src/admin/ImportWizard.tsx
 msgid "Weniger als die Hälfte der Schlüssel findet einen Treffer."
 msgstr ""
@@ -3585,6 +3839,11 @@ msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
 msgid "Werkzeugaufruf"
+msgstr ""
+
+#: src/model/panel/Answer.tsx
+#: src/model/panel/PromptPanel.tsx
+msgid "Werkzeugkette"
 msgstr ""
 
 #: src/editor/EditorPanel.tsx
@@ -3667,6 +3926,10 @@ msgstr ""
 #: src/admin/ImportLogPage.tsx
 #: src/admin/ImportRunPage.tsx
 msgid "Zeitpunkt"
+msgstr ""
+
+#: src/model/panel/Problem.tsx
+msgid "Zeitüberschreitung"
 msgstr ""
 
 #: src/admin/ImportRunPage.tsx
