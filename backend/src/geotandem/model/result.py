@@ -21,6 +21,7 @@ from geotandem.llm import Completion
 from geotandem.model.errors import ActionError
 from geotandem.model.represent import ALLOWED_FIELDS
 from geotandem.model.schemas import (
+    MAX_LISTED,
     Approach,
     CannotAnswer,
     Clarification,
@@ -194,7 +195,7 @@ def _causes(exc: ValidationError) -> str:
         parts = [str(p) if isinstance(p, int) or p in known else "?" for p in loc]
         return ".".join(parts) or "(answer)"
 
-    return "; ".join(
-        f"{where(e['loc'])}: {e['type']}"
-        for e in exc.errors(include_url=False, include_input=False, include_context=False)
-    )
+    errors = exc.errors(include_url=False, include_input=False, include_context=False)
+    listed = "; ".join(f"{where(e['loc'])}: {e['type']}" for e in errors[:MAX_LISTED])
+    more = len(errors) - MAX_LISTED
+    return f"{listed}; and {more} more" if more > 0 else listed

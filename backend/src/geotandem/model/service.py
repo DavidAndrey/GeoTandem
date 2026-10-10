@@ -41,8 +41,12 @@ waits for ``approve``; all ``auto``: ``approved`` at once, and the client
 calls ``execute`` (P7). An abort sets the call's cancel event: a call not started
 yet never reaches the model, an answer that arrives later is dropped (and the
 store's compare-and-set would drop it too). The HTTP call itself is not
-cancelled: it ends by its deadline, and until then the account's next prompt
-waits (409).
+cancelled: it ends by its deadline, which bounds every socket operation, so an
+endpoint that trickles its answer cannot outlast it, and its answer is capped
+in size (``openai_compat``, review #34); until then the account's next prompt
+waits (409). Should the call's thread still linger ``EXPIRY_GRACE_S`` after
+the deadline, ``ModelCalls`` gives it up: the account and the slot are free,
+the record ends ``failed`` (``llm_timeout``), and a late answer is dropped.
 
 A follow-up (P6) is linked to its parent, which must be the caller's own
 record (404 otherwise). The model gets the turns of the parent chain, at most
@@ -118,6 +122,10 @@ MODEL_CALL_S: Final = 120
 how long an ``auto`` answer waits to be executed before the start-up check
 closes it. The frontend's timer repeats it (``panel/state.ts``); a test on
 each side holds it to the fixture."""
+EXPIRY_GRACE_S: Final = 5
+"""Past a call's deadline: a call not finished by then is given up
+(``ModelCalls``). Its sockets end at the deadline itself (``openai_compat``);
+the grace leaves time to store the outcome."""
 STALE_MARGIN_S: Final = 30
 """Beyond ``MODEL_CALL_S``: a ``thinking`` record this old has no call left
 that could finish it."""
@@ -198,18 +206,25 @@ class ModelCalls:
     """The model calls in flight (P7): at most ``size`` at once, each in a thread
     of its own pool, so a slow model never holds the threads that answer
     requests; and at most one per account, an aborted call included until it
-    has ended. One per application (``AppState``)."""
+    has ended, or until its deadline and ``grace_s`` have passed, whichever
+    comes first (review #34): then the call is given up, its account entry and
+    its slot are free, its ``expire`` closes the record, and the thread, if it
+    lingers, finds its cancel event set and its answer dropped. One per
+    application (``AppState``)."""
 
-    def __init__(self, size: int) -> None:
+    def __init__(self, size: int, grace_s: float = EXPIRY_GRACE_S) -> None:
         self.admission = threading.Lock()
         """Held around the checks of a new record and its creation, so two
         prompts never both pass (P5, one prompt at a time per account)."""
         self._executor = ThreadPoolExecutor(max_workers=size, thread_name_prefix="model-call")
         self._slots = threading.BoundedSemaphore(size)
+        self._grace_s = grace_s
         self._lock = threading.Lock()
         self._cancel: dict[int, threading.Event] = {}
         self._accounts: dict[int, int] = {}
         """Account id → the action whose call it has in flight."""
+        self._held: dict[int, threading.Timer | None] = {}
+        """Actions whose call holds a slot, with the timer that gives it up."""
         self._running: set[Future[None]] = set()
         self._executing: set[int] = set()
         """Actions whose stored query runs now (``PromptFlow.execute``)."""
@@ -241,36 +256,73 @@ class ModelCalls:
             return self._accounts.get(account_id)
 
     def start(
-        self, account_id: int, action_id: int, call: Callable[[threading.Event], None]
+        self,
+        account_id: int,
+        action_id: int,
+        call: Callable[[threading.Event], None],
+        *,
+        deadline: float | None = None,
+        expire: Callable[[], None] | None = None,
     ) -> None:
-        """Run ``call`` with the action's cancel event; it calls ``finish``."""
+        """Run ``call`` with the action's cancel event; it calls ``finish``. With
+        ``deadline`` (``time.monotonic()``) the call is given up ``grace_s``
+        after it, if it has not finished by then: its cancel event is set, its
+        account entry and its slot are free, and ``expire`` runs."""
         cancel = threading.Event()
+        timer = None
+        if deadline is not None:
+            wait = max(0.0, deadline - time.monotonic()) + self._grace_s
+            timer = threading.Timer(wait, self._expire, (account_id, action_id, expire))
+            timer.daemon = True
         with self._lock:
             self._cancel[action_id] = cancel
             self._accounts[account_id] = action_id
+            self._held[action_id] = timer
         try:
             future = self._executor.submit(call, cancel)
         except BaseException:
-            self._forget(account_id, action_id)
+            self._drop(account_id, action_id)
             raise
         with self._lock:
             self._running.add(future)
         future.add_done_callback(self._done)
+        if timer is not None:
+            timer.start()
 
     def _done(self, future: Future[None]) -> None:
         with self._lock:
             self._running.discard(future)
 
-    def _forget(self, account_id: int, action_id: int) -> None:
+    def _drop(self, account_id: int, action_id: int) -> bool:
+        """Forget the call; ``True`` if it still held its slot (once only)."""
         with self._lock:
             self._cancel.pop(action_id, None)
             if self._accounts.get(account_id) == action_id:
                 del self._accounts[account_id]
+            held = action_id in self._held
+            timer = self._held.pop(action_id, None)
+        if timer is not None:
+            timer.cancel()
+        return held
 
     def finish(self, account_id: int, action_id: int) -> None:
-        """The call of ``action_id`` ended: forget it, give its slot back."""
-        self._forget(account_id, action_id)
+        """The call of ``action_id`` ended: forget it, give its slot back,
+        unless its deadline gave it up already."""
+        if self._drop(account_id, action_id):
+            self.give_back()
+
+    def _expire(self, account_id: int, action_id: int, expire: Callable[[], None] | None) -> None:
+        """The call outlived its deadline: give it up (``start``)."""
+        self.cancel(action_id)
+        if not self._drop(account_id, action_id):
+            return  # it finished meanwhile
         self.give_back()
+        log.warning("model action %d: given up at its deadline, the call still runs", action_id)
+        if expire is not None:
+            try:
+                expire()
+            except Exception as exc:
+                log.error("model action %d: not closed (%s)", action_id, type(exc).__name__)
 
     def cancel(self, action_id: int) -> None:
         with self._lock:
@@ -286,6 +338,10 @@ class ModelCalls:
 
     def shutdown(self) -> None:
         """Calls not started are dropped; their records are closed at the next start."""
+        with self._lock:
+            timers = [t for t in self._held.values() if t is not None]
+        for timer in timers:
+            timer.cancel()
         self._executor.shutdown(wait=False, cancel_futures=True)
 
 
@@ -366,6 +422,12 @@ class PromptFlow:
             profile_hash=profile.hash,
             parent_action_id=request.parent_action_id,
         )
+        # The account's own call first (review #36): an account that waits for
+        # its answer gets 409 and never holds a slot, even for a moment, that
+        # another account's prompt would find taken (503).
+        in_flight = self.calls.in_flight(caller.id)
+        if in_flight is not None:
+            raise _busy(in_flight)
         self.calls.take()
         try:
             with self.calls.admission:
@@ -379,7 +441,13 @@ class PromptFlow:
                     caller, new, admit=partial(self._admit, caller=caller, connection=connection)
                 )
                 answer = partial(self._answer, caller, action.id, call)
-                self.calls.start(caller.id, action.id, answer)
+                self.calls.start(
+                    caller.id,
+                    action.id,
+                    answer,
+                    deadline=call.deadline,
+                    expire=partial(self._expired, caller, action.id),
+                )
         except BaseException:
             self.calls.give_back()
             raise
@@ -454,6 +522,23 @@ class PromptFlow:
             self._fail_quietly(store, caller, action_id)
         finally:
             self.calls.finish(caller.id, action_id)
+
+    def _expired(self, caller: Account, action_id: int) -> None:
+        """The call outlived its deadline and was given up (``ModelCalls``): the
+        record ends ``failed``, ``llm_timeout``, unless it was settled or aborted
+        meanwhile; the call's late answer is dropped by the compare-and-set."""
+        try:
+            self.store.fail(
+                caller,
+                action_id,
+                _error(
+                    "llm_timeout",
+                    "No answer before the call's time limit.",
+                    cause="given up at the deadline",
+                ),
+            )
+        except ActionError:
+            return  # settled or aborted meanwhile
 
     @staticmethod
     def _fail_quietly(store: ModelActionStore, caller: Account, action_id: int) -> None:

@@ -49,7 +49,14 @@ from geotandem.model.represent import (
     to_query,
 )
 from geotandem.model.result import answer_format, format_text, parse_answer
-from geotandem.model.schemas import MAX_TURNS, ModelAnswer, QueryAnswer, Refusal
+from geotandem.model.schemas import (
+    MAX_CONDITION_PATH,
+    MAX_LISTED,
+    MAX_TURNS,
+    ModelAnswer,
+    QueryAnswer,
+    Refusal,
+)
 from geotandem.model.validate import Validated, validate_model_query
 from geotandem.sample import DATA_DIR
 from geotandem.sample.load import load_sample
@@ -423,6 +430,34 @@ def test_the_direct_format_offers_what_the_controls_show() -> None:
     assert schema == answer_format("direct") and schema is not answer_format("direct")
     chain = answer_format("chain")["$defs"]
     assert "PlanAnswer" in chain and "QueryObject" not in chain
+
+
+def test_what_a_refusal_or_an_unreadable_answer_keeps_is_bounded(world: DataBackend) -> None:
+    """Review #35: the first ``MAX_LISTED`` errors and how many there were; an
+    assumption's path into the where tree of at most ``MAX_CONDITION_PATH``."""
+    extra = {f"x{i}": 1 for i in range(MAX_LISTED + 10)}
+    refused = check(world, {"schema_version": "2", "source": "schulen", **extra})
+    assert isinstance(refused, Refusal) and refused.code == "model_query_invalid"
+    assert len(refused.details["errors"]) == MAX_LISTED
+    assert refused.details["error_count"] == MAX_LISTED + 10
+
+    many = {"kind": "clarification", "question": "Wie?", "options": ["a", "b"], **extra}
+    with pytest.raises(ActionError) as caught:
+        parse_answer(Completion(text=json.dumps(many)), "direct")
+    cause = caught.value.details["cause"]
+    assert cause.count("extra_forbidden") == MAX_LISTED and cause.endswith("; and 10 more")
+
+    for length, readable in ((MAX_CONDITION_PATH, True), (MAX_CONDITION_PATH + 1, False)):
+        assumption = {"text": "Primar", "condition": [0] * length}
+        text = json.dumps(
+            {"kind": "query", "explanation": "x", "query": {}, "assumptions": [assumption]}
+        )
+        if readable:
+            parse_answer(Completion(text=text), "direct")
+        else:
+            with pytest.raises(ActionError) as caught:
+                parse_answer(Completion(text=text), "direct")
+            assert caught.value.details["cause"] == "query.assumptions.0.condition: too_long"
 
 
 DEEP = '{"kind":"query","explanation":"x","query":' + '{"a":' * 100_000 + "1" + "}" * 100_001

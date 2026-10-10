@@ -56,6 +56,9 @@ MAX_ID = 2**63 - 1
 filter beyond it is refused (422) before it reaches the database (review #38)."""
 MAX_CONDITION_PATH = 20
 """Indexes of an assumption's path into the where tree (review #35)."""
+MAX_LISTED = 20
+"""Errors of one refusal or unreadable answer a record keeps: the first ones,
+with how many there were (``error_count``, "and N more"; review #35)."""
 
 Id = Annotated[int, Field(ge=1, le=MAX_ID)]
 """A record's id as a request names it."""

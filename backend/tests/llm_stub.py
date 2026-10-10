@@ -2,12 +2,20 @@
 
 Records every request it sees, headers and body included, so tests can say
 what left the application.
+
+``raw_endpoint`` is an endpoint on a real socket instead, for what only a
+socket shows: an answer that trickles in, or one larger than the cap
+(security review #34).
 """
 
 import json
-from collections.abc import Callable
+import threading
+import time
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass, field
-from typing import Any
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from typing import Any, BinaryIO
 
 import httpx2
 
@@ -106,3 +114,73 @@ class OllamaStub:
             ]
             return httpx2.Response(200, json={"models": tags})
         return httpx2.Response(404, text="404 page not found")
+
+
+# --- on a real socket (#34) ------------------------------------------------------
+
+Respond = Callable[[BinaryIO], None]
+"""Writes the raw bytes of an answer, status line included."""
+
+
+class _Raw(BaseHTTPRequestHandler):
+    respond: Respond
+
+    def _answer(self) -> None:
+        self.rfile.read(int(self.headers.get("Content-Length") or 0))
+        with suppress(OSError):  # the client gave up
+            type(self).respond(self.wfile)
+        self.close_connection = True
+
+    do_GET = do_POST = _answer
+
+    def log_message(self, *_: Any) -> None:
+        pass
+
+
+@contextmanager
+def raw_endpoint(respond: Respond) -> Iterator[str]:
+    """A server whose every answer ``respond`` writes; yields its ``/v1`` URL."""
+    handler = type("Handler", (_Raw,), {"respond": staticmethod(respond)})
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    server.daemon_threads = True
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        yield f"http://127.0.0.1:{server.server_port}/v1"
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
+HEAD = b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n"
+"""A status line and the first header; the rest follows."""
+
+
+def dripping(head: bytes = b"", *, every_s: float = 1.0, count: int = 30) -> Respond:
+    """``head`` at once, then one byte every ``every_s``: of a status line while
+    ``head`` is empty, else of a body (``head`` names its length)."""
+    trickle = HEAD + b"X-Slow: " + b"a" * count if not head else b" " * count
+
+    def respond(out: BinaryIO) -> None:
+        out.write(head)
+        out.flush()
+        for i in range(count):
+            out.write(trickle[i : i + 1])
+            out.flush()
+            time.sleep(every_s)
+
+    return respond
+
+
+def flooding(size: int, *, length: bool = False) -> Respond:
+    """A body of ``size`` bytes, sent at once; its length declared or not (then
+    it ends with the connection)."""
+    header = f"Content-Length: {size}" if length else "Connection: close"
+
+    def respond(out: BinaryIO) -> None:
+        out.write(HEAD + header.encode() + b"\r\n\r\n")
+        chunk = b" " * 65536
+        for start in range(0, size, len(chunk)):
+            out.write(chunk[: min(len(chunk), size - start)])
+        out.flush()
+
+    return respond

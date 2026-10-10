@@ -19,6 +19,7 @@ Logs carry ids and codes only, never prompt or answer text (C15).
 from __future__ import annotations
 
 import hashlib
+import json
 from collections.abc import Callable, Collection, Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -84,6 +85,10 @@ DECIDED: Mapping[str, frozenset[Decision]] = {
 }
 """The decisions a status can carry. Every other status carries none: open,
 or (``refused``, ``answered``) ended without anything to decide (section 2)."""
+
+MAX_RAW_QUERY_BYTES = 64 * 1024
+"""The most of a refused answer's raw query a record keeps, as canonical JSON
+(UTF-8); a larger one is kept as ``{"omitted": "too large"}`` (review #35)."""
 
 UNDOABLE: frozenset[Decision] = frozenset({"accepted", "auto"})
 """What undo takes back: a change the model made, never the user's own (D2)."""
@@ -162,6 +167,18 @@ def utc_now() -> datetime:
 
 def _json(model: Any) -> Any:
     return None if model is None else model.model_dump(mode="json", by_alias=True)
+
+
+def _bounded(answer: AnyAnswer | None) -> Any:
+    """A refused answer as the record keeps it (design M3): its raw query only up
+    to ``MAX_RAW_QUERY_BYTES`` of canonical JSON (review #35). Everything else
+    of an answer is bounded by its schema."""
+    data = _json(answer)
+    if isinstance(data, dict) and isinstance(data.get("query"), dict):
+        text = json.dumps(data["query"], sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        if len(text.encode()) > MAX_RAW_QUERY_BYTES:
+            data["query"] = {"omitted": "too large"}
+    return data
 
 
 def _query_json(query: QueryObject | None) -> dict[str, Any] | None:
@@ -740,12 +757,21 @@ class ModelActionStore:
     def _audit(actor: str | None, rows: Iterable[ModelAction]) -> None:
         """``actor`` ``None``: the application itself (the start-up check)."""
         for row in rows:
+            # A failure's code and cause, which the user's view leaves out (#37);
+            # the cause names no prompt or answer text (C13, C15).
+            error = row.error or {}
+            failure = (
+                {"code": error.get("code"), "cause": (error.get("details") or {}).get("cause")}
+                if error
+                else {}
+            )
             audit.event(
                 "model_action_decided",
                 username=actor or "system",
                 action_id=row.id,
                 status=row.status,
                 decision=row.decision,
+                **failure,
             )
 
     # from thinking (P7)
@@ -769,7 +795,7 @@ class ModelActionStore:
             lambda _: {
                 "status": "refused",
                 "refusal": _json(refusal),
-                "answer": _json(answer),
+                "answer": _bounded(answer),
                 "latency_ms": latency_ms,
             },
         )
