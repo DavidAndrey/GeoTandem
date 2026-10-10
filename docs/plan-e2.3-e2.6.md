@@ -251,6 +251,27 @@ See section 5.2. Entry: WP62–WP69 merged. Done-when (etappen.md): one prompt p
 #### Gate E2.4
 See section 5.2 plus the **security review** of section 5.4. Done-when (etappen.md): a level without approval duty and one with it behave demonstrably differently, and the rule holds past the surface.
 
+**Design deviations of E2.4** (gate step 6, from the etappe review; to be signed off):
+
+*Deliberate, decided during the WPs:*
+- The reference question gives 10 of 137 instead of the design's 7 of 39 (real sample data, WP62).
+- M6.3 is shown with spatial on Freigabe, because a direct answer cannot carry a derive part (D3); the stop at derive moves to the chain acceptance (WP79).
+- M5.3: the reason chip is chosen before rejecting, because the API takes the reason with the one reject call.
+- M16.1: the acceptance rate and an account filter are added; refusals appear in words, not as codes.
+- A failed auto run offers "Erneut ausführen"; "Anpassen …" does not count as a hand edit until applied.
+
+*Found by the review, not yet decided:*
+- M2.3 / M6.2: the full answer card stays after undo instead of the compact one; it reads "war … · 10 Treffer" instead of "10 von 137".
+- M5.1: one "+" line per condition instead of "+ 3 Bedingungen".
+- M5.2: generic hint text; no "(von Hand)" line; the sidebar says "wird erst bei Annehmen übernommen" instead of "ersetzt …".
+- M5.3: the "Analyse unverändert · 137" line is missing.
+- M6.1: the bar spans the full map width; the button order differs.
+- M6.3: chips show labels instead of class keys.
+- M7.1: "eingestellt von admin" is missing.
+- M7.3: a centred dialog instead of one anchored under the header.
+- M16.1: no "Prompt suchen" (the log API has no text filter).
+- M16.2: hits without the total; the layer profile without versions; the matrix written out instead of F/A/–; no "· unverändert".
+
 ### Etappe E2.5 — Tool chain
 
 #### WP74 — `model_view` and chain tools (BE-chain)
