@@ -1,5 +1,5 @@
 // "Meine Modellaktionen" (design M16.3): the account's own log entries as a
-// dialog, from the user menu (and later from an answer's "Protokoll"). Own
+// dialog, from the user menu and from an answer's "Protokoll" (Answer.tsx). Own
 // entries only (D4), so no column for the account. A modal dialog: focus stays
 // inside until it closes (design "Barrierefreiheit"), Esc closes it.
 import { Trans } from '@lingui/react/macro'

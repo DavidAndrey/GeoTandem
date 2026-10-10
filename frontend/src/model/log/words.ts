@@ -12,7 +12,7 @@ import type {
   ModelActionView,
 } from '../../api/client'
 import { formatNumber } from '../../i18n/locale'
-import { reasonText } from '../approval/governance'
+import { cellLabel, reasonText } from '../approval/governance'
 
 const DECISIONS: Record<Decision, MessageDescriptor> = {
   accepted: msg`angenommen`,
@@ -96,8 +96,11 @@ export const approachText = (approach: Approach) =>
 /** A short approach for the list's column (design M16.1 "Direkt", "Kette"). */
 export const approachShort = (approach: Approach) => (approach === 'chain' ? t`Kette` : t`Direkt`)
 
-export const modeText = (mode: CellMode) =>
-  ({ off: t`aus`, approve: t`Freigabe`, auto: t`automatisch` })[mode]
+/**
+ * A level cell in words: the matrix's own words (design "Stufen": aus /
+ * Freigabe / auto), so the log says what the level popover (M7) says.
+ */
+export const modeText = (mode: CellMode) => cellLabel(mode)
 
 /** The periods of the filter (design M16.1 "Letzte 30 Tage"); ``null``: all. */
 export const PERIODS = [7, 30, 90, 365, null] as const

@@ -443,10 +443,6 @@ msgid "ab {stage}"
 msgstr "ab {stage}"
 
 #: src/model/panel/Answer.tsx
-msgid "ab E2.4"
-msgstr "ab E2.4"
-
-#: src/model/panel/Answer.tsx
 #: src/model/panel/PromptPanel.tsx
 msgid "ab E2.5"
 msgstr "ab E2.5"
@@ -969,7 +965,6 @@ msgid "Aufklappen"
 msgstr "Aufklappen"
 
 #: src/admin/LevelsPage.tsx
-#: src/model/log/words.ts
 msgid "aus"
 msgstr "aus"
 
@@ -1012,7 +1007,6 @@ msgid "auto angewendet"
 msgstr "auto angewendet"
 
 #: src/admin/LevelsPage.tsx
-#: src/model/log/words.ts
 msgid "automatisch"
 msgstr "automatisch"
 
@@ -2447,7 +2441,6 @@ msgstr "Fragestellung, Annahmen …"
 
 #: src/admin/ConnectionsPage.tsx
 #: src/model/approval/Approval.tsx
-#: src/model/log/words.ts
 msgid "Freigabe"
 msgstr "Freigabe"
 

@@ -15,7 +15,8 @@ import { errorText } from '../../i18n/errors'
 import { formatNumber, parseTimestamp } from '../../i18n/locale'
 import { hitsOf } from '../../i18n/phrases'
 import { Approval, Approved, Rejected, Undone, UndoAction } from '../approval/Approval'
-import { classList, needsApproval, proposalOnly } from '../approval/governance'
+import { byHandOnly, classList, needsApproval } from '../approval/governance'
+import { openMyActions } from '../log/dialog'
 import { StatusLabel } from '../status'
 import { dialogueViews, useModel } from '../store'
 import { FRAME, lineStyle, statusKey } from '../statusKey'
@@ -275,7 +276,7 @@ function Proposal({ view, answer }: { view: ModelActionView; answer: QueryAnswer
   const key = statusKey(view)
   const line = lineStyle(key)
   const applied = view.status === 'applied'
-  const handOnly = proposalOnly(view)
+  const handOnly = byHandOnly(view)
   const failed = useHandover((s) => (s.failed?.action === view.id ? s.failed : null))
   const took = seconds(view.latency_ms)
   const approach = approachText(view.approach)
@@ -401,7 +402,7 @@ function ProposalOnly({ view }: { view: ModelActionView }) {
 /**
  * The answer's actions. "Zurücknehmen" (M2.2) only for a change the model
  * made (never for one applied by hand, design M4.1 "ohne Rücknahme").
- * "Protokoll" is disabled until the log pages (WP73).
+ * "Protokoll" opens the account's own log, "Meine Modellaktionen" (M16.3).
  */
 function Actions({ view }: { view: ModelActionView }) {
   const editing = useAnalysis((s) => s.draft !== null)
@@ -412,7 +413,7 @@ function Actions({ view }: { view: ModelActionView }) {
   const takeable = !reporting && canTakeOver(view)
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {proposalOnly(view) && (
+      {byHandOnly(view) && (
         <button
           type="button"
           className="btn btn-primary"
@@ -436,13 +437,10 @@ function Actions({ view }: { view: ModelActionView }) {
         </button>
       )}
       <UndoAction view={view} />
-      <button type="button" className="btn" disabled aria-describedby={`log-${view.id}`}>
+      <button type="button" className="btn" onClick={openMyActions}>
         <Trans>Protokoll</Trans>
       </button>
-      <span id={`log-${view.id}`} className="text-muted text-xs">
-        <Trans>ab E2.4</Trans>
-      </span>
-      {proposalOnly(view) && !representable && (
+      {byHandOnly(view) && !representable && (
         <p className="text-muted w-full text-xs">
           <Trans>Diese Abfrage lässt sich nicht im Editor darstellen.</Trans>
         </p>

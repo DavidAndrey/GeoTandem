@@ -101,9 +101,10 @@ test.each(OPEN)('a record %s is open, and a new prompt supersedes it (WP70)', (s
 
 test('the decision of an overtaken record (plan section 2)', () => {
   const at = (level: 'Assistenz' | 'Prüfen') => actionView('reference', {}, level)
-  expect(overtaken(at('Prüfen'), true)).toBe('superseded')
-  expect(overtaken(at('Assistenz'), true)).toBe('proposal_only')
-  expect(overtaken(at('Prüfen'), false)).toBe('proposal_only')
+  expect(overtaken(at('Prüfen'))).toBe('superseded')
+  expect(overtaken(at('Assistenz'))).toBe('proposal_only')
+  // The server's stored flag decides (section 2), as for the status.
+  expect(overtaken({ ...at('Prüfen'), proposal_only: true })).toBe('proposal_only')
 })
 
 test('a chain run is polled too, and its end does not touch the field', () => {

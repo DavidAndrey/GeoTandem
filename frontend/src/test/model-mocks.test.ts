@@ -13,7 +13,6 @@ import {
   type CaseId,
 } from './model-mocks'
 import type { ModelActionView } from '../api/client'
-import { ENFORCEMENT } from '../model/enforcement'
 import { decideRoute } from './prompt-panel'
 import { assertValidQuery } from './schema'
 
@@ -28,8 +27,8 @@ const schema = (name: string) => {
   return validate
 }
 const LEVELS = ['Assistenz', 'Prüfen', 'Teilautonom', 'Automatisch'] as const
-/** An answer whose cells are all ``auto``: approved with enforcement, else a proposal (P1). */
-const AUTO = ENFORCEMENT ? 'approved' : 'proposed'
+/** An answer whose cells are all ``auto`` arrives approved (D2). */
+const AUTO = 'approved'
 
 test.each(RECORD_CASES as CaseId[])('%s is a valid record at every level', (id) => {
   for (const level of LEVELS) {
@@ -61,14 +60,15 @@ test('the level decides between a proposal and an auto answer', () => {
   expect(actionView('follow_up', {}, 'Automatisch').status).toBe(AUTO)
 })
 
-test('enforcement is on (E2.4): an all-auto answer arrives approved, off parts only propose', () => {
-  expect(ENFORCEMENT).toBe(true)
+test('an all-auto answer arrives approved, off parts only propose', () => {
   expect(actionView('reference', {}, 'Teilautonom')).toMatchObject({
     status: 'approved',
+    proposal_only: false,
     governance: { cell: 'auto', off: [] },
   })
   expect(actionView('reference', {}, 'Assistenz')).toMatchObject({
     status: 'proposed',
+    proposal_only: true,
     governance: { cell: 'off' },
   })
 })
@@ -178,6 +178,45 @@ describe('the fake enforcement server keeps the contract (WP70, store.py)', () =
     expect(validView(undone)).toBe(true)
     expect(undone).toMatchObject({ status: 'undone', decision: 'auto' })
     expect(code(fresh.undo(first.id))).toEqual([409, 'already_decided'])
+  })
+
+  test('touched sets touched_at once; the latest change ranks every record of the account', () => {
+    const run = actionView('reference', {}, 'Teilautonom')
+    // Applied before this server's runs, later by its time (another tab, an earlier page).
+    const elsewhere = actionView(
+      'follow_up',
+      { status: 'applied', decision: 'accepted', decided_at: '2026-10-10T23:59:00.000000' },
+      'Teilautonom',
+    )
+    const server = modelServer([run, elsewhere])
+    server.execute(run.id)
+    expect(server.undo(run.id)).toMatchObject({
+      status: 409,
+      body: { code: 'nothing_to_undo', message: expect.stringContaining(`(${elsewhere.id})`) },
+    })
+    // An undone change still counts as the latest; one applied by hand never does.
+    const byHand = actionView('follow_up_hand_edited', {
+      status: 'applied',
+      decision: 'adjusted',
+      decided_at: '2026-10-11T00:00:00.000000',
+    })
+    const ranked = modelServer([run, elsewhere, byHand])
+    ranked.execute(run.id)
+    expect(ranked.undo(elsewhere.id)).toMatchObject({ status: 'undone' })
+    expect(code(ranked.undo(run.id))).toEqual([409, 'nothing_to_undo'])
+
+    const touched = server.touched(elsewhere.id)
+    expect(validView(touched)).toBe(true)
+    const at = server.record(elsewhere.id)?.touched_at
+    expect(at).toMatch(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{6}$/)
+    expect(touched).toMatchObject({ touched_at: at })
+    // The first report's time stays.
+    server.touched(elsewhere.id)
+    expect(server.record(elsewhere.id)?.touched_at).toBe(at)
+    expect(server.undo(elsewhere.id)).toMatchObject({
+      status: 409,
+      body: { code: 'undo_blocked', details: { touched_at: at } },
+    })
   })
 
   test('decide: adjusted names its query and is never by hand', () => {

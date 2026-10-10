@@ -4,6 +4,8 @@
 // code this version does not know yet.
 import { plural, t } from '@lingui/core/macro'
 import { MIN_PASSWORD_LENGTH } from '../auth/rules'
+import type { OpClass } from '../api/client'
+import { classLabel, OP_CLASSES } from '../model/approval/governance'
 import { formatNumber } from './locale'
 
 export type Details = Record<string, unknown>
@@ -14,6 +16,8 @@ const list = (value: unknown) =>
 const number = (value: unknown) => (typeof value === 'number' ? formatNumber(value) : text(value))
 
 type Words = (details: Details, count: number) => string
+
+const isOpClass = (value: unknown): value is OpClass => OP_CLASSES.includes(value as OpClass)
 
 const MESSAGES: Record<string, Words> = {
   // Requests
@@ -141,7 +145,8 @@ const MESSAGES: Record<string, Words> = {
   level_not_available: () => t`Diese Stufe steht nicht zur Wahl.`,
   class_not_allowed: (d) => {
     const level = text(d.level)
-    const part = text(d.part)
+    // The class in the matrix's words (M7), not its key; another part as sent.
+    const part = isOpClass(d.op_class) ? classLabel(d.op_class) : text(d.part)
     return t`Auf der Stufe „${level}" ist „${part}" nicht erlaubt.`
   },
   // Modus B: refusals of a model's answer (design M3) and the model routes

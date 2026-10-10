@@ -7,6 +7,7 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router'
 import { api } from '../api/client'
 import { useMe, useResetSession } from '../api/queries'
 import { ErrorNotice } from '../components/ui'
+import { resetModelState } from '../model/reset'
 import { signedInAs } from '../session/ui'
 import { AccessCard, Field } from './AccessCard'
 import { safeTarget } from './rules'
@@ -22,6 +23,8 @@ export function LoginPage() {
   const login = useMutation({
     mutationFn: () => api.auth.login(username, password),
     onSuccess: async (account) => {
+      // Nothing of a previous account's Modus B, whoever signed out how.
+      resetModelState()
       signedInAs(account.id)
       await resetSession()
       navigate(account.must_change_password ? '/passwort' : target, { replace: true })

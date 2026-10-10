@@ -16,7 +16,6 @@ import type {
   QueryResult,
   RejectReason,
 } from '../api/client'
-import { ENFORCEMENT } from '../model/enforcement'
 
 type Case = (typeof fixture.cases)[number]
 export type LevelName = (typeof fixture.levels)[number]['name']
@@ -72,17 +71,13 @@ const FINAL: Partial<Record<ActionStatus, Decision>> = { failed: 'failed', abort
 
 // What the record says once the model has answered: the fixture's status, or for
 // a level the case does not list, what the level's cell makes of it (D1, D2).
-// Before enforcement every level only proposes (P1): the E2.3 server sends
-// ``proposed`` where the fixture, written for E2.4, says ``approved``.
-function statusOf(c: Case, levelName: LevelName, enforcement = ENFORCEMENT): ActionStatus {
+function statusOf(c: Case, levelName: LevelName): ActionStatus {
   const status: unknown = 'status' in c.expect ? c.expect.status : undefined
   if (status === undefined) throw new Error(`case '${c.id}' is refused before any record exists`)
-  const listed =
-    typeof status === 'string'
-      ? (status as ActionStatus)
-      : ((status as Partial<Record<LevelName, ActionStatus>>)[levelName] ??
+  return typeof status === 'string'
+    ? (status as ActionStatus)
+    : ((status as Partial<Record<LevelName, ActionStatus>>)[levelName] ??
         (governance(c, levelName)?.cell === 'auto' ? 'approved' : 'proposed'))
-  return listed === 'approved' && !enforcement ? 'proposed' : listed
 }
 
 function governance(c: Case, levelName: LevelName): Governance | null {
@@ -228,11 +223,13 @@ export function promptRoutes(id: CaseId, levelName: LevelName = 'Prüfen') {
 // - ``undo``: ``applied`` (an ``undone`` record ``already_decided``, any other
 //   ``nothing_to_undo``), then a decision ``accepted``/``auto`` (else
 //   ``nothing_to_undo``), then not touched (``undo_blocked``), then the
-//   account's latest model change (else ``nothing_to_undo``).
-// - ``touched``: ``applied`` only (else 409 ``nothing_to_undo``); the record
-//   is answered unchanged, the first report stays.
-// - ``decide``: ``proposal_only`` only for a proposal with an ``off`` class,
-//   else 409 ``not_approved`` (WP71).
+//   account's latest model change (else ``nothing_to_undo``): of all its
+//   records ``applied`` or ``undone`` with a decision ``accepted``/``auto``,
+//   the latest ``decided_at``, then the highest id.
+// - ``touched``: ``applied`` only (else 409 ``nothing_to_undo``); sets
+//   ``touched_at``, the first report's time stays.
+// - ``decide``: ``proposal_only`` only for a proposal-only record (its stored
+//   ``proposal_only``), else 409 ``not_approved`` (WP71).
 // - Any other wrong status: 409 ``already_decided`` on a decided record, else
 //   409 ``not_approved`` (the store's ``_wrong_state``).
 // Times are naive UTC with microseconds, as the server writes them.
@@ -301,8 +298,6 @@ export function modelServer(
   preview: ActionPreview = { count: 10, total: 137, ids: REFERENCE_IDS },
 ) {
   const records = new Map(views.map((v) => [v.id, v]))
-  const touched = new Map<number, string>()
-  let latest: number | null = null
   let tick = 0
   const now = () => {
     tick += 1
@@ -354,6 +349,23 @@ export function modelServer(
             status: view.status,
           },
         )
+  /** The account's last model change (store.py ``undo``): every record, not only this run's. */
+  const latest = (): number | null => {
+    const changes = [...records.values()].filter(
+      (v) =>
+        (v.status === 'applied' || v.status === 'undone') &&
+        (v.decision === 'accepted' || v.decision === 'auto'),
+    )
+    // Naive UTC times of one form compare as text: decided_at, then the id.
+    changes.sort((a, b) =>
+      (a.decided_at ?? '') === (b.decided_at ?? '')
+        ? b.id - a.id
+        : (b.decided_at ?? '') > (a.decided_at ?? '')
+          ? 1
+          : -1,
+    )
+    return changes[0]?.id ?? null
+  }
   const nothingToUndo = (view: ModelActionView, why: string): FakeError =>
     fail('nothing_to_undo', `Model action ${view.id} cannot be undone: ${why}.`, {
       id: view.id,
@@ -415,7 +427,6 @@ export function modelServer(
             data_versions: { schulen: 'v1' },
           },
         })
-        latest = view.id
         return { action, result }
       }),
     undo: (id: number) =>
@@ -425,23 +436,22 @@ export function modelServer(
           return nothingToUndo(view, `it changed nothing (${view.status})`)
         if (view.decision !== 'accepted' && view.decision !== 'auto')
           return nothingToUndo(view, 'it was applied by the user, not by the model')
-        const at = touched.get(view.id)
-        if (at)
+        if (view.touched_at)
           return fail(
             'undo_blocked',
             `Model action ${view.id} cannot be undone: the analysis was changed by hand after it.`,
-            { id: view.id, touched_at: at },
+            { id: view.id, touched_at: view.touched_at },
           )
-        if (latest !== view.id)
-          return nothingToUndo(view, `a later model change (${latest}) came after it`)
+        const last = latest()
+        if (last !== view.id)
+          return nothingToUndo(view, `a later model change (${last}) came after it`)
         return set({ ...view, status: 'undone', undone_at: now() })
       }),
     touched: (id: number) =>
       step<ModelActionView>(id, (view) => {
         if (view.status !== 'applied')
           return nothingToUndo(view, `it is no applied change (${view.status})`)
-        if (!touched.has(view.id)) touched.set(view.id, now())
-        return view
+        return set({ ...view, touched_at: view.touched_at ?? now() })
       }),
     /** ``decide`` (WP65): the hand-over of a proposal, once. */
     decide: (
@@ -455,8 +465,8 @@ export function modelServer(
         if ((body.decision === 'adjusted') !== (body.query !== undefined && body.query !== null))
           return fail('bad_request', 'adjusted, and only that, names the applied query', {}, 400)
         if (view.status !== 'proposed') return wrongState(view, 'decide')
-        // WP71: ``proposal_only`` belongs to a level with ``off`` parts (store.py ``decide``).
-        if (body.decision === 'proposal_only' && !(view.governance?.off ?? []).length)
+        // WP71: ``proposal_only`` belongs to a proposal-only record (store.py ``decide``).
+        if (body.decision === 'proposal_only' && !view.proposal_only)
           return fail(
             'not_approved',
             `Model action ${view.id} waits for approval: 'proposal_only' is for a proposal whose level has an 'off' part.`,
