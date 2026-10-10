@@ -2,7 +2,7 @@
 
 > Stand: 2026-10-10 · **bereit zur Umsetzung · Entscheidungen D1–D10 und P1–P6 getroffen, WPs geschnitten (WP62–WP84), Design liegt vor** · Bezug: [anforderungen.md](../anforderungen.md) (F-3.9, F-5.1, F-5.4–F-5.18, F-6.1–F-6.9, F-9.5, F-9.6), [etappen.md 4](../etappen.md), [plan-e2.0-e2.2.md](plan-e2.0-e2.2.md), Design: [design/e2/README.md](../design/e2/README.md) (Bildschirme M1–M16, `fixture/modus-b.json`, `screenshots/`)
 >
-> Continues with WP62. Each WP is one branch and one commit series, passes the **WP gate** (section 5) and a **code review** before it merges. Each etappe ends with an **etappe gate** that includes `make gate`, an acceptance test and a review of the integrated diff.
+> Integration branch **`ep-2.3-6`**: each WP is its own branch from it (`wpNN-…`), merged back with `--no-ff` after its gate and review; `ep-2.3-6` merges into `main` once every WP of this plan is done and the E2.6 gate is green. Continues with WP62 (merged 2026-10-10). Each WP is one branch and one commit series, passes the **WP gate** (section 5) and a **code review** before it merges. Each etappe ends with an **etappe gate** that includes `make gate`, an acceptance test and a review of the integrated diff.
 
 ## 1 Decisions (2026-10-09)
 
