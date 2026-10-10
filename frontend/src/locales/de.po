@@ -1213,6 +1213,14 @@ msgid "Details zu {field}"
 msgstr "Details zu {field}"
 
 #: src/i18n/errors.ts
+msgid "Die {limit} Anfragen pro Tag an diese Anbindung sind aufgebraucht. Die Grenze setzt ein Administrator."
+msgstr "Die {limit} Anfragen pro Tag an diese Anbindung sind aufgebraucht. Die Grenze setzt ein Administrator."
+
+#: src/i18n/errors.ts
+msgid "Die Abfrage hat {value} Bedingungen; im Modus B sind höchstens {max} möglich."
+msgstr "Die Abfrage hat {value} Bedingungen; im Modus B sind höchstens {max} möglich."
+
+#: src/i18n/errors.ts
 msgid "Die Abfrage hat zu lange gedauert und wurde abgebrochen."
 msgstr "Die Abfrage hat zu lange gedauert und wurde abgebrochen."
 
@@ -1253,6 +1261,10 @@ msgid "Die Analyse hat Änderungen, die noch nicht gespeichert sind."
 msgstr "Die Analyse hat Änderungen, die noch nicht gespeichert sind."
 
 #: src/i18n/errors.ts
+msgid "Die Analyse wurde seither von Hand geändert; die Modelländerung lässt sich nicht mehr zurücknehmen."
+msgstr "Die Analyse wurde seither von Hand geändert; die Modelländerung lässt sich nicht mehr zurücknehmen."
+
+#: src/i18n/errors.ts
 msgid "Die Anfrage hat nicht die erwartete Form."
 msgstr "Die Anfrage hat nicht die erwartete Form."
 
@@ -1267,6 +1279,14 @@ msgstr "Die Anfrage wurde abgelehnt."
 #: src/i18n/errors.ts
 msgid "Die Antwort des Modells hat nicht die erwartete Form."
 msgstr "Die Antwort des Modells hat nicht die erwartete Form."
+
+#: src/i18n/errors.ts
+msgid "Die Antwort des Modells ist keine gültige Abfrage."
+msgstr "Die Antwort des Modells ist keine gültige Abfrage."
+
+#: src/i18n/errors.ts
+msgid "Die Antwort des Modells ist nicht lesbar."
+msgstr "Die Antwort des Modells ist nicht lesbar."
 
 #: src/i18n/errors.ts
 msgid "Die Anwendung ist bereits eingerichtet."
@@ -1332,6 +1352,10 @@ msgstr "Die Datei mischt Geometrietypen; der Layer erhält einen allgemeinen Geo
 msgid "Die Datei nennt: {label}"
 msgstr "Die Datei nennt: {label}"
 
+#: src/i18n/errors.ts
+msgid "Die frühere Antwort nutzt den Layer „{layer}\", den es nicht mehr gibt."
+msgstr "Die frühere Antwort nutzt den Layer „{layer}\", den es nicht mehr gibt."
+
 #: src/session/notice.ts
 msgid "Die gespeicherte Abfrage läuft nicht mehr: {error}"
 msgstr "Die gespeicherte Abfrage läuft nicht mehr: {error}"
@@ -1392,9 +1416,21 @@ msgstr "Die voreingestellte Stufe „{name}\" kann nicht entfernt werden. Bitte 
 msgid "Die voreingestellte Stufe „{name}\" muss für Anwender wählbar sein."
 msgstr "Die voreingestellte Stufe „{name}\" muss für Anwender wählbar sein."
 
+#: src/i18n/errors.ts
+msgid "Die Werkzeugkette braucht mehr als {max} Schritte."
+msgstr "Die Werkzeugkette braucht mehr als {max} Schritte."
+
+#: src/i18n/errors.ts
+msgid "Die Werkzeugkette lief länger als {max} Sekunden und wurde angehalten."
+msgstr "Die Werkzeugkette lief länger als {max} Sekunden und wurde angehalten."
+
 #: src/auth/rules.ts
 msgid "Die Wiederholung stimmt nicht überein."
 msgstr "Die Wiederholung stimmt nicht überein."
+
+#: src/i18n/errors.ts
+msgid "Diese Abfrage lässt sich in den Bedienelementen nicht vollständig darstellen."
+msgstr "Diese Abfrage lässt sich in den Bedienelementen nicht vollständig darstellen."
 
 #: src/queries/actions.ts
 msgid "Diese Abfrage wurde mit einem unbekannten Format gespeichert."
@@ -1447,6 +1483,14 @@ msgstr "Dieser Layer hat kein passendes Feld."
 #: src/admin/LayerPage.tsx
 msgid "Dieser Layer ist für das Modell nicht sichtbar."
 msgstr "Dieser Layer ist für das Modell nicht sichtbar."
+
+#: src/i18n/errors.ts
+msgid "Dieser Teil der Modellunterstützung ist noch nicht verfügbar."
+msgstr "Dieser Teil der Modellunterstützung ist noch nicht verfügbar."
+
+#: src/i18n/errors.ts
+msgid "Dieser Vorschlag ist nicht freigegeben."
+msgstr "Dieser Vorschlag ist nicht freigegeben."
 
 #: src/i18n/errors.ts
 msgid "Dieses Format wird nicht unterstützt. Möglich sind GeoJSON, Shapefile (als ZIP), GeoPackage, CSV und Excel."
@@ -1836,6 +1880,10 @@ msgctxt "geometry"
 msgid "Fläche"
 msgstr "Fläche"
 
+#: src/i18n/errors.ts
+msgid "Frage, Layer-Steckbrief und Verlauf sind zu lang für das Modell. Bitte ohne Bezug auf frühere Antworten fragen."
+msgstr "Frage, Layer-Steckbrief und Verlauf sind zu lang für das Modell. Bitte ohne Bezug auf frühere Antworten fragen."
+
 #: src/session/SaveAsDialog.tsx
 msgid "Fragestellung, Annahmen …"
 msgstr "Fragestellung, Annahmen …"
@@ -2046,6 +2094,10 @@ msgstr "Herauszoomen"
 #: src/session/ui.ts
 msgid "heute {time}"
 msgstr "heute {time}"
+
+#: src/i18n/errors.ts
+msgid "Hier gibt es nichts zurückzunehmen."
+msgstr "Hier gibt es nichts zurückzunehmen."
 
 #: src/admin/ConnectionsPage.tsx
 msgid "high"
@@ -3242,6 +3294,10 @@ msgstr "Trennzeichen „{delimiter}\""
 #: src/admin/ProfilePage.tsx
 msgid "Typ"
 msgstr "Typ"
+
+#: src/i18n/errors.ts
+msgid "Über diesen Vorschlag ist schon entschieden."
+msgstr "Über diesen Vorschlag ist schon entschieden."
 
 #: src/admin/ImportWizard.tsx
 #: src/editor/EditorPanel.tsx

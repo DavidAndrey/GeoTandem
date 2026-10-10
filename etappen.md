@@ -111,6 +111,16 @@ menschlicher Kontrolle.
 > Verbindung (F-9.1) in `backend/tests/test_offline.py`. Offen für E2.3: Welche
 > Kontextlänge die Steckbrief-Vorschau heranzieht und wie Token geschätzt werden
 > ([docs/plan-e2.0-e2.2.md 6](docs/plan-e2.0-e2.2.md)).
+>
+> **E2.3–E2.6 entschieden und geschnitten (2026-10-10):** Plan mit
+> Arbeitspaketen WP62–WP84, Prüfschritten und Reviews in
+> [docs/plan-e2.3-e2.6.md](docs/plan-e2.3-e2.6.md), Bildschirme in
+> [design/e2/README.md](design/e2/README.md). Eine Klasse `aus` macht die
+> Antwort zum Vorschlag statt sie abzuweisen (D1); die Modellaktion ist Vorschlag
+> und Protokoll zugleich (D2). Die Datenfreigabe hat in E2.5 keine Wirkung auf
+> das, was das Modell sieht, weil kein Werkzeug Zeileninhalte liefert; das
+> Modell sieht je Schritt nur ok/Fehler, leer/nicht leer und die Trefferzahl
+> (D9, D10). E2.3 bleibt intern und wird erst mit E2.4 ausgeliefert (P1).
 
 **Vorführung E2:** Ein Anwender ohne GIS-Vorkenntnisse beantwortet die
 Fragestellung aus E1 per Prompt; ein zweiter Durchlauf zeigt einen Fall, in dem

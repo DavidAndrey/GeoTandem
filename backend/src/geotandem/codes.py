@@ -66,6 +66,22 @@ CODES: dict[str, str] = {
     "default_level_deleted": "The stored default level cannot be deleted (details.name).",
     "level_not_available": "The level does not exist or users may not choose it.",
     "class_not_allowed": "The level does not allow a part of the action (details.part).",
+    # Modus B: why the application refused a model's answer (plan E2.3, D1, D3)
+    "model_query_invalid": "The model's query does not match the schema; details.errors.",
+    "limit_exceeded": "A query on the model path exceeds details.limit (details.value > max).",
+    "not_representable": "The query cannot be shown in the controls without loss (D3).",
+    "step_limit": "The tool chain has more than details.max steps.",
+    # Modus B: the routes of model actions
+    "not_implemented": "This part of model support is not built yet (details.wp).",
+    "context_too_large": "Prompt, layer profile and context exceed the context length.",
+    "stale_reference": "The earlier answer uses a layer that is gone (details.layer).",
+    "model_unreadable": "The model's answer does not fit the answer schema.",
+    "quota_exceeded": "The connection's requests per day are used up (details.limit).",
+    "not_approved": "Only an approved action runs; this one is details.status.",
+    "already_decided": "The action is decided already (details.status).",
+    "nothing_to_undo": "The action changed nothing that could be taken back.",
+    "undo_blocked": "The analysis was changed by hand since; undo is over.",
+    "time_limit": "The tool chain ran longer than details.max_s and was stopped.",
     # Model connections: administration and choice
     "connection_name_taken": "A connection of that name exists (details.name).",
     "default_not_enabled": "The default connection must be enabled for users.",

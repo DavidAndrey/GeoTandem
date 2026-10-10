@@ -4841,6 +4841,2089 @@
           }
         }
       }
+    },
+    "/api/model/prompt": {
+      "post": {
+        "tags": [
+          "model"
+        ],
+        "summary": "Prompt",
+        "description": "Ask the model (F-5.1). Level and connection are the account's, resolved\nhere (H6, C17). Stores the action record and answers at once with it,\n``thinking``; the client polls ``GET /actions/{id}`` and may abort. No\nresult data: an ``auto`` answer arrives ``approved`` and the client\nexecutes it (D2).",
+        "operationId": "prompt_api_model_prompt_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PromptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelActionView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Not Implemented",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/model/actions/{action_id}": {
+      "get": {
+        "tags": [
+          "model"
+        ],
+        "summary": "Action",
+        "description": "One own record; polled while the model thinks and while a chain runs (P4).",
+        "operationId": "action_api_model_actions__action_id__get",
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Action Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelActionView"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Implemented"
+          }
+        }
+      }
+    },
+    "/api/model/actions/{action_id}/preview": {
+      "get": {
+        "tags": [
+          "model"
+        ],
+        "summary": "Preview",
+        "description": "Count and ids of the stored query, for the user only (P2): an interactive\nsession, no class ``off``, status unchanged.",
+        "operationId": "preview_api_model_actions__action_id__preview_get",
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Action Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionPreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Implemented"
+          }
+        }
+      }
+    },
+    "/api/model/actions/{action_id}/decide": {
+      "post": {
+        "tags": [
+          "model"
+        ],
+        "summary": "Decide",
+        "description": "Applied by hand or edited and applied through Modus A (P1, D2).",
+        "operationId": "decide_api_model_actions__action_id__decide_post",
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Action Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecideRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelActionView"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Implemented"
+          }
+        }
+      }
+    },
+    "/api/model/actions/{action_id}/approve": {
+      "post": {
+        "tags": [
+          "model"
+        ],
+        "summary": "Approve",
+        "description": "Refused with ``class_not_allowed`` when a class is ``off`` at the level as\nit was (D1, D2).",
+        "operationId": "approve_api_model_actions__action_id__approve_post",
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Action Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelActionView"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Implemented"
+          }
+        }
+      }
+    },
+    "/api/model/actions/{action_id}/reject": {
+      "post": {
+        "tags": [
+          "model"
+        ],
+        "summary": "Reject",
+        "operationId": "reject_api_model_actions__action_id__reject_post",
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Action Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelActionView"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Implemented"
+          }
+        }
+      }
+    },
+    "/api/model/actions/{action_id}/execute": {
+      "post": {
+        "tags": [
+          "model"
+        ],
+        "summary": "Execute",
+        "description": "Run the stored query, never a sent one (the route takes no body); only\n``approved``, by the user or by an ``auto`` cell (D2). The one answer with rows.",
+        "operationId": "execute_api_model_actions__action_id__execute_post",
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Action Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecuteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Implemented"
+          }
+        }
+      }
+    },
+    "/api/model/actions/{action_id}/undo": {
+      "post": {
+        "tags": [
+          "model"
+        ],
+        "summary": "Undo",
+        "description": "For the log: the client restores the analysis itself (D2).",
+        "operationId": "undo_api_model_actions__action_id__undo_post",
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Action Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelActionView"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Implemented"
+          }
+        }
+      }
+    },
+    "/api/model/actions/{action_id}/touched": {
+      "post": {
+        "tags": [
+          "model"
+        ],
+        "summary": "Touched",
+        "description": "The analysis was changed by hand after this action: undo is over (design rule 7).",
+        "operationId": "touched_api_model_actions__action_id__touched_post",
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Action Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelActionView"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Implemented"
+          }
+        }
+      }
+    },
+    "/api/model/actions/{action_id}/abort": {
+      "post": {
+        "tags": [
+          "model"
+        ],
+        "summary": "Abort",
+        "description": "While thinking: ``aborted``. A running chain stops before its next step\nand becomes ``limited`` with its last complete result adoptable (P4).",
+        "operationId": "abort_api_model_actions__action_id__abort_post",
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Action Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelActionView"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Implemented"
+          }
+        }
+      }
+    },
+    "/api/model/actions/{action_id}/plan": {
+      "patch": {
+        "tags": [
+          "model"
+        ],
+        "summary": "Edit Plan",
+        "operationId": "edit_plan_api_model_actions__action_id__plan_patch",
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Action Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanEdit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelActionView"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Implemented"
+          }
+        }
+      }
+    },
+    "/api/model/actions/{action_id}/run": {
+      "post": {
+        "tags": [
+          "model"
+        ],
+        "summary": "Run",
+        "operationId": "run_api_model_actions__action_id__run_post",
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Action Id"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelActionView"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Implemented"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Gateway Timeout"
+          }
+        }
+      }
+    },
+    "/api/model/actions/{action_id}/adopt": {
+      "post": {
+        "tags": [
+          "model"
+        ],
+        "summary": "Adopt",
+        "description": "A ``done`` or ``limited`` chain's result becomes the analysis (design \"Kette übernehmen\").",
+        "operationId": "adopt_api_model_actions__action_id__adopt_post",
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Action Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecuteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Implemented"
+          }
+        }
+      }
+    },
+    "/api/model/actions/{action_id}/compare": {
+      "post": {
+        "tags": [
+          "model"
+        ],
+        "summary": "Compare",
+        "description": "Ask again with the other approach (design M10.1): a new action with\n``compare_of``, polled like any other.",
+        "operationId": "compare_api_model_actions__action_id__compare_post",
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Action Id"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelActionView"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Implemented"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Gateway Timeout"
+          }
+        }
+      }
+    },
+    "/api/model/actions/{action_id}/comparison": {
+      "get": {
+        "tags": [
+          "model"
+        ],
+        "summary": "Comparison",
+        "description": "Once both are done: the difference, by feature ids (design M10.2, M10.3).",
+        "operationId": "comparison_api_model_actions__action_id__comparison_get",
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Action Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Comparison"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Implemented"
+          }
+        }
+      }
+    },
+    "/api/model/my-actions": {
+      "get": {
+        "tags": [
+          "model"
+        ],
+        "summary": "My Actions",
+        "description": "The account's own entries (D4, design M16.3).",
+        "operationId": "my_actions_api_model_my_actions_get",
+        "parameters": [
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelActionPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Implemented"
+          }
+        }
+      }
+    },
+    "/api/admin/model-actions": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Actions",
+        "operationId": "actions_api_admin_model_actions_get",
+        "parameters": [
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          },
+          {
+            "name": "level_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Level Id"
+            }
+          },
+          {
+            "name": "connection_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Connection Id"
+            }
+          },
+          {
+            "name": "approach",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "direct",
+                    "chain"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Approach"
+            }
+          },
+          {
+            "name": "account",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Account"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelActionPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Implemented"
+          }
+        }
+      }
+    },
+    "/api/admin/model-actions/key-figures": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Key Figures",
+        "description": "Plan section 2, computed over the action table for the filters.",
+        "operationId": "key_figures_api_admin_model_actions_key_figures_get",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          },
+          {
+            "name": "level_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Level Id"
+            }
+          },
+          {
+            "name": "connection_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Connection Id"
+            }
+          },
+          {
+            "name": "approach",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "direct",
+                    "chain"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Approach"
+            }
+          },
+          {
+            "name": "account",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Account"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KeyFigures"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Implemented"
+          }
+        }
+      }
+    },
+    "/api/admin/model-actions/export.csv": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Export Csv",
+        "description": "CSV of the filtered log; cells safe against formula injection.",
+        "operationId": "export_csv_api_admin_model_actions_export_csv_get",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          },
+          {
+            "name": "level_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Level Id"
+            }
+          },
+          {
+            "name": "connection_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Connection Id"
+            }
+          },
+          {
+            "name": "approach",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "direct",
+                    "chain"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Approach"
+            }
+          },
+          {
+            "name": "account",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Account"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Implemented"
+          }
+        }
+      }
+    },
+    "/api/admin/model-actions/{action_id}": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Action",
+        "operationId": "action_api_admin_model_actions__action_id__get",
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Action Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelActionView"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Implemented"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4953,6 +7036,33 @@
         },
         "type": "object",
         "title": "AccountUpdate"
+      },
+      "ActionPreview": {
+        "properties": {
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "count",
+          "total",
+          "ids"
+        ],
+        "title": "ActionPreview",
+        "description": "The user's preview before approval (P2): never shown to the model."
       },
       "AdminLayerInfo": {
         "properties": {
@@ -5275,6 +7385,38 @@
           "args"
         ],
         "title": "And"
+      },
+      "Assumption": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 600,
+            "minLength": 1,
+            "title": "Text"
+          },
+          "condition": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Condition",
+            "description": "Path of indexes into the query's where tree; lets 'ändern' open it."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "Assumption",
+        "description": "One assumption, shown with ≈ (F-5.12, design M2, M12.1)."
       },
       "AttributeInfo": {
         "properties": {
@@ -5685,6 +7827,55 @@
         "title": "Buffer",
         "description": "Replace each source geometry by its buffer (F-4.5)."
       },
+      "CannotAnswer": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "cannot_answer",
+            "title": "Kind"
+          },
+          "explanation": {
+            "type": "string",
+            "maxLength": 600,
+            "minLength": 1,
+            "title": "Explanation"
+          },
+          "missing": {
+            "items": {
+              "type": "string",
+              "maxLength": 600,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Missing",
+            "default": []
+          },
+          "other_approach": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "direct",
+                  "chain"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Other Approach"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "explanation"
+        ],
+        "title": "CannotAnswer",
+        "description": "Nothing to propose (design M13). With ``other_approach`` the answer offers\nto try the other way of working (D6); without, it says what is missing."
+      },
       "Capabilities": {
         "properties": {
           "supported": {
@@ -5993,6 +8184,41 @@
         "title": "Choice",
         "description": "Only the fields sent change; ``null`` returns to the default."
       },
+      "Clarification": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "clarification",
+            "title": "Kind"
+          },
+          "question": {
+            "type": "string",
+            "maxLength": 600,
+            "minLength": 1,
+            "title": "Question"
+          },
+          "options": {
+            "items": {
+              "type": "string",
+              "maxLength": 80,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 4,
+            "minItems": 2,
+            "title": "Options"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "question",
+          "options"
+        ],
+        "title": "Clarification",
+        "description": "Only when no sensible assumption exists (D5, design M12.2)."
+      },
       "Classified": {
         "properties": {
           "kind": {
@@ -6143,6 +8369,60 @@
         ],
         "title": "Compare",
         "description": "Attribute comparison with a constant (F-4.2)."
+      },
+      "Comparison": {
+        "properties": {
+          "left_action_id": {
+            "type": "integer",
+            "title": "Left Action Id"
+          },
+          "right_action_id": {
+            "type": "integer",
+            "title": "Right Action Id"
+          },
+          "left": {
+            "$ref": "#/components/schemas/ResultStamp"
+          },
+          "right": {
+            "$ref": "#/components/schemas/ResultStamp"
+          },
+          "only_left": {
+            "items": {
+              "$ref": "#/components/schemas/FeatureRef"
+            },
+            "type": "array",
+            "title": "Only Left"
+          },
+          "only_right": {
+            "items": {
+              "$ref": "#/components/schemas/FeatureRef"
+            },
+            "type": "array",
+            "title": "Only Right"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "left_action_id",
+          "right_action_id",
+          "left",
+          "right",
+          "only_left",
+          "only_right"
+        ],
+        "title": "Comparison",
+        "description": "The two approaches side by side (design M10); the difference is the\napplication's, computed from feature ids, never the model's."
       },
       "Conditions": {
         "properties": {
@@ -6629,6 +8909,43 @@
         "title": "ConnectionPatch",
         "description": "Only the fields sent change. ``api_key: null`` removes the key."
       },
+      "ConnectionSnapshot": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "host": {
+            "type": "string",
+            "title": "Host"
+          },
+          "locality": {
+            "type": "string",
+            "enum": [
+              "local",
+              "external"
+            ],
+            "title": "Locality"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "model",
+          "host",
+          "locality"
+        ],
+        "title": "ConnectionSnapshot"
+      },
       "ConnectionWrite": {
         "properties": {
           "base_url": {
@@ -6841,6 +9158,40 @@
           "password"
         ],
         "title": "Credentials"
+      },
+      "DecideRequest": {
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "proposal_only",
+              "adjusted"
+            ],
+            "title": "Decision"
+          },
+          "applied_by_hand": {
+            "type": "boolean",
+            "title": "Applied By Hand",
+            "default": false
+          },
+          "query": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QueryObject-Input"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "decision"
+        ],
+        "title": "DecideRequest",
+        "description": "The hand-over cases (P1, D2): applied by hand, or edited and applied via Modus A."
       },
       "DistanceColumn-Input": {
         "properties": {
@@ -7223,6 +9574,23 @@
         ],
         "title": "ErrorBody"
       },
+      "ExecuteResponse": {
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/ModelActionView"
+          },
+          "result": {
+            "$ref": "#/components/schemas/QueryResult"
+          }
+        },
+        "type": "object",
+        "required": [
+          "action",
+          "result"
+        ],
+        "title": "ExecuteResponse",
+        "description": "The only answer that carries rows: to the user, after ``execute`` or\n``adopt`` (D2). The record keeps the stamp, not the features."
+      },
       "Feature": {
         "properties": {
           "type": {
@@ -7260,6 +9628,31 @@
           "geometry"
         ],
         "title": "Feature"
+      },
+      "FeatureRef": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "FeatureRef"
       },
       "FieldDecision": {
         "properties": {
@@ -7416,6 +9809,43 @@
         },
         "type": "object",
         "title": "GeometryReference"
+      },
+      "Governance": {
+        "properties": {
+          "classes": {
+            "items": {
+              "$ref": "#/components/schemas/OpClass"
+            },
+            "type": "array",
+            "title": "Classes"
+          },
+          "cell": {
+            "$ref": "#/components/schemas/CellMode"
+          },
+          "needs_approval": {
+            "items": {
+              "$ref": "#/components/schemas/OpClass"
+            },
+            "type": "array",
+            "title": "Needs Approval"
+          },
+          "off": {
+            "items": {
+              "$ref": "#/components/schemas/OpClass"
+            },
+            "type": "array",
+            "title": "Off"
+          }
+        },
+        "type": "object",
+        "required": [
+          "classes",
+          "cell",
+          "needs_approval",
+          "off"
+        ],
+        "title": "Governance",
+        "description": "What the level decides for this answer (H4, D1, design M6.3, M7.1)."
       },
       "GraduatedSize": {
         "properties": {
@@ -7905,6 +10335,76 @@
         "title": "IsNull",
         "description": "Attribute has no value. Combine with ``not`` for 'has a value'."
       },
+      "KeyFigures": {
+        "properties": {
+          "proposals": {
+            "type": "integer",
+            "title": "Proposals"
+          },
+          "accepted": {
+            "type": "integer",
+            "title": "Accepted"
+          },
+          "adjusted": {
+            "type": "integer",
+            "title": "Adjusted"
+          },
+          "rejected": {
+            "type": "integer",
+            "title": "Rejected"
+          },
+          "superseded": {
+            "type": "integer",
+            "title": "Superseded"
+          },
+          "proposal_only": {
+            "type": "integer",
+            "title": "Proposal Only"
+          },
+          "auto": {
+            "type": "integer",
+            "title": "Auto"
+          },
+          "undone": {
+            "type": "integer",
+            "title": "Undone"
+          },
+          "undone_after_approval": {
+            "type": "integer",
+            "title": "Undone After Approval"
+          },
+          "acceptance_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Acceptance Rate"
+          },
+          "not_counted": {
+            "$ref": "#/components/schemas/NotCounted"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proposals",
+          "accepted",
+          "adjusted",
+          "rejected",
+          "superseded",
+          "proposal_only",
+          "auto",
+          "undone",
+          "undone_after_approval",
+          "acceptance_rate",
+          "not_counted"
+        ],
+        "title": "KeyFigures",
+        "description": "Plan section 2, for the filters given (design M16.1)."
+      },
       "KeyProposal": {
         "properties": {
           "column": {
@@ -8336,6 +10836,41 @@
         "title": "LevelSet",
         "description": "Every level in display order; saved as a whole, so its rules hold together (H7)."
       },
+      "LevelSnapshot": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "matrix": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CellMode"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/OpClass"
+            },
+            "type": "object",
+            "title": "Matrix"
+          },
+          "prompt_hash": {
+            "type": "string",
+            "title": "Prompt Hash"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "matrix",
+          "prompt_hash"
+        ],
+        "title": "LevelSnapshot",
+        "description": "The level as it was when the prompt was sent (H7, M7.3)."
+      },
       "MapConfig": {
         "properties": {
           "basemap": {
@@ -8421,6 +10956,561 @@
         ],
         "title": "Message",
         "description": "A finding about the source; ``code`` is stable, ``message`` explains it."
+      },
+      "ModelActionPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ModelActionSummary"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "ModelActionPage"
+      },
+      "ModelActionSummary": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "account": {
+            "type": "string",
+            "title": "Account"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "prompt": {
+            "type": "string",
+            "title": "Prompt"
+          },
+          "approach": {
+            "type": "string",
+            "enum": [
+              "direct",
+              "chain"
+            ],
+            "title": "Approach"
+          },
+          "level_name": {
+            "type": "string",
+            "title": "Level Name"
+          },
+          "connection_name": {
+            "type": "string",
+            "title": "Connection Name"
+          },
+          "locality": {
+            "type": "string",
+            "enum": [
+              "local",
+              "external"
+            ],
+            "title": "Locality"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "thinking",
+              "refused",
+              "answered",
+              "proposed",
+              "approved",
+              "running",
+              "done",
+              "limited",
+              "applied",
+              "rejected",
+              "superseded",
+              "undone",
+              "aborted",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "decision": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "accepted",
+                  "adjusted",
+                  "rejected",
+                  "superseded",
+                  "auto",
+                  "proposal_only",
+                  "aborted",
+                  "failed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision"
+          },
+          "hits": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hits"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "account",
+          "created_at",
+          "prompt",
+          "approach",
+          "level_name",
+          "connection_name",
+          "locality",
+          "status",
+          "decision",
+          "hits"
+        ],
+        "title": "ModelActionSummary",
+        "description": "A row of the log (design M16.1, M16.3)."
+      },
+      "ModelActionView": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "account": {
+            "type": "string",
+            "title": "Account"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "prompt": {
+            "type": "string",
+            "title": "Prompt"
+          },
+          "approach": {
+            "type": "string",
+            "enum": [
+              "direct",
+              "chain"
+            ],
+            "title": "Approach"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "thinking",
+              "refused",
+              "answered",
+              "proposed",
+              "approved",
+              "running",
+              "done",
+              "limited",
+              "applied",
+              "rejected",
+              "superseded",
+              "undone",
+              "aborted",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "decision": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "accepted",
+                  "adjusted",
+                  "rejected",
+                  "superseded",
+                  "auto",
+                  "proposal_only",
+                  "aborted",
+                  "failed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision"
+          },
+          "reject_reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "misunderstood",
+                  "wrong_layer",
+                  "wrong_value",
+                  "other"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reject Reason"
+          },
+          "applied_by_hand": {
+            "type": "boolean",
+            "title": "Applied By Hand",
+            "default": false
+          },
+          "undone_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Undone At"
+          },
+          "previewed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previewed At"
+          },
+          "parent_action_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Action Id"
+          },
+          "reference": {
+            "type": "string",
+            "enum": [
+              "none",
+              "last_answer",
+              "hand_edited"
+            ],
+            "title": "Reference",
+            "default": "none"
+          },
+          "compare_of": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compare Of"
+          },
+          "level": {
+            "$ref": "#/components/schemas/LevelSnapshot"
+          },
+          "connection": {
+            "$ref": "#/components/schemas/ConnectionSnapshot"
+          },
+          "profile_hash": {
+            "type": "string",
+            "title": "Profile Hash"
+          },
+          "prompt_hash": {
+            "type": "string",
+            "title": "Prompt Hash"
+          },
+          "answer": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/QueryAnswer"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Clarification"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CannotAnswer"
+                  },
+                  {
+                    "$ref": "#/components/schemas/PlanAnswer"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "kind",
+                  "mapping": {
+                    "cannot_answer": "#/components/schemas/CannotAnswer",
+                    "clarification": "#/components/schemas/Clarification",
+                    "plan": "#/components/schemas/PlanAnswer",
+                    "query": "#/components/schemas/QueryAnswer"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answer"
+          },
+          "query": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QueryObject-Output"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "applied_query": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QueryObject-Output"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "governance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Governance"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "refusal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Refusal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/StepView"
+            },
+            "type": "array",
+            "title": "Steps",
+            "default": []
+          },
+          "replans": {
+            "type": "integer",
+            "title": "Replans",
+            "default": 0
+          },
+          "stop_reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "step_limit",
+                  "time_limit",
+                  "result_too_large",
+                  "aborted",
+                  "interrupted"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop Reason"
+          },
+          "stamp": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResultStamp"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "account",
+          "created_at",
+          "decided_at",
+          "prompt",
+          "approach",
+          "status",
+          "decision",
+          "level",
+          "connection",
+          "profile_hash",
+          "prompt_hash"
+        ],
+        "title": "ModelActionView",
+        "description": "One action record as its owner or an administrator sees it (D4). Never\nrows: those leave only in ``ExecuteResponse``."
+      },
+      "ModelView": {
+        "properties": {
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "error"
+            ],
+            "title": "Outcome"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "invalid_query",
+                  "unknown_layer",
+                  "unknown_attribute",
+                  "unsupported_operation",
+                  "result_too_large",
+                  "query_timeout",
+                  "query_too_complex",
+                  "invalid_query_geometry",
+                  "name_clash",
+                  "key_type_mismatch",
+                  "attribute_not_text",
+                  "attribute_not_numeric",
+                  "wrong_value_type"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "unknown_layer",
+                  "unknown_attribute",
+                  "model_query_invalid",
+                  "limit_exceeded",
+                  "not_representable",
+                  "query_too_complex",
+                  "wrong_value_type",
+                  "invalid_query",
+                  "step_limit"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
+          "part": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,62}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Part"
+          },
+          "empty": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Empty"
+          },
+          "count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Count"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "outcome"
+        ],
+        "title": "ModelView",
+        "description": "What the model learns of a step (D9). Every field is a flag, a count, a\ncode or a name taken from the model's own query: nothing here can hold a\nrow, a geometry, an extent or an attribute value (D10)."
       },
       "NearFeature": {
         "properties": {
@@ -8604,6 +11694,29 @@
           "arg"
         ],
         "title": "Not"
+      },
+      "NotCounted": {
+        "properties": {
+          "refused": {
+            "type": "integer",
+            "title": "Refused"
+          },
+          "aborted": {
+            "type": "integer",
+            "title": "Aborted"
+          },
+          "failed": {
+            "type": "integer",
+            "title": "Failed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "refused",
+          "aborted",
+          "failed"
+        ],
+        "title": "NotCounted"
       },
       "Op": {
         "type": "string",
@@ -8804,6 +11917,100 @@
           "new"
         ],
         "title": "PasswordChange"
+      },
+      "PlanAnswer": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "plan",
+            "title": "Kind"
+          },
+          "explanation": {
+            "type": "string",
+            "maxLength": 600,
+            "minLength": 1,
+            "title": "Explanation"
+          },
+          "assumptions": {
+            "items": {
+              "$ref": "#/components/schemas/Assumption"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Assumptions",
+            "default": []
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/PlannedStep"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Steps"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "explanation",
+          "steps"
+        ],
+        "title": "PlanAnswer",
+        "description": "A tool chain, planned in one call as structured output (P4)."
+      },
+      "PlanEdit": {
+        "properties": {
+          "change": {
+            "items": {
+              "$ref": "#/components/schemas/StepEdit"
+            },
+            "type": "array",
+            "title": "Change",
+            "default": []
+          },
+          "remove": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Remove",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "PlanEdit",
+        "description": "Change values or remove steps; never add one (design decision 17)."
+      },
+      "PlannedStep": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 600,
+            "minLength": 1,
+            "title": "Text"
+          },
+          "tool": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Tool"
+          },
+          "arguments": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Arguments"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text",
+          "tool",
+          "arguments"
+        ],
+        "title": "PlannedStep"
       },
       "Preview": {
         "properties": {
@@ -9052,6 +12259,90 @@
           "over_budget"
         ],
         "title": "ProfilePreview"
+      },
+      "PromptRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Text"
+          },
+          "approach": {
+            "type": "string",
+            "enum": [
+              "direct",
+              "chain"
+            ],
+            "title": "Approach",
+            "default": "direct"
+          },
+          "parent_action_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Action Id"
+          },
+          "analysis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QueryObject-Input"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "PromptRequest",
+        "description": "A prompt. No earlier turns: the server builds them from the parent chain (P6)."
+      },
+      "QueryAnswer": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "query",
+            "title": "Kind"
+          },
+          "explanation": {
+            "type": "string",
+            "maxLength": 600,
+            "minLength": 1,
+            "title": "Explanation"
+          },
+          "assumptions": {
+            "items": {
+              "$ref": "#/components/schemas/Assumption"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Assumptions",
+            "default": []
+          },
+          "query": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Query"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "explanation",
+          "query"
+        ],
+        "title": "QueryAnswer"
       },
       "QueryObject-Input": {
         "properties": {
@@ -9585,6 +12876,65 @@
         "type": "object",
         "title": "ReadOptions",
         "description": "How to read a file; every field is detected when left empty."
+      },
+      "Refusal": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "unknown_layer",
+              "unknown_attribute",
+              "model_query_invalid",
+              "limit_exceeded",
+              "not_representable",
+              "query_too_complex",
+              "wrong_value_type",
+              "invalid_query",
+              "step_limit"
+            ],
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "details": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Details",
+            "default": {}
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "Refusal"
+      },
+      "RejectRequest": {
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "misunderstood",
+                  "wrong_layer",
+                  "wrong_value",
+                  "other"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "RejectRequest"
       },
       "RejectedRow": {
         "properties": {
@@ -10648,6 +13998,140 @@
           "ms"
         ],
         "title": "Step"
+      },
+      "StepEdit": {
+        "properties": {
+          "position": {
+            "type": "integer",
+            "title": "Position"
+          },
+          "arguments": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Arguments"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "position",
+          "arguments"
+        ],
+        "title": "StepEdit"
+      },
+      "StepView": {
+        "properties": {
+          "position": {
+            "type": "integer",
+            "title": "Position"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "tool": {
+            "type": "string",
+            "title": "Tool"
+          },
+          "arguments": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Arguments"
+          },
+          "classes": {
+            "items": {
+              "$ref": "#/components/schemas/OpClass"
+            },
+            "type": "array",
+            "title": "Classes"
+          },
+          "cell": {
+            "$ref": "#/components/schemas/CellMode"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "planned",
+              "waiting",
+              "running",
+              "ok",
+              "error",
+              "empty",
+              "skipped",
+              "removed"
+            ],
+            "title": "Status"
+          },
+          "revised": {
+            "type": "boolean",
+            "title": "Revised",
+            "default": false
+          },
+          "hits": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hits"
+          },
+          "stamp": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResultStamp"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "layer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Layer"
+          },
+          "model_view": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "position",
+          "text",
+          "tool",
+          "arguments",
+          "classes",
+          "cell",
+          "status"
+        ],
+        "title": "StepView"
       },
       "SystemStatus": {
         "properties": {

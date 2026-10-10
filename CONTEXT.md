@@ -107,8 +107,9 @@ Bauabschnitt.
 Modell im Modus B ohne Rückfrage tun darf (HITL, [vision.md 8.1](vision.md)).
 Der Administrator legt 1 bis 4 Stufen fest, jede mit Bezeichnung,
 Beschreibung, System-Prompt und je Operationsklasse einer Festlegung: `off`
-(abgewiesen), `approve` (Freigabedialog vor der Ausführung) oder `auto` (sofort,
-sichtbar und rücknehmbar). Die Reihenfolge dient nur der Anzeige. Genau eine
+(das Modell darf nur vorschlagen, der Anwender übernimmt von Hand), `approve`
+(Freigabe vor der Ausführung, also bevor sich die Analyse ändert) oder `auto`
+(sofort, sichtbar und rücknehmbar). Die Reihenfolge dient nur der Anzeige. Genau eine
 wählbare Stufe ist voreingestellt; verschwindet die gewählte Stufe eines Kontos
 oder wird sie unwählbar, gilt die voreingestellte. Nicht „Modus": das Wort
 gehört Modus A / Modus B.
@@ -136,7 +137,10 @@ sichtbaren Hinweis mit ihrem Host (F-9.4).
 F-9.3). Ohne sie erhält das Modell nur Metadaten, Schema und seine eigenen
 Abfrageobjekte; der Prompt-Text selbst geht immer hinaus. Voreingestellt an für
 lokale, aus für externe Anbindungen; für externe nur mit ausdrücklicher
-Bestätigung einzuschalten.
+Bestätigung einzuschalten. Die **Trefferzahl** einer vom Modell gebauten Abfrage
+ist kein Inhalt, sondern Metadatum des Ergebnisses: Das Modell sieht je Schritt
+nur ok/Fehler, leer/nicht leer und diese Zahl, nie Zeilen, Geometrien,
+Ausdehnungen oder Werte (plan E2.3–E2.6, D9).
 
 **Layer-Steckbrief** (`profile`, F-2.9) — Was das Modell über die Layer weiss:
 **nur Metadaten** — Namen, Titel, Beschreibung, Art, Geometrietyp und je
@@ -146,6 +150,35 @@ keine Ausdehnung, keine vorkommenden Werte; eine vom Administrator bestätigte
 Codeliste gilt als Metadatum. Beschränkt auf die Layer, die das Konto sieht und
 die für das Modell freigegeben sind; kanonisch geordnet, versioniert und per
 SHA-256 gehasht.
+
+**Modellaktion** (`model_action`) — Eine Anfrage an das Modell mit allem, was
+daraus wurde: Prompt, Stufe und Anbindung *wie damals*, Steckbrief-Hash, die
+Antwort, das geprüfte Abfrageobjekt oder die Schritte einer Werkzeugkette, der
+Stand und die **Entscheidung**. Sie ist zugleich Vorschlag und Protokolleintrag
+(F-6.8): Was ausgeführt wird, ist stets das gespeicherte Abfrageobjekt, nie ein
+vom Client geschicktes. Anwender sehen ihre eigenen, Administratoren alle.
+
+**Vorschlag** — Eine Antwort des Modells, die noch nicht die Analyse ist. Erst
+Annehmen, automatische Anwendung (`auto`) oder Übernahme von Hand machen sie
+dazu. Eine **Abweisung** ist kein Vorschlag: Die Anwendung, nicht das Modell,
+lehnt eine ungültige, zu grosse oder nicht darstellbare Abfrage ab; sie bleibt
+einsehbar, aber nicht anwendbar.
+
+**Entscheidung** — Wie eine Modellaktion endet, genau einmal: angenommen,
+angepasst, abgelehnt (mit optionalem Stichwort), übergangen, automatisch
+angewendet (allenfalls zurückgenommen), nur Vorschlag, abgebrochen oder
+fehlgeschlagen. Daraus die **Annahmequote** = (angenommen + angepasst) /
+(angenommen + angepasst + abgelehnt + übergangen).
+
+**Herkunftsmarke** „Modell" — Kennzeichnet je Bedingung, dass sie vom Modell
+stammt. Fällt weg, sobald Feld, Operator oder Wert von Hand geändert wird; nur
+im offenen Arbeitsplatz, nie gespeichert.
+
+**Dialogverlauf** — Die Folge von Modellaktionen, die aufeinander Bezug nehmen
+(jede kennt ihre vorige, `parent_action_id`). Der Server baut daraus den Kontext
+eines Folgeprompts (höchstens 6 frühere Antworten); der Client schickt nur den
+Bezug und die aktuelle Analyse. Im Arbeitsplatz flüchtig: weder Teil der Sitzung
+noch nach dem Neuladen wieder da; die dauerhafte Spur ist das Protokoll.
 
 **Sitzung** (`analysis_session`) — Ein benannt gespeicherter Analysezustand
 (F-4.10), ab E1.7: der Zustand als versioniertes JSON (Layer, Bedingungen,

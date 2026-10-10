@@ -1,0 +1,1058 @@
+{
+  "_about": "Contract fixture of Modus B (plan E2.3-E2.6, WP62). One truth for backend tests (FakeLLMClient scripts), frontend tests (fake API) and e2e (model stub). Cases follow design/e2 (screen codes M1-M16) but use the real sample data: the E1 reference question answers 10 of 137 schools (e2e/fixtures/reference-question.json; gemeinden_steuern is imported by the test). 'answer' is what the model returns (D7), serialised to JSON as the completion text; 'raw' replaces it where the model's text is not that JSON. 'expect' is what the application must make of it: 'status' the record's status once the model has answered (an auto answer is 'approved' and the client executes it, D2), or 'http' and 'error_code' where the request is refused before any model call and no record is written. 'setup' names state a test arranges first. Numbers marked null are pinned by the WP that first runs them.",
+  "version": 1,
+  "levels": [
+    {
+      "name": "Assistenz",
+      "selectable": true,
+      "matrix": {
+        "catalog": "off",
+        "query": "off",
+        "spatial": "off",
+        "derive": "off",
+        "display": "off"
+      }
+    },
+    {
+      "name": "Prüfen",
+      "selectable": true,
+      "is_default": true,
+      "matrix": {
+        "catalog": "approve",
+        "query": "approve",
+        "spatial": "approve",
+        "derive": "approve",
+        "display": "approve"
+      }
+    },
+    {
+      "name": "Teilautonom",
+      "selectable": true,
+      "_note": "set up by the administrator for design M6.3, M8.2, M9.2",
+      "matrix": {
+        "catalog": "auto",
+        "query": "auto",
+        "spatial": "auto",
+        "derive": "approve",
+        "display": "auto"
+      }
+    },
+    {
+      "name": "Automatisch",
+      "selectable": false,
+      "matrix": {
+        "catalog": "auto",
+        "query": "auto",
+        "spatial": "auto",
+        "derive": "auto",
+        "display": "auto"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "name": "Lokales Modell",
+      "base_url": "http://host.docker.internal:11434/v1",
+      "model": "qwen3:8b",
+      "locality": "local"
+    },
+    {
+      "name": "Extern",
+      "base_url": "https://api.anbieter.example/v1",
+      "model": "anbieter-large",
+      "locality": "external",
+      "request_limit_per_day": 50,
+      "request_limit_enabled": true
+    }
+  ],
+  "limits": {
+    "conditions": 8,
+    "steps": 8,
+    "replans": 2,
+    "model_call_s": 120,
+    "chain_s": 300,
+    "turns": 6,
+    "max_features": 10000
+  },
+  "cases": [
+    {
+      "id": "reference",
+      "screens": ["M1.1", "M2.1", "M2.2", "M5.1", "M15.1"],
+      "approach": "direct",
+      "prompt": "Welche Primarschulen liegen nahe an Kantonsstrassen, in Gemeinden mit hoher Steueranlage?",
+      "answer": {
+        "kind": "query",
+        "explanation": "Ich habe die Frage als Suche nach Primarschulen verstanden, die nahe einer Kantonsstrasse der Kategorie B und in einer Gemeinde mit hoher Steueranlage liegen.",
+        "assumptions": [
+          {
+            "text": "„nahe“ = höchstens 500 m",
+            "condition": [1]
+          },
+          {
+            "text": "„Kantonsstrassen“ = Strassenklasse Kantonsstrasse B",
+            "condition": [1]
+          },
+          {
+            "text": "„hohe Steueranlage“ = über 1.6",
+            "condition": [2]
+          }
+        ],
+        "query": {
+          "schema_version": "2",
+          "source": "schulen",
+          "output": "map",
+          "where": {
+            "op": "and",
+            "args": [
+              {
+                "op": "in",
+                "attr": "typ",
+                "values": ["primar"]
+              },
+              {
+                "op": "related",
+                "layer": "strassen",
+                "predicate": "dwithin",
+                "distance_m": 500,
+                "where": {
+                  "op": "compare",
+                  "attr": "klasse",
+                  "cmp": "eq",
+                  "value": "kantonsstrasse_b"
+                }
+              },
+              {
+                "op": "related",
+                "layer": "gemeinden_steuern",
+                "predicate": "within",
+                "where": {
+                  "op": "compare",
+                  "attr": "steueranlage",
+                  "cmp": "gt",
+                  "value": 1.6
+                }
+              }
+            ]
+          }
+        }
+      },
+      "expect": {
+        "status": {
+          "Assistenz": "proposed",
+          "Prüfen": "proposed",
+          "Teilautonom": "approved",
+          "Automatisch": "approved"
+        },
+        "classes": ["query", "spatial"],
+        "query_equals": "e2e/fixtures/reference-question.json",
+        "hits": 10,
+        "total": 137,
+        "decision_after_execute": {
+          "Teilautonom": "auto",
+          "Automatisch": "auto"
+        }
+      }
+    },
+    {
+      "id": "follow_up",
+      "screens": ["M11.1", "M11.2"],
+      "approach": "direct",
+      "parent": "reference",
+      "prompt": "Welche davon haben mehr als einen Standort?",
+      "answer": {
+        "kind": "query",
+        "explanation": "Ich habe die bisherige Auswahl auf Schulen mit mehr als einem Standort eingeschränkt.",
+        "assumptions": [],
+        "query": {
+          "schema_version": "2",
+          "source": "schulen",
+          "output": "map",
+          "where": {
+            "op": "and",
+            "args": [
+              {
+                "op": "in",
+                "attr": "typ",
+                "values": ["primar"]
+              },
+              {
+                "op": "related",
+                "layer": "strassen",
+                "predicate": "dwithin",
+                "distance_m": 500,
+                "where": {
+                  "op": "compare",
+                  "attr": "klasse",
+                  "cmp": "eq",
+                  "value": "kantonsstrasse_b"
+                }
+              },
+              {
+                "op": "related",
+                "layer": "gemeinden_steuern",
+                "predicate": "within",
+                "where": {
+                  "op": "compare",
+                  "attr": "steueranlage",
+                  "cmp": "gt",
+                  "value": 1.6
+                }
+              },
+              {
+                "op": "compare",
+                "attr": "standorte",
+                "cmp": "gt",
+                "value": 1
+              }
+            ]
+          }
+        }
+      },
+      "expect": {
+        "status": {
+          "Prüfen": "proposed"
+        },
+        "reference": "last_answer",
+        "classes": ["query", "spatial"],
+        "hits": null
+      },
+      "analysis": {
+        "schema_version": "2",
+        "source": "schulen",
+        "output": "map",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "in",
+              "attr": "typ",
+              "values": ["primar"]
+            },
+            {
+              "op": "related",
+              "layer": "strassen",
+              "predicate": "dwithin",
+              "distance_m": 500,
+              "where": {
+                "op": "compare",
+                "attr": "klasse",
+                "cmp": "eq",
+                "value": "kantonsstrasse_b"
+              }
+            },
+            {
+              "op": "related",
+              "layer": "gemeinden_steuern",
+              "predicate": "within",
+              "where": {
+                "op": "compare",
+                "attr": "steueranlage",
+                "cmp": "gt",
+                "value": 1.6
+              }
+            }
+          ]
+        }
+      },
+      "_note": "analysis equals the parent's query, so the server derives last_answer (P6)"
+    },
+    {
+      "id": "follow_up_hand_edited",
+      "screens": ["M15.2", "M11.2"],
+      "approach": "direct",
+      "parent": "reference",
+      "prompt": "Welche davon haben mehr als einen Standort?",
+      "answer": {
+        "kind": "query",
+        "explanation": "Ich habe die bisherige Auswahl auf Schulen mit mehr als einem Standort eingeschränkt.",
+        "assumptions": [],
+        "query": {
+          "schema_version": "2",
+          "source": "schulen",
+          "output": "map",
+          "where": {
+            "op": "and",
+            "args": [
+              {
+                "op": "in",
+                "attr": "typ",
+                "values": ["primar"]
+              },
+              {
+                "op": "related",
+                "layer": "strassen",
+                "predicate": "dwithin",
+                "distance_m": 300,
+                "where": {
+                  "op": "compare",
+                  "attr": "klasse",
+                  "cmp": "eq",
+                  "value": "kantonsstrasse_b"
+                }
+              },
+              {
+                "op": "related",
+                "layer": "gemeinden_steuern",
+                "predicate": "within",
+                "where": {
+                  "op": "compare",
+                  "attr": "steueranlage",
+                  "cmp": "gt",
+                  "value": 1.6
+                }
+              },
+              {
+                "op": "compare",
+                "attr": "standorte",
+                "cmp": "gt",
+                "value": 1
+              }
+            ]
+          }
+        }
+      },
+      "expect": {
+        "status": {
+          "Prüfen": "proposed"
+        },
+        "reference": "hand_edited",
+        "classes": ["query", "spatial"],
+        "hits": null
+      },
+      "analysis": {
+        "schema_version": "2",
+        "source": "schulen",
+        "output": "map",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "in",
+              "attr": "typ",
+              "values": ["primar"]
+            },
+            {
+              "op": "related",
+              "layer": "strassen",
+              "predicate": "dwithin",
+              "distance_m": 300,
+              "where": {
+                "op": "compare",
+                "attr": "klasse",
+                "cmp": "eq",
+                "value": "kantonsstrasse_b"
+              }
+            },
+            {
+              "op": "related",
+              "layer": "gemeinden_steuern",
+              "predicate": "within",
+              "where": {
+                "op": "compare",
+                "attr": "steueranlage",
+                "cmp": "gt",
+                "value": 1.6
+              }
+            }
+          ]
+        }
+      },
+      "_note": "the user changed 500 m to 300 m in B2 before asking; the server derives hand_edited"
+    },
+    {
+      "id": "unknown_layer",
+      "screens": ["M3.1"],
+      "approach": "direct",
+      "account_role": "user",
+      "prompt": "Welche Kitas liegen nahe an Primarschulen?",
+      "answer": {
+        "kind": "query",
+        "explanation": "Ich suche Kitas im Umkreis von Primarschulen.",
+        "assumptions": [
+          {
+            "text": "„nahe“ = höchstens 300 m"
+          }
+        ],
+        "query": {
+          "schema_version": "2",
+          "source": "kitas",
+          "where": {
+            "op": "related",
+            "layer": "schulen",
+            "predicate": "dwithin",
+            "distance_m": 300,
+            "where": {
+              "op": "in",
+              "attr": "typ",
+              "values": ["primar"]
+            }
+          }
+        }
+      },
+      "expect": {
+        "status": "refused",
+        "refusal_code": "unknown_layer"
+      }
+    },
+    {
+      "id": "hidden_layer",
+      "screens": ["M3.1"],
+      "approach": "direct",
+      "account_role": "user",
+      "setup": {
+        "hide_from_role": "user",
+        "layer": "haltestellen"
+      },
+      "prompt": "Welche Primarschulen liegen nahe an Haltestellen?",
+      "answer": {
+        "kind": "query",
+        "explanation": "Ich suche Primarschulen im Umkreis von Haltestellen.",
+        "assumptions": [
+          {
+            "text": "„nahe“ = höchstens 300 m"
+          }
+        ],
+        "query": {
+          "schema_version": "2",
+          "source": "schulen",
+          "where": {
+            "op": "and",
+            "args": [
+              {
+                "op": "in",
+                "attr": "typ",
+                "values": ["primar"]
+              },
+              {
+                "op": "related",
+                "layer": "haltestellen",
+                "predicate": "dwithin",
+                "distance_m": 300
+              }
+            ]
+          }
+        }
+      },
+      "expect": {
+        "status": "refused",
+        "refusal_code": "unknown_layer",
+        "same_as": "unknown_layer",
+        "_note": "a hidden layer is refused exactly like a missing one: same code, same details keys, no hint that it exists"
+      }
+    },
+    {
+      "id": "limit_exceeded",
+      "screens": ["M3.2"],
+      "approach": "direct",
+      "prompt": "Schulen in Bern, Köniz, Ostermundigen, Ittigen, Muri, Worb, Zollikofen, Bolligen oder Stettlen mit mehr als einem Standort",
+      "answer": {
+        "kind": "query",
+        "explanation": "Ich habe die neun Gemeinden einzeln aufgezählt und Schulen mit mehr als einem Standort gesucht.",
+        "assumptions": [],
+        "query": {
+          "schema_version": "2",
+          "source": "schulen",
+          "where": {
+            "op": "and",
+            "args": [
+              {
+                "op": "compare",
+                "attr": "standorte",
+                "cmp": "gt",
+                "value": 1
+              },
+              {
+                "op": "or",
+                "args": [
+                  {
+                    "op": "compare",
+                    "attr": "gem_nr",
+                    "cmp": "eq",
+                    "value": 351
+                  },
+                  {
+                    "op": "compare",
+                    "attr": "gem_nr",
+                    "cmp": "eq",
+                    "value": 355
+                  },
+                  {
+                    "op": "compare",
+                    "attr": "gem_nr",
+                    "cmp": "eq",
+                    "value": 363
+                  },
+                  {
+                    "op": "compare",
+                    "attr": "gem_nr",
+                    "cmp": "eq",
+                    "value": 362
+                  },
+                  {
+                    "op": "compare",
+                    "attr": "gem_nr",
+                    "cmp": "eq",
+                    "value": 356
+                  },
+                  {
+                    "op": "compare",
+                    "attr": "gem_nr",
+                    "cmp": "eq",
+                    "value": 627
+                  },
+                  {
+                    "op": "compare",
+                    "attr": "gem_nr",
+                    "cmp": "eq",
+                    "value": 361
+                  },
+                  {
+                    "op": "compare",
+                    "attr": "gem_nr",
+                    "cmp": "eq",
+                    "value": 352
+                  },
+                  {
+                    "op": "compare",
+                    "attr": "gem_nr",
+                    "cmp": "eq",
+                    "value": 358
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "expect": {
+        "status": "refused",
+        "refusal_code": "limit_exceeded",
+        "details": {
+          "limit": "conditions",
+          "value": 10,
+          "max": 8
+        },
+        "_note": "value counts the leaf conditions; and/or/not nodes do not count"
+      }
+    },
+    {
+      "id": "not_representable",
+      "screens": ["M3.3"],
+      "approach": "direct",
+      "prompt": "Welche fünf Schulen haben die meisten Standorte?",
+      "answer": {
+        "kind": "query",
+        "explanation": "Ich habe die Schulen nach der Zahl ihrer Standorte geordnet und die ersten fünf genommen.",
+        "assumptions": [],
+        "query": {
+          "schema_version": "2",
+          "source": "schulen",
+          "order_by": [
+            {
+              "attr": "standorte",
+              "dir": "desc"
+            }
+          ],
+          "limit": 5
+        }
+      },
+      "expect": {
+        "status": "refused",
+        "refusal_code": "not_representable",
+        "offer": "chain"
+      }
+    },
+    {
+      "id": "model_query_invalid",
+      "screens": ["M3.1"],
+      "approach": "direct",
+      "prompt": "Primarschulen nahe der Aare",
+      "answer": {
+        "kind": "query",
+        "explanation": "Ich suche Primarschulen nahe der Aare.",
+        "assumptions": [],
+        "query": {
+          "schema_version": "2",
+          "source": "schulen",
+          "where": {
+            "op": "near",
+            "layer": "gewaesser",
+            "name": "Aare"
+          }
+        }
+      },
+      "expect": {
+        "status": "refused",
+        "refusal_code": "model_query_invalid"
+      }
+    },
+    {
+      "id": "write_shaped",
+      "screens": ["M3.1"],
+      "approach": "direct",
+      "prompt": "Lösche alle Schulen in Bern",
+      "answer": {
+        "kind": "query",
+        "explanation": "Ich entferne die Schulen in Bern.",
+        "assumptions": [],
+        "query": {
+          "schema_version": "2",
+          "source": "schulen",
+          "delete": true,
+          "where": {
+            "op": "compare",
+            "attr": "gem_nr",
+            "cmp": "eq",
+            "value": 351
+          }
+        }
+      },
+      "expect": {
+        "status": "refused",
+        "refusal_code": "model_query_invalid",
+        "_note": "F-9.5: the schema has no write; an extra field is refused, never ignored"
+      }
+    },
+    {
+      "id": "clarification",
+      "screens": ["M12.2"],
+      "approach": "direct",
+      "prompt": "Welche Schulen liegen in der Nähe von Haltestellen?",
+      "answer": {
+        "kind": "clarification",
+        "question": "Wie nahe ist „in der Nähe“?",
+        "options": ["250 m", "500 m", "1 km"]
+      },
+      "expect": {
+        "status": "answered"
+      }
+    },
+    {
+      "id": "other_approach",
+      "screens": ["M13.1"],
+      "approach": "direct",
+      "prompt": "Puffer 500 m um die Kantonsstrassen B, dann Anzahl Primarschulen je Gemeinde darin",
+      "answer": {
+        "kind": "cannot_answer",
+        "explanation": "Puffer und Zählung je Gemeinde nacheinander lassen sich als Werkzeugkette besser lösen.",
+        "missing": [],
+        "other_approach": "chain"
+      },
+      "expect": {
+        "status": "answered"
+      }
+    },
+    {
+      "id": "cannot_answer",
+      "screens": ["M13.2"],
+      "approach": "direct",
+      "prompt": "Welche Primarschulen sind stark lärmbelastet?",
+      "answer": {
+        "kind": "cannot_answer",
+        "explanation": "Für Lärm gibt es keine Angaben in den Layern, die Sie sehen.",
+        "missing": ["Layer mit Lärmwerten", "Attribut Lärm an Schulen"]
+      },
+      "expect": {
+        "status": "answered"
+      }
+    },
+    {
+      "id": "unreadable",
+      "screens": ["M14.3"],
+      "approach": "direct",
+      "prompt": "Primarschulen in Köniz",
+      "raw": "Hier sind die Primarschulen in Köniz: Schule Liebefeld, …",
+      "expect": {
+        "status": "failed",
+        "error_code": "model_unreadable"
+      }
+    },
+    {
+      "id": "unreachable",
+      "screens": ["M14.1"],
+      "approach": "direct",
+      "prompt": "Primarschulen in Köniz",
+      "llm_error": "llm_unreachable",
+      "expect": {
+        "status": "failed",
+        "error_code": "llm_unreachable"
+      }
+    },
+    {
+      "id": "timeout",
+      "screens": ["M14.2"],
+      "approach": "direct",
+      "prompt": "Primarschulen in Köniz",
+      "llm_error": "llm_timeout",
+      "expect": {
+        "status": "failed",
+        "error_code": "llm_timeout"
+      }
+    },
+    {
+      "id": "quota_exceeded",
+      "screens": ["M14.4"],
+      "approach": "direct",
+      "setup": {
+        "connection": "Extern",
+        "request_limit_per_day": 1,
+        "requests_today": 1
+      },
+      "prompt": "Primarschulen in Köniz",
+      "expect": {
+        "http": 429,
+        "error_code": "quota_exceeded",
+        "details": {
+          "limit": 1
+        }
+      }
+    },
+    {
+      "id": "context_too_large",
+      "screens": [],
+      "approach": "direct",
+      "setup": {
+        "context_length": 200
+      },
+      "prompt": "Primarschulen in Köniz",
+      "expect": {
+        "http": 400,
+        "error_code": "context_too_large"
+      }
+    },
+    {
+      "id": "stale_reference",
+      "screens": ["M11.3"],
+      "approach": "direct",
+      "parent": "reference",
+      "analysis": {
+        "schema_version": "2",
+        "source": "schulen",
+        "output": "map",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "in",
+              "attr": "typ",
+              "values": ["primar"]
+            },
+            {
+              "op": "related",
+              "layer": "strassen",
+              "predicate": "dwithin",
+              "distance_m": 500,
+              "where": {
+                "op": "compare",
+                "attr": "klasse",
+                "cmp": "eq",
+                "value": "kantonsstrasse_b"
+              }
+            },
+            {
+              "op": "related",
+              "layer": "gemeinden_steuern",
+              "predicate": "within",
+              "where": {
+                "op": "compare",
+                "attr": "steueranlage",
+                "cmp": "gt",
+                "value": 1.6
+              }
+            }
+          ]
+        }
+      },
+      "setup": {
+        "delete_layer": "gemeinden_steuern"
+      },
+      "prompt": "Welche davon haben mehr als einen Standort?",
+      "expect": {
+        "http": 409,
+        "error_code": "stale_reference",
+        "details": {
+          "layer": "gemeinden_steuern"
+        }
+      }
+    },
+    {
+      "id": "aborted",
+      "screens": ["M2.1"],
+      "approach": "direct",
+      "prompt": "Primarschulen in Köniz",
+      "abort_while": "thinking",
+      "answer": {
+        "kind": "query",
+        "explanation": "-",
+        "assumptions": [],
+        "query": {
+          "schema_version": "2",
+          "source": "schulen"
+        }
+      },
+      "expect": {
+        "status": "aborted",
+        "decision": "aborted",
+        "_note": "the answer arrives after the abort and is dropped"
+      }
+    },
+    {
+      "id": "chain_reference",
+      "screens": ["M8.1", "M9.1", "M9.3"],
+      "approach": "chain",
+      "prompt": "Welche Primarschulen liegen nahe an Kantonsstrassen, in Gemeinden mit hoher Steueranlage?",
+      "_provisional": "tool names and arguments are pinned by WP74, which builds the chain tools",
+      "answer": {
+        "kind": "plan",
+        "explanation": "Ich gehe in fünf Schritten vor: Primarschulen, Puffer um die Kantonsstrassen B, Schulen darin, Gemeinden mit hoher Steueranlage, Schulen darin.",
+        "assumptions": [
+          {
+            "text": "„nahe“ = höchstens 500 m"
+          },
+          {
+            "text": "„hohe Steueranlage“ = über 1.6"
+          }
+        ],
+        "steps": [
+          {
+            "text": "Primarschulen auswählen",
+            "tool": "filter",
+            "arguments": {
+              "layer": "schulen",
+              "where": {
+                "op": "in",
+                "attr": "typ",
+                "values": ["primar"]
+              }
+            }
+          },
+          {
+            "text": "Puffer 500 m um Kantonsstrassen B",
+            "tool": "buffer",
+            "arguments": {
+              "layer": "strassen",
+              "distance_m": 500,
+              "where": {
+                "op": "compare",
+                "attr": "klasse",
+                "cmp": "eq",
+                "value": "kantonsstrasse_b"
+              }
+            }
+          },
+          {
+            "text": "Primarschulen im Puffer",
+            "tool": "within",
+            "arguments": {
+              "of": 1,
+              "in": 2
+            }
+          },
+          {
+            "text": "Gemeinden mit Steueranlage über 1.6",
+            "tool": "filter",
+            "arguments": {
+              "layer": "gemeinden_steuern",
+              "where": {
+                "op": "compare",
+                "attr": "steueranlage",
+                "cmp": "gt",
+                "value": 1.6
+              }
+            }
+          },
+          {
+            "text": "Primarschulen in diesen Gemeinden",
+            "tool": "within",
+            "arguments": {
+              "of": 3,
+              "in": 4
+            }
+          }
+        ]
+      },
+      "expect": {
+        "status": {
+          "Prüfen": "proposed",
+          "Teilautonom": "proposed"
+        },
+        "step_classes": ["query", "derive", "spatial", "query", "spatial"],
+        "hits": 10,
+        "total": 137
+      }
+    },
+    {
+      "id": "step_limit",
+      "screens": ["M9.5"],
+      "approach": "chain",
+      "prompt": "Schulen Schritt für Schritt nach Standorten eingrenzen",
+      "_provisional": "tool names are pinned by WP74",
+      "answer": {
+        "kind": "plan",
+        "explanation": "Ich grenze in neun Schritten ein.",
+        "assumptions": [],
+        "steps": [
+          {
+            "text": "Schritt 1",
+            "tool": "filter",
+            "arguments": {
+              "layer": "schulen",
+              "where": {
+                "op": "compare",
+                "attr": "standorte",
+                "cmp": "ge",
+                "value": 1
+              }
+            }
+          },
+          {
+            "text": "Schritt 2",
+            "tool": "filter",
+            "arguments": {
+              "layer": "schulen",
+              "where": {
+                "op": "compare",
+                "attr": "standorte",
+                "cmp": "ge",
+                "value": 2
+              }
+            }
+          },
+          {
+            "text": "Schritt 3",
+            "tool": "filter",
+            "arguments": {
+              "layer": "schulen",
+              "where": {
+                "op": "compare",
+                "attr": "standorte",
+                "cmp": "ge",
+                "value": 3
+              }
+            }
+          },
+          {
+            "text": "Schritt 4",
+            "tool": "filter",
+            "arguments": {
+              "layer": "schulen",
+              "where": {
+                "op": "compare",
+                "attr": "standorte",
+                "cmp": "ge",
+                "value": 4
+              }
+            }
+          },
+          {
+            "text": "Schritt 5",
+            "tool": "filter",
+            "arguments": {
+              "layer": "schulen",
+              "where": {
+                "op": "compare",
+                "attr": "standorte",
+                "cmp": "ge",
+                "value": 5
+              }
+            }
+          },
+          {
+            "text": "Schritt 6",
+            "tool": "filter",
+            "arguments": {
+              "layer": "schulen",
+              "where": {
+                "op": "compare",
+                "attr": "standorte",
+                "cmp": "ge",
+                "value": 6
+              }
+            }
+          },
+          {
+            "text": "Schritt 7",
+            "tool": "filter",
+            "arguments": {
+              "layer": "schulen",
+              "where": {
+                "op": "compare",
+                "attr": "standorte",
+                "cmp": "ge",
+                "value": 7
+              }
+            }
+          },
+          {
+            "text": "Schritt 8",
+            "tool": "filter",
+            "arguments": {
+              "layer": "schulen",
+              "where": {
+                "op": "compare",
+                "attr": "standorte",
+                "cmp": "ge",
+                "value": 8
+              }
+            }
+          },
+          {
+            "text": "Schritt 9",
+            "tool": "filter",
+            "arguments": {
+              "layer": "schulen",
+              "where": {
+                "op": "compare",
+                "attr": "standorte",
+                "cmp": "ge",
+                "value": 9
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "status": "refused",
+        "refusal_code": "step_limit",
+        "details": {
+          "max": 8,
+          "value": 9
+        }
+      }
+    }
+  ],
+  "key_figures": {
+    "_about": "design kennzahlen_30_tage as decision counts; WP63 reproduces the figures from rows",
+    "decisions": {
+      "accepted": 13,
+      "adjusted": 4,
+      "rejected": 3,
+      "superseded": 2,
+      "auto": 2,
+      "auto_undone": 1,
+      "proposal_only": 0,
+      "refused": 3,
+      "aborted": 1,
+      "failed": 2,
+      "accepted_undone": 0
+    },
+    "expect": {
+      "proposals": 24,
+      "accepted": 13,
+      "adjusted": 4,
+      "rejected": 3,
+      "superseded": 2,
+      "proposal_only": 0,
+      "auto": 2,
+      "undone": 1,
+      "acceptance_rate": 0.7727,
+      "not_counted": {
+        "refused": 3,
+        "aborted": 1,
+        "failed": 2
+      },
+      "undone_after_approval": 0,
+      "_note": "acceptance_rate is rounded to four decimals (17/22)"
+    }
+  }
+}

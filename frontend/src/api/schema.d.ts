@@ -950,6 +950,400 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/model/prompt': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Prompt
+     * @description Ask the model (F-5.1). Level and connection are the account's, resolved
+     *     here (H6, C17). Stores the action record and answers at once with it,
+     *     ``thinking``; the client polls ``GET /actions/{id}`` and may abort. No
+     *     result data: an ``auto`` answer arrives ``approved`` and the client
+     *     executes it (D2).
+     */
+    post: operations['prompt_api_model_prompt_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/model/actions/{action_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Action
+     * @description One own record; polled while the model thinks and while a chain runs (P4).
+     */
+    get: operations['action_api_model_actions__action_id__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/model/actions/{action_id}/preview': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Preview
+     * @description Count and ids of the stored query, for the user only (P2): an interactive
+     *     session, no class ``off``, status unchanged.
+     */
+    get: operations['preview_api_model_actions__action_id__preview_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/model/actions/{action_id}/decide': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Decide
+     * @description Applied by hand or edited and applied through Modus A (P1, D2).
+     */
+    post: operations['decide_api_model_actions__action_id__decide_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/model/actions/{action_id}/approve': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Approve
+     * @description Refused with ``class_not_allowed`` when a class is ``off`` at the level as
+     *     it was (D1, D2).
+     */
+    post: operations['approve_api_model_actions__action_id__approve_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/model/actions/{action_id}/reject': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Reject */
+    post: operations['reject_api_model_actions__action_id__reject_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/model/actions/{action_id}/execute': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Execute
+     * @description Run the stored query, never a sent one (the route takes no body); only
+     *     ``approved``, by the user or by an ``auto`` cell (D2). The one answer with rows.
+     */
+    post: operations['execute_api_model_actions__action_id__execute_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/model/actions/{action_id}/undo': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Undo
+     * @description For the log: the client restores the analysis itself (D2).
+     */
+    post: operations['undo_api_model_actions__action_id__undo_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/model/actions/{action_id}/touched': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Touched
+     * @description The analysis was changed by hand after this action: undo is over (design rule 7).
+     */
+    post: operations['touched_api_model_actions__action_id__touched_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/model/actions/{action_id}/abort': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Abort
+     * @description While thinking: ``aborted``. A running chain stops before its next step
+     *     and becomes ``limited`` with its last complete result adoptable (P4).
+     */
+    post: operations['abort_api_model_actions__action_id__abort_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/model/actions/{action_id}/plan': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    /** Edit Plan */
+    patch: operations['edit_plan_api_model_actions__action_id__plan_patch']
+    trace?: never
+  }
+  '/api/model/actions/{action_id}/run': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Run */
+    post: operations['run_api_model_actions__action_id__run_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/model/actions/{action_id}/adopt': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Adopt
+     * @description A ``done`` or ``limited`` chain's result becomes the analysis (design "Kette übernehmen").
+     */
+    post: operations['adopt_api_model_actions__action_id__adopt_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/model/actions/{action_id}/compare': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Compare
+     * @description Ask again with the other approach (design M10.1): a new action with
+     *     ``compare_of``, polled like any other.
+     */
+    post: operations['compare_api_model_actions__action_id__compare_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/model/actions/{action_id}/comparison': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Comparison
+     * @description Once both are done: the difference, by feature ids (design M10.2, M10.3).
+     */
+    get: operations['comparison_api_model_actions__action_id__comparison_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/model/my-actions': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * My Actions
+     * @description The account's own entries (D4, design M16.3).
+     */
+    get: operations['my_actions_api_model_my_actions_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/admin/model-actions': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Actions */
+    get: operations['actions_api_admin_model_actions_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/admin/model-actions/key-figures': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Key Figures
+     * @description Plan section 2, computed over the action table for the filters.
+     */
+    get: operations['key_figures_api_admin_model_actions_key_figures_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/admin/model-actions/export.csv': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Export Csv
+     * @description CSV of the filtered log; cells safe against formula injection.
+     */
+    get: operations['export_csv_api_admin_model_actions_export_csv_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/admin/model-actions/{action_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Action */
+    get: operations['action_api_admin_model_actions__action_id__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
 }
 export type webhooks = Record<string, never>
 export interface components {
@@ -987,6 +1381,18 @@ export interface components {
       role?: ('admin' | 'user') | null
       /** Status */
       status?: ('active' | 'locked') | null
+    }
+    /**
+     * ActionPreview
+     * @description The user's preview before approval (P2): never shown to the model.
+     */
+    ActionPreview: {
+      /** Count */
+      count: number
+      /** Total */
+      total: number
+      /** Ids */
+      ids: number[]
     }
     /** AdminLayerInfo */
     AdminLayerInfo: {
@@ -1099,6 +1505,19 @@ export interface components {
         | components['schemas']['Or-Output']
         | components['schemas']['Not-Output']
       )[]
+    }
+    /**
+     * Assumption
+     * @description One assumption, shown with ≈ (F-5.12, design M2, M12.1).
+     */
+    Assumption: {
+      /** Text */
+      text: string
+      /**
+       * Condition
+       * @description Path of indexes into the query's where tree; lets 'ändern' open it.
+       */
+      condition?: number[] | null
     }
     /** AttributeInfo */
     AttributeInfo: {
@@ -1259,6 +1678,27 @@ export interface components {
        */
       distance_m: number
     }
+    /**
+     * CannotAnswer
+     * @description Nothing to propose (design M13). With ``other_approach`` the answer offers
+     *     to try the other way of working (D6); without, it says what is missing.
+     */
+    CannotAnswer: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: 'cannot_answer'
+      /** Explanation */
+      explanation: string
+      /**
+       * Missing
+       * @default []
+       */
+      missing: string[]
+      /** Other Approach */
+      other_approach?: ('direct' | 'chain') | null
+    }
     /** Capabilities */
     Capabilities: {
       /** Supported */
@@ -1401,6 +1841,21 @@ export interface components {
        */
       level_id?: number | null
     }
+    /**
+     * Clarification
+     * @description Only when no sensible assumption exists (D5, design M12.2).
+     */
+    Clarification: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: 'clarification'
+      /** Question */
+      question: string
+      /** Options */
+      options: string[]
+    }
     /** Classified */
     Classified: {
       /**
@@ -1468,6 +1923,25 @@ export interface components {
       cmp: 'eq' | 'ne' | 'lt' | 'le' | 'gt' | 'ge'
       /** Value */
       value: string | number | boolean
+    }
+    /**
+     * Comparison
+     * @description The two approaches side by side (design M10); the difference is the
+     *     application's, computed from feature ids, never the model's.
+     */
+    Comparison: {
+      /** Left Action Id */
+      left_action_id: number
+      /** Right Action Id */
+      right_action_id: number
+      left: components['schemas']['ResultStamp']
+      right: components['schemas']['ResultStamp']
+      /** Only Left */
+      only_left: components['schemas']['FeatureRef'][]
+      /** Only Right */
+      only_right: components['schemas']['FeatureRef'][]
+      /** Reason */
+      reason?: string | null
     }
     /**
      * Conditions
@@ -1635,6 +2109,22 @@ export interface components {
        */
       confirm_data_release: boolean
     }
+    /** ConnectionSnapshot */
+    ConnectionSnapshot: {
+      /** Id */
+      id: number
+      /** Name */
+      name: string
+      /** Model */
+      model: string
+      /** Host */
+      host: string
+      /**
+       * Locality
+       * @enum {string}
+       */
+      locality: 'local' | 'external'
+    }
     /**
      * ConnectionWrite
      * @description A new connection (C4). Unset defaults follow from local or external.
@@ -1729,6 +2219,23 @@ export interface components {
       username: string
       /** Password */
       password: string
+    }
+    /**
+     * DecideRequest
+     * @description The hand-over cases (P1, D2): applied by hand, or edited and applied via Modus A.
+     */
+    DecideRequest: {
+      /**
+       * Decision
+       * @enum {string}
+       */
+      decision: 'proposal_only' | 'adjusted'
+      /**
+       * Applied By Hand
+       * @default false
+       */
+      applied_by_hand: boolean
+      query?: components['schemas']['QueryObject-Input'] | null
     }
     /**
      * DistanceColumn
@@ -1919,6 +2426,15 @@ export interface components {
         [key: string]: unknown
       }
     }
+    /**
+     * ExecuteResponse
+     * @description The only answer that carries rows: to the user, after ``execute`` or
+     *     ``adopt`` (D2). The record keeps the stamp, not the features.
+     */
+    ExecuteResponse: {
+      action: components['schemas']['ModelActionView']
+      result: components['schemas']['QueryResult']
+    }
     /** Feature */
     Feature: {
       /**
@@ -1937,6 +2453,13 @@ export interface components {
       geometry: {
         [key: string]: unknown
       } | null
+    }
+    /** FeatureRef */
+    FeatureRef: {
+      /** Id */
+      id: number
+      /** Name */
+      name: string | null
     }
     /** FieldDecision */
     FieldDecision: {
@@ -2005,6 +2528,19 @@ export interface components {
       mode: 'geometry'
       /** Crs */
       crs?: number | null
+    }
+    /**
+     * Governance
+     * @description What the level decides for this answer (H4, D1, design M6.3, M7.1).
+     */
+    Governance: {
+      /** Classes */
+      classes: components['schemas']['OpClass'][]
+      cell: components['schemas']['CellMode']
+      /** Needs Approval */
+      needs_approval: components['schemas']['OpClass'][]
+      /** Off */
+      off: components['schemas']['OpClass'][]
     }
     /** GraduatedSize */
     GraduatedSize: {
@@ -2206,6 +2742,33 @@ export interface components {
        */
       attr: string
     }
+    /**
+     * KeyFigures
+     * @description Plan section 2, for the filters given (design M16.1).
+     */
+    KeyFigures: {
+      /** Proposals */
+      proposals: number
+      /** Accepted */
+      accepted: number
+      /** Adjusted */
+      adjusted: number
+      /** Rejected */
+      rejected: number
+      /** Superseded */
+      superseded: number
+      /** Proposal Only */
+      proposal_only: number
+      /** Auto */
+      auto: number
+      /** Undone */
+      undone: number
+      /** Undone After Approval */
+      undone_after_approval: number
+      /** Acceptance Rate */
+      acceptance_rate: number | null
+      not_counted: components['schemas']['NotCounted']
+    }
     /** KeyProposal */
     KeyProposal: {
       /** Column */
@@ -2379,6 +2942,22 @@ export interface components {
       /** Levels */
       levels: components['schemas']['Level'][]
     }
+    /**
+     * LevelSnapshot
+     * @description The level as it was when the prompt was sent (H7, M7.3).
+     */
+    LevelSnapshot: {
+      /** Id */
+      id: number
+      /** Name */
+      name: string
+      /** Matrix */
+      matrix: {
+        [key: string]: components['schemas']['CellMode']
+      }
+      /** Prompt Hash */
+      prompt_hash: string
+    }
     /** MapConfig */
     MapConfig: {
       basemap: components['schemas']['Basemap'] | null
@@ -2407,6 +2986,243 @@ export interface components {
       details?: {
         [key: string]: unknown
       }
+    }
+    /** ModelActionPage */
+    ModelActionPage: {
+      /** Items */
+      items: components['schemas']['ModelActionSummary'][]
+      /** Total */
+      total: number
+    }
+    /**
+     * ModelActionSummary
+     * @description A row of the log (design M16.1, M16.3).
+     */
+    ModelActionSummary: {
+      /** Id */
+      id: number
+      /** Account */
+      account: string
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string
+      /** Prompt */
+      prompt: string
+      /**
+       * Approach
+       * @enum {string}
+       */
+      approach: 'direct' | 'chain'
+      /** Level Name */
+      level_name: string
+      /** Connection Name */
+      connection_name: string
+      /**
+       * Locality
+       * @enum {string}
+       */
+      locality: 'local' | 'external'
+      /**
+       * Status
+       * @enum {string}
+       */
+      status:
+        | 'thinking'
+        | 'refused'
+        | 'answered'
+        | 'proposed'
+        | 'approved'
+        | 'running'
+        | 'done'
+        | 'limited'
+        | 'applied'
+        | 'rejected'
+        | 'superseded'
+        | 'undone'
+        | 'aborted'
+        | 'failed'
+      /** Decision */
+      decision:
+        | (
+            | 'accepted'
+            | 'adjusted'
+            | 'rejected'
+            | 'superseded'
+            | 'auto'
+            | 'proposal_only'
+            | 'aborted'
+            | 'failed'
+          )
+        | null
+      /** Hits */
+      hits: number | null
+    }
+    /**
+     * ModelActionView
+     * @description One action record as its owner or an administrator sees it (D4). Never
+     *     rows: those leave only in ``ExecuteResponse``.
+     */
+    ModelActionView: {
+      /** Id */
+      id: number
+      /** Account */
+      account: string
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string
+      /** Decided At */
+      decided_at: string | null
+      /** Prompt */
+      prompt: string
+      /**
+       * Approach
+       * @enum {string}
+       */
+      approach: 'direct' | 'chain'
+      /**
+       * Status
+       * @enum {string}
+       */
+      status:
+        | 'thinking'
+        | 'refused'
+        | 'answered'
+        | 'proposed'
+        | 'approved'
+        | 'running'
+        | 'done'
+        | 'limited'
+        | 'applied'
+        | 'rejected'
+        | 'superseded'
+        | 'undone'
+        | 'aborted'
+        | 'failed'
+      /** Decision */
+      decision:
+        | (
+            | 'accepted'
+            | 'adjusted'
+            | 'rejected'
+            | 'superseded'
+            | 'auto'
+            | 'proposal_only'
+            | 'aborted'
+            | 'failed'
+          )
+        | null
+      /** Reject Reason */
+      reject_reason?: ('misunderstood' | 'wrong_layer' | 'wrong_value' | 'other') | null
+      /**
+       * Applied By Hand
+       * @default false
+       */
+      applied_by_hand: boolean
+      /** Undone At */
+      undone_at?: string | null
+      /** Previewed At */
+      previewed_at?: string | null
+      /** Parent Action Id */
+      parent_action_id?: number | null
+      /**
+       * Reference
+       * @default none
+       * @enum {string}
+       */
+      reference: 'none' | 'last_answer' | 'hand_edited'
+      /** Compare Of */
+      compare_of?: number | null
+      level: components['schemas']['LevelSnapshot']
+      connection: components['schemas']['ConnectionSnapshot']
+      /** Profile Hash */
+      profile_hash: string
+      /** Prompt Hash */
+      prompt_hash: string
+      /** Answer */
+      answer?:
+        | (
+            | components['schemas']['QueryAnswer']
+            | components['schemas']['Clarification']
+            | components['schemas']['CannotAnswer']
+            | components['schemas']['PlanAnswer']
+          )
+        | null
+      query?: components['schemas']['QueryObject-Output'] | null
+      applied_query?: components['schemas']['QueryObject-Output'] | null
+      governance?: components['schemas']['Governance'] | null
+      refusal?: components['schemas']['Refusal'] | null
+      /** Error */
+      error?: {
+        [key: string]: unknown
+      } | null
+      /**
+       * Steps
+       * @default []
+       */
+      steps: components['schemas']['StepView'][]
+      /**
+       * Replans
+       * @default 0
+       */
+      replans: number
+      /** Stop Reason */
+      stop_reason?:
+        ('step_limit' | 'time_limit' | 'result_too_large' | 'aborted' | 'interrupted') | null
+      stamp?: components['schemas']['ResultStamp'] | null
+      /** Latency Ms */
+      latency_ms?: number | null
+    }
+    /**
+     * ModelView
+     * @description What the model learns of a step (D9). Every field is a flag, a count, a
+     *     code or a name taken from the model's own query: nothing here can hold a
+     *     row, a geometry, an extent or an attribute value (D10).
+     */
+    ModelView: {
+      /**
+       * Outcome
+       * @enum {string}
+       */
+      outcome: 'ok' | 'error'
+      /** Code */
+      code?:
+        | (
+            | 'invalid_query'
+            | 'unknown_layer'
+            | 'unknown_attribute'
+            | 'unsupported_operation'
+            | 'result_too_large'
+            | 'query_timeout'
+            | 'query_too_complex'
+            | 'invalid_query_geometry'
+            | 'name_clash'
+            | 'key_type_mismatch'
+            | 'attribute_not_text'
+            | 'attribute_not_numeric'
+            | 'wrong_value_type'
+          )
+        | (
+            | 'unknown_layer'
+            | 'unknown_attribute'
+            | 'model_query_invalid'
+            | 'limit_exceeded'
+            | 'not_representable'
+            | 'query_too_complex'
+            | 'wrong_value_type'
+            | 'invalid_query'
+            | 'step_limit'
+          )
+        | null
+      /** Part */
+      part?: string | null
+      /** Empty */
+      empty?: boolean | null
+      /** Count */
+      count?: number | null
     }
     /**
      * NearFeature
@@ -2493,6 +3309,15 @@ export interface components {
         | components['schemas']['And-Output']
         | components['schemas']['Or-Output']
         | components['schemas']['Not-Output']
+    }
+    /** NotCounted */
+    NotCounted: {
+      /** Refused */
+      refused: number
+      /** Aborted */
+      aborted: number
+      /** Failed */
+      failed: number
     }
     /**
      * Op
@@ -2584,6 +3409,53 @@ export interface components {
       /** New */
       new: string
     }
+    /**
+     * PlanAnswer
+     * @description A tool chain, planned in one call as structured output (P4).
+     */
+    PlanAnswer: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: 'plan'
+      /** Explanation */
+      explanation: string
+      /**
+       * Assumptions
+       * @default []
+       */
+      assumptions: components['schemas']['Assumption'][]
+      /** Steps */
+      steps: components['schemas']['PlannedStep'][]
+    }
+    /**
+     * PlanEdit
+     * @description Change values or remove steps; never add one (design decision 17).
+     */
+    PlanEdit: {
+      /**
+       * Change
+       * @default []
+       */
+      change: components['schemas']['StepEdit'][]
+      /**
+       * Remove
+       * @default []
+       */
+      remove: number[]
+    }
+    /** PlannedStep */
+    PlannedStep: {
+      /** Text */
+      text: string
+      /** Tool */
+      tool: string
+      /** Arguments */
+      arguments: {
+        [key: string]: unknown
+      }
+    }
     /** Preview */
     Preview: {
       /**
@@ -2655,6 +3527,42 @@ export interface components {
       budget: components['schemas']['ProfileBudget'] | null
       /** Over Budget */
       over_budget: boolean
+    }
+    /**
+     * PromptRequest
+     * @description A prompt. No earlier turns: the server builds them from the parent chain (P6).
+     */
+    PromptRequest: {
+      /** Text */
+      text: string
+      /**
+       * Approach
+       * @default direct
+       * @enum {string}
+       */
+      approach: 'direct' | 'chain'
+      /** Parent Action Id */
+      parent_action_id?: number | null
+      analysis?: components['schemas']['QueryObject-Input'] | null
+    }
+    /** QueryAnswer */
+    QueryAnswer: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: 'query'
+      /** Explanation */
+      explanation: string
+      /**
+       * Assumptions
+       * @default []
+       */
+      assumptions: components['schemas']['Assumption'][]
+      /** Query */
+      query: {
+        [key: string]: unknown
+      }
     }
     /**
      * GeoTandem query object
@@ -2829,6 +3737,37 @@ export interface components {
       encoding?: string | null
       /** Delimiter */
       delimiter?: string | null
+    }
+    /** Refusal */
+    Refusal: {
+      /**
+       * Code
+       * @enum {string}
+       */
+      code:
+        | 'unknown_layer'
+        | 'unknown_attribute'
+        | 'model_query_invalid'
+        | 'limit_exceeded'
+        | 'not_representable'
+        | 'query_too_complex'
+        | 'wrong_value_type'
+        | 'invalid_query'
+        | 'step_limit'
+      /** Message */
+      message: string
+      /**
+       * Details
+       * @default {}
+       */
+      details: {
+        [key: string]: unknown
+      }
+    }
+    /** RejectRequest */
+    RejectRequest: {
+      /** Reason */
+      reason?: ('misunderstood' | 'wrong_layer' | 'wrong_value' | 'other') | null
     }
     /** RejectedRow */
     RejectedRow: {
@@ -3313,6 +4252,49 @@ export interface components {
       step: string
       /** Ms */
       ms: number
+    }
+    /** StepEdit */
+    StepEdit: {
+      /** Position */
+      position: number
+      /** Arguments */
+      arguments: {
+        [key: string]: unknown
+      }
+    }
+    /** StepView */
+    StepView: {
+      /** Position */
+      position: number
+      /** Text */
+      text: string
+      /** Tool */
+      tool: string
+      /** Arguments */
+      arguments: {
+        [key: string]: unknown
+      }
+      /** Classes */
+      classes: components['schemas']['OpClass'][]
+      cell: components['schemas']['CellMode']
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: 'planned' | 'waiting' | 'running' | 'ok' | 'error' | 'empty' | 'skipped' | 'removed'
+      /**
+       * Revised
+       * @default false
+       */
+      revised: boolean
+      /** Hits */
+      hits?: number | null
+      stamp?: components['schemas']['ResultStamp'] | null
+      /** Layer */
+      layer?: string | null
+      model_view?: components['schemas']['ModelView'] | null
+      /** Duration Ms */
+      duration_ms?: number | null
     }
     /**
      * SystemStatus
@@ -7700,6 +8682,1457 @@ export interface operations {
       }
       /** @description Unprocessable Content */
       422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  prompt_api_model_prompt_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['PromptRequest']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ModelActionView']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Bad Gateway */
+      502: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Gateway Timeout */
+      504: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  action_api_model_actions__action_id__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        action_id: number
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ModelActionView']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  preview_api_model_actions__action_id__preview_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        action_id: number
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ActionPreview']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  decide_api_model_actions__action_id__decide_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        action_id: number
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['DecideRequest']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ModelActionView']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  approve_api_model_actions__action_id__approve_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        action_id: number
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ModelActionView']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  reject_api_model_actions__action_id__reject_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        action_id: number
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['RejectRequest']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ModelActionView']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  execute_api_model_actions__action_id__execute_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        action_id: number
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ExecuteResponse']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  undo_api_model_actions__action_id__undo_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        action_id: number
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ModelActionView']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  touched_api_model_actions__action_id__touched_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        action_id: number
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ModelActionView']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  abort_api_model_actions__action_id__abort_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        action_id: number
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ModelActionView']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  edit_plan_api_model_actions__action_id__plan_patch: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        action_id: number
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['PlanEdit']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ModelActionView']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  run_api_model_actions__action_id__run_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        action_id: number
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ModelActionView']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Bad Gateway */
+      502: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Gateway Timeout */
+      504: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  adopt_api_model_actions__action_id__adopt_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        action_id: number
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ExecuteResponse']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  compare_api_model_actions__action_id__compare_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        action_id: number
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ModelActionView']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Bad Gateway */
+      502: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Gateway Timeout */
+      504: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  comparison_api_model_actions__action_id__comparison_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        action_id: number
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['Comparison']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  my_actions_api_model_my_actions_get: {
+    parameters: {
+      query?: {
+        offset?: number
+        limit?: number
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ModelActionPage']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  actions_api_admin_model_actions_get: {
+    parameters: {
+      query?: {
+        offset?: number
+        limit?: number
+        from?: string | null
+        to?: string | null
+        level_id?: number | null
+        connection_id?: number | null
+        approach?: ('direct' | 'chain') | null
+        account?: string | null
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ModelActionPage']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  key_figures_api_admin_model_actions_key_figures_get: {
+    parameters: {
+      query?: {
+        from?: string | null
+        to?: string | null
+        level_id?: number | null
+        connection_id?: number | null
+        approach?: ('direct' | 'chain') | null
+        account?: string | null
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['KeyFigures']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  export_csv_api_admin_model_actions_export_csv_get: {
+    parameters: {
+      query?: {
+        from?: string | null
+        to?: string | null
+        level_id?: number | null
+        connection_id?: number | null
+        approach?: ('direct' | 'chain') | null
+        account?: string | null
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  action_api_admin_model_actions__action_id__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        action_id: number
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ModelActionView']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
         headers: {
           [name: string]: unknown
         }
