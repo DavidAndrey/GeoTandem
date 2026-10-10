@@ -16,20 +16,40 @@
 #                       where the Linux installer keeps it. Also a volume name.
 #   GATE_OLLAMA_IMAGE   default ollama/ollama
 #   GATE_REQUIRE_LLM=1  fail instead of skipping when GATE_LLM_MODEL is unset
+#
+# The model stub (e2e/model-stub, WP69) always joins that network: an
+# OpenAI-compatible server scripted from schema/model-cases/v1.json, built
+# from those files alone, for the acceptance of E2.3 on. It answers under two
+# names: model-stub, listed in GEOTANDEM_LLM_LOCAL_HOSTS (a local connection),
+# and model-extern, not listed (an external one, F-9.4). Playwright gets the
+# URLs as the container reaches them (E2E_STUB_URL, E2E_STUB_EXTERNAL_URL) and
+# the stub's own address for its request log (E2E_STUB_CONTROL).
+#
+#   GATE_MODEL_STUB=0   leave the stub out; its tests skip
+#
+# Running this script inside a container, with the host's Docker socket
+# mounted: the container must join the internal network to reach the
+# application by its address there.
+#
+#   GATE_RUNNER_CONTAINER=<name or id of this container>
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 image=geotandem:gate
+stub_image=geotandem-model-stub:gate
 name="geotandem-gate-$$"
 volume="$name-data"
 network="$name-net"
 ollama="$name-ollama"
+stub="$name-stub"
 llm_model=${GATE_LLM_MODEL:-}
+runner=${GATE_RUNNER_CONTAINER:-}
 
 step() { printf '\n\033[1m== %s\033[0m\n' "$*"; }
 
 cleanup() {
-  docker rm -f "$name" "$ollama" >/dev/null 2>&1 || true
+  if [ -n "$runner" ]; then docker network disconnect -f "$network" "$runner" >/dev/null 2>&1 || true; fi
+  docker rm -f "$name" "$ollama" "$stub" >/dev/null 2>&1 || true
   docker volume rm "$volume" >/dev/null 2>&1 || true
   docker network rm "$network" >/dev/null 2>&1 || true
 }
@@ -80,6 +100,30 @@ start_ollama() {
   return 1
 }
 
+start_stub() {
+  # Only the stub and the fixture as build context: the repository's
+  # .dockerignore leaves e2e/ out, and the context may sit on another host.
+  tar -c e2e/model-stub/Dockerfile e2e/model-stub/stub.py schema/model-cases/v1.json \
+    | docker build -q -t "$stub_image" -f e2e/model-stub/Dockerfile - >/dev/null
+  docker run -d --name "$stub" --network "$network" \
+    --network-alias model-stub --network-alias model-extern "$stub_image" >/dev/null
+  local ip logs
+  for _ in $(seq 1 30); do
+    logs=$(docker logs "$stub" 2>&1)
+    if grep -q "model stub on" <<<"$logs"; then
+      ip=$(docker inspect -f "{{(index .NetworkSettings.Networks \"$network\").IPAddress}}" "$stub")
+      stub_env=(E2E_STUB_URL=http://model-stub:8080/v1
+        E2E_STUB_EXTERNAL_URL=http://model-extern:8080/v1
+        E2E_STUB_CONTROL="http://$ip:8080" E2E_OFFLINE=1)
+      return 0
+    fi
+    sleep 1
+  done
+  echo "the model stub did not start" >&2
+  docker logs "$stub" >&2
+  return 1
+}
+
 if [ -z "$llm_model" ] && [ "${GATE_REQUIRE_LLM:-}" = 1 ]; then
   echo "GATE_REQUIRE_LLM=1 but GATE_LLM_MODEL is unset" >&2
   exit 1
@@ -99,13 +143,16 @@ docker build --pull -t "$image" .
 
 step "first start on an empty volume, on a network without a route out"
 docker network create --internal "$network" >/dev/null
+if [ -n "$runner" ]; then docker network connect "$network" "$runner"; fi
 llm_env=()
 if [ -n "$llm_model" ]; then
   start_ollama
   llm_env=(E2E_LLM_URL=http://ollama:11434/v1 E2E_LLM_MODEL="$llm_model")
 fi
+stub_env=()
+if [ "${GATE_MODEL_STUB:-1}" != 0 ]; then start_stub; fi
 docker run -d --name "$name" --network "$network" -v "$volume:/data" \
-  -e GEOTANDEM_LLM_LOCAL_HOSTS=ollama "$image" >/dev/null
+  -e GEOTANDEM_LLM_LOCAL_HOSTS=ollama,model-stub "$image" >/dev/null
 wait_healthy
 base="http://$(address):8000"
 # Logs into a variable first: with pipefail, `docker logs | grep -q` fails when
@@ -119,7 +166,7 @@ token=$(grep -o 'Setup token: [A-Za-z0-9_-]*' <<<"$logs" | head -n1 | cut -d' ' 
 [ -n "$token" ] || { echo "no setup token in the log of the first start" >&2; exit 1; }
 
 step "playwright against $base, offline${llm_model:+, with $llm_model}"
-(cd e2e && env "${llm_env[@]}" E2E_SETUP_TOKEN="$token" E2E_BASE_URL="$base" \
+(cd e2e && env "${llm_env[@]}" "${stub_env[@]}" E2E_SETUP_TOKEN="$token" E2E_BASE_URL="$base" \
   npx playwright test --reporter=line)
 
 step "restart on the same volume"
@@ -139,7 +186,8 @@ fi
 step "playwright again, on the data of the first pass"
 base="http://$(address):8000"  # the address may change with the restart
 # Marked, so tests that save in the first pass insist on finding it (E1.7).
-(cd e2e && E2E_AFTER_RESTART=1 E2E_BASE_URL="$base" npx playwright test --reporter=line)
+(cd e2e && env "${stub_env[@]}" E2E_AFTER_RESTART=1 E2E_BASE_URL="$base" \
+  npx playwright test --reporter=line)
 
 if [ -z "$llm_model" ]; then
   step "gate passed — SKIPPED: E2.1 with a local model (set GATE_LLM_MODEL)"
