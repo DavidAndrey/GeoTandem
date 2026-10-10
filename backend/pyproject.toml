@@ -21,6 +21,8 @@ dependencies = [
     "defusedxml>=0.7",
     "openai>=3.26,<4",
     "httpx2>=2.13,<3",
+    # Imported directly: the model seam bounds each read by the call's deadline (security review #34).
+    "httpcore2>=2.13,<3",
     "cryptography>=50,<51",
 ]
 
