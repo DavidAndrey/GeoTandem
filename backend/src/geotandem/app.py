@@ -32,6 +32,7 @@ from geotandem.db.bootstrap import bootstrap
 from geotandem.importing import log as import_log
 from geotandem.importing.staging import Staging
 from geotandem.llm.openai_compat import OpenAICompatClient
+from geotandem.model import service as model_service
 from geotandem.sample.load import load_sample
 from geotandem.tools import default_registry
 from geotandem.vault import Vault
@@ -40,7 +41,8 @@ log = logging.getLogger(__name__)
 
 
 def start(settings: Settings) -> AppState:
-    """Bring the data core up to date and check capabilities (F-2.12, F-2.14)."""
+    """Bring the data core up to date and check capabilities (F-2.12, F-2.14);
+    close what the last shutdown left running (imports, model actions, P7)."""
     engine = bootstrap(settings)
     backend = SpatiaLiteBackend(engine, settings.internal_crs)
     unsupported = backend.missing_functions()
@@ -50,6 +52,8 @@ def start(settings: Settings) -> AppState:
         )
     if stale := import_log.fail_stale(engine):
         log.warning("%d imports were interrupted by the last shutdown", stale)
+    if closed := model_service.close_stale(engine):
+        log.warning("%d model actions were left open by the last shutdown", len(closed))
     if settings.load_sample_data:
         load_sample(backend)
     staging = Staging(settings.staging_dir)

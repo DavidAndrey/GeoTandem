@@ -1,17 +1,19 @@
 """Modus B over HTTP: prompt, decide, run (plan E2.3-E2.6, section 6).
 
 Frozen in WP62 with every route, its auth and its answer; each body answers
-501 ``not_implemented`` until its WP fills it in (WP65, WP70, WP73, WP75,
-WP76). Every route needs a signed-in account; a record of another account is
-``not_found`` (404, never 403), as for sessions.
+501 ``not_implemented`` until its WP fills it in (WP70, WP73, WP75, WP76).
+WP65 built the prompt of the direct query, the record, ``decide`` and
+``abort`` (``model/service.py``). Every route needs a signed-in account; a
+record of another account is ``not_found`` (404, never 403), as for sessions.
 """
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Query
 
 from geotandem.api.auth import CurrentAccount
 from geotandem.api.errors import ErrorBody, Problem
+from geotandem.api.state import AppState, get_state
 from geotandem.model.schemas import (
     MAX_PAGE,
     ActionPreview,
@@ -24,6 +26,7 @@ from geotandem.model.schemas import (
     PromptRequest,
     RejectRequest,
 )
+from geotandem.model.service import PromptFlow
 
 router = APIRouter(prefix="/api/model", tags=["model"])
 
@@ -47,20 +50,41 @@ class NotBuilt(Problem):
         super().__init__(f"Not built yet ({wp}).", wp=wp)
 
 
+def prompt_flow(state: Annotated[AppState, Depends(get_state)]) -> PromptFlow:
+    """The flow over this instance's data core, connections and model client."""
+    return PromptFlow(
+        backend=state.backend,
+        connections=state.connections,
+        client_factory=state.client_factory,
+        limits=state.limits,
+        unsupported=frozenset(state.unsupported),
+    )
+
+
+Flow = Annotated[PromptFlow, Depends(prompt_flow)]
+
+
 @router.post("/prompt", status_code=202, responses=CALLS_MODEL)
-def prompt(body: PromptRequest, account: CurrentAccount) -> ModelActionView:
+def prompt(
+    body: PromptRequest, account: CurrentAccount, flow: Flow, background: BackgroundTasks
+) -> ModelActionView:
     """Ask the model (F-5.1). Level and connection are the account's, resolved
     here (H6, C17). Stores the action record and answers at once with it,
     ``thinking``; the client polls ``GET /actions/{id}`` and may abort. No
     result data: an ``auto`` answer arrives ``approved`` and the client
-    executes it (D2)."""
-    raise NotBuilt("WP65")
+    executes it (D2). In E2.3 every answer is a proposal (P1)."""
+    if body.approach == "chain":
+        raise NotBuilt("WP75")
+    asked = flow.prompt(account, body)
+    background.add_task(asked.run)
+    return asked.action
 
 
 @router.get("/actions/{action_id}", responses=ERRORS)
-def action(action_id: int, account: CurrentAccount) -> ModelActionView:
-    """One own record; polled while the model thinks and while a chain runs (P4)."""
-    raise NotBuilt("WP65")
+def action(action_id: int, account: CurrentAccount, flow: Flow) -> ModelActionView:
+    """One own record, or any for an administrator (D4); polled while the model
+    thinks (P7) and while a chain runs (P4)."""
+    return flow.get(account, action_id)
 
 
 @router.get("/actions/{action_id}/preview", responses=ERRORS)
@@ -71,9 +95,12 @@ def preview(action_id: int, account: CurrentAccount) -> ActionPreview:
 
 
 @router.post("/actions/{action_id}/decide", responses=ERRORS)
-def decide(action_id: int, body: DecideRequest, account: CurrentAccount) -> ModelActionView:
-    """Applied by hand or edited and applied through Modus A (P1, D2)."""
-    raise NotBuilt("WP65")
+def decide(
+    action_id: int, body: DecideRequest, account: CurrentAccount, flow: Flow
+) -> ModelActionView:
+    """Applied by hand or edited and applied through Modus A (P1, D2); the
+    owner's alone. ``adjusted`` names the query the user applied, logged only."""
+    return flow.decide(account, action_id, body)
 
 
 @router.post("/actions/{action_id}/approve", responses=ERRORS)
@@ -108,10 +135,11 @@ def touched(action_id: int, account: CurrentAccount) -> ModelActionView:
 
 
 @router.post("/actions/{action_id}/abort", responses=ERRORS)
-def abort(action_id: int, account: CurrentAccount) -> ModelActionView:
-    """While thinking: ``aborted``. A running chain stops before its next step
-    and becomes ``limited`` with its last complete result adoptable (P4)."""
-    raise NotBuilt("WP65")
+def abort(action_id: int, account: CurrentAccount, flow: Flow) -> ModelActionView:
+    """While thinking: ``aborted``; the model's late answer is dropped. A running
+    chain stops before its next step and becomes ``limited`` with its last
+    complete result adoptable (P4, WP75)."""
+    return flow.abort(account, action_id)
 
 
 @router.patch("/actions/{action_id}/plan", responses=ERRORS)

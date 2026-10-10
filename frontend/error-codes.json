@@ -96,6 +96,7 @@
   "ragged_rows": "Rows with another number of fields than the header.",
   "rejected_rows": "Records were not imported.",
   "repaired": "Geometries were repaired.",
+  "request_limit_required": "A request limit that is on needs its number per day (P5).",
   "request_too_large": "The request exceeds details.max_mb.",
   "result_too_large": "More features than max_features would leave the server.",
   "schema_violation": "The body does not match the schema; details.errors lists where.",

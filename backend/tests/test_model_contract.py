@@ -42,7 +42,6 @@ WITH_ANSWER = [c["id"] for c in cases() if "answer" in c]
 SOURCE = REPO / "backend" / "src" / "geotandem"
 
 PENDING_CODES = {
-    "quota_exceeded": "WP65",
     "undo_blocked": "WP70",
     "step_limit": "WP75",
     "time_limit": "WP75",
@@ -76,6 +75,14 @@ ADMIN_ROUTES = [
     ("GET", "/api/admin/model-actions/export.csv"),
     ("GET", "/api/admin/model-actions/1"),
 ]
+BUILT = {
+    ("POST", "/api/model/prompt"): "WP65",
+    ("GET", "/api/model/actions/1"): "WP65",
+    ("POST", "/api/model/actions/1/decide"): "WP65",
+    ("POST", "/api/model/actions/1/abort"): "WP65",
+}
+"""Routes whose work package has landed: they no longer answer 501
+(``test_model_flow.py`` tests them)."""
 BODIES: dict[str, dict[str, Any]] = {
     "/api/model/prompt": {"text": "Primarschulen in Köniz"},
     "/api/model/actions/1/decide": {"decision": "proposal_only"},
@@ -396,6 +403,8 @@ async def test_every_route_needs_a_session(
 
 async def test_routes_answer_not_implemented_until_built(client: httpx.AsyncClient) -> None:
     for method, path in ROUTES + ADMIN_ROUTES:
+        if (method, path) in BUILT:
+            continue
         response = await _call(client, method, path)
         assert response.status_code == 501, (method, path, response.text)
         body = response.json()

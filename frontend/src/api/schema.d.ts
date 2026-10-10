@@ -965,7 +965,7 @@ export interface paths {
      *     here (H6, C17). Stores the action record and answers at once with it,
      *     ``thinking``; the client polls ``GET /actions/{id}`` and may abort. No
      *     result data: an ``auto`` answer arrives ``approved`` and the client
-     *     executes it (D2).
+     *     executes it (D2). In E2.3 every answer is a proposal (P1).
      */
     post: operations['prompt_api_model_prompt_post']
     delete?: never
@@ -983,7 +983,8 @@ export interface paths {
     }
     /**
      * Action
-     * @description One own record; polled while the model thinks and while a chain runs (P4).
+     * @description One own record, or any for an administrator (D4); polled while the model
+     *     thinks (P7) and while a chain runs (P4).
      */
     get: operations['action_api_model_actions__action_id__get']
     put?: never
@@ -1026,7 +1027,8 @@ export interface paths {
     put?: never
     /**
      * Decide
-     * @description Applied by hand or edited and applied through Modus A (P1, D2).
+     * @description Applied by hand or edited and applied through Modus A (P1, D2); the
+     *     owner's alone. ``adjusted`` names the query the user applied, logged only.
      */
     post: operations['decide_api_model_actions__action_id__decide_post']
     delete?: never
@@ -1145,8 +1147,9 @@ export interface paths {
     put?: never
     /**
      * Abort
-     * @description While thinking: ``aborted``. A running chain stops before its next step
-     *     and becomes ``limited`` with its last complete result adoptable (P4).
+     * @description While thinking: ``aborted``; the model's late answer is dropped. A running
+     *     chain stops before its next step and becomes ``limited`` with its last
+     *     complete result adoptable (P4, WP75).
      */
     post: operations['abort_api_model_actions__action_id__abort_post']
     delete?: never
@@ -2050,6 +2053,13 @@ export interface components {
        * Format: date-time
        */
       updated_at: string
+      /**
+       * Request Limit Enabled
+       * @default false
+       */
+      request_limit_enabled: boolean
+      /** Request Limit Per Day */
+      request_limit_per_day?: number | null
     }
     /**
      * ConnectionOption
@@ -2108,6 +2118,10 @@ export interface components {
        * @default false
        */
       confirm_data_release: boolean
+      /** Request Limit Enabled */
+      request_limit_enabled?: boolean | null
+      /** Request Limit Per Day */
+      request_limit_per_day?: number | null
     }
     /** ConnectionSnapshot */
     ConnectionSnapshot: {
@@ -2186,6 +2200,16 @@ export interface components {
        * @default false
        */
       confirm_data_release: boolean
+      /**
+       * Request Limit Enabled
+       * @description Cap the requests per day, over all accounts (P5). Unset: off.
+       */
+      request_limit_enabled?: boolean | null
+      /**
+       * Request Limit Per Day
+       * @description The cap; required while request_limit_enabled (P5).
+       */
+      request_limit_per_day?: number | null
     }
     /**
      * CountMetric

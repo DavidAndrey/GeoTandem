@@ -4848,7 +4848,7 @@
           "model"
         ],
         "summary": "Prompt",
-        "description": "Ask the model (F-5.1). Level and connection are the account's, resolved\nhere (H6, C17). Stores the action record and answers at once with it,\n``thinking``; the client polls ``GET /actions/{id}`` and may abort. No\nresult data: an ``auto`` answer arrives ``approved`` and the client\nexecutes it (D2).",
+        "description": "Ask the model (F-5.1). Level and connection are the account's, resolved\nhere (H6, C17). Stores the action record and answers at once with it,\n``thinking``; the client polls ``GET /actions/{id}`` and may abort. No\nresult data: an ``auto`` answer arrives ``approved`` and the client\nexecutes it (D2). In E2.3 every answer is a proposal (P1).",
         "operationId": "prompt_api_model_prompt_post",
         "requestBody": {
           "content": {
@@ -4960,7 +4960,7 @@
           "model"
         ],
         "summary": "Action",
-        "description": "One own record; polled while the model thinks and while a chain runs (P4).",
+        "description": "One own record, or any for an administrator (D4); polled while the model\nthinks (P7) and while a chain runs (P4).",
         "operationId": "action_api_model_actions__action_id__get",
         "parameters": [
           {
@@ -5126,7 +5126,7 @@
           "model"
         ],
         "summary": "Decide",
-        "description": "Applied by hand or edited and applied through Modus A (P1, D2).",
+        "description": "Applied by hand or edited and applied through Modus A (P1, D2); the\nowner's alone. ``adjusted`` names the query the user applied, logged only.",
         "operationId": "decide_api_model_actions__action_id__decide_post",
         "parameters": [
           {
@@ -5643,7 +5643,7 @@
           "model"
         ],
         "summary": "Abort",
-        "description": "While thinking: ``aborted``. A running chain stops before its next step\nand becomes ``limited`` with its last complete result adoptable (P4).",
+        "description": "While thinking: ``aborted``; the model's late answer is dropped. A running\nchain stops before its next step and becomes ``limited`` with its last\ncomplete result adoptable (P4, WP75).",
         "operationId": "abort_api_model_actions__action_id__abort_post",
         "parameters": [
           {
@@ -8661,6 +8661,22 @@
             "type": "string",
             "format": "date-time",
             "title": "Updated At"
+          },
+          "request_limit_enabled": {
+            "type": "boolean",
+            "title": "Request Limit Enabled",
+            "default": false
+          },
+          "request_limit_per_day": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Limit Per Day"
           }
         },
         "type": "object",
@@ -8903,6 +8919,30 @@
             "type": "boolean",
             "title": "Confirm Data Release",
             "default": false
+          },
+          "request_limit_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Limit Enabled"
+          },
+          "request_limit_per_day": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Limit Per Day"
           }
         },
         "type": "object",
@@ -9071,6 +9111,32 @@
             "title": "Confirm Data Release",
             "description": "Required to let an external connection receive data contents (C6).",
             "default": false
+          },
+          "request_limit_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Limit Enabled",
+            "description": "Cap the requests per day, over all accounts (P5). Unset: off."
+          },
+          "request_limit_per_day": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Limit Per Day",
+            "description": "The cap; required while request_limit_enabled (P5)."
           }
         },
         "type": "object",

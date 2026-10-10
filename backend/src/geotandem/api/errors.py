@@ -48,8 +48,10 @@ class ErrorBody(BaseModel):
 
 
 def _body(
-    status: int, code: str, message: str, headers: dict[str, str] | None = None, **details: Any
+    status: int, code: str, message: str, headers: dict[str, str] | None = None, /, **details: Any
 ) -> JSONResponse:
+    """Positional parameters only: a detail may be named ``status`` (a model
+    action's, ``already_decided``) or ``code``."""
     body = ErrorBody(code=code, message=message, details=details)
     return JSONResponse(status_code=status, content=body.model_dump(mode="json"), headers=headers)
 

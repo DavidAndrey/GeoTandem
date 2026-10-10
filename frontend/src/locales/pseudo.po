@@ -2217,6 +2217,10 @@ msgstr ""
 msgid "Internes CRS"
 msgstr ""
 
+#: src/i18n/errors.ts
+msgid "Ist die Begrenzung eingeschaltet, braucht es die Zahl der Anfragen pro Tag."
+msgstr ""
+
 #: src/editor/describe.ts
 msgid "ist eins von"
 msgstr ""
