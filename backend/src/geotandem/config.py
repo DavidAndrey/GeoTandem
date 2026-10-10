@@ -44,6 +44,11 @@ class Settings(BaseSettings):
     max_running_queries_per_account: int = Field(
         default=3, ge=1, description="Queries running at once per account (security review #5)."
     )
+    max_model_calls: int = Field(
+        default=4,
+        ge=1,
+        description="Model calls running at once in all; another prompt answers 503 busy (WP65).",
+    )
     max_sessions_per_account: int = Field(
         default=100, ge=1, description="Saved analysis sessions per account (review #6)."
     )

@@ -30,6 +30,8 @@ ApiKey = Annotated[SecretStr, Field(min_length=1, max_length=1000)]
 Temperature = Annotated[float, Field(ge=0, le=2)]
 Timeout = Annotated[float, Field(gt=0, le=600)]
 ContextLength = Annotated[int, Field(ge=256, le=10_000_000)]
+RequestLimit = Annotated[int, Field(gt=0, le=1_000_000)]
+"""Requests per day over all accounts (P5); positive, required while the limit is on."""
 
 
 class ConnectionProblem(Exception):
@@ -77,6 +79,12 @@ class ConnectionWrite(CallParameters):
         default=False,
         description="Required to let an external connection receive data contents (C6).",
     )
+    request_limit_enabled: bool | None = Field(
+        default=None, description="Cap the requests per day, over all accounts (P5). Unset: off."
+    )
+    request_limit_per_day: RequestLimit | None = Field(
+        default=None, description="The cap; required while request_limit_enabled (P5)."
+    )
 
 
 class ConnectionPatch(BaseModel):
@@ -96,9 +104,12 @@ class ConnectionPatch(BaseModel):
     may_receive_data: bool | None = None
     marked_external: bool | None = None
     confirm_data_release: bool = False
+    request_limit_enabled: bool | None = None
+    request_limit_per_day: RequestLimit | None = None
+    """``null`` removes the cap, allowed only while the limit is off."""
 
 
-NULLABLE = frozenset({"api_key", "seed", "context_length"})
+NULLABLE = frozenset({"api_key", "seed", "context_length", "request_limit_per_day"})
 """Patch fields where ``null`` is a value, not "unchanged"."""
 
 
@@ -135,6 +146,10 @@ class ConnectionInfo(BaseModel):
     last_test: CheckResult | None
     created_at: datetime
     updated_at: datetime
+    request_limit_enabled: bool = False
+    """Requests per day are capped, over all accounts (P5)."""
+    request_limit_per_day: int | None = None
+    """The cap; kept while the limit is off, so switching it on again restores it."""
 
 
 class ConnectionOption(BaseModel):
@@ -216,6 +231,8 @@ class Connections:
             last_test=row.last_test,
             created_at=row.created_at,
             updated_at=row.updated_at,
+            request_limit_enabled=row.request_limit_enabled,
+            request_limit_per_day=row.request_limit_per_day,
         )
 
     def all(self) -> list[ConnectionInfo]:
@@ -329,6 +346,17 @@ class Connections:
             )
 
     @staticmethod
+    def _check_request_limit(row: LLMConnection) -> None:
+        """A limit that is on needs its number (P5); off, the number may stay or go."""
+        if row.request_limit_enabled and row.request_limit_per_day is None:
+            raise ConnectionProblem(
+                400,
+                "request_limit_required",
+                "A request limit that is on needs the number of requests per day.",
+                name=row.name,
+            )
+
+    @staticmethod
     def _settle_default(
         session: Session, made_default: LLMConnection | None, had_default: bool
     ) -> None:
@@ -386,7 +414,10 @@ class Connections:
             is_default=body.is_default,
             may_receive_data=local if body.may_receive_data is None else body.may_receive_data,
             marked_external=body.marked_external,
+            request_limit_enabled=bool(body.request_limit_enabled),
+            request_limit_per_day=body.request_limit_per_day,
         )
+        self._check_request_limit(row)
         self._check_release(row, released_before=False, confirmed=body.confirm_data_release)
         with Session(self.engine) as session, session.begin():
             had_default = self._had_default(session)
@@ -421,6 +452,7 @@ class Connections:
                 if getattr(row, name) != value:
                     setattr(row, name, value)
                     changed.append(name)
+            self._check_request_limit(row)
             self._check_release(row, released_before, patch.confirm_data_release)
             self._check_name(session, row.name, row.id)
             made_default = row if "is_default" in changed and row.is_default else None

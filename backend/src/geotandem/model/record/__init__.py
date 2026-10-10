@@ -13,6 +13,7 @@ from geotandem.model.record.store import (
     level_snapshot,
     text_hash,
     to_view,
+    utc_now,
 )
 
 __all__ = [
@@ -28,4 +29,5 @@ __all__ = [
     "level_snapshot",
     "text_hash",
     "to_view",
+    "utc_now",
 ]

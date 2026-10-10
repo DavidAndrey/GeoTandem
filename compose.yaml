@@ -41,6 +41,7 @@ services:
       GEOTANDEM_QUERY_TIMEOUT_S: ${GEOTANDEM_QUERY_TIMEOUT_S:-10}
       GEOTANDEM_MAX_IMPORT_MB: ${GEOTANDEM_MAX_IMPORT_MB:-200}
       GEOTANDEM_LLM_LOCAL_HOSTS: ${GEOTANDEM_LLM_LOCAL_HOSTS:-ollama}
+      GEOTANDEM_MAX_MODEL_CALLS: ${GEOTANDEM_MAX_MODEL_CALLS:-4}
 
 networks:
   # Created by the Ollama project (docs/ollama.md), which has to be started first.

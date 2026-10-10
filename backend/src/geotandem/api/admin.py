@@ -20,7 +20,7 @@ from geotandem.api.errors import ErrorBody, NotFound, Problem
 from geotandem.api.state import AppState, get_state
 from geotandem.auth import accounts, visibility
 from geotandem.auth.accounts import Account, AccountUpdate, DisplayName
-from geotandem.auth.visibility import VisibilityRow, view_for
+from geotandem.auth.visibility import VisibilityRow
 from geotandem.catalog import (
     MAX_TITLE,
     AttributeInfo,
@@ -32,7 +32,6 @@ from geotandem.catalog import (
     Title,
     get_layer,
     list_layers,
-    model_profile,
     profile,
     update_attribute,
     update_layer,
@@ -53,6 +52,7 @@ from geotandem.importing.run import ImportDecisions, abort, preview_file, run_im
 from geotandem.importing.staging import TooManyPending, UnknownUpload, UploadTooLarge
 from geotandem.levels import Level, UnknownLevel, load_levels, save_levels
 from geotandem.llm import Endpoint
+from geotandem.model.service import profile_for
 from geotandem.sample.load import dataset_version
 from geotandem_query import SCHEMA_VERSION
 
@@ -631,8 +631,7 @@ def account_profile(account: str, state: State) -> ProfilePreview:
     )
     if found is None:
         raise NotFound(f"Unknown account '{account}'.", account=account)
-    view = view_for(state.backend, found)
-    found_profile = model_profile(state.backend.engine, view.layer_names())
+    _, found_profile = profile_for(state.backend, found)
     active = state.connections.active(found.id)
     budget = (
         ProfileBudget(connection=active.name, context_length=active.context_length)

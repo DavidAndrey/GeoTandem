@@ -184,9 +184,14 @@ const MESSAGES: Record<string, Words> = {
     t`Solange andere Anbindungen freigegeben sind, braucht es eine voreingestellte. Bitte zuerst eine andere voreinstellen.`,
   data_release_unconfirmed: () =>
     t`Datenfreigabe an eine externe Anbindung braucht eine ausdrückliche Bestätigung.`,
-  connection_not_available: () => t`Diese Anbindung steht nicht zur Wahl.`,
+  connection_not_available: (d) =>
+    d.reason === 'none'
+      ? t`Es ist keine Modellanbindung eingerichtet.`
+      : t`Diese Anbindung steht nicht zur Wahl.`,
   api_key_bound_to_url: () =>
     t`Der gespeicherte Zugangsschlüssel geht nur an die bisherige Adresse. Für eine neue Adresse bitte den Schlüssel neu eintragen oder entfernen.`,
+  request_limit_required: () =>
+    t`Ist die Begrenzung eingeschaltet, braucht es die Zahl der Anfragen pro Tag.`,
   credentials_unreadable: () =>
     t`Der gespeicherte Zugangsschlüssel lässt sich nicht mehr öffnen (secret.key fehlt oder wurde ersetzt). Bitte neu eintragen.`,
   llm_invalid_url: () =>

@@ -13,7 +13,7 @@ from typing import Any, Literal
 
 from geotandem.model.schemas import ActionErrorCode
 
-ErrorCode = ActionErrorCode | Literal["not_found", "bad_request"]
+ErrorCode = ActionErrorCode | Literal["not_found", "bad_request", "busy"]
 
 
 class ActionError(Exception):

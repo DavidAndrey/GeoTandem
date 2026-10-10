@@ -11,6 +11,7 @@ from geotandem.data import DataBackend, Limits, Op
 from geotandem.importing.isolation import ReadLimits
 from geotandem.importing.staging import Staging
 from geotandem.llm import ClientFactory
+from geotandem.model.service import ModelCalls
 from geotandem.tools import ToolContext, ToolRegistry
 
 
@@ -29,6 +30,8 @@ class AppState:
     """Model connections, with the vault that opens their keys (plan E2.1)."""
     client_factory: ClientFactory
     """Builds a model client for an endpoint; a stub in tests."""
+    model_calls: ModelCalls
+    """The model calls in flight, in threads of their own (WP65)."""
     setup_token: str | None = None
     """While no account exists: what setup asks for (auth.setup_token)."""
 

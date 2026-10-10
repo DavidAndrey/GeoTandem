@@ -155,7 +155,8 @@ def connection_snapshot(info: ConnectionInfo) -> ConnectionSnapshot:
     )
 
 
-def _now() -> datetime:
+def utc_now() -> datetime:
+    """Naive UTC, as every time the record holds (the project's convention)."""
     return datetime.now(UTC).replace(tzinfo=None)
 
 
@@ -284,7 +285,7 @@ Change = Callable[[ModelAction], dict[str, Any]]
 @dataclass(frozen=True)
 class ModelActionStore:
     engine: Engine
-    clock: Callable[[], datetime] = _now
+    clock: Callable[[], datetime] = utc_now
     """Every time the record holds comes from here, naive UTC (the project's
     convention), never from the database's clock and its time zone."""
 
@@ -393,12 +394,23 @@ class ModelActionStore:
 
     # --- creating ------------------------------------------------------------------
 
-    def create(self, caller: Account, new: NewAction, *, supersede: bool = True) -> ModelActionView:
+    def create(
+        self,
+        caller: Account,
+        new: NewAction,
+        *,
+        supersede: bool = True,
+        admit: Callable[[Session], None] | None = None,
+    ) -> ModelActionView:
         """A new record, ``thinking`` (P7). With ``supersede`` the account's open
         record is closed in the same transaction (WP70); a comparison (``compare_of``)
-        passes ``False``, it waits beside the action it repeats."""
+        passes ``False``, it waits beside the action it repeats. ``admit`` runs
+        first in that transaction and refuses by raising (the prompt flow's
+        request limit and one request at a time, WP65)."""
         decided: list[ModelAction] = []
         with Session(self.engine, expire_on_commit=False) as db, db.begin():
+            if admit is not None:
+                admit(db)
             if supersede:
                 decided = self._supersede(db, caller)
             for linked in (new.parent_action_id, new.compare_of):
@@ -456,11 +468,13 @@ class ModelActionStore:
 
     def close_stale(self, older_than: datetime) -> list[int]:
         """Close what no request will finish any more, for the start-up check (P4,
-        P7, WP70, WP82); no caller, every account. Of the records created before
-        ``older_than``: ``thinking`` ends ``failed`` (the model's answer is lost),
-        ``running`` ends ``limited``/``interrupted`` with its last complete result
-        adoptable, and an ``auto`` answer never executed (``approved``, cell
-        ``auto``) is ``superseded``. A record the user approved stays approved."""
+        P7, WP70, WP82); no caller, every account. The application is one process,
+        so nothing in flight survives a restart: every ``thinking`` record ends
+        ``failed`` (the model's answer is lost) and every ``running`` one
+        ``limited``/``interrupted`` with its last complete result adoptable,
+        whatever their age. An ``auto`` answer never executed (``approved``, cell
+        ``auto``) created before ``older_than`` is ``superseded``: its window may
+        still be open. A record the user approved stays approved."""
         now = self.clock()
         error = {
             "code": "llm_timeout",
@@ -479,7 +493,8 @@ class ModelActionStore:
         with Session(self.engine, expire_on_commit=False) as db, db.begin():
             rows = db.scalars(
                 select(ModelAction).where(
-                    ModelAction.status.in_(stale), ModelAction.created_at < older_than
+                    ModelAction.status.in_(("thinking", "running"))
+                    | ((ModelAction.status == "approved") & (ModelAction.created_at < older_than))
                 )
             ).all()
             closed = [
@@ -690,11 +705,19 @@ class ModelActionStore:
     ) -> ModelActionView:
         """The hand-over (P1, D2): applied by hand, or edited and applied through
         Modus A; ``applied_query`` is the user's, logged, never run here. An
-        adjusted query went through the editor, so it was not applied by hand."""
+        adjusted query went through the editor, so it was not applied by hand,
+        and it names what the user applied; a proposal applied as proposed has no
+        query of the user's."""
         if decision == "adjusted" and applied_by_hand:
             raise ActionError(
                 "bad_request",
                 "An adjusted query is applied through the editor, not by hand.",
+                decision=decision,
+            )
+        if (decision == "adjusted") != (applied_query is not None):
+            raise ActionError(
+                "bad_request",
+                "An adjusted decision, and only that, names the query the user applied.",
                 decision=decision,
             )
         return self._move(

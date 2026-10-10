@@ -499,14 +499,18 @@ def test_the_start_up_check_closes_what_nobody_will_finish(
     waiting = proposed(store, anna, supersede=False)
     cutoff = datetime.now(UTC).replace(tzinfo=None) + timedelta(seconds=1)
     young = new(store, beat, supersede=False, proposal_only=True).id
+    young_auto = proposed(store, beat, AUTO, supersede=False)
     with Session(engine) as db, db.begin():
         db.execute(
             update(ModelAction)
-            .where(ModelAction.id == young)
+            .where(ModelAction.id.in_((young, young_auto)))
             .values(created_at=cutoff + timedelta(minutes=1))
         )
 
-    assert sorted(store.close_stale(cutoff)) == sorted([thinking, auto, running])
+    # Nothing in flight survives a restart, whatever its age; only an auto
+    # answer's window is measured.
+    closed = store.close_stale(cutoff)
+    assert sorted(closed) == sorted([thinking, auto, running, young])
 
     failed = store.get(anna, thinking)
     assert (failed.status, failed.decision, failed.error and failed.error["code"]) == (
@@ -520,12 +524,13 @@ def test_the_start_up_check_closes_what_nobody_will_finish(
     assert store.adopt(anna, running, STAMP).decision == "accepted"  # still adoptable
     assert store.get(anna, approved).status == "approved"  # the user approved it
     assert store.get(anna, waiting).status == "proposed"
-    assert store.get(beat, young).status == "thinking"
+    assert store.get(beat, young).status == "failed"
+    assert store.get(beat, young_auto).status == "approved"
     assert store.close_stale(cutoff) == []
     system = [
         e for e in events if e["event"] == "model_action_decided" and e["username"] == "system"
     ]
-    assert {e["action_id"] for e in system} == {thinking, auto}
+    assert {e["action_id"] for e in system} == {thinking, auto, young}
 
 
 def test_a_proposal_only_record_never_runs_unasked_and_is_never_superseded(

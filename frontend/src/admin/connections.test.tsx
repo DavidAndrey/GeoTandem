@@ -31,6 +31,8 @@ const connection = (patch: Partial<ConnectionInfo> = {}): ConnectionInfo => ({
   last_test: null,
   created_at: '2026-10-08T10:00:00',
   updated_at: '2026-10-08T10:00:00',
+  request_limit_enabled: false,
+  request_limit_per_day: null,
   ...patch,
 })
 

@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from geotandem.catalog import ModelProfile
 from geotandem.levels import CellMode, Level, OpClass, strictest
 from geotandem.llm import LLMClient
-from geotandem.model.prompt import FollowUp, build_prompt
+from geotandem.model.prompt import FollowUp, Prompt, build_prompt
 from geotandem.model.result import parse_answer
 from geotandem.model.schemas import (
     CannotAnswer,
@@ -41,6 +41,25 @@ def governance(level: Level, classes: frozenset[OpClass]) -> Governance:
         cell=strictest(level, ordered),
         needs_approval=[c for c in ordered if level.matrix[c] is CellMode.APPROVE],
         off=[c for c in ordered if level.matrix[c] is CellMode.OFF],
+    )
+
+
+def direct_prompt(
+    text: str,
+    *,
+    level: Level,
+    profile: ModelProfile,
+    follow_up: FollowUp | None = None,
+    context_length: int | None = None,
+) -> Prompt:
+    """The messages of a direct query; ``context_too_large`` before any call."""
+    return build_prompt(
+        text,
+        approach="direct",
+        level=level,
+        profile=profile,
+        follow_up=follow_up,
+        context_length=context_length,
     )
 
 
@@ -73,14 +92,18 @@ class DirectQuery:
     ) -> DirectAnswer:
         """Ask about ``text``. ``profile`` is the account's layer profile: the
         model sees exactly it, and its answer is checked in its world."""
-        prompt = build_prompt(
+        prompt = direct_prompt(
             text,
-            approach="direct",
             level=self.level,
             profile=profile,
             follow_up=follow_up,
             context_length=self.context_length,
         )
+        return self.ask(prompt, profile=profile)
+
+    def ask(self, prompt: Prompt, *, profile: ModelProfile) -> DirectAnswer:
+        """Send a prompt built by ``direct_prompt`` over ``profile``: the prompt
+        flow builds it while the request is checked, the call follows (P7)."""
         completion = self.client.complete(prompt.messages, schema=prompt.schema)
         answer = parse_answer(completion, "direct")
         assert not isinstance(answer, PlanAnswer)  # parse_answer took the direct kinds only
