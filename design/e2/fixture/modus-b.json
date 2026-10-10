@@ -1,0 +1,52 @@
+{
+  "_hinweis": "Beispieldialoge Modus B, abgestimmt auf fixture/beispieldaten.json aus E1 (Schulen 39, Grundschulen 24, Hauptverkehrsstr., Stadtteile · Kinderanteil). Zeiten sind Beispielwerte (heute).",
+  "stufen": [
+    { "name": "Assistenz",   "waehlbar": "alle",  "festlegung": { "catalog": "aus",      "query": "aus",      "spatial": "aus",      "derive": "aus",      "display": "aus" } },
+    { "name": "Prüfen",      "waehlbar": "alle",  "voreingestellt": true, "festlegung": { "catalog": "Freigabe", "query": "Freigabe", "spatial": "Freigabe", "derive": "Freigabe", "display": "Freigabe" } },
+    { "name": "Teilautonom", "waehlbar": "alle",  "_hinweis": "vom Admin eingerichtete Beispielstufe", "festlegung": { "catalog": "auto", "query": "auto", "spatial": "auto", "derive": "Freigabe", "display": "auto" } },
+    { "name": "Automatisch", "waehlbar": "admin", "festlegung": { "catalog": "auto", "query": "auto", "spatial": "auto", "derive": "auto", "display": "auto" } }
+  ],
+  "anbindungen": [
+    { "id": "lokal", "name": "Lokales Modell", "modell": "llama-3.1-8b", "extern": false },
+    { "id": "extern", "name": "Extern", "host": "api.anbieter.ch", "extern": true, "datenfreigabe": false }
+  ],
+  "grenzen": { "bedingungen": 8, "schritte": 8, "laufzeit_s": 120, "ergebnisobjekte": 10000, "kontingent_tag": 50 },
+  "referenzfrage": {
+    "prompt": "Welche Grundschulen liegen nahe an Hauptstrassen, in Quartieren mit vielen Kindern?",
+    "erlaeuterung": "Ich habe die Frage als Suche nach Grundschulen verstanden, die nahe einer Hauptverkehrsstrasse und in einem kinderreichen Stadtteil liegen.",
+    "annahmen": ["„nahe“ = höchstens 500 m", "„viele Kinder“ = Kinderanteil über 20 %", "„Quartiere“ = Layer Stadtteile · Kinderanteil (Synonym)"],
+    "abfrage": { "ziel": "schulen", "baum": { "op": "UND", "kinder": [
+      { "typ": "attribut", "feld": "schulart", "op": "ist eins von", "wert": ["Grundschule"], "herkunft": "modell" },
+      { "typ": "raum", "op": "<= distanz", "layer": "hauptstr", "meter": 500, "herkunft": "modell" },
+      { "typ": "raum", "op": "liegt in", "layer": "stadtteile_kinder", "filter": { "feld": "ant_u18", "op": ">", "wert": 20 }, "herkunft": "modell" }
+    ] } },
+    "treffer_je_bedingung": [24, 17, 20],
+    "treffer": 7, "von": 39,
+    "dauer_s": { "direkt": 6, "kette_planung": 9, "kette_lauf": 3.6 },
+    "kette": [
+      { "schritt": 1, "text": "Grundschulen auswählen", "klasse": "query", "ergebnis": 24, "modell_sieht": "nicht leer", "dauer_s": 0.4 },
+      { "schritt": 2, "text": "Puffer 500 m um Hauptverkehrsstr.", "klasse": "derive", "ergebnis": "1 Fläche", "modell_sieht": "ok", "dauer_s": 1.8 },
+      { "schritt": 3, "text": "Grundschulen im Puffer", "klasse": "spatial", "ergebnis": 17, "modell_sieht": "nicht leer", "dauer_s": 0.6 },
+      { "schritt": 4, "text": "Kinderreiche Stadtteile (ant_u18 > 20 %)", "klasse": "query", "ergebnis": 14, "modell_sieht": "nicht leer", "dauer_s": 0.3 },
+      { "schritt": 5, "text": "Grundschulen in kinderreichen Stadtteilen", "klasse": "spatial", "ergebnis": 7, "modell_sieht": "nicht leer", "dauer_s": 0.5 }
+    ]
+  },
+  "dialoge": [
+    { "zeit": "13:20", "konto": "m.keller", "prompt": "Schulen im Norden", "entscheidung": "übergangen" },
+    { "zeit": "13:31", "konto": "m.keller", "prompt": "Kinderreiche Stadtteile", "entscheidung": "angepasst", "treffer": 14 },
+    { "zeit": "13:40", "konto": "m.keller", "prompt": "Welche Kitas liegen nahe an Grundschulen?", "entscheidung": "abgewiesen", "code": "layer_not_visible", "bildschirm": "M3.1" },
+    { "zeit": "13:46", "konto": "admin", "prompt": "Schulen in Altstadt, Lindenhof, Ost, Nord, Süd, West, Bahnhof, Au oder Hof mit mehr als 300 Schülern", "entscheidung": "abgewiesen", "code": "limit_exceeded", "details": { "bedingungen": 10, "grenze": 8 }, "bildschirm": "M3.2" },
+    { "zeit": "13:52", "konto": "admin", "prompt": "Welche Schulen haben mehr Schüler als der Durchschnitt ihres Stadtteils?", "entscheidung": "abgewiesen", "code": "not_representable", "bildschirm": "M3.3" },
+    { "zeit": "13:58", "konto": "admin", "prompt": "Grundschulen nahe Hauptstr. (1 km)", "entscheidung": "abgelehnt", "stichwort": "falscher Wert", "bildschirm": "M5.3" },
+    { "zeit": "14:05", "konto": "admin", "prompt": "Referenzfrage", "stufe": "Prüfen", "entscheidung": "angenommen", "entscheidung_zeit": "14:06", "treffer": 7, "bildschirm": "M5.1 → M2.2" },
+    { "zeit": "14:12", "konto": "admin", "prompt": "Welche davon haben mehr als 300 Schüler?", "bezug": "letzte Antwort", "ergaenzt": { "typ": "attribut", "feld": "schueler", "op": ">", "wert": 300 }, "entscheidung": "angenommen", "treffer": 2, "bildschirm": "M11.1" },
+    { "zeit": "14:20", "konto": "admin", "prompt": "Referenzfrage", "stufe": "Teilautonom", "entscheidung": "auto", "zurueckgenommen": "14:21", "treffer": 7, "bildschirm": "M6.1 → M6.2" },
+    { "zeit": "14:24", "konto": "admin", "prompt": "Puffer 500 m um die Hauptstrassen und Grundschulen darin", "stufe": "Teilautonom", "entscheidung": "wartet auf Freigabe", "grund": "derive = Freigabe", "bildschirm": "M6.3" },
+    { "zeit": "14:30", "konto": "admin", "prompt": "Welche Schulen liegen in der Nähe der Kitas?", "rueckfrage": { "frage": "Wie nahe ist „in der Nähe“?", "optionen": ["250 m", "500 m", "1 km", "anderes"] }, "bildschirm": "M12.2" },
+    { "zeit": "14:33", "konto": "admin", "prompt": "Puffer 500 m um die Hauptstrassen, dann Anzahl Grundschulen je Stadtteil darin", "meldung": "arbeitsweise_passt_nicht", "angebot": "Werkzeugkette", "bildschirm": "M13.1" },
+    { "zeit": "14:35", "konto": "admin", "prompt": "Welche Grundschulen sind stark lärmbelastet?", "meldung": "nicht_beantwortbar", "fehlt": ["Layer mit Lärmwerten", "Attribut Lärm an Schulen"], "bildschirm": "M13.2" },
+    { "zeit": "14:40", "konto": "admin", "prompt": "Referenzfrage", "arbeitsweise": "Werkzeugkette", "stufe": "Prüfen", "entscheidung": "angenommen", "treffer": 7, "bildschirm": "M8.1 → M9.1 → M9.3" }
+  ],
+  "vergleich_abweichend": { "direkt": 7, "kette": 6, "nur_direkt": ["GS Altstadt", "GS Ost"], "nur_kette": ["GS Lindenhof"], "grund": "Schritt 5 nutzt „schneidet“ statt „liegt in“", "bildschirm": "M10.3" },
+  "kennzahlen_30_tage": { "vorschlaege": 24, "angenommen_unveraendert": 13, "angepasst": 4, "abgelehnt": 3, "uebergangen": 2, "auto_angewendet": 2, "davon_zurueckgenommen": 1, "nicht_gezaehlt": { "abgewiesen": 3, "abgebrochen": 1, "fehler": 2 } }
+}
