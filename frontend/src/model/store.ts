@@ -76,15 +76,20 @@ export const overtaken = (view: ModelActionView): Decision =>
  * A prompt was accepted (``POST /api/model/prompt`` answered 202 with the record
  * in ``thinking``). The server supersedes the open record in the same
  * transaction (plan WP65, WP70); it is shown so at once, the next poll of it
- * says the same.
+ * says the same. A repeat (``compare_of``, WP76) supersedes nothing: it waits
+ * beside the record it repeats (service.py ``supersede=compare_of is None``),
+ * which stays the open one until the repeat has answered.
  */
 export function sent(state: ModelState, view: ModelActionView): ModelState {
   const views = { ...state.views, [view.id]: view }
+  const repeat = view.compare_of != null
   // Every open record of the account (store.py ``_supersede``): the pending one,
   // and since the comparison (WP76) also the record a repeat waits beside.
-  const open = state.dialogue.filter(
-    (id) => id !== view.id && OPEN.includes(state.views[id]?.status as ActionStatus),
-  )
+  const open = repeat
+    ? []
+    : state.dialogue.filter(
+        (id) => id !== view.id && OPEN.includes(state.views[id]?.status as ActionStatus),
+      )
   for (const id of open) {
     const previous = state.views[id] as ModelActionView
     views[id] = {
@@ -104,7 +109,7 @@ export function sent(state: ModelState, view: ModelActionView): ModelState {
     views,
     dialogue: state.dialogue.includes(view.id) ? state.dialogue : [...state.dialogue, view.id],
     running: POLLED.includes(view.status) ? { id: view.id, status: view.status } : null,
-    pending: OPEN.includes(view.status) ? view.id : null,
+    pending: OPEN.includes(view.status) ? view.id : repeat ? state.pending : null,
   }
 }
 

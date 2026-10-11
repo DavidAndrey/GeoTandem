@@ -12,13 +12,25 @@ import type { ModelActionView } from '../../api/client'
 export type CompareEntry = (view: ModelActionView) => ReactNode
 
 interface CompareState {
+  /** Registered entries, the latest last: the one shown. */
+  entries: CompareEntry[]
   entry: CompareEntry | null
 }
 
-export const useCompare = create<CompareState>()(() => ({ entry: null }))
+export const useCompare = create<CompareState>()(() => ({ entries: [], entry: null }))
 
-/** Registers the comparison's entry; returns the unregister (for an effect's cleanup). */
+/**
+ * Registers the comparison's entry; returns the unregister (for an effect's
+ * cleanup), which brings back the one registered before.
+ */
 export function registerCompare(entry: CompareEntry): () => void {
-  useCompare.setState({ entry })
-  return () => useCompare.setState((s) => (s.entry === entry ? { entry: null } : s))
+  useCompare.setState((s) => {
+    const entries = [...s.entries, entry]
+    return { entries, entry }
+  })
+  return () =>
+    useCompare.setState((s) => {
+      const entries = s.entries.filter((e) => e !== entry)
+      return { entries, entry: entries[entries.length - 1] ?? null }
+    })
 }

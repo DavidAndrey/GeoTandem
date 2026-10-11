@@ -47,10 +47,11 @@ import {
 import { strays } from '../../test/pseudo'
 import { renderAt } from '../../test/render'
 import { Workplace } from '../../workplace/Workplace'
-import { accept, useApproval } from '../approval/flow'
+import { accept, undo, useApproval } from '../approval/flow'
 import { approveChain } from '../chain/flow'
+import { clearHistory } from '../panel/state'
 import { compactQuery } from '../readable'
-import { sent, useModel } from '../store'
+import { resumed, sent, useModel } from '../store'
 import { openComparison, repeat, repeatRefusal, takeRefusal } from './flow'
 import { conditionText, featureNames, reasonLines, type Words } from './words'
 
@@ -96,6 +97,8 @@ async function asked(
     script?: ChainScript
     records?: ModelActionView[]
     routes?: (server: ModelServer) => object
+    /** The account's level when the repeat is asked (default ``level``). */
+    repeatLevel?: LevelName
   } = {},
 ) {
   const user = fakeTimers()
@@ -104,7 +107,7 @@ async function asked(
   const calls = backend(
     {
       ...chainRoutes(server, thinkingView(first, level)),
-      ...compareRoutes(server, [answer.id], repeat, level),
+      ...compareRoutes(server, [answer.id], repeat, options.repeatLevel ?? level),
       ...options.routes?.(server),
     },
     llmOptions(1, LEVEL_ID[level]),
@@ -157,6 +160,10 @@ describe('M10.1: the way in', () => {
     expect(useModel.getState().views[DIRECT_ID]?.status).toBe('applied')
     expect(server.record(DIRECT_ID)?.status).toBe('applied')
     expect(screen.getByText(/wiederholt mit Werkzeugkette/)).toBeInTheDocument()
+    // The menu's card became an earlier answer: the focus is on the repeat's card.
+    await tick(50)
+    const cards = document.querySelectorAll('#prompt-panel article')
+    expect(cards[cards.length - 1]?.contains(document.activeElement)).toBe(true)
     await tick()
     // A plan as every chain's, waiting for its approval (never run unasked).
     const plan = await latestCard()
@@ -166,41 +173,71 @@ describe('M10.1: the way in', () => {
     expect(useAnalysis.getState().origin.marks).not.toEqual({})
   })
 
-  test('where the server would refuse, the entry is disabled and says why', async () => {
+  test('where the server would refuse, the item stays reachable by keyboard and says why', async () => {
     // Assistenz: proposal only, a class ``off`` (D1).
     const { user, calls } = await asked('reference', 'chain_reference', 'Assistenz')
-    await user.click(within(await latestCard()).getByRole('button', { name: 'Weitere Aktionen' }))
+    const trigger = within(await latestCard()).getByRole('button', { name: 'Weitere Aktionen' })
+    act(() => trigger.focus())
+    await user.keyboard('{Enter}')
     const item = await screen.findByRole('menuitem', { name: /Mit Werkzeugkette wiederholen/ })
+    await waitFor(() => expect(document.activeElement).toBe(item))
     expect(item).toHaveAttribute('aria-disabled', 'true')
-    expect(item).toHaveTextContent(
-      'Stufe Assistenz: Das Modell darf hier nur vorschlagen (aus: Attributfilter, Raumfilter)',
+    // The reason is part of the item's name: read with it, not hidden.
+    expect(item).toHaveAccessibleName(
+      /Stufe Assistenz: Das Modell darf hier nur vorschlagen \(aus: Attributfilter, Raumfilter\)/,
     )
-    await user.click(item)
+    await user.keyboard('{Enter}')
     expect(posted(calls, DIRECT_ID, 'compare')).toHaveLength(0)
+    expect(screen.getByRole('menuitem', { name: /Mit Werkzeugkette wiederholen/ })).toBe(item)
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('menuitem')).toBeNull())
+    expect(document.activeElement).toBe(trigger)
   })
 
   test('the reasons, as the server checks them', () => {
     const state = useModel.getState()
     const direct = actionView('reference')
     const withRecord = (view: ModelActionView) => sent(state, { ...view, id: 999 })
-    expect(repeatRefusal(state, direct)).toBeNull()
-    expect(repeatRefusal(state, { ...direct, status: 'rejected', decision: 'rejected' })).toMatch(
-      /^Nicht mehr offen \(abgelehnt\)/,
-    )
-    expect(repeatRefusal(state, actionView('reference', {}, 'Assistenz'))).toMatch(
+    expect(repeatRefusal(state, direct, false)).toBeNull()
+    expect(
+      repeatRefusal(state, { ...direct, status: 'rejected', decision: 'rejected' }, false),
+    ).toMatch(/^Nicht mehr offen \(abgelehnt\)/)
+    expect(repeatRefusal(state, actionView('reference', {}, 'Assistenz'), false)).toMatch(
       /nur vorschlagen \(aus: Attributfilter, Raumfilter\)/,
     )
-    expect(repeatRefusal(state, { ...direct, compare_of: 5 })).toBe(
+    expect(repeatRefusal(state, { ...direct, compare_of: 5 }, false)).toBe(
       'Diese Antwort ist schon die Wiederholung mit der anderen Arbeitsweise.',
     )
     // A plan not run yet has no result.
-    expect(repeatRefusal(state, actionView('chain_reference'))).toBe(
+    expect(repeatRefusal(state, actionView('chain_reference'), false)).toBe(
       'Ohne Ergebnis gibt es nichts zu vergleichen.',
     )
-    // One request at a time (``busy``).
-    expect(repeatRefusal(withRecord(thinkingView('clarification')), direct)).toMatch(
+    // One request at a time (``busy``): the dialogue's, or one on its way.
+    expect(repeatRefusal(withRecord(thinkingView('clarification')), direct, false)).toMatch(
       /Eine Anfrage läuft noch/,
     )
+    expect(repeatRefusal(state, direct, true)).toMatch(/Eine Anfrage läuft noch/)
+  })
+
+  test("a side with a class off: no dialog by itself, the reason at 'Vergleich ansehen'", async () => {
+    // The chain under Prüfen; the account's level is Assistenz when it asks the repeat.
+    const { user, calls, server } = await asked('chain_reference', 'reference', 'Prüfen', {
+      repeatLevel: 'Assistenz',
+    })
+    await user.click(await screen.findByRole('button', { name: 'Kette freigeben und starten' }))
+    for (let i = 0; i < 4; i++) await tick()
+    await user.click(
+      within(await latestCard()).getByRole('button', { name: 'Mit Direktabfrage vergleichen' }),
+    )
+    await tick()
+    expect(server.record(REPEAT_ID)).toMatchObject({ status: 'proposed', proposal_only: true })
+    expect(screen.queryByRole('dialog')).toBeNull()
+    const open = within(await latestCard()).getByRole('button', { name: 'Vergleich ansehen' })
+    expect(open).toBeDisabled()
+    expect(open).toHaveAccessibleDescription(
+      /Stufe Assistenz: Das Modell darf hier nur vorschlagen \(aus: Attributfilter, Raumfilter\)/,
+    )
+    expect(calls.filter((c) => c.key.endsWith('/comparison'))).toEqual([])
   })
 
   test('a refused repeat says why in words; the analysis is unchanged', async () => {
@@ -287,11 +324,58 @@ describe('M10.2: equal hits', () => {
     expect(box.contains(document.activeElement)).toBe(true)
     await user.keyboard('{Escape}')
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    // The focus is back at the repeat's card, on its *Vergleich ansehen*; the panel stays open.
+    const again = within(await latestCard()).getByRole('button', { name: 'Vergleich ansehen' })
+    await waitFor(() => expect(document.activeElement).toBe(again))
+    expect(document.getElementById('prompt-panel')).not.toBeNull()
     // Not opened again by itself; the finished chain's card offers it.
     await tick()
     expect(screen.queryByRole('dialog')).toBeNull()
-    await user.click(within(await latestCard()).getByRole('button', { name: 'Vergleich ansehen' }))
+    await user.click(again)
     expect(await dialog()).toBeInTheDocument()
+  })
+
+  test('an undone record compared is compared by its query; it cannot be taken', async () => {
+    const { user } = await applied()
+    await repeatFromMenu(user)
+    await tick()
+    // Taken back meanwhile (its card is an earlier answer: the flow's undo).
+    await act(() => undo(DIRECT_ID))
+    expect(useModel.getState().views[DIRECT_ID]?.status).toBe('undone')
+    await runRepeat(user, 'Kette freigeben und starten')
+    const shown = within(await dialog())
+    expect(await shown.findByRole('region', { name: 'Unterschied' })).toHaveTextContent(
+      'Treffermengen gleich',
+    )
+    const direct = shown.getByRole('region', { name: 'Direktabfrage' })
+    expect(
+      within(direct).getByRole('button', { name: 'Diese übernehmen: Direktabfrage' }),
+    ).toBeDisabled()
+    expect(direct).toHaveTextContent('Nicht mehr offen (zurückgenommen).')
+  })
+
+  test('after "Verlauf leeren" the record compared is asked for; it cannot be taken from there', async () => {
+    const { user, calls } = await applied()
+    await repeatFromMenu(user)
+    // While the repeat is thinking: it stays, the record compared goes.
+    act(() => clearHistory())
+    expect(useModel.getState().dialogue).toEqual([REPEAT_ID])
+    await tick()
+    const before = calls.filter((c) => c.key === `GET /api/model/actions/${DIRECT_ID}`).length
+    await runRepeat(user, 'Kette freigeben und starten')
+    const shown = within(await dialog())
+    const direct = await shown.findByRole('region', { name: 'Direktabfrage' })
+    expect(calls.filter((c) => c.key === `GET /api/model/actions/${DIRECT_ID}`).length).toBe(
+      before + 1,
+    )
+    expect(await shown.findByRole('region', { name: 'Unterschied' })).toHaveTextContent(
+      'Treffermengen gleich',
+    )
+    expect(
+      within(direct).getByRole('button', { name: 'Diese übernehmen: Direktabfrage' }),
+    ).toBeDisabled()
+    expect(direct).toHaveTextContent('Schon angewendet.')
+    expect(shown.getByRole('button', { name: 'Diese übernehmen: Werkzeugkette' })).toBeEnabled()
   })
 })
 
@@ -560,6 +644,17 @@ test('a new prompt overtakes every open record, the record compared and its repe
   expect(next.views[REPEAT_ID]?.steps.every((s) => s.status === 'skipped')).toBe(true)
 })
 
+test('a repeat supersedes nothing, also when picked up again (resumed after busy)', () => {
+  const original = actionView('reference')
+  const state = sent(useModel.getState(), original)
+  const thinking = { ...thinkingView('chain_reference'), id: REPEAT_ID, compare_of: DIRECT_ID }
+  for (const next of [sent(state, thinking), resumed(state, thinking)]) {
+    expect(next.views[DIRECT_ID]?.status).toBe('proposed')
+    expect(next.pending).toBe(DIRECT_ID)
+    expect(next.running?.id).toBe(REPEAT_ID)
+  }
+})
+
 test('in pseudo, the differing dialog shows no text outside the catalog', async () => {
   activate('pseudo', pseudo)
   try {
@@ -711,5 +806,35 @@ describe('the fake server as WP76 answers', () => {
     expect(body).toMatchObject({ only_left: [], only_right: [], reason: null })
     expect(body.left.count).toBe(REFERENCE_IDS.length)
     expect(body.left.ids_hash).toBe(body.right.ids_hash)
+  })
+
+  test('names: none on a layer without a name attribute (compare.py name_attribute)', () => {
+    const server = compared('compare_differs', {
+      found: differsFound(DIRECT_ID, REPEAT_ID),
+      names: {},
+    })
+    const body = ok(server.comparison(DIRECT_ID))
+    expect([...body.only_left, ...body.only_right].map((f) => f.name)).toEqual([null, null, null])
+  })
+
+  test('the reason keys on full dumps: a default written out is the same as one left out', () => {
+    const query = (match: object) => ({
+      schema_version: '2',
+      source: 'schulen',
+      where: { op: 'and', args: [{ op: 'text_match', attr: 'typ', text: 'prim', ...match }] },
+    })
+    expect(compareReason(query({ mode: 'contains' }), query({}))).toBeNull()
+    expect(compareReason({ ...query({}), columns: [] }, query({}))).toBeNull()
+    expect(compareReason(query({ mode: 'starts_with' }), query({}))).toMatchObject({
+      kind: 'conditions',
+    })
+  })
+
+  test('comparison: every query slot taken is 503 before a token is 403', () => {
+    const server = compared('chain_reference')
+    server.queriesBusy(true)
+    expect(code(server.comparison(REPEAT_ID, true))).toEqual([503, 'busy'])
+    server.queriesBusy(false)
+    expect(code(server.comparison(REPEAT_ID, true))).toEqual([403, 'session_required'])
   })
 })

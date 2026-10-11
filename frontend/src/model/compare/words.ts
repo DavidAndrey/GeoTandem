@@ -4,7 +4,7 @@
 // (editor/describe.ts over the rows of readable.ts), so there is no second
 // describer; a layer by its catalog title.
 import { t } from '@lingui/core/macro'
-import type { Approach, CompareReason, FeatureRef } from '../../api/client'
+import type { CompareReason, FeatureRef } from '../../api/client'
 import { describe, objectLabel } from '../../editor/describe'
 import type { labelsFor } from '../../editor/fields'
 import { formatNumber } from '../../i18n/locale'
@@ -12,9 +12,6 @@ import { compactQuery, readCondition } from '../readable'
 
 /** What ``describe`` needs: the labels of the result layer and of a related layer's fields. */
 export type Words = Pick<ReturnType<typeof labelsFor>, 'labels' | 'filterLabels'>
-
-export const approachName = (approach: Approach) =>
-  approach === 'chain' ? t`Werkzeugkette` : t`Direktabfrage`
 
 /**
  * One condition of the reason as the controls say it. The server sends a full

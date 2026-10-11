@@ -8,7 +8,7 @@
 // stays inside until it closes (design "Barrierefreiheit"), Esc closes it,
 // the focus starts on × so that no key takes a side by accident.
 import { Trans } from '@lingui/react/macro'
-import { plural, t } from '@lingui/core/macro'
+import { t } from '@lingui/core/macro'
 import { useQuery } from '@tanstack/react-query'
 import { X } from 'lucide-react'
 import { Dialog } from 'radix-ui'
@@ -30,39 +30,52 @@ import { hitsOf } from '../../i18n/phrases'
 import { useApproval } from '../approval/flow'
 import { conditionCount } from '../approval/governance'
 import { StepSummary } from '../chain/StepSummary'
-import { isChain, planned, ranMs } from '../chain/steps'
+import { isChain, planned, ranMs, stepCount } from '../chain/steps'
+import { approachText } from '../log/words'
 import { seconds } from '../panel/time'
 import { compactQuery, readQuery, type ReadNode } from '../readable'
 import { StatusLabel } from '../status'
 import { statusKey } from '../statusKey'
 import { useModel } from '../store'
 import { QueryTree } from '../tree'
-import { closeComparison, compareErrorText, take, takeRefusal, useComparison } from './flow'
 import {
-  approachName,
-  differenceTitle,
-  featureNames,
-  reasonLines,
-  type Sides,
-  type Words,
-} from './words'
+  closeComparison,
+  compareErrorText,
+  focusComparison,
+  take,
+  takeRefusal,
+  useComparison,
+} from './flow'
+import { differenceTitle, featureNames, reasonLines, type Sides, type Words } from './words'
 
-/** The open comparison's two records, the record compared left (as the server names them). */
+/**
+ * The open comparison's two records, the record compared left (as the server
+ * names them). The repeat is the dialogue's; the record compared is asked for
+ * when it left the dialogue ("Verlauf leeren" while its repeat ran).
+ */
 function usePair(shown: number | null) {
-  return useModel(
+  const { left, right } = useModel(
     useShallow((s) => {
       const right = shown !== null ? s.views[shown] : undefined
       const left = right?.compare_of != null ? s.views[right.compare_of] : undefined
       return { left, right }
     }),
   )
+  const missing = right?.compare_of != null && left === undefined ? right.compare_of : null
+  const fetched = useQuery({
+    queryKey: ['model-action', missing],
+    queryFn: () => api.model.action(missing ?? 0),
+    enabled: missing !== null,
+    retry: false,
+  })
+  return { left: left ?? (missing !== null ? fetched.data : undefined), right, fetched }
 }
 
 export function CompareDialog() {
   const shown = useComparison((s) => s.shown)
-  const { left, right } = usePair(shown)
+  const { left, right, fetched } = usePair(shown)
   const close = useRef<HTMLButtonElement>(null)
-  const open = shown !== null && left !== undefined && right !== undefined
+  const open = shown !== null && right !== undefined
   return (
     <Dialog.Root open={open} onOpenChange={(next) => !next && closeComparison()}>
       <Dialog.Portal>
@@ -72,6 +85,12 @@ export function CompareDialog() {
           onOpenAutoFocus={(event) => {
             event.preventDefault()
             close.current?.focus()
+          }}
+          onCloseAutoFocus={(event) => {
+            // Where it was opened from may be gone (an auto-opened dialog, a
+            // card that became an earlier answer): the repeat's card.
+            event.preventDefault()
+            focusComparison(useComparison.getState().last)
           }}
         >
           <div className="flex items-start gap-2">
@@ -89,7 +108,13 @@ export function CompareDialog() {
           {open && (
             <>
               <Dialog.Description className="text-muted text-sm">{right.prompt}</Dialog.Description>
-              <Body left={left} right={right} />
+              {left ? (
+                <Body left={left} right={right} />
+              ) : fetched.error ? (
+                <ErrorNotice error={fetched.error} />
+              ) : (
+                <Loading />
+              )}
             </>
           )}
         </Dialog.Content>
@@ -126,7 +151,7 @@ function Body({ left, right }: { left: ModelActionView; right: ModelActionView }
   })
   const layer = resultLayerOf(left.query)
   const { labels, filterLabels } = labelsFor(layer ? catalogLayer(layer) : undefined, catalog)
-  const sides: Sides = { left: approachName(left.approach), right: approachName(right.approach) }
+  const sides: Sides = { left: approachText(left.approach), right: approachText(right.approach) }
   const data = comparison.data
   return (
     <>
@@ -157,12 +182,6 @@ function ComparisonError({ error }: { error: unknown }) {
   )
 }
 
-/** "5 Schritte". */
-function stepCount(n: number): string {
-  const count = formatNumber(n)
-  return plural(n, { one: `${count} Schritt`, other: `${count} Schritte` })
-}
-
 /** The conditions a hit meets, leaves only. */
 const leaves = (nodes: readonly ReadNode[]): number =>
   nodes.reduce((n, node) => n + (node.kind === 'group' ? leaves(node.children) : 1), 0)
@@ -186,7 +205,7 @@ function Side({ view, hits }: { view: ModelActionView; hits: number | null }) {
     <section aria-labelledby={heading} className="flex min-w-0 flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
         <h3 id={heading} className="text-lg">
-          {approachName(view.approach)}
+          {approachText(view.approach)}
         </h3>
         <span className="ml-auto">
           <StatusLabel status={statusKey(view)} />
@@ -265,9 +284,10 @@ function Take({ view }: { view: ModelActionView }) {
   const busy = useApproval((s) => s.busy !== null)
   const mine = useApproval((s) => s.busy?.action === view.id)
   const failure = useApproval((s) => (s.failure?.action === view.id ? s.failure.error : null))
-  const refusal = takeRefusal(view)
+  const inDialogue = useModel((s) => s.dialogue.includes(view.id))
+  const refusal = takeRefusal(view, inDialogue)
   const hint = `take-refusal-${view.id}`
-  const name = approachName(view.approach)
+  const name = approachText(view.approach)
   return (
     <div className="mt-auto flex flex-col gap-1">
       <p className="flex flex-wrap items-center gap-2">

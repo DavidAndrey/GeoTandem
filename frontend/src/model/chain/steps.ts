@@ -4,7 +4,7 @@
 // reads the record. The tool names are the server's (WP74 pins them), so
 // nothing here keys on one; a step shows its ``text`` and its ``tool`` as given.
 import { i18n, type MessageDescriptor } from '@lingui/core'
-import { msg } from '@lingui/core/macro'
+import { msg, plural } from '@lingui/core/macro'
 import type {
   ModelActionView,
   ModelAnswer,
@@ -13,8 +13,15 @@ import type {
   StepView,
   StopReason,
 } from '../../api/client'
+import { formatNumber } from '../../i18n/locale'
 
 export type PlanAnswer = Extract<ModelAnswer, { kind: 'plan' }>
+
+/** "5 Schritte" (design M9.3, M10). */
+export function stepCount(n: number): string {
+  const count = formatNumber(n)
+  return plural(n, { one: `${count} Schritt`, other: `${count} Schritte` })
+}
 
 /**
  * Steps of one chain, re-planned steps included (plan section 1, F-3.9):

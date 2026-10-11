@@ -20,6 +20,7 @@ import { ChainAnswer } from '../chain/Chain'
 import { CompareHost } from '../compare/CompareHost'
 import { CompareMenu } from '../compare/Entry'
 import { openMyActions } from '../log/dialog'
+import { approachText } from '../log/words'
 import { StatusLabel } from '../status'
 import { dialogueViews, useModel } from '../store'
 import { FRAME, lineStyle, statusKey } from '../statusKey'
@@ -300,9 +301,6 @@ function Refusal({ view }: { view: ModelActionView }) {
     </article>
   )
 }
-
-const approachText = (approach: ModelActionView['approach']) =>
-  approach === 'chain' ? t`Werkzeugkette` : t`Direktabfrage`
 
 /**
  * A query answer through its life: waiting for approval (M5), proposal only

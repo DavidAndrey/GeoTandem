@@ -877,10 +877,13 @@ describe('run (M9)', () => {
     try {
       await user.click(await screen.findByRole('button', { name: 'Eintrag' }))
       expect(opened).toEqual([answer.id])
+      expect(screen.queryByRole('button', { name: 'Mit Direktabfrage vergleichen' })).toBeNull()
     } finally {
       act(() => off())
     }
+    // Unregistered, the entry registered before (the dialogue's) is back.
     expect(screen.queryByRole('button', { name: 'Eintrag' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Mit Direktabfrage vergleichen' })).toBeEnabled()
   })
 })
 

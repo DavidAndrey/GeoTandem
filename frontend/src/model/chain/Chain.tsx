@@ -7,7 +7,7 @@
 // (M9.5), with the last complete result adoptable. The analysis is unchanged
 // until *übernehmen*.
 import { Trans } from '@lingui/react/macro'
-import { plural, t } from '@lingui/core/macro'
+import { t } from '@lingui/core/macro'
 import { Check, X } from 'lucide-react'
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import type { ModelActionView, StepView } from '../../api/client'
@@ -55,16 +55,11 @@ import {
   placeOf,
   planned,
   ranMs,
+  stepCount,
   oneApproval,
   type Phase,
   type PlanAnswer,
 } from './steps'
-
-/** "5 Schritte". */
-function stepCount(n: number): string {
-  const count = formatNumber(n)
-  return plural(n, { one: `${count} Schritt`, other: `${count} Schritte` })
-}
 
 /** The time now, once a second: the run's clock (M9.1). */
 function useNow(): number {
@@ -861,6 +856,7 @@ function StoppedActions({ view }: { view: ModelActionView }) {
   // The server's choice of what to adopt (``query``, ``stamp``), never the client's.
   const last = adoptable(view)
   const busy = useApproval((s) => s.busy !== null)
+  const compareEntry = useCompare((s) => s.entry)
   const byUser = aborted(view.stop_reason)
   const count = adoptedHits(view)
   const hits = count !== null ? formatNumber(count) : null
@@ -892,6 +888,8 @@ function StoppedActions({ view }: { view: ModelActionView }) {
         <button type="button" className="btn" onClick={openMyActions}>
           <Trans>Protokoll</Trans>
         </button>
+        {/* A stopped chain with a result is compared too (service.py ``COMPARABLE``). */}
+        {last && compareEntry?.(view)}
       </div>
       <AdoptState view={view} />
       <p className="text-muted text-xs">

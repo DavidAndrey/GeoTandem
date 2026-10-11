@@ -542,8 +542,8 @@ export interface ChainScript {
   busyCalls?: number
   /** The comparison: the feature ids each record's query finds, by record id (default ``REFERENCE_IDS``). */
   found?: Record<number, readonly number[]>
-  /** The comparison: names by feature id, ``null`` for none (default ``COMPARE_NAMES``, else "Schule n"). */
-  names?: Record<number, string | null>
+  /** The comparison: names by layer and feature id (default: ``schulen`` with ``COMPARE_NAMES``). */
+  names?: FeatureNames
   /** ``compare`` is refused with ``quota_exceeded`` (the connection's daily limit, P5). */
   quota?: number
 }
@@ -634,8 +634,9 @@ function valuesOnly(before: unknown, after: unknown, key = ''): boolean {
 //   603). The model's answer is stored ``proposed`` whatever the cell
 //   (``store.propose``, store.py 1118-1155, 1139): never ``approved``, so it
 //   is never ``auto`` either (``_unasked``, 559-563).
-// - ``GET .../comparison`` (api/model.py 215-230: an ``InteractiveAccount``,
-//   a token gets 403 ``session_required``; a query slot, 503 ``busy``) is
+// - ``GET .../comparison`` (api/model.py 215-230: its ``QuerySlot`` first, 503
+//   ``busy`` when every slot is taken; then an ``InteractiveAccount``, a token
+//   gets 403 ``session_required``) is
 //   ``PromptFlow.comparison`` (service.py 1089-1129): the sides by
 //   ``store.compared`` (store.py 657-687): named by a repeat, its
 //   ``compare_of`` left and itself right; named by the record compared, it
@@ -646,9 +647,11 @@ function valuesOnly(before: unknown, after: unknown, key = ''): boolean {
 //   status}; none otherwise ⇒ 409 ``nothing_to_compare`` {id, status}. The
 //   ids are (result layer, id) pairs (``result_layer``: an aggregate's area
 //   layer, else the source; compare.py 55-58); ``only_left``/``only_right``
-//   sorted, each with its name or ``null`` (1110-1113); the reason only when
-//   the sets differ (1114), from the two queries alone (compare.py 112-131,
-//   ported below as ``compareReason``); its conditions as a full dump
+//   sorted, each with its name, ``null`` on a layer without a name attribute
+//   (1110-1113, ``_names`` 1332-1350); the reason only when the sets differ
+//   (1114), from the two queries alone (compare.py 112-131, ported below as
+//   ``compareReason``, keyed on full dumps as ``_key``/``_rest``); its
+//   conditions as a full dump
 //   (``where: null`` on a relation without filter, a text match's defaults;
 //   a missing side ``null``). A side ``proposed`` or ``approved`` gets
 //   ``previewed_at`` (1115-1119); nothing else changes.
@@ -669,10 +672,18 @@ export const DIFFERS = (
   }
 ).comparison
 
-/** The names the contract fixture gives, by feature id. */
-export const COMPARE_NAMES: Record<number, string | null> = Object.fromEntries(
-  [...DIFFERS.only_left, ...DIFFERS.only_right].map((f) => [f.id, f.name]),
+/** The names the contract fixture gives, by feature id (``schulen``: its ``name`` attribute). */
+export const COMPARE_NAMES: Record<number, string> = Object.fromEntries(
+  [...DIFFERS.only_left, ...DIFFERS.only_right].map((f) => [f.id, f.name ?? '']),
 )
+
+/**
+ * The names of features by layer, as ``_names`` reads them (service.py
+ * 1332-1350): a layer listed has a name attribute (``name``, ``bezeichnung``,
+ * ``titel``; compare.py 61-64) and these values; a layer not listed has none,
+ * so its features name nothing (``null``).
+ */
+export type FeatureNames = Record<string, Record<number, string>>
 
 /**
  * The fixture's differing case on the fake's ids: the reference's ten with
@@ -747,38 +758,57 @@ const conditionsOf = (q: Json): Json[] =>
       ? ((q.where as Json).args as Json[])
       : [q.where as Json]
 
+/**
+ * A condition as pydantic dumps it (``model_dump``, and so the response):
+ * every default written out (geotandem_query/models.py), so an explicit
+ * default and a missing one are the same, as on the server.
+ */
+function dumped(c: Json): Json {
+  switch (c.op) {
+    case 'and':
+    case 'or':
+      return { ...c, args: (c.args as Json[]).map(dumped) }
+    case 'not':
+      return { ...c, arg: dumped(c.arg as Json) }
+    case 'related':
+      return { ...c, where: c.where ? dumped(c.where as Json) : null }
+    case 'text_match':
+      return { mode: 'contains', case_sensitive: false, ...c }
+    case 'near_feature':
+      return { distance_m: 0, ...c }
+    case 'geometry':
+      return { predicate: 'intersects', ...c }
+    default:
+      return c
+  }
+}
+
+/** ``_key`` (compare.py 88-89): the full dump, keys sorted. */
+const keyOf = (c: Json) => stable(dumped(c))
+
 const HIT_PARTS = ['attribute_join', 'buffer', 'spatial_relation', 'aggregate', 'columns']
 
-/** ``_rest`` (compare.py 92-96): what else makes up the hits; order and limit only with a limit. */
+/**
+ * ``_rest`` (compare.py 92-96): what else makes up the hits, dumped with its
+ * defaults (an unset part ``null``, ``columns`` and ``order_by`` ``[]``);
+ * order and limit only with a limit.
+ */
 function restOf(q: Json): string {
   const keys = [...HIT_PARTS, ...(q.limit != null ? ['order_by', 'limit'] : [])]
-  return stable(Object.fromEntries(keys.map((k) => [k, q[k] ?? null])))
+  const empty = (k: string) => (k === 'columns' || k === 'order_by' ? [] : null)
+  return stable(Object.fromEntries(keys.map((k) => [k, q[k] ?? empty(k)])))
 }
 
 /** ``_only`` (compare.py 99-109): ``ours`` less those ``theirs`` has too, one for one. */
 function only(ours: Json[], theirs: Json[]): Json[] {
   const left = new Map<string, number>()
-  for (const c of theirs) left.set(stable(c), (left.get(stable(c)) ?? 0) + 1)
+  for (const c of theirs) left.set(keyOf(c), (left.get(keyOf(c)) ?? 0) + 1)
   return ours.filter((c) => {
-    const n = left.get(stable(c)) ?? 0
+    const n = left.get(keyOf(c)) ?? 0
     if (n === 0) return true
-    left.set(stable(c), n - 1)
+    left.set(keyOf(c), n - 1)
     return false
   })
-}
-
-/** A condition as pydantic dumps it in a response: every default written out. */
-function dumped(c: Json): Json {
-  switch (c.op) {
-    case 'not':
-      return { ...c, arg: dumped(c.arg as Json) }
-    case 'related':
-      return { where: null, ...c, ...(c.where ? { where: dumped(c.where as Json) } : {}) }
-    case 'text_match':
-      return { mode: 'contains', case_sensitive: false, ...c }
-    default:
-      return c
-  }
 }
 
 /** ``reason`` (compare.py 112-131) on compact queries; its conditions as the response dumps them. */
@@ -1117,10 +1147,16 @@ export function modelServer(
           )
         : nothingToCompare(view)
   const foundBy = (view: ModelActionView) => script.found?.[view.id] ?? REFERENCE_IDS
-  const nameOf = (id: number) =>
-    script.names && id in script.names
-      ? (script.names[id] ?? null)
-      : (COMPARE_NAMES[id] ?? `Schule ${id}`)
+  const names: FeatureNames = script.names ?? { schulen: COMPARE_NAMES }
+  /** ``_names``: the layer's name attribute's value; none without one (compare.py 61-64). */
+  const nameOf = (layer: string, id: number): string | null => {
+    const known = names[layer]
+    if (!known) return null
+    const name = known[id]
+    // The fake invents no data: a test that compares a feature names it.
+    if (name === undefined) throw new Error(`the fake has no name for ${layer} ${id}`)
+    return name
+  }
 
   return {
     record: (id: number) => records.get(id),
@@ -1315,11 +1351,13 @@ export function modelServer(
         })
       }),
     /** ``GET .../comparison``: both sides' stamps, the difference by feature id, the reason. */
+    // The route's ``dependencies=[QuerySlot]`` resolve before the account
+    // (api/model.py 215-220): every query slot taken is 503 before a token's 403.
     comparison: (id: number, token = false) =>
-      token
-        ? fail('session_required', 'Only an interactive session may do this.', {}, 403)
-        : queriesBusy
-          ? fail('busy', 'Too many queries are running at the same time.', {}, 503)
+      queriesBusy
+        ? fail('busy', 'Too many queries are running at the same time.', {}, 503)
+        : token
+          ? fail('session_required', 'Only an interactive session may do this.', {}, 403)
           : step<Comparison>(id, (view) => {
               let left: ModelActionView | undefined = view
               let right: ModelActionView | undefined
@@ -1350,7 +1388,7 @@ export function modelServer(
                 return a
                   .filter((p) => !other.has(key(p)))
                   .sort((x, y) => (x[0] === y[0] ? x[1] - y[1] : x[0] < y[0] ? -1 : 1))
-                  .map(([, i]) => ({ id: i, name: nameOf(i) }))
+                  .map(([layer, i]) => ({ id: i, name: nameOf(layer, i) }))
               }
               const onlyLeft = minus(leftIds, rightIds)
               const onlyRight = minus(rightIds, leftIds)

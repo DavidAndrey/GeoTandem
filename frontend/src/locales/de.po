@@ -355,8 +355,7 @@ msgstr "{n, plural, one {{count} Objekt} other {{count} Objekte}}"
 msgid "{n, plural, one {{count} Schlüsselwert kommt in „{layer}\" mehrfach vor; das erste Objekt gilt.} other {{count} Schlüsselwerte kommen in „{layer}\" mehrfach vor; das erste Objekt gilt.}}"
 msgstr "{n, plural, one {{count} Schlüsselwert kommt in „{layer}\" mehrfach vor; das erste Objekt gilt.} other {{count} Schlüsselwerte kommen in „{layer}\" mehrfach vor; das erste Objekt gilt.}}"
 
-#: src/model/chain/Chain.tsx
-#: src/model/compare/CompareDialog.tsx
+#: src/model/chain/steps.ts
 msgid "{n, plural, one {{count} Schritt} other {{count} Schritte}}"
 msgstr "{n, plural, one {{count} Schritt} other {{count} Schritte}}"
 
@@ -2087,9 +2086,7 @@ msgstr "Dieses Werkzeug gibt es nicht."
 msgid "Direkt"
 msgstr "Direkt"
 
-#: src/model/compare/words.ts
 #: src/model/log/words.ts
-#: src/model/panel/Answer.tsx
 #: src/model/panel/PromptPanel.tsx
 msgid "Direktabfrage"
 msgstr "Direktabfrage"
@@ -2174,6 +2171,7 @@ msgid "Eine Anfrage läuft noch. Wiederholen geht, sobald sie beantwortet ist."
 msgstr "Eine Anfrage läuft noch. Wiederholen geht, sobald sie beantwortet ist."
 
 #: src/i18n/errors.ts
+#: src/model/compare/flow.ts
 msgid "Eine der beiden Antworten hat kein Ergebnis; es gibt nichts zu vergleichen."
 msgstr "Eine der beiden Antworten hat kein Ergebnis; es gibt nichts zu vergleichen."
 
@@ -3455,7 +3453,7 @@ msgstr "läuft …"
 msgid "Läuft noch: Die Kette hat noch kein Ergebnis."
 msgstr "Läuft noch: Die Kette hat noch kein Ergebnis."
 
-#: src/model/compare/Entry.tsx
+#: src/model/compare/flow.ts
 msgid "Läuft noch: Verglichen wird, sobald beide Wege ein Ergebnis haben."
 msgstr "Läuft noch: Verglichen wird, sobald beide Wege ein Ergebnis haben."
 
@@ -3952,6 +3950,10 @@ msgstr "nicht leer"
 msgctxt "model sees"
 msgid "nicht leer"
 msgstr "nicht leer"
+
+#: src/model/compare/flow.ts
+msgid "Nicht mehr im Verlauf. Bitte neu fragen."
+msgstr "Nicht mehr im Verlauf. Bitte neu fragen."
 
 #: src/model/compare/flow.ts
 msgid "Nicht mehr offen ({status}): Wiederholt wird eine wartende oder angewendete Antwort."
@@ -5187,9 +5189,7 @@ msgid "Werkzeugaufruf"
 msgstr "Werkzeugaufruf"
 
 #: src/model/chain/Chain.tsx
-#: src/model/compare/words.ts
 #: src/model/log/words.ts
-#: src/model/panel/Answer.tsx
 #: src/model/panel/PromptPanel.tsx
 msgid "Werkzeugkette"
 msgstr "Werkzeugkette"

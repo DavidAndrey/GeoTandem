@@ -355,8 +355,7 @@ msgstr ""
 msgid "{n, plural, one {{count} Schlüsselwert kommt in „{layer}\" mehrfach vor; das erste Objekt gilt.} other {{count} Schlüsselwerte kommen in „{layer}\" mehrfach vor; das erste Objekt gilt.}}"
 msgstr ""
 
-#: src/model/chain/Chain.tsx
-#: src/model/compare/CompareDialog.tsx
+#: src/model/chain/steps.ts
 msgid "{n, plural, one {{count} Schritt} other {{count} Schritte}}"
 msgstr ""
 
@@ -2087,9 +2086,7 @@ msgstr ""
 msgid "Direkt"
 msgstr ""
 
-#: src/model/compare/words.ts
 #: src/model/log/words.ts
-#: src/model/panel/Answer.tsx
 #: src/model/panel/PromptPanel.tsx
 msgid "Direktabfrage"
 msgstr ""
@@ -2174,6 +2171,7 @@ msgid "Eine Anfrage läuft noch. Wiederholen geht, sobald sie beantwortet ist."
 msgstr ""
 
 #: src/i18n/errors.ts
+#: src/model/compare/flow.ts
 msgid "Eine der beiden Antworten hat kein Ergebnis; es gibt nichts zu vergleichen."
 msgstr ""
 
@@ -3455,7 +3453,7 @@ msgstr ""
 msgid "Läuft noch: Die Kette hat noch kein Ergebnis."
 msgstr ""
 
-#: src/model/compare/Entry.tsx
+#: src/model/compare/flow.ts
 msgid "Läuft noch: Verglichen wird, sobald beide Wege ein Ergebnis haben."
 msgstr ""
 
@@ -3951,6 +3949,10 @@ msgstr ""
 #: src/model/chain/steps.ts
 msgctxt "model sees"
 msgid "nicht leer"
+msgstr ""
+
+#: src/model/compare/flow.ts
+msgid "Nicht mehr im Verlauf. Bitte neu fragen."
 msgstr ""
 
 #: src/model/compare/flow.ts
@@ -5187,9 +5189,7 @@ msgid "Werkzeugaufruf"
 msgstr ""
 
 #: src/model/chain/Chain.tsx
-#: src/model/compare/words.ts
 #: src/model/log/words.ts
-#: src/model/panel/Answer.tsx
 #: src/model/panel/PromptPanel.tsx
 msgid "Werkzeugkette"
 msgstr ""
