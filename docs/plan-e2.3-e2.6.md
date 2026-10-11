@@ -324,8 +324,15 @@ Open from the gate list:
 *Deps: WP75 · Parallel with: WP78*
 
 - `POST /api/model/actions/{id}/compare` runs the other approach for the same prompt (M10.1 *Mit Werkzeugkette wiederholen* and the reverse), linked via `compare_of`. Returns both result stamps and the **difference set** (ids only in one, with names) computed by the app from object ids, never by the model; a reason is given from step data (e.g. operator differs) only when derivable, else omitted.
-- Taking one side (*Diese übernehmen*) replaces the analysis and counts as approval of that record.
-- **Done when:** equal case (10 = 10) and a differing case (a chain step using `intersects` instead of `within`, difference listed by feature ids, case added to the fixture in this WP) reproduce through the fake model.
+- Taking one side (*Diese übernehmen*) replaces the analysis and counts as approval of that record: approve→execute (direct) or approve→run→adopt (chain), decision `accepted`.
+- Decided in WP76 and its review (2026-10-11):
+  - the repeat is a new prompt under the account's **current** level and connection (a level taken away must not return through a repeat); request limit and concurrency apply; the original is not superseded;
+  - a repeat is always stored `proposed`, never auto-approved, so nothing applies before the person has compared;
+  - comparable: proposed/approved/applied/done/limited with a stored query, no `off` class; a repeat of a repeat is refused; a failed repeat gives a distinct outcome, not "not yet";
+  - `GET .../comparison` needs an interactive session; it computes the difference from feature ids of the result layer (`aggregate.by_layer` for aggregates), within the result-size limit and a time budget, and sets `previewed_at` on a proposed side;
+  - names come from the first text attribute `name`, `bezeichnung` or `titel`, read through the caller's view;
+  - `reason` is **structured** (`{kind: "source", left, right}` or `{kind: "conditions", changes: [{left, right}]}`), worded by the frontend, never by the model.
+- **Done when:** equal case (10 = 10) and a differing case (`compare_differs`: 800 m and Steueranlage > 1.65 instead of the design's intersects-for-within, which does not differ on point layers; difference listed by feature ids and names, with its structured reason) reproduce through the fake model.
 
 #### WP77 — Plan and run UI (FE-chain)
 *Deps: WP66, WP67 (mocks) · Parallel with: WP74–WP76*
@@ -451,7 +458,7 @@ At the etappe gate, in addition to 5.2: run `/security-review` on the etappe's d
 | `POST /api/model/actions/{id}/approve` · `reject` · `execute` · `undo` · `abort` · `touched` | 70 (`abort` while thinking: 65) | stored query only; `execute` returns `ExecuteResponse` |
 | `PATCH /api/model/actions/{id}/plan` | 75 | edit values, remove steps |
 | `POST /api/model/actions/{id}/run` (202) · `adopt` | 75 | background run; adopt per design "Kette übernehmen", returns `ExecuteResponse` |
-| `POST /api/model/actions/{id}/compare` (202) · `GET .../comparison` | 76 | other approach as a new record with `compare_of`; difference set by the app (P7) |
+| `POST /api/model/actions/{id}/compare` (202) · `GET .../comparison` | 76 | the other approach as a new `proposed` record with `compare_of` under the current level; the difference by feature ids and a structured reason, by the app (P7); `comparison` needs an interactive session |
 | `GET /api/model/my-actions` | 73 | own entries |
 | `GET /api/admin/model-actions[/{id}]` · `/export.csv` · `/key-figures` | 73 | admin |
 
