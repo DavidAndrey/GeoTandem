@@ -556,6 +556,13 @@ def _cell(row: ModelAction) -> str | None:
     return str(cell) if cell is not None else None
 
 
+def _unasked(row: ModelAction) -> bool:
+    """An answer that arrived ``approved`` without a question (D2): its cell
+    ``auto``, no proposal-only, and no repeat (``compare_of``, WP76), which
+    always waits for the person, who compares before anything applies."""
+    return _cell(row) == "auto" and not row.proposal_only and row.compare_of is None
+
+
 def _superseded(row: ModelAction, now: datetime) -> dict[str, Any]:
     """A proposal-only record stays ``proposal_only`` when overtaken (section 2)."""
     decision: Decision = "proposal_only" if row.proposal_only else "superseded"
@@ -646,6 +653,38 @@ class ModelActionStore:
                 if row is not None and row.user_id != caller.id:
                     row = None
         return found[::-1]
+
+    def compared(self, caller: Account, action_id: int) -> tuple[ModelActionView, ModelActionView]:
+        """The two sides of a comparison (design M10), the caller's own: named by
+        the repeat, its ``compare_of`` and itself; named by the record compared,
+        it and its newest repeat with a result (else its newest repeat).
+        Another account's record, or one without a comparison, is
+        ``not_found``; a side with an ``off`` class is refused as the preview
+        refuses it (D1, P2). Changes nothing."""
+        with Session(reading(self.engine)) as db:
+            row = self._own(db, caller, action_id)
+            if row.compare_of is not None:
+                left, right = self._own(db, caller, row.compare_of), row
+            else:
+                repeats = db.scalars(
+                    select(ModelAction)
+                    .where(ModelAction.user_id == caller.id, ModelAction.compare_of == row.id)
+                    .order_by(ModelAction.id.desc())
+                ).all()
+                # The newest repeat with a result; else the newest, to say why not.
+                with_result = (r for r in repeats if r.query is not None)
+                repeat = next(with_result, repeats[0] if repeats else None)
+                if repeat is None:
+                    raise ActionError(
+                        "not_found",
+                        f"Model action {action_id} has not been compared.",
+                        http_status=404,
+                        id=action_id,
+                    )
+                left, right = row, repeat
+            for side in (left, right):
+                _allowed(side)
+            return self._view(db, left), self._view(db, right)
 
     @staticmethod
     def _where(
@@ -909,7 +948,7 @@ class ModelActionStore:
             closed = []
             for row in rows:
                 if row.status == "approved" and not (
-                    _cell(row) == "auto" and _answered_at(row) < older_than
+                    _unasked(row) and _answered_at(row) < older_than
                 ):
                     continue
                 if self._settle(db, row, stale, change):
@@ -1089,13 +1128,15 @@ class ModelActionStore:
     ) -> ModelActionView:
         """A query or a plan the application accepted: ``approved`` without a
         question when the governing cell is ``auto``, else ``proposed`` (D2). A
-        proposal-only record, or an answer with an ``off`` class, is ``proposed``.
+        proposal-only record, an answer with an ``off`` class, or a repeat of
+        another record (``compare_of``, WP76) is ``proposed``.
         A plan's ``steps`` are stored with it; a chain keeps no ``query`` until
         its run ended (``finish``, ``stop``)."""
 
         def change(row: ModelAction) -> dict[str, Any]:
             only = row.proposal_only or bool(governance.off)
-            auto = governance.cell == "auto" and not only
+            # A repeat (WP76) waits for the person: it is compared first.
+            auto = governance.cell == "auto" and not only and row.compare_of is None
             status: ActionStatus = "approved" if auto else "proposed"
             return {
                 "status": status,
@@ -1229,10 +1270,9 @@ class ModelActionStore:
                 # approval may cover the next step only.
                 raise _a_chain(row, "execute")
             # Arrived approved, nobody was asked: exactly the auto answers (propose).
-            auto = _cell(row) == "auto" and not row.proposal_only
             return {
                 "status": "applied",
-                "decision": "auto" if auto else "accepted",
+                "decision": "auto" if _unasked(row) else "accepted",
                 "stamp": _json(stamp),
             }
 

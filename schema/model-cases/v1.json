@@ -882,6 +882,136 @@
       }
     },
     {
+      "id": "compare_differs",
+      "screens": ["M10.1", "M10.3"],
+      "approach": "chain",
+      "compare_of": "reference",
+      "prompt": "Welche Primarschulen liegen nahe an Kantonsstrassen, in Gemeinden mit hoher Steueranlage?",
+      "answer": {
+        "kind": "plan",
+        "explanation": "Ich gehe in fünf Schritten vor: Primarschulen, Puffer um die Kantonsstrassen B, Schulen darin, Gemeinden mit hoher Steueranlage, Schulen darin.",
+        "assumptions": [
+          {
+            "text": "„nahe“ = höchstens 800 m"
+          },
+          {
+            "text": "„hohe Steueranlage“ = über 1.65"
+          }
+        ],
+        "steps": [
+          {
+            "text": "Primarschulen auswählen",
+            "tool": "filter",
+            "arguments": {
+              "layer": "schulen",
+              "where": {
+                "op": "in",
+                "attr": "typ",
+                "values": ["primar"]
+              }
+            }
+          },
+          {
+            "text": "Puffer 800 m um Kantonsstrassen B",
+            "tool": "buffer",
+            "arguments": {
+              "layer": "strassen",
+              "distance_m": 800,
+              "where": {
+                "op": "compare",
+                "attr": "klasse",
+                "cmp": "eq",
+                "value": "kantonsstrasse_b"
+              }
+            }
+          },
+          {
+            "text": "Primarschulen im Puffer",
+            "tool": "within",
+            "arguments": {
+              "of": 1,
+              "in": 2
+            }
+          },
+          {
+            "text": "Gemeinden mit Steueranlage über 1.65",
+            "tool": "filter",
+            "arguments": {
+              "layer": "gemeinden_steuern",
+              "where": {
+                "op": "compare",
+                "attr": "steueranlage",
+                "cmp": "gt",
+                "value": 1.65
+              }
+            }
+          },
+          {
+            "text": "Primarschulen in diesen Gemeinden",
+            "tool": "within",
+            "arguments": {
+              "of": 3,
+              "in": 4
+            }
+          }
+        ]
+      },
+      "expect": {
+        "status": {
+          "Prüfen": "proposed",
+          "Teilautonom": "proposed"
+        },
+        "step_classes": ["query", "derive", "spatial", "query", "spatial"],
+        "hits": 11,
+        "total": 137,
+        "comparison": {
+          "left_hits": 10,
+          "right_hits": 11,
+          "only_left": [{ "id": 18, "name": "Primarstufe Wichtrach" }],
+          "only_right": [
+            { "id": 28, "name": "Schule Bernstrasse Ostermundigen" },
+            { "id": 33, "name": "Schule Rüeggisberg" }
+          ],
+          "reason": {
+            "kind": "conditions",
+            "changes": [
+              {
+                "left": {
+                  "op": "related",
+                  "layer": "strassen",
+                  "predicate": "dwithin",
+                  "distance_m": 500,
+                  "where": { "op": "compare", "attr": "klasse", "cmp": "eq", "value": "kantonsstrasse_b" }
+                },
+                "right": {
+                  "op": "related",
+                  "layer": "strassen",
+                  "predicate": "dwithin",
+                  "distance_m": 800,
+                  "where": { "op": "compare", "attr": "klasse", "cmp": "eq", "value": "kantonsstrasse_b" }
+                }
+              },
+              {
+                "left": {
+                  "op": "related",
+                  "layer": "gemeinden_steuern",
+                  "predicate": "within",
+                  "where": { "op": "compare", "attr": "steueranlage", "cmp": "gt", "value": 1.6 }
+                },
+                "right": {
+                  "op": "related",
+                  "layer": "gemeinden_steuern",
+                  "predicate": "within",
+                  "where": { "op": "compare", "attr": "steueranlage", "cmp": "gt", "value": 1.65 }
+                }
+              }
+            ]
+          }
+        },
+        "_note": "Design M10.3 on the sample: the reference question asked directly (left, case 'reference', 10 hits), then repeated as a chain (right, compare_of) that took 'nahe' as 800 m and 'hohe Steueranlage' as over 1.65: 11 hits, 1 only left and 2 only right, by feature id with the school's name. The reason is data read from the two query objects alone: the two conditions that differ, left (direct) and right (chain); the interface words it (WP78). Not 'intersects' in place of 'within' as plan WP76 first said: the schools are points, and a point intersects a municipality exactly where it lies within it (the sample has none on a border), so the hits would not differ"
+      }
+    },
+    {
       "id": "step_limit",
       "screens": ["M9.5"],
       "approach": "chain",

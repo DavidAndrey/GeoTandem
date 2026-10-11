@@ -179,6 +179,10 @@ const MESSAGES: Record<string, Words> = {
   not_approved: () => t`Dieser Vorschlag ist nicht freigegeben.`,
   already_decided: () => t`Über diesen Vorschlag ist schon entschieden.`,
   nothing_to_undo: () => t`Hier gibt es nichts zurückzunehmen.`,
+  nothing_to_compare: () =>
+    t`Eine der beiden Antworten hat kein Ergebnis; es gibt nichts zu vergleichen.`,
+  repeat_of_repeat: () =>
+    t`Diese Antwort ist schon die Wiederholung einer anderen; verglichen wird mit dieser.`,
   undo_blocked: () =>
     t`Die Analyse wurde seither von Hand geändert; die Modelländerung lässt sich nicht mehr zurücknehmen.`,
   time_limit: (d) => {

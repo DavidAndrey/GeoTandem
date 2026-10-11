@@ -1960,6 +1960,10 @@ msgid "Diese Anbindung steht nicht zur Wahl."
 msgstr ""
 
 #: src/i18n/errors.ts
+msgid "Diese Antwort ist schon die Wiederholung einer anderen; verglichen wird mit dieser."
+msgstr ""
+
+#: src/i18n/errors.ts
 msgid "Diese Operation geht hier nicht."
 msgstr ""
 
@@ -2102,6 +2106,10 @@ msgstr ""
 
 #: src/i18n/errors.ts
 msgid "Eine Anbindung „{name}\" gibt es schon."
+msgstr ""
+
+#: src/i18n/errors.ts
+msgid "Eine der beiden Antworten hat kein Ergebnis; es gibt nichts zu vergleichen."
 msgstr ""
 
 #: src/queries/SaveQueryDialog.tsx
