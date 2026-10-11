@@ -350,6 +350,10 @@ class ModelAction(Base):
     run_ms: Mapped[int] = mapped_column(default=0, server_default="0")
     """A chain's run time so far, its halts for approval left out (P4, WP75):
     with the planning call's ``latency_ms`` it is held to ``CHAIN_TIME_LIMIT_S``."""
+    level_prompt: Mapped[str | None]
+    """The level's system prompt as it was when asked (H7): a chain's re-plan
+    asks with it, never with the level's text now (WP75). ``level_prompt_hash``
+    is its hash."""
     turns: Mapped[list[Any] | None] = mapped_column(JSON)
     """A chain's conversation after the prompt, ``[role, text]`` each: the
     plans the model gave and every re-plan's input (P4, D9). The model's own

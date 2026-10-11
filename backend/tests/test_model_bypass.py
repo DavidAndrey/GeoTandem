@@ -901,7 +901,6 @@ READ_ONLY_IMPORTS: dict[str, set[str]] = {
         "OpClass",
         "active_level",
         "classify",
-        "load_levels",
         "strictest",
     },
     # The seam to the model.
@@ -1313,6 +1312,7 @@ async def attack_run(s: Scene) -> None:
     ended = await run(s.other, s.app, empties)
     assert (ended["status"], ended["stop_reason"]) == ("limited", "replan_limit")
     assert ended["error"]["code"] == "connection_not_available"
+    assert ended["error"]["details"] == {"reason": "changed"}
     assert s.model.fake.calls == [] and s.model.endpoints == []
     again = await s.other.post(url(halts, "run"))
     assert (again.status_code, again.json()["code"]) == (409, "not_approved")

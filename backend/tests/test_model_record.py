@@ -268,7 +268,7 @@ STEPS: dict[str, Step] = {
     "touched": lambda s, a, i: s.touch(a, i),
     "preview": lambda s, a, i: s.mark_previewed(a, i),
     "new_prompt": lambda s, a, i: s.supersede_open(a),
-    "restart": lambda s, a, i: s.close_stale(datetime(2100, 1, 1)),
+    "restart": lambda s, a, i: s.close_stale(datetime(2100, 1, 1), 100),
 }
 
 # Plan 1.2 and section 2, copied here on purpose: the store is checked against
@@ -278,7 +278,7 @@ STEPS: dict[str, Step] = {
 PLAN_EDGES: dict[str, set[str]] = {
     "thinking": {"refused", "answered", "proposed", "approved", "aborted", "failed"},
     "proposed": {"approved", "rejected", "superseded", "applied", "limited"},
-    "approved": {"applied", "running", "superseded"},
+    "approved": {"applied", "running", "superseded", "limited"},
     "running": {"done", "limited", "proposed"},
     "done": {"applied", "superseded"},
     "limited": {"applied", "superseded"},
@@ -557,7 +557,7 @@ def test_the_start_up_check_closes_what_nobody_will_finish(
 
     # Nothing in flight survives a restart, whatever its age; only an auto
     # answer's window is measured.
-    closed = store.close_stale(cutoff)
+    closed = store.close_stale(cutoff, 100)
     assert sorted(closed) == sorted([thinking, auto, running, young])
 
     failed = store.get(anna, thinking)
@@ -577,7 +577,7 @@ def test_the_start_up_check_closes_what_nobody_will_finish(
     assert store.get(anna, waiting).status == "proposed"
     assert store.get(beat, young).status == "failed"
     assert store.get(beat, young_auto).status == "approved"
-    assert store.close_stale(cutoff) == []
+    assert store.close_stale(cutoff, 100) == []
     system = [
         e for e in events if e["event"] == "model_action_decided" and e["username"] == "system"
     ]

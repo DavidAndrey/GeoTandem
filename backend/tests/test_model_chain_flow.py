@@ -15,6 +15,7 @@ step runs; time limits run on an injected clock. Nothing sleeps.
 import asyncio
 import json
 import threading
+import time
 from collections.abc import AsyncIterator, Callable, Sequence
 from dataclasses import replace
 from types import SimpleNamespace
@@ -44,13 +45,16 @@ from chain_fixtures import (
 )
 from fastapi import Depends, FastAPI
 from model_fixtures import case, completion, fixture
+from sqlalchemy.orm import Session
 from test_model_direct import context_of, profile_of, with_sample
 from test_model_enforcement import (
     PROMPT,
+    account_of,
     connect,
     fixture_levels,
     import_areas,
     install_levels,
+    matrix,
     url,
 )
 
@@ -59,6 +63,7 @@ from geotandem.api.state import AppState, get_state
 from geotandem.catalog import AttributeUpdate, update_attribute
 from geotandem.data import DataBackend, Limits
 from geotandem.data import spatialite as spatialite_module
+from geotandem.db.orm import ModelAction
 from geotandem.engine.errors import ResultTooLarge
 from geotandem.llm import Completion, Endpoint, Message, ModelInfo, ToolSpec
 from geotandem.llm.fake import FakeLLMClient
@@ -66,6 +71,9 @@ from geotandem.model import service
 from geotandem.model.chain import run as chain_run
 from geotandem.model.chain.plan import check_plan
 from geotandem.model.chain.run import run_step
+from geotandem.model.chain.tools import tool_list
+from geotandem.model.record import ModelActionStore
+from geotandem.model.result import answer_format
 from geotandem.model.schemas import (
     CHAIN_TIME_LIMIT_S,
     MAX_REPLANS,
@@ -73,7 +81,7 @@ from geotandem.model.schemas import (
     ModelView,
     PlanAnswer,
 )
-from geotandem.model.service import MODEL_CALL_S, PromptFlow, close_stale
+from geotandem.model.service import MODEL_CALL_S, PromptFlow, close_stale, profile_for
 from geotandem_query import QueryObject, canonical_json, compact
 
 REFERENCE_CASE = case("chain_reference")
@@ -422,7 +430,7 @@ async def test_the_step_limit_counts_the_re_planned_steps(
     else:
         assert ended["stop_reason"] == "step_limit"
         assert ended["error"]["code"] == "step_limit"
-        assert ended["error"]["details"] == {"position": 9, "value": 9, "max": MAX_STEPS}
+        assert ended["error"]["details"] == {"step": 9, "value": 9, "max": MAX_STEPS}
         assert statuses(ended) == ["ok", "empty", "skipped", "skipped"]
         assert same_query(ended["query"], ended["steps"][1]["query"])
         assert ended["stamp"]["count"] == 0
@@ -593,7 +601,7 @@ async def test_the_result_size_limit_at_the_last_step(
     assert ended["status"] == status
     if status == "limited":
         assert ended["stop_reason"] == "result_too_large"
-        assert ended["error"]["details"] == {"position": 5, "value": 10, "max": 9}
+        assert ended["error"]["details"] == {"step": 5, "value": 10, "max": 9}
         assert ended["steps"][4]["model_view"]["code"] == "result_too_large"
         assert ended["steps"][4]["hits"] is None
         # Step 4 (37) is beyond the limit too: nothing to adopt.
@@ -727,7 +735,7 @@ async def test_the_request_has_300_seconds(
     assert ok == ran_steps
     if ran_steps == 4:
         assert (ended["status"], ended["stop_reason"]) == ("limited", "time_limit")
-        assert ended["error"]["details"] == {"position": 5, "value": 300, "max": 300}
+        assert ended["error"]["details"] == {"step": 5, "value": 300, "max": 300}
         assert statuses(ended)[4:] == ["skipped"]
         assert ended["stamp"]["count"] == 37  # step 4 waits to be adopted
     else:
@@ -858,7 +866,7 @@ async def test_a_restart_closes_a_running_chain_its_result_adoptable(
     assert (await client.post(url(approved["id"], "run"))).status_code == 202
     await held.wait()
 
-    closed = close_stale(app.state.geotandem.backend.engine)
+    closed = close_stale(app.state.geotandem.backend.engine, 100)
 
     assert approved["id"] in closed
     ended = await record(client, approved["id"])
@@ -1025,6 +1033,284 @@ async def test_the_chain_routes_of_another_account_do_not_exist(
         response = await client.request(method, url(proposed, step), json=body)
         assert (response.status_code, response.json()["code"]) == (404, "not_found"), step
     assert ran == []
+
+
+async def test_the_chain_plans_in_one_call_and_offers_no_tool(
+    client: httpx.AsyncClient,
+    app: FastAPI,
+    model: Model,
+    levels: dict[str, int],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """P4: one planning call, the tools as structured output, none offered; the
+    run counts every step and stamps only the result to adopt."""
+    stamped: list[str] = []
+    original = chain_run.stamp_query
+
+    def spy(query: QueryObject, *args: Any, **kwargs: Any) -> Any:
+        stamped.append(canonical_json(query))
+        return original(query, *args, **kwargs)
+
+    monkeypatch.setattr(chain_run, "stamp_query", spy)
+    await choose(client, levels["Automatisch"])
+    approved = await ask_chain(client, app, model, reference_plan())
+    done, _ = await drive(client, app, approved["id"])
+    [call] = model.fake.calls
+    assert call.tools == () and call.schema == answer_format("chain")
+    assert tool_list() in call.messages[0].content
+    assert hits(done) == COUNTS
+    assert stamped == [canonical_json(QueryObject.model_validate(REFERENCE))]
+
+
+# --- review: one approval, abort, snapshots, expiry, halts ----------------------------
+
+TWO_CELLS = {
+    "name": "Zwei",
+    "selectable": True,
+    "matrix": matrix(spatial="approve", derive="approve"),
+}
+"""``query`` auto, ``spatial`` and ``derive`` approve."""
+
+
+async def test_one_approval_only_when_no_step_of_the_whole_plan_is_auto(
+    client: httpx.AsyncClient, app: FastAPI, model: Model, levels: dict[str, int]
+) -> None:
+    """The re-plan brings two steps that need approval into a plan with ``auto``
+    steps: one approval each, never one for both (decided over the whole plan,
+    not over the steps ahead)."""
+    ids = await install_levels(client, [*fixture_levels(), TWO_CELLS][1:])
+    await choose(client, ids["Zwei"])
+    proposed = await ask_chain(client, app, model, planned(*EMPTY_THEN))
+    assert [s["cell"] for s in proposed["steps"]] == ["auto", "auto", "auto", "approve"]
+    model.script(planned(BUFFER, within(1, 3)))
+    waiting: list[int] = []
+    approvals = 0
+    for _ in range(12):
+        current = await record(client, proposed["id"])
+        if current["status"] == "proposed":
+            waiting += [s["position"] for s in current["steps"] if s["status"] == "waiting"]
+            assert (await client.post(url(proposed["id"], "approve"))).status_code == 200
+            approvals += 1
+        elif current["status"] == "approved":
+            await run(client, app, proposed["id"])
+        else:
+            break
+    assert current["status"] == "done" and hits(current) == [62, 0, 37, 37]
+    assert (approvals, waiting) == (3, [3, 4])
+
+
+class HeldStart:
+    """Holds the run inside ``step_started`` of a position, after the run's own
+    check for an abort: the abort lands between that check and the write."""
+
+    def __init__(self, monkeypatch: pytest.MonkeyPatch, position: int) -> None:
+        self.entered, self.release = threading.Event(), threading.Event()
+        original = ModelActionStore.step_started
+
+        def held(store: ModelActionStore, caller: Any, action_id: int, at: int, **kw: Any) -> Any:
+            if at == position:
+                self.entered.set()
+                assert self.release.wait(10)
+            return original(store, caller, action_id, at, **kw)
+
+        monkeypatch.setattr(ModelActionStore, "step_started", held)
+
+
+async def test_no_step_starts_after_an_abort_was_answered(
+    client: httpx.AsyncClient,
+    app: FastAPI,
+    model: Model,
+    levels: dict[str, int],
+    monkeypatch: pytest.MonkeyPatch,
+    ran: list[str],
+) -> None:
+    held = HeldStart(monkeypatch, 3)
+    await choose(client, levels["Automatisch"])
+    approved = await ask_chain(client, app, model, reference_plan())
+    assert (await client.post(url(approved["id"], "run"))).status_code == 202
+    assert await asyncio.to_thread(held.entered.wait, 10)
+    aborted = await client.post(url(approved["id"], "abort"))
+    assert aborted.status_code == 200 and aborted.json()["stop_reason"] == "aborted"
+    counted = len(ran)
+    held.release.set()
+    await settle(app)
+    ended = await record(client, approved["id"])
+    assert (ended["status"], ended["stop_reason"]) == ("limited", "aborted")
+    assert statuses(ended) == ["ok", "ok", "skipped", "skipped", "skipped"]
+    assert hits(ended)[2] is None
+    assert len(ran) == counted + 1  # the stamp of step 1, no count of step 3
+
+
+@pytest.mark.parametrize("change", ["edited", "deleted"])
+async def test_a_re_plan_asks_with_the_level_prompt_as_it_was(
+    client: httpx.AsyncClient, app: FastAPI, model: Model, levels: dict[str, int], change: str
+) -> None:
+    """H7: the record keeps the level's system prompt; a re-plan asks with it,
+    whether the level's text changed since or the level is gone mid-run."""
+    own = {**TWO_CELLS, "name": "Eigen", "system_prompt": "STUFENTEXT-ALT"}
+    ids = await install_levels(client, [*fixture_levels(), own][1:])
+    await choose(client, ids["Eigen"])
+    proposed = await ask_chain(client, app, model, planned(*EMPTY_THEN))
+    assert (await client.post(url(proposed["id"], "approve"))).status_code == 200
+    kept = [lv for lv in fixture_levels()[1:]]
+    if change == "edited":
+        kept.append({**own, "system_prompt": "STUFENTEXT-NEU"})
+    await install_levels(client, kept)
+    model.script(planned(MUNICIPALITIES, within(1, 3)))
+    ended, _ = await drive(client, app, proposed["id"])
+    assert ended["replans"] == 1
+    first, replan = model.fake.calls
+    assert "STUFENTEXT-ALT" in first.messages[0].content
+    assert "STUFENTEXT-ALT" in replan.messages[0].content
+    assert "STUFENTEXT-NEU" not in replan.messages[0].content
+    assert ended["level"]["name"] == "Eigen"
+
+
+async def test_a_re_plan_asks_with_the_profile_now_and_records_its_hash(
+    client: httpx.AsyncClient, app: FastAPI, model: Model, levels: dict[str, int]
+) -> None:
+    """What the model may see now: an attribute withdrawn after the plan is not
+    in the re-plan's profile, and the re-plan's turn keeps that profile's hash."""
+    await choose(client, levels["Automatisch"])
+    engine = app.state.geotandem.backend.engine
+    approved = await ask_chain(client, app, model, planned(*EMPTY_THEN))
+    update_attribute(engine, "schulen", "standorte", AttributeUpdate(for_model=False))
+    try:
+        model.script(planned(MUNICIPALITIES, within(1, 3)))
+        ended, _ = await drive(client, app, approved["id"])
+        _, now = profile_for(app.state.geotandem.backend, account_of(app, "admin"))
+    finally:
+        update_attribute(engine, "schulen", "standorte", AttributeUpdate(for_model=True))
+    assert ended["replans"] == 1 and now.hash != ended["profile_hash"]
+    with Session(engine) as db:
+        row = db.get(ModelAction, approved["id"])
+        assert row is not None and row.turns is not None
+        turns = row.turns
+    assert [t[0] for t in turns] == ["assistant", "user", "assistant"]
+    assert turns[1][2] == now.hash and len(turns[0]) == len(turns[2]) == 2
+    first, replan = model.fake.calls
+    assert "standorte" in first.messages[0].content
+    assert "standorte" not in replan.messages[0].content
+
+
+@pytest.mark.parametrize("change", ["host", "disabled"])
+async def test_a_re_plan_goes_only_to_the_connection_as_it_was(
+    client: httpx.AsyncClient, app: FastAPI, model: Model, levels: dict[str, int], change: str
+) -> None:
+    """H7, C14: the record's connection, with the host and locality it had and
+    enabled; else the run stops before the call, ``connection_not_available``."""
+    await choose(client, levels["Automatisch"])
+    approved = await ask_chain(client, app, model, planned(*EMPTY_THEN))
+    [connection] = (await client.get("/api/admin/llm/connections")).json()
+    patch = {"base_url": "http://localhost:11434/v1"} if change == "host" else {"enabled": False}
+    changed = await client.patch(f"/api/admin/llm/connections/{connection['id']}", json=patch)
+    assert changed.status_code == 200, changed.text
+    model.script(planned(MUNICIPALITIES, within(1, 3)))
+    ended, _ = await drive(client, app, approved["id"])
+    assert (ended["status"], ended["stop_reason"]) == ("limited", "replan_limit")
+    assert ended["error"]["code"] == "connection_not_available"
+    assert ended["error"]["details"] == {"reason": "changed"}
+    assert len(model.fake.calls) == 1
+
+
+async def test_a_run_given_up_at_its_deadline_is_closed_and_stamps_nothing(
+    client: httpx.AsyncClient,
+    app: FastAPI,
+    model: Model,
+    levels: dict[str, int],
+    monkeypatch: pytest.MonkeyPatch,
+    ran: list[str],
+) -> None:
+    """The run's budget is what the request has left and two step limits;
+    given up then (``_run_expired``), the record ends ``time_limit`` with its
+    last complete result, and the run, should it go on, stamps nothing."""
+    deadlines: list[float] = []
+    calls = app.state.geotandem.model_calls
+    start = calls.start
+
+    def spied(*args: Any, deadline: float | None = None, **kwargs: Any) -> None:
+        deadlines.append(deadline or 0.0)
+        start(*args, deadline=deadline, **kwargs)
+
+    monkeypatch.setattr(calls, "start", spied)
+    held = Held(monkeypatch, 2)
+    await choose(client, levels["Automatisch"])
+    approved = await ask_chain(client, app, model, reference_plan())
+    before = time.monotonic()
+    assert (await client.post(url(approved["id"], "run"))).status_code == 202
+    budget = CHAIN_TIME_LIMIT_S + 2 * app.state.geotandem.limits.timeout_s
+    assert before + budget - 1 <= deadlines[-1] <= time.monotonic() + budget
+    await held.wait()
+
+    flow = prompt_flow(app.state.geotandem)
+    flow._run_expired(account_of(app, "admin"), approved["id"])
+
+    closed = await record(client, approved["id"])
+    assert (closed["status"], closed["stop_reason"]) == ("limited", "time_limit")
+    assert same_query(closed["query"], closed["steps"][0]["query"]) and closed["stamp"] is None
+    counted = len(ran)
+    held.release.set()
+    await settle(app)
+    assert await record(client, approved["id"]) == closed
+    assert len(ran) == counted + 1  # step 2 ends its count; no stamp after it
+
+
+async def test_a_chain_approved_at_a_halt_can_be_aborted_before_it_runs(
+    client: httpx.AsyncClient, app: FastAPI, model: Model, levels: dict[str, int]
+) -> None:
+    """``approved`` → ``limited``: the client never ran it again."""
+    await choose(client, levels["Teilautonom"])
+    proposed = await ask_chain(client, app, model, reference_plan())
+    assert (await client.post(url(proposed["id"], "approve"))).status_code == 200
+    early = await client.post(url(proposed["id"], "abort"))
+    assert (early.status_code, early.json()["code"]) == (409, "not_approved")  # not started
+    await run(client, app, proposed["id"])
+    assert (await client.post(url(proposed["id"], "approve"))).status_code == 200
+    aborted = await client.post(url(proposed["id"], "abort"))
+    assert aborted.status_code == 200, aborted.text
+    body = aborted.json()
+    assert (body["status"], body["stop_reason"]) == ("limited", "aborted")
+    assert statuses(body) == ["ok", "skipped", "skipped", "skipped", "skipped"]
+    assert body["stamp"]["count"] == 62
+    assert (await client.post(url(proposed["id"], "adopt"))).status_code == 200
+
+
+@pytest.mark.parametrize("end", ["reject", "new prompt"])
+async def test_a_halted_chain_rejected_or_overtaken_runs_no_further(
+    client: httpx.AsyncClient, app: FastAPI, model: Model, levels: dict[str, int], end: str
+) -> None:
+    await choose(client, levels["Teilautonom"])
+    proposed = await ask_chain(client, app, model, reference_plan())
+    assert (await client.post(url(proposed["id"], "approve"))).status_code == 200
+    await run(client, app, proposed["id"])
+    if end == "reject":
+        assert (await client.post(url(proposed["id"], "reject"), json={})).status_code == 200
+    else:
+        await ask_chain(client, app, model, reference_plan())
+    ended = await record(client, proposed["id"])
+    assert ended["status"] == ("rejected" if end == "reject" else "superseded")
+    assert statuses(ended) == ["ok", "skipped", "skipped", "skipped", "skipped"]
+
+
+async def test_a_re_plan_after_the_level_changed_is_governed_as_it_was(
+    client: httpx.AsyncClient, app: FastAPI, model: Model, levels: dict[str, int]
+) -> None:
+    """M7.3: Teilautonom wants approval for ``derive``; the level turned all
+    ``auto`` after the plan; the re-plan's buffer still waits for approval."""
+    await choose(client, levels["Teilautonom"])
+    approved = await ask_chain(client, app, model, planned(*EMPTY_THEN))
+    assert approved["status"] == "approved"
+    every = {c: "auto" for c in ("catalog", "query", "spatial", "derive", "display")}
+    await install_levels(
+        client,
+        [{**lv, "matrix": every} if lv["name"] == "Teilautonom" else lv for lv in fixture_levels()],
+    )
+    model.script(planned(BUFFER, within(1, 3)))
+    halted = await run(client, app, approved["id"])
+    assert (halted["status"], halted["replans"]) == ("proposed", 1)
+    assert [s["cell"] for s in halted["steps"][2:]] == ["approve", "auto"]
+    assert halted["steps"][2]["status"] == "waiting"
+    assert halted["governance"]["needs_approval"] == ["derive"]
 
 
 def test_chain_constants_match_the_fixture() -> None:

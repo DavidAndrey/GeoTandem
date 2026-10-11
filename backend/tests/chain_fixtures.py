@@ -91,6 +91,7 @@ def stored_chain(app: FastAPI, username: str, level_name: str, *steps: Step) -> 
         level=level_snapshot(level),
         connection=connection_snapshot(connection),
         profile_hash=profile.hash,
+        level_prompt=level.system_prompt,
     )
     action = store.create(who, new, supersede=False)
     store.propose(

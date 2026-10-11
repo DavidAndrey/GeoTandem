@@ -10,8 +10,7 @@ enumeration (D10): an engine result reaches the model only through
 
 import ast
 import json
-import time
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
 from typing import Any
 
 import pytest
@@ -21,24 +20,20 @@ from test_model_bypass import READS, WRITE, model_path_sources
 from test_model_direct import CHECK, LIMITS, context_of, profile_of, with_sample
 
 from geotandem.catalog import AttributeUpdate, update_attribute
-from geotandem.data import DataBackend, Limits
+from geotandem.data import DataBackend
 from geotandem.engine import QueryError, count_query, stamp_query
 from geotandem.engine.errors import UnknownAttribute
 from geotandem.importing.run import ImportDecisions, run_import
 from geotandem.levels import OpClass, classify
-from geotandem.llm import Completion
-from geotandem.llm.fake import FakeLLMClient
 from geotandem.model.chain import run as chain_run
 from geotandem.model.chain.ask import ChainState
 from geotandem.model.chain.plan import CheckedStep, chain_classes, chain_governance, check_plan
-from geotandem.model.chain.run import adoptable, run_chain, run_step
-from geotandem.model.chain.tools import CHAIN, tool_list
+from geotandem.model.chain.run import run_step
+from geotandem.model.chain.tools import CHAIN
 from geotandem.model.chain.view import StepResult, model_view, names_in
 from geotandem.model.errors import ActionError
 from geotandem.model.prompt import build_prompt
-from geotandem.model.result import answer_format
 from geotandem.model.schemas import MAX_REPLANS, ModelView, PlanAnswer, PlannedStep, Refusal
-from geotandem.tools import ToolContext
 from geotandem.tools.chain import conjoin
 from geotandem_query import And, QueryObject, canonical_json
 
@@ -99,10 +94,10 @@ def test_the_reference_chain_is_the_reference_query_and_finds_10_of_137(
     assert canonical_json(found[-1].query) == canonical_json(QueryObject.model_validate(REFERENCE))
     runs = [run_step(s, context, profile, last=s.position == 5) for s in found]
     assert [r.view for r in runs] == [ModelView(outcome="ok", empty=False, count=n) for n in COUNTS]
-    assert [r.count for r in runs] == COUNTS and {r.stamp for r in runs} == {None}
-    final = adoptable(runs, context, profile)
-    assert final is not None and final.step.position == 5
-    assert final.stamp == stamp_query(found[-1].query, context.backend, LIMITS)
+    assert [r.count for r in runs] == COUNTS
+    # The result to adopt is stamped in the model's world, as the user's own run stamps it.
+    stamped = chain_run.stamp(found[-1].query, context, profile)
+    assert stamped == stamp_query(found[-1].query, context.backend, LIMITS)
     assert count_query(QueryObject(source="schulen"), context.backend, LIMITS) == 137
 
 
@@ -489,97 +484,6 @@ def test_a_re_plan_must_fit_the_context_too(world: DataBackend) -> None:
     with pytest.raises(ActionError) as caught:
         state.replan_messages()
     assert caught.value.code == "context_too_large"
-
-
-def reference_run(
-    world: DataBackend, limits: Limits = LIMITS, **kw: Any
-) -> tuple[chain_run.ChainOutcome, FakeLLMClient]:
-    prompt = build_prompt("?", approach="chain", level=CHECK, profile=profile_of(world))
-    model = FakeLLMClient(script=[Completion(text=json.dumps(REFERENCE_CASE["answer"]))])
-    base = context_of(world)
-    context = ToolContext(base.backend, limits, base.unsupported)
-    return run_chain(model, prompt, context, profile_of(world), **kw), model
-
-
-def test_only_the_adoptable_result_is_stamped(
-    world: DataBackend, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Steps are counted; no id list is built but for the result to adopt."""
-    stamped: list[str] = []
-    stamp = chain_run.stamp_query
-
-    def spy(query: QueryObject, *args: Any, **kwargs: Any) -> Any:
-        stamped.append(canonical_json(query))
-        return stamp(query, *args, **kwargs)
-
-    monkeypatch.setattr(chain_run, "stamp_query", spy)
-    outcome, _ = reference_run(world)
-    assert outcome.result is not None and outcome.result.stamp is not None
-    assert stamped == [canonical_json(QueryObject.model_validate(REFERENCE))]
-    assert [r.stamp for r in outcome.runs] == [None] * 5
-
-
-def test_a_result_beyond_the_size_limit_stops_the_run(
-    world: DataBackend, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Intermediate counts may exceed it (62 > 9); the last step may not (10 > 9)."""
-    monkeypatch.setattr(chain_run, "stamp_query", None)  # nothing to stamp
-    outcome, _ = reference_run(world, Limits(max_features=9, timeout_s=10))
-    assert outcome.stop_reason == "result_too_large" and outcome.result is None
-    assert [r.count for r in outcome.runs] == [*COUNTS[:4], None]
-    assert outcome.runs[-1].view == ModelView(outcome="error", code="result_too_large")
-    assert outcome.adopted is None  # step 4, 37 municipalities, is beyond it too
-
-
-def clock(*readings: float) -> Callable[[], float]:
-    start = time.monotonic()
-    values = iter(readings)
-    return lambda: start + next(values)
-
-
-def test_the_request_deadline_stops_before_a_step(world: DataBackend) -> None:
-    """P4: checked before every step; the last complete result stays adoptable."""
-    deadline = time.monotonic() + 300
-    outcome, _ = reference_run(world, deadline=deadline, clock=clock(0, 1, 2, 301))
-    assert outcome.stop_reason == "time_limit" and outcome.result is None
-    assert [r.step.position for r in outcome.runs] == [1, 2, 3]
-    assert outcome.adopted is not None and outcome.adopted.step.position == 3
-    assert outcome.adopted.stamp is not None and outcome.adopted.stamp.count == 37
-
-
-def test_the_request_deadline_stops_before_a_re_plan(world: DataBackend) -> None:
-    prompt = build_prompt("?", approach="chain", level=CHECK, profile=profile_of(world))
-    empty = {"op": "in", "attr": "typ", "values": ["keiner"]}
-    plan = REFERENCE_CASE["answer"] | {
-        "steps": [
-            {"text": "a", "tool": "filter", "arguments": {"layer": "schulen", "where": empty}},
-            {"text": "b", "tool": "filter", "arguments": {"of": 1, "where": PRIMAR}},
-        ]
-    }
-    model = FakeLLMClient(script=[Completion(text=json.dumps(plan))])
-    deadline = time.monotonic() + 300
-    outcome = run_chain(
-        model, prompt, context_of(world), profile_of(world), deadline=deadline, clock=clock(0, 301)
-    )
-    assert outcome.stop_reason == "time_limit" and len(model.calls) == 1
-    assert outcome.runs[0].view.empty is True
-    # An empty step is adoptable as it is (0 hits), though not a buffer.
-    assert outcome.adopted is not None and outcome.adopted.count == 0
-
-
-def test_the_chain_plans_in_one_call_and_offers_no_tool(world: DataBackend) -> None:
-    prompt = build_prompt(
-        "Primarschulen?", approach="chain", level=CHECK, profile=profile_of(world)
-    )
-    model = FakeLLMClient(script=[Completion(text=json.dumps(REFERENCE_CASE["answer"]))])
-    outcome = run_chain(model, prompt, context_of(world), profile_of(world))
-    assert outcome.result is not None and outcome.result.view.count == 10
-    [call] = model.calls
-    assert call.tools == () and call.schema == answer_format("chain")
-    system = call.messages[0].content
-    assert tool_list() in system
-    for name in CHAIN:
-        assert f"- {name} (" in system
 
 
 # --- the only way to the model (D10, static) ----------------------------------------

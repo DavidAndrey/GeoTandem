@@ -112,7 +112,7 @@ from geotandem.data.view import LayerView
 from geotandem.db.orm import ModelAction
 from geotandem.engine import QueryError, ResultStamp, count_query, ids_query, run_query, stamp_of
 from geotandem.engine.errors import QueryTimedOut, ResultTooLarge
-from geotandem.levels import CellMode, Level, OpClass, active_level, load_levels
+from geotandem.levels import CellMode, Level, OpClass, active_level
 from geotandem.llm import ClientFactory, Endpoint, LLMClient, LLMError
 from geotandem.model.chain.ask import (
     ChainState,
@@ -130,16 +130,20 @@ from geotandem.model.chain.plan import (
     one_approval,
     step_cell,
 )
-from geotandem.model.chain.run import StepRun, adoptable, run_step
+from geotandem.model.chain.run import run_step, stamp
 from geotandem.model.chain.view import restored
 from geotandem.model.direct import DirectAnswer, DirectQuery, governance
 from geotandem.model.errors import ActionError
 from geotandem.model.prompt import FollowUp, Prompt, Turn, build_prompt
 from geotandem.model.record import (
+    COMPLETE,
+    RAN,
+    Chain,
     ChainStep,
     ModelActionStore,
     NewAction,
     connection_snapshot,
+    last_complete,
     level_snapshot,
     utc_now,
 )
@@ -199,11 +203,16 @@ def day_start(now: datetime, tz: tzinfo | None = None) -> datetime:
     return aware.astimezone(UTC).replace(tzinfo=None)
 
 
-def close_stale(engine: Engine, clock: Callable[[], datetime] = utc_now) -> list[int]:
+def close_stale(
+    engine: Engine, max_features: int, clock: Callable[[], datetime] = utc_now
+) -> list[int]:
     """The start-up check (P7): nothing in flight survives a restart of the one
-    process, so every ``thinking`` record ends ``failed``; an unexecuted ``auto``
-    answer older than ``MODEL_CALL_S`` is closed too."""
-    return ModelActionStore(engine, clock).close_stale(clock() - timedelta(seconds=MODEL_CALL_S))
+    process, so every ``thinking`` record ends ``failed``, every ``running``
+    chain ``limited``/``interrupted`` with its result within ``max_features``
+    adoptable; an unexecuted ``auto`` answer older than ``MODEL_CALL_S`` is
+    closed too."""
+    older_than = clock() - timedelta(seconds=MODEL_CALL_S)
+    return ModelActionStore(engine, clock).close_stale(older_than, max_features)
 
 
 def read_view(backend: DataBackend, account: Account) -> DataBackend:
@@ -458,30 +467,17 @@ def _snapshot_level(view: ModelActionView, system_prompt: str = "") -> Level:
 
 def _adopted(
     steps: list[ChainStep], context: ToolContext, profile: ModelProfile
-) -> tuple[ChainStep, ResultStamp] | None:
-    """A chain's result to adopt (P4, WP74 ``adoptable``): the last complete
-    step that is no buffer, stamped, within the result-size limit."""
-    runs = []
-    for step in steps:
-        if step.status in ("ok", "empty") and step.count is not None:
-            seen = restored(step.view)
-            assert seen is not None  # a step that ran keeps its view
-            runs.append(StepRun(_checked(step), step.count, None, seen, step.duration_ms or 0))
+) -> tuple[ChainStep | None, ResultStamp | None]:
+    """A chain's result to adopt (decision 11, ``last_complete``) with its
+    stamp, the only one a chain's steps get."""
+    found = last_complete(steps, context.limits.max_features)
+    if found is None:
+        return None, None
     try:
-        found = adoptable(runs, context, profile)
-    except QueryError as exc:  # the stamp's run failed: nothing to adopt
-        log.warning("model chain: no result to adopt (%s)", exc.code)
-        return None
-    if found is None or found.stamp is None:
-        return None
-    by_position = {step.position: step for step in steps}
-    return by_position[found.step.position], found.stamp
-
-
-def _last_complete(steps: list[ChainStep]) -> ChainStep | None:
-    """The last complete step that is no buffer, unstamped (an expiry)."""
-    complete = [s for s in steps if s.status in ("ok", "empty") and s.query.buffer is None]
-    return complete[-1] if complete else None
+        return found, stamp(found.query, context, profile)
+    except QueryError as exc:  # the stamp's run failed: offered unstamped
+        log.warning("model chain: result not stamped (%s)", exc.code)
+        return found, None
 
 
 @dataclass(frozen=True)
@@ -553,6 +549,7 @@ class PromptFlow:
             connection=connection_snapshot(connection),
             profile_hash=profile.hash,
             parent_action_id=request.parent_action_id,
+            level_prompt=level.system_prompt,
         )
         # The account's own call first (review #36): an account that waits for
         # its answer gets 409 and never holds a slot, even for a moment, that
@@ -814,18 +811,22 @@ class PromptFlow:
             raise refused from None
         status = chain.view.status
         if status == "running" and self.calls.in_flight(caller.id) == action_id:
-            view = self.store.request_stop(caller, action_id)
+            # The run's event first: the run checks it before every step, the
+            # store refuses its next step once the abort is written.
             self.calls.cancel(action_id)
+            view = self.store.request_stop(caller, action_id)
             log.info("model action %d: abort asked, the run stops before its next step", action_id)
             return view
         started = any(step.status in RAN for step in chain.steps)
-        if status not in ("running", "proposed") or (status == "proposed" and not started):
+        waits = status in ("proposed", "approved")
+        if status not in ("running", "proposed", "approved") or (waits and not started):
             raise refused  # a plan not started is rejected, not aborted
-        # Halted for approval, or running without a run (it was given up): now.
+        # Halted for approval, approved at a halt and not run again, or running
+        # without a run (it was given up): now.
         view_, profile = profile_for(self.backend, caller)
-        found = _adopted(chain.steps, ToolContext(view_, self.limits, self.unsupported), profile)
-        result, stamp = found if found is not None else (None, None)
-        view = self.store.stop(caller, action_id, "aborted", stamp, result=result)
+        context = ToolContext(view_, self.limits, self.unsupported)
+        result, stamped = _adopted(chain.steps, context, profile)
+        view = self.store.stop(caller, action_id, "aborted", stamped, result=result)
         log.info("model action %d: aborted, limited", action_id)
         return view
 
@@ -917,9 +918,7 @@ class PromptFlow:
                     raise _busy(in_flight)
                 view = self.store.run(caller, action_id)
                 chain = self.store.chain(caller, action_id, "run")
-                left = CHAIN_TIME_LIMIT_S - ((view.latency_ms or 0) + chain.run_ms) / 1000
-                # The step that runs at the deadline ends by its own limit.
-                expiry = time.monotonic() + max(left, 0) + self.limits.timeout_s
+                expiry = time.monotonic() + self._run_budget(view, chain.run_ms)
                 try:
                     self.calls.start(
                         caller.id,
@@ -937,6 +936,13 @@ class PromptFlow:
         log.info("model action %d: run", action_id)
         return view
 
+    def _run_budget(self, view: ModelActionView, run_ms: int) -> float:
+        """Seconds until a run is given up (``ModelCalls``, which adds its grace):
+        what the request has left, and two step limits on top, for the step
+        that runs at the deadline and the stamp of the result after it."""
+        left = CHAIN_TIME_LIMIT_S - ((view.latency_ms or 0) + run_ms) / 1000
+        return max(left, 0) + 2 * self.limits.timeout_s
+
     def _run(self, caller: Account, action_id: int, cancel: threading.Event) -> None:
         """The run in its thread. Never raises; gives the slot back."""
         try:
@@ -952,7 +958,9 @@ class PromptFlow:
             self.calls.finish(caller.id, action_id)
 
     def _run_expired(self, caller: Account, action_id: int) -> None:
-        """The run outlived the request's deadline and was given up (``ModelCalls``)."""
+        """The run outlived the request's deadline and was given up (``ModelCalls``):
+        ``limited``/``time_limit``; the run, should it go on, finds it closed."""
+        self.calls.cancel(action_id)
         self._stop_quietly(caller, action_id, "time_limit")
 
     def _stop_quietly(self, caller: Account, action_id: int, reason: StopReason) -> None:
@@ -965,9 +973,8 @@ class PromptFlow:
             error = None
             if reason == "interrupted":
                 error = _error("internal_error", "The run stopped unexpectedly.")
-            self.store.stop(
-                caller, action_id, reason, result=_last_complete(chain.steps), error=error
-            )
+            result = last_complete(chain.steps, self.limits.max_features)
+            self.store.stop(caller, action_id, reason, result=result, error=error)
         except Exception as exc:
             log.error("model action %d: not closed (%s)", action_id, type(exc).__name__)
 
@@ -1003,16 +1010,15 @@ class PromptFlow:
     # --- what a chain's re-plan asks with (P4) ------------------------------------
 
     def _chain_prompt(
-        self, caller: Account, view: ModelActionView, profile: ModelProfile
+        self, caller: Account, chain: Chain, profile: ModelProfile
     ) -> tuple[Prompt, Level]:
         """The planning prompt again, for a re-plan: the record's text and
-        thread, the level as it was (its matrix; its system prompt as the
-        level of that id has it now, the record keeps its hash only), the
-        profile at run time. No size check here: the re-plan's own (``fit``)."""
-        current = next(
-            (lv for lv in load_levels(self.backend.engine) if lv.id == view.level.id), None
-        )
-        level = _snapshot_level(view, current.system_prompt if current else "")
+        thread, the level as it was (H7: its matrix and its system prompt as
+        the record keeps them, never the level's now), the profile at run time,
+        what the model may see now. No size check here: the re-plan's own
+        (``fit``)."""
+        view = chain.view
+        level = _snapshot_level(view, chain.level_prompt)
         follow_up = None
         if view.parent_action_id is not None:
             try:
@@ -1028,14 +1034,21 @@ class PromptFlow:
     def _replan_endpoint(
         self, caller: Account, view: ModelActionView
     ) -> tuple[Endpoint, int | None] | None:
-        """The connection the record names, as it is now and only while it is the
-        account's active one (H7, C14): its endpoint and context length;
-        ``None`` when it is disabled or no longer the account's."""
+        """The connection the record names, read once with its endpoint (C14,
+        security review #28), and only while it is enabled, still the account's
+        and still what the record says it is (H7): the same host and locality.
+        Its endpoint and context length; ``None`` otherwise."""
         active = self.connections.active_call(caller.id)
-        if active is None or active[0].id != view.connection.id:
+        if active is None:
             return None
         connection, endpoint = active
-        return endpoint, connection.context_length
+        snapshot = view.connection
+        same = (connection.id, connection.host, connection.locality) == (
+            snapshot.id,
+            snapshot.host,
+            snapshot.locality,
+        )
+        return (endpoint, connection.context_length) if same else None
 
     # --- enforcement (D2, P2, WP70) ----------------------------------------------
 
@@ -1152,10 +1165,6 @@ def _edit_refused(refusal: Refusal) -> ActionError:
     return ActionError(refusal.code, refusal.message, http_status=422, **refusal.details)
 
 
-RAN = ("ok", "empty", "error")
-COMPLETE = ("ok", "empty")
-
-
 @dataclass
 class _Runner:
     """One stretch of a chain's run (P4): from ``run`` to its end, a halt for
@@ -1191,7 +1200,7 @@ class _Runner:
         # The view and the profile as they are now: a step validates at run time.
         view, profile = profile_for(flow.backend, caller)
         context = ToolContext(view, flow.limits, flow.unsupported)
-        prompt, level = flow._chain_prompt(caller, chain.view, profile)
+        prompt, level = flow._chain_prompt(caller, chain, profile)
         answer = chain.view.answer
         assert isinstance(answer, PlanAnswer)  # a chain's record keeps its plan
         steps = chain.steps
@@ -1207,6 +1216,7 @@ class _Runner:
             removed = [s.position for s in steps if s.status == "removed"]
             changed = [(s.position, s.arguments) for s in live if s.edited]
             edits = edits_message(removed, changed) if removed or changed else None
+        turns, asked_with = restored_turns(chain.turns)
         state = ChainState(
             prompt,
             answer,
@@ -1214,10 +1224,12 @@ class _Runner:
             seen=seen,
             completed=sum(1 for s in live if s.status in COMPLETE),
             replans=chain.view.replans,
-            turns=restored_turns(chain.turns),
+            turns=turns,
             spent=len(ran),
             last=max((s.position for s in ran), default=0),
             edits=edits,
+            profile_hash=profile.hash,
+            asked_with=asked_with,
         )
         started = flow.monotonic()
         worked_ms = (chain.view.latency_ms or 0) + chain.run_ms
@@ -1257,7 +1269,8 @@ class _Runner:
             if self.late():
                 return self.stop("time_limit", self.too_late(step.position))
             stored = self.stored[step.position]
-            if stored.cell is CellMode.APPROVE and not stored.approved:
+            # Only an auto step runs unasked; an off one never (D1).
+            if stored.cell is not CellMode.AUTO and not stored.approved:
                 return self.halt(step.position)
             if not self.run(step):
                 return None
@@ -1279,7 +1292,11 @@ class _Runner:
     def run(self, step: CheckedStep) -> bool:
         """One step, counted; ``False`` when the run stopped at it."""
         position = step.position
-        self.store.step_started(self.caller, self.action_id, position, run_ms=self.ms())
+        try:
+            self.store.step_started(self.caller, self.action_id, position, run_ms=self.ms())
+        except ActionError:
+            self.stop("aborted")  # aborted meanwhile: the step does not start
+            return False
         last = position == self.state.steps[-1].position
         run = run_step(step, self.context, self.profile, last=last)
         status: StepStatus = "error" if run.error else "empty" if run.count == 0 else "ok"
@@ -1307,7 +1324,7 @@ class _Runner:
             error = _error(
                 "result_too_large",
                 f"The result has more than {limit} features.",
-                position=position,
+                step=position,
                 value=run.error.details.get("count"),
                 max=limit,
             )
@@ -1320,7 +1337,7 @@ class _Runner:
         return _error(
             "time_limit",
             f"The chain ran longer than {CHAIN_TIME_LIMIT_S} s and was stopped.",
-            position=position,
+            step=position,
             value=round(worked),
             max=CHAIN_TIME_LIMIT_S,
         )
@@ -1337,8 +1354,9 @@ class _Runner:
             return False
         found = self.flow._replan_endpoint(self.caller, self.view)
         if found is None:
-            message = "The model connection of this chain is not available any more."
-            self.stop("replan_limit", _error("connection_not_available", message))
+            message = "The model connection of this chain is disabled or changed since its plan."
+            error = _error("connection_not_available", message, reason="changed")
+            self.stop("replan_limit", error)
             return False
         endpoint, state.context_length = found
         timeout_s = min(endpoint.timeout_s, MODEL_CALL_S)
@@ -1373,7 +1391,7 @@ class _Runner:
                 error = _error(
                     "step_limit",
                     refused.message,
-                    position=details["step"],
+                    step=details["step"],
                     value=details["value"],
                     max=MAX_STEPS,
                 )
@@ -1400,19 +1418,25 @@ class _Runner:
             self.stop("replan_limit", _error("class_not_allowed", message, part=off, step=position))
             return False
         steps = [new_step(self.level, s, revised=True) for s in new]
-        self.store.revise(
-            self.caller,
-            self.action_id,
-            after=state.last,
-            steps=steps,
-            governance=rules,
-            replans=state.replans,
-            turns=kept_turns(state.turns),
-            run_ms=self.ms(),
-        )
+        try:
+            self.store.revise(
+                self.caller,
+                self.action_id,
+                after=state.last,
+                steps=steps,
+                governance=rules,
+                replans=state.replans,
+                turns=kept_turns(state),
+                run_ms=self.ms(),
+            )
+        except ActionError:
+            self.stop("aborted")  # aborted meanwhile: the re-plan's steps do not come in
+            return False
         kept = {p: s for p, s in self.stored.items() if p <= state.last or s.status in RAN}
         self.stored = kept | {s.position: s for s in steps}
-        if one_approval(s.cell for s in steps):
+        # One approval for the whole plan as it now stands, as ``approve`` decides.
+        plan = [s.cell for s in self.stored.values() if s.status != "removed"]
+        if one_approval(plan):
             self.halt(None)
             return False
         return True
@@ -1427,7 +1451,7 @@ class _Runner:
                 waiting=waiting,
                 run_ms=self.ms(),
                 replans=self.state.replans,
-                turns=kept_turns(self.state.turns),
+                turns=kept_turns(self.state),
             )
         except ActionError:
             self.stop("aborted")
@@ -1435,9 +1459,16 @@ class _Runner:
         log.info("model action %d: halted for approval", self.action_id)
 
     def adopted(self) -> tuple[ChainStep | None, ResultStamp | None]:
-        steps = [self.stored[p] for p in sorted(self.stored)]
-        found = _adopted(steps, self.context, self.profile)
-        return found if found is not None else (None, None)
+        """The result to offer, stamped; nothing is stamped for a record that
+        moved on meanwhile (given up at its deadline, closed at a restart)."""
+        if self.store.chain(self.caller, self.action_id, "run").view.status != "running":
+            raise ActionError(
+                "not_approved",
+                f"Model action {self.action_id} is no longer running.",
+                http_status=409,
+                id=self.action_id,
+            )
+        return _adopted([self.stored[p] for p in sorted(self.stored)], self.context, self.profile)
 
     def finish(self) -> None:
         result, stamp = self.adopted()
@@ -1455,6 +1486,6 @@ class _Runner:
             error=error,
             run_ms=self.ms(),
             replans=self.state.replans,
-            turns=kept_turns(self.state.turns),
+            turns=kept_turns(self.state),
         )
         log.info("model action %d: limited (%s)", self.action_id, reason)

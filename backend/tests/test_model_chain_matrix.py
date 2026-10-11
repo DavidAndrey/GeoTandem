@@ -127,10 +127,27 @@ def cell_row(op_class: OpClass, cell: CellMode) -> Row:
     )
 
 
-ROWS = [cell_row(c, m) for c in OpClass for m in CellMode] + [
-    Row(f"{name}-reference", tuple(fixture_levels()), name, None, REFERENCE_STEPS)
-    for name in ("Assistenz", "Prüfen", "Teilautonom", "Automatisch")
-]
+TWO_APPROVE = Row(
+    "derive_spatial-approve",
+    (
+        PRUEFEN,
+        {"name": "Zwei", "selectable": True, "matrix": matrix(derive="approve", spatial="approve")},
+    ),
+    "Zwei",
+    CHAIN_OF[OpClass.DERIVE],
+    CLASSES_OF[OpClass.DERIVE],
+)
+"""Cells ``auto``, ``approve``, ``approve``: a halt before each approve step,
+never one approval for both (the plan has an ``auto`` step)."""
+
+ROWS = (
+    [cell_row(c, m) for c in OpClass for m in CellMode]
+    + [
+        Row(f"{name}-reference", tuple(fixture_levels()), name, None, REFERENCE_STEPS)
+        for name in ("Assistenz", "Prüfen", "Teilautonom", "Automatisch")
+    ]
+    + [TWO_APPROVE]
+)
 PATHS = ["surface", "direct", "replay", "query_routes", "other_account", "level_changed"]
 
 
@@ -142,6 +159,8 @@ def test_the_rows_cover_every_cell() -> None:
     derive = {r.name: r for r in ROWS}
     assert derive["derive-approve"].step_cells == [CellMode.AUTO, CellMode.APPROVE, CellMode.AUTO]
     assert derive["derive-off"].cell is CellMode.OFF
+    two = TWO_APPROVE.step_cells
+    assert two == [CellMode.AUTO, CellMode.APPROVE, CellMode.APPROVE] and TWO_APPROVE.halts == 3
     expect = case("chain_reference")["expect"]["status"]
     for level, status in expect.items():
         row = derive[f"{level}-reference"]
@@ -370,3 +389,39 @@ async def test_a_connection_disabled_after_the_plan_leaves_the_chain_runnable(
     ran.clear()
     await run_surface(client, app, proposed, row, ran)
     assert len(model.fake.calls) == calls
+
+
+@pytest.mark.parametrize("cell", list(CellMode), ids=[c.value for c in CellMode])
+async def test_a_level_closed_after_the_plan_still_governs_the_chain(
+    client: httpx.AsyncClient,
+    app: FastAPI,
+    model: Model,
+    other: httpx.AsyncClient,
+    ran: list[str],
+    cell: CellMode,
+) -> None:
+    """Plan 5.3's non-selectable level, for the chain: a user plans under a level
+    of that ``derive`` cell, the administrator then closes it; the chain keeps
+    it (its cells, its halts), and the user's next prompt gets the default."""
+    row = cell_row(OpClass.DERIVE, cell)
+    await connect(client)
+    ids = await install_levels(client, list(row.levels))
+    chosen = await other.put("/api/llm/options", json={"level_id": ids["Zelle"]})
+    assert chosen.status_code == 200, chosen.text
+    model.fake.script.append(row.answer())
+    asked = await other.post(PROMPT, json={"text": "Schulen?", "approach": "chain"})
+    assert asked.status_code == 202, asked.text
+    await settle(app)
+    proposed = await record(other, asked.json()["id"])
+    await install_levels(client, [PRUEFEN, {**row.levels[1], "selectable": False}])
+    kept = await record(other, proposed["id"])
+    assert (kept["level"]["name"], kept["governance"]) == ("Zelle", proposed["governance"])
+    ran.clear()
+    await run_surface(other, app, proposed, row, ran)
+
+    model.fake.script.append(row.answer())
+    again = await other.post(PROMPT, json={"text": "Schulen?", "approach": "chain"})
+    assert again.status_code == 202, again.text
+    await settle(app)
+    after = await record(other, again.json()["id"])
+    assert (after["level"]["name"], after["status"]) == ("Prüfen", "proposed")

@@ -96,14 +96,21 @@ def replan_message(
     return "\n".join(lines)
 
 
-def kept_turns(turns: Sequence[Message]) -> list[list[str]]:
-    """``ChainState.turns`` as the record keeps them (``model_action.turns``)."""
-    return [[turn.role, turn.content] for turn in turns]
+def kept_turns(state: "ChainState") -> list[list[str]]:
+    """``state.turns`` as the record keeps them (``model_action.turns``):
+    ``[role, text]``, a re-plan's input with the hash of the layer profile it
+    was asked with (``asked_with``)."""
+    return [
+        [turn.role, turn.content, *([state.asked_with[i]] if i in state.asked_with else [])]
+        for i, turn in enumerate(state.turns)
+    ]
 
 
-def restored_turns(stored: Sequence[Sequence[str]]) -> list[Message]:
-    """The record's turns as the next re-plan continues them."""
-    return [Message("assistant" if role == "assistant" else "user", text) for role, text in stored]
+def restored_turns(stored: Sequence[Sequence[str]]) -> tuple[list[Message], dict[int, str]]:
+    """The record's turns as the next re-plan continues them, with the profile
+    hash of each re-plan's input."""
+    turns = [Message("assistant" if t[0] == "assistant" else "user", t[1]) for t in stored]
+    return turns, {i: t[2] for i, t in enumerate(stored) if len(t) > 2}
 
 
 def edits_message(removed: Sequence[int], changed: Sequence[tuple[int, dict[str, Any]]]) -> str:
@@ -145,6 +152,10 @@ class ChainState:
     """The position of the step that ran last: a re-plan's steps continue after it."""
     edits: str | None = None
     """The user's changes to the plan (``edits_message``), told with the first re-plan."""
+    profile_hash: str | None = None
+    """The layer profile the next re-plan is asked with (the run time's)."""
+    asked_with: dict[int, str] = field(default_factory=dict)
+    """Turn index → the profile hash a re-plan's input was asked with."""
 
     def __post_init__(self) -> None:
         if not self.turns:
@@ -178,6 +189,8 @@ class ChainState:
         message = replan_message(seen, kept, self.last + 1, MAX_STEPS - self.spent, self.edits)
         self.edits = None
         self.turns.append(Message("user", message))
+        if self.profile_hash is not None:
+            self.asked_with[len(self.turns) - 1] = self.profile_hash
         messages = (*self.prompt.messages, *self.turns)
         fit(messages, self.context_length)
         return messages

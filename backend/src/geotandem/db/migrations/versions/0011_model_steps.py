@@ -9,9 +9,10 @@ A chain's steps, one row each (plan E2.3-E2.6, WP75): what the model planned
 cell, and whether an approval cleared it), and what became of it (status,
 the count for the user, ``model_view`` for the model, the step's query
 object, its duration; a stamp for the adoptable step only). Rows go with
-their action. And two columns of the action: a chain's run time so far,
-halts left out, and its conversation with the model after the prompt.
-Existing records are direct queries: no steps, no run time.
+their action. And three columns of the action: a chain's run time so far,
+halts left out, its conversation with the model after the prompt, and the
+level's system prompt as it was, which a re-plan asks with (H7). Existing
+records are direct queries: no steps, no run time, no prompt text kept.
 """
 
 from collections.abc import Sequence
@@ -52,11 +53,13 @@ def upgrade() -> None:
     with op.batch_alter_table("model_action") as batch:
         batch.add_column(sa.Column("run_ms", sa.Integer(), server_default="0", nullable=False))
         batch.add_column(sa.Column("turns", sa.JSON(), nullable=True))
+        batch.add_column(sa.Column("level_prompt", sa.String(), nullable=True))
 
 
 def downgrade() -> None:
     # The steps first: a rebuild of model_action then has no rows referring to it.
     op.drop_table("model_action_step")
     with op.batch_alter_table("model_action") as batch:
+        batch.drop_column("level_prompt")
         batch.drop_column("turns")
         batch.drop_column("run_ms")

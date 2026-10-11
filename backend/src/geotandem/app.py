@@ -52,7 +52,7 @@ def start(settings: Settings) -> AppState:
         )
     if stale := import_log.fail_stale(engine):
         log.warning("%d imports were interrupted by the last shutdown", stale)
-    if closed := model_service.close_stale(engine):
+    if closed := model_service.close_stale(engine, settings.max_features):
         log.warning("%d model actions were left open by the last shutdown", len(closed))
     if settings.load_sample_data:
         load_sample(backend)

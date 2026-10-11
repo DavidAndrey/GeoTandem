@@ -337,7 +337,7 @@ def test_steps_come_and_go_with_0011_and_keep_the_records(settings: Settings) ->
     migrate.upgrade(engine)
 
     columns = {c["name"] for c in inspect(engine).get_columns("model_action")}
-    assert {"run_ms", "turns"} <= columns
+    assert {"run_ms", "turns", "level_prompt"} <= columns
     with engine.begin() as conn:
         assert tuple(conn.execute(text("SELECT run_ms, turns FROM model_action")).one()) == (
             0,
@@ -365,7 +365,7 @@ def test_steps_come_and_go_with_0011_and_keep_the_records(settings: Settings) ->
 
     migrate.downgrade(engine, "0010")
     assert "model_action_step" not in inspect(engine).get_table_names()
-    assert not {"run_ms", "turns"} & {
+    assert not {"run_ms", "turns", "level_prompt"} & {
         c["name"] for c in inspect(engine).get_columns("model_action")
     }
     with engine.connect() as conn:

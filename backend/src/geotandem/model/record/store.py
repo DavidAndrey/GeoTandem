@@ -67,7 +67,7 @@ from geotandem_query import QueryObject, compact
 EDGES: Mapping[str, frozenset[ActionStatus]] = {
     "thinking": frozenset({"refused", "answered", "proposed", "approved", "aborted", "failed"}),
     "proposed": frozenset({"approved", "rejected", "superseded", "applied", "limited"}),
-    "approved": frozenset({"applied", "running", "superseded"}),
+    "approved": frozenset({"applied", "running", "superseded", "limited"}),
     "running": frozenset({"done", "limited", "proposed"}),
     "done": frozenset({"applied", "superseded"}),
     "limited": frozenset({"applied", "superseded"}),
@@ -76,7 +76,8 @@ EDGES: Mapping[str, frozenset[ActionStatus]] = {
 """The state diagram of plan 1.2: from a status, the statuses it may move to.
 A status without an entry is final. A chain halts for approval before a step
 or after a re-plan (``running`` → ``proposed``, P4) and may be aborted while
-it waits (``proposed`` → ``limited``)."""
+it waits, halted or approved at a halt and not run again (``proposed``,
+``approved`` → ``limited``)."""
 
 RAN: frozenset[str] = frozenset({"ok", "empty", "error"})
 """Step statuses of a step that ran."""
@@ -129,6 +130,9 @@ class NewAction:
     connection: ConnectionSnapshot
     profile_hash: str
     parent_action_id: int | None = None
+    level_prompt: str | None = None
+    """The level's system prompt, whose hash ``level`` keeps: a chain's re-plan
+    asks with it (H7, WP75)."""
     reference: Reference = "none"
     compare_of: int | None = None
     proposal_only: bool = False
@@ -176,7 +180,10 @@ class Chain:
     run_ms: int
     """Its run time so far, halts left out (P4)."""
     turns: list[Any]
-    """Its conversation after the prompt, ``[role, text]`` each; empty before a re-plan."""
+    """Its conversation after the prompt, ``[role, text]`` each, a re-plan's
+    input with the hash of the profile it was asked with; empty before a re-plan."""
+    level_prompt: str
+    """The level's system prompt as it was when asked."""
 
 
 def _chain_step(row: ModelActionStep) -> ChainStep:
@@ -277,13 +284,23 @@ def _skip_ahead(db: Session, action_id: int) -> None:
     )
 
 
-def _last_complete(db: Session, action_id: int) -> ModelActionStep | None:
-    """The last step whose result stands and is no buffer (D3): what a stopped
-    chain adopts when nothing could stamp it (the start-up check)."""
-    for row in reversed(_steps_of(db, action_id)):
-        if row.status in COMPLETE and "buffer" not in row.query:
-            return row
-    return None
+def _end_steps(db: Session, row: ModelAction) -> None:
+    """A chain decided without running on (rejected, superseded, handed over):
+    its steps ahead never run."""
+    if row.approach == "chain":
+        _skip_ahead(db, row.id)
+
+
+def last_complete(steps: Iterable[ChainStep], max_features: int) -> ChainStep | None:
+    """What a chain that ended offers to adopt (WP75, decision 11), the one rule
+    for the run's end, an abort, an expiry and the start-up check: the last
+    step whose result stands (``ok``, ``empty``) and that is no buffer (D3),
+    and only while its count is within the result-size limit, so the record
+    never offers a result that ``adopt`` refuses with ``result_too_large``."""
+    complete = [s for s in steps if s.status in COMPLETE and s.query.buffer is None]
+    if not complete or (complete[-1].count or 0) > max_features:
+        return None
+    return complete[-1]
 
 
 @dataclass(frozen=True)
@@ -347,16 +364,19 @@ def _query_json(query: QueryObject | None) -> dict[str, Any] | None:
     return None if query is None else compact(query)
 
 
-LIMITS: frozenset[str] = frozenset({"time_limit", "result_too_large", "step_limit"})
-"""A chain's limits (P4): their ``details`` are the limit's numbers, which the
-user sees (``{position, value, max}``, design M9.5), not a cause."""
+SHOWN: frozenset[str] = frozenset(
+    {"time_limit", "result_too_large", "step_limit", "connection_not_available"}
+)
+"""Codes of a chain's stop whose ``details`` the user sees, as they name no
+cause: a limit's numbers (``{step, value, max}``, design M9.5), and why a
+re-plan was not sent (``reason``)."""
 
 
 def _error_for(error: dict[str, Any] | None, detail: bool) -> dict[str, Any] | None:
     """A failure as a view carries it: code and message, and its ``details``
     (the transport's ``cause``, what did not parse) only for ``detail``, the
-    administrator's log (D4, review #37); a chain's limit with its numbers."""
-    if error is None or detail or error.get("code") in LIMITS:
+    administrator's log (D4, review #37); a chain's stop with what it shows (``SHOWN``)."""
+    if error is None or detail or error.get("code") in SHOWN:
         return error
     return {"code": error.get("code"), "message": error.get("message"), "details": {}}
 
@@ -607,6 +627,7 @@ class ModelActionStore:
                 steps=[_chain_step(s) for s in steps],
                 run_ms=row.run_ms,
                 turns=list(row.turns or []),
+                level_prompt=row.level_prompt or "",
             )
 
     def thread(self, caller: Account, action_id: int, depth: int) -> list[ModelActionView]:
@@ -800,6 +821,7 @@ class ModelActionStore:
                 level_name=new.level.name,
                 level_matrix={str(k): str(v) for k, v in new.level.matrix.items()},
                 level_prompt_hash=new.level.prompt_hash,
+                level_prompt=new.level_prompt,
                 connection_id=new.connection.id,
                 connection_name=new.connection.name,
                 connection_model=new.connection.model,
@@ -822,7 +844,10 @@ class ModelActionStore:
             )
         ).all()
         now = self.clock()
-        return [row for row in rows if self._settle(db, row, OPEN, lambda r: _superseded(r, now))]
+        closed = [row for row in rows if self._settle(db, row, OPEN, lambda r: _superseded(r, now))]
+        for row in closed:
+            _end_steps(db, row)
+        return closed
 
     def supersede_open(self, caller: Account) -> list[int]:
         """Close the account's open records as a new prompt overtakes them: decision
@@ -834,7 +859,7 @@ class ModelActionStore:
 
     # --- the system's own path -----------------------------------------------------
 
-    def close_stale(self, older_than: datetime) -> list[int]:
+    def close_stale(self, older_than: datetime, max_features: int) -> list[int]:
         """Close what no request will finish any more, for the start-up check (P4,
         P7, WP70, WP82); no caller, every account. The application is one process,
         so nothing in flight survives a restart: every ``thinking`` record ends
@@ -845,7 +870,8 @@ class ModelActionStore:
         arrived later may still have its window open. The record keeps no
         arrival time of its own: it is the call's start (``called_at``, else
         ``created_at``) plus the call's ``latency_ms`` (``_answered_at``). A
-        record the user approved stays approved."""
+        record the user approved stays approved. ``max_features``: the
+        result-size limit a chain's result to adopt keeps (``last_complete``)."""
         now = self.clock()
         error = {
             "code": "llm_timeout",
@@ -861,11 +887,12 @@ class ModelActionStore:
                 # and adopt runs it as the user anyway (WP75).
                 db = object_session(row)
                 assert db is not None
-                last = _last_complete(db, row.id)
+                steps = [_chain_step(s) for s in _steps_of(db, row.id)]
+                last = last_complete(steps, max_features)
                 return {
                     "status": "limited",
                     "stop_reason": row.stop_reason or "interrupted",  # an abort asked for stays
-                    "query": None if last is None else last.query,
+                    "query": None if last is None else compact(last.query),
                     "stamp": None,
                 }
             return _superseded(row, now)
@@ -884,11 +911,9 @@ class ModelActionStore:
                     _cell(row) == "auto" and _answered_at(row) < older_than
                 ):
                     continue
-                running = row.status == "running"
                 if self._settle(db, row, stale, change):
                     closed.append(row)
-                    if running:
-                        _skip_ahead(db, row.id)
+                    _end_steps(db, row)
         self._audit(None, [row for row in closed if row.decision is not None])
         return [row.id for row in closed]
 
@@ -1111,18 +1136,21 @@ class ModelActionStore:
 
     def approve(self, caller: Account, action_id: int) -> ModelActionView:
         """Never with an ``off`` class at the level as it was (D2, M7.3). A
-        chain's approval clears its steps ahead (P4, design M8): all of them
-        when none of them runs without approval (*Prüfen*: one approval for the
-        whole chain), else the next one only (*Teilautonom*: the start, then
-        each halt before a step whose cell is ``approve``)."""
+        chain's approval clears steps ahead (P4, design M8), decided over the
+        whole plan as it stands (every step not removed, the ones that ran and
+        a re-plan's included, with their cells at the level as it was): when no
+        step of it is ``auto`` (*Prüfen*), one approval covers every step
+        ahead; otherwise (*Teilautonom*) it clears the next step only, and the
+        run halts before every further step whose cell is ``approve``."""
 
         def change(row: ModelAction) -> dict[str, Any]:
             _allowed(row)
             return {"status": "approved"}
 
         def then(db: Session, row: ModelAction) -> None:
-            ahead = [s for s in _steps_of(db, row.id) if s.status in AHEAD]
-            whole = one_approval(CellMode(s.cell) for s in ahead)
+            steps = _steps_of(db, row.id)
+            whole = one_approval(CellMode(s.cell) for s in steps if s.status != "removed")
+            ahead = [s for s in steps if s.status in AHEAD]
             for step in ahead if whole else ahead[:1]:
                 _set_step(db, row.id, step.position, approved=True, status="planned")
 
@@ -1137,6 +1165,7 @@ class ModelActionStore:
             "reject",
             ["proposed"],
             lambda _: {"status": "rejected", "decision": "rejected", "reject_reason": reason},
+            then=_end_steps,
         )
 
     def decide(
@@ -1185,7 +1214,7 @@ class ModelActionStore:
                 "applied_query": _query_json(applied_query),
             }
 
-        return self._move(caller, action_id, "decide", ["proposed"], change)
+        return self._move(caller, action_id, "decide", ["proposed"], change, then=_end_steps)
 
     # from approved
 
@@ -1250,9 +1279,20 @@ class ModelActionStore:
                 )
             stored = {s.position for s in _steps_of(db, row.id)}
             if {s.position for s in steps} != stored:
-                raise ValueError("an edit names every step of the plan, and no other")
+                raise ActionError(
+                    "invalid_query",
+                    f"An edit of model action {row.id} names every step of its plan, no other.",
+                    http_status=422,
+                    id=row.id,
+                )
             if governance.off:  # values only and removals: no class can come in
-                raise ValueError("an edited plan has no class the plan did not have")
+                raise ActionError(
+                    "class_not_allowed",
+                    f"The level of model action {row.id} does not allow '{governance.off[0]}'.",
+                    http_status=409,
+                    id=row.id,
+                    part=governance.off[0],
+                )
             return {"governance": _json(governance)}
 
         def then(db: Session, row: ModelAction) -> None:
@@ -1286,13 +1326,32 @@ class ModelActionStore:
         check, an expiry) leaves it ``not_approved`` and the run stops."""
         return self._move(caller, action_id, step, ["running"], lambda _: dict(values), then=then)
 
+    def _going_on(
+        self,
+        caller: Account,
+        action_id: int,
+        step: str,
+        values: dict[str, Any],
+        then: Callable[[Session, ModelAction], None],
+    ) -> ModelActionView:
+        """A write that takes the run further (a step starts, a re-plan's steps
+        come in): refused, ``not_approved``, once the user aborted it (P4: no
+        step starts after the abort was answered), in the same compare-and-set."""
+
+        def change(row: ModelAction) -> dict[str, Any]:
+            if row.stop_reason == "aborted":
+                raise _wrong_state(row, step)
+            return dict(values)
+
+        return self._move(caller, action_id, step, ["running"], change, then=then)
+
     def step_started(
         self, caller: Account, action_id: int, position: int, *, run_ms: int
     ) -> ModelActionView:
         def then(db: Session, row: ModelAction) -> None:
             _set_step(db, row.id, position, status="running")
 
-        return self._running(caller, action_id, "step", {"run_ms": run_ms}, then)
+        return self._going_on(caller, action_id, "step", {"run_ms": run_ms}, then)
 
     def step_ran(
         self,
@@ -1354,7 +1413,7 @@ class ModelActionStore:
             "turns": turns,
             "run_ms": run_ms,
         }
-        return self._running(caller, action_id, "revise", values, then)
+        return self._going_on(caller, action_id, "revise", values, then)
 
     def halt(
         self,
@@ -1417,7 +1476,8 @@ class ModelActionStore:
     ) -> ModelActionView:
         """A limit, an abort, a re-plan that brought nothing (P4): ``limited``,
         the last complete result (``result``, stamped) adoptable. Also a chain
-        halted for approval, when it is aborted."""
+        that started and waits, halted for approval (``proposed``) or approved
+        at a halt and not run again (``approved``), when it is aborted."""
         values: dict[str, Any] = {"status": "limited", "stop_reason": reason, "error": error}
         if replans is not None:
             values |= {"replans": replans, "turns": turns}
@@ -1428,13 +1488,12 @@ class ModelActionStore:
             return reason == "aborted" and row.approach == "chain" and _started(db, row.id)
 
         def change(row: ModelAction) -> dict[str, Any]:
-            if row.status == "proposed" and not halted(row):
+            if row.status != "running" and not halted(row):
                 raise _wrong_state(row, "stop")
             return values
 
-        return self._ended(
-            caller, action_id, "stop", ["running", "proposed"], change, stamp, result, run_ms
-        )
+        sources = ["running", "proposed", "approved"]
+        return self._ended(caller, action_id, "stop", sources, change, stamp, result, run_ms)
 
     def _ended(
         self,
