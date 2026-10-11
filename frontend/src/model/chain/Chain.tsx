@@ -17,18 +17,28 @@ import { errorText } from '../../i18n/errors'
 import { formatNumber } from '../../i18n/locale'
 import { hitsOf } from '../../i18n/phrases'
 import { RejectStep, Rejected, Undone } from '../approval/Approval'
-import { adopt, reject, startRejecting, useApproval } from '../approval/flow'
+import { adopt, escapeRejects, startRejecting, useApproval } from '../approval/flow'
 import { cellLabel, classList } from '../approval/governance'
 import { resumePolling } from '../panel/poll'
-import { abort, prefill, usePanel } from '../panel/state'
-import { clockTime, minutes } from '../panel/time'
+import { openMyActions } from '../log/dialog'
+import { prefill, usePanel } from '../panel/state'
+import { clockTime, minutes, seconds } from '../panel/time'
 import { readQuery } from '../readable'
 import { StatusLabel } from '../status'
 import { FRAME, lineStyle, statusKey } from '../statusKey'
 import { QueryTree } from '../tree'
 import { useCompare } from './compare'
-import { approveChain, openPlanEditor, retryRun, runMs, useChain } from './flow'
+import {
+  approveChain,
+  focusReturned,
+  openPlanEditor,
+  requestMs,
+  retryRun,
+  stopChain,
+  useChain,
+} from './flow'
 import { PlanEditor, StepLimit } from './PlanEditor'
+import { StepSummary } from './StepSummary'
 import {
   aborted,
   adoptable,
@@ -49,12 +59,6 @@ import {
   type Phase,
   type PlanAnswer,
 } from './steps'
-
-/** Seconds with one decimal: "0,4 s" (design M9.1). */
-function seconds(ms: number): string {
-  const s = formatNumber(ms / 1000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-  return t`${s} s`
-}
 
 /** "5 Schritte". */
 function stepCount(n: number): string {
@@ -171,8 +175,7 @@ function Header({ view, phase }: { view: ModelActionView; phase: Phase }) {
   let side: ReactNode = null
   switch (phase) {
     case 'plan': {
-      const s = formatNumber((view.latency_ms ?? 0) / 1000, { maximumFractionDigits: 0 })
-      const took = view.latency_ms != null ? t`${s} s` : null
+      const took = seconds(view.latency_ms)
       side = took ? t`Werkzeugkette · ${took}` : t`Werkzeugkette`
       break
     }
@@ -219,10 +222,13 @@ function Header({ view, phase }: { view: ModelActionView; phase: Phase }) {
   )
 }
 
-/** "0:03 / max. 5:00": the run so far against the request's cap (P4). */
+/**
+ * "0:09 / max. 5:00": the request so far, the planning call and the run as the
+ * server counts them (``latency_ms`` + ``run_ms``), against its cap (P4).
+ */
 function RunClock({ view }: { view: ModelActionView }) {
   const now = useNow()
-  const shown = minutes(Math.min(runMs(view, now), CHAIN_S * 1000) / 1000)
+  const shown = minutes(Math.min(requestMs(view, now), CHAIN_S * 1000) / 1000)
   const max = minutes(CHAIN_S)
   return <span aria-label={t`Laufzeit der Kette`}>{t`${shown} / max. ${max}`}</span>
 }
@@ -382,9 +388,8 @@ function StepItem({
               </span>
             )}
           </p>
-          <p className="text-muted text-xs">
-            <code className="font-mono">{step.tool}</code>
-          </p>
+          {step.query && <StepSummary query={step.query} />}
+          <p className="text-muted font-mono text-xs">{step.tool}</p>
           {seen && <p className="text-muted font-mono text-xs">{t`Modell sieht: ${seen}`}</p>}
         </div>
         <StepSide step={step} phase={phase} />
@@ -406,7 +411,7 @@ function StepSide({ step, phase }: { step: StepView; phase: Phase }) {
         )}
         {step.duration_ms != null && (
           <span className="text-muted" aria-label={t`Dauer`}>
-            {seconds(step.duration_ms)}
+            {seconds(step.duration_ms, 1)}
           </span>
         )}
       </span>
@@ -457,9 +462,15 @@ function PhaseActions({
   }
 }
 
-/** A request of the chain's flow that failed: what, and *Erneut starten* for a run. */
+/**
+ * A request of the record's flow that failed (``failure`` of approval/flow.ts,
+ * an alert): what, and *Erneut starten* for a run. An adoption's own is
+ * ``AdoptState``'s.
+ */
 function ChainFailure({ view }: { view: ModelActionView }) {
-  const failure = useChain((s) => (s.failure?.action === view.id ? s.failure : null))
+  const failure = useApproval((s) =>
+    s.failure?.action === view.id && s.failure.step !== 'adopt' ? s.failure : null,
+  )
   if (!failure) return null
   return (
     <div className="flex flex-col gap-1">
@@ -481,13 +492,18 @@ function ChainFailure({ view }: { view: ModelActionView }) {
  */
 function PlanActions({ view }: { view: ModelActionView }) {
   const rejecting = useApproval((s) => (s.rejecting?.action === view.id ? s.rejecting : null))
-  const rejectBusy = useApproval((s) => s.busy?.action === view.id)
-  const busy = useChain((s) => s.busy?.action === view.id) || rejectBusy
+  const busy = useApproval((s) => s.busy?.action === view.id)
   const primary = useRef<HTMLButtonElement>(null)
-  const failure = useApproval((s) => (s.failure?.action === view.id ? s.failure.error : null))
+  const adjust = useRef<HTMLButtonElement>(null)
   const choosing = rejecting !== null
   const waits = view.status === 'proposed' && !view.proposal_only
   useEffect(() => {
+    // Back from the plan editor: the focus returns to *Anpassen …* (M8.3).
+    if (useChain.getState().edited === view.id) {
+      adjust.current?.focus()
+      focusReturned()
+      return
+    }
     if (waits && !choosing) primary.current?.focus()
   }, [view.id, waits, choosing])
 
@@ -512,16 +528,11 @@ function PlanActions({ view }: { view: ModelActionView }) {
   const whole = oneApproval(view)
   const stops = halts(view).map((n) => formatNumber(n))
   const where = stops.join(', ')
-  const onKeyDown = (event: KeyboardEvent) => {
-    if (event.key !== 'Escape' || event.defaultPrevented) return
-    event.preventDefault()
-    void reject(view, rejecting?.reason ?? null)
-  }
   return (
     <section
       aria-label={t`Freigabe`}
       className="border-divider flex flex-col gap-2 border-t pt-2"
-      onKeyDown={onKeyDown}
+      onKeyDown={escapeRejects(view, rejecting?.reason ?? null)}
     >
       <p className="text-muted text-xs">
         {whole
@@ -544,6 +555,7 @@ function PlanActions({ view }: { view: ModelActionView }) {
             {whole ? t`Kette freigeben und starten` : t`Starten`}
           </button>
           <button
+            ref={adjust}
             type="button"
             className="btn"
             disabled={busy}
@@ -567,7 +579,6 @@ function PlanActions({ view }: { view: ModelActionView }) {
         </div>
       )}
       <ChainFailure view={view} />
-      <ErrorNotice error={failure} />
     </section>
   )
 }
@@ -575,21 +586,29 @@ function PlanActions({ view }: { view: ModelActionView }) {
 /**
  * M9.2: halted before ``step``, whose cell is ``approve`` (*Teilautonom*), or
  * after a re-plan the level wants approved (P4; without ``step``). *Schritt
- * freigeben* has the focus; Esc stops the chain (``abort``), its last complete
- * result stays adoptable (M9.4).
+ * freigeben* has the focus; Esc stops the chain (``stopChain``), its last
+ * complete result stays adoptable (M9.4). A refusal shows as an alert
+ * (``ChainFailure`` of the phase).
  */
 function HaltApproval({ view, step }: { view: ModelActionView; step?: StepView }) {
-  const busy = useChain((s) => s.busy?.action === view.id)
-  const stopping = usePanel((s) => s.aborting === view.id)
+  const busy = useApproval((s) => s.busy?.action === view.id)
   const primary = useRef<HTMLButtonElement>(null)
   useEffect(() => primary.current?.focus(), [view.id, step?.position])
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.key !== 'Escape' || event.defaultPrevented) return
     event.preventDefault()
-    void abort(view.id)
+    void stopChain(view)
   }
   const needs = classList(step ? step.classes : [])
   const level = view.level.name
+  // A re-plan follows the last step that ran: an error, or no result (P4).
+  const before = view.steps.filter(finished).pop()
+  const at = before ? formatNumber(placeOf(view, before)) : ''
+  const why = step
+    ? t`Braucht Freigabe: ${needs} (Stufe ${level})`
+    : before?.status === 'error'
+      ? t`Schritt ${at} brachte einen Fehler; die Kette wurde neu geplant, geänderte Schritte sind markiert. Die Stufe verlangt eine neue Freigabe.`
+      : t`Schritt ${at} brachte kein Ergebnis; die Kette wurde neu geplant, geänderte Schritte sind markiert. Die Stufe verlangt eine neue Freigabe.`
   return (
     <div
       role="group"
@@ -597,17 +616,13 @@ function HaltApproval({ view, step }: { view: ModelActionView; step?: StepView }
       className="mt-2 flex flex-col gap-2"
       onKeyDown={onKeyDown}
     >
-      <p className="text-sm">
-        {step
-          ? t`Braucht Freigabe: ${needs} (Stufe ${level})`
-          : t`Die Kette wurde nach einem Schritt ohne Ergebnis neu geplant; geänderte Schritte sind markiert. Die Stufe verlangt eine neue Freigabe.`}
-      </p>
+      <p className="text-sm">{why}</p>
       <div className="flex flex-wrap items-center gap-2">
         <button
           ref={primary}
           type="button"
           className="btn btn-primary"
-          disabled={busy || stopping}
+          disabled={busy}
           onClick={() => void approveChain(view)}
         >
           {step ? t`Schritt freigeben` : t`Freigeben und fortsetzen`}
@@ -615,10 +630,10 @@ function HaltApproval({ view, step }: { view: ModelActionView; step?: StepView }
         <button
           type="button"
           className="btn"
-          disabled={stopping}
+          disabled={busy}
           aria-keyshortcuts="Escape"
           aria-describedby={`halt-esc-${view.id}`}
-          onClick={() => void abort(view.id)}
+          onClick={() => void stopChain(view)}
         >
           <Trans>Kette abbrechen</Trans>
         </button>
@@ -633,18 +648,21 @@ function HaltApproval({ view, step }: { view: ModelActionView; step?: StepView }
 /** M9.1: *Abbrechen* stops before the next step; the analysis is unchanged meanwhile. */
 function RunActions({ view }: { view: ModelActionView }) {
   const aborting = usePanel((s) => s.aborting === view.id)
+  const busy = useApproval((s) => s.busy?.action === view.id)
   const abortError = usePanel((s) => s.abortError)
   const pollError = usePanel((s) => (s.pollError?.id === view.id ? s.pollError.error : null))
   // Asked to stop: the step that runs ends, no other starts; the poll brings the end.
   const stopping = view.stop_reason === 'aborted'
+  // Running, or approved at a halt and not run again: the server stops it at once.
+  const stoppable = view.status === 'running' || view.status === 'approved'
   return (
     <div className="flex flex-col gap-2">
       <p className="flex items-center gap-2">
         <button
           type="button"
           className="btn"
-          disabled={aborting || stopping || view.status !== 'running'}
-          onClick={() => void abort(view.id)}
+          disabled={aborting || busy || stopping || !stoppable}
+          onClick={() => void stopChain(view)}
         >
           <Trans>Abbrechen</Trans>
         </button>
@@ -709,7 +727,7 @@ function DoneActions({ view }: { view: ModelActionView }) {
   const compare = useCompare((s) => s.open)
   const busy = useApproval((s) => s.busy !== null)
   const count = stepCount(planned(view).length)
-  const took = seconds(ranMs(view))
+  const took = seconds(ranMs(view), 1) ?? ''
   return (
     <div className="flex flex-col gap-2">
       <p className="text-muted text-xs tabular-nums">{t`${count} · ${took}`}</p>
@@ -717,7 +735,7 @@ function DoneActions({ view }: { view: ModelActionView }) {
         <button
           type="button"
           className="btn btn-primary"
-          disabled={busy || !adoptable(view)}
+          disabled={busy}
           onClick={() => void adopt(view)}
         >
           <Trans>Ergebnis übernehmen</Trans>
@@ -740,17 +758,10 @@ function DoneActions({ view }: { view: ModelActionView }) {
       {shown && view.query && <QueryTree query={view.query} line="dashed" />}
       <AdoptState view={view} />
       <p className="text-muted text-xs">
-        {adoptable(view) ? (
-          <Trans>
-            Übernehmen schreibt das Ergebnis als eine Abfrage in die Analyse, ihre Bedingungen mit
-            der Marke „Modell“; die Zwischenstände entfallen.
-          </Trans>
-        ) : (
-          <Trans>
-            Nichts zu übernehmen: Kein Schritt brachte ein vollständiges Ergebnis innerhalb der
-            Grenzen.
-          </Trans>
-        )}
+        <Trans>
+          Übernehmen schreibt das Ergebnis als eine Abfrage in die Analyse, ihre Bedingungen mit der
+          Marke „Modell“; die Zwischenstände entfallen.
+        </Trans>
       </p>
     </div>
   )
@@ -815,12 +826,15 @@ function LimitBox({ view }: { view: ModelActionView }) {
       if (code) {
         const reason = errorText(code, details, String(error?.message ?? ''))
         text = t`Die Neuplanung brachte keinen brauchbaren Plan: ${reason}`
-      } else
-        text = t`Ein Schritt brachte einen Fehler oder kein Ergebnis, und keine Neuplanung ist mehr übrig (höchstens ${max}).`
+      } else if (view.replans < MAX_REPLANS)
+        // A re-plan was asked for and answered with something other than a plan.
+        text = t`Das Modell antwortete auf die Neuplanung nicht mit einem Plan.`
+      else
+        text = t`Ein Schritt brachte einen Fehler oder kein Ergebnis, und die Neuplanungen sind aufgebraucht (höchstens ${max}).`
       break
     }
     case 'interrupted':
-      text = t`Die Anwendung wurde neu gestartet, während die Kette lief.`
+      text = t`Der Lauf wurde unterbrochen: Die Anwendung wurde neu gestartet, oder der Lauf selbst ist fehlgeschlagen.`
       break
     default: {
       const max = formatNumber(MAX_FEATURES)
@@ -877,6 +891,10 @@ function StoppedActions({ view }: { view: ModelActionView }) {
           </button>
         )}
         {adoptButton}
+        {/* M9.4: the account's own log (M16.3). */}
+        <button type="button" className="btn" onClick={openMyActions}>
+          <Trans>Protokoll</Trans>
+        </button>
       </div>
       <AdoptState view={view} />
       <p className="text-muted text-xs">
@@ -885,12 +903,30 @@ function StoppedActions({ view }: { view: ModelActionView }) {
             Der letzte vollständige Zwischenstand bleibt gedämpft auf der Karte, bis er übernommen
             oder neu gefragt wird.
           </Trans>
+        ) : overLimit(view) ? (
+          <Trans>
+            Nichts zu übernehmen: Der letzte vollständige Zwischenstand hat mehr Objekte, als ein
+            Ergebnis haben darf.
+          </Trans>
         ) : (
-          <Trans>Kein Schritt ist vollständig gelaufen: nichts zu übernehmen.</Trans>
+          <Trans>Kein Schritt brachte ein vollständiges Ergebnis: nichts zu übernehmen.</Trans>
         )}
       </p>
     </div>
   )
+}
+
+/**
+ * Nothing adoptable although a step's result is complete: the last complete
+ * one that is no buffer is beyond the result-size limit (WP75 ``last_complete``).
+ */
+function overLimit(view: ModelActionView): boolean {
+  const complete = view.steps.filter(
+    (s) =>
+      (s.status === 'ok' || s.status === 'empty') &&
+      !(s.query as { buffer?: unknown } | null | undefined)?.buffer,
+  )
+  return (complete[complete.length - 1]?.hits ?? 0) > MAX_FEATURES
 }
 
 /** Adopted: "angewendet" with the hits the chain brought. */

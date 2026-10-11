@@ -467,6 +467,11 @@ class ModelActionView(BaseModel):
     stop_reason: StopReason | None = None
     stamp: ResultStamp | None = None
     latency_ms: int | None = None
+    run_ms: int | None = None
+    """A chain's run time so far, halts left out (P4): with ``latency_ms`` (the
+    planning call) what counts against ``CHAIN_TIME_LIMIT_S``, as the run's
+    clock in the panel shows it (design M9.1). Written as each step starts
+    and ends; ``None`` for a direct query."""
 
     @field_serializer("query", "applied_query")
     def _as_written(self, query: QueryObject | None):  # type: ignore[no-untyped-def]

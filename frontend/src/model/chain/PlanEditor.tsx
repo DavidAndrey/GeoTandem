@@ -2,15 +2,18 @@
 // steps can be changed and steps removed; a new step comes only by prompt, so
 // there is no control to add one. Both go to the server at once
 // (``PATCH .../plan``), which checks the plan again: removing a step a later
-// one reads is refused there, naming the step (WP75).
+// one reads is refused there, naming the step (WP75); the refusal names it as
+// the list shows it. The form takes the focus; Esc and *Abbrechen* close it,
+// and the focus goes back to *Anpassen …* (PlanActions).
 import { Trans } from '@lingui/react/macro'
 import { t } from '@lingui/core/macro'
 import { Undo2, X } from 'lucide-react'
-import { useState } from 'react'
-import type { ModelActionView, StepEdit } from '../../api/client'
-import { ErrorNotice } from '../../components/ui'
+import { useEffect, useRef, useState } from 'react'
+import { ApiRequestError, type ModelActionView, type StepEdit } from '../../api/client'
+import { errorText } from '../../i18n/errors'
 import { formatNumber, parseNumber } from '../../i18n/locale'
-import { closePlanEditor, editPlan, useChain } from './flow'
+import { useApproval } from '../approval/flow'
+import { closePlanEditor, editPlan } from './flow'
 import { MAX_STEPS, planned, valueFields, withValue, type Scalar, type ValueField } from './steps'
 
 /** What a value field is called, by the key that holds it in the query object. */
@@ -47,14 +50,46 @@ export function StepLimit({ count }: { count: number }) {
   return <p className="label-caps">{t`Geplante Schritte · ${n} von höchstens ${max}`}</p>
 }
 
+/**
+ * A refused edit in words, the step named as the list shows it: the server's
+ * ``details.step`` (and ``reads``) are positions, which a removed step leaves
+ * standing (WP75).
+ */
+function refusal(error: unknown, view: ModelActionView): string {
+  if (!(error instanceof ApiRequestError) || !error.body)
+    return String((error as Error)?.message ?? error)
+  const { code, details = {}, message } = error.body
+  const steps = planned(view)
+  const place = (position: unknown) => {
+    const found = steps.findIndex((s) => s.position === position)
+    return formatNumber(found >= 0 ? found + 1 : Number(position))
+  }
+  if (typeof details.step !== 'number') return errorText(code, details, message)
+  const at = place(details.step)
+  if (typeof details.reads === 'number') {
+    const reads = place(details.reads)
+    return t`Schritt ${at} braucht das Ergebnis von Schritt ${reads}; der lässt sich darum nicht entfernen.`
+  }
+  const why = errorText(code, details, message)
+  return t`Schritt ${at}: ${why}`
+}
+
 export function PlanEditor({ view }: { view: ModelActionView }) {
   const steps = planned(view)
   const [removed, setRemoved] = useState<number[]>([])
   const [typed, setTyped] = useState<Record<string, string>>({})
-  const busy = useChain((s) => s.busy?.action === view.id)
-  const failure = useChain((s) =>
+  const busy = useApproval((s) => s.busy?.action === view.id)
+  const failure = useApproval((s) =>
     s.failure?.action === view.id && s.failure.step === 'plan' ? s.failure.error : null,
   )
+  const form = useRef<HTMLFormElement>(null)
+  // The form takes the focus: its first field, else its first button.
+  useEffect(() => {
+    const first =
+      form.current?.querySelector<HTMLElement>('input') ??
+      form.current?.querySelector<HTMLElement>('button')
+    first?.focus()
+  }, [])
 
   const fieldsOf = (args: unknown) => valueFields(args).filter(editable)
   const invalid = steps.some(
@@ -84,8 +119,15 @@ export function PlanEditor({ view }: { view: ModelActionView }) {
 
   return (
     <form
+      ref={form}
       aria-label={t`Plan anpassen`}
       className="flex flex-col gap-2"
+      onKeyDown={(e) => {
+        // Esc closes the editor, not the panel.
+        if (e.key !== 'Escape' || e.defaultPrevented) return
+        e.preventDefault()
+        closePlanEditor()
+      }}
       onSubmit={(e) => {
         e.preventDefault()
         void editPlan(view, { change, remove: removed })
@@ -153,7 +195,11 @@ export function PlanEditor({ view }: { view: ModelActionView }) {
           Prompt.
         </Trans>
       </p>
-      <ErrorNotice error={failure} />
+      {failure !== null && (
+        <p role="alert" className="text-danger my-2 text-sm">
+          {refusal(failure, view)}
+        </p>
+      )}
       <div className="border-divider flex flex-wrap items-center gap-2 border-t pt-2">
         <button
           type="submit"

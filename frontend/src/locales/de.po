@@ -148,6 +148,10 @@ msgstr "(Sie)"
 msgid "(voreingestellt)"
 msgstr "(voreingestellt)"
 
+#: src/model/chain/ChainMap.tsx
+msgid "(zuletzt)"
+msgstr "(zuletzt)"
+
 #. placeholder {0}: preview.columns.length
 #: src/admin/ImportWizard.tsx
 msgid "{0, plural, one {{columns} Spalte} other {{columns} Spalten}}"
@@ -370,8 +374,7 @@ msgstr "{op} {layer}"
 
 #: src/admin/ConnectionsPage.tsx
 #: src/admin/ModelActionPage.tsx
-#: src/model/chain/Chain.tsx
-#: src/model/panel/Answer.tsx
+#: src/model/panel/time.ts
 msgid "{s} s"
 msgstr "{s} s"
 
@@ -1383,6 +1386,10 @@ msgstr "Das Lesen der Datei hat zu lange gedauert und wurde abgebrochen."
 msgid "Das Modell „{model}\" wird dort nicht angeboten."
 msgstr "Das Modell „{model}\" wird dort nicht angeboten."
 
+#: src/model/chain/Chain.tsx
+msgid "Das Modell antwortete auf die Neuplanung nicht mit einem Plan."
+msgstr "Das Modell antwortete auf die Neuplanung nicht mit einem Plan."
+
 #: src/i18n/errors.ts
 msgid "Das Modell hat die Anfrage abgelehnt."
 msgstr "Das Modell hat die Anfrage abgelehnt."
@@ -1578,6 +1585,10 @@ msgstr "Der Grund geht ins Protokoll. Die Analyse bleibt unverändert."
 msgid "Der Katalog ist leer."
 msgstr "Der Katalog ist leer."
 
+#: src/model/chain/Chain.tsx
+msgid "Der Lauf wurde unterbrochen: Die Anwendung wurde neu gestartet, oder der Lauf selbst ist fehlgeschlagen."
+msgstr "Der Lauf wurde unterbrochen: Die Anwendung wurde neu gestartet, oder der Lauf selbst ist fehlgeschlagen."
+
 #: src/admin/wizard.ts
 msgid "Der Layer braucht eine Bezeichnung."
 msgstr "Der Layer braucht eine Bezeichnung."
@@ -1763,10 +1774,6 @@ msgstr "Die Antwort des Modells ist nicht lesbar."
 msgid "Die Anwendung ist bereits eingerichtet."
 msgstr "Die Anwendung ist bereits eingerichtet."
 
-#: src/model/chain/Chain.tsx
-msgid "Die Anwendung wurde neu gestartet, während die Kette lief."
-msgstr "Die Anwendung wurde neu gestartet, während die Kette lief."
-
 #: src/i18n/errors.ts
 msgid "Die Anwendung wurde während des Imports beendet."
 msgstr "Die Anwendung wurde während des Imports beendet."
@@ -1862,10 +1869,6 @@ msgstr "Die Kette lief länger als erlaubt (höchstens {max} je Anfrage)."
 #: src/model/chain/Chain.tsx
 msgid "Die Kette lief länger als erlaubt und hielt vor Schritt {at} (höchstens {max} je Anfrage)."
 msgstr "Die Kette lief länger als erlaubt und hielt vor Schritt {at} (höchstens {max} je Anfrage)."
-
-#: src/model/chain/Chain.tsx
-msgid "Die Kette wurde nach einem Schritt ohne Ergebnis neu geplant; geänderte Schritte sind markiert. Die Stufe verlangt eine neue Freigabe."
-msgstr "Die Kette wurde nach einem Schritt ohne Ergebnis neu geplant; geänderte Schritte sind markiert. Die Stufe verlangt eine neue Freigabe."
 
 #: src/admin/DuplicateLayerDialog.tsx
 msgid "Die Kopie übernimmt Daten, Feldbeschreibungen und die Sichtbarkeit; sie wird im Importprotokoll vermerkt."
@@ -2086,8 +2089,8 @@ msgid "Ein Schlüssel ist gespeichert. Leer lassen, um ihn zu behalten."
 msgstr "Ein Schlüssel ist gespeichert. Leer lassen, um ihn zu behalten."
 
 #: src/model/chain/Chain.tsx
-msgid "Ein Schritt brachte einen Fehler oder kein Ergebnis, und keine Neuplanung ist mehr übrig (höchstens {max})."
-msgstr "Ein Schritt brachte einen Fehler oder kein Ergebnis, und keine Neuplanung ist mehr übrig (höchstens {max})."
+msgid "Ein Schritt brachte einen Fehler oder kein Ergebnis, und die Neuplanungen sind aufgebraucht (höchstens {max})."
+msgstr "Ein Schritt brachte einen Fehler oder kein Ergebnis, und die Neuplanungen sind aufgebraucht (höchstens {max})."
 
 #: src/model/chain/Chain.tsx
 msgid "Ein Schritt hätte mehr als {max} Objekte erzeugt (höchstens {max})."
@@ -2258,9 +2261,17 @@ msgstr "erfolgreich"
 msgid "Ergebnis"
 msgstr "Ergebnis"
 
+#: src/model/chain/ChainMap.tsx
+msgid "Ergebnis {shown} · vorgemerkt"
+msgstr "Ergebnis {shown} · vorgemerkt"
+
 #: src/admin/ConnectionsPage.tsx
 msgid "Ergebnis des Verbindungstests"
 msgstr "Ergebnis des Verbindungstests"
+
+#: src/model/chain/ChainMap.tsx
+msgid "Ergebnis gestrichelt · vorgemerkt, nicht angewendet"
+msgstr "Ergebnis gestrichelt · vorgemerkt, nicht angewendet"
 
 #: src/model/chain/Chain.tsx
 msgid "Ergebnis übernehmen"
@@ -3104,8 +3115,8 @@ msgid "kein Schlüsselwert"
 msgstr "kein Schlüsselwert"
 
 #: src/model/chain/Chain.tsx
-msgid "Kein Schritt ist vollständig gelaufen: nichts zu übernehmen."
-msgstr "Kein Schritt ist vollständig gelaufen: nichts zu übernehmen."
+msgid "Kein Schritt brachte ein vollständiges Ergebnis: nichts zu übernehmen."
+msgstr "Kein Schritt brachte ein vollständiges Ergebnis: nichts zu übernehmen."
 
 #: src/admin/ModelActionPage.tsx
 #: src/session/SaveAsDialog.tsx
@@ -3801,6 +3812,10 @@ msgctxt "date"
 msgid "nicht am"
 msgstr "nicht am"
 
+#: src/model/chain/ChainMap.tsx
+msgid "nicht angewendet"
+msgstr "nicht angewendet"
+
 #: src/model/chain/Chain.tsx
 msgid "nicht ausgeführt"
 msgstr "nicht ausgeführt"
@@ -3834,13 +3849,21 @@ msgstr "nicht leer"
 msgid "Nichts gefunden."
 msgstr "Nichts gefunden."
 
+#: src/model/chain/ChainMap.tsx
+msgid "nichts zu übernehmen"
+msgstr "nichts zu übernehmen"
+
 #: src/model/chain/Chain.tsx
-msgid "Nichts zu übernehmen: Kein Schritt brachte ein vollständiges Ergebnis innerhalb der Grenzen."
-msgstr "Nichts zu übernehmen: Kein Schritt brachte ein vollständiges Ergebnis innerhalb der Grenzen."
+msgid "Nichts zu übernehmen: Der letzte vollständige Zwischenstand hat mehr Objekte, als ein Ergebnis haben darf."
+msgstr "Nichts zu übernehmen: Der letzte vollständige Zwischenstand hat mehr Objekte, als ein Ergebnis haben darf."
 
 #: src/auth/SetupPage.tsx
 msgid "Noch gibt es kein Konto. Das erste Konto wird Administrator und legt weitere Konten an."
 msgstr "Noch gibt es kein Konto. Das erste Konto wird Administrator und legt weitere Konten an."
+
+#: src/model/chain/ChainMap.tsx
+msgid "noch kein Schritt gelaufen"
+msgstr "noch kein Schritt gelaufen"
 
 #: src/queries/ManageQueriesDialog.tsx
 msgid "Noch keine Abfrage gespeichert."
@@ -4056,6 +4079,7 @@ msgstr "Prompt nicht verfügbar: keine Modellanbindung aktiv. Klassik ist voll n
 msgid "Prompt-Hash"
 msgstr "Prompt-Hash"
 
+#: src/model/chain/Chain.tsx
 #: src/model/panel/Answer.tsx
 msgid "Protokoll"
 msgstr "Protokoll"
@@ -4079,6 +4103,10 @@ msgstr "Puffer"
 #: src/workplace/LayerPanel.tsx
 msgid "Puffer …"
 msgstr "Puffer …"
+
+#: src/model/chain/StepSummary.tsx
+msgid "Puffer {distance}"
+msgstr "Puffer {distance}"
 
 #: src/operations/OperationDialog.tsx
 msgid "Puffer {distance} {unit} · {title}"
@@ -4198,6 +4226,22 @@ msgstr "Schlüsseltypen passen nicht"
 msgid "schneidet"
 msgstr "schneidet"
 
+#: src/model/chain/ChainMap.tsx
+msgid "Schritt {at} · {count} Treffer übernehmbar"
+msgstr "Schritt {at} · {count} Treffer übernehmbar"
+
+#: src/model/chain/Chain.tsx
+msgid "Schritt {at} brachte einen Fehler; die Kette wurde neu geplant, geänderte Schritte sind markiert. Die Stufe verlangt eine neue Freigabe."
+msgstr "Schritt {at} brachte einen Fehler; die Kette wurde neu geplant, geänderte Schritte sind markiert. Die Stufe verlangt eine neue Freigabe."
+
+#: src/model/chain/Chain.tsx
+msgid "Schritt {at} brachte kein Ergebnis; die Kette wurde neu geplant, geänderte Schritte sind markiert. Die Stufe verlangt eine neue Freigabe."
+msgstr "Schritt {at} brachte kein Ergebnis; die Kette wurde neu geplant, geänderte Schritte sind markiert. Die Stufe verlangt eine neue Freigabe."
+
+#: src/model/chain/PlanEditor.tsx
+msgid "Schritt {at} braucht das Ergebnis von Schritt {reads}; der lässt sich darum nicht entfernen."
+msgstr "Schritt {at} braucht das Ergebnis von Schritt {reads}; der lässt sich darum nicht entfernen."
+
 #: src/model/chain/Chain.tsx
 msgid "Schritt {at} hätte {shown} Objekte erzeugt (höchstens {max})."
 msgstr "Schritt {at} hätte {shown} Objekte erzeugt (höchstens {max})."
@@ -4207,12 +4251,21 @@ msgid "Schritt {at} hätte mehr als {max} Objekte erzeugt (höchstens {max})."
 msgstr "Schritt {at} hätte mehr als {max} Objekte erzeugt (höchstens {max})."
 
 #: src/model/chain/Chain.tsx
+#: src/model/chain/ChainMap.tsx
 msgid "Schritt {at} von {total}"
 msgstr "Schritt {at} von {total}"
+
+#: src/model/chain/ChainMap.tsx
+msgid "Schritt {at} von {total} · {count}"
+msgstr "Schritt {at} von {total} · {count}"
 
 #: src/model/chain/Chain.tsx
 msgid "Schritt {at} von {total} läuft"
 msgstr "Schritt {at} von {total} läuft"
+
+#: src/model/chain/PlanEditor.tsx
+msgid "Schritt {at}: {why}"
+msgstr "Schritt {at}: {why}"
 
 #: src/model/chain/ChainMap.tsx
 msgid "Schritt {n}"
@@ -4721,6 +4774,10 @@ msgstr "Ungespeicherte Änderungen"
 msgid "ungültige Geometrie"
 msgstr "ungültige Geometrie"
 
+#: src/model/statusKey.ts
+msgid "unterbrochen"
+msgstr "unterbrochen"
+
 #: src/admin/wizard.ts
 msgid "unverändert"
 msgstr "unverändert"
@@ -5192,12 +5249,20 @@ msgid "zwischen"
 msgstr "zwischen"
 
 #: src/model/chain/ChainMap.tsx
+msgid "Zwischenstand · Kette"
+msgstr "Zwischenstand · Kette"
+
+#: src/model/chain/ChainMap.tsx
 msgid "Zwischenstand der Kette"
 msgstr "Zwischenstand der Kette"
 
 #: src/model/chain/ChainMap.tsx
 msgid "Zwischenstand gedämpft · nicht angewendet"
 msgstr "Zwischenstand gedämpft · nicht angewendet"
+
+#: src/model/chain/ChainMap.tsx
+msgid "Zwischenstand übernehmbar"
+msgstr "Zwischenstand übernehmbar"
 
 #: src/model/chain/Chain.tsx
 msgid "Zwischenstand übernehmen"

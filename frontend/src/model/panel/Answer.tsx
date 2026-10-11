@@ -36,7 +36,7 @@ import { resumePolling } from './poll'
 import { ProblemCard } from './Problem'
 import { recordProblem, requestProblem, technical } from './problems'
 import { abort, focusPrompt, MODEL_CALL_S, prefill, send, usePanel } from './state'
-import { clockTime, minutes } from './time'
+import { clockTime, minutes, seconds } from './time'
 
 type QueryAnswer = Extract<ModelAnswer, { kind: 'query' }>
 
@@ -221,8 +221,9 @@ function Refusal({ view }: { view: ModelActionView }) {
         </p>
         <p>{errorText(code, details, refusal?.message)}</p>
       </div>
-      {/* The offer of the chain shows only once there is one (plan WP67, E2.5). */}
-      {CHAIN_AVAILABLE && code === 'not_representable' && (
+      {/* The offer of the chain shows only once there is one (plan WP67, E2.5), and
+          never on a chain's own refusal. */}
+      {CHAIN_AVAILABLE && code === 'not_representable' && view.approach !== 'chain' && (
         <button
           type="button"
           className="text-accent-700 self-start text-sm"
@@ -267,12 +268,6 @@ function Refusal({ view }: { view: ModelActionView }) {
 
 const approachText = (approach: ModelActionView['approach']) =>
   approach === 'chain' ? t`Werkzeugkette` : t`Direktabfrage`
-
-function seconds(ms: number | null | undefined): string | null {
-  if (ms === null || ms === undefined) return null
-  const s = formatNumber(ms / 1000, { maximumFractionDigits: 0 })
-  return t`${s} s`
-}
 
 /**
  * A query answer through its life: waiting for approval (M5), proposal only

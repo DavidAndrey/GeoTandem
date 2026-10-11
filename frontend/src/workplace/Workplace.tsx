@@ -14,7 +14,7 @@ import type { LayerInfo } from '../api/client'
 import { useLayers, useMapConfig } from '../api/queries'
 import { EditorPanel } from '../editor/EditorPanel'
 import { watchModel } from '../model/approval/flow'
-import { ChainCaption, ChainLayer } from '../model/chain/ChainMap'
+import { ChainCaption, ChainLayer, ChainPending } from '../model/chain/ChainMap'
 import { useChainRunner } from '../model/chain/flow'
 import { NoticeBar } from '../model/approval/NoticeBar'
 import { PendingProposal } from '../model/approval/Pending'
@@ -90,6 +90,7 @@ export function Workplace() {
             <LayerPanel />
             <QueryPanel />
             <PendingProposal />
+            <ChainPending />
             <SavedQueries />
           </Tabs.Content>
           {/* The sidebar keeps showing the analysis (design M1.1). */}
@@ -97,6 +98,7 @@ export function Workplace() {
             <LayerPanel />
             <QueryPanel />
             <PendingProposal />
+            <ChainPending />
           </Tabs.Content>
         </Tabs.Root>
         {!loading && !available && <PromptUnavailable />}

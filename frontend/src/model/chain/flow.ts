@@ -1,36 +1,39 @@
 // The tool chain on the client (design M8, M9; plan P4, WP77). The server
-// plans, runs and decides; the client asks for each transition and polls:
+// plans, runs and decides; the client asks for each transition and polls.
+// Every request goes through the approval flow's ``step`` (approval/flow.ts):
+// one ``busy`` and one ``failure`` for a record, whatever the request.
 //
-// - A plan is ``proposed`` (or ``approved`` when every step's cell is
-//   ``auto``). *Kette freigeben und starten* / *Starten* / *Schritt freigeben*
-//   approve it (``approve``, as a proposal is approved, E2.4); an ``approved``
-//   chain is then run (``POST .../run``, 202) by ``useChainRunner``, which
-//   also starts an ``auto`` plan without a question (*Automatisch*: never).
+// - A plan is ``proposed`` (or ``approved`` when no step needs approval).
+//   *Kette freigeben und starten* / *Starten* / *Schritt freigeben* are the
+//   approval flow's ``approve``; an ``approved`` chain is then run
+//   (``POST .../run``, 202) by ``useChainRunner``, which also starts an
+//   ``auto`` plan without a question (*Automatisch*: never asked).
 // - While it is ``running`` the workplace's polling (panel/poll.ts) brings the
 //   steps as they finish; a halt before a step that needs approval, or a
 //   re-plan the level wants approved, makes it ``proposed`` again (P4).
-// - *Abbrechen* / *Kette abbrechen* is the panel's abort (``POST .../abort``):
-//   the chain stops before its next step, ``limited`` with its last complete
-//   result adoptable (M9.4).
+// - *Abbrechen* of a running chain is the panel's abort: answered at once
+//   with ``stop_reason`` ``aborted``, the chain ends ``limited`` at its next
+//   step, and the polling brings that. A chain waiting (halted, or approved
+//   at a halt and not run again) is stopped at once (``stopChain``).
 // - *Ergebnis übernehmen* / *Zwischenstand übernehmen* is the approval flow's
-//   ``adopt`` (approval/flow.ts): the result is applied as ``execute``'s is,
-//   origin marks and undo included. The analysis is unchanged until then.
+//   ``adopt``: the result is applied as ``execute``'s is, origin marks and
+//   undo included. The analysis is unchanged until then.
 // - *Anpassen …* edits the plan before it starts (M8.3): values changed and
 //   steps removed through ``PATCH .../plan``; there is no way to add a step.
 import { useEffect } from 'react'
 import { create } from 'zustand'
 import { api, ApiRequestError, type ModelActionView, type PlanEdit } from '../../api/client'
+import { approve, step, useApproval } from '../approval/flow'
 import { backoff } from '../panel/poll'
+import { abort } from '../panel/state'
 import { sameGeneration, useModel, type ModelState } from '../store'
-import { finished, isChain, started } from './steps'
-
-export type ChainStep = 'start' | 'run' | 'plan'
+import { isChain } from './steps'
 
 interface ChainState {
-  busy: { action: number; step: ChainStep } | null
-  failure: { action: number; step: ChainStep; error: unknown } | null
   /** The plan open in the editor of M8.3. */
   editing: number | null
+  /** The plan whose editor just closed: its *Anpassen …* takes the focus back. */
+  edited: number | null
   /**
    * Approved chains whose run was asked for: never twice. Cleared when the
    * record leaves ``approved`` (it runs) and by *Erneut starten* after a failure.
@@ -38,7 +41,7 @@ interface ChainState {
   runs: Record<number, true>
 }
 
-const initial = (): ChainState => ({ busy: null, failure: null, editing: null, runs: {} })
+const initial = (): ChainState => ({ editing: null, edited: null, runs: {} })
 
 export const useChain = create<ChainState>()(initial)
 
@@ -48,34 +51,27 @@ export function resetChain() {
   useChain.setState(initial())
 }
 
-/** One request of the flow, ``busy`` while it runs; ``null`` when it failed or a reset came first. */
-async function request<T>(
-  action: number,
-  name: ChainStep,
-  run: () => Promise<T>,
-): Promise<T | null> {
+const received = (view: ModelActionView) => useModel.getState().received(view)
+
+/** The record as it is now, when a request about it failed: the dialogue follows it. */
+function refetch(id: number) {
   const current = sameGeneration()
-  useChain.setState({ busy: { action, step: name }, failure: null })
-  try {
-    const answer = await run()
-    return current() ? answer : null
-  } catch (error) {
-    if (current()) useChain.setState({ failure: { action, step: name, error } })
-    return null
-  } finally {
-    if (current()) useChain.setState((s) => (s.busy?.action === action ? { busy: null } : s))
-  }
+  api.model
+    .action(id)
+    .then((view) => {
+      if (current()) received(view)
+    })
+    .catch(() => undefined)
 }
 
 /**
  * *Kette freigeben und starten* (M8.1), *Starten* (M8.2), *Schritt freigeben*
- * (M9.2): the approval of the level as it was. The run follows
- * (``useChainRunner``) once the record is ``approved``.
+ * (M9.2), *Freigeben und fortsetzen* (a re-plan): the approval of the level
+ * as it was. The run follows (``useChainRunner``) once the record is ``approved``.
  */
 export async function approveChain(view: ModelActionView) {
-  if (useChain.getState().busy) return
-  const approved = await request(view.id, 'start', () => api.model.approve(view.id))
-  if (approved) useModel.getState().received(approved)
+  if (useApproval.getState().busy) return
+  await approve(view)
 }
 
 /** ``run`` tried again after ``busy`` before the failure shows. */
@@ -94,54 +90,81 @@ const isBusy = (error: unknown) =>
 /**
  * Runs an approved chain (202, P4); the workplace's polling takes over. A
  * ``busy`` answer is tried again after a growing wait, while the record is
- * still ``approved`` and the workplace the same.
+ * still ``approved`` and the workplace the same. Any other failure is shown
+ * and the record asked for again: a run the server started all the same
+ * (an answer lost on the way) is polled on.
  */
 export async function runChain(id: number, tries = 0) {
   useChain.setState((s) => ({ runs: { ...s.runs, [id]: true } }))
   const current = sameGeneration()
-  useChain.setState({ busy: { action: id, step: 'run' }, failure: null })
-  try {
-    const running = await api.model.run(id)
-    if (current()) useModel.getState().received(running)
-  } catch (error) {
-    if (!current()) return
-    if (isBusy(error) && tries + 1 < BUSY_TRIES) {
-      setTimeout(
-        () => {
-          if (current() && useModel.getState().views[id]?.status === 'approved')
-            void runChain(id, tries + 1)
-        },
-        backoff(tries + 1),
-      )
-      return
-    }
-    useChain.setState({ failure: { action: id, step: 'run', error } })
-  } finally {
-    if (current()) useChain.setState((s) => (s.busy?.action === id ? { busy: null } : s))
+  const running = await step(id, 'run', () => api.model.run(id))
+  if (!current()) return
+  if (running) {
+    received(running)
+    return
   }
+  const failure = useApproval.getState().failure
+  if (failure?.action === id && isBusy(failure.error) && tries + 1 < BUSY_TRIES) {
+    useApproval.setState({ failure: null })
+    setTimeout(
+      () => {
+        if (current() && useModel.getState().views[id]?.status === 'approved')
+          void runChain(id, tries + 1)
+      },
+      backoff(tries + 1),
+    )
+    return
+  }
+  refetch(id)
 }
 
 /** *Erneut starten* after a run request failed. */
 export function retryRun(id: number) {
-  useChain.setState((s) => ({ ...withoutRun(s, id), failure: null }))
+  useChain.setState((s) => withoutRun(s, id))
+  useApproval.setState({ failure: null })
   void runChain(id)
+}
+
+/**
+ * *Kette abbrechen* / *Abbrechen* (M9.2, M9.4). A running chain goes through
+ * the panel's abort, which holds the polling meanwhile; a waiting one is
+ * stopped at once, ``limited`` with its last complete result. A refusal is
+ * shown (``failure``) and the record asked for again.
+ */
+export async function stopChain(view: ModelActionView) {
+  if (view.status === 'running') return abort(view.id)
+  const stopped = await step(view.id, 'abort', () => api.model.abort(view.id))
+  if (stopped) received(stopped)
+  else refetch(view.id)
 }
 
 /** *Änderungen übernehmen* (M8.3): values and removals at once; the server checks the plan again. */
 export async function editPlan(view: ModelActionView, edit: PlanEdit) {
-  if (useChain.getState().busy) return
-  const revised = await request(view.id, 'plan', () => api.model.editPlan(view.id, edit))
+  if (useApproval.getState().busy) return
+  const revised = await step(view.id, 'plan', () => api.model.editPlan(view.id, edit))
   if (!revised) return
-  useModel.getState().received(revised)
-  useChain.setState({ editing: null })
+  received(revised)
+  closePlanEditor()
 }
 
-export const openPlanEditor = (id: number) => useChain.setState({ editing: id, failure: null })
-export const closePlanEditor = () => useChain.setState({ editing: null, failure: null })
+export function openPlanEditor(id: number) {
+  useApproval.setState({ failure: null })
+  useChain.setState({ editing: id, edited: null })
+}
+
+export function closePlanEditor() {
+  const { editing } = useChain.getState()
+  useApproval.setState((s) => (s.failure?.step === 'plan' ? { failure: null } : s))
+  useChain.setState({ editing: null, edited: editing })
+}
+
+/** The focus went back to *Anpassen …* (``PlanActions``). */
+export const focusReturned = () => useChain.setState({ edited: null })
 
 /** Runs every approved chain of the dialogue not asked for yet (P4: *Automatisch* never asks). */
 function runApproved(model: ModelState) {
-  const { runs, failure } = useChain.getState()
+  const { runs } = useChain.getState()
+  const failure = useApproval.getState().failure
   for (const id of model.dialogue) {
     const view = model.views[id]
     if (!view || !isChain(view)) continue
@@ -171,25 +194,26 @@ export function useChainRunner() {
 // --- The run's clock (M9.1 "0:03 / max. 5:00") -------------------------------
 
 /**
- * The server keeps a step's duration once it finished (``duration_ms``); the
- * step running now is timed on this clock from the poll that first showed it.
- * A halt for approval stops the clock (M9.2: "Laufzeit ist angehalten, solange
- * die Freigabe offen ist"). By record, outside React: a remount keeps it.
+ * What counts against the request's cap (P4, ``CHAIN_TIME_LIMIT_S``): the
+ * planning call (``latency_ms``) and the run so far (``run_ms``, halts left
+ * out), as the server counts them. The server writes ``run_ms`` as each step
+ * starts and ends; in between this clock goes on from the poll that brought
+ * the value. A halt stops it (M9.2: "Laufzeit ist angehalten, solange die
+ * Freigabe offen ist"). By record, outside React: a remount keeps it.
  */
-const clocks = new Map<number, { finished: number; since: number }>()
+const clocks = new Map<number, { base: number; since: number }>()
 
-/** Milliseconds the run took so far, at ``now``. */
-export function runMs(view: ModelActionView, now: number): number {
-  const done = view.steps.filter(finished)
-  const ran = done.reduce((sum, s) => sum + (s.duration_ms ?? 0), 0)
-  if (view.status !== 'running' || !started(view)) {
+/** Milliseconds of the request so far, at ``now``. */
+export function requestMs(view: ModelActionView, now: number): number {
+  const base = (view.latency_ms ?? 0) + (view.run_ms ?? 0)
+  if (view.status !== 'running') {
     clocks.delete(view.id)
-    return ran
+    return base
   }
   const clock = clocks.get(view.id)
-  if (!clock || clock.finished !== done.length) {
-    clocks.set(view.id, { finished: done.length, since: now })
-    return ran
+  if (!clock || clock.base !== base) {
+    clocks.set(view.id, { base, since: now })
+    return base
   }
-  return ran + Math.max(0, now - clock.since)
+  return base + Math.max(0, now - clock.since)
 }

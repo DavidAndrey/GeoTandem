@@ -29,6 +29,7 @@
 //   not run a second time and the log's stamp is what the user sees.
 import { t } from '@lingui/core/macro'
 import type { QueryClient } from '@tanstack/react-query'
+import type { KeyboardEvent } from 'react'
 import { create } from 'zustand'
 import type { Analysis } from '../../analysis/model'
 import { canBeResult, resultLayer, resultQuery } from '../../analysis/query'
@@ -47,8 +48,13 @@ import { useHandover, watchHandover } from '../panel/handover'
 import { sameGeneration, useModel, type ModelState } from '../store'
 import { autoReady, needsApproval } from './governance'
 
-/** ``adopt``: a tool chain's result taken over (design "Kette übernehmen", WP77). */
-export type Step = 'approve' | 'execute' | 'reject' | 'undo' | 'adopt'
+/**
+ * A request of a model record's flow. The tool chain's too (WP77): ``adopt``
+ * its result taken over (design "Kette übernehmen"), ``run`` its steps
+ * started, ``plan`` its plan edited, ``abort`` a halted one stopped. One
+ * ``busy`` and one ``failure`` for all of them.
+ */
+export type Step = 'approve' | 'execute' | 'reject' | 'undo' | 'adopt' | 'run' | 'plan' | 'abort'
 
 /** The last change the model made to the analysis: the one undo can take back. */
 export interface LastChange {
@@ -249,7 +255,11 @@ const notApplicable = () =>
  * and when the model state was reset meanwhile: the answer is of the workplace
  * before (another account's, perhaps) and changes nothing here.
  */
-async function step<T>(action: number, name: Step, run: () => Promise<T>): Promise<T | null> {
+export async function step<T>(
+  action: number,
+  name: Step,
+  run: () => Promise<T>,
+): Promise<T | null> {
   const current = sameGeneration()
   useApproval.setState({ busy: { action, step: name }, failure: null })
   try {
@@ -316,11 +326,31 @@ export async function accept(view: ModelActionView) {
     useApproval.setState({ failure: { action: view.id, step: 'approve', error: notApplicable() } })
     return
   }
-  const approved = await step(view.id, 'approve', () => api.model.approve(view.id))
-  if (!approved) return
-  useModel.getState().received(approved)
-  await execute(approved)
+  const approved = await approve(view)
+  if (approved) await execute(approved)
 }
+
+/**
+ * The approval alone (WP70): of a proposal before it is executed, of a tool
+ * chain's plan, step or re-plan before it runs on (P4). The record that
+ * comes back is the dialogue's; ``null`` when it failed.
+ */
+export async function approve(view: ModelActionView): Promise<ModelActionView | null> {
+  const approved = await step(view.id, 'approve', () => api.model.approve(view.id))
+  if (approved) useModel.getState().received(approved)
+  return approved
+}
+
+/**
+ * Esc on an approval (design "Barrierefreiheit": Esc = Ablehnen, M5.1, M8.1):
+ * rejects with the reason chosen so far; the panel must not close on it.
+ */
+export const escapeRejects =
+  (view: ModelActionView, reason: RejectReason | null) => (event: KeyboardEvent) => {
+    if (event.key !== 'Escape' || event.defaultPrevented) return
+    event.preventDefault()
+    void reject(view, reason)
+  }
 
 /** *Ablehnen* (M5.3) with the optional reason chip; the analysis stays as it is. */
 export async function reject(view: ModelActionView, reason: RejectReason | null) {

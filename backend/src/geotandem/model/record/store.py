@@ -433,6 +433,7 @@ def to_view(
             "stop_reason": row.stop_reason,
             "stamp": row.stamp,
             "latency_ms": row.latency_ms,
+            "run_ms": row.run_ms if row.approach == "chain" else None,
         }
     )
 

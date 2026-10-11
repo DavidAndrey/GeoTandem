@@ -11798,6 +11798,17 @@
               }
             ],
             "title": "Latency Ms"
+          },
+          "run_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Ms"
           }
         },
         "type": "object",

@@ -45,7 +45,6 @@ import { Workplace } from '../../workplace/Workplace'
 import { useApproval } from '../approval/flow'
 import { useModel } from '../store'
 import { registerCompare } from './compare'
-import { useChain } from './flow'
 import {
   CHAIN_S,
   MAX_FEATURES,
@@ -194,6 +193,10 @@ describe('plan (M8)', () => {
       expect(steps[i]).toHaveTextContent(step.text)
       expect(steps[i]).toHaveTextContent(step.tool)
     })
+    // In words from the step's query object; the tool's name only in monospace.
+    expect(steps[0]).toHaveTextContent('Schulen · Schulstufe ist eins von primar')
+    expect(steps[1]).toHaveTextContent(/Strassen · .*Strassenklasse.* · Puffer 500 m/)
+    expect(within(steps[0] as HTMLElement).getByText('filter').className).toMatch(/\bfont-mono\b/)
     expect(steps[0]).toHaveTextContent('Attributfilter · Freigabe')
     expect(steps[1]).toHaveTextContent('Attributfilter, Abgeleitete Layer · Freigabe')
     expect(steps[2]).toHaveTextContent('Raumfilter · Freigabe')
@@ -354,6 +357,23 @@ const formatted = (n: number) => new Intl.NumberFormat('de-CH').format(n)
 const secondsText = (ms: number) =>
   `${new Intl.NumberFormat('de-CH', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(ms / 1000)} s`
 
+test('M8.3: the editor takes the focus; Esc and a change give it back to "Anpassen …"', async () => {
+  const { user, card } = await planned()
+  await user.click(within(card).getByRole('button', { name: 'Anpassen …' }))
+  const form = screen.getByRole('form', { name: 'Plan anpassen' })
+  expect(form).toContainElement(document.activeElement as HTMLElement)
+  await user.keyboard('{Escape}')
+  expect(screen.queryByRole('form', { name: 'Plan anpassen' })).toBeNull()
+  // Esc closed the editor, not the panel.
+  expect(document.getElementById('prompt-panel')).not.toBeNull()
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Anpassen …' })).toHaveFocus())
+  await user.click(screen.getByRole('button', { name: 'Anpassen …' }))
+  await user.click(screen.getByRole('button', { name: /^Schritt 5 entfernen/ }))
+  await user.click(screen.getByRole('button', { name: 'Änderungen übernehmen' }))
+  await waitFor(() => expect(screen.queryByRole('form', { name: 'Plan anpassen' })).toBeNull())
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Anpassen …' })).toHaveFocus())
+})
+
 describe('run (M9)', () => {
   test('M9.1: step n of m, elapsed against the 5:00 cap, results and "Modell sieht" per step, dimmed on the map', async () => {
     const { calls, server, answer } = await running({ script: { pace: 1 } })
@@ -371,12 +391,14 @@ describe('run (M9)', () => {
         'läuft· Schritt 3 von 5',
       ),
     )
-    // Elapsed: the two finished steps (0.4 s + 1.8 s, fixture) and the third so far.
+    // The request so far as the server counts it: the planning call (6 s), the two
+    // steps that ran (0.4 s + 1.8 s, ``run_ms``), and the third on this clock.
+    expect(useModel.getState().views[answer.id]?.run_ms).toBe(2200)
     const clock = screen.getByLabelText('Laufzeit der Kette')
-    expect(clock).toHaveTextContent(/^0:0[2-4] \/ max\. 5:00$/)
+    expect(clock).toHaveTextContent(/^0:0[89] \/ max\. 5:00$/)
     await tick(3000)
     expect(screen.getByLabelText('Laufzeit der Kette')).toHaveTextContent(
-      /^0:0[5-7] \/ max\. 5:00$/,
+      /^0:1[0-2] \/ max\. 5:00$/,
     )
 
     const first = stepItem(1)
@@ -411,6 +433,12 @@ describe('run (M9)', () => {
     const caption = screen.getByRole('note', { name: 'Zwischenstand der Kette' })
     expect(caption).toHaveTextContent('Zwischenstand gedämpft · nicht angewendet')
     expect(caption).toHaveTextContent(`Schritt 1 · ${formatted(CHAIN_HITS[0] ?? 0)}`)
+    // Not by colour alone: the latest step says so.
+    expect(caption).toHaveTextContent('(zuletzt)')
+    // The sidebar names the chain's state beside the analysis (M9.1).
+    const side = screen.getByRole('note', { name: 'Zwischenstand · Kette' })
+    expect(side).toHaveTextContent(`Schritt 2 von 5 · ${formatted(CHAIN_HITS[1] ?? 0)}`)
+    expect(side).toHaveTextContent('nicht angewendet')
   })
 
   test('the status region speaks per step change, at most once every 3 s', async () => {
@@ -440,6 +468,19 @@ describe('run (M9)', () => {
     const steps = useModel.getState().views[answer.id]?.steps ?? []
     expect(steps.map((s) => s.stamp?.count ?? null)).toEqual([null, null, null, null, 10])
     expect(within(end).getByRole('button', { name: 'Ergebnis übernehmen' })).toBeEnabled()
+    // The result marked on the map, dashed, and in the sidebar (M9.3).
+    const record = useModel.getState().views[answer.id]
+    await waitFor(() =>
+      expect(
+        calls.filter((c) => c.key === 'POST /api/query/ids').map((c) => c.body),
+      ).toContainEqual(record?.query),
+    )
+    expect(screen.getByRole('note', { name: 'Zwischenstand der Kette' })).toHaveTextContent(
+      'Ergebnis gestrichelt · vorgemerkt, nicht angewendet',
+    )
+    expect(screen.getByRole('note', { name: 'Zwischenstand · Kette' })).toHaveTextContent(
+      'Ergebnis 10 von 137 · vorgemerkt',
+    )
     // No comparison until WP78 registers one.
     expect(within(end).queryByRole('button', { name: 'Mit Direktabfrage vergleichen' })).toBeNull()
     // "Als Abfrage ansehen": the result as the query it becomes, nothing applied.
@@ -521,6 +562,8 @@ describe('run (M9)', () => {
     await tick(5000)
     expect(polls(calls, answer.id)).toHaveLength(before)
     unchanged()
+    // M9.4: the account's log beside the adoption.
+    expect(within(end).getByRole('button', { name: 'Protokoll' })).toBeEnabled()
     // Step 2 is a buffer: the result to adopt is step 1 (the server's choice, ``query``).
     const first = formatted(CHAIN_HITS[0] ?? 0)
     await user.click(screen.getByRole('button', { name: `Zwischenstand übernehmen (${first})` }))
@@ -541,10 +584,11 @@ describe('run (M9)', () => {
   test.each([
     {
       reason: 'result_too_large',
-      script: { limit: { position: 2, reason: 'result_too_large', value: 12400 } },
+      // Only the last step is held to the result size; step 4 is then the result.
+      script: { hits: { 5: 12400 } },
       title: 'Ergebnisgrösse überschritten',
-      text: /Schritt 2 hätte 12.400 Objekte erzeugt \(höchstens 10.000\)\./,
-      adoptable: CHAIN_HITS[0],
+      text: /Schritt 5 hätte 12.400 Objekte erzeugt \(höchstens 10.000\)\./,
+      adoptable: CHAIN_HITS[3],
     },
     {
       reason: 'step_limit',
@@ -556,17 +600,17 @@ describe('run (M9)', () => {
     },
     {
       reason: 'time_limit',
-      script: { limit: { position: 2, reason: 'time_limit' } },
+      script: { timeLimit: 2 },
       title: 'Laufzeit überschritten',
       text: /hielt vor Schritt 2 \(höchstens 5:00 je Anfrage\)/,
       adoptable: CHAIN_HITS[0],
     },
     {
-      reason: 'replan_limit (none left)',
-      // Step 3 fails and the re-plan brings no plan: no re-plan is left after it.
+      reason: 'replan_limit (no plan)',
+      // Step 3 fails; the model answers the re-plan with something else than a plan.
       script: { errors: { 3: { code: 'unknown_attribute', part: 'typ' } } },
       title: 'Keine weitere Neuplanung',
-      text: /Ein Schritt brachte einen Fehler oder kein Ergebnis/,
+      text: /Das Modell antwortete auf die Neuplanung nicht mit einem Plan\./,
       adoptable: CHAIN_HITS[0],
     },
     {
@@ -609,12 +653,64 @@ describe('run (M9)', () => {
     },
   )
 
-  test('M9.5 result_too_large: the step says what the model saw', async () => {
-    await running({ script: { limit: { position: 2, reason: 'result_too_large' } } })
+  test('M9.5 result_too_large: only the last step is held to the size; it says what the model saw', async () => {
+    await running({ script: { hits: { 2: 12400, 5: 12400 } } })
     await tick()
     await phase('stopped')
-    expect(within(stepItem(2)).getByText(/^Modell sieht:/)).toHaveTextContent(
+    // An earlier step beyond the limit is counted as any other.
+    expect(stepItem(2)).toHaveAttribute('data-status', 'ok')
+    expect(stepItem(5)).toHaveAttribute('data-status', 'error')
+    expect(within(stepItem(5)).getByText(/^Modell sieht:/)).toHaveTextContent(
       'Modell sieht: Fehler · result_too_large',
+    )
+  })
+
+  test('nothing to adopt when the last complete step is beyond the size limit', async () => {
+    await running({ script: { hits: { 4: 10001, 5: 12400 } } })
+    await tick()
+    await phase('stopped')
+    const end = await findCard()
+    expect(within(end).queryByRole('button', { name: /Zwischenstand übernehmen/ })).toBeNull()
+    expect(end).toHaveTextContent(
+      'Nichts zu übernehmen: Der letzte vollständige Zwischenstand hat mehr Objekte, als ein Ergebnis haben darf.',
+    )
+  })
+
+  test('interrupted (a restart or a failed run): its own label; the result adoptable, unstamped', async () => {
+    const { answer } = await running({ script: { interrupt: 3 } })
+    await tick()
+    await phase('stopped')
+    const end = await findCard()
+    expect(end.querySelector('[data-status="interrupted"]')).toHaveTextContent('unterbrochen')
+    expect(end).toHaveTextContent('Lauf unterbrochen')
+    expect(end).toHaveTextContent(
+      'Die Anwendung wurde neu gestartet, oder der Lauf selbst ist fehlgeschlagen.',
+    )
+    const record = useModel.getState().views[answer.id]
+    expect(record?.query).not.toBeNull()
+    expect(record?.stamp).toBeNull()
+    expect(within(end).getByRole('button', { name: 'Zwischenstand übernehmen' })).toBeEnabled()
+  })
+
+  test('replan_limit with the re-plans used up', async () => {
+    const one = REVISED.slice(0, 1)
+    await planned('Automatisch', {
+      script: {
+        errors: {
+          3: { code: 'unknown_attribute' },
+          4: { code: 'unknown_attribute' },
+          5: { code: 'unknown_attribute' },
+        },
+        replans: [one, one],
+      },
+    })
+    await phase('running')
+    await tick()
+    await phase('stopped')
+    const end = await findCard()
+    expect(end).toHaveTextContent('Keine weitere Neuplanung')
+    expect(end).toHaveTextContent(
+      'Ein Schritt brachte einen Fehler oder kein Ergebnis, und die Neuplanungen sind aufgebraucht (höchstens 2).',
     )
   })
 
@@ -629,6 +725,9 @@ describe('run (M9)', () => {
     expect(
       within(await findCard()).getByText('Geplante Schritte · 5 von höchstens 8'),
     ).toBeInTheDocument()
+    expect(await findCard()).toHaveTextContent(
+      'Schritt 2 brachte kein Ergebnis; die Kette wurde neu geplant',
+    )
     // The record keeps its plan: a re-plan changes the steps, never the answer.
     expect(useModel.getState().views[answer.id]?.answer).toEqual(CASE.answer)
     await user.click(screen.getByRole('button', { name: 'Freigeben und fortsetzen' }))
@@ -657,6 +756,9 @@ describe('run (M9)', () => {
     expect(within(stepItem(3)).getByText(/^Modell sieht:/)).toHaveTextContent(
       'Modell sieht: Fehler · unknown_attribute · typ',
     )
+    expect(await findCard()).toHaveTextContent(
+      'Schritt 3 brachte einen Fehler; die Kette wurde neu geplant',
+    )
     expect(steps[2]?.model_view).toEqual({
       outcome: 'error',
       code: 'unknown_attribute',
@@ -666,8 +768,11 @@ describe('run (M9)', () => {
     })
   })
 
-  test('run answering busy (right after a halt) is tried again', async () => {
-    const { calls } = await planned('Prüfen', { script: { busy: 1 } })
+  test.each([
+    ["409, the account's call (right after a halt)", { busy: 1 }],
+    ['503, every model call', { busyCalls: 1 }],
+  ] as [string, ChainScript][])('run answering busy (%s) is tried again', async (_, script) => {
+    const { calls } = await planned('Prüfen', { script })
     await act(async () =>
       screen.getByRole('button', { name: 'Kette freigeben und starten' }).click(),
     )
@@ -700,12 +805,57 @@ describe('run (M9)', () => {
     await user.click(screen.getByRole('button', { name: 'Kette freigeben und starten' }))
     const retry = await screen.findByRole('button', { name: 'Erneut starten' })
     expect(hits(calls, 'run')).toHaveLength(1)
+    // The record is asked for again: a run the server started all the same is polled on.
+    await waitFor(() =>
+      expect(polls(calls, actionView('chain_reference').id).length).toBeGreaterThan(1),
+    )
     await tick(3000)
     expect(hits(calls, 'run')).toHaveLength(1)
     fails = false
     await user.click(retry)
     await phase('running')
-    expect(useChain.getState().failure).toBeNull()
+    expect(useApproval.getState().failure).toBeNull()
+  })
+
+  test('a halt approved whose run fails can still be stopped; it ends at once', async () => {
+    let runs = 0
+    const { user, calls } = await planned('Teilautonom', {
+      routes: (server) => ({
+        [`POST /api/model/actions/${actionView('chain_reference').id}/run`]: () => {
+          if (runs++ > 0) return json({ code: 'internal_error', message: 'down', details: {} }, 500)
+          const answer = server.run(actionView('chain_reference').id)
+          return isFakeError(answer) ? json(answer.body, answer.status) : json(answer, 202)
+        },
+      }),
+    })
+    await user.click(await screen.findByRole('button', { name: 'Starten' }))
+    await phase('running')
+    await tick()
+    await phase('halt')
+    await user.click(screen.getByRole('button', { name: 'Schritt freigeben' }))
+    await screen.findByRole('button', { name: 'Erneut starten' })
+    // Approved at a halt, not running: the server stops it at once (M9.4).
+    const stop = screen.getByRole('button', { name: 'Abbrechen' })
+    expect(stop).toBeEnabled()
+    await user.click(stop)
+    await phase('stopped')
+    expect(hits(calls, 'abort')).toHaveLength(1)
+  })
+
+  test('a refused stop at a halt is said, as an alert', async () => {
+    const { user } = await planned('Teilautonom', {
+      routes: () => ({
+        [`POST /api/model/actions/${actionView('chain_reference').id}/abort`]: () =>
+          json({ code: 'already_decided', message: 'decided', details: {} }, 409),
+      }),
+    })
+    await user.click(await screen.findByRole('button', { name: 'Starten' }))
+    await phase('running')
+    await tick()
+    await phase('halt')
+    await user.click(screen.getByRole('button', { name: 'Kette abbrechen' }))
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    await phase('halt')
   })
 
   test('the comparison hook: WP78 registers the dialog, the finished chain offers it', async () => {
@@ -770,24 +920,114 @@ describe('the fake server as WP75 answers', () => {
     ])
   })
 
-  test('run answers running with the steps unchanged; no record stamp past the size limit', () => {
-    const fake = server('Prüfen', { hits: { 5: MODEL_LIMITS.max_features + 1 } })
+  const code = (answer: unknown) =>
+    isFakeError(answer) ? [answer.status, answer.body.code, answer.body.details] : answer
+
+  test('run answers running with the steps unchanged; only the last step is held to the size', () => {
+    const over = MODEL_LIMITS.max_features + 1
+    const fake = server('Prüfen', { hits: { 4: over } })
     ok(fake.approve(ID))
     const running = ok(fake.run(ID))
     expect(running.status).toBe('running')
     expect(running.steps.every((s) => s.status === 'planned')).toBe(true)
+    // Step 4 beyond the limit is counted; the last, within it, is the result.
     const done = ok(fake.poll(ID))
-    // The last complete step is over the limit: nothing to adopt, nothing stamped.
     expect(done.status).toBe('done')
-    expect(done.stamp).toBeNull()
-    expect(done.query).toBeNull()
-    expect(done.steps.every((s) => s.stamp === null)).toBe(true)
-    const adopt = fake.adopt(ID)
-    expect(isFakeError(adopt) && [adopt.status, adopt.body.code]).toEqual([409, 'not_approved'])
+    expect(done.steps[3]?.status).toBe('ok')
+    expect(done.stamp?.count).toBe(CHAIN_HITS[4])
+    // The last beyond it fails; the step before it is beyond too: nothing to adopt.
+    const both = server('Prüfen', { hits: { 4: over, 5: over } })
+    ok(both.approve(ID))
+    ok(both.run(ID))
+    const stopped = ok(both.poll(ID))
+    expect([stopped.status, stopped.stop_reason]).toEqual(['limited', 'result_too_large'])
+    expect(stopped.error?.details).toEqual({ step: 5, value: over, max: MODEL_LIMITS.max_features })
+    expect([stopped.query, stopped.stamp]).toEqual([null, null])
+    expect(code(both.adopt(ID))).toEqual([409, 'not_approved', { id: ID, status: 'limited' }])
+  })
+
+  test('busy names the call in flight; abort without a run in flight ends at once', () => {
+    const fake = server('Prüfen', { busy: 1 })
+    ok(fake.approve(ID))
+    expect(code(fake.run(ID))).toEqual([409, 'busy', { reason: 'running', id: ID }])
+    ok(fake.run(ID))
+    fake.lose(ID)
+    const stopped = ok(fake.abort(ID))
+    expect([stopped.status, stopped.stop_reason]).toEqual(['limited', 'aborted'])
+    const calls = server('Prüfen', { busyCalls: 1 })
+    ok(calls.approve(ID))
+    expect(code(calls.run(ID))).toEqual([503, 'busy', { reason: 'model_calls' }])
+  })
+
+  test('a re-plan: a lost connection counts none; a buffer at the end or a class off stops it', () => {
+    const error = { 3: { code: 'unknown_attribute' as const } }
+    const lost = server('Automatisch', {
+      errors: error,
+      replanError: { code: 'connection_not_available', details: { reason: 'changed' } },
+    })
+    ok(lost.run(ID))
+    const gone = ok(lost.poll(ID))
+    expect([gone.stop_reason, gone.replans, gone.error?.code]).toEqual([
+      'replan_limit',
+      0,
+      'connection_not_available',
+    ])
+    const buffer = PLAN.steps[1] as PlannedStep
+    const ends = server('Automatisch', { errors: error, replans: [[buffer]] })
+    ok(ends.run(ID))
+    const refused = ok(ends.poll(ID))
+    expect([refused.stop_reason, refused.replans, refused.error?.code]).toEqual([
+      'replan_limit',
+      1,
+      'not_representable',
+    ])
+    // A level that forbids derived layers by now (as it was: the record's snapshot).
+    const view = actionView('chain_reference', {}, 'Automatisch')
+    const off = modelServer(
+      [{ ...view, level: { ...view.level, matrix: { ...view.level.matrix, derive: 'off' } } }],
+      undefined,
+      {
+        errors: error,
+        replans: [[buffer, { ...(PLAN.steps[2] as PlannedStep), arguments: { of: 1, in: 4 } }]],
+      },
+    )
+    ok(off.run(ID))
+    const forbidden = ok(off.poll(ID))
+    expect([forbidden.stop_reason, forbidden.error?.code, forbidden.error?.details]).toEqual([
+      'replan_limit',
+      'class_not_allowed',
+      { part: 'derive', step: 4 },
+    ])
+  })
+
+  test('adopt: claimed already ⇒ 409; every query slot taken ⇒ 503', () => {
+    const fake = server('Automatisch')
+    ok(fake.run(ID))
+    ok(fake.poll(ID))
+    fake.queriesBusy(true)
+    expect((code(fake.adopt(ID)) as unknown[])[0]).toBe(503)
+    fake.queriesBusy(false)
+    fake.claim(ID)
+    expect((code(fake.adopt(ID)) as unknown[]).slice(0, 2)).toEqual([409, 'already_decided'])
   })
 })
 
 describe('entry', () => {
+  test('a chain refused as not representable does not offer the chain again', async () => {
+    const user = fakeTimers()
+    const refused = actionView('not_representable', { approach: 'chain' })
+    backend(promptFlow(thinkingView('not_representable'), refused))
+    useModel.getState().setApproach('chain')
+    useModel.getState().setOpen(true)
+    renderAt('/', <Workplace />)
+    await waitFor(() => expect(document.getElementById('prompt-panel')).not.toBeNull())
+    await ask(user, refused.prompt)
+    await isThinking()
+    await tick()
+    await screen.findByRole('alert')
+    expect(screen.queryByRole('button', { name: /Werkzeugkette versuchen/ })).toBeNull()
+  })
+
   test('the chain can be chosen; M3.3 offers it on not_representable, filling the field, never sending', async () => {
     const user = fakeTimers()
     const refused = actionView('not_representable')
@@ -813,7 +1053,7 @@ test('in pseudo, plan, run and stop show no text outside the catalog', async () 
   activate('pseudo', pseudo)
   try {
     const { server } = await planned('Teilautonom', {
-      script: { limit: { position: 4, reason: 'result_too_large' } },
+      script: { hits: { 5: 12400 } },
     })
     const data = [
       CASE.prompt,
@@ -826,6 +1066,13 @@ test('in pseudo, plan, run and stop show no text outside the catalog', async () 
       'Lokales Modell',
       'Teilautonom',
       'result_too_large',
+      // The steps in words: field names and values are data (editor/describe.ts).
+      'Schulstufe',
+      'Strassenklasse',
+      'Steueranlage',
+      'primar',
+      'kantonsstrasse_b',
+      '1.6',
     ]
     expect(strays(data)).toEqual([])
     // Starten: the first button of the approval.

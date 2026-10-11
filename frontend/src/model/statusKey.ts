@@ -27,6 +27,7 @@ export type StatusKey =
   | 'running'
   | 'done'
   | 'aborted'
+  | 'interrupted'
   | 'limited'
   | 'clarification'
   | 'message'
@@ -50,6 +51,8 @@ const LABELS: Record<StatusKey, MessageDescriptor> = {
   running: msg`läuft`,
   done: msg`fertig`,
   aborted: msg`abgebrochen`,
+  /** A chain's run cut off by a restart or a failure of the run itself (P4). */
+  interrupted: msg`unterbrochen`,
   limited: msg`angehalten · Begrenzung`,
   clarification: msg`Rückfrage`,
   message: msg`Meldung`,
@@ -70,6 +73,7 @@ export function lineStyle(key: StatusKey): LineStyle {
     case 'refused':
     case 'stale':
     case 'aborted':
+    case 'interrupted':
       return 'void'
     case 'clarification':
     case 'message':
@@ -118,9 +122,11 @@ export function statusKey(view: ModelActionView, options: StatusOptions = {}): S
     case 'done':
       return 'done'
     case 'limited':
-      return view.stop_reason === 'aborted' || view.stop_reason === 'interrupted'
+      return view.stop_reason === 'aborted'
         ? 'aborted'
-        : 'limited'
+        : view.stop_reason === 'interrupted'
+          ? 'interrupted'
+          : 'limited'
     case 'applied':
       if (view.decision === 'auto') return 'auto'
       return view.applied_by_hand ||
