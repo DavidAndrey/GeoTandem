@@ -30,6 +30,13 @@ order answers. A connection whose base URL is ``http://<host>/case/<id>/v1``
 gets case ``<id>`` for every prompt, whatever its text: that is how a test
 picks a failure without a prompt of its own.
 
+A further prefix ``/hold/<seconds>`` (after ``/case/<id>``, if any) holds the
+answer to every request that continues a conversation with the model, one
+with an assistant turn in it: a tool chain's re-plan (P4), a follow-up (P6).
+The first call answers at once. That is how a test keeps a chain ``running``
+long enough to abort it (E2.5): its steps take milliseconds, its re-plan
+waits for the model.
+
     python stub.py [--port 8080] [--cases /cases/v1.json]
 """
 
@@ -46,6 +53,7 @@ from typing import Any
 MODEL = os.environ.get("STUB_MODEL", "stub-model")
 SLOW_S = float(os.environ.get("STUB_SLOW_S", "30"))
 CASE_PREFIX = re.compile(r"^/case/([A-Za-z0-9_-]+)(/.*)$")
+HOLD_PREFIX = re.compile(r"^/hold/(\d{1,3})(/.*)$")
 
 
 class Stub:
@@ -74,6 +82,11 @@ def question_of(messages: list[dict[str, Any]]) -> str:
         content = "".join(p.get("text", "") for p in content if isinstance(p, dict))
     marker = content.rfind("Frage: ")
     return (content[marker + len("Frage: ") :] if marker >= 0 else content).strip()
+
+
+def continues(messages: list[dict[str, Any]]) -> bool:
+    """Whether the request goes on from an answer of the model's (a re-plan)."""
+    return any(m.get("role") == "assistant" for m in messages)
 
 
 def is_schema_probe(body: dict[str, Any]) -> bool:
@@ -123,12 +136,17 @@ class Handler(BaseHTTPRequestHandler):
     def _json(self, status: int, value: Any) -> None:
         self._send(status, json.dumps(value).encode())
 
-    def _route(self) -> tuple[str | None, str]:
-        match = CASE_PREFIX.match(self.path)
-        return (match.group(1), match.group(2)) if match else (None, self.path)
+    def _route(self) -> tuple[str | None, int, str]:
+        """The forced case, the seconds a continued conversation is held, the path."""
+        forced, hold, path = None, 0, self.path
+        if match := CASE_PREFIX.match(path):
+            forced, path = match.group(1), match.group(2)
+        if match := HOLD_PREFIX.match(path):
+            hold, path = int(match.group(1)), match.group(2)
+        return forced, hold, path
 
     def do_GET(self) -> None:
-        _, path = self._route()
+        path = self._route()[2]
         if path == "/v1/models":
             model = {"id": MODEL, "object": "model", "created": 0, "owned_by": "stub"}
             self._json(200, {"object": "list", "data": [model]})
@@ -141,7 +159,7 @@ class Handler(BaseHTTPRequestHandler):
             self._json(404, {"error": {"message": "not found"}})
 
     def do_DELETE(self) -> None:
-        if self._route()[1] != "/_requests":
+        if self._route()[2] != "/_requests":
             self._json(404, {"error": {"message": "not found"}})
             return
         with self.stub.lock:
@@ -149,7 +167,7 @@ class Handler(BaseHTTPRequestHandler):
         self._send(204, b"")
 
     def do_POST(self) -> None:
-        forced, path = self._route()
+        forced, hold, path = self._route()
         raw = self.rfile.read(int(self.headers.get("Content-Length") or 0))
         try:
             body = json.loads(raw or b"{}")
@@ -174,7 +192,10 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, completion(None, [call]))
             return
 
-        case = self.stub.case_for(question_of(body.get("messages", [])), forced) or {}
+        messages = body.get("messages", [])
+        if hold and continues(messages):
+            time.sleep(hold)  # a re-plan waits; the chain stays running meanwhile
+        case = self.stub.case_for(question_of(messages), forced) or {}
         error = case.get("llm_error")
         if error == "llm_unreachable":
             # No status line at all: the client's transport fails, as for a dead host.
