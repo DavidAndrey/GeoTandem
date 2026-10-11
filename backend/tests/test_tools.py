@@ -8,6 +8,16 @@ from geotandem.levels import OpClass
 from geotandem.tools import Tool, ToolContext, ToolRegistry, UnknownTool, default_registry
 from geotandem.tools.builtin import LayerList, NoArguments
 
+CHAIN_CLASSES = {
+    "filter": OpClass.QUERY,
+    "buffer": OpClass.DERIVE,
+    "within": OpClass.SPATIAL,
+    "outside": OpClass.SPATIAL,
+    "intersects": OpClass.SPATIAL,
+    "near": OpClass.SPATIAL,
+}
+"""The chain's steps (WP74, ``tools.chain``), each with its own operation's class."""
+
 
 @pytest.fixture
 def context(sample: DataBackend) -> ToolContext:
@@ -16,7 +26,7 @@ def context(sample: DataBackend) -> ToolContext:
 
 def test_registry_describes_tools_with_json_schemas() -> None:
     descriptions = {d.name: d for d in default_registry().describe()}
-    assert set(descriptions) == {"list_layers", "describe_layer", "run_query"}
+    assert set(descriptions) == {"list_layers", "describe_layer", "run_query", *CHAIN_CLASSES}
     run_query = descriptions["run_query"]
     assert run_query.effect == "state"
     # The query-object schema is embedded, not re-described (single source).
@@ -29,6 +39,7 @@ def test_every_tool_declares_its_operation_class() -> None:
         "list_layers": OpClass.CATALOG,
         "describe_layer": OpClass.CATALOG,
         "run_query": OpClass.QUERY,
+        **CHAIN_CLASSES,
     }
 
 

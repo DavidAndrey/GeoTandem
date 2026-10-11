@@ -280,7 +280,7 @@ def test_creating_a_taken_name_is_refused_and_keeps_the_layer(backend: DataBacke
 
 def test_parallel_creates_of_one_name_leave_one_layer(backend: DataBackend) -> None:
     """Two imports committing the same name at once (the second used to answer 500)."""
-    start = Barrier(4)
+    start = Barrier(4, timeout=10)  # a lost thread fails the test, never hangs it
 
     def create(n: int) -> int:
         start.wait()
@@ -304,7 +304,7 @@ def test_parallel_first_access_defines_the_table_once(backend: DataBackend) -> N
     points(backend)
     for _ in range(20):
         fresh = SpatiaLiteBackend(backend.engine, backend.internal_srid)  # nothing cached
-        start = Barrier(8)
+        start = Barrier(8, timeout=10)
 
         def load(_: int, fresh: SpatiaLiteBackend = fresh, start: Barrier = start) -> Table:
             start.wait()

@@ -45,6 +45,11 @@ class Forbidden(Problem):
     code = "forbidden"
 
 
+class SessionRequired(Problem):
+    status = 403
+    code = "session_required"
+
+
 class SetupClosed(Problem):
     status = 409
     code = "setup_closed"
@@ -96,8 +101,19 @@ def login_token(request: Request, state: AppState) -> str | None:
     return request.cookies.get(sessions.cookie_name(_secure(request, state)))
 
 
+SESSION = "session"
+"""The credential of a person signed in through the login cookie."""
+
+
 def signed_in(request: Request, state: State) -> Account | None:
-    return sessions.resolve(state.backend.engine, login_token(request, state), lifetime(state))
+    """The account of the login cookie. Notes on the request how it signed in
+    (``request.state.credential``): the login cookie is the only credential
+    today; one added later (a model's or an MCP client's token, E4) notes its
+    own, so a route only for people (``require_interactive``) can tell."""
+    account = sessions.resolve(state.backend.engine, login_token(request, state), lifetime(state))
+    if account is not None:
+        request.state.credential = SESSION
+    return account
 
 
 def require_session(account: Annotated[Account | None, Depends(signed_in)]) -> Account:
@@ -123,6 +139,36 @@ def require_admin(account: Annotated[Account, Depends(require_account)]) -> Acco
 
 CurrentAccount = Annotated[Account, Depends(require_account)]
 CurrentSession = Annotated[Account, Depends(require_session)]
+
+
+def require_interactive(request: Request, account: CurrentAccount) -> Account:
+    """A person at the application, not a program acting for them (plan E2.3-E2.6,
+    P2, F-6.7): signed in through the login cookie and sending no token beside
+    it. Any other credential is refused, whatever account it stands for, and so
+    is a request whose ``Authorization`` header carries a token scheme
+    (``Bearer``, or anything but ``Basic``), the place a model or MCP token
+    travels in (E4). ``Basic`` passes: a reverse proxy in front may ask for it.
+    A refusal is a security event (``session_required``). Used by the preview
+    (P2) and by the person's decisions: approve, reject, decide (WP71).
+
+    Obligation for E4: a token credential must never set
+    ``request.state.credential`` to ``SESSION``; only ``signed_in`` (the login
+    cookie) does."""
+    credential = getattr(request.state, "credential", None)
+    scheme = request.headers.get("authorization", "basic").strip().split(" ", 1)[0]
+    if credential != SESSION or scheme.lower() != "basic":
+        # Which way it failed, never the header: its first word may be the token itself.
+        audit.event(
+            "session_required",
+            username=account.username,
+            credential=credential if credential == SESSION else "other",
+            authorization_header=scheme.lower() != "basic",
+        )
+        raise SessionRequired("This needs an interactive session; a token is not accepted here.")
+    return account
+
+
+InteractiveAccount = Annotated[Account, Depends(require_interactive)]
 
 
 async def hashing_slot(state: State) -> AsyncIterator[None]:

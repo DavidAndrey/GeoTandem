@@ -7,7 +7,7 @@ unclassified operation.
 
 from collections.abc import Iterator
 
-from geotandem.levels.model import CellMode, Level, LevelError, OpClass, strictest
+from geotandem.levels.model import OpClass
 from geotandem_query import (
     And,
     Condition,
@@ -91,21 +91,7 @@ def classify_parts(query: QueryObject) -> dict[str, OpClass]:
 
 
 def classify(query: QueryObject) -> frozenset[OpClass]:
-    """Every class the query touches; the strictest cell among them governs (H4)."""
+    """Every class the query touches; the strictest cell among them governs (H4).
+    A class that is ``off`` makes the whole a proposal the user applies by hand,
+    never a refusal (D1; ``model.direct.governance``)."""
     return frozenset(classify_parts(query).values())
-
-
-def allowed(level: Level, query: QueryObject) -> CellMode:
-    """The cell that governs the query on ``level``: ``approve`` or ``auto``. A part
-    whose class is ``off`` refuses the whole, and the refusal names it (H4)."""
-    parts = classify_parts(query)
-    for part, op_class in parts.items():
-        if level.matrix[op_class] is CellMode.OFF:
-            raise LevelError(
-                "class_not_allowed",
-                f"The level '{level.name}' does not allow '{part}' ({op_class}).",
-                part=part,
-                op_class=op_class.value,
-                level=level.name,
-            )
-    return strictest(level, parts.values())

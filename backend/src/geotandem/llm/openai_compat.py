@@ -13,14 +13,28 @@ Guards, each tested on the transport actually used:
   every request, whoever the endpoint is.
 - SDK retries off; one loop here retries at most twice, on connection
   errors and 408/409/425/429/5xx only, so the count is known and reported.
+- A call's ``deadline`` bounds all its attempts together: each gets only the
+  time left (at most the endpoint's timeout), and a retry whose backoff would
+  end past the deadline is not made.
+- Bounded in time and size (security review #34). An attempt's timeout is a
+  wall-clock limit for the whole request, not only for each read: every
+  socket operation gets the time left before it (``_DeadlineBackend``), so an
+  endpoint that trickles its headers or body a byte at a time ends
+  ``llm_timeout`` by then. An answer is read in chunks and ends
+  ``llm_bad_response`` (``cause`` "too large") past ``MAX_RESPONSE_BYTES``;
+  it is asked for uncompressed, and a compressed one is refused, so the limit
+  is what is decoded too.
 """
 
 import json
 import logging
+import threading
 import time
-from collections.abc import Callable, Sequence
-from typing import Any, Self
+from collections.abc import Callable, Iterator, Sequence
+from typing import Any, Final, Self
 
+# httpx2's own transport layer, same release line (httpx2 pins it).
+import httpcore2
 import httpx2
 import openai
 
@@ -41,9 +55,169 @@ RETRY_STATUS = frozenset({408, 409, 425, 429})
 CONNECT_TIMEOUT_S = 5.0
 PROBE_TIMEOUT_S = 5.0
 
+MAX_RESPONSE_BYTES: Final = 1024 * 1024
+"""What one answer of an endpoint may hold, headers aside (review #34). A
+direct query's answer is a few kilobytes; the cap is far above it."""
+
 _SENT_HEADERS = frozenset(
     {"accept", "accept-encoding", "content-type", "content-length", "host", "user-agent"}
 )
+
+
+class _Refused(Exception):
+    """The endpoint's answer is refused before it is read whole: larger than
+    ``MAX_RESPONSE_BYTES``, or compressed. Raised inside the transport; the SDK
+    lets it pass, ``_with_retries`` makes it ``llm_bad_response``."""
+
+    def __init__(self, cause: str) -> None:
+        super().__init__(cause)
+        self.cause = cause
+
+
+class _Deadline(threading.local):
+    """The wall-clock end (``clock()``) of the request this thread sends now;
+    ``None``: none. Set by ``_Bounded`` for each request, read by every socket
+    operation of it."""
+
+    def __init__(self, clock: Callable[[], float]) -> None:
+        self.clock = clock
+        self.at: float | None = None
+
+    def clamp(self, timeout: float | None, expired: type[Exception]) -> float | None:
+        """``timeout``, at most the time left; ``expired`` once none is left."""
+        if self.at is None:
+            return timeout
+        left = self.at - self.clock()
+        if left <= 0:
+            raise expired("deadline passed")
+        return left if timeout is None else min(timeout, left)
+
+
+class _DeadlineStream(httpcore2.NetworkStream):
+    """A connection whose every read and write ends by the request's deadline."""
+
+    def __init__(self, inner: httpcore2.NetworkStream, deadline: _Deadline) -> None:
+        self._inner = inner
+        self._deadline = deadline
+
+    def read(self, max_bytes: int, timeout: float | None = None) -> bytes:
+        return self._inner.read(max_bytes, self._deadline.clamp(timeout, httpcore2.ReadTimeout))
+
+    def write(self, buffer: bytes, timeout: float | None = None) -> None:
+        self._inner.write(buffer, self._deadline.clamp(timeout, httpcore2.WriteTimeout))
+
+    def close(self) -> None:
+        self._inner.close()
+
+    def start_tls(
+        self,
+        ssl_context: Any,
+        server_hostname: str | None = None,
+        timeout: float | None = None,
+    ) -> httpcore2.NetworkStream:
+        upgraded = self._inner.start_tls(
+            ssl_context, server_hostname, self._deadline.clamp(timeout, httpcore2.ConnectTimeout)
+        )
+        return _DeadlineStream(upgraded, self._deadline)
+
+    def get_extra_info(self, info: str) -> Any:
+        return self._inner.get_extra_info(info)
+
+
+class _DeadlineBackend(httpcore2.NetworkBackend):
+    """Sockets as httpx2 opens them, each operation bounded by the deadline."""
+
+    def __init__(self, deadline: _Deadline) -> None:
+        self._inner = httpcore2.SyncBackend()
+        self._deadline = deadline
+
+    def connect_tcp(
+        self,
+        host: str,
+        port: int,
+        timeout: float | None = None,
+        local_address: str | None = None,
+        socket_options: Any = None,
+    ) -> httpcore2.NetworkStream:
+        stream = self._inner.connect_tcp(
+            host,
+            port,
+            self._deadline.clamp(timeout, httpcore2.ConnectTimeout),
+            local_address,
+            socket_options,
+        )
+        return _DeadlineStream(stream, self._deadline)
+
+    def sleep(self, seconds: float) -> None:
+        self._inner.sleep(seconds)
+
+
+def _network(deadline: _Deadline) -> httpx2.HTTPTransport:
+    """httpx2's transport, as ``httpx2.Client(trust_env=False)`` builds it, over
+    sockets bounded by ``deadline``. ``HTTPTransport`` takes no network backend,
+    so its pool is replaced by one that has it (the deadline tests use real
+    sockets and fail if this stops working)."""
+    transport = httpx2.HTTPTransport(trust_env=False)
+    transport._pool = httpcore2.ConnectionPool(
+        ssl_context=httpx2.create_ssl_context(trust_env=False),
+        network_backend=_DeadlineBackend(deadline),
+    )
+    return transport
+
+
+class _Capped(httpx2.SyncByteStream):
+    """An answer's body in the chunks it arrives in, up to ``MAX_RESPONSE_BYTES``."""
+
+    def __init__(self, inner: httpx2.SyncByteStream) -> None:
+        self._inner = inner
+
+    def __iter__(self) -> Iterator[bytes]:
+        seen = 0
+        for chunk in self._inner:
+            seen += len(chunk)
+            if seen > MAX_RESPONSE_BYTES:
+                raise _Refused("too large")
+            yield chunk
+
+    def close(self) -> None:
+        self._inner.close()
+
+
+class _Bounded(httpx2.BaseTransport):
+    """Every request of the client: its timeout is a wall-clock deadline for the
+    whole request (``_Deadline``), its answer is capped (``_Capped``)."""
+
+    def __init__(self, inner: httpx2.BaseTransport, deadline: _Deadline) -> None:
+        self._inner = inner
+        self._deadline = deadline
+
+    def handle_request(self, request: httpx2.Request) -> httpx2.Response:
+        # The attempt's whole time (``_attempt_timeout`` sets read = total).
+        limit = request.extensions.get("timeout", {}).get("read")
+        self._deadline.at = None if limit is None else self._deadline.clock() + limit
+        response = self._inner.handle_request(request)
+        encoding = response.headers.get("content-encoding", "identity").strip().lower()
+        length = response.headers.get("content-length", "")
+        refused = (
+            "compressed"
+            if encoding not in ("", "identity")
+            else "too large"
+            if length.isdigit() and int(length) > MAX_RESPONSE_BYTES
+            else None
+        )
+        if refused is not None:
+            response.close()
+            raise _Refused(refused)
+        assert isinstance(response.stream, httpx2.SyncByteStream)
+        return httpx2.Response(
+            status_code=response.status_code,
+            headers=response.headers,
+            stream=_Capped(response.stream),
+            extensions=response.extensions,
+        )
+
+    def close(self) -> None:
+        self._inner.close()
 
 
 def _wire(message: Message) -> dict[str, Any]:
@@ -102,17 +276,21 @@ class OpenAICompatClient:
         *,
         transport: httpx2.BaseTransport | None = None,
         sleep: Callable[[float], None] = time.sleep,
+        clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self.endpoint = endpoint
         self._sleep = sleep
+        self._clock = clock
         timeout = httpx2.Timeout(
             endpoint.timeout_s, connect=min(endpoint.timeout_s, CONNECT_TIMEOUT_S)
         )
+        deadline = _Deadline(clock)
         self._http = httpx2.Client(
             trust_env=False,
             follow_redirects=False,
             timeout=timeout,
-            transport=transport,
+            # A transport given (tests) is bounded in size; the network one in time too.
+            transport=_Bounded(transport or _network(deadline), deadline),
             event_hooks={"request": [self._only_our_headers]},
         )
         self._sdk = openai.OpenAI(
@@ -130,6 +308,8 @@ class OpenAICompatClient:
                 del request.headers[name]
         if self.endpoint.api_key:
             request.headers["Authorization"] = f"Bearer {self.endpoint.api_key}"
+        # Uncompressed: the size limit is what is read and what is decoded (#34).
+        request.headers["Accept-Encoding"] = "identity"
 
     def close(self) -> None:
         self._http.close()
@@ -142,11 +322,38 @@ class OpenAICompatClient:
 
     # --- calls -------------------------------------------------------------------
 
-    def _with_retries[T](self, call: Callable[[], T]) -> tuple[T, int]:
+    def _attempt_timeout(self, deadline: float | None, retries: int) -> httpx2.Timeout | None:
+        """What the next attempt may take: the endpoint's timeout, at most the
+        time left before ``deadline``; ``None``: the client's default."""
+        if deadline is None:
+            return None
+        left = deadline - self._clock()
+        if left <= 0:
+            raise LLMError(
+                "llm_timeout",
+                "No answer before the call's time limit.",
+                cause="deadline passed",
+                retries=retries,
+            )
+        total = min(self.endpoint.timeout_s, left)
+        return httpx2.Timeout(total, connect=min(total, CONNECT_TIMEOUT_S))
+
+    def _with_retries[T](
+        self, call: Callable[[httpx2.Timeout | None], T], deadline: float | None = None
+    ) -> tuple[T, int]:
         retries = 0
         while True:
+            timeout = self._attempt_timeout(deadline, retries)
             try:
-                return call(), retries
+                return call(timeout), retries
+            except _Refused as exc:
+                # Not retried: the same endpoint would send the same again.
+                raise LLMError(
+                    "llm_bad_response",
+                    "The endpoint's answer is too large or compressed.",
+                    cause=exc.cause,
+                    retries=retries,
+                ) from None
             except openai.APITimeoutError as exc:
                 # A timeout is not retried: the model is slow, and asking again doubles the wait.
                 raise LLMError(
@@ -175,8 +382,11 @@ class OpenAICompatClient:
                 ) from None
             if not retryable or retries >= MAX_RETRIES:
                 raise error from None
+            backoff = 0.5 * 2**retries
+            if deadline is not None and self._clock() + backoff >= deadline:
+                raise error from None  # no time left for another attempt
             retries += 1
-            self._sleep(0.5 * 2 ** (retries - 1))
+            self._sleep(backoff)
 
     def complete(
         self,
@@ -185,6 +395,7 @@ class OpenAICompatClient:
         schema: dict[str, Any] | None = None,
         schema_name: str = "answer",
         tools: Sequence[ToolSpec] = (),
+        deadline: float | None = None,
     ) -> Completion:
         endpoint = self.endpoint
         request: dict[str, Any] = {
@@ -214,11 +425,14 @@ class OpenAICompatClient:
                 for t in tools
             ]
 
-        started = time.monotonic()
+        def create(timeout: httpx2.Timeout | None) -> Any:
+            if timeout is None:
+                return self._sdk.chat.completions.create(**request)
+            return self._sdk.chat.completions.create(**request, timeout=timeout)
+
+        started = self._clock()
         try:
-            response, retries = self._with_retries(
-                lambda: self._sdk.chat.completions.create(**request)
-            )
+            response, retries = self._with_retries(create, deadline)
         except LLMError as exc:
             log.info(
                 "llm call failed: model=%s code=%s retries=%d",
@@ -227,7 +441,7 @@ class OpenAICompatClient:
                 exc.retries,
             )
             raise
-        latency_ms = round((time.monotonic() - started) * 1000)
+        latency_ms = round((self._clock() - started) * 1000)
 
         # A 200 whose body is not JSON reaches us as text, not as a completion.
         choices = getattr(response, "choices", None)
@@ -279,6 +493,10 @@ class OpenAICompatClient:
         """GET a native Ollama path; ``None`` when the endpoint is not an Ollama."""
         try:
             response = self._http.get(self._root() + path, timeout=PROBE_TIMEOUT_S)
+        except _Refused as exc:
+            raise LLMError(
+                "llm_bad_response", "The endpoint's answer is too large.", cause=exc.cause
+            ) from None
         except httpx2.TimeoutException as exc:
             raise LLMError(
                 "llm_timeout", "No answer from the endpoint.", cause=_cause(exc)
@@ -300,7 +518,7 @@ class OpenAICompatClient:
         return version if isinstance(version, str) else None
 
     def models(self) -> list[ModelInfo]:
-        page, retries = self._with_retries(self._sdk.models.list)
+        page, retries = self._with_retries(lambda _: self._sdk.models.list())
         data = getattr(page, "data", None)
         if not isinstance(data, list):
             raise LLMError("llm_bad_response", "The model list is not a list.", retries=retries)

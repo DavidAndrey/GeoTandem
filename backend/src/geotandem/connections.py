@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Annotated, Any
 
-from pydantic import BaseModel, Field, SecretStr, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, StringConstraints
 from sqlalchemy import Engine, select, update
 from sqlalchemy.orm import Session
 
@@ -30,6 +30,8 @@ ApiKey = Annotated[SecretStr, Field(min_length=1, max_length=1000)]
 Temperature = Annotated[float, Field(ge=0, le=2)]
 Timeout = Annotated[float, Field(gt=0, le=600)]
 ContextLength = Annotated[int, Field(ge=256, le=10_000_000)]
+RequestLimit = Annotated[int, Field(gt=0, le=1_000_000)]
+"""Requests per day over all accounts (P5); positive, required while the limit is on."""
 
 
 class ConnectionProblem(Exception):
@@ -44,7 +46,10 @@ class ConnectionProblem(Exception):
 
 
 class CallParameters(BaseModel):
-    """How to call the model (C4): what an ``Endpoint`` is built from."""
+    """How to call the model (C4): what an ``Endpoint`` is built from. Here and in
+    every connection body an unknown field is refused (422), never dropped (WP71)."""
+
+    model_config = ConfigDict(extra="forbid")
 
     base_url: BaseUrl
     model: ModelName
@@ -77,10 +82,18 @@ class ConnectionWrite(CallParameters):
         default=False,
         description="Required to let an external connection receive data contents (C6).",
     )
+    request_limit_enabled: bool | None = Field(
+        default=None, description="Cap the requests per day, over all accounts (P5). Unset: off."
+    )
+    request_limit_per_day: RequestLimit | None = Field(
+        default=None, description="The cap; required while request_limit_enabled (P5)."
+    )
 
 
 class ConnectionPatch(BaseModel):
     """Only the fields sent change. ``api_key: null`` removes the key."""
+
+    model_config = ConfigDict(extra="forbid")
 
     name: Name | None = None
     base_url: BaseUrl | None = None
@@ -96,9 +109,12 @@ class ConnectionPatch(BaseModel):
     may_receive_data: bool | None = None
     marked_external: bool | None = None
     confirm_data_release: bool = False
+    request_limit_enabled: bool | None = None
+    request_limit_per_day: RequestLimit | None = None
+    """``null`` removes the cap, allowed only while the limit is off."""
 
 
-NULLABLE = frozenset({"api_key", "seed", "context_length"})
+NULLABLE = frozenset({"api_key", "seed", "context_length", "request_limit_per_day"})
 """Patch fields where ``null`` is a value, not "unchanged"."""
 
 
@@ -135,6 +151,10 @@ class ConnectionInfo(BaseModel):
     last_test: CheckResult | None
     created_at: datetime
     updated_at: datetime
+    request_limit_enabled: bool = False
+    """Requests per day are capped, over all accounts (P5)."""
+    request_limit_per_day: int | None = None
+    """The cap; kept while the limit is off, so switching it on again restores it."""
 
 
 class ConnectionOption(BaseModel):
@@ -216,6 +236,8 @@ class Connections:
             last_test=row.last_test,
             created_at=row.created_at,
             updated_at=row.updated_at,
+            request_limit_enabled=row.request_limit_enabled,
+            request_limit_per_day=row.request_limit_per_day,
         )
 
     def all(self) -> list[ConnectionInfo]:
@@ -236,13 +258,6 @@ class Connections:
             return self.vault.decrypt(row.api_key), False
         except CredentialsUnreadable:
             return None, True
-
-    def endpoint(self, connection_id: int) -> Endpoint:
-        """The parameters for a call, the key decrypted (C8). Raises
-        ``CredentialsUnreadable`` when the key cannot be opened."""
-        with Session(reading(self.engine)) as session:
-            row = self._row(session, connection_id)
-            return self._endpoint(row, self.vault.decrypt(row.api_key) if row.api_key else None)
 
     @staticmethod
     def _endpoint(row: LLMConnection, key: str | None) -> Endpoint:
@@ -329,6 +344,17 @@ class Connections:
             )
 
     @staticmethod
+    def _check_request_limit(row: LLMConnection) -> None:
+        """A limit that is on needs its number (P5); off, the number may stay or go."""
+        if row.request_limit_enabled and row.request_limit_per_day is None:
+            raise ConnectionProblem(
+                400,
+                "request_limit_required",
+                "A request limit that is on needs the number of requests per day.",
+                name=row.name,
+            )
+
+    @staticmethod
     def _settle_default(
         session: Session, made_default: LLMConnection | None, had_default: bool
     ) -> None:
@@ -386,7 +412,10 @@ class Connections:
             is_default=body.is_default,
             may_receive_data=local if body.may_receive_data is None else body.may_receive_data,
             marked_external=body.marked_external,
+            request_limit_enabled=bool(body.request_limit_enabled),
+            request_limit_per_day=body.request_limit_per_day,
         )
+        self._check_request_limit(row)
         self._check_release(row, released_before=False, confirmed=body.confirm_data_release)
         with Session(self.engine) as session, session.begin():
             had_default = self._had_default(session)
@@ -421,6 +450,7 @@ class Connections:
                 if getattr(row, name) != value:
                     setattr(row, name, value)
                     changed.append(name)
+            self._check_request_limit(row)
             self._check_release(row, released_before, patch.confirm_data_release)
             self._check_name(session, row.name, row.id)
             made_default = row if "is_default" in changed and row.is_default else None
@@ -438,18 +468,36 @@ class Connections:
 
     # --- the account's choice (C14, C17) -----------------------------------------
 
+    @staticmethod
+    def _active_row(session: Session, user_id: int) -> LLMConnection | None:
+        chosen_id = session.scalar(select(User.llm_connection_id).where(User.id == user_id))
+        chosen = session.get(LLMConnection, chosen_id) if chosen_id is not None else None
+        if chosen is not None and chosen.enabled:
+            return chosen
+        return session.scalar(
+            select(LLMConnection).where(LLMConnection.is_default, LLMConnection.enabled)
+        )
+
     def active(self, user_id: int) -> ConnectionInfo | None:
         """The connection a model action of this account uses: its choice while that
         is enabled, else the default, else none. Resolved on every use."""
         with Session(reading(self.engine)) as session:
-            chosen_id = session.scalar(select(User.llm_connection_id).where(User.id == user_id))
-            chosen = session.get(LLMConnection, chosen_id) if chosen_id is not None else None
-            if chosen is not None and chosen.enabled:
-                return self._info(chosen)
-            default = session.scalar(
-                select(LLMConnection).where(LLMConnection.is_default, LLMConnection.enabled)
-            )
-            return self._info(default) if default else None
+            row = self._active_row(session, user_id)
+            return self._info(row) if row else None
+
+    def active_call(self, user_id: int) -> tuple[ConnectionInfo, Endpoint] | None:
+        """``active`` and its endpoint, read together for a model call (C14, H7):
+        the record's snapshot (name, host, locality) is of the connection the
+        call goes to, and a connection disabled or edited meanwhile is never
+        half used, as two reads would allow (security review #28). The only way
+        to an endpoint with the key decrypted (C8) for a call; raises
+        ``CredentialsUnreadable`` when the key cannot be opened."""
+        with Session(reading(self.engine)) as session:
+            row = self._active_row(session, user_id)
+            if row is None:
+                return None
+            key = self.vault.decrypt(row.api_key) if row.api_key else None
+            return self._info(row), self._endpoint(row, key)
 
     def options(self, user_id: int) -> ConnectionChoice:
         with Session(reading(self.engine)) as session:

@@ -17,7 +17,7 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-      grepInvert: /@llm/,
+      grepInvert: /@llm|@stub/,
     },
     // Tests that enable a model connection change what every account sees: they
     // run alone, after all others (E2.1 with a real model, scripts/gate.sh).
@@ -26,6 +26,15 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
       grep: /@llm/,
       dependencies: ['chromium'],
+    },
+    // Modus B against the model stub (e2e/model-stub, from E2.3 on): its
+    // connections would otherwise become the default the E2.1 test expects
+    // to set itself, so it runs after that one.
+    {
+      name: 'stub',
+      use: { ...devices['Desktop Chrome'] },
+      grep: /@stub/,
+      dependencies: ['llm'],
     },
   ],
 })

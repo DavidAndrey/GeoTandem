@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, expect, test, vi } from 'vitest'
 import type { LLMOptions } from '../api/client'
 import { signedIn } from '../test/fixtures'
+import { levelOption } from '../test/model-mocks'
 import { fakeApi, renderAt } from '../test/render'
 import { ModelChoice } from './ModelChoice'
 
@@ -30,8 +31,8 @@ const options: LLMOptions = {
   chosen_connection_id: 2,
   active_connection_id: 2,
   levels: [
-    { id: 1, name: 'Assistenz', description: 'Erklärt nur.', selectable: true },
-    { id: 2, name: 'Prüfen', description: 'Mit Freigabe.', selectable: true },
+    { ...levelOption('Assistenz'), description: 'Erklärt nur.' },
+    { ...levelOption('Prüfen'), description: 'Mit Freigabe.' },
   ],
   chosen_level_id: null,
   active_level_id: 2,
@@ -85,4 +86,20 @@ test('without a connection the header says so; an administrator gets a link', as
     'href',
     '/admin/modelle',
   )
+})
+
+test('with connections but none active for the account, the header says so (M1.3)', async () => {
+  // No choice of its own and no default: the backend resolves no connection.
+  const unresolved = {
+    ...options,
+    connections: options.connections.map((c) => ({ ...c, is_default: false })),
+    chosen_connection_id: null,
+    active_connection_id: null,
+  }
+  fakeApi({ ...signedIn({ role: 'user' }), 'GET /api/llm/options': unresolved })
+  renderAt('/', <ModelChoice />)
+
+  const trigger = await screen.findByRole('button', { name: 'Modellunterstützung wählen' })
+  expect(within(trigger).getByText('Keine Modellanbindung')).toBeInTheDocument()
+  expect(within(trigger).getByText('Stufe: Prüfen')).toBeInTheDocument()
 })

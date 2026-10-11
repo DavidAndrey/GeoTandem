@@ -4,8 +4,11 @@ from typing import Any
 
 import pytest
 from alembic.autogenerate import compare_metadata
+from alembic.config import Config
 from alembic.migration import MigrationContext
+from alembic.operations import Operations
 from sqlalchemy import Engine, inspect, text
+from sqlalchemy.exc import IntegrityError
 
 from geotandem.config import Settings
 from geotandem.db import migrate
@@ -235,3 +238,172 @@ def test_a_migration_that_breaks_a_reference_fails(settings: Settings) -> None:
         raw.execute("PRAGMA foreign_keys = ON")
     with pytest.raises(RuntimeError, match="foreign key"):
         migrate.upgrade(engine, "0006")
+
+
+def test_a_rebuild_keeps_the_references_of_model_actions(settings: Settings) -> None:
+    """Like 0006/0007 did to app_user, a later migration may rebuild app_user or
+    model_action: the records keep their account and their thread (P6, compare_of)."""
+    engine = make_engine(settings)
+    migrate.upgrade(engine, "0005")
+    _seed_accounts_with_children(engine)
+    migrate.upgrade(engine)
+    with engine.begin() as conn:
+        for id, user, parent, compare in [(1, 1, None, None), (2, 1, 1, None), (3, 2, None, 1)]:
+            conn.execute(
+                text(
+                    "INSERT INTO model_action (id, user_id, account, created_at, prompt,"
+                    " prompt_hash, approach, status, parent_action_id, compare_of, level_id,"
+                    " level_name, level_matrix, level_prompt_hash, connection_id,"
+                    " connection_name, connection_model, connection_host,"
+                    " connection_locality, profile_hash) VALUES (:id, :user, 'anna',"
+                    " '2026-10-10 08:00:00', 'p', 'h', 'direct', 'proposed', :parent,"
+                    " :compare, 1, 'Prüfen', '{}', 'h', 1, 'Lokal', 'm', 'localhost',"
+                    " 'local', 'h')"
+                ),
+                {"id": id, "user": user, "parent": parent, "compare": compare},
+            )
+    actions = "SELECT id, user_id, parent_action_id, compare_of FROM model_action"
+    with engine.connect() as conn:
+        before = (_children(engine), sorted(tuple(r) for r in conn.execute(text(actions))))
+
+    def rebuild(config: Config) -> None:
+        operations = Operations(MigrationContext.configure(config.attributes["connection"]))
+        for table in ("app_user", "model_action"):
+            with operations.batch_alter_table(table, recreate="always"):
+                pass
+
+    migrate._run(engine, rebuild)
+
+    with engine.connect() as conn:
+        after = (_children(engine), sorted(tuple(r) for r in conn.execute(text(actions))))
+    assert after == before
+
+
+def test_touched_at_comes_and_goes_with_0010_and_keeps_the_records(settings: Settings) -> None:
+    """WP70: the hand edit after a model action (``undo_blocked``) is its own
+    revision; 0009 belongs to the tag e2.3 and stays as it was."""
+    engine = make_engine(settings)
+    migrate.upgrade(engine, "0009")
+    assert "touched_at" not in {c["name"] for c in inspect(engine).get_columns("model_action")}
+    with engine.begin() as conn:
+        for id, parent in [(1, None), (2, 1)]:
+            conn.execute(
+                text(
+                    "INSERT INTO model_action (id, account, created_at, prompt, prompt_hash,"
+                    " approach, status, parent_action_id, level_id, level_name, level_matrix,"
+                    " level_prompt_hash, connection_id, connection_name, connection_model,"
+                    " connection_host, connection_locality, profile_hash) VALUES (:id, 'anna',"
+                    " '2026-10-10 08:00:00', 'p', 'h', 'direct', 'applied', :parent, 1,"
+                    " 'Prüfen', '{}', 'h', 1, 'Lokal', 'm', 'localhost', 'local', 'h')"
+                ),
+                {"id": id, "parent": parent},
+            )
+    rows = "SELECT id, parent_action_id, status FROM model_action ORDER BY id"
+    with engine.connect() as conn:
+        before = [tuple(r) for r in conn.execute(text(rows))]
+
+    migrate.upgrade(engine)
+    with engine.begin() as conn:
+        untouched = "SELECT count(*) FROM model_action WHERE touched_at IS NULL"
+        assert conn.scalar(text(untouched)) == 2
+        conn.execute(text("UPDATE model_action SET touched_at = '2026-10-10 09:00:00'"))
+
+    migrate.downgrade(engine, "0009")
+    assert "touched_at" not in {c["name"] for c in inspect(engine).get_columns("model_action")}
+    with engine.connect() as conn:
+        assert [tuple(r) for r in conn.execute(text(rows))] == before
+
+
+def test_steps_come_and_go_with_0011_and_keep_the_records(settings: Settings) -> None:
+    """WP75: a chain's steps are a table of their own, its run time and its
+    conversation two columns of the action; existing records are direct
+    queries, with no steps and no run time. Steps go with their action."""
+    engine = make_engine(settings)
+    migrate.upgrade(engine, "0010")
+    assert "model_action_step" not in inspect(engine).get_table_names()
+    action = (
+        "INSERT INTO model_action (id, account, created_at, prompt, prompt_hash, approach,"
+        " status, level_id, level_name, level_matrix, level_prompt_hash, connection_id,"
+        " connection_name, connection_model, connection_host, connection_locality,"
+        " profile_hash) VALUES (:id, 'anna', '2026-10-11 08:00:00', 'p', 'h', :approach,"
+        " 'proposed', 1, 'Prüfen', '{}', 'h', 1, 'Lokal', 'm', 'localhost', 'local', 'h')"
+    )
+    with engine.begin() as conn:
+        conn.execute(text(action), {"id": 1, "approach": "direct"})
+    rows = "SELECT id, approach, status FROM model_action ORDER BY id"
+    with engine.connect() as conn:
+        before = [tuple(r) for r in conn.execute(text(rows))]
+
+    migrate.upgrade(engine)
+
+    columns = {c["name"] for c in inspect(engine).get_columns("model_action")}
+    assert {"run_ms", "turns", "level_prompt"} <= columns
+    with engine.begin() as conn:
+        assert tuple(conn.execute(text("SELECT run_ms, turns FROM model_action")).one()) == (
+            0,
+            None,
+        )
+        conn.execute(text(action), {"id": 2, "approach": "chain"})
+        for position in (1, 2):
+            conn.execute(
+                text(
+                    "INSERT INTO model_action_step (action_id, position, text, tool, arguments,"
+                    " classes, cell, status, query) VALUES (2, :position, 'Schritt', 'filter',"
+                    " '{}', '[\"query\"]', 'approve', 'planned', '{\"source\": \"schulen\"}')"
+                ),
+                {"position": position},
+            )
+        twice = text(
+            "INSERT INTO model_action_step (action_id, position, text, tool, arguments, classes,"
+            " cell, status, query) VALUES (2, 1, 's', 'filter', '{}', '[]', 'auto', 'planned',"
+            " '{}')"
+        )
+        with pytest.raises(IntegrityError), conn.begin_nested():  # one step per position
+            conn.execute(twice)
+        conn.execute(text("DELETE FROM model_action WHERE id = 2"))
+        assert conn.scalar(text("SELECT count(*) FROM model_action_step")) == 0
+
+    migrate.downgrade(engine, "0010")
+    assert "model_action_step" not in inspect(engine).get_table_names()
+    assert not {"run_ms", "turns", "level_prompt"} & {
+        c["name"] for c in inspect(engine).get_columns("model_action")
+    }
+    with engine.connect() as conn:
+        assert [tuple(r) for r in conn.execute(text(rows))] == before
+    migrate.upgrade(engine)
+
+
+def test_re_plan_calls_come_and_go_with_0012(settings: Settings) -> None:
+    """Security review #43: a chain's re-plans, one row each, counted for the
+    request limit; rows go with their action, the records stay."""
+    engine = make_engine(settings)
+    migrate.upgrade(engine, "0011")
+    assert "model_call" not in inspect(engine).get_table_names()
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO model_action (id, account, created_at, prompt, prompt_hash,"
+                " approach, status, level_id, level_name, level_matrix, level_prompt_hash,"
+                " connection_id, connection_name, connection_model, connection_host,"
+                " connection_locality, profile_hash) VALUES (1, 'anna', '2026-10-11 08:00:00',"
+                " 'p', 'h', 'chain', 'running', 1, 'Prüfen', '{}', 'h', 1, 'Lokal', 'm',"
+                " 'localhost', 'local', 'h')"
+            )
+        )
+
+    migrate.upgrade(engine)
+
+    assert "model_call" in inspect(engine).get_table_names()
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO model_call (action_id, connection_id, called_at)"
+                " VALUES (1, 1, '2026-10-11 08:01:00')"
+            )
+        )
+        conn.execute(text("DELETE FROM model_action WHERE id = 1"))
+        assert conn.scalar(text("SELECT count(*) FROM model_call")) == 0
+
+    migrate.downgrade(engine, "0011")
+    assert "model_call" not in inspect(engine).get_table_names()
+    migrate.upgrade(engine)

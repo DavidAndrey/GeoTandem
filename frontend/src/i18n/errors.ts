@@ -4,6 +4,8 @@
 // code this version does not know yet.
 import { plural, t } from '@lingui/core/macro'
 import { MIN_PASSWORD_LENGTH } from '../auth/rules'
+import type { OpClass } from '../api/client'
+import { classLabel, OP_CLASSES } from '../model/approval/governance'
 import { formatNumber } from './locale'
 
 export type Details = Record<string, unknown>
@@ -15,6 +17,8 @@ const number = (value: unknown) => (typeof value === 'number' ? formatNumber(val
 
 type Words = (details: Details, count: number) => string
 
+const isOpClass = (value: unknown): value is OpClass => OP_CLASSES.includes(value as OpClass)
+
 const MESSAGES: Record<string, Words> = {
   // Requests
   bad_request: () => t`Die Anfrage wurde abgelehnt.`,
@@ -24,8 +28,11 @@ const MESSAGES: Record<string, Words> = {
   },
   schema_violation: () => t`Die Anfrage hat nicht die erwartete Form.`,
   unknown_tool: () => t`Dieses Werkzeug gibt es nicht.`,
-  busy: () =>
-    t`Gerade sind zu viele Anfragen gleichzeitig unterwegs. Bitte gleich nochmals versuchen.`,
+  busy: (d) =>
+    // ``running``: the account's previous prompt, an aborted one too, still holds the model.
+    d.reason === 'running'
+      ? t`Ihre vorige Anfrage ist beim Modell noch nicht zu Ende. Bitte gleich nochmals versuchen.`
+      : t`Gerade sind zu viele Anfragen gleichzeitig unterwegs. Bitte gleich nochmals versuchen.`,
   request_too_large: (d) => {
     const mb = number(d.max_mb)
     return t`Die Anfrage ist grösser als ${mb} MB.`
@@ -39,6 +46,8 @@ const MESSAGES: Record<string, Words> = {
     t`Benutzername oder Passwort stimmt nicht, das Konto ist gesperrt, oder die Anmeldung ist abgelaufen.`,
   password_change_required: () => t`Bitte zuerst das Startpasswort ändern.`,
   forbidden: () => t`Dafür braucht es die Rolle Administrator.`,
+  session_required: () =>
+    t`Das geht nur in einer angemeldeten Sitzung im Browser, nicht mit einem Zugangsschlüssel.`,
   cross_origin: () => t`Anfragen von anderen Seiten werden nicht angenommen.`,
   setup_closed: () => t`Die Anwendung ist bereits eingerichtet.`,
   setup_token_invalid: () => t`Der Einrichtungscode stimmt nicht.`,
@@ -77,7 +86,8 @@ const MESSAGES: Record<string, Words> = {
   },
   unsupported_operation: () => t`Diese Operation geht hier nicht.`,
   result_too_large: (d) => {
-    const max = number(d.max_features)
+    // A query's limit (max_features), or a chain's stop with step, value and max.
+    const max = number(d.max_features ?? d.max)
     return t`Das Ergebnis hat mehr als ${max} Objekte. Bitte die Abfrage enger fassen.`
   },
   query_timeout: () => t`Die Abfrage hat zu lange gedauert und wurde abgebrochen.`,
@@ -136,8 +146,52 @@ const MESSAGES: Record<string, Words> = {
   level_not_available: () => t`Diese Stufe steht nicht zur Wahl.`,
   class_not_allowed: (d) => {
     const level = text(d.level)
-    const part = text(d.part)
+    // The class in the matrix's words (M7), not its key; another part as sent.
+    const part = isOpClass(d.op_class) ? classLabel(d.op_class) : text(d.part)
     return t`Auf der Stufe „${level}" ist „${part}" nicht erlaubt.`
+  },
+  // Modus B: refusals of a model's answer (design M3) and the model routes
+  model_query_invalid: () => t`Die Antwort des Modells ist keine gültige Abfrage.`,
+  limit_exceeded: (d) => {
+    // details.limit says what is counted; so far only conditions (MAX_CONDITIONS).
+    const value = number(d.value)
+    const max = number(d.max)
+    return t`Die Abfrage hat ${value} Bedingungen; im Modus B sind höchstens ${max} möglich.`
+  },
+  not_representable: () =>
+    t`Diese Abfrage lässt sich in den Bedienelementen nicht vollständig darstellen.`,
+  step_limit: (d) => {
+    const max = number(d.max)
+    return t`Die Werkzeugkette braucht mehr als ${max} Schritte.`
+  },
+  not_implemented: () => t`Dieser Teil der Modellunterstützung ist noch nicht verfügbar.`,
+  context_too_large: () =>
+    t`Frage, Layer-Steckbrief und Verlauf sind zu lang für das Modell. Bitte ohne Bezug auf frühere Antworten fragen.`,
+  stale_reference: (d) => {
+    const layer = text(d.layer)
+    return t`Die frühere Antwort nutzt den Layer „${layer}", den es nicht mehr gibt.`
+  },
+  model_unreadable: () => t`Die Antwort des Modells ist nicht lesbar.`,
+  quota_exceeded: (d) => {
+    const limit = number(d.limit)
+    return t`Die ${limit} Anfragen pro Tag an diese Anbindung sind aufgebraucht. Die Grenze setzt ein Administrator.`
+  },
+  not_approved: () => t`Dieser Vorschlag ist nicht freigegeben.`,
+  already_decided: () => t`Über diesen Vorschlag ist schon entschieden.`,
+  nothing_to_undo: () => t`Hier gibt es nichts zurückzunehmen.`,
+  nothing_to_compare: () =>
+    t`Eine der beiden Antworten hat kein Ergebnis; es gibt nichts zu vergleichen.`,
+  repeat_of_repeat: () =>
+    t`Diese Antwort ist schon die Wiederholung einer anderen; verglichen wird mit dieser.`,
+  undo_blocked: () =>
+    t`Die Analyse wurde seither von Hand geändert; die Modelländerung lässt sich nicht mehr zurücknehmen.`,
+  time_limit: (d) => {
+    const max = number(d.max)
+    return t`Die Werkzeugkette lief länger als ${max} Sekunden und wurde angehalten.`
+  },
+  export_too_large: (d) => {
+    const max = number(d.max)
+    return t`Der Export umfasst mehr als ${max} Einträge. Bitte den Zeitraum oder die Filter enger wählen.`
   },
   // Model connections
   connection_name_taken: (d) => {
@@ -149,9 +203,14 @@ const MESSAGES: Record<string, Words> = {
     t`Solange andere Anbindungen freigegeben sind, braucht es eine voreingestellte. Bitte zuerst eine andere voreinstellen.`,
   data_release_unconfirmed: () =>
     t`Datenfreigabe an eine externe Anbindung braucht eine ausdrückliche Bestätigung.`,
-  connection_not_available: () => t`Diese Anbindung steht nicht zur Wahl.`,
+  connection_not_available: (d) =>
+    d.reason === 'none'
+      ? t`Es ist keine Modellanbindung eingerichtet.`
+      : t`Diese Anbindung steht nicht zur Wahl.`,
   api_key_bound_to_url: () =>
     t`Der gespeicherte Zugangsschlüssel geht nur an die bisherige Adresse. Für eine neue Adresse bitte den Schlüssel neu eintragen oder entfernen.`,
+  request_limit_required: () =>
+    t`Ist die Begrenzung eingeschaltet, braucht es die Zahl der Anfragen pro Tag.`,
   credentials_unreadable: () =>
     t`Der gespeicherte Zugangsschlüssel lässt sich nicht mehr öffnen (secret.key fehlt oder wurde ersetzt). Bitte neu eintragen.`,
   llm_invalid_url: () =>

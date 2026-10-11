@@ -16,6 +16,7 @@ import type {
   TableState,
 } from './model'
 import type { Analysis } from './model'
+import { applied, discarded, NO_ORIGIN, stamp, touch, type Origin } from '../model/origin'
 import { canBeResult, emptyTree } from './query'
 import * as T from './tree'
 
@@ -26,6 +27,8 @@ interface AnalysisStore extends Analysis {
   dirty: boolean
   table: TableState
   queryRef: QueryRef | null
+  /** Origin marks "Modell" (plan P3): beside the analysis, so never saved with it. */
+  origin: Origin
 
   /** ``table``: a table layer, shown in the attribute table only (design B11). */
   addLayer: (layer: string, asResult?: boolean, table?: boolean) => void
@@ -57,11 +60,30 @@ interface AnalysisStore extends Analysis {
   /** Replaces result layer, conditions and restriction by a saved query's (design B1). */
   applyQuery: (part: QueryPart, ref: QueryRef | null) => void
   setQueryRef: (ref: QueryRef | null) => void
+  /** Marks rows of the draft (or the tree) as set by the model; all when ``ids`` is omitted. */
+  markOrigin: (ids?: string[]) => void
 
   reset: () => void
   load: (analysis: Analysis, table?: TableState, queryRef?: QueryRef | null) => void
+  /** What an undo of a model change puts back (design M6.2), origin marks included. */
+  snapshot: () => AnalysisSnapshot
+  /** Puts a snapshot back whole; unlike ``load`` it keeps the marks it carries (plan WP72). */
+  restore: (snapshot: AnalysisSnapshot) => void
   /** After saving: the state is unchanged, it just no longer counts as unsaved. */
   markSaved: () => void
+}
+
+/**
+ * The analysis as it was before a model change (design M6.2: "stellt den
+ * vorigen Analysezustand vollständig wieder her"): layers, result layer,
+ * conditions and restriction, the saved-query link, the unsaved mark and the
+ * origin marks. ``load`` clears the marks, so an undo must not go through it.
+ * Table and map view are not part of it: neither is a change of the analysis.
+ */
+export interface AnalysisSnapshot extends Analysis {
+  queryRef: QueryRef | null
+  dirty: boolean
+  origin: Origin
 }
 
 export const emptyTable = (): TableState => ({
@@ -95,6 +117,7 @@ const initial = (): Analysis & {
   dirty: boolean
   table: TableState
   queryRef: QueryRef | null
+  origin: Origin
 } => ({
   layers: [],
   result: null,
@@ -104,6 +127,7 @@ const initial = (): Analysis & {
   dirty: false,
   table: emptyTable(),
   queryRef: null,
+  origin: NO_ORIGIN,
 })
 
 const layerPatch =
@@ -196,11 +220,19 @@ export const useAnalysis = create<AnalysisStore>()((set, get) => ({
   },
 
   edit: () => set((s) => (s.draft ? s : { draft: s.tree })),
-  editNode: (id, patch) => set((s) => ({ draft: T.update(s.draft ?? s.tree, id, patch) })),
+  editNode: (id, patch) =>
+    set((s) => {
+      const draft = s.draft ?? s.tree
+      return { draft: T.update(draft, id, patch), origin: touch(s.origin, draft, id, patch) }
+    }),
   addNode: (groupId, node) => set((s) => ({ draft: T.append(s.draft ?? s.tree, groupId, node) })),
   removeNode: (id) => set((s) => ({ draft: T.remove(s.draft ?? s.tree, id) })),
-  apply: () => set((s) => (s.draft ? { tree: s.draft, draft: null, dirty: true } : s)),
-  discard: () => set({ draft: null }),
+  // A hand-edited row loses its mark for good once the draft is applied (P3).
+  apply: () =>
+    set((s) =>
+      s.draft ? { tree: s.draft, draft: null, dirty: true, origin: applied(s.origin, s.draft) } : s,
+    ),
+  discard: () => set((s) => ({ draft: null, origin: discarded(s.origin, s.tree) })),
   setRestriction: (restriction) => set({ restriction, dirty: true }),
 
   setTableTab: (tab) => set((s) => ({ table: { ...s.table, tab } })),
@@ -244,9 +276,12 @@ export const useAnalysis = create<AnalysisStore>()((set, get) => ({
         draft: null,
         queryRef,
         dirty: true,
+        // A replaced query brings no marks; the model's caller marks its rows after.
+        origin: NO_ORIGIN,
       }
     }),
   setQueryRef: (queryRef) => set({ queryRef }),
+  markOrigin: (ids) => set((s) => ({ origin: stamp(s.origin, s.draft ?? s.tree, ids) })),
 
   reset: () => set(initial()),
   load: (analysis, table, queryRef) =>
@@ -256,8 +291,14 @@ export const useAnalysis = create<AnalysisStore>()((set, get) => ({
       queryRef: queryRef ?? null,
       draft: null,
       dirty: false,
+      origin: NO_ORIGIN,
     }),
   markSaved: () => set({ dirty: false }),
+  snapshot: () => {
+    const { layers, result, tree, restriction, queryRef, dirty, origin } = get()
+    return { layers, result, tree, restriction, queryRef, dirty, origin }
+  },
+  restore: (snapshot) => set({ ...snapshot, draft: null }),
 }))
 
 /** The analysis as the query sees it: the draft counts while the editor is open. */

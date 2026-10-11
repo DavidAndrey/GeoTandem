@@ -112,9 +112,12 @@ class LLMClient(Protocol):
         schema: dict[str, Any] | None = None,
         schema_name: str = "answer",
         tools: Sequence[ToolSpec] = (),
+        deadline: float | None = None,
     ) -> Completion:
         """Ask once. With ``schema`` the answer is constrained to it (JSON-schema
-        output); with ``tools`` the model may call them instead of answering."""
+        output); with ``tools`` the model may call them instead of answering.
+        With ``deadline`` (``time.monotonic()``) the call ends by then, every
+        attempt and retry together: ``llm_timeout`` once it has passed."""
         ...
 
     def models(self) -> list[ModelInfo]:

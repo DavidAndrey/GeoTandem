@@ -1,6 +1,6 @@
 """GeoTandem query-object schema (F-10.3)."""
 
-from geotandem_query.canonical import canonical_json, query_hash
+from geotandem_query.canonical import canonical_json, compact, query_hash
 from geotandem_query.models import (
     Aggregate,
     And,
@@ -68,5 +68,6 @@ __all__ = [
     "ValueColumn",
     "ValueMetric",
     "canonical_json",
+    "compact",
     "query_hash",
 ]

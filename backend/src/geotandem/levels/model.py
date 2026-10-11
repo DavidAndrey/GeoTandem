@@ -53,7 +53,7 @@ class LevelError(Exception):
 class Level(BaseModel):
     """One level. In a set, the list order is the display order (H1)."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     id: int | None = None
     """Stable across edits (H7); ``None`` for a level not stored yet."""

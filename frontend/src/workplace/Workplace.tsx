@@ -5,6 +5,7 @@ import { Trans } from '@lingui/react/macro'
 import { t } from '@lingui/core/macro'
 import { useShallow } from 'zustand/react/shallow'
 import { Tabs } from 'radix-ui'
+import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect } from 'react'
 import type { DisplayLayer, GeoJSONGeometry, ReferenceRow } from '../analysis/model'
 import { layerQuery, resultQuery, resultWhere, rowQueries } from '../analysis/query'
@@ -12,6 +13,16 @@ import { currentAnalysis, useAnalysis } from '../analysis/store'
 import type { LayerInfo } from '../api/client'
 import { useLayers, useMapConfig } from '../api/queries'
 import { EditorPanel } from '../editor/EditorPanel'
+import { watchModel } from '../model/approval/flow'
+import { ChainCaption, ChainLayer, ChainPending } from '../model/chain/ChainMap'
+import { useChainRunner } from '../model/chain/flow'
+import { NoticeBar } from '../model/approval/NoticeBar'
+import { PendingProposal } from '../model/approval/Pending'
+import { PreviewCaption, PreviewLayer } from '../model/approval/Preview'
+import { useActionPolling } from '../model/panel/poll'
+import { useActiveModel } from '../model/panel/active'
+import { PromptPanel, PromptUnavailable } from '../model/panel/PromptPanel'
+import { useModel } from '../model/store'
 import L from 'leaflet'
 import { Table2 } from 'lucide-react'
 import { useHits } from '../map/data'
@@ -34,16 +45,31 @@ import { Swatch } from './Swatch'
 
 export function Workplace() {
   const editing = useAnalysis((s) => s.draft !== null)
+  const { loading, connection } = useActiveModel()
+  // Modus B (design M1): the Prompt tab opens a 460 px panel between sidebar
+  // and map; B2 takes the same place, and the dialogue stays (design Q3).
+  const available = connection !== null
+  const prompt = useModel((s) => s.open) && available && !editing
+  const setOpen = useModel((s) => s.setOpen)
+  const client = useQueryClient()
+  useActionPolling()
+  // Approved tool chains run as they arrive (P4).
+  useChainRunner()
+  // The hand-over before the approval flow, in this order (see ``watchModel``).
+  useEffect(() => watchModel(client), [client])
   return (
     <div
-      className={`grid h-full gap-4 ${editing ? 'grid-cols-[250px_460px_minmax(0,1fr)]' : 'grid-cols-[250px_minmax(0,1fr)]'}`}
+      className={`grid h-full gap-4 ${editing || prompt ? 'grid-cols-[250px_460px_minmax(0,1fr)]' : 'grid-cols-[250px_minmax(0,1fr)]'}`}
     >
       <aside
         className={`flex min-h-0 flex-col gap-4 overflow-auto pr-1 ${editing ? 'pointer-events-none opacity-50' : ''}`}
         aria-label={t`Seitenleiste`}
         inert={editing}
       >
-        <Tabs.Root defaultValue="klassik">
+        <Tabs.Root
+          value={prompt ? 'prompt' : 'klassik'}
+          onValueChange={(value) => setOpen(value === 'prompt')}
+        >
           <Tabs.List
             className="flex gap-4 border-b border-[var(--color-divider)]"
             aria-label={t`Arbeitsweise`}
@@ -51,18 +77,34 @@ export function Workplace() {
             <Tabs.Trigger value="klassik" className="tab text-sm">
               <Trans>Klassik</Trans>
             </Tabs.Trigger>
-            <Tabs.Trigger value="prompt" className="tab text-muted text-sm" disabled>
-              <Trans>Prompt · ab E2</Trans>
+            <Tabs.Trigger
+              value="prompt"
+              data-tab="prompt"
+              className={`tab text-sm ${available ? '' : 'text-muted'}`}
+              disabled={!available}
+            >
+              <Trans>Prompt</Trans>
             </Tabs.Trigger>
           </Tabs.List>
           <Tabs.Content value="klassik" className="flex flex-col gap-5 pt-3">
             <LayerPanel />
             <QueryPanel />
+            <PendingProposal />
+            <ChainPending />
             <SavedQueries />
           </Tabs.Content>
+          {/* The sidebar keeps showing the analysis (design M1.1). */}
+          <Tabs.Content value="prompt" className="flex flex-col gap-5 pt-3">
+            <LayerPanel />
+            <QueryPanel />
+            <PendingProposal />
+            <ChainPending />
+          </Tabs.Content>
         </Tabs.Root>
+        {!loading && !available && <PromptUnavailable />}
       </aside>
       {editing && <EditorPanel />}
+      {prompt && <PromptPanel />}
       <div className="flex min-h-0 flex-col">
         <MapLayers />
         <TableDock />
@@ -153,7 +195,14 @@ function MapLayers() {
         <FeatureOnRequest />
         <FoundOverlay />
         <Measurement />
+        {/* Modus B: the dashed preview of a proposal waiting for approval (design M5.1). */}
+        <PreviewLayer />
+        {/* A chain's intermediate results, dimmed (design M9.1). */}
+        <ChainLayer />
       </MapView>
+      <NoticeBar />
+      {!active && <PreviewCaption />}
+      {!active && <ChainCaption />}
       {active && hitIds && resultTitle && (
         <p role="status" className="card absolute bottom-6 left-3 z-[1000] px-3 py-1 text-sm">
           <ActiveCount count={hitIds.size} layer={layerTitle(resultTitle, catalog.data)} />

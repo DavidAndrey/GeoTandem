@@ -241,6 +241,7 @@ TOML-Datei, deren Pfad `GEOTANDEM_CONFIG_FILE` nennt (Umgebung geht vor Datei).
 | `GEOTANDEM_QUERY_TIMEOUT_S` | `10` | Höchstlaufzeit je Abfrage in Sekunden (F-9.6) |
 | `GEOTANDEM_MAX_RUNNING_QUERIES` | `8` | Gleichzeitig laufende Abfragen insgesamt; weitere warten bis zur Höchstlaufzeit, dann `503 busy` |
 | `GEOTANDEM_MAX_RUNNING_QUERIES_PER_ACCOUNT` | `3` | Dasselbe je Konto, damit ein Konto nicht alle belegt |
+| `GEOTANDEM_MAX_MODEL_CALLS` | `4` | Gleichzeitig laufende Modellaufrufe insgesamt (je Konto einer); ein weiterer Prompt erhält sofort `503 busy` |
 | `GEOTANDEM_MAX_SESSIONS_PER_ACCOUNT` | `100` | Gespeicherte Sitzungen je Konto |
 | `GEOTANDEM_MAX_SAVED_QUERIES_PER_ACCOUNT` | `100` | Gespeicherte Abfragen je Konto |
 | `GEOTANDEM_MAX_IMPORT_MB` | `200` | Grösste angenommene Importdatei; Uploads warten in `DATA_DIR/staging` höchstens 24 h auf ihre Übernahme, höchstens 20 zugleich |
@@ -339,8 +340,16 @@ eigenen Cookie (`geotandem_device`, über HTTPS `__Host-geotandem_device`, 180
 Tage, bleibt beim Abmelden) wieder: Wird sein Benutzername von anderswo mit
 Versuchen überflutet, meldet er sich trotzdem ohne Wartezeit an. Die Zähler und
 der Schlüssel dieses Cookies liegen im Speicher und beginnen nach einem
-Neustart von vorn. Weitere Befunde und Massnahmen:
-[security-review.md](security-review.md).
+Neustart von vorn.
+
+Der Proxy darf **keine `Authorization`-Kopfzeile mit Bearer-Token** (oder
+einem anderen Schema als Basic) an die Anwendung weiterreichen, etwa aus einer
+eigenen Token-Anmeldung davor: Die
+Anwendung hält jedes solche Token für einen Programmzugang (E4) und verweigert
+damit die Entscheidungen einer Person, nämlich Freigeben, Ablehnen, Übernehmen
+(`approve`, `reject`, `decide`), die Vorschau und die Wahl von Anbindung und
+Stufe (`403 session_required`). Basic-Authentifizierung des Proxys stört nicht.
+Weitere Befunde und Massnahmen: [security-review.md](security-review.md).
 
 ## Sicherung (F-9.8)
 

@@ -22,6 +22,7 @@ CODES: dict[str, str] = {
     "not_authenticated": "Not signed in, or the sign-in failed.",
     "password_change_required": "The start password must be changed first.",
     "forbidden": "The account's role does not allow this.",
+    "session_required": "Only an interactive session may do this; a token is refused.",
     "cross_origin": "Requests from other sites are not accepted.",
     "setup_closed": "The application is already set up.",
     "setup_token_invalid": "The setup code is wrong.",
@@ -66,6 +67,27 @@ CODES: dict[str, str] = {
     "default_level_deleted": "The stored default level cannot be deleted (details.name).",
     "level_not_available": "The level does not exist or users may not choose it.",
     "class_not_allowed": "The level does not allow a part of the action (details.part).",
+    # Modus B: why the application refused a model's answer (plan E2.3, D1, D3)
+    "model_query_invalid": "The model's query does not match the schema; details.errors.",
+    "limit_exceeded": "A query on the model path exceeds details.limit (details.value > max).",
+    "not_representable": "The query cannot be shown in the controls without loss (D3).",
+    "step_limit": "The tool chain has details.value steps, more than details.max; "
+    "details.step is the first beyond them.",
+    # Modus B: the routes of model actions
+    "not_implemented": "This part of model support is not built yet (details.wp).",
+    "context_too_large": "Prompt, layer profile and context exceed the context length.",
+    "stale_reference": "The earlier answer uses a layer that is gone (details.layer).",
+    "model_unreadable": "The model's answer does not fit the answer schema.",
+    "quota_exceeded": "The connection's requests per day are used up (details.limit).",
+    "not_approved": "Only an approved action runs; this one is details.status.",
+    "already_decided": "The action is decided already (details.status).",
+    "nothing_to_undo": "The action changed nothing that could be taken back.",
+    "undo_blocked": "The analysis was changed by hand since; undo is over.",
+    "nothing_to_compare": "A side of the comparison ended without a result (details.status).",
+    "repeat_of_repeat": "The action repeats details.compare_of; compare that one instead.",
+    "time_limit": "The tool chain ran longer than details.max seconds and was stopped "
+    "before details.step.",
+    "export_too_large": "The log export would hold more than details.max rows.",
     # Model connections: administration and choice
     "connection_name_taken": "A connection of that name exists (details.name).",
     "default_not_enabled": "The default connection must be enabled for users.",
@@ -74,6 +96,7 @@ CODES: dict[str, str] = {
     "connection_not_available": "The connection is not offered: unknown or disabled.",
     "credentials_unreadable": "A stored API key cannot be opened with this secret.key.",
     "api_key_bound_to_url": "The stored API key goes only to its own address (C8).",
+    "request_limit_required": "A request limit that is on needs its number per day (P5).",
     # Model connections: why a call brought no answer (details.cause, verbatim)
     "llm_invalid_url": "The base URL is not http(s) with a host, or carries credentials.",
     "llm_unreachable": "The model endpoint could not be reached.",

@@ -31,6 +31,8 @@ const connection = (patch: Partial<ConnectionInfo> = {}): ConnectionInfo => ({
   last_test: null,
   created_at: '2026-10-08T10:00:00',
   updated_at: '2026-10-08T10:00:00',
+  request_limit_enabled: false,
+  request_limit_per_day: null,
   ...patch,
 })
 
@@ -143,6 +145,63 @@ test('an edit sends only what changed; the stored key stays unless replaced', as
 
   await vi.waitFor(() => expect(bodiesOf(calls, `PATCH ${URL}/2`)).toHaveLength(1))
   expect(bodiesOf(calls, `PATCH ${URL}/2`)[0]).toEqual({ model: 'gpt-5' })
+})
+
+// P5: the request limit per connection. The fields arrive with WP65 (TODO there).
+test('the request limit: a switch, and a number enabled and required only while it is on', async () => {
+  const calls = fakeApi({
+    ...signedIn(),
+    [`GET ${URL}`]: [],
+    [`POST ${URL}`]: connection(),
+  })
+  renderAt('/admin/modelle', <App />)
+  await userEvent.click(await screen.findByRole('button', { name: 'Anbindung' }))
+  const form = screen.getByRole('form', { name: 'Neue Anbindung' })
+  await userEvent.type(within(form).getByLabelText('Name'), 'Ollama')
+  await userEvent.type(within(form).getByLabelText('Modell'), 'qwen3:8b')
+
+  const limit = within(form).getByRole('switch', { name: 'Anfragen pro Tag begrenzen' })
+  const perDay = within(form).getByLabelText('Anfragen pro Tag')
+  expect(limit).not.toBeChecked()
+  expect(perDay).toBeDisabled()
+  expect(perDay).not.toBeRequired()
+
+  await userEvent.click(limit)
+  expect(perDay).toBeEnabled()
+  expect(perDay).toBeRequired()
+  // On without a number: not sent.
+  await userEvent.click(within(form).getByRole('button', { name: 'Speichern' }))
+  expect(bodiesOf(calls, `POST ${URL}`)).toEqual([])
+
+  await userEvent.type(perDay, '50')
+  await userEvent.click(within(form).getByRole('button', { name: 'Speichern' }))
+  await vi.waitFor(() => expect(bodiesOf(calls, `POST ${URL}`)).toHaveLength(1))
+  expect(bodiesOf(calls, `POST ${URL}`)[0]).toMatchObject({
+    request_limit_enabled: true,
+    request_limit_per_day: 50,
+  })
+})
+
+test('switching the limit off sends the switch alone: the backend keeps the threshold', async () => {
+  const limited = { ...cloud, request_limit_enabled: true, request_limit_per_day: 50 }
+  const calls = fakeApi({
+    ...signedIn(),
+    [`GET ${URL}`]: [limited],
+    [`PATCH ${URL}/2`]: cloud,
+  })
+  renderAt('/admin/modelle', <App />)
+  await openMenu('Cloud')
+  await userEvent.click(screen.getByRole('menuitem', { name: 'Bearbeiten' }))
+  const form = screen.getByRole('form', { name: 'Anbindung bearbeiten' })
+  const perDay = within(form).getByLabelText('Anfragen pro Tag')
+  expect(within(form).getByRole('switch', { name: 'Anfragen pro Tag begrenzen' })).toBeChecked()
+  expect(perDay).toHaveValue(50)
+
+  await userEvent.click(within(form).getByRole('switch', { name: 'Anfragen pro Tag begrenzen' }))
+  expect(perDay).toBeDisabled()
+  await userEvent.click(within(form).getByRole('button', { name: 'Speichern' }))
+  await vi.waitFor(() => expect(bodiesOf(calls, `PATCH ${URL}/2`)).toHaveLength(1))
+  expect(bodiesOf(calls, `PATCH ${URL}/2`)[0]).toEqual({ request_limit_enabled: false })
 })
 
 test('data release to an external connection asks for confirmation naming the host', async () => {

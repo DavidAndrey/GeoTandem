@@ -9,7 +9,17 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
 
-from sqlalchemy import JSON, ForeignKey, String, UniqueConstraint, func, true
+from sqlalchemy import (
+    JSON,
+    CheckConstraint,
+    ForeignKey,
+    Index,
+    String,
+    UniqueConstraint,
+    false,
+    func,
+    true,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 LayerKind = Literal["vector", "table"]
@@ -258,8 +268,143 @@ class LLMConnection(Base):
     marked_external: Mapped[bool]
     """A local host the administrator treats as external (C5); never the reverse."""
     last_test: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    request_limit_enabled: Mapped[bool] = mapped_column(default=False, server_default=false())
+    """Requests per day are capped for this connection, over all accounts (P5)."""
+    request_limit_per_day: Mapped[int | None] = mapped_column(
+        CheckConstraint(
+            "NOT request_limit_enabled"
+            " OR (request_limit_per_day IS NOT NULL AND request_limit_per_day > 0)",
+            name="ck_llm_connection_request_limit",
+        )
+    )
+    """The cap; required and positive while the limit is on."""
     created_at: Mapped[datetime] = mapped_column(server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(server_default=func.current_timestamp())
+
+
+class ModelAction(Base):
+    """One model request and what became of it: proposal and log entry at once
+    (plan E2.3-E2.6, 1.2; F-6.8). Level and connection are kept as they were
+    when asked (H7), not referenced, so a later edit or deletion changes no
+    record. ``account`` is the username then, so the log outlives the account;
+    ``user_id`` goes null with it and so can never match a later account."""
+
+    __tablename__ = "model_action"
+    __table_args__ = (
+        Index("ix_model_action_user_id_created_at", "user_id", "created_at"),
+        Index("ix_model_action_decision_created_at", "decision", "created_at"),
+        Index("ix_model_action_connection_id_created_at", "connection_id", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("app_user.id", ondelete="SET NULL"))
+    account: Mapped[str] = mapped_column(String(63))
+    created_at: Mapped[datetime]
+    """Naive UTC from the application's clock, like every time of the record, so
+    a period filter means the same on every database."""
+    proposal_only: Mapped[bool] = mapped_column(default=False, server_default=false())
+    """The model may only propose (P1, D1); an overtaken record ends ``proposal_only``."""
+    prompt: Mapped[str]
+    prompt_hash: Mapped[str] = mapped_column(String(128))
+    approach: Mapped[str] = mapped_column(String(16))
+    status: Mapped[str] = mapped_column(String(16))
+    decision: Mapped[str | None] = mapped_column(String(16))
+    decided_at: Mapped[datetime | None]
+    reject_reason: Mapped[str | None] = mapped_column(String(16))
+    applied_by_hand: Mapped[bool] = mapped_column(default=False, server_default=false())
+    undone_at: Mapped[datetime | None]
+    touched_at: Mapped[datetime | None]
+    """When the client first reported a hand edit of the analysis after this
+    applied action: from then on it cannot be undone (WP70)."""
+    previewed_at: Mapped[datetime | None]
+    parent_action_id: Mapped[int | None] = mapped_column(
+        ForeignKey("model_action.id", ondelete="SET NULL"), index=True
+    )
+    reference: Mapped[str] = mapped_column(String(16), default="none", server_default="none")
+    compare_of: Mapped[int | None] = mapped_column(
+        ForeignKey("model_action.id", ondelete="SET NULL")
+    )
+    level_id: Mapped[int]
+    level_name: Mapped[str] = mapped_column(String(60))
+    level_matrix: Mapped[dict[str, str]] = mapped_column(JSON)
+    level_prompt_hash: Mapped[str] = mapped_column(String(128))
+    connection_id: Mapped[int]
+    connection_name: Mapped[str] = mapped_column(String(60))
+    connection_model: Mapped[str] = mapped_column(String(200))
+    connection_host: Mapped[str] = mapped_column(String(500))
+    connection_locality: Mapped[str] = mapped_column(String(16))
+    profile_hash: Mapped[str] = mapped_column(String(128))
+    answer: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    query: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    applied_query: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    governance: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    refusal: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    error: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    stop_reason: Mapped[str | None] = mapped_column(String(32))
+    replans: Mapped[int] = mapped_column(default=0, server_default="0")
+    stamp: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    latency_ms: Mapped[int | None]
+    called_at: Mapped[datetime | None]
+    """When the model call started; ``None`` for a request aborted before it.
+    The request limit counts only requests that reached the call (P5)."""
+    run_ms: Mapped[int] = mapped_column(default=0, server_default="0")
+    """A chain's run time so far, its halts for approval left out (P4, WP75):
+    with the planning call's ``latency_ms`` it is held to ``CHAIN_TIME_LIMIT_S``."""
+    level_prompt: Mapped[str | None]
+    """The level's system prompt as it was when asked (H7): a chain's re-plan
+    asks with it, never with the level's text now (WP75). ``level_prompt_hash``
+    is its hash."""
+    turns: Mapped[list[Any] | None] = mapped_column(JSON)
+    """A chain's conversation after the prompt, ``[role, text]`` each: the
+    plans the model gave and every re-plan's input (P4, D9). The model's own
+    words and ``model_view``s, nothing of the data."""
+
+
+class ModelActionStep(Base):
+    """One step of a chain (plan E2.3-E2.6, WP75): what the model planned, how
+    the level governs it, and what became of it. A step's result is its query
+    object and a count, never a table (F-9.5); only the adoptable step gets a
+    stamp. ``position`` is stable: a removed step keeps its place, a re-plan's
+    steps continue after the last step that ran."""
+
+    __tablename__ = "model_action_step"
+    __table_args__ = (UniqueConstraint("action_id", "position"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    action_id: Mapped[int] = mapped_column(ForeignKey("model_action.id", ondelete="CASCADE"))
+    position: Mapped[int]
+    text: Mapped[str]
+    tool: Mapped[str] = mapped_column(String(64))
+    arguments: Mapped[dict[str, Any]] = mapped_column(JSON)
+    """As the model wrote them, or as the user changed their values (``edited``)."""
+    classes: Mapped[list[str]] = mapped_column(JSON)
+    cell: Mapped[str] = mapped_column(String(16))
+    """The strictest cell among ``classes`` at the level as it was."""
+    status: Mapped[str] = mapped_column(String(16))
+    revised: Mapped[bool] = mapped_column(default=False, server_default=false())
+    edited: Mapped[bool] = mapped_column(default=False, server_default=false())
+    approved: Mapped[bool] = mapped_column(default=False, server_default=false())
+    """An approval cleared it to run (``approve``), so the run does not halt before it."""
+    count: Mapped[int | None]
+    stamp: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    model_view: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    query: Mapped[dict[str, Any]] = mapped_column(JSON)
+    duration_ms: Mapped[int | None]
+
+
+class ModelCall(Base):
+    """A chain's re-plan call (E2.5 gate, security review #43): the request
+    limit (P5) counts it on the day it happened, beside the records whose
+    first call reached the model (``ModelAction.called_at``)."""
+
+    __tablename__ = "model_call"
+    __table_args__ = (Index("ix_model_call_connection_id_called_at", "connection_id", "called_at"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    action_id: Mapped[int] = mapped_column(ForeignKey("model_action.id", ondelete="CASCADE"))
+    connection_id: Mapped[int]
+    called_at: Mapped[datetime]
+    """Naive UTC from the application's clock, like the record's times."""
 
 
 class AppMeta(Base):

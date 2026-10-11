@@ -6,8 +6,9 @@ import { msg, t } from '@lingui/core/macro'
 import type {
   AttributeOperator,
   AttributeRow,
-  Node,
+  Group,
   ReferenceRow,
+  Row,
   SpatialOperator,
   SpatialRow,
 } from '../analysis/model'
@@ -173,8 +174,11 @@ export function describeReference(row: ReferenceRow, labels: Labels): string {
   return row.not ? negated(condition) : condition
 }
 
+/** A group as far as its words need it: also one read from a model's query. */
+type GroupLike = Pick<Group, 'kind' | 'op' | 'not'> & { children: readonly unknown[] }
+
 export function describe(
-  node: Node,
+  node: Row | GroupLike,
   labels: Labels,
   filterLabels?: (layer: string) => Labels,
 ): string {

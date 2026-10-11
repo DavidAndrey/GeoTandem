@@ -2,7 +2,7 @@
 import { i18n, type MessageDescriptor } from '@lingui/core'
 import { msg, plural, t } from '@lingui/core/macro'
 import type { AttributeInfo, ImportStatus, LayerInfo } from '../api/client'
-import { dateTimeFormat, formatNumber } from '../i18n/locale'
+import { dateTimeFormat, formatNumber, parseTimestamp } from '../i18n/locale'
 
 const POINT = msg`Punkt`
 const LINE = msg`Linie`
@@ -33,16 +33,11 @@ export function sourceLabel(source: string | null): string {
 const DATE = { day: '2-digit', month: '2-digit', year: 'numeric' } as const
 const DATE_TIME = { ...DATE, hour: '2-digit', minute: '2-digit' } as const
 
-/** The backend sends naive UTC timestamps (SQLite CURRENT_TIMESTAMP). */
-function parse(timestamp: string): Date {
-  return new Date(/[Zz]|[+-]\d\d:\d\d$/.test(timestamp) ? timestamp : `${timestamp}Z`)
-}
-
 export const formatDate = (timestamp: string | null | undefined) =>
-  timestamp ? dateTimeFormat(DATE).format(parse(timestamp)) : '–'
+  timestamp ? dateTimeFormat(DATE).format(parseTimestamp(timestamp)) : '–'
 
 export const formatDateTime = (timestamp: string | null | undefined) =>
-  timestamp ? dateTimeFormat(DATE_TIME).format(parse(timestamp)) : '–'
+  timestamp ? dateTimeFormat(DATE_TIME).format(parseTimestamp(timestamp)) : '–'
 
 const STATUS_LABELS: Record<ImportStatus, MessageDescriptor> = {
   running: msg`läuft`,

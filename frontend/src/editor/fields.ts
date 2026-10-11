@@ -48,6 +48,26 @@ export function fieldsOf(
 export const labelOf = (fields: Field[]) => (name: string) =>
   fields.find((f) => f.name === name)?.label ?? name
 
+const typeOf = (fields: Field[]) => (name: string) => fields.find((f) => f.name === name)?.type
+
+/**
+ * The words ``describe`` needs for the conditions on ``result``: field labels and
+ * types (a join's fields too), layer titles, and the fields of a spatial filter's layer.
+ */
+export function labelsFor(result: DisplayLayer | undefined, catalog: LayerInfo[] | undefined) {
+  const fields = fieldsOf(result, catalog)
+  const labels = {
+    field: labelOf(fields),
+    layer: (name: string) => catalog?.find((l) => l.name === name)?.title ?? name,
+    type: typeOf(fields),
+  }
+  const filterLabels = (layer: string) => {
+    const related = catalogFields(layer, catalog)
+    return { ...labels, field: labelOf(related), type: typeOf(related) }
+  }
+  return { fields, labels, filterLabels }
+}
+
 /** Number, text or yes/no: join keys must be of the same kind on every backend (F-2.14). */
 export const keyKind = (type: FieldType) =>
   type === 'integer' || type === 'real' ? 'number' : type

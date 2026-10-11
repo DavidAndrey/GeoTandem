@@ -26,7 +26,8 @@ test('the start page is the workplace, beginning without layers', async () => {
   renderAt('/', <App />)
   expect(await screen.findByRole('region', { name: 'Karte' })).toBeInTheDocument()
   expect(screen.getByText(/Noch keine Layer/)).toBeInTheDocument()
-  expect(screen.getByRole('tab', { name: 'Prompt · ab E2' })).toBeDisabled()
+  // No model connection (the options do not load): Klassik only (design M1.3).
+  expect(await screen.findByRole('tab', { name: 'Prompt' })).toBeDisabled()
 })
 
 test('the system status lives in the administration', async () => {

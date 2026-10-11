@@ -1,6 +1,6 @@
-"""The v0 tools. Tool-chain steps (E2.5) join this registry as tools of the
-form ``(QueryObject, arguments) → QueryObject``, so every chain stays
-expressible as one query object (F-5.7)."""
+"""The v0 tools, and the tool-chain steps (E2.5, ``tools.chain``), which join
+this registry as tools of the form ``(QueryObject, arguments) → QueryObject``,
+so every chain stays expressible as one query object (F-5.7)."""
 
 from pydantic import BaseModel, Field
 
@@ -8,6 +8,7 @@ from geotandem.catalog import LayerProfile, model_profile
 from geotandem.engine import QueryResult, run_query
 from geotandem.engine.errors import UnknownLayer
 from geotandem.levels import OpClass
+from geotandem.tools.chain import chain_tools
 from geotandem.tools.registry import Tool, ToolContext, ToolRegistry
 from geotandem_query import QueryObject
 
@@ -104,4 +105,6 @@ def default_registry() -> ToolRegistry:
             handler=_run_query,
         )
     )
+    for tool in chain_tools():
+        registry.register(tool)
     return registry

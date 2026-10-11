@@ -4,6 +4,7 @@ import ast
 import json
 import logging
 import threading
+import time
 from collections.abc import Iterator
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -12,7 +13,7 @@ from typing import Any
 import httpx2
 import openai
 import pytest
-from llm_stub import OllamaStub, chat
+from llm_stub import HEAD, OllamaStub, chat, dripping, flooding, raw_endpoint
 
 from geotandem.llm import (
     Completion,
@@ -25,7 +26,7 @@ from geotandem.llm import (
     host_of,
 )
 from geotandem.llm.fake import FakeLLMClient
-from geotandem.llm.openai_compat import OpenAICompatClient
+from geotandem.llm.openai_compat import MAX_RESPONSE_BYTES, OpenAICompatClient
 
 SOURCE = Path(__file__).parents[1] / "src" / "geotandem"
 ENDPOINT = Endpoint(base_url="http://127.0.0.1:11434/v1", model="qwen3:8b")
@@ -195,6 +196,152 @@ def test_failures_map_to_codes_and_only_transient_ones_retry(
     assert (len(stub.chat_requests()), error.retries) == (attempts, attempts - 1)
     # The cause is verbatim but never a response body, which may echo the prompt (C13).
     assert "Schulen" not in error.cause and "Schulen" not in str(error)
+
+
+class Clock:
+    """Monotonic time under test control: a slow endpoint and the backoff move it."""
+
+    def __init__(self) -> None:
+        self.now = 1000.0
+        self.timeouts: list[float] = []
+
+    def __call__(self) -> float:
+        return self.now
+
+    def sleep(self, seconds: float) -> None:
+        self.now += seconds
+
+    def slow(self, seconds: float, then: httpx2.Response) -> Any:
+        """An attempt that takes ``seconds``, or times out after the read timeout it got."""
+
+        def answer(request: httpx2.Request) -> httpx2.Response:
+            read = request.extensions["timeout"]["read"]
+            self.timeouts.append(read)
+            if read < seconds:
+                self.now += read
+                raise httpx2.ReadTimeout("timed out", request=request)
+            self.now += seconds
+            return then
+
+        return answer
+
+
+def test_a_slow_call_and_its_retries_end_by_the_deadline() -> None:
+    clock = Clock()
+    deadline = clock.now + 50
+    stub = OllamaStub(answers=[clock.slow(20, status(503))] * 3)
+    with client(stub, sleep=clock.sleep, clock=clock) as llm:
+        error = error_of(lambda: llm.complete(ASK, deadline=deadline))
+    assert error.code == "llm_timeout"
+    # 20 s and a 503, 0.5 s backoff, 20 s and a 503, 1 s backoff, 8.5 s left.
+    assert clock.timeouts == [pytest.approx(t) for t in (50, 29.5, 8.5)]
+    assert clock.now == pytest.approx(deadline)
+
+
+def test_no_retry_is_made_past_the_deadline() -> None:
+    clock = Clock()
+    stub = OllamaStub(answers=[clock.slow(20, status(503)), chat("zu spät")])
+    with client(stub, sleep=clock.sleep, clock=clock) as llm:
+        error = error_of(lambda: llm.complete(ASK, deadline=clock.now + 20.3))
+    assert (error.code, error.retries, len(stub.chat_requests())) == ("llm_server_error", 0, 1)
+    assert clock.now <= 1020.3
+
+
+def test_an_attempt_gets_at_most_the_endpoints_timeout_and_none_after_the_deadline() -> None:
+    clock = Clock()
+    stub = OllamaStub(answers=[clock.slow(1, httpx2.Response(200, json=chat("ok")))])
+    with client(stub, sleep=clock.sleep, clock=clock) as llm:
+        assert llm.complete(ASK, deadline=clock.now + 500).text == "ok"
+        assert clock.timeouts == [ENDPOINT.timeout_s]
+        late = error_of(lambda: llm.complete(ASK, deadline=clock.now))
+    assert late.code == "llm_timeout" and len(stub.chat_requests()) == 1
+
+
+def test_the_fake_honours_the_deadline() -> None:
+    fake = FakeLLMClient(script=[Completion(text="a")], clock=lambda: 10.0)
+    assert error_of(lambda: fake.complete(ASK, deadline=10.0)).code == "llm_timeout"
+    assert fake.complete(ASK, deadline=11.0).text == "a"
+    assert [c.deadline for c in fake.calls] == [10.0, 11.0]
+
+
+# --- bounded in time and size, on a real socket (security review #34) -------------
+
+TRICKLE_S = 2.0
+"""The attempt's time in the tests below; the endpoint sends a byte a second."""
+
+
+@pytest.mark.parametrize(
+    "respond",
+    [
+        dripping(),  # the status line and headers, a byte at a time
+        dripping(HEAD + b"Content-Length: 1000\r\n\r\n"),  # the body, a byte at a time
+    ],
+    ids=["headers", "body"],
+)
+def test_an_endpoint_that_trickles_ends_by_the_deadline(respond: Any) -> None:
+    """Each byte arrives well within the read timeout, so only a deadline over
+    the whole request ends the call; without it, it lasts as long as the drip."""
+    with raw_endpoint(respond) as base_url:
+        endpoint = Endpoint(base_url=base_url, model="m", timeout_s=TRICKLE_S)
+        started = time.monotonic()
+        with OpenAICompatClient(endpoint) as llm:
+            error = error_of(lambda: llm.complete(ASK, deadline=started + TRICKLE_S))
+        took = time.monotonic() - started
+    assert (error.code, error.retries) == ("llm_timeout", 0)
+    assert TRICKLE_S - 0.5 <= took < TRICKLE_S + 1.5
+
+
+def test_an_attempt_without_a_call_deadline_ends_by_the_endpoints_timeout() -> None:
+    with raw_endpoint(dripping()) as base_url:
+        endpoint = Endpoint(base_url=base_url, model="m", timeout_s=TRICKLE_S)
+        started = time.monotonic()
+        with OpenAICompatClient(endpoint) as llm:
+            assert error_of(lambda: llm.models()).code == "llm_timeout"
+    assert time.monotonic() - started < TRICKLE_S + 1.5
+
+
+@pytest.mark.parametrize("length", [False, True], ids=["streamed", "declared"])
+def test_an_answer_past_the_cap_is_refused(length: bool) -> None:
+    """Read in chunks and given up past the cap, not read whole first; a length
+    declared beyond it is refused before the body. Not retried."""
+    seen: list[int] = []
+    flood = flooding(MAX_RESPONSE_BYTES * 4, length=length)
+
+    def respond(out: Any) -> None:
+        seen.append(1)
+        flood(out)
+
+    with raw_endpoint(respond) as base_url:
+        endpoint = Endpoint(base_url=base_url, model="m", timeout_s=30)
+        with OpenAICompatClient(endpoint, sleep=lambda _: None) as llm:
+            error = error_of(lambda: llm.complete(ASK, deadline=time.monotonic() + 30))
+    assert (error.code, error.cause, error.retries, len(seen)) == (
+        "llm_bad_response",
+        "too large",
+        0,
+        1,
+    )
+
+
+def test_an_answer_at_the_cap_is_read() -> None:
+    body = json.dumps(chat("ok")).encode()
+    padded = body[:-1] + b" " * (MAX_RESPONSE_BYTES - len(body)) + b"}"
+    stub = OllamaStub(answers=[httpx2.Response(200, content=padded)])
+    with client(stub) as llm:
+        assert llm.complete(ASK).text == "ok"
+    over = OllamaStub(answers=[httpx2.Response(200, content=padded + b" ")])
+    with client(over) as llm:
+        assert error_of(lambda: llm.complete(ASK)).cause == "too large"
+
+
+def test_an_answer_is_asked_for_uncompressed_and_a_compressed_one_refused() -> None:
+    """A compressed answer could decode to far more than the cap."""
+    gzipped = httpx2.Response(200, content=bytes([31, 139]), headers={"Content-Encoding": "gzip"})
+    stub = OllamaStub(answers=[gzipped])
+    with client(stub) as llm:
+        error = error_of(lambda: llm.complete(ASK))
+    assert (error.code, error.cause) == ("llm_bad_response", "compressed")
+    assert stub.seen[0].headers["accept-encoding"] == "identity"
 
 
 def test_a_redirect_is_refused_not_followed() -> None:

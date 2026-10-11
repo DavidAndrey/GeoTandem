@@ -138,6 +138,8 @@ type Form = {
   may_receive_data: boolean
   marked_external: boolean
   confirm_data_release: boolean
+  limit_enabled: boolean
+  limit_per_day: string
 }
 
 const blank: Form = {
@@ -156,6 +158,8 @@ const blank: Form = {
   may_receive_data: true,
   marked_external: false,
   confirm_data_release: false,
+  limit_enabled: false,
+  limit_per_day: '',
 }
 
 const fromConnection = (c: ConnectionInfo): Form => ({
@@ -172,7 +176,19 @@ const fromConnection = (c: ConnectionInfo): Form => ({
   is_default: c.is_default,
   may_receive_data: c.may_receive_data,
   marked_external: c.marked_external,
+  limit_enabled: c.request_limit_enabled,
+  limit_per_day: String(c.request_limit_per_day ?? ''),
 })
+
+/**
+ * The request limit per connection (plan P5): an administrator's decision, off
+ * by default; the threshold is required while it is on. Switched off, the
+ * switch alone is sent: the backend keeps the threshold for the next time on.
+ */
+const requestLimit = (f: Form) =>
+  f.limit_enabled
+    ? { request_limit_enabled: true, request_limit_per_day: optionalNumber(f.limit_per_day) }
+    : { request_limit_enabled: false }
 
 const hostOf = (url: string) => {
   try {
@@ -204,6 +220,7 @@ function createBody(f: Form): ConnectionWrite {
     enabled: f.enabled,
     is_default: f.is_default,
     confirm_data_release: false,
+    ...requestLimit(f),
   }
 }
 
@@ -216,10 +233,11 @@ function patchBody(f: Form, c: ConnectionInfo): ConnectionPatch {
     enabled: f.enabled,
     is_default: f.is_default,
     may_receive_data: f.may_receive_data,
+    ...requestLimit(f),
   }
   const patch: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(next))
-    if (value !== c[key as keyof ConnectionInfo]) patch[key] = value
+    if (value !== (c[key as keyof ConnectionInfo] ?? null)) patch[key] = value
   if (f.api_key) patch.api_key = f.api_key
   else if (f.remove_key) patch.api_key = null
   if (f.confirm_data_release) patch.confirm_data_release = true
@@ -294,6 +312,8 @@ function ConnectionForm({
       className="card mb-4 max-w-2xl p-4"
       onSubmit={(e) => {
         e.preventDefault()
+        // The browser checks before submitting; this holds for any other way in.
+        if (!e.currentTarget.reportValidity()) return
         save.mutate(undefined, { onSuccess: onDone })
       }}
     >
@@ -420,6 +440,35 @@ function ConnectionForm({
           ))}
         </select>
       </Field>
+      <fieldset className="mt-3 text-sm">
+        <legend className="label-caps mb-1">
+          <Trans>Anfragen</Trans>
+        </legend>
+        <label className="flex items-center gap-1.5">
+          <input
+            type="checkbox"
+            role="switch"
+            checked={form.limit_enabled}
+            onChange={(e) => set({ limit_enabled: e.target.checked })}
+          />
+          <Trans>Anfragen pro Tag begrenzen</Trans>
+        </label>
+        <Field
+          label={t`Anfragen pro Tag`}
+          hint={t`Gezählt über alle Konten je Kalendertag; eine Anfrage zählt, sobald sie das Modell erreicht. Ist die Grenze erreicht, wird die Anbindung bis zum nächsten Tag abgewiesen.`}
+        >
+          <input
+            className="input w-28"
+            type="number"
+            min={1}
+            step={1}
+            disabled={!form.limit_enabled}
+            required={form.limit_enabled}
+            value={form.limit_enabled ? form.limit_per_day : ''}
+            onChange={(e) => set({ limit_per_day: e.target.value })}
+          />
+        </Field>
+      </fieldset>
       <fieldset className="mt-3 text-sm">
         <legend className="label-caps mb-1">
           <Trans>Freigabe</Trans>

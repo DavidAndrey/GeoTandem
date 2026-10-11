@@ -38,6 +38,15 @@ export const collator = (options: Intl.CollatorOptions = {}) =>
 export const formatNumber = (value: number, options?: Intl.NumberFormatOptions) =>
   numberFormat(options).format(value)
 
+/**
+ * A timestamp of the backend as a ``Date``. The backend writes naive UTC
+ * (its records, SQLite's CURRENT_TIMESTAMP): without a zone it is UTC, never
+ * the browser's local time. One with ``Z`` or an offset is read as written.
+ */
+export function parseTimestamp(timestamp: string): Date {
+  return new Date(/[Zz]|[+-]\d\d:\d\d$/.test(timestamp) ? timestamp : `${timestamp}Z`)
+}
+
 const DAY = { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' } as const
 
 /** "2024-03-01" → "01.03.2024" (de-CH); anything else unchanged. */

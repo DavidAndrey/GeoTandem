@@ -6,8 +6,9 @@ WORKDIR /app/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ ./
-# The type check covers the tests, which validate against the query-object schema.
-COPY schema/query-object /app/schema/query-object
+# The type check covers the tests, which validate against the query-object schema
+# and build the fake model API from the contract fixture (schema/model-cases).
+COPY schema /app/schema
 RUN npm run build
 
 FROM python:3.14-slim AS app
