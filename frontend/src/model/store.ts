@@ -79,10 +79,15 @@ export const overtaken = (view: ModelActionView): Decision =>
  * says the same.
  */
 export function sent(state: ModelState, view: ModelActionView): ModelState {
-  const previous = state.pending !== null ? state.views[state.pending] : undefined
   const views = { ...state.views, [view.id]: view }
-  if (previous && previous.id !== view.id)
-    views[previous.id] = {
+  // Every open record of the account (store.py ``_supersede``): the pending one,
+  // and since the comparison (WP76) also the record a repeat waits beside.
+  const open = state.dialogue.filter(
+    (id) => id !== view.id && OPEN.includes(state.views[id]?.status as ActionStatus),
+  )
+  for (const id of open) {
+    const previous = state.views[id] as ModelActionView
+    views[id] = {
       ...previous,
       status: 'superseded',
       decision: overtaken(previous),
@@ -93,6 +98,7 @@ export function sent(state: ModelState, view: ModelActionView): ModelState {
           : s,
       ),
     }
+  }
   return {
     ...state,
     views,

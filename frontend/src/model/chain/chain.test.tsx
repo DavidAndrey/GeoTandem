@@ -481,8 +481,8 @@ describe('run (M9)', () => {
     expect(screen.getByRole('note', { name: 'Zwischenstand · Kette' })).toHaveTextContent(
       'Ergebnis 10 von 137 · vorgemerkt',
     )
-    // No comparison until WP78 registers one.
-    expect(within(end).queryByRole('button', { name: 'Mit Direktabfrage vergleichen' })).toBeNull()
+    // The comparison's entry (WP78), registered by the dialogue.
+    expect(within(end).getByRole('button', { name: 'Mit Direktabfrage vergleichen' })).toBeEnabled()
     // "Als Abfrage ansehen": the result as the query it becomes, nothing applied.
     await act(async () => within(end).getByRole('button', { name: 'Als Abfrage ansehen' }).click())
     expect(within(end).getByRole('group', { name: 'Bedingungen' })).toBeInTheDocument()
@@ -858,18 +858,29 @@ describe('run (M9)', () => {
     await phase('halt')
   })
 
-  test('the comparison hook: WP78 registers the dialog, the finished chain offers it', async () => {
+  test('the comparison hook: the finished chain shows the entry registered last', async () => {
     const opened: number[] = []
-    const off = registerCompare((view) => opened.push(view.id))
+    const Entry = (view: ModelActionView) => (
+      <button type="button" onClick={() => opened.push(view.id)}>
+        Eintrag
+      </button>
+    )
+    const { user, answer } = await running()
+    for (let i = 0; i < 5; i++) await tick()
+    await phase('done')
+    // The dialogue registered the comparison's own entry (model/compare/).
+    expect(screen.getByRole('button', { name: 'Mit Direktabfrage vergleichen' })).toBeEnabled()
+    let off = () => {}
+    act(() => {
+      off = registerCompare(Entry)
+    })
     try {
-      const { user, answer } = await running()
-      for (let i = 0; i < 5; i++) await tick()
-      await phase('done')
-      await user.click(screen.getByRole('button', { name: 'Mit Direktabfrage vergleichen' }))
+      await user.click(await screen.findByRole('button', { name: 'Eintrag' }))
       expect(opened).toEqual([answer.id])
     } finally {
-      off()
+      act(() => off())
     }
+    expect(screen.queryByRole('button', { name: 'Eintrag' })).toBeNull()
   })
 })
 

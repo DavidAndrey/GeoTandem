@@ -6,7 +6,10 @@ import fixture from '../../../schema/model-cases/v1.json'
 import type {
   ActionPreview,
   ActionStatus,
+  Comparison,
+  ConditionChange,
   Decision,
+  FeatureRef,
   ExecuteResponse,
   Governance,
   LevelOption,
@@ -538,6 +541,12 @@ export interface ChainScript {
   busy?: number
   /** ``run`` answers 503 ``busy`` this many times first (every model call taken). */
   busyCalls?: number
+  /** The comparison: the feature ids each record's query finds, by record id (default ``REFERENCE_IDS``). */
+  found?: Record<number, readonly number[]>
+  /** The comparison: names by feature id, ``null`` for none (default ``COMPARE_NAMES``, else "Schule n"). */
+  names?: Record<number, string | null>
+  /** ``compare`` is refused with ``quota_exceeded`` (the connection's daily limit, P5). */
+  quota?: number
 }
 
 const CHAIN_CASE = modelCase('chain_reference')
@@ -608,6 +617,210 @@ function valuesOnly(before: unknown, after: unknown, key = ''): boolean {
     )
   }
   return typeof before === typeof after && before === after
+}
+
+// --- The comparison (WP76) as the fake server answers it -----------------------
+//
+// As WP76's server answers (merged at 06427b0; lines of that commit):
+// - ``POST .../compare`` (api/model.py 204-212, a ``CurrentAccount``: a token
+//   may ask) is ``PromptFlow.compare`` (model/service.py 1046-1087), in order:
+//   the caller's own record (404) in a ``COMPARABLE`` status (proposed,
+//   approved, applied, done, limited; service.py 1265), else the store's
+//   ``_wrong_state``, turned into 409 ``nothing_to_compare`` {id, status} for
+//   a record that ended without a query (``ENDED_EMPTY``: refused, answered,
+//   failed, aborted; 1271, 1066-1068); no class ``off`` (``store.ready``,
+//   store.py 609-622: ``class_not_allowed``); not a repeat itself (409
+//   ``repeat_of_repeat`` {id, compare_of}, 1070-1077); a stored query (else
+//   409 ``not_approved`` {id, status}, 1078-1079). Then the prompt flow
+//   (``_ask_model``, 534-616): the account's call in flight (a prompt the
+//   model thinks about, a chain that runs) ⇒ 409 ``busy`` {reason: running,
+//   id} (588-596, 260-268); the connection's daily limit ⇒ 429
+//   ``quota_exceeded`` {limit, connection} (``_admit``, 627-662). The record
+//   is new and ``thinking`` (202): the same prompt, the other approach, the
+//   same parent, ``compare_of`` the record compared, the level as it is now
+//   (1080-1085); nothing is superseded (``supersede=compare_of is None``,
+//   603). The model's answer is stored ``proposed`` whatever the cell
+//   (``store.propose``, store.py 1118-1155, 1139): never ``approved``, so it
+//   is never ``auto`` either (``_unasked``, 559-563).
+// - ``GET .../comparison`` (api/model.py 215-230: an ``InteractiveAccount``,
+//   a token gets 403 ``session_required``; a query slot, 503 ``busy``) is
+//   ``PromptFlow.comparison`` (service.py 1089-1129): the sides by
+//   ``store.compared`` (store.py 657-687): named by a repeat, its
+//   ``compare_of`` left and itself right; named by the record compared, it
+//   left and its newest repeat with a query right (else its newest); none ⇒
+//   404 ``not_found`` {id}; a side with a class ``off`` ⇒ ``class_not_allowed``.
+//   Each side's query (``_compared``, 1321-1329): none while ``thinking``,
+//   ``proposed``, ``approved``, ``running`` ⇒ 409 ``not_approved`` {id,
+//   status}; none otherwise ⇒ 409 ``nothing_to_compare`` {id, status}. The
+//   ids are (result layer, id) pairs (``result_layer``: an aggregate's area
+//   layer, else the source; compare.py 55-58); ``only_left``/``only_right``
+//   sorted, each with its name or ``null`` (1110-1113); the reason only when
+//   the sets differ (1114), from the two queries alone (compare.py 112-131,
+//   ported below as ``compareReason``); its conditions as a full dump
+//   (``where: null`` on a relation without filter, a text match's defaults;
+//   a missing side ``null``). A side ``proposed`` or ``approved`` gets
+//   ``previewed_at`` (1115-1119); nothing else changes.
+
+/** The id of the fake server's first repeat; each further one counts up. */
+export const REPEAT_ID = 101
+
+/** The contract's differing comparison (``compare_differs`` expect.comparison, design M10.3). */
+export const DIFFERS = (
+  modelCase('compare_differs').expect as unknown as {
+    comparison: {
+      left_hits: number
+      right_hits: number
+      only_left: FeatureRef[]
+      only_right: FeatureRef[]
+      reason: NonNullable<Comparison['reason']>
+    }
+  }
+).comparison
+
+/** The names the contract fixture gives, by feature id. */
+export const COMPARE_NAMES: Record<number, string | null> = Object.fromEntries(
+  [...DIFFERS.only_left, ...DIFFERS.only_right].map((f) => [f.id, f.name]),
+)
+
+/**
+ * The fixture's differing case on the fake's ids: the reference's ten with
+ * one of them the school only the direct query finds, the chain's eleven
+ * with the two only it finds.
+ */
+export function differsFound(direct: number, chain: number): Record<number, number[]> {
+  const onlyLeft = DIFFERS.only_left.map((f) => f.id)
+  const onlyRight = DIFFERS.only_right.map((f) => f.id)
+  const shared = REFERENCE_IDS.slice(0, DIFFERS.left_hits - onlyLeft.length)
+  return { [direct]: [...shared, ...onlyLeft], [chain]: [...shared, ...onlyRight] }
+}
+
+/**
+ * The record of a repeat (WP76) once the model answered: case ``id``'s answer
+ * under ``levelName`` (the level as it is now), the prompt and parent of
+ * ``original``, ``compare_of`` it, stored ``proposed`` whatever the cell.
+ */
+export function repeatView(
+  original: ModelActionView,
+  id: CaseId,
+  levelName: LevelName = 'Prüfen',
+  patch: Partial<ModelActionView> = {},
+): ModelActionView {
+  const answered = actionView(id, {}, levelName)
+  const approach = original.approach === 'direct' ? 'chain' : 'direct'
+  if (answered.approach !== approach) throw new Error(`case '${id}' is no ${approach}`)
+  return {
+    ...answered,
+    prompt: original.prompt,
+    parent_action_id: original.parent_action_id,
+    compare_of: original.id,
+    status: answered.status === 'approved' ? 'proposed' : answered.status,
+    ...patch,
+  }
+}
+
+const stable = (value: unknown): string =>
+  JSON.stringify(value, (_, v: unknown) =>
+    v && typeof v === 'object' && !Array.isArray(v)
+      ? Object.fromEntries(Object.entries(v as Json).sort(([a], [b]) => (a < b ? -1 : 1)))
+      : v,
+  )
+
+/** ``result_layer`` (compare.py 55-58). */
+const resultLayerOf = (q: Json) =>
+  String((q.aggregate as Json | undefined)?.by_layer ?? q.source ?? '')
+
+/** ``_about`` (compare.py 67-78): the attribute or the layer, ``null`` for anything else. */
+function about(c: Json): string | null {
+  switch (c.op) {
+    case 'not':
+      return about(c.arg as Json)
+    case 'related':
+      return `layer:${String(c.layer)}`
+    case 'compare':
+    case 'between':
+    case 'in':
+    case 'text_match':
+    case 'is_null':
+      return `attribute:${String(c.attr)}`
+    default:
+      return null
+  }
+}
+
+/** ``_conditions`` (compare.py 81-85): the top-level ``and``'s, or the one condition. */
+const conditionsOf = (q: Json): Json[] =>
+  q.where === undefined || q.where === null
+    ? []
+    : (q.where as Json).op === 'and'
+      ? ((q.where as Json).args as Json[])
+      : [q.where as Json]
+
+const HIT_PARTS = ['attribute_join', 'buffer', 'spatial_relation', 'aggregate', 'columns']
+
+/** ``_rest`` (compare.py 92-96): what else makes up the hits; order and limit only with a limit. */
+function restOf(q: Json): string {
+  const keys = [...HIT_PARTS, ...(q.limit != null ? ['order_by', 'limit'] : [])]
+  return stable(Object.fromEntries(keys.map((k) => [k, q[k] ?? null])))
+}
+
+/** ``_only`` (compare.py 99-109): ``ours`` less those ``theirs`` has too, one for one. */
+function only(ours: Json[], theirs: Json[]): Json[] {
+  const left = new Map<string, number>()
+  for (const c of theirs) left.set(stable(c), (left.get(stable(c)) ?? 0) + 1)
+  return ours.filter((c) => {
+    const n = left.get(stable(c)) ?? 0
+    if (n === 0) return true
+    left.set(stable(c), n - 1)
+    return false
+  })
+}
+
+/** A condition as pydantic dumps it in a response: every default written out. */
+function dumped(c: Json): Json {
+  switch (c.op) {
+    case 'not':
+      return { ...c, arg: dumped(c.arg as Json) }
+    case 'related':
+      return { where: null, ...c, ...(c.where ? { where: dumped(c.where as Json) } : {}) }
+    case 'text_match':
+      return { mode: 'contains', case_sensitive: false, ...c }
+    default:
+      return c
+  }
+}
+
+/** ``reason`` (compare.py 112-131) on compact queries; its conditions as the response dumps them. */
+export function compareReason(left: unknown, right: unknown): Comparison['reason'] {
+  const [l, r] = [left as Json, right as Json]
+  if (resultLayerOf(l) !== resultLayerOf(r))
+    return { kind: 'source', left: resultLayerOf(l), right: resultLayerOf(r) }
+  if (l.source !== r.source || restOf(l) !== restOf(r)) return null
+  const mine = conditionsOf(l)
+  const theirs = conditionsOf(r)
+  const gone = only(mine, theirs)
+  const came = only(theirs, mine)
+  const old = gone.map(about)
+  const fresh = came.map(about)
+  if (
+    [...old, ...fresh].includes(null) ||
+    new Set(old).size < old.length ||
+    new Set(fresh).size < fresh.length
+  )
+    return null
+  if (gone.length === 0 && came.length === 0) return null
+  const before = new Map(old.map((a, i) => [a, gone[i] as Json]))
+  const changes: ConditionChange[] = came.map((c, i) => {
+    const a = fresh[i]
+    const was = before.get(a)
+    before.delete(a)
+    return {
+      left: (was ? dumped(was) : null) as ConditionChange['left'],
+      right: dumped(c) as ConditionChange['right'],
+    }
+  })
+  for (const c of before.values())
+    changes.push({ left: dumped(c) as ConditionChange['left'], right: null })
+  return { kind: 'conditions', changes }
 }
 
 /**
@@ -887,6 +1100,36 @@ export function modelServer(
     return view ? run(view) : fail('not_found', `No model action ${id}.`, { id }, 404)
   }
 
+  // --- The comparison (see the rules above ``compareReason``) ---
+  /** The model's answers of repeats still ``thinking``: the next poll brings them. */
+  const answers = new Map<number, ModelActionView>()
+  /** Ids of the repeats, in turn: ``REPEAT_ID``, then up. */
+  let nextRepeat = REPEAT_ID
+  const PENDING: readonly ActionStatus[] = ['thinking', 'proposed', 'approved', 'running']
+  const ENDED_EMPTY: readonly ActionStatus[] = ['refused', 'answered', 'failed', 'aborted']
+  const COMPARABLE: readonly ActionStatus[] = ['proposed', 'approved', 'applied', 'done', 'limited']
+  const nothingToCompare = (view: ModelActionView) =>
+    fail('nothing_to_compare', `Model action ${view.id} ended without a result (${view.status}).`, {
+      id: view.id,
+      status: view.status,
+    })
+  /** ``_compared``: a side's query, or why there is none (yet). */
+  const comparedQuery = (view: ModelActionView): Json | FakeError =>
+    view.query
+      ? (view.query as unknown as Json)
+      : PENDING.includes(view.status)
+        ? fail(
+            'not_approved',
+            `Model action ${view.id} has no result to compare yet; 'comparison' does not apply.`,
+            { id: view.id, status: view.status },
+          )
+        : nothingToCompare(view)
+  const foundBy = (view: ModelActionView) => script.found?.[view.id] ?? REFERENCE_IDS
+  const nameOf = (id: number) =>
+    script.names && id in script.names
+      ? (script.names[id] ?? null)
+      : (COMPARE_NAMES[id] ?? `Schule ${id}`)
+
   return {
     record: (id: number) => records.get(id),
     /** ``token``: the request carries a token, not the login cookie (P2: session only). */
@@ -939,7 +1182,10 @@ export function modelServer(
         if (view.status !== 'approved') return wrongState(view, 'execute')
         const refused = offClass(view) ?? noQuery(view, 'execute')
         if (refused) return refused
-        const auto = view.governance?.cell === 'auto'
+        // ``auto`` exactly for the answers nobody was asked about (store.py
+        // ``_unasked``): cell ``auto``, not proposal-only, and no repeat (WP76).
+        const auto =
+          view.governance?.cell === 'auto' && !view.proposal_only && view.compare_of == null
         const result = queryResult(view.query, preview.ids)
         const action = set({
           ...view,
@@ -1009,11 +1255,136 @@ export function modelServer(
       }),
 
     // --- The tool chain (WP75) ---
-    /** ``GET .../actions/{id}``: the record; a running chain further by ``pace`` steps (unless held). */
+    /**
+     * ``GET .../actions/{id}``: the record; a running chain further by ``pace``
+     * steps (unless held); a repeat the model thinks about with its answer.
+     */
     poll: (id: number) =>
-      step<ModelActionView>(id, (view) =>
-        view.status === 'running' && !held ? set(go(view, script.pace ?? Infinity)) : view,
-      ),
+      step<ModelActionView>(id, (view) => {
+        const answer = answers.get(id)
+        if (view.status === 'thinking' && answer) {
+          answers.delete(id)
+          return set(answer)
+        }
+        return view.status === 'running' && !held ? set(go(view, script.pace ?? Infinity)) : view
+      }),
+    /**
+     * ``POST .../compare`` (202): the repeat ``thinking``; the next poll brings
+     * case ``answer``'s answer under ``level`` (the account's level now).
+     */
+    compare: (id: number, answer: CaseId, level: LevelName = 'Prüfen') =>
+      step<ModelActionView>(id, (view) => {
+        if (!COMPARABLE.includes(view.status))
+          return ENDED_EMPTY.includes(view.status)
+            ? nothingToCompare(view)
+            : wrongState(view, 'compare')
+        const refused = offClass(view)
+        if (refused) return refused
+        if (view.compare_of != null)
+          return fail(
+            'repeat_of_repeat',
+            `Model action ${id} repeats ${view.compare_of}; compare that one.`,
+            { id, compare_of: view.compare_of },
+          )
+        if (!view.query)
+          return fail(
+            'not_approved',
+            `Model action ${id} has no result to compare; 'compare' does not apply.`,
+            { id, status: view.status },
+          )
+        const thinking = [...records.values()].find((v) => v.status === 'thinking')
+        const busyWith = thinking?.id ?? [...inFlight][0]
+        if (busyWith !== undefined)
+          return fail('busy', `The account's prompt ${busyWith} is still being answered.`, {
+            reason: 'running',
+            id: busyWith,
+          })
+        if (script.quota !== undefined)
+          return fail(
+            'quota_exceeded',
+            `The ${script.quota} requests per day of the connection are used up.`,
+            { limit: script.quota, connection: CONNECTION.name },
+            429,
+          )
+        const repeatId = nextRepeat++
+        const created = now()
+        const answered = repeatView(view, answer, level, { id: repeatId, created_at: created })
+        answers.set(repeatId, answered)
+        return set({
+          ...answered,
+          status: 'thinking',
+          decision: null,
+          decided_at: null,
+          answer: null,
+          query: null,
+          governance: null,
+          steps: [],
+          latency_ms: null,
+        })
+      }),
+    /** ``GET .../comparison``: both sides' stamps, the difference by feature id, the reason. */
+    comparison: (id: number, token = false) =>
+      token
+        ? fail('session_required', 'Only an interactive session may do this.', {}, 403)
+        : queriesBusy
+          ? fail('busy', 'Too many queries are running at the same time.', {}, 503)
+          : step<Comparison>(id, (view) => {
+              let left: ModelActionView | undefined = view
+              let right: ModelActionView | undefined
+              if (view.compare_of != null) {
+                left = records.get(view.compare_of)
+                right = view
+              } else {
+                const repeats = [...records.values()]
+                  .filter((v) => v.compare_of === view.id)
+                  .sort((a, b) => b.id - a.id)
+                right = repeats.find((r) => r.query) ?? repeats[0]
+              }
+              if (!left || !right)
+                return fail('not_found', `Model action ${id} has not been compared.`, { id }, 404)
+              const refused = offClass(left) ?? offClass(right)
+              if (refused) return refused
+              const leftQuery = comparedQuery(left)
+              if (isFakeError(leftQuery)) return leftQuery
+              const rightQuery = comparedQuery(right)
+              if (isFakeError(rightQuery)) return rightQuery
+              const pairs = (query: Json, view: ModelActionView) =>
+                foundBy(view).map((i) => [resultLayerOf(query), i] as const)
+              const leftIds = pairs(leftQuery, left)
+              const rightIds = pairs(rightQuery, right)
+              const key = ([layer, i]: readonly [string, number]) => `${layer}:${i}`
+              const minus = (a: typeof leftIds, b: typeof leftIds) => {
+                const other = new Set(b.map(key))
+                return a
+                  .filter((p) => !other.has(key(p)))
+                  .sort((x, y) => (x[0] === y[0] ? x[1] - y[1] : x[0] < y[0] ? -1 : 1))
+                  .map(([, i]) => ({ id: i, name: nameOf(i) }))
+              }
+              const onlyLeft = minus(leftIds, rightIds)
+              const onlyRight = minus(rightIds, leftIds)
+              const stamp = (ids: readonly (readonly [string, number])[], query: Json) => ({
+                count: ids.length,
+                ids_hash: `sha256:${ids
+                  .map(([, i]) => i)
+                  .sort((a, b) => a - b)
+                  .join(',')}`,
+                query_hash: `sha256:${stable(query).length}`,
+                data_versions: { [resultLayerOf(query)]: 'v1' },
+              })
+              const differs = onlyLeft.length > 0 || onlyRight.length > 0
+              for (const side of [left, right])
+                if (side.status === 'proposed' || side.status === 'approved')
+                  set({ ...side, previewed_at: now() })
+              return {
+                left_action_id: left.id,
+                right_action_id: right.id,
+                left: stamp(leftIds, leftQuery),
+                right: stamp(rightIds, rightQuery),
+                only_left: onlyLeft,
+                only_right: onlyRight,
+                reason: differs ? compareReason(leftQuery, rightQuery) : null,
+              }
+            }),
     /** Holds the run where it is (``true``) or lets it go on. */
     hold: (on: boolean) => {
       held = on

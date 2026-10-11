@@ -63,6 +63,9 @@ export type Governance = Schemas['Governance']
 export type StepView = Schemas['StepView']
 export type ActionPreview = Schemas['ActionPreview']
 export type Comparison = Schemas['Comparison']
+export type CompareReason = NonNullable<Comparison['reason']>
+export type ConditionChange = Schemas['ConditionChange']
+export type FeatureRef = Schemas['FeatureRef']
 export type KeyFigures = Schemas['KeyFigures']
 export type ExecuteResponse = Schemas['ExecuteResponse']
 export type ModelView = Schemas['ModelView']
@@ -231,6 +234,13 @@ export const api = {
     /** A ``done`` or ``limited`` chain's result becomes the analysis; with rows (D2). */
     adopt: (id: number) =>
       request<ExecuteResponse>(`/api/model/actions/${id}/adopt`, { method: 'POST' }),
+    // The comparison (plan P7, WP76, design M10): the same prompt with the other
+    // approach as a new record (``compare_of``) under the level as it is now.
+    /** 202 with the repeat ``thinking``: polled like any prompt; it waits ``proposed``. */
+    compare: (id: number) =>
+      request<ModelActionView>(`/api/model/actions/${id}/compare`, { method: 'POST' }),
+    /** Both sides once each has a result: stamps, the difference by feature id, the reason as data. */
+    comparison: (id: number) => request<Comparison>(`/api/model/actions/${id}/comparison`),
   },
   sampleRows: (layer: string, limit = 50) =>
     request<QueryResult>('/api/query', json('POST', { source: layer, output: 'table', limit })),

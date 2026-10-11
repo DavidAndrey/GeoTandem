@@ -720,11 +720,12 @@ function AdoptState({ view }: { view: ModelActionView }) {
  * M9.3: done, the result marked, not applied. *Ergebnis übernehmen* adopts it
  * (in *Prüfen* it counts as *Annehmen*: the chain was approved already);
  * *Als Abfrage ansehen* shows the result as the query object it becomes;
- * *Mit Direktabfrage vergleichen* opens WP78's comparison once it exists.
+ * *Mit Direktabfrage vergleichen* is the comparison's entry (model/compare/,
+ * registered through ``compare.ts``).
  */
 function DoneActions({ view }: { view: ModelActionView }) {
   const [shown, setShown] = useState(false)
-  const compare = useCompare((s) => s.open)
+  const compareEntry = useCompare((s) => s.entry)
   const busy = useApproval((s) => s.busy !== null)
   const count = stepCount(planned(view).length)
   const took = seconds(ranMs(view), 1) ?? ''
@@ -749,11 +750,7 @@ function DoneActions({ view }: { view: ModelActionView }) {
         >
           <Trans>Als Abfrage ansehen</Trans>
         </button>
-        {compare && (
-          <button type="button" className="btn" onClick={() => compare(view)}>
-            <Trans>Mit Direktabfrage vergleichen</Trans>
-          </button>
-        )}
+        {compareEntry?.(view)}
       </div>
       {shown && view.query && <QueryTree query={view.query} line="dashed" />}
       <AdoptState view={view} />

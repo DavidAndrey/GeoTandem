@@ -17,6 +17,8 @@ import { hitsOf } from '../../i18n/phrases'
 import { Approval, Approved, Rejected, Undone, UndoAction } from '../approval/Approval'
 import { byHandOnly, classList, needsApproval } from '../approval/governance'
 import { ChainAnswer } from '../chain/Chain'
+import { CompareHost } from '../compare/CompareHost'
+import { CompareMenu } from '../compare/Entry'
 import { openMyActions } from '../log/dialog'
 import { StatusLabel } from '../status'
 import { dialogueViews, useModel } from '../store'
@@ -41,6 +43,16 @@ import { clockTime, minutes, seconds } from './time'
 type QueryAnswer = Extract<ModelAnswer, { kind: 'query' }>
 
 export function Dialogue() {
+  return (
+    <>
+      {/* The comparison of both approaches (design M10, model/compare/). */}
+      <CompareHost />
+      <DialogueList />
+    </>
+  )
+}
+
+function DialogueList() {
   const views = useModel(useShallow(dialogueViews))
   const failure = usePanel((s) => s.failure)
   if (views.length === 0 && !failure) return null
@@ -48,7 +60,11 @@ export function Dialogue() {
     <ol className="flex flex-col gap-4" aria-label={t`Verlauf`}>
       {views.map((view, i) => (
         <li key={view.id} className="flex flex-col gap-2">
-          <PromptLine prompt={view.prompt} at={view.created_at} />
+          <PromptLine
+            prompt={view.prompt}
+            at={view.created_at}
+            repeat={view.compare_of != null ? view.approach : null}
+          />
           {i === views.length - 1 ? <Answer view={view} /> : <Earlier view={view} />}
         </li>
       ))}
@@ -67,11 +83,30 @@ export function Dialogue() {
   )
 }
 
-function PromptLine({ prompt, at }: { prompt: string; at: string | null }) {
+/**
+ * The prompt above its answer; a repeat (design M10.1) says with which approach
+ * it asks the same again.
+ */
+function PromptLine({
+  prompt,
+  at,
+  repeat = null,
+}: {
+  prompt: string
+  at: string | null
+  repeat?: ModelActionView['approach'] | null
+}) {
   const time = clockTime(at)
+  const label = time ? t`Prompt · ${time}` : t`Prompt`
+  const again =
+    repeat === 'chain'
+      ? t`wiederholt mit Werkzeugkette`
+      : repeat === 'direct'
+        ? t`wiederholt als Direktabfrage`
+        : null
   return (
     <div className="border-divider border-l-2 pl-2">
-      <p className="label-caps">{time ? t`Prompt · ${time}` : t`Prompt`}</p>
+      <p className="label-caps">{again ? t`${label} · ${again}` : label}</p>
       <p className="whitespace-pre-wrap">{prompt}</p>
     </div>
   )
@@ -442,6 +477,8 @@ function Actions({ view }: { view: ModelActionView }) {
       <button type="button" className="btn" onClick={openMyActions}>
         <Trans>Protokoll</Trans>
       </button>
+      {/* M10.1: ⋯ *Mit Werkzeugkette wiederholen*, and once compared *Vergleich ansehen*. */}
+      <CompareMenu view={view} />
       {byHandOnly(view) && !representable && (
         <p className="text-muted w-full text-xs">
           <Trans>Diese Abfrage lässt sich nicht im Editor darstellen.</Trans>
