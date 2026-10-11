@@ -634,7 +634,7 @@ function valuesOnly(before: unknown, after: unknown, key = ''): boolean {
 //   603). The model's answer is stored ``proposed`` whatever the cell
 //   (``store.propose``, store.py 1118-1155, 1139): never ``approved``, so it
 //   is never ``auto`` either (``_unasked``, 559-563).
-// - ``GET .../comparison`` (api/model.py 215-230: its ``QuerySlot`` first, 503
+// - ``POST .../comparison`` (a ``GET`` until the E2.5 gate, review #41; api/model.py 214-230: its ``QuerySlot`` first, 503
 //   ``busy`` when every slot is taken; then an ``InteractiveAccount``, a token
 //   gets 403 ``session_required``) is
 //   ``PromptFlow.comparison`` (service.py 1089-1129): the sides by
@@ -1350,7 +1350,7 @@ export function modelServer(
           latency_ms: null,
         })
       }),
-    /** ``GET .../comparison``: both sides' stamps, the difference by feature id, the reason. */
+    /** ``POST .../comparison``: both sides' stamps, the difference by feature id, the reason. */
     // The route's ``dependencies=[QuerySlot]`` resolve before the account
     // (api/model.py 215-220): every query slot taken is 503 before a token's 403.
     comparison: (id: number, token = false) =>

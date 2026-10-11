@@ -131,7 +131,7 @@ async def repeat(
 
 
 async def compared(client: httpx.AsyncClient, action_id: int) -> Body:
-    response = await client.get(url(action_id, "comparison"))
+    response = await client.post(url(action_id, "comparison"))
     assert response.status_code == 200, response.text
     body: Body = response.json()
     return body
@@ -241,6 +241,30 @@ async def test_the_reference_question_compares_equal_both_ways(
     asked = [call.messages for call in model.fake.calls]
     assert len(asked) == 4
     assert asked[1] == asked[2] and asked[3] == asked[0]
+
+
+async def test_the_comparison_is_a_post_under_the_origin_check(
+    client: httpx.AsyncClient, app: FastAPI, model: Model, levels: dict[str, int], ran: list[str]
+) -> None:
+    """Review #41: the comparison writes ``previewed_at`` on a waiting side, so
+    it is a ``POST`` the origin check covers, as the preview is (#39): a
+    cross-site one runs nothing and leaves ``previewed_at`` unset; a ``GET``
+    is no route."""
+    first = await ask(client, app, model, CHAIN, approach="chain")
+    first, _ = await drive(client, app, first["id"])
+    second = await repeat(client, app, model, first, REFERENCE)
+    ran.clear()
+
+    assert (await client.get(url(second["id"], "comparison"))).status_code in (404, 405)
+    elsewhere = await client.post(
+        url(second["id"], "comparison"), headers={"Origin": "https://evil.example"}
+    )
+    assert elsewhere.status_code == 403
+    assert ran == []
+    assert (await record(client, second["id"]))["previewed_at"] is None
+
+    await compared(client, second["id"])
+    assert (await record(client, second["id"]))["previewed_at"] is not None
 
 
 # --- the differing case (design M10.3) ------------------------------------------------
@@ -404,7 +428,7 @@ async def test_the_comparison_keeps_the_result_size_limit(
 
     with_flow(app, limits=Limits(max_features=9, timeout_s=10))
     ran.clear()
-    await refused(client, "GET", done["id"], "comparison", 413, "result_too_large")
+    await refused(client, "POST", done["id"], "comparison", 413, "result_too_large")
     assert len(ran) == 1 and "LIMIT" in ran[0]
 
 
@@ -421,7 +445,7 @@ async def test_the_comparison_has_one_time_budget(
     with_flow(app, monotonic=lambda: float(next(ticks)))
     ran.clear()
 
-    over = await refused(client, "GET", done["id"], "comparison", 504, "query_timeout")
+    over = await refused(client, "POST", done["id"], "comparison", 504, "query_timeout")
 
     assert over["details"]["timeout_s"] == 10
     assert len(ran) == 1
@@ -448,7 +472,7 @@ async def test_a_layer_hidden_since_is_unknown_and_names_nothing(
     set_visible(app.state.geotandem.backend.engine, "schulen", "user", False)
     ran.clear()
 
-    await refused(other, "GET", done["id"], "comparison", 400, "unknown_layer")
+    await refused(other, "POST", done["id"], "comparison", 400, "unknown_layer")
     assert ran == []
 
 
@@ -461,7 +485,7 @@ async def test_a_side_without_a_result_is_not_compared_yet(
     """409 ``not_approved`` while the repeat is thinking and while its plan
     waits for approval; 404 for a record never compared. Nothing runs."""
     direct = await applied(client, app, model)
-    await refused(client, "GET", direct["id"], "comparison", 404, "not_found")
+    await refused(client, "POST", direct["id"], "comparison", 404, "not_found")
 
     model.script(completion(CHAIN))
     model.released.clear()
@@ -471,11 +495,11 @@ async def test_a_side_without_a_result_is_not_compared_yet(
     assert await asyncio.to_thread(model.asked.wait, 10)
     ran.clear()
     for target in (repeat_id, direct["id"]):
-        early = await refused(client, "GET", target, "comparison", 409, "not_approved")
+        early = await refused(client, "POST", target, "comparison", 409, "not_approved")
         assert early["details"] == {"id": repeat_id, "status": "thinking"}
     model.released.set()
     await settle(app)
-    waits = await refused(client, "GET", repeat_id, "comparison", 409, "not_approved")
+    waits = await refused(client, "POST", repeat_id, "comparison", 409, "not_approved")
     assert waits["details"]["status"] == "proposed"
     assert ran == []
 
@@ -496,7 +520,7 @@ async def test_a_repeat_that_ended_without_a_result_is_nothing_to_compare(
     failed = started.json()["id"]
     assert (await record(client, failed))["status"] == "failed"
 
-    gone = await refused(client, "GET", failed, "comparison", 409, "nothing_to_compare")
+    gone = await refused(client, "POST", failed, "comparison", 409, "nothing_to_compare")
     assert gone["details"] == {"id": failed, "status": "failed"}
     assert (await compared(client, direct["id"]))["right_action_id"] == first["id"]
     assert (await compared(client, first["id"]))["left_action_id"] == direct["id"]
@@ -573,7 +597,7 @@ async def test_under_automatisch_a_repeat_waits_and_is_taken_as_accepted(
     chain = await repeat(client, app, model, direct, CHAIN)
     assert chain["governance"]["cell"] == "auto"
     ran.clear()
-    for method, step in (("POST", "run"), ("POST", "adopt"), ("GET", "comparison")):
+    for method, step in (("POST", "run"), ("POST", "adopt"), ("POST", "comparison")):
         await refused(client, method, chain["id"], step, 409, "not_approved")
     assert ran == []
     done, approvals = await drive(client, app, chain["id"])
@@ -608,7 +632,7 @@ async def test_taking_a_side_keeps_that_records_own_approval(
         ("POST", "adopt"),
         ("POST", "run"),
         ("POST", "execute"),
-        ("GET", "comparison"),
+        ("POST", "comparison"),
     ):
         await refused(client, method, chain["id"], step, 409, "not_approved")
     for step in ("approve", "adopt"):
@@ -643,7 +667,7 @@ async def test_a_chain_taken_from_the_comparison_still_halts_where_its_level_say
     assert (await client.post(url(chain["id"], "approve"))).status_code == 200
     halted = await run(client, app, chain["id"])
     assert (halted["status"], halted["steps"][1]["status"]) == ("proposed", "waiting")
-    for method, step in (("GET", "comparison"), ("POST", "adopt")):
+    for method, step in (("POST", "comparison"), ("POST", "adopt")):
         await refused(client, method, chain["id"], step, 409, "not_approved")
     done, approvals = await drive(client, app, chain["id"])
     assert (done["status"], approvals) == ("done", 1)
@@ -676,6 +700,6 @@ async def test_another_accounts_comparison_does_not_exist(
     calls = len(model.fake.calls)
     ran.clear()
     for target in (mine["id"], started.json()["id"]):
-        for method, step in (("POST", "compare"), ("GET", "comparison")):
+        for method, step in (("POST", "compare"), ("POST", "comparison")):
             await refused(client, method, target, step, 404, "not_found")
     assert len(model.fake.calls) == calls and ran == []

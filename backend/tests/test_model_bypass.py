@@ -317,7 +317,7 @@ ACTION_ROUTES: dict[Route, str] = {
     ("PATCH", "plan"): "chain proposed",
     ("POST", "run"): "chain approved",
     ("POST", "adopt"): "chain done",
-    ("GET", "comparison"): "compared",
+    ("POST", "comparison"): "compared",
     ("POST", "compare"): "applied before",
 }
 """Every route that names an action, with the record its owner may call it
@@ -1190,7 +1190,7 @@ async def test_walking_every_model_route_writes_the_action_record_only(
         repeated = await client.post(url(chain_id, "compare"))
         assert repeated.status_code == 202, repeated.text
         await settle(app)
-        comparison = await client.get(url(repeated.json()["id"], "comparison"))
+        comparison = await client.post(url(repeated.json()["id"], "comparison"))
         assert comparison.status_code == 200, comparison.text
         assert comparison.json()["only_left"] or comparison.json()["only_right"]
 
@@ -1529,14 +1529,14 @@ async def attack_comparison(s: Scene) -> None:
     left = stored(s.app, "b.muster", "Prüfen")
     right = stored(s.app, "b.muster", "Teilautonom", compare_of=left)
     for target in (left, right, FORGED):  # another account's, an administrator's too
-        response = await s.client.get(url(target, "comparison"))
+        response = await s.client.post(url(target, "comparison"))
         assert (response.status_code, response.json()["code"]) == (404, "not_found")
-    token = await s.other.get(url(right, "comparison"), headers=TOKEN)
+    token = await s.other.post(url(right, "comparison"), headers=TOKEN)
     assert (token.status_code, token.json()["code"]) == (403, "session_required")
     assert s.ran == []
     # The snapshots decide, not the levels now.
     await edit_levels(s.client, lambda lv: {**lv, "matrix": all_cells("off")})
-    shown = await s.other.get(url(right, "comparison"))
+    shown = await s.other.post(url(right, "comparison"))
     assert shown.status_code == 200, shown.text
     assert len(s.ran) == 2
     s.ran.clear()
@@ -1547,7 +1547,7 @@ async def attack_comparison(s: Scene) -> None:
         (left, "class_not_allowed"),  # its newest repeat is the proposal-only one
         (thinking, "not_approved"),
     ):
-        response = await s.other.get(url(target, "comparison"))
+        response = await s.other.post(url(target, "comparison"))
         assert (response.status_code, response.json()["code"]) == (409, code), target
     assert s.ran == [] and s.model.fake.calls == []
 
@@ -1560,7 +1560,7 @@ GUARDED: dict[tuple[str, str], Callable[[Scene], Awaitable[None]]] = {
     ("POST", "/api/model/actions/{action_id}/adopt"): attack_adopt,
     ("PATCH", "/api/model/actions/{action_id}/plan"): attack_plan,
     ("POST", "/api/model/actions/{action_id}/compare"): attack_compare,
-    ("GET", "/api/model/actions/{action_id}/comparison"): attack_comparison,
+    ("POST", "/api/model/actions/{action_id}/comparison"): attack_comparison,
 }
 """Every route that calls the model or runs a model record, with the attack
 that shows it checks level and connection in the backend. Since WP76 every

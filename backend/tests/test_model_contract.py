@@ -63,7 +63,7 @@ ROUTES = [
     ("POST", "/api/model/actions/1/run"),
     ("POST", "/api/model/actions/1/adopt"),
     ("POST", "/api/model/actions/1/compare"),
-    ("GET", "/api/model/actions/1/comparison"),
+    ("POST", "/api/model/actions/1/comparison"),
     ("GET", "/api/model/my-actions"),
 ]
 ADMIN_ROUTES = [
@@ -87,7 +87,7 @@ BUILT = {
     ("POST", "/api/model/actions/1/run"): "WP75",
     ("POST", "/api/model/actions/1/adopt"): "WP75",
     ("POST", "/api/model/actions/1/compare"): "WP76",
-    ("GET", "/api/model/actions/1/comparison"): "WP76",
+    ("POST", "/api/model/actions/1/comparison"): "WP76",
     ("GET", "/api/model/my-actions"): "WP73",
     ("GET", "/api/admin/model-actions"): "WP73",
     ("GET", "/api/admin/model-actions/key-figures"): "WP73",

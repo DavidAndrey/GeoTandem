@@ -277,7 +277,7 @@ describe('M10.2: equal hits', () => {
 
     const shown = within(await dialog())
     expect(
-      calls.filter((c) => c.key === `GET /api/model/actions/${REPEAT_ID}/comparison`),
+      calls.filter((c) => c.key === `POST /api/model/actions/${REPEAT_ID}/comparison`),
     ).toHaveLength(1)
     const difference = await shown.findByRole('region', { name: 'Unterschied' })
     expect(difference).toHaveTextContent('Treffermengen gleich 10 = 10, dieselben Objekte')
@@ -452,6 +452,8 @@ describe('M10.3: differing hits', () => {
     expect(
       calls.map((c) => c.key).filter((k) => k.startsWith(`POST /api/model/actions/${REPEAT_ID}/`)),
     ).toEqual([
+      // A POST since the E2.5 gate (security review #41): it stamps ``previewed_at``.
+      `POST /api/model/actions/${REPEAT_ID}/comparison`,
       `POST /api/model/actions/${REPEAT_ID}/approve`,
       `POST /api/model/actions/${REPEAT_ID}/execute`,
     ])
@@ -502,7 +504,7 @@ describe('the comparison refused, in words', () => {
     // Asked with a token, not the login session (api/model.py: an InteractiveAccount).
     const started = await asked('reference', 'chain_reference', 'Prüfen', {
       routes: (server) => ({
-        [`GET /api/model/actions/${REPEAT_ID}/comparison`]: () => {
+        [`POST /api/model/actions/${REPEAT_ID}/comparison`]: () => {
           const refused = server.comparison(REPEAT_ID, true) as FakeError
           return json(refused.body, refused.status)
         },

@@ -187,7 +187,7 @@ export function compareRoutes(
     ),
     ...Object.fromEntries(
       [...ids, ...repeatIds].map((id) => [
-        `GET /api/model/actions/${id}/comparison`,
+        `POST /api/model/actions/${id}/comparison`,
         () => result(server.comparison(id)),
       ]),
     ),

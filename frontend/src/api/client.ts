@@ -239,8 +239,10 @@ export const api = {
     /** 202 with the repeat ``thinking``: polled like any prompt; it waits ``proposed``. */
     compare: (id: number) =>
       request<ModelActionView>(`/api/model/actions/${id}/compare`, { method: 'POST' }),
-    /** Both sides once each has a result: stamps, the difference by feature id, the reason as data. */
-    comparison: (id: number) => request<Comparison>(`/api/model/actions/${id}/comparison`),
+    /** Both sides once each has a result: stamps, the difference by feature id, the reason as data.
+     * A ``POST``: it stamps ``previewed_at`` on a waiting side (security review #41). */
+    comparison: (id: number) =>
+      request<Comparison>(`/api/model/actions/${id}/comparison`, { method: 'POST' }),
   },
   sampleRows: (layer: string, limit = 50) =>
     request<QueryResult>('/api/query', json('POST', { source: layer, output: 'table', limit })),

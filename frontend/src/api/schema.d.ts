@@ -1276,21 +1276,22 @@ export interface paths {
       path?: never
       cookie?: never
     }
+    get?: never
+    put?: never
     /**
      * Comparison
      * @description Once both have a result (else 409): both stamps and the difference by
      *     feature ids, with names (design M10.2, M10.3), computed from both stored
      *     queries run as the caller; the model is not asked. Feature ids and names
      *     for the person, as the preview's ids (P2): an interactive session only,
-     *     and a side that waits gets ``previewed_at``. The reason is data (which
+     *     and a side that waits gets ``previewed_at``; so a ``POST``, a change the
+     *     origin check covers, as the preview (review #41). The reason is data (which
      *     layer, which conditions), worded by the interface. Addressed by either
      *     side: the repeat, or the record compared (its newest repeat with a
      *     result). 409 ``not_approved`` while a side may still get a result,
      *     ``nothing_to_compare`` once it ended without one.
      */
-    get: operations['comparison_api_model_actions__action_id__comparison_get']
-    put?: never
-    post?: never
+    post: operations['comparison_api_model_actions__action_id__comparison_post']
     delete?: never
     options?: never
     head?: never
@@ -10103,7 +10104,7 @@ export interface operations {
       }
     }
   }
-  comparison_api_model_actions__action_id__comparison_get: {
+  comparison_api_model_actions__action_id__comparison_post: {
     parameters: {
       query?: never
       header?: never

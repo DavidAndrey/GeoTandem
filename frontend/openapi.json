@@ -6340,13 +6340,13 @@
       }
     },
     "/api/model/actions/{action_id}/comparison": {
-      "get": {
+      "post": {
         "tags": [
           "model"
         ],
         "summary": "Comparison",
-        "description": "Once both have a result (else 409): both stamps and the difference by\nfeature ids, with names (design M10.2, M10.3), computed from both stored\nqueries run as the caller; the model is not asked. Feature ids and names\nfor the person, as the preview's ids (P2): an interactive session only,\nand a side that waits gets ``previewed_at``. The reason is data (which\nlayer, which conditions), worded by the interface. Addressed by either\nside: the repeat, or the record compared (its newest repeat with a\nresult). 409 ``not_approved`` while a side may still get a result,\n``nothing_to_compare`` once it ended without one.",
-        "operationId": "comparison_api_model_actions__action_id__comparison_get",
+        "description": "Once both have a result (else 409): both stamps and the difference by\nfeature ids, with names (design M10.2, M10.3), computed from both stored\nqueries run as the caller; the model is not asked. Feature ids and names\nfor the person, as the preview's ids (P2): an interactive session only,\nand a side that waits gets ``previewed_at``; so a ``POST``, a change the\norigin check covers, as the preview (review #41). The reason is data (which\nlayer, which conditions), worded by the interface. Addressed by either\nside: the repeat, or the record compared (its newest repeat with a\nresult). 409 ``not_approved`` while a side may still get a result,\n``nothing_to_compare`` once it ended without one.",
+        "operationId": "comparison_api_model_actions__action_id__comparison_post",
         "parameters": [
           {
             "name": "action_id",
@@ -12551,6 +12551,7 @@
               "$ref": "#/components/schemas/PlannedStep"
             },
             "type": "array",
+            "maxItems": 64,
             "minItems": 1,
             "title": "Steps"
           }

@@ -871,7 +871,7 @@ test.describe("E2.5 against the model stub", { tag: "@stub" }, () => {
       ]);
       // Not compared before it has a result.
       expect(
-        await past(page, "GET", `/api/model/actions/${id}/comparison`),
+        await past(page, "POST", `/api/model/actions/${id}/comparison`),
       ).toEqual({
         status: 409,
         code: "not_approved",
@@ -900,7 +900,7 @@ test.describe("E2.5 against the model stub", { tag: "@stub" }, () => {
     const comparison = async (id: number) => {
       const found = await call(
         page,
-        "GET",
+        "POST",
         `/api/model/actions/${id}/comparison`,
       );
       expect(found.status, JSON.stringify(found.body)).toBe(200);
