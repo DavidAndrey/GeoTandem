@@ -1,0 +1,7 @@
+# Byte-exact: sample/data/manifest.json holds their SHA-256, and the app refuses
+# to load the sample when a checkout converts their line endings (core.autocrlf
+# on Windows).
+backend/src/geotandem/sample/data/** -text
+
+# Run by bash inside Linux containers (gate, doc screenshots).
+*.sh text eol=lf
