@@ -206,8 +206,9 @@ def compare(action_id: ActionId, account: CurrentAccount, flow: Flow) -> ModelAc
     """Ask again with the other approach (design M10.1): a new action with
     ``compare_of``, polled like any other. A prompt, so as ``/prompt``: the
     account's level and connection now, its request limit, one at a time
-    (409/503 ``busy``). Only an own record with a result to compare; it stays
-    open beside the repeat."""
+    (409/503 ``busy``). Only an own record with a result to compare, never a
+    repeat (``repeat_of_repeat``); it stays open beside the repeat, which
+    waits ``proposed`` whatever the level."""
     return flow.compare(account, action_id)
 
 
@@ -220,9 +221,12 @@ def comparison(action_id: ActionId, account: InteractiveAccount, flow: Flow) -> 
     """Once both have a result (else 409): both stamps and the difference by
     feature ids, with names (design M10.2, M10.3), computed from both stored
     queries run as the caller; the model is not asked. Feature ids and names
-    for the person, as the preview's ids (P2): an interactive session only.
-    Addressed by either side: the repeat, or the record compared (its newest
-    repeat)."""
+    for the person, as the preview's ids (P2): an interactive session only,
+    and a side that waits gets ``previewed_at``. The reason is data (which
+    layer, which conditions), worded by the interface. Addressed by either
+    side: the repeat, or the record compared (its newest repeat with a
+    result). 409 ``not_approved`` while a side may still get a result,
+    ``nothing_to_compare`` once it ended without one."""
     return flow.comparison(account, action_id)
 
 

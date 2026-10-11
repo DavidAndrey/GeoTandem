@@ -90,9 +90,10 @@ The comparison (WP76, design M10, P7) is a prompt too: ``compare`` asks the
 prompt of a record with a result again with the other approach, as a new
 record that repeats it (``compare_of``), through the same flow with the
 account's level and connection as they are now; the record compared is not
-closed. Once both have a result, ``comparison`` runs both stored queries as
-the user and compares their feature ids; the model is not asked. Taking a
-side is that record's own ``execute`` or ``adopt``, with its own approval.
+closed, and the repeat always waits ``proposed``. Once both have a result,
+``comparison`` runs both stored queries as the user and compares their
+feature ids; the model is not asked. Taking a side is that record's own
+``approve`` and ``execute`` or ``adopt``.
 
 Logs carry ids and codes only, never the prompt or the answer (C15).
 """
@@ -103,6 +104,7 @@ import time
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
 from concurrent.futures import wait as wait_for
+from contextlib import suppress
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta, tzinfo
 from functools import partial
@@ -113,7 +115,7 @@ from sqlalchemy.orm import Session
 
 from geotandem.auth.accounts import Account
 from geotandem.auth.visibility import visible_names
-from geotandem.catalog import ModelProfile, list_layers, model_profile
+from geotandem.catalog import LayerInfo, ModelProfile, list_layers, model_profile
 from geotandem.connections import ConnectionInfo, ConnectionProblem, Connections
 from geotandem.data import DataBackend, Limits, Op
 from geotandem.data.view import LayerView
@@ -149,7 +151,7 @@ from geotandem.model.chain.plan import (
 )
 from geotandem.model.chain.run import run_step, stamp
 from geotandem.model.chain.view import restored
-from geotandem.model.compare import Labels, name_attribute, reason
+from geotandem.model.compare import name_attribute, reason, result_layer
 from geotandem.model.direct import DirectAnswer, DirectQuery, governance
 from geotandem.model.errors import ActionError
 from geotandem.model.prompt import FollowUp, Prompt, Turn, build_prompt
@@ -1049,11 +1051,30 @@ class PromptFlow:
         user since, or a connection disabled, is not used again by a repeat.
         Its request counts towards the request limit, and it is the account's
         one prompt at a time. The record compared stays as it is (no
-        supersede): it is the left side. Only the caller's own record with a
+        supersede): it is the left side. The repeat is stored ``proposed``
+        whatever the level (``store.propose``): nothing of it applies before
+        the person compared and took it. Only the caller's own record with a
         result to compare: a direct query with its query, a chain that ended
         with a result; none with an ``off`` class (``ready``), whose query is
-        not run for the user (P2)."""
-        original = self.store.ready(caller, action_id, "compare", COMPARABLE)
+        not run for the user (P2); ``nothing_to_compare`` for one that ended
+        without a query, ``repeat_of_repeat`` for a repeat itself. The repeat
+        follows the same parent (P6); the analysis sent with a follow-up is
+        not stored, so WP81 carries it into the repeat."""
+        try:
+            original = self.store.ready(caller, action_id, "compare", COMPARABLE)
+        except ActionError as refused:
+            status = refused.details.get("status")
+            if status in ENDED_EMPTY:
+                raise _nothing_to_compare(action_id, status) from None
+            raise
+        if original.compare_of is not None:
+            raise ActionError(
+                "repeat_of_repeat",
+                f"Model action {action_id} repeats {original.compare_of}; compare that one.",
+                http_status=409,
+                id=action_id,
+                compare_of=original.compare_of,
+            )
         if original.query is None:
             raise _not_runnable(original, "compare", "has no result to compare")
         request = PromptRequest(
@@ -1071,41 +1092,31 @@ class PromptFlow:
         as the caller (visibility, the result-size limit, one time limit for
         all its reads), never by the model, which is not called. Names from
         each layer's name attribute, read as the caller; the reason only where
-        the two queries say it (``compare.reason``). Changes nothing: taking a
-        side is that record's own ``execute`` or ``adopt``, under its own level."""
+        the two queries show it (``compare.reason``), as data. A side that waits
+        gets ``previewed_at``, as the preview sets it (P2 rule 4); nothing else
+        changes: taking a side is that record's own ``approve`` and ``execute``
+        or ``adopt``, under its own level."""
         left, right = self.store.compared(caller, action_id)
         queries = _compared(left), _compared(right)
         view = read_view(self.backend, caller)
-        budget = self.limits.timeout_s
-        deadline = time.monotonic() + budget
-
-        def limits() -> Limits:
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                raise QueryTimedOut(
-                    f"The comparison took longer than {budget:g} s and was stopped.",
-                    timeout_s=budget,
-                )
-            return replace(self.limits, timeout_s=remaining)
-
         found = []
-        for query in queries:
-            ids, stamped = stamped_ids(query, view, limits(), self.unsupported)
-            if len(ids) > self.limits.max_features:
-                raise ResultTooLarge(
-                    f"The result exceeds {self.limits.max_features} features.",
-                    max_features=self.limits.max_features,
-                )
-            found.append(({(query.source, i) for i in ids}, stamped))
-        (left_ids, left_stamp), (right_ids, right_stamp) = found
-        labels = Labels.of(list_layers(self.backend.engine, view.layer_names()))
-        names = _names(left_ids ^ right_ids, labels, view, limits)
+        with TimeBudget(self.limits, "comparison", self.monotonic) as limits:
+            for query in queries:
+                ids, stamped = stamped_ids(query, view, limits(), self.unsupported)
+                found.append(({(result_layer(query), i) for i in ids}, stamped))
+            (left_ids, left_stamp), (right_ids, right_stamp) = found
+            layers = {i.name: i for i in list_layers(self.backend.engine, view.layer_names())}
+            names = _names(left_ids ^ right_ids, layers, view, limits)
         refs = [
             [FeatureRef(id=i, name=names.get((layer, i))) for layer, i in sorted(only)]
             for only in (left_ids - right_ids, right_ids - left_ids)
         ]
-        differ = left_ids != right_ids
-        why = reason(*queries, (left.approach, right.approach), labels) if differ else None
+        why = reason(*queries) if left_ids != right_ids else None
+        # The person saw what a waiting side finds (P2 rule 4): as a preview.
+        for side in (left, right):
+            if side.status in ("proposed", "approved"):
+                with suppress(ActionError):  # decided meanwhile: no longer waiting
+                    self.store.mark_previewed(caller, side.id)
         log.info("model action %d: compared with %d", right.id, left.id)
         return Comparison(
             left_action_id=left.id,
@@ -1217,16 +1228,10 @@ class PromptFlow:
         ready = self.store.ready(caller, action_id, "preview", ["proposed", "approved"])
         query = _stored(ready, "preview")
         view = read_view(self.backend, caller)
-        budget = self.limits.timeout_s
-        deadline = time.monotonic() + budget
-        ids = ids_query(query, view, self.limits, self.unsupported)
-        left = deadline - time.monotonic()
-        if left <= 0:
-            raise QueryTimedOut(
-                f"The preview took longer than {budget:g} s and was stopped.", timeout_s=budget
-            )
-        whole = QueryObject(source=query.source)
-        total = count_query(whole, view, replace(self.limits, timeout_s=left), self.unsupported)
+        with TimeBudget(self.limits, "preview", self.monotonic) as limits:
+            ids = ids_query(query, view, limits(), self.unsupported)
+            whole = QueryObject(source=query.source)
+            total = count_query(whole, view, limits(), self.unsupported)
         self.store.mark_previewed(caller, action_id)
         log.info("model action %d: previewed", action_id)
         return ActionPreview(count=len(ids), total=total, ids=ids)
@@ -1260,19 +1265,73 @@ def _not_runnable(
 COMPARABLE: Final = ("proposed", "approved", "applied", "done", "limited")
 """Statuses of a record that may have a result to compare (design M10.1: an
 answer waiting or applied, a chain that ended); its query decides."""
+PENDING: Final = ("thinking", "proposed", "approved", "running")
+"""Statuses of a record that may still get a result: the model thinks, a
+plan waits for approval or runs."""
+ENDED_EMPTY: Final = ("refused", "answered", "failed", "aborted")
+"""Statuses of a record that ended without a query, and never gets one."""
+
+
+class TimeBudget:
+    """One time limit for several reads of one request (the preview's id list
+    and count, the comparison's id lists and names), as ``/api/query/count``
+    shares one: each read gets what is left, and running out is
+    ``query_timeout`` naming the whole budget, never the slice that was left."""
+
+    def __init__(self, limits: Limits, what: str, clock: Callable[[], float]) -> None:
+        self._limits = limits
+        self._what = what
+        self._clock = clock
+        self._deadline = clock() + limits.timeout_s
+
+    def __call__(self) -> Limits:
+        """The limits for the next read: what is left of the budget."""
+        left = self._deadline - self._clock()
+        if left <= 0:
+            raise self._exceeded()
+        return replace(self._limits, timeout_s=left)
+
+    def _exceeded(self) -> QueryTimedOut:
+        budget = self._limits.timeout_s
+        return QueryTimedOut(
+            f"The {self._what} took longer than {budget:g} s and was stopped.",
+            timeout_s=budget,
+        )
+
+    def __enter__(self) -> "TimeBudget":
+        return self
+
+    def __exit__(
+        self, kind: type[BaseException] | None, error: BaseException | None, _: object
+    ) -> None:
+        if isinstance(error, QueryTimedOut):
+            raise self._exceeded() from None
+
+
+def _nothing_to_compare(action_id: int, status: str) -> ActionError:
+    return ActionError(
+        "nothing_to_compare",
+        f"Model action {action_id} ended without a result ({status}).",
+        http_status=409,
+        id=action_id,
+        status=status,
+    )
 
 
 def _compared(view: ModelActionView) -> QueryObject:
-    """A side's query to compare: there once it has a result, not while the
-    model thinks or a chain waits or runs (409)."""
-    if view.query is None:
+    """A side's query to compare: 409 ``not_approved`` while it may still get
+    one (the model thinks, a chain waits or runs), ``nothing_to_compare`` once
+    it ended without one."""
+    if view.query is not None:
+        return view.query
+    if view.status in PENDING:
         raise _not_runnable(view, "comparison", "has no result to compare yet")
-    return view.query
+    raise _nothing_to_compare(view.id, view.status)
 
 
 def _names(
     features: set[tuple[str, int]],
-    labels: Labels,
+    layers: dict[str, LayerInfo],
     view: DataBackend,
     limits: Callable[[], Limits],
 ) -> dict[tuple[str, int], str]:
@@ -1281,7 +1340,7 @@ def _names(
     without one names none."""
     found = {}
     for layer in sorted({layer for layer, _ in features}):
-        attribute = name_attribute(labels.layers.get(layer))
+        attribute = name_attribute(layers.get(layer))
         if attribute is None:
             continue
         ids = [i for source, i in features if source == layer]

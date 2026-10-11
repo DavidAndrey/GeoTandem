@@ -4,19 +4,33 @@ Plans as the model writes them, a chain stored as the service stores a plan
 (``stored_chain``, for records in a state the test needs without a model),
 and ``drive``, which walks a chain through the API as the interface does:
 approve where it waits, run, wait for the run, until it is done or stopped.
+The fixtures ``model``, ``levels`` and ``ran`` serve the chain's and the
+comparison's tests (imported there by name).
 """
 
 import asyncio
 import json
+import threading
+from collections.abc import AsyncIterator, Sequence
 from typing import Any
 
 import httpx
+import pytest
 from fastapi import FastAPI
-from test_model_enforcement import account_of, url
+from test_model_enforcement import (
+    account_of,
+    connect,
+    fixture_levels,
+    import_areas,
+    install_levels,
+    url,
+)
 
 from geotandem.api.state import AppState
+from geotandem.data import DataBackend, Limits
 from geotandem.levels import load_levels
-from geotandem.llm import Completion
+from geotandem.llm import Completion, Endpoint, Message, ModelInfo, ToolSpec
+from geotandem.llm.fake import FakeLLMClient
 from geotandem.model.chain.plan import chain_governance, check_plan
 from geotandem.model.record import (
     ModelActionStore,
@@ -151,3 +165,79 @@ def hits(view: Body) -> list[int | None]:
 
 def statuses(view: Body) -> list[str]:
     return [step["status"] for step in view["steps"]]
+
+
+# --- fixtures: the model, the levels, the engine's query log ---------------------
+
+
+class Model:
+    """The model behind the client factory: ``fake`` answers what the test
+    scripts and records every call; ``released`` cleared holds a call."""
+
+    def __init__(self) -> None:
+        self.fake = FakeLLMClient()
+        self.asked = threading.Event()
+        self.released = threading.Event()
+        self.released.set()
+
+    def __call__(self, endpoint: Endpoint) -> "Model":
+        return self
+
+    def script(self, *answers: Completion) -> None:
+        self.fake.script.extend(answers)
+
+    def complete(
+        self,
+        messages: Sequence[Message],
+        *,
+        schema: dict[str, Any] | None = None,
+        schema_name: str = "answer",
+        tools: Sequence[ToolSpec] = (),
+        deadline: float | None = None,
+    ) -> Completion:
+        self.asked.set()
+        assert self.released.wait(10), "the test never released the model"
+        return self.fake.complete(
+            messages, schema=schema, schema_name=schema_name, tools=tools, deadline=deadline
+        )
+
+    def models(self) -> list[ModelInfo]:
+        return []
+
+    def server_version(self) -> str | None:
+        return None
+
+    def close(self) -> None:
+        pass
+
+
+@pytest.fixture
+async def model(app: FastAPI, client: httpx.AsyncClient) -> AsyncIterator[Model]:
+    fake = Model()
+    app.state.geotandem.client_factory = fake
+    yield fake
+    fake.released.set()
+    await settle(app)
+
+
+@pytest.fixture
+async def levels(client: httpx.AsyncClient, app: FastAPI) -> dict[str, int]:
+    """A connection, the fixture's levels and the tax rates of the reference question."""
+    await connect(client)
+    import_areas(app.state.geotandem.backend)
+    return await install_levels(client, fixture_levels())
+
+
+@pytest.fixture
+def ran(app: FastAPI, monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    """The engine's query log: every statement the data core executes."""
+    log: list[str] = []
+    backend_type = type(app.state.geotandem.backend)
+    original = backend_type.execute
+
+    def execute(self: DataBackend, stmt: Any, limits: Limits) -> list[dict[str, Any]]:
+        log.append(str(stmt))
+        return original(self, stmt, limits)
+
+    monkeypatch.setattr(backend_type, "execute", execute)
+    return log

@@ -1258,8 +1258,9 @@ export interface paths {
      * @description Ask again with the other approach (design M10.1): a new action with
      *     ``compare_of``, polled like any other. A prompt, so as ``/prompt``: the
      *     account's level and connection now, its request limit, one at a time
-     *     (409/503 ``busy``). Only an own record with a result to compare; it stays
-     *     open beside the repeat.
+     *     (409/503 ``busy``). Only an own record with a result to compare, never a
+     *     repeat (``repeat_of_repeat``); it stays open beside the repeat, which
+     *     waits ``proposed`` whatever the level.
      */
     post: operations['compare_api_model_actions__action_id__compare_post']
     delete?: never
@@ -1280,9 +1281,12 @@ export interface paths {
      * @description Once both have a result (else 409): both stamps and the difference by
      *     feature ids, with names (design M10.2, M10.3), computed from both stored
      *     queries run as the caller; the model is not asked. Feature ids and names
-     *     for the person, as the preview's ids (P2): an interactive session only.
-     *     Addressed by either side: the repeat, or the record compared (its newest
-     *     repeat).
+     *     for the person, as the preview's ids (P2): an interactive session only,
+     *     and a side that waits gets ``previewed_at``. The reason is data (which
+     *     layer, which conditions), worded by the interface. Addressed by either
+     *     side: the repeat, or the record compared (its newest repeat with a
+     *     result). 409 ``not_approved`` while a side may still get a result,
+     *     ``nothing_to_compare`` once it ended without one.
      */
     get: operations['comparison_api_model_actions__action_id__comparison_get']
     put?: never
@@ -1996,7 +2000,51 @@ export interface components {
       /** Only Right */
       only_right: components['schemas']['FeatureRef'][]
       /** Reason */
-      reason?: string | null
+      reason?:
+        (components['schemas']['SourceReason'] | components['schemas']['ConditionsReason']) | null
+    }
+    /**
+     * ConditionChange
+     * @description One condition the sides differ by: both about the same attribute or
+     *     layer, or ``None`` on the side that does not have it.
+     */
+    ConditionChange: {
+      /** Left */
+      left:
+        | (
+            | components['schemas']['Compare']
+            | components['schemas']['Between']
+            | components['schemas']['InList']
+            | components['schemas']['TextMatch']
+            | components['schemas']['IsNull']
+            | components['schemas']['BBox']
+            | components['schemas']['GeometryFilter']
+            | components['schemas']['NearFeature']
+            | components['schemas']['RelatedTopological-Output']
+            | components['schemas']['RelatedByDistance-Output']
+            | components['schemas']['And-Output']
+            | components['schemas']['Or-Output']
+            | components['schemas']['Not-Output']
+          )
+        | null
+      /** Right */
+      right:
+        | (
+            | components['schemas']['Compare']
+            | components['schemas']['Between']
+            | components['schemas']['InList']
+            | components['schemas']['TextMatch']
+            | components['schemas']['IsNull']
+            | components['schemas']['BBox']
+            | components['schemas']['GeometryFilter']
+            | components['schemas']['NearFeature']
+            | components['schemas']['RelatedTopological-Output']
+            | components['schemas']['RelatedByDistance-Output']
+            | components['schemas']['And-Output']
+            | components['schemas']['Or-Output']
+            | components['schemas']['Not-Output']
+          )
+        | null
     }
     /**
      * Conditions
@@ -2009,6 +2057,19 @@ export interface components {
       spatial: number
       /** Restriction */
       restriction: boolean
+    }
+    /**
+     * ConditionsReason
+     * @description The sides differ by these top-level conditions, one by one.
+     */
+    ConditionsReason: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: 'conditions'
+      /** Changes */
+      changes: components['schemas']['ConditionChange'][]
     }
     /**
      * ConnectionDraft
@@ -4367,6 +4428,21 @@ export interface components {
        * @default #3366cc
        */
       color: string
+    }
+    /**
+     * SourceReason
+     * @description The two sides' results are features of different layers.
+     */
+    SourceReason: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: 'source'
+      /** Left */
+      left: string
+      /** Right */
+      right: string
     }
     /**
      * StartPassword

@@ -16,7 +16,7 @@ import asyncio
 import json
 import threading
 import time
-from collections.abc import AsyncIterator, Callable, Sequence
+from collections.abc import Callable
 from dataclasses import replace
 from types import SimpleNamespace
 from typing import Annotated, Any
@@ -24,18 +24,22 @@ from typing import Annotated, Any
 import httpx
 import pytest
 from api_helpers import sign_in_as
-from chain_fixtures import (
+from chain_fixtures import (  # noqa: F401 - levels, model, ran: fixtures
     BUFFER,
     MUNICIPALITIES,
     NOWHERE,
     PRIMAR,
     SCHOOLS,
     Body,
+    Model,
     Step,
     drive,
     hits,
+    levels,
+    model,
     plan,
     planned,
+    ran,
     record,
     run,
     settle,
@@ -50,9 +54,7 @@ from test_model_direct import context_of, profile_of, with_sample
 from test_model_enforcement import (
     PROMPT,
     account_of,
-    connect,
     fixture_levels,
-    import_areas,
     install_levels,
     matrix,
     url,
@@ -65,8 +67,7 @@ from geotandem.data import DataBackend, Limits
 from geotandem.data import spatialite as spatialite_module
 from geotandem.db.orm import ModelAction
 from geotandem.engine.errors import ResultTooLarge
-from geotandem.llm import Completion, Endpoint, Message, ModelInfo, ToolSpec
-from geotandem.llm.fake import FakeLLMClient
+from geotandem.llm import Completion
 from geotandem.model import service
 from geotandem.model.chain import run as chain_run
 from geotandem.model.chain.plan import check_plan
@@ -92,79 +93,7 @@ Q, S, D = "query", "spatial", "derive"
 
 
 # --- fixtures ----------------------------------------------------------------------
-
-
-class Model:
-    """The model behind the client factory: ``fake`` answers what the test
-    scripts and records every call; ``released`` cleared holds a call."""
-
-    def __init__(self) -> None:
-        self.fake = FakeLLMClient()
-        self.asked = threading.Event()
-        self.released = threading.Event()
-        self.released.set()
-
-    def __call__(self, endpoint: Endpoint) -> "Model":
-        return self
-
-    def script(self, *answers: Completion) -> None:
-        self.fake.script.extend(answers)
-
-    def complete(
-        self,
-        messages: Sequence[Message],
-        *,
-        schema: dict[str, Any] | None = None,
-        schema_name: str = "answer",
-        tools: Sequence[ToolSpec] = (),
-        deadline: float | None = None,
-    ) -> Completion:
-        self.asked.set()
-        assert self.released.wait(10), "the test never released the model"
-        return self.fake.complete(
-            messages, schema=schema, schema_name=schema_name, tools=tools, deadline=deadline
-        )
-
-    def models(self) -> list[ModelInfo]:
-        return []
-
-    def server_version(self) -> str | None:
-        return None
-
-    def close(self) -> None:
-        pass
-
-
-@pytest.fixture
-async def model(app: FastAPI, client: httpx.AsyncClient) -> AsyncIterator[Model]:
-    fake = Model()
-    app.state.geotandem.client_factory = fake
-    yield fake
-    fake.released.set()
-    await settle(app)
-
-
-@pytest.fixture
-async def levels(client: httpx.AsyncClient, app: FastAPI) -> dict[str, int]:
-    """A connection, the fixture's levels and the tax rates of the reference question."""
-    await connect(client)
-    import_areas(app.state.geotandem.backend)
-    return await install_levels(client, fixture_levels())
-
-
-@pytest.fixture
-def ran(app: FastAPI, monkeypatch: pytest.MonkeyPatch) -> list[str]:
-    """The engine's query log: every statement the data core executes."""
-    log: list[str] = []
-    backend_type = type(app.state.geotandem.backend)
-    original = backend_type.execute
-
-    def execute(self: DataBackend, stmt: Any, limits: Limits) -> list[dict[str, Any]]:
-        log.append(str(stmt))
-        return original(self, stmt, limits)
-
-    monkeypatch.setattr(backend_type, "execute", execute)
-    return log
+# ``model``, ``levels`` and ``ran`` are ``chain_fixtures``'s.
 
 
 class Held:

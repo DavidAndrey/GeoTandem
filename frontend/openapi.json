@@ -6220,7 +6220,7 @@
           "model"
         ],
         "summary": "Compare",
-        "description": "Ask again with the other approach (design M10.1): a new action with\n``compare_of``, polled like any other. A prompt, so as ``/prompt``: the\naccount's level and connection now, its request limit, one at a time\n(409/503 ``busy``). Only an own record with a result to compare; it stays\nopen beside the repeat.",
+        "description": "Ask again with the other approach (design M10.1): a new action with\n``compare_of``, polled like any other. A prompt, so as ``/prompt``: the\naccount's level and connection now, its request limit, one at a time\n(409/503 ``busy``). Only an own record with a result to compare, never a\nrepeat (``repeat_of_repeat``); it stays open beside the repeat, which\nwaits ``proposed`` whatever the level.",
         "operationId": "compare_api_model_actions__action_id__compare_post",
         "parameters": [
           {
@@ -6345,7 +6345,7 @@
           "model"
         ],
         "summary": "Comparison",
-        "description": "Once both have a result (else 409): both stamps and the difference by\nfeature ids, with names (design M10.2, M10.3), computed from both stored\nqueries run as the caller; the model is not asked. Feature ids and names\nfor the person, as the preview's ids (P2): an interactive session only.\nAddressed by either side: the repeat, or the record compared (its newest\nrepeat).",
+        "description": "Once both have a result (else 409): both stamps and the difference by\nfeature ids, with names (design M10.2, M10.3), computed from both stored\nqueries run as the caller; the model is not asked. Feature ids and names\nfor the person, as the preview's ids (P2): an interactive session only,\nand a side that waits gets ``previewed_at``. The reason is data (which\nlayer, which conditions), worded by the interface. Addressed by either\nside: the repeat, or the record compared (its newest repeat with a\nresult). 409 ``not_approved`` while a side may still get a result,\n``nothing_to_compare`` once it ended without one.",
         "operationId": "comparison_api_model_actions__action_id__comparison_get",
         "parameters": [
           {
@@ -8695,7 +8695,21 @@
           "reason": {
             "anyOf": [
               {
-                "type": "string"
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/SourceReason"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ConditionsReason"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "kind",
+                  "mapping": {
+                    "conditions": "#/components/schemas/ConditionsReason",
+                    "source": "#/components/schemas/SourceReason"
+                  }
+                }
               },
               {
                 "type": "null"
@@ -8715,6 +8729,119 @@
         ],
         "title": "Comparison",
         "description": "The two approaches side by side (design M10); the difference is the\napplication's, computed from feature ids, never the model's."
+      },
+      "ConditionChange": {
+        "properties": {
+          "left": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/Compare"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Between"
+                  },
+                  {
+                    "$ref": "#/components/schemas/InList"
+                  },
+                  {
+                    "$ref": "#/components/schemas/TextMatch"
+                  },
+                  {
+                    "$ref": "#/components/schemas/IsNull"
+                  },
+                  {
+                    "$ref": "#/components/schemas/BBox"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GeometryFilter"
+                  },
+                  {
+                    "$ref": "#/components/schemas/NearFeature"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RelatedTopological-Output"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RelatedByDistance-Output"
+                  },
+                  {
+                    "$ref": "#/components/schemas/And-Output"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Or-Output"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Not-Output"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Left"
+          },
+          "right": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/Compare"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Between"
+                  },
+                  {
+                    "$ref": "#/components/schemas/InList"
+                  },
+                  {
+                    "$ref": "#/components/schemas/TextMatch"
+                  },
+                  {
+                    "$ref": "#/components/schemas/IsNull"
+                  },
+                  {
+                    "$ref": "#/components/schemas/BBox"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GeometryFilter"
+                  },
+                  {
+                    "$ref": "#/components/schemas/NearFeature"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RelatedTopological-Output"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RelatedByDistance-Output"
+                  },
+                  {
+                    "$ref": "#/components/schemas/And-Output"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Or-Output"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Not-Output"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Right"
+          }
+        },
+        "type": "object",
+        "required": [
+          "left",
+          "right"
+        ],
+        "title": "ConditionChange",
+        "description": "One condition the sides differ by: both about the same attribute or\nlayer, or ``None`` on the side that does not have it."
       },
       "Conditions": {
         "properties": {
@@ -8739,6 +8866,29 @@
         ],
         "title": "Conditions",
         "description": "Leaf conditions of the query, as design C6 shows them (\"1 A · 2 R\")."
+      },
+      "ConditionsReason": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "conditions",
+            "title": "Kind",
+            "default": "conditions"
+          },
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/ConditionChange"
+            },
+            "type": "array",
+            "title": "Changes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "changes"
+        ],
+        "title": "ConditionsReason",
+        "description": "The sides differ by these top-level conditions, one by one."
       },
       "ConnectionDraft": {
         "properties": {
@@ -14415,6 +14565,31 @@
           "kind"
         ],
         "title": "SingleSymbol"
+      },
+      "SourceReason": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "source",
+            "title": "Kind",
+            "default": "source"
+          },
+          "left": {
+            "type": "string",
+            "title": "Left"
+          },
+          "right": {
+            "type": "string",
+            "title": "Right"
+          }
+        },
+        "type": "object",
+        "required": [
+          "left",
+          "right"
+        ],
+        "title": "SourceReason",
+        "description": "The two sides' results are features of different layers."
       },
       "StartPassword": {
         "properties": {

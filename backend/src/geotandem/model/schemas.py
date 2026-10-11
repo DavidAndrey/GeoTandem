@@ -34,7 +34,7 @@ from pydantic import (
 from geotandem.engine.result import QueryResult, ResultStamp
 from geotandem.levels import CellMode, OpClass
 from geotandem.llm import Locality
-from geotandem_query import QueryObject, compact
+from geotandem_query import Condition, QueryObject, compact
 
 MAX_PROMPT = 4000
 """Characters of one prompt."""
@@ -182,6 +182,8 @@ ActionErrorCode = Literal[
     "class_not_allowed",
     "nothing_to_undo",
     "undo_blocked",
+    "nothing_to_compare",
+    "repeat_of_repeat",
     "time_limit",
 ]
 """Errors of the model routes beyond the shared ones (``not_found``, ``llm_*``,
@@ -521,6 +523,35 @@ class FeatureRef(BaseModel):
     name: str | None
 
 
+class SourceReason(BaseModel):
+    """The two sides' results are features of different layers."""
+
+    kind: Literal["source"] = "source"
+    left: str
+    right: str
+    """Layer names; the interface words them with the catalog's titles."""
+
+
+class ConditionChange(BaseModel):
+    """One condition the sides differ by: both about the same attribute or
+    layer, or ``None`` on the side that does not have it."""
+
+    left: Condition | None
+    right: Condition | None
+
+
+class ConditionsReason(BaseModel):
+    """The sides differ by these top-level conditions, one by one."""
+
+    kind: Literal["conditions"] = "conditions"
+    changes: list[ConditionChange]
+
+
+Reason = Annotated[SourceReason | ConditionsReason, Field(discriminator="kind")]
+"""Why the hits differ, read from the two query objects alone (WP76): data,
+never words, so the interface says it in its own (WP78)."""
+
+
 class Comparison(BaseModel):
     """The two approaches side by side (design M10); the difference is the
     application's, computed from feature ids, never the model's."""
@@ -531,7 +562,9 @@ class Comparison(BaseModel):
     right: ResultStamp
     only_left: list[FeatureRef]
     only_right: list[FeatureRef]
-    reason: str | None = None
+    reason: Reason | None = None
+    """Only where the two queries show it; ``None`` when the hits are equal or
+    the difference cannot be read one condition at a time."""
 
 
 class NotCounted(BaseModel):

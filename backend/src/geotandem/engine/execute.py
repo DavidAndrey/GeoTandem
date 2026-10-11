@@ -77,34 +77,48 @@ def stamp_query(
     none leave the server. The query's own ordering stays, so a ``limit``
     picks the same features as ``run_query``.
     """
-    return stamped_ids(query, backend, limits, unsupported)[1]
+    compiled = compile_query(query, backend, COUNT_CAP, unsupported)
+    return _stamp(_ids(compiled, backend, limits), query, _versions(compiled, backend))
 
 
 def stamped_ids(
     query: QueryObject, backend: DataBackend, limits: Limits, unsupported: Iterable[Op] = ()
 ) -> tuple[list[int], ResultStamp]:
-    """The ids of ``ids_query`` and the stamp of ``stamp_query``, from one run:
-    for a comparison of two results by their features (design M10)."""
+    """The ids of ``ids_query`` and the stamp of ``stamp_query``, from one run,
+    within the result-size limit: for a comparison of two results by their
+    features (design M10). At most one id beyond the limit is read, so an
+    oversized result is refused without loading it."""
     compiled = compile_query(query, backend, COUNT_CAP, unsupported)
-    ids = _ids(compiled, backend, limits)
+    ids = _ids(compiled, backend, limits, cap=limits.max_features)
+    if len(ids) > limits.max_features:
+        raise ResultTooLarge(
+            f"The result exceeds {limits.max_features} features.",
+            max_features=limits.max_features,
+        )
     return ids, _stamp(ids, query, _versions(compiled, backend))
+
+
+IN_CHUNK = 900
+"""Ids per ``IN`` list: under SQLite's oldest limit of bound variables (999)."""
 
 
 def values_of(
     layer: str, attribute: str, ids: Iterable[int], backend: DataBackend, limits: Limits
 ) -> dict[int, Any]:
-    """The value of one attribute of the features ``ids`` of ``layer``, by id;
-    a layer outside ``backend`` (a view) is ``unknown_layer``, as for a query."""
+    """The value of one attribute of the features ``ids`` of ``layer``, by id,
+    read ``IN_CHUNK`` ids at a time; a layer outside ``backend`` (a view) is
+    ``unknown_layer``, as for a query."""
     try:
         table = backend.layer_table(layer)
     except KeyError:
         raise UnknownLayer(f"Unknown layer '{layer}'.", layer=layer) from None
     wanted = sorted(set(ids))
-    if not wanted:
-        return {}
-    stmt = select(table.c[FID], table.c[attribute]).where(table.c[FID].in_(wanted))
-    rows = _execute(backend, stmt, limits)
-    return {int(row[FID]): row[attribute] for row in rows}
+    found: dict[int, Any] = {}
+    for start in range(0, len(wanted), IN_CHUNK):
+        chunk = wanted[start : start + IN_CHUNK]
+        stmt = select(table.c[FID], table.c[attribute]).where(table.c[FID].in_(chunk))
+        found |= {int(row[FID]): row[attribute] for row in _execute(backend, stmt, limits)}
+    return found
 
 
 def stamp_of(result: QueryResult) -> ResultStamp:
@@ -135,11 +149,16 @@ def ids_query(
     return _ids(compile_query(query, backend, COUNT_CAP, unsupported), backend, limits)
 
 
-def _ids(compiled: Compiled, backend: DataBackend, limits: Limits) -> list[int]:
+def _ids(
+    compiled: Compiled, backend: DataBackend, limits: Limits, cap: int | None = None
+) -> list[int]:
+    """Sorted; with ``cap``, at most ``cap + 1`` of them."""
     # The query's own ordering stays inside, so a ``limit`` picks what run_query does.
     found = compiled.stmt.with_only_columns(compiled.stmt.selected_columns[FID]).subquery()
-    rows = _execute(backend, select(found.c[FID]).order_by(found.c[FID]), limits)
-    return [int(row[FID]) for row in rows]
+    stmt = select(found.c[FID]).order_by(found.c[FID])
+    if cap is not None:
+        stmt = stmt.limit(cap + 1)
+    return [int(row[FID]) for row in _execute(backend, stmt, limits)]
 
 
 def _execute(backend: DataBackend, stmt: Any, limits: Limits) -> list[dict[str, Any]]:

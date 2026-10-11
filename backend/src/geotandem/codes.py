@@ -83,6 +83,8 @@ CODES: dict[str, str] = {
     "already_decided": "The action is decided already (details.status).",
     "nothing_to_undo": "The action changed nothing that could be taken back.",
     "undo_blocked": "The analysis was changed by hand since; undo is over.",
+    "nothing_to_compare": "A side of the comparison ended without a result (details.status).",
+    "repeat_of_repeat": "The action repeats details.compare_of; compare that one instead.",
     "time_limit": "The tool chain ran longer than details.max seconds and was stopped "
     "before details.step.",
     "export_too_large": "The log export would hold more than details.max rows.",
