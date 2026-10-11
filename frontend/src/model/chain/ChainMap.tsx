@@ -1,19 +1,22 @@
 // A chain's intermediate results on the map (design M9.1, M9.4): dimmed, in
 // accent 300 for the latest complete step and grey for the earlier ones, with
-// a caption that says they are not applied. Drawn from what the contract gives
-// per step: ``layer``, the intermediate layer the step made (session-scoped,
-// owned by the action, WP74), read through ``/api/query`` like any layer, and
-// the step's count for the caption. Never the analysis: that changes only on
-// *übernehmen*.
+// a caption that says they are not applied. Each step's result is a query
+// object (``StepView.query``, WP75): nothing is materialised on the server.
+// The client runs it as the user through Modus A (``POST /api/query/ids``,
+// with the user's own visibility) and draws those features of its layer. A
+// buffer step shows the features it buffers. Never the analysis: that changes
+// only on *übernehmen*.
 import { Trans } from '@lingui/react/macro'
 import { t } from '@lingui/core/macro'
 import L from 'leaflet'
 import { useEffect } from 'react'
 import type { QueryObject } from '../../analysis/model'
 import type { ModelActionView, QueryResult, StepView } from '../../api/client'
+import { useLayers, useMapConfig } from '../../api/queries'
 import { formatNumber } from '../../i18n/locale'
-import { useLayerFeatures } from '../../map/data'
+import { useHits, useLayerFeatures } from '../../map/data'
 import { useLeafletMap } from '../../map/leaflet'
+import { compactQuery } from '../readable'
 import { FRAME } from '../statusKey'
 import { useModel, type ModelState } from '../store'
 import { isChain, phaseOf, placeOf, type Phase } from './steps'
@@ -33,11 +36,11 @@ function liveChain(state: ModelState): ModelActionView | null {
   return view && isChain(view) && SHOWN.includes(phaseOf(view)) ? view : null
 }
 
-/** The steps with a complete result and a layer of their own, in order. */
+/** The steps with a complete result, in order: their queries are drawn. */
 const drawn = (view: ModelActionView): StepView[] =>
-  view.steps.filter((s) => (s.status === 'ok' || s.status === 'empty') && s.layer)
+  view.steps.filter((s) => (s.status === 'ok' || s.status === 'empty') && s.query)
 
-/** The dimmed layers of the live chain, under every other model layer. */
+/** The dimmed results of the live chain's steps, under every other model layer. */
 export function ChainLayer() {
   const view = useModel(liveChain)
   const steps = view ? drawn(view) : []
@@ -46,7 +49,7 @@ export function ChainLayer() {
       {steps.map((step, i) => (
         <StepLayer
           key={`${view?.id}:${step.position}`}
-          layer={step.layer ?? ''}
+          query={step.query as QueryObject}
           color={i === steps.length - 1 ? LATEST : EARLIER}
         />
       ))}
@@ -54,13 +57,24 @@ export function ChainLayer() {
   )
 }
 
-function StepLayer({ layer, color }: { layer: string; color: string }) {
-  const query: QueryObject = { schema_version: '2', source: layer, output: 'map' }
-  const features = useLayerFeatures(query, false)
+/** One step's result: its query's ids as the user, those features of its layer. */
+function StepLayer({ query, color }: { query: QueryObject; color: string }) {
+  // As written (compact); the server already sends it so.
+  const step = compactQuery(query) as QueryObject
+  const ids = useHits(step).ids
+  const catalog = useLayers().data
+  const config = useMapConfig()
+  const count = catalog?.find((l) => l.name === step.source)?.feature_count ?? 0
+  const layer: QueryObject = { schema_version: '2', source: step.source, output: 'map' }
+  const features = useLayerFeatures(
+    layer,
+    count > (config.data?.max_features ?? Infinity),
+    ids !== null,
+  )
   const map = useLeafletMap()
   const data = features.data
   useEffect(() => {
-    if (!map || !data) return
+    if (!map || !data || !ids) return
     const element = map.getPane(PANE) ?? map.createPane(PANE)
     element.style.zIndex = '420'
     element.style.pointerEvents = 'none'
@@ -72,7 +86,7 @@ function StepLayer({ layer, color }: { layer: string; color: string }) {
       fillOpacity: 0.35,
       interactive: false,
     }
-    const shown = L.geoJSON(collection(data.features), {
+    const shown = L.geoJSON(collection(data.features, ids), {
       pane: PANE,
       interactive: false,
       style: () => style,
@@ -81,15 +95,18 @@ function StepLayer({ layer, color }: { layer: string; color: string }) {
     return () => {
       shown.remove()
     }
-  }, [map, data, color])
+  }, [map, data, ids, color])
   return null
 }
 
-function collection(features: QueryResult['features']): GeoJSON.FeatureCollection {
+function collection(
+  features: QueryResult['features'],
+  ids: Set<number>,
+): GeoJSON.FeatureCollection {
   return {
     type: 'FeatureCollection',
     features: features
-      .filter((f) => f.geometry !== null)
+      .filter((f) => f.geometry !== null && ids.has(Number(f.id)))
       .map((f) => ({ ...f, geometry: f.geometry as unknown as GeoJSON.Geometry })),
   }
 }

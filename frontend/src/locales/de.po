@@ -56,6 +56,10 @@ msgstr "· Schritt {at} von {total}"
 msgid "· von Hand übernehmen"
 msgstr "· von Hand übernehmen"
 
+#: src/model/chain/Chain.tsx
+msgid "· wird abgebrochen"
+msgstr "· wird abgebrochen"
+
 #: src/i18n/errors.ts
 msgid "„{layer}.{attribute}\" ist kein Feld eines Layers mit Geometrie."
 msgstr "„{layer}.{attribute}\" ist kein Feld eines Layers mit Geometrie."
@@ -1759,6 +1763,10 @@ msgstr "Die Antwort des Modells ist nicht lesbar."
 msgid "Die Anwendung ist bereits eingerichtet."
 msgstr "Die Anwendung ist bereits eingerichtet."
 
+#: src/model/chain/Chain.tsx
+msgid "Die Anwendung wurde neu gestartet, während die Kette lief."
+msgstr "Die Anwendung wurde neu gestartet, während die Kette lief."
+
 #: src/i18n/errors.ts
 msgid "Die Anwendung wurde während des Imports beendet."
 msgstr "Die Anwendung wurde während des Imports beendet."
@@ -1840,12 +1848,20 @@ msgid "Die Kacheln kommen von ausserhalb dieser Installation; der Anbieter sieht
 msgstr "Die Kacheln kommen von ausserhalb dieser Installation; der Anbieter sieht den Kartenausschnitt."
 
 #: src/model/chain/Chain.tsx
+msgid "Die Kette bräuchte {total} Schritte, neu geplante eingeschlossen (höchstens {max})."
+msgstr "Die Kette bräuchte {total} Schritte, neu geplante eingeschlossen (höchstens {max})."
+
+#: src/model/chain/Chain.tsx
 msgid "Die Kette bräuchte mehr als {max} Schritte, neu geplante eingeschlossen (höchstens {max})."
 msgstr "Die Kette bräuchte mehr als {max} Schritte, neu geplante eingeschlossen (höchstens {max})."
 
 #: src/model/chain/Chain.tsx
 msgid "Die Kette lief länger als erlaubt (höchstens {max} je Anfrage)."
 msgstr "Die Kette lief länger als erlaubt (höchstens {max} je Anfrage)."
+
+#: src/model/chain/Chain.tsx
+msgid "Die Kette lief länger als erlaubt und hielt vor Schritt {at} (höchstens {max} je Anfrage)."
+msgstr "Die Kette lief länger als erlaubt und hielt vor Schritt {at} (höchstens {max} je Anfrage)."
 
 #: src/model/chain/Chain.tsx
 msgid "Die Kette wurde nach einem Schritt ohne Ergebnis neu geplant; geänderte Schritte sind markiert. Die Stufe verlangt eine neue Freigabe."
@@ -1858,6 +1874,10 @@ msgstr "Die Kopie übernimmt Daten, Feldbeschreibungen und die Sichtbarkeit; sie
 #: src/model/chain/Chain.tsx
 msgid "Die Laufzeit ist angehalten, solange die Freigabe offen ist."
 msgstr "Die Laufzeit ist angehalten, solange die Freigabe offen ist."
+
+#: src/model/chain/Chain.tsx
+msgid "Die Neuplanung brachte keinen brauchbaren Plan: {reason}"
+msgstr "Die Neuplanung brachte keinen brauchbaren Plan: {reason}"
 
 #: src/session/SessionMenu.tsx
 msgid "Die Sitzung wird endgültig gelöscht; der Arbeitsplatz beginnt danach leer."
@@ -2064,6 +2084,10 @@ msgstr "Ein Layer fehlt oder ist nicht sichtbar."
 #: src/admin/ConnectionsPage.tsx
 msgid "Ein Schlüssel ist gespeichert. Leer lassen, um ihn zu behalten."
 msgstr "Ein Schlüssel ist gespeichert. Leer lassen, um ihn zu behalten."
+
+#: src/model/chain/Chain.tsx
+msgid "Ein Schritt brachte einen Fehler oder kein Ergebnis, und keine Neuplanung ist mehr übrig (höchstens {max})."
+msgstr "Ein Schritt brachte einen Fehler oder kein Ergebnis, und keine Neuplanung ist mehr übrig (höchstens {max})."
 
 #: src/model/chain/Chain.tsx
 msgid "Ein Schritt hätte mehr als {max} Objekte erzeugt (höchstens {max})."
@@ -3161,6 +3185,10 @@ msgstr "Keine Treffer."
 msgid "Keine Vorschau verfügbar; die Analyse ändert sich erst mit „Annehmen“."
 msgstr "Keine Vorschau verfügbar; die Analyse ändert sich erst mit „Annehmen“."
 
+#: src/model/chain/Chain.tsx
+msgid "Keine weitere Neuplanung"
+msgstr "Keine weitere Neuplanung"
+
 #: src/i18n/errors.ts
 msgid "Keinem Datensatz lässt sich eine Geometrie zuordnen."
 msgstr "Keinem Datensatz lässt sich eine Geometrie zuordnen."
@@ -3199,6 +3227,10 @@ msgid "Kette angehalten: {limit}. Analyse unverändert"
 msgstr "Kette angehalten: {limit}. Analyse unverändert"
 
 #: src/model/chain/Chain.tsx
+msgid "Kette fertig, nicht angewendet"
+msgstr "Kette fertig, nicht angewendet"
+
+#: src/model/chain/Chain.tsx
 msgid "Kette fertig: {hits} Treffer, nicht angewendet"
 msgstr "Kette fertig: {hits} Treffer, nicht angewendet"
 
@@ -3217,6 +3249,10 @@ msgstr "Kette übernommen · {count} Treffer"
 #: src/model/chain/Chain.tsx
 msgid "Kette wartet auf Freigabe vor Schritt {at} von {total}"
 msgstr "Kette wartet auf Freigabe vor Schritt {at} von {total}"
+
+#: src/model/chain/Chain.tsx
+msgid "Kette wird abgebrochen"
+msgstr "Kette wird abgebrochen"
 
 #: src/model/approval/Level.tsx
 msgid "Klasse"
@@ -3301,6 +3337,10 @@ msgstr "Kopie eines Layers mit Daten, Metadaten und Sichtbarkeit"
 #: src/table/TableDock.tsx
 msgid "Lädt …"
 msgstr "Lädt …"
+
+#: src/model/chain/Chain.tsx
+msgid "Lauf unterbrochen"
+msgstr "Lauf unterbrochen"
 
 #: src/admin/format.ts
 #: src/model/chain/Chain.tsx
@@ -3794,6 +3834,10 @@ msgstr "nicht leer"
 msgid "Nichts gefunden."
 msgstr "Nichts gefunden."
 
+#: src/model/chain/Chain.tsx
+msgid "Nichts zu übernehmen: Kein Schritt brachte ein vollständiges Ergebnis innerhalb der Grenzen."
+msgstr "Nichts zu übernehmen: Kein Schritt brachte ein vollständiges Ergebnis innerhalb der Grenzen."
+
 #: src/auth/SetupPage.tsx
 msgid "Noch gibt es kein Konto. Das erste Konto wird Administrator und legt weitere Konten an."
 msgstr "Noch gibt es kein Konto. Das erste Konto wird Administrator und legt weitere Konten an."
@@ -4155,8 +4199,8 @@ msgid "schneidet"
 msgstr "schneidet"
 
 #: src/model/chain/Chain.tsx
-msgid "Schritt {at} hätte {value} Objekte erzeugt (höchstens {max})."
-msgstr "Schritt {at} hätte {value} Objekte erzeugt (höchstens {max})."
+msgid "Schritt {at} hätte {shown} Objekte erzeugt (höchstens {max})."
+msgstr "Schritt {at} hätte {shown} Objekte erzeugt (höchstens {max})."
 
 #: src/model/chain/Chain.tsx
 msgid "Schritt {at} hätte mehr als {max} Objekte erzeugt (höchstens {max})."
@@ -4620,8 +4664,8 @@ msgid "Übernehmen"
 msgstr "Übernehmen"
 
 #: src/model/chain/Chain.tsx
-msgid "Übernehmen schreibt das Ergebnis als Abfrage in die Analyse: die Schritte werden Bedingungen mit der Marke „Modell“, reine Zwischenlayer entfallen."
-msgstr "Übernehmen schreibt das Ergebnis als Abfrage in die Analyse: die Schritte werden Bedingungen mit der Marke „Modell“, reine Zwischenlayer entfallen."
+msgid "Übernehmen schreibt das Ergebnis als eine Abfrage in die Analyse, ihre Bedingungen mit der Marke „Modell“; die Zwischenstände entfallen."
+msgstr "Übernehmen schreibt das Ergebnis als eine Abfrage in die Analyse, ihre Bedingungen mit der Marke „Modell“; die Zwischenstände entfallen."
 
 #: src/admin/ImportLogPage.tsx
 msgid "Übernommen"
@@ -4949,6 +4993,10 @@ msgstr "Wieder verfügbar ab 00:00 (Zeit des Servers)."
 #: src/session/notice.ts
 msgid "Wiederhergestellt · {count}, identisch mit dem Speicherstand"
 msgstr "Wiederhergestellt · {count}, identisch mit dem Speicherstand"
+
+#: src/model/chain/Chain.tsx
+msgid "Wird abgebrochen: Der laufende Schritt endet noch, dann hält die Kette."
+msgstr "Wird abgebrochen: Der laufende Schritt endet noch, dann hält die Kette."
 
 #: src/model/approval/Approval.tsx
 msgid "Wird abgelehnt …"

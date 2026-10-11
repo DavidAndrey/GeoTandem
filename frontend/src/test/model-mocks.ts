@@ -12,6 +12,7 @@ import type {
   LevelOption,
   ModelActionView,
   ModelAnswer,
+  ModelView,
   OpClass,
   PlanEdit,
   QueryObject,
@@ -161,37 +162,156 @@ export function actionView(
 }
 
 type PlanAnswer = Extract<ModelAnswer, { kind: 'plan' }>
-type PlannedStep = PlanAnswer['steps'][number]
+export type PlannedStep = PlanAnswer['steps'][number]
+type Matrix = ModelActionView['level']['matrix']
+type Json = Record<string, unknown>
 
-/** A planned step as ``StepView`` (WP75): its class from the fixture, its cell at the level as it was. */
-function stepView(
-  step: PlannedStep,
-  position: number,
-  k: OpClass,
-  levelName: LevelName,
+/** Each chain tool's own class (``tools/chain.py``, H2). */
+const TOOL_CLASS: Record<string, OpClass> = {
+  filter: 'query',
+  buffer: 'derive',
+  within: 'spatial',
+  outside: 'spatial',
+  intersects: 'spatial',
+  near: 'spatial',
+}
+
+const CLASS_ORDER: readonly OpClass[] = ['catalog', 'query', 'spatial', 'derive', 'display']
+
+/** The argument a tool names its target step by (``tools/chain.py`` inputs). */
+const TARGET: Record<string, string> = {
+  within: 'in',
+  outside: 'in',
+  intersects: 'with',
+  near: 'to',
+}
+
+/** The earlier steps a step names, by argument (``plan.py`` ``reads``). */
+function readsOf(step: { tool: string; arguments: Json }): [string, number][] {
+  const keys = ['of', ...(TARGET[step.tool] ? [TARGET[step.tool] as string] : [])]
+  return keys.flatMap((key) => {
+    const value = step.arguments[key]
+    return typeof value === 'number' ? [[key, value] as [string, number]] : []
+  })
+}
+
+/** ``conjoin`` of ``tools/chain.py``: one flat ``and``, never one of a single argument. */
+function conjoin(first: unknown, then: unknown): unknown {
+  const flat = (c: unknown): unknown[] =>
+    c === undefined || c === null
+      ? []
+      : (c as Json).op === 'and'
+        ? ((c as Json).args as unknown[]).flatMap(flat)
+        : [c]
+  const parts = [...flat(first), ...flat(then)]
+  return parts.length === 0 ? undefined : parts.length === 1 ? parts[0] : { op: 'and', args: parts }
+}
+
+/** ``base`` with ``where`` (and ``extra``) as a step narrows it; compact, as the server writes it. */
+function narrowed(base: Json, where: unknown, extra: Json = {}): Json {
+  const rest = Object.fromEntries(Object.entries(base).filter(([key]) => key !== 'where'))
+  const condition = conjoin(base.where, where)
+  return { ...rest, ...(condition === undefined ? {} : { where: condition }), ...extra }
+}
+
+/**
+ * A step's query object as the chain's tools build it (``tools/chain.py``)
+ * from the earlier steps' ones: a filter narrows a layer or a step, a buffer
+ * adds ``buffer``, a spatial step relates ``of`` to its target (``dwithin``
+ * for a buffer). The fixture's conditions are attribute conditions only.
+ */
+function stepQuery(step: PlannedStep, earlier: ReadonlyMap<number, Json>): Json {
+  const args = step.arguments as Json
+  const base = (): Json =>
+    typeof args.of === 'number'
+      ? (earlier.get(args.of) ?? {})
+      : { schema_version: '2', source: args.layer, output: 'map' }
+  if (step.tool === 'filter') return narrowed(base(), args.where)
+  if (step.tool === 'buffer')
+    return narrowed(base(), args.where, { buffer: { distance_m: args.distance_m } })
+  const target = earlier.get(args[TARGET[step.tool] ?? 'in'] as number) ?? {}
+  const buffer = target.buffer as { distance_m: number } | undefined
+  const filter = target.where === undefined ? {} : { where: target.where }
+  const relation =
+    buffer || step.tool === 'near'
+      ? {
+          op: 'related',
+          layer: target.source,
+          predicate: 'dwithin',
+          distance_m: buffer?.distance_m ?? args.distance_m,
+          ...filter,
+        }
+      : {
+          op: 'related',
+          layer: target.source,
+          predicate: step.tool === 'intersects' ? 'intersects' : 'within',
+          ...filter,
+        }
+  return narrowed(base(), step.tool === 'outside' ? { op: 'not', arg: relation } : relation)
+}
+
+/** A step's classes (``plan.py`` ``step_classes``): its tool's and its ``where``'s (H4). */
+function stepClasses(step: PlannedStep): OpClass[] {
+  const own = new Set<OpClass>([TOOL_CLASS[step.tool] ?? 'query'])
+  if ((step.arguments as Json).where) own.add('query')
+  return CLASS_ORDER.filter((k) => own.has(k))
+}
+
+const strictest = (matrix: Matrix, classes: readonly OpClass[]): StepView['cell'] => {
+  const cells = classes.map((k) => matrix[k])
+  return cells.includes('off') ? 'off' : cells.includes('approve') ? 'approve' : 'auto'
+}
+
+/**
+ * Planned steps as the server stores them (WP75, ``new_step``): each with its
+ * query object, its classes and its cell, the strictest of them at the level
+ * as it was. ``earlier``: the queries of the steps they may name.
+ */
+function chainSteps(
+  planned: readonly { position: number; step: PlannedStep }[],
+  matrix: Matrix,
+  earlier: ReadonlyMap<number, Json> = new Map(),
   revised = false,
-): StepView {
-  return {
-    position,
-    text: step.text,
-    tool: step.tool,
-    arguments: step.arguments,
-    classes: [k],
-    cell: level(levelName).matrix[k],
-    status: 'planned',
-    revised,
-    hits: null,
-    stamp: null,
-    layer: null,
-    model_view: null,
-    duration_ms: null,
-  }
+): StepView[] {
+  const known = new Map(earlier)
+  return planned.map(({ position, step }) => {
+    const query = stepQuery(step, known)
+    known.set(position, query)
+    const classes = stepClasses(step)
+    return {
+      position,
+      text: step.text,
+      tool: step.tool,
+      arguments: step.arguments,
+      classes,
+      cell: strictest(matrix, classes),
+      status: 'planned',
+      revised,
+      hits: null,
+      stamp: null,
+      query: query as StepView['query'],
+      model_view: null,
+      duration_ms: null,
+    }
+  })
 }
 
 function planSteps(c: Case, levelName: LevelName): StepView[] {
   const plan = c.answer as unknown as PlanAnswer
-  const classes = ('step_classes' in c.expect ? c.expect.step_classes : []) as OpClass[]
-  return plan.steps.map((step, i) => stepView(step, i + 1, classes[i] ?? 'query', levelName))
+  const placed = plan.steps.map((step, i) => ({ position: i + 1, step }))
+  return chainSteps(placed, level(levelName).matrix)
+}
+
+/** The chain's governance (``chain_governance``): the union of its steps' classes (D1). */
+function chainGovernance(steps: readonly StepView[], matrix: Matrix): Governance {
+  const union = new Set(steps.filter((s) => s.status !== 'removed').flatMap((s) => s.classes))
+  const classes = CLASS_ORDER.filter((k) => union.has(k))
+  return {
+    classes,
+    cell: strictest(matrix, classes),
+    needs_approval: classes.filter((k) => matrix[k] === 'approve'),
+    off: classes.filter((k) => matrix[k] === 'off'),
+  }
 }
 
 /**
@@ -329,64 +449,77 @@ export function queryResult(
 
 // --- The tool chain (WP75) as the fake server answers it ---------------------
 //
-// WP75's server is not built yet: its routes answer 501. The rules here follow
-// plan P4, P7, the state diagram of 1.2 and the contract (``schemas.py``);
-// every choice those leave open is marked ASSUMED, for the integrator to check
-// against WP75's server.
-// - ``approve`` (shared with a query answer): ``proposed`` → ``approved``.
-//   ASSUMED: when no step's cell is ``auto`` (Prüfen) the approval clears every
-//   remaining step (one approval for the whole chain); otherwise it clears the
-//   next step only (Teilautonom: the start, then each halt).
-// - ``run`` (202): ``approved`` chains only, else 409 as any wrong state; the
-//   record becomes ``running`` with its next step ``running``.
-// - ``GET .../actions/{id}`` (polling): ASSUMED pacing, one step per poll (the
-//   server runs in the background and persists each step as it finishes). A
-//   step finishes ``ok`` (``empty`` at 0 hits) with ``hits``, ``stamp``,
-//   ``duration_ms``, ``model_view`` {outcome, empty, count} and ``layer``
-//   (ASSUMED: the owner reads it through ``POST /api/query`` with ``source``,
-//   like any layer, for the dimmed map). Before a step whose cell is
-//   ``approve`` and that no approval cleared, the chain halts: ``proposed``,
-//   that step ``waiting`` (P4, M9.2). After the last step: ``done`` with
-//   ``query`` (the result as one query object, as written: compact) and
-//   ``stamp``.
-// - Re-plan (P4): after an empty intermediate step, at most ``replans`` times,
-//   the remaining steps are replaced by the script's (``revised: true``;
-//   ASSUMED: positions continue after the kept ones); kept + revised beyond
-//   ``steps`` ⇒ ``limited`` with ``step_limit``. Approval again: when no step
-//   is ``auto`` (Prüfen) ``proposed`` with no step ``waiting``; otherwise the
-//   halt rule (Teilautonom at revised ``approve`` steps, Automatisch never).
-//   An empty final step is the result (0 hits), no re-plan.
-// - Limits: ``result_too_large`` at a step makes it ``error`` with
-//   ``model_view.code``; ``time_limit`` stops before the step. The record is
-//   ``limited`` with ``stop_reason``, the steps left ``skipped``, ``query`` the
-//   last complete result, and ASSUMED: ``error`` {code, message, details
-//   {position, value, max}} carries the numbers M9.5 shows.
-// - ``abort``: ``thinking`` ⇒ ``aborted`` (P7); ``running`` ⇒ the running step
-//   finishes (P4: stops before the next step), then ``limited``/``aborted``,
-//   decision still open (P7). ASSUMED: a chain halted for approval (``proposed``
-//   after a step ran) aborts the same way (design M9.2 "Kette abbrechen" →
-//   M9.4; the 1.2 diagram draws no ``proposed → limited`` edge).
-// - ``adopt``: ``done`` or ``limited`` with a complete result (else 409
-//   ``not_approved``); → ``applied`` with decision ``accepted`` (ASSUMED at
-//   every level: the user clicked), answering ``ExecuteResponse``: the record
-//   (``query`` compact) and the rows (``result.query`` a full dump).
-// - ``PATCH .../plan``: ``proposed`` and not started (else 409); ``remove``
-//   marks steps ``removed`` (ASSUMED: they stay in the list with that status);
-//   a ``change`` may change values only, every name staying (else 422);
-//   removing a step a later one reads (fixture keys ``of``/``in``, provisional
-//   until WP74) and removing every step ⇒ 422 ``invalid_query`` (ASSUMED code)
-//   naming the step. Never adds a step.
-// - What a stopped chain adopts is WP75's ("Kette übernehmen"): the fake takes
-//   the first step's condition on its layer as a placeholder.
+// As WP75's server answers (merged at a525297: model/service.py ``run``,
+// ``abort``, ``edit_plan``, ``adopt`` and ``_Runner``; model/record/store.py
+// ``approve``, ``reject``, ``halt``, ``revise``, ``stop``, ``_ended``,
+// ``last_complete``; model/chain/plan.py ``edit_plan``, ``check_plan``,
+// ``one_approval``; model/chain/ask.py ``ChainState.ran``):
+// - ``approve``: ``proposed`` → ``approved``, decided over the whole plan as it
+//   stands (every step not removed): no step ``auto`` (Prüfen) ⇒ every step
+//   ahead (planned, waiting) is cleared, else the next one only; a cleared
+//   step is ``planned`` again.
+// - ``run`` (202): ``approved`` chains only; answers ``running`` with the steps
+//   unchanged (``stop_reason`` and ``error`` cleared); may answer 409 ``busy``
+//   (the script's ``busy``). The steps then run back to back in the
+//   background: a step runs when its cell is ``auto`` or an approval cleared
+//   it, else the run halts before it (``proposed``, that step ``waiting``).
+//   No background here: each poll runs ``pace`` steps (default: all of the
+//   stretch); the one next in line then shows ``running``.
+// - A step ends ``ok``, ``empty`` (0 hits) or ``error`` (``hits`` null), with
+//   ``duration_ms`` and ``model_view`` carrying every key (null where unused).
+//   After an ``error`` step, or an empty one before the last, a re-plan:
+//   none left (``replans``) ⇒ ``limited``/``replan_limit``, ``error`` null;
+//   the script's ``replanError`` ⇒ ``replan_limit`` with it; no revision
+//   scripted ⇒ the model brought no plan ⇒ ``replan_limit``, ``error`` null.
+//   A revision's steps start after the last step that ran; the steps ahead
+//   and the removed ones after it are deleted, those that ran (an ``error``
+//   one too) stay. Every step that ran counts: spent + new > ``steps`` ⇒
+//   ``step_limit`` {step, value, max}. Then one approval over the whole plan
+//   as it stands ⇒ ``proposed`` with no step ``waiting``; else the run goes
+//   on. The record's ``answer`` stays the original plan.
+// - Limits: ``result_too_large`` at a step makes it ``error`` (code
+//   ``result_too_large``), ``limited`` with ``error`` {code, message, details
+//   {step, value, max}}; ``time_limit`` before a step: {step, value (s), max}.
+// - The end (``done``, ``limited``): steps ahead or running ``skipped``; the
+//   result is the last complete step (ok, empty) that is no buffer and within
+//   ``max_features``: its query the record's ``query``, its stamp the
+//   record's ``stamp`` and that step's, the only step with one. No such step
+//   ⇒ both null.
+// - ``abort``: ``thinking`` ⇒ ``aborted``. ``running`` ⇒ answers ``running``
+//   with ``stop_reason`` ``aborted``; the run finishes the step that runs and
+//   ends ``limited``/``aborted`` (here: at the next poll). Halted (``proposed``,
+//   or ``approved`` and not running, after a step ran) ⇒ ``limited``/``aborted``
+//   at once. A plan that never started ⇒ 409 ``not_approved``.
+// - ``reject`` (and supersede) of a chain: its steps ahead and running ``skipped``.
+// - ``adopt``: a token ⇒ 403 ``session_required``; ``done``/``limited`` only;
+//   ``query`` null ⇒ 409 ``not_approved``; → ``applied``/``accepted`` at every
+//   level, Automatisch included, with the stamp of the run as the user;
+//   ``ExecuteResponse`` (the rows' ``query`` as a full dump).
+// - ``PATCH .../plan``: a token ⇒ 403; ``proposed`` only (409), never a class
+//   ``off`` (409 ``class_not_allowed``), not started (409 ``not_approved``); a
+//   step changed twice ⇒ 422; then ``edit_plan``: no such step, changed and
+//   removed, anything but a value changed, nothing left, a removed step that
+//   a kept one reads ⇒ 422 ``invalid_query`` {step[, reads, part]}; the plan
+//   checked whole: ending in a buffer ⇒ 422 ``not_representable`` {step,
+//   part}. The steps get query, classes and cell anew, removed ones stay
+//   ``removed``, every clearance goes, the governance anew.
 
-/** What a run meets on its way (``modelServer``'s ``script``); without one it runs through. */
+/** What a run meets (``modelServer``'s ``script``); without one it runs through. */
 export interface ChainScript {
   /** Hits by position; default ``CHAIN_HITS``. 0 makes the step ``empty``. */
   hits?: Record<number, number>
-  /** A limit met when the step at ``position`` runs. */
+  /** Steps that fail, by position: an engine code (and the name it is about). */
+  errors?: Record<number, { code: NonNullable<ModelView['code']>; part?: string }>
+  /** A limit met at the step at ``position`` (``value``: what it counted). */
   limit?: { position: number; reason: 'result_too_large' | 'time_limit'; value?: number }
-  /** The revised remaining steps of each re-plan in turn, with their classes. */
-  replans?: { steps: PlannedStep[]; classes: OpClass[] }[]
+  /** The revised steps of each re-plan in turn. */
+  replans?: PlannedStep[][]
+  /** The re-plan call fails with this error (``replan_limit``). */
+  replanError?: { code: string; details?: Record<string, unknown> }
+  /** Steps run per poll (default: the whole stretch at once). */
+  pace?: number
+  /** ``run`` answers 409 ``busy`` this many times first. */
+  busy?: number
 }
 
 const CHAIN_CASE = modelCase('chain_reference')
@@ -398,7 +531,7 @@ export const CHAIN_DURATIONS_MS = design.referenzfrage.kette.map((s) =>
 
 /**
  * Hits of the reference chain's steps: the design's intermediate counts stand
- * in until WP75 pins them from the sample data; the last is the contract's
+ * in (the backend's tests pin the sample data's); the last is the contract's
  * (``chain_reference``: 10 of 137).
  */
 export const CHAIN_HITS: number[] = design.referenzfrage.kette.map((s, i, all) =>
@@ -409,18 +542,14 @@ export const CHAIN_HITS: number[] = design.referenzfrage.kette.map((s, i, all) =
       : 1,
 )
 
-/** A finished chain's result: the reference question's query (WP79: both approaches end equal). */
-const CHAIN_RESULT = (modelCase('reference').answer as { query: unknown }).query as QueryObject
-
-const complete = (s: StepView) => s.status === 'ok' || s.status === 'empty'
-
+const RAN: readonly StepView['status'][] = ['ok', 'empty', 'error']
+const ahead = (s: StepView) => s.status === 'planned' || s.status === 'waiting'
 const isPlan = (view: ModelActionView) => view.answer?.kind === 'plan'
-
+/** A step ran, runs, or was skipped (store.py ``_started``). */
 const started = (view: ModelActionView) =>
-  view.steps.some((s) => s.status !== 'planned' && s.status !== 'removed')
-
-/** Prüfen-shaped: no step runs without approval, so one approval covers the chain (ASSUMED). */
-const wholeChain = (steps: StepView[]) =>
+  view.steps.some((s) => [...RAN, 'running', 'skipped'].includes(s.status))
+/** ``one_approval``: no step of the plan as it stands is ``auto``. */
+const oneApproval = (steps: readonly StepView[]) =>
   !steps.some((s) => s.status !== 'removed' && s.cell === 'auto')
 
 const stampOf = (count: number): NonNullable<StepView['stamp']> => ({
@@ -430,41 +559,38 @@ const stampOf = (count: number): NonNullable<StepView['stamp']> => ({
   data_versions: { schulen: 'v1' },
 })
 
-/** The last complete result of a stopped chain as a query object (a placeholder, see above). */
-function partialResult(steps: StepView[]): QueryObject | null {
-  const last = [...steps].reverse().find(complete)
-  if (!last) return null
-  if (last.position === steps.length) return CHAIN_RESULT
-  const first = steps[0]?.arguments as { layer?: string; where?: unknown } | undefined
-  return {
-    schema_version: '2',
-    source: first?.layer ?? 'schulen',
-    ...(first?.where ? { where: first.where } : {}),
-  } as QueryObject
+/** ``last_complete``: the last ok or empty step that is no buffer and within the limit. */
+function adoptable(steps: readonly StepView[]): StepView | null {
+  const complete = steps.filter(
+    (s) => (s.status === 'ok' || s.status === 'empty') && !(s.query as Json | null)?.buffer,
+  )
+  const last = complete[complete.length - 1]
+  return last && (last.hits ?? 0) <= MODEL_LIMITS.max_features ? last : null
 }
 
-/** The keys of a query object that hold a value (``model/chain/steps.ts``). */
 const VALUE_KEYS = ['value', 'values', 'min', 'max', 'text', 'distance_m']
 
-/** Whether ``b`` differs from ``a`` in values only: every key and name the same. */
-function sameNames(a: unknown, b: unknown, key = ''): boolean {
+/** ``plan.py`` ``values_only``: ``after`` differs from ``before`` in values only. */
+function valuesOnly(before: unknown, after: unknown, key = ''): boolean {
   if (VALUE_KEYS.includes(key)) return true
-  if (Array.isArray(a))
-    return Array.isArray(b) && a.length === b.length && a.every((x, i) => sameNames(x, b[i], key))
-  if (typeof a !== 'object' || a === null) return a === b
-  if (typeof b !== 'object' || b === null || Array.isArray(b)) return false
-  const left = a as Record<string, unknown>
-  const right = b as Record<string, unknown>
-  const keys = Object.keys(left)
-  return (
-    keys.length === Object.keys(right).length &&
-    keys.every((k) => k in right && sameNames(left[k], right[k], k))
-  )
+  if (Array.isArray(before))
+    return (
+      Array.isArray(after) &&
+      before.length === after.length &&
+      before.every((b, i) => valuesOnly(b, after[i], key))
+    )
+  if (typeof before === 'object' && before !== null) {
+    if (typeof after !== 'object' || after === null || Array.isArray(after)) return false
+    const left = before as Json
+    const right = after as Json
+    const keys = Object.keys(left)
+    return (
+      keys.length === Object.keys(right).length &&
+      keys.every((k) => k in right && valuesOnly(left[k], right[k], k))
+    )
+  }
+  return typeof before === typeof after && before === after
 }
-
-/** The steps a step reads (fixture ``within`` {of, in}; provisional until WP74). */
-const readsOf = (args: Record<string, unknown>): number[] =>
-  ['of', 'in'].map((k) => args[k]).filter((v): v is number => typeof v === 'number')
 
 /**
  * The model routes of one account as the server answers them: one store for
@@ -552,109 +678,149 @@ export function modelServer(
       decision: view.decision,
     })
   // --- The tool chain (see the rules above ``ChainScript``) ---
-  /** Steps an approval cleared to run without a halt, by record. */
+  /** Steps an approval cleared (store.py ``approved``), by record. */
   const cleared = new Map<number, Set<number>>()
   let held = false
-  const clear = (view: ModelActionView) => {
-    const done = cleared.get(view.id) ?? new Set<number>()
-    const open = view.steps.filter((s) => s.status === 'planned' || s.status === 'waiting')
-    // Every step needs approval (Prüfen): one approval for the rest of the chain.
-    const targets = wholeChain(view.steps) ? open : open.slice(0, 1)
-    for (const s of targets) done.add(s.position)
-    cleared.set(view.id, done)
-  }
-  const halts = (view: ModelActionView, s: StepView) =>
-    s.cell === 'approve' && !cleared.get(view.id)?.has(s.position)
-  /** The next step, or the end: ``done``, a halt (``proposed``, ``waiting``), or ``running``. */
-  const proceed = (view: ModelActionView, steps: StepView[]): ModelActionView => {
-    const next = steps.find((s) => s.status === 'planned' || s.status === 'waiting')
-    if (!next) {
-      const last = [...steps].reverse().find(complete)
-      return { ...view, steps, status: 'done', query: CHAIN_RESULT, stamp: last?.stamp ?? null }
+  let busy = script.busy ?? 0
+  const clearedOf = (id: number) => cleared.get(id) ?? new Set<number>()
+  const chainError = (code: string, details: Record<string, unknown>) => ({
+    code,
+    message: `Stopped: ${code}.`,
+    details,
+  })
+  /** The run ended (store.py ``_ended``): the rest skipped, the result stamped. */
+  const ended = (view: ModelActionView, steps: StepView[], fields: Partial<ModelActionView>) => {
+    for (const s of steps) if (ahead(s) || s.status === 'running') s.status = 'skipped'
+    const result = adoptable(steps)
+    const stamp = result ? stampOf(result.hits ?? 0) : null
+    if (result) result.stamp = stamp
+    return {
+      ...view,
+      ...fields,
+      steps,
+      query: (result?.query ?? null) as QueryObject | null,
+      stamp,
     }
-    if (halts(view, next)) {
-      next.status = 'waiting'
-      return { ...view, steps, status: 'proposed' }
-    }
-    next.status = 'running'
-    return { ...view, steps, status: 'running' }
   }
-  const finish = (view: ModelActionView, s: StepView) => {
-    const hits = script.hits?.[s.position] ?? CHAIN_HITS[s.position - 1] ?? 1
-    s.status = hits === 0 ? 'empty' : 'ok'
-    s.hits = hits
-    s.duration_ms = CHAIN_DURATIONS_MS[s.position - 1] ?? 500
-    s.layer = `chain_${view.id}_${s.position}`
-    s.stamp = stampOf(hits)
-    s.model_view = { outcome: 'ok', empty: hits === 0, count: hits }
-  }
-  const stop = (
+  const finishRun = (view: ModelActionView, steps: StepView[]) =>
+    ended(view, steps, { status: 'done', stop_reason: null })
+  const stopRun = (
     view: ModelActionView,
     steps: StepView[],
     reason: StopReason,
-    details: Record<string, unknown> | null = null,
-  ): ModelActionView => {
-    for (const s of steps)
-      if (s.status === 'planned' || s.status === 'waiting' || s.status === 'running')
-        s.status = 'skipped'
-    return {
-      ...view,
-      steps,
-      status: 'limited',
-      stop_reason: reason,
-      query: partialResult(steps),
-      error: details ? { code: reason, message: `Stopped: ${reason}.`, details } : null,
-    }
-  }
-  const replan = (view: ModelActionView, steps: StepView[]): ModelActionView | null => {
-    const revision = script.replans?.[view.replans]
-    if (!revision || view.replans >= MODEL_LIMITS.replans) return null
-    // Completed steps are fixed; the remaining ones are replaced (P4).
-    const kept = steps.filter((s) => s.status !== 'planned' && s.status !== 'waiting')
-    const ran = kept.filter((s) => s.status !== 'removed').length
-    const total = ran + revision.steps.length
-    if (total > MODEL_LIMITS.steps)
-      return stop(view, steps, 'step_limit', { max: MODEL_LIMITS.steps, value: total })
-    const revised = revision.steps.map((planned, i): StepView => {
-      const k = revision.classes[i] ?? 'query'
-      return {
-        ...stepView(planned, kept.length + i + 1, k, 'Prüfen', true),
-        cell: view.level.matrix[k],
+    error: ModelActionView['error'] = null,
+  ) => ended(view, steps, { status: 'limited', stop_reason: reason, error })
+  /** One step as it ran (``run_step``): its outcome, count, view and duration. */
+  const ran = (s: StepView) => {
+    s.duration_ms = CHAIN_DURATIONS_MS[s.position - 1] ?? 500
+    const failed = script.errors?.[s.position]
+    if (failed) {
+      s.status = 'error'
+      s.hits = null
+      s.model_view = {
+        outcome: 'error',
+        code: failed.code,
+        part: failed.part ?? null,
+        empty: null,
+        count: null,
       }
-    })
-    const next = { ...view, replans: view.replans + 1 }
-    const all = [...kept, ...revised]
-    // Prüfen asks again for the whole rest; Teilautonom halts at revised ``approve`` steps.
-    if (wholeChain(all)) {
-      cleared.delete(view.id)
-      return { ...next, steps: all, status: 'proposed' }
+      return
     }
-    return proceed(next, all)
+    const hits = script.hits?.[s.position] ?? CHAIN_HITS[s.position - 1] ?? 1
+    s.status = hits === 0 ? 'empty' : 'ok'
+    s.hits = hits
+    s.model_view = { outcome: 'ok', code: null, part: null, empty: hits === 0, count: hits }
   }
-  const advance = (view: ModelActionView): ModelActionView => {
-    const steps = view.steps.map((s) => ({ ...s }))
-    const running = steps.find((s) => s.status === 'running')
-    if (!running) return view
-    const limit = script.limit?.position === running.position ? script.limit : null
-    if (limit) {
-      if (limit.reason === 'time_limit')
-        return stop(view, steps, 'time_limit', { max: MODEL_LIMITS.chain_s })
-      running.status = 'error'
-      running.duration_ms = CHAIN_DURATIONS_MS[running.position - 1] ?? 500
-      running.model_view = { outcome: 'error', code: 'result_too_large' }
-      return stop(view, steps, 'result_too_large', {
-        position: running.position,
-        value: limit.value ?? MODEL_LIMITS.max_features + 1,
-        max: MODEL_LIMITS.max_features,
-      })
+  /**
+   * A re-plan after the step at ``last`` (P4, ``_Runner.replan``): the
+   * record with its revised steps and whether it halts, or the run stopped.
+   */
+  const replan = (
+    view: ModelActionView,
+    steps: StepView[],
+    last: number,
+  ): { view: ModelActionView; steps: StepView[]; halt: boolean } | { stopped: ModelActionView } => {
+    if (view.replans >= MODEL_LIMITS.replans)
+      return { stopped: stopRun(view, steps, 'replan_limit') }
+    const asked = { ...view, replans: view.replans + 1 }
+    if (script.replanError) {
+      const { code, details = {} } = script.replanError
+      return { stopped: stopRun(asked, steps, 'replan_limit', chainError(code, details)) }
     }
-    finish(view, running)
-    const rest = steps.some((s) => s.status === 'planned')
-    if (running.status === 'empty' && rest) {
-      const revised = replan(view, steps)
-      if (revised) return revised
+    const revision = script.replans?.[view.replans]
+    if (!revision) return { stopped: stopRun(asked, steps, 'replan_limit') }
+    const spent = steps.filter((s) => RAN.includes(s.status)).length
+    const total = spent + revision.length
+    if (total > MODEL_LIMITS.steps) {
+      const step = last + 1 + Math.max(MODEL_LIMITS.steps - spent, 0)
+      const error = chainError('step_limit', { step, value: total, max: MODEL_LIMITS.steps })
+      return { stopped: stopRun(asked, steps, 'step_limit', error) }
     }
-    return proceed(view, steps)
+    const kept = steps.filter((s) => !(s.position > last && (ahead(s) || s.status === 'removed')))
+    const earlier = new Map(
+      kept
+        .filter((s) => s.status === 'ok' || s.status === 'empty')
+        .map((s) => [s.position, s.query as Json]),
+    )
+    const placed = revision.map((step, i) => ({ position: last + 1 + i, step }))
+    const all = [...kept, ...chainSteps(placed, view.level.matrix, earlier, true)]
+    cleared.set(view.id, new Set([...clearedOf(view.id)].filter((p) => p <= last)))
+    const revised = { ...asked, governance: chainGovernance(all, view.level.matrix) }
+    return { view: revised, steps: all, halt: oneApproval(all) }
+  }
+  /** The run in the background (``_Runner.go``), ``pace`` steps of it at most. */
+  const go = (view: ModelActionView, pace: number): ModelActionView => {
+    let current = view
+    let steps = view.steps.map((s) => ({ ...s }))
+    for (let done = 0; ;) {
+      const running = steps.find((s) => s.status === 'running')
+      const next = running ?? steps.find(ahead)
+      if (!next) return finishRun(current, steps)
+      if (!running) {
+        // Before a step: an abort, the time limit, a halt for approval (P4).
+        if (current.stop_reason === 'aborted') return stopRun(current, steps, 'aborted')
+        if (script.limit?.reason === 'time_limit' && script.limit.position === next.position) {
+          const details = { step: next.position, value: MODEL_LIMITS.chain_s + 1 }
+          const error = chainError('time_limit', { ...details, max: MODEL_LIMITS.chain_s })
+          return stopRun(current, steps, 'time_limit', error)
+        }
+        if (next.cell !== 'auto' && !clearedOf(view.id).has(next.position)) {
+          next.status = 'waiting'
+          return { ...current, steps, status: 'proposed' }
+        }
+        next.status = 'running'
+        if (done >= pace) return { ...current, steps }
+      }
+      done += 1
+      if (script.limit?.reason === 'result_too_large' && script.limit.position === next.position) {
+        next.status = 'error'
+        next.duration_ms = CHAIN_DURATIONS_MS[next.position - 1] ?? 500
+        next.model_view = {
+          outcome: 'error',
+          code: 'result_too_large',
+          part: null,
+          empty: null,
+          count: null,
+        }
+        const value = script.limit.value ?? MODEL_LIMITS.max_features + 1
+        const details = { step: next.position, value, max: MODEL_LIMITS.max_features }
+        return stopRun(current, steps, 'result_too_large', chainError('result_too_large', details))
+      }
+      ran(next)
+      const plan = steps.filter((s) => s.status !== 'removed')
+      const last = next.position === plan[plan.length - 1]?.position
+      if (next.status === 'ok' && (last || !next.model_view?.empty)) {
+        if (last) return finishRun(current, steps)
+        continue
+      }
+      if (next.status === 'empty' && last) return finishRun(current, steps)
+      // An error, or an empty step before the last: a re-plan (``ChainState.ran``).
+      const after = replan(current, steps, next.position)
+      if ('stopped' in after) return after.stopped
+      current = after.view
+      steps = after.steps
+      if (after.halt) return { ...current, steps, status: 'proposed' }
+    }
   }
 
   function step<T>(id: number, run: (view: ModelActionView) => T | FakeError): T | FakeError {
@@ -681,8 +847,17 @@ export function modelServer(
         if (view.status !== 'proposed') return wrongState(view, 'approve')
         const refused = offClass(view)
         if (refused) return refused
-        if (isPlan(view)) clear(view)
-        return set({ ...view, status: 'approved' })
+        if (!isPlan(view)) return set({ ...view, status: 'approved' })
+        // Over the whole plan as it stands: one approval (Prüfen) or the next step only.
+        const steps = view.steps.map((s) => ({ ...s }))
+        const waiting = steps.filter(ahead)
+        const done = clearedOf(view.id)
+        for (const s of oneApproval(steps) ? waiting : waiting.slice(0, 1)) {
+          done.add(s.position)
+          s.status = 'planned'
+        }
+        cleared.set(view.id, done)
+        return set({ ...view, status: 'approved', steps })
       }),
     reject: (id: number, reason: RejectReason | null) =>
       step<ModelActionView>(id, (view) =>
@@ -694,6 +869,10 @@ export function modelServer(
               decision: 'rejected',
               reject_reason: reason,
               decided_at: now(),
+              // A chain's steps ahead never run (store.py ``_end_steps``).
+              steps: view.steps.map((s) =>
+                ahead(s) || s.status === 'running' ? { ...s, status: 'skipped' } : s,
+              ),
             }),
       ),
     execute: (id: number) =>
@@ -771,102 +950,148 @@ export function modelServer(
       }),
 
     // --- The tool chain (WP75) ---
-    /** ``GET .../actions/{id}``: the record; a running chain one step further each time (unless held). */
+    /** ``GET .../actions/{id}``: the record; a running chain further by ``pace`` steps (unless held). */
     poll: (id: number) =>
       step<ModelActionView>(id, (view) =>
-        view.status === 'running' && !held ? set(advance(view)) : view,
+        view.status === 'running' && !held ? set(go(view, script.pace ?? Infinity)) : view,
       ),
-    /** Holds the run where it is (``true``) or lets it go on, e.g. to look at M9.1. */
+    /** Holds the run where it is (``true``) or lets it go on. */
     hold: (on: boolean) => {
       held = on
     },
-    /** ``POST .../run`` (202): an approved chain starts its next step. */
+    /** ``POST .../run`` (202): an approved chain runs on; its steps unchanged until polled. */
     run: (id: number) =>
       step<ModelActionView>(id, (view) => {
-        if (view.status !== 'approved' || !isPlan(view)) return wrongState(view, 'run')
-        const steps = view.steps.map((s) => ({ ...s }))
-        const next = steps.find((s) => s.status === 'planned' || s.status === 'waiting')
-        if (next) next.status = 'running'
-        return set({ ...view, status: 'running', steps })
+        if (view.status !== 'approved') return wrongState(view, 'run')
+        const refused = offClass(view)
+        if (refused) return refused
+        if (!isPlan(view))
+          return fail('not_approved', `Model action ${id} is a direct query.`, {
+            id,
+            status: view.status,
+          })
+        if (busy > 0) {
+          busy -= 1
+          return fail('busy', `The account's prompt ${id} is still being answered.`, {
+            reason: 'running',
+            id,
+          })
+        }
+        return set({ ...view, status: 'running', stop_reason: null, error: null })
       }),
-    /** ``POST .../abort``: thinking ⇒ ``aborted``; a run or a halt ⇒ ``limited``/``aborted``. */
+    /** ``POST .../abort`` (``abort``, ``_abort_chain``). */
     abort: (id: number) =>
       step<ModelActionView>(id, (view) => {
         if (view.status === 'thinking')
           return set({ ...view, status: 'aborted', decision: 'aborted', decided_at: now() })
-        const halted = view.status === 'proposed' && started(view)
-        if (!isPlan(view) || (view.status !== 'running' && !halted))
-          return wrongState(view, 'abort')
+        if (!isPlan(view)) return wrongState(view, 'abort')
+        if (view.status === 'running') return set({ ...view, stop_reason: 'aborted' })
+        const waits = view.status === 'proposed' || view.status === 'approved'
+        if (!waits || !started(view)) return wrongState(view, 'abort')
         const steps = view.steps.map((s) => ({ ...s }))
-        // Stops before the next step: the one running finishes (P4).
-        const running = steps.find((s) => s.status === 'running')
-        if (running) finish(view, running)
-        return set(stop(view, steps, 'aborted'))
+        return set(stopRun(view, steps, 'aborted'))
       }),
     /** ``POST .../adopt``: a ``done`` or ``limited`` chain's result becomes the analysis. */
-    adopt: (id: number) =>
-      step<ExecuteResponse>(id, (view) => {
-        if (!isPlan(view) || (view.status !== 'done' && view.status !== 'limited'))
-          return wrongState(view, 'adopt')
-        if (!view.query)
-          return fail('not_approved', `Model action ${view.id} has no complete result to adopt.`, {
-            id: view.id,
-            status: view.status,
-          })
-        const last = [...view.steps].reverse().find(complete)
-        const ids =
-          view.status === 'done'
-            ? preview.ids
-            : Array.from({ length: last?.hits ?? 0 }, (_, i) => i + 1)
-        const result = queryResult(serverShape(view.query), ids)
-        const action = set({
-          ...view,
-          status: 'applied',
-          decision: 'accepted',
-          decided_at: now(),
-          stamp: stampOf(ids.length),
-        })
-        return { action, result }
-      }),
-    /** ``PATCH .../plan``: values changed, steps removed, before the start; never a new step. */
-    plan: (id: number, edit: PlanEdit) =>
-      step<ModelActionView>(id, (view) => {
-        if (view.status !== 'proposed' || !isPlan(view) || started(view))
-          return wrongState(view, 'plan')
-        const steps = view.steps.map((s) => ({ ...s }))
-        const at = (position: number) =>
-          steps.find((s) => s.position === position && s.status !== 'removed')
-        const invalid = (message: string, details: Record<string, unknown>) =>
-          fail('invalid_query', message, details, 422)
-        for (const position of edit.remove)
-          if (!at(position)) return invalid(`No step ${position} to remove.`, { position })
-        for (const change of edit.change) {
-          const target = at(change.position)
-          if (!target || edit.remove.includes(change.position))
-            return invalid(`No step ${change.position} to change.`, { position: change.position })
-          if (!sameNames(target.arguments, change.arguments))
-            return invalid(`Step ${change.position}: only values may change.`, {
-              position: change.position,
+    adopt: (id: number, token = false) =>
+      token
+        ? fail('session_required', 'Only an interactive session may do this.', {}, 403)
+        : step<ExecuteResponse>(id, (view) => {
+            if (view.status !== 'done' && view.status !== 'limited')
+              return wrongState(view, 'adopt')
+            const refused = offClass(view)
+            if (refused) return refused
+            if (!isPlan(view) || !view.query)
+              return fail(
+                'not_approved',
+                `Model action ${view.id} has no complete result to adopt.`,
+                { id: view.id, status: view.status },
+              )
+            const count = view.stamp?.count ?? 0
+            const ids =
+              view.status === 'done' ? preview.ids : Array.from({ length: count }, (_, i) => i + 1)
+            const result = queryResult(serverShape(view.query), ids)
+            const action = set({
+              ...view,
+              status: 'applied',
+              decision: 'accepted',
+              decided_at: now(),
+              stamp: stampOf(ids.length),
             })
-        }
-        const removed = new Set(edit.remove)
-        const left = steps.filter((s) => s.status !== 'removed' && !removed.has(s.position))
-        if (left.length === 0) return invalid('A plan needs one step at least.', {})
-        for (const s of left) {
-          const reads = readsOf(s.arguments).find((r) => removed.has(r))
-          if (reads !== undefined)
-            return invalid(`Step ${s.position} reads the result of step ${reads}.`, {
-              position: s.position,
-              reads,
-            })
-        }
-        for (const s of steps) if (removed.has(s.position)) s.status = 'removed'
-        for (const change of edit.change) {
-          const target = at(change.position)
-          if (target) target.arguments = change.arguments
-        }
-        return set({ ...view, steps })
-      }),
+            return { action, result }
+          }),
+    /** ``PATCH .../plan`` (``edit_plan``): values and removals before the start; never a new step. */
+    plan: (id: number, edit: PlanEdit, token = false) =>
+      token
+        ? fail('session_required', 'Only an interactive session may do this.', {}, 403)
+        : step<ModelActionView>(id, (view) => {
+            if (view.status !== 'proposed') return wrongState(view, 'plan')
+            const refused = offClass(view)
+            if (refused) return refused
+            if (
+              !isPlan(view) ||
+              view.steps.some((s) => s.status !== 'planned' && s.status !== 'removed')
+            )
+              return fail(
+                'not_approved',
+                `Model action ${id} has started; its plan stays as it ran.`,
+                {
+                  id,
+                  status: view.status,
+                },
+              )
+            const invalid = (message: string, details: Record<string, unknown> = {}) =>
+              fail('invalid_query', message, details, 422)
+            const changes = new Map(edit.change.map((c) => [c.position, c.arguments as Json]))
+            if (changes.size !== edit.change.length)
+              return invalid('A step is changed once per edit.')
+            const live = view.steps.filter((s) => s.status !== 'removed')
+            const at = new Map(live.map((s) => [s.position, s]))
+            for (const position of [...changes.keys(), ...edit.remove])
+              if (!at.has(position))
+                return invalid(`There is no step ${position} in the plan.`, { step: position })
+            for (const [position, args] of changes) {
+              if (edit.remove.includes(position))
+                return invalid(`Step ${position} is changed and removed.`, { step: position })
+              if (!valuesOnly(at.get(position)?.arguments, args))
+                return invalid(`Step ${position}: only values may change, every name stays.`, {
+                  step: position,
+                })
+            }
+            const kept = live
+              .filter((s) => !edit.remove.includes(s.position))
+              .map((s) => ({
+                position: s.position,
+                step: {
+                  text: s.text,
+                  tool: s.tool,
+                  arguments: changes.get(s.position) ?? s.arguments,
+                },
+              }))
+            if (kept.length === 0) return invalid('A plan keeps one step at least.')
+            for (const { position, step: planned } of kept)
+              for (const [key, reads] of readsOf(planned))
+                if (edit.remove.includes(reads))
+                  return invalid(
+                    `Step ${position} reads the result of step ${reads} ('${key}'), which is removed.`,
+                    { step: position, reads, part: key },
+                  )
+            // The plan checked whole (``check_plan``): it does not end in a buffer.
+            const checked = chainSteps(kept, view.level.matrix)
+            const end = checked[checked.length - 1]
+            if (end && (end.query as Json | null)?.buffer)
+              return fail(
+                'not_representable',
+                `Step ${end.position}: a chain does not end in a buffer; the controls cannot show it.`,
+                { step: end.position, part: 'buffer' },
+                422,
+              )
+            const by = new Map(checked.map((s) => [s.position, s]))
+            const steps = view.steps.map(
+              (s) => by.get(s.position) ?? { ...s, status: 'removed' as const },
+            )
+            cleared.delete(id)
+            return set({ ...view, steps, governance: chainGovernance(steps, view.level.matrix) })
+          }),
   }
 }
 

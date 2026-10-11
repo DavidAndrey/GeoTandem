@@ -13,6 +13,7 @@ import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 
 import type { ModelActionView, StepView } from '../../api/client'
 import { useLayers } from '../../api/queries'
 import { ErrorNotice } from '../../components/ui'
+import { errorText } from '../../i18n/errors'
 import { formatNumber } from '../../i18n/locale'
 import { hitsOf } from '../../i18n/phrases'
 import { RejectStep, Rejected, Undone } from '../approval/Approval'
@@ -30,19 +31,21 @@ import { approveChain, openPlanEditor, retryRun, runMs, useChain } from './flow'
 import { PlanEditor, StepLimit } from './PlanEditor'
 import {
   aborted,
+  adoptable,
+  adoptedHits,
   CHAIN_S,
   current,
   finished,
   halts,
-  lastComplete,
   MAX_FEATURES,
+  MAX_REPLANS,
   MAX_STEPS,
   modelSees,
   phaseOf,
   placeOf,
   planned,
   ranMs,
-  stepwise,
+  oneApproval,
   type Phase,
   type PlanAnswer,
 } from './steps'
@@ -134,14 +137,18 @@ function announcement(view: ModelActionView, phase: Phase): string {
   const at = step ? formatNumber(placeOf(view, step)) : ''
   switch (phase) {
     case 'running':
+      if (view.stop_reason === 'aborted') return t`Kette wird abgebrochen`
       return step ? t`Schritt ${at} von ${total} läuft` : ''
     case 'halt':
       return step?.status === 'waiting'
         ? t`Kette wartet auf Freigabe vor Schritt ${at} von ${total}`
         : t`Kette neu geplant, wartet auf Freigabe`
     case 'done': {
-      const hits = formatNumber(lastComplete(view)?.hits ?? view.stamp?.count ?? 0)
-      return t`Kette fertig: ${hits} Treffer, nicht angewendet`
+      const count = adoptedHits(view)
+      const hits = count === null ? null : formatNumber(count)
+      return hits === null
+        ? t`Kette fertig, nicht angewendet`
+        : t`Kette fertig: ${hits} Treffer, nicht angewendet`
     }
     case 'stopped': {
       const limit = limitTitle(view)
@@ -170,7 +177,13 @@ function Header({ view, phase }: { view: ModelActionView; phase: Phase }) {
       break
     }
     case 'running':
-      detail = step ? t`· Schritt ${at} von ${total}` : undefined
+      // An abort answers at once; the step that runs still ends (P4).
+      detail =
+        view.stop_reason === 'aborted'
+          ? t`· wird abgebrochen`
+          : step
+            ? t`· Schritt ${at} von ${total}`
+            : undefined
       side = <RunClock view={view} />
       break
     case 'halt':
@@ -231,8 +244,8 @@ function RunBar({ view }: { view: ModelActionView }) {
 /** "10 von 137": the chain's hits of the result layer's objects (M9.3). */
 function ResultCount({ view }: { view: ModelActionView }) {
   const catalog = useLayers().data
-  const hits = lastComplete(view)?.hits ?? view.stamp?.count
-  if (hits == null) return null
+  const hits = adoptedHits(view)
+  if (hits === null) return null
   const source = readQuery(view.query).source
   const total = catalog?.find((l) => l.name === source)?.feature_count
   return (
@@ -496,7 +509,7 @@ function PlanActions({ view }: { view: ModelActionView }) {
       </p>
     )
   }
-  const whole = !stepwise(view)
+  const whole = oneApproval(view)
   const stops = halts(view).map((n) => formatNumber(n))
   const where = stops.join(', ')
   const onKeyDown = (event: KeyboardEvent) => {
@@ -622,19 +635,25 @@ function RunActions({ view }: { view: ModelActionView }) {
   const aborting = usePanel((s) => s.aborting === view.id)
   const abortError = usePanel((s) => s.abortError)
   const pollError = usePanel((s) => (s.pollError?.id === view.id ? s.pollError.error : null))
+  // Asked to stop: the step that runs ends, no other starts; the poll brings the end.
+  const stopping = view.stop_reason === 'aborted'
   return (
     <div className="flex flex-col gap-2">
       <p className="flex items-center gap-2">
         <button
           type="button"
           className="btn"
-          disabled={aborting || view.status !== 'running'}
+          disabled={aborting || stopping || view.status !== 'running'}
           onClick={() => void abort(view.id)}
         >
           <Trans>Abbrechen</Trans>
         </button>
         <span className="text-muted text-xs">
-          <Trans>Analyse bleibt unverändert</Trans>
+          {stopping ? (
+            <Trans>Wird abgebrochen: Der laufende Schritt endet noch, dann hält die Kette.</Trans>
+          ) : (
+            <Trans>Analyse bleibt unverändert</Trans>
+          )}
         </span>
       </p>
       <ChainFailure view={view} />
@@ -698,7 +717,7 @@ function DoneActions({ view }: { view: ModelActionView }) {
         <button
           type="button"
           className="btn btn-primary"
-          disabled={busy}
+          disabled={busy || !adoptable(view)}
           onClick={() => void adopt(view)}
         >
           <Trans>Ergebnis übernehmen</Trans>
@@ -721,10 +740,17 @@ function DoneActions({ view }: { view: ModelActionView }) {
       {shown && view.query && <QueryTree query={view.query} line="dashed" />}
       <AdoptState view={view} />
       <p className="text-muted text-xs">
-        <Trans>
-          Übernehmen schreibt das Ergebnis als Abfrage in die Analyse: die Schritte werden
-          Bedingungen mit der Marke „Modell“, reine Zwischenlayer entfallen.
-        </Trans>
+        {adoptable(view) ? (
+          <Trans>
+            Übernehmen schreibt das Ergebnis als eine Abfrage in die Analyse, ihre Bedingungen mit
+            der Marke „Modell“; die Zwischenstände entfallen.
+          </Trans>
+        ) : (
+          <Trans>
+            Nichts zu übernehmen: Kein Schritt brachte ein vollständiges Ergebnis innerhalb der
+            Grenzen.
+          </Trans>
+        )}
       </p>
     </div>
   )
@@ -739,34 +765,69 @@ function limitTitle(view: ModelActionView): string {
       return t`Laufzeit überschritten`
     case 'result_too_large':
       return t`Ergebnisgrösse überschritten`
+    case 'replan_limit':
+      return t`Keine weitere Neuplanung`
+    case 'interrupted':
+      return t`Lauf unterbrochen`
     default:
       return t`Begrenzung erreicht`
   }
 }
 
-/** M9.5: which limit, with the numbers; the same shape for steps, time and size. */
+/**
+ * M9.5: why the chain stopped, with the numbers the server gives
+ * (``error.details``: ``step``, ``value``, ``max``); the same shape for steps,
+ * time and size, a re-plan that brought nothing and a restart.
+ */
 function LimitBox({ view }: { view: ModelActionView }) {
   const details = (view.error?.details ?? {}) as Record<string, unknown>
-  const failed = view.steps.find((s) => s.status === 'error') ?? current(view)
-  const at = failed ? formatNumber(placeOf(view, failed)) : null
+  const position = typeof details.step === 'number' ? details.step : null
+  const named = view.steps.find((s) => s.position === position)
+  const at =
+    named && named.status !== 'removed'
+      ? formatNumber(placeOf(view, named))
+      : position !== null
+        ? formatNumber(position)
+        : null
+  const value = typeof details.value === 'number' ? details.value : null
   let text: string
   switch (view.stop_reason) {
     case 'step_limit': {
       const max = formatNumber(MAX_STEPS)
-      text = t`Die Kette bräuchte mehr als ${max} Schritte, neu geplante eingeschlossen (höchstens ${max}).`
+      const total = value !== null ? formatNumber(value) : null
+      text =
+        total !== null
+          ? t`Die Kette bräuchte ${total} Schritte, neu geplante eingeschlossen (höchstens ${max}).`
+          : t`Die Kette bräuchte mehr als ${max} Schritte, neu geplante eingeschlossen (höchstens ${max}).`
       break
     }
     case 'time_limit': {
       const max = minutes(CHAIN_S)
-      text = t`Die Kette lief länger als erlaubt (höchstens ${max} je Anfrage).`
+      text = at
+        ? t`Die Kette lief länger als erlaubt und hielt vor Schritt ${at} (höchstens ${max} je Anfrage).`
+        : t`Die Kette lief länger als erlaubt (höchstens ${max} je Anfrage).`
       break
     }
+    case 'replan_limit': {
+      const error = view.error
+      const code = typeof error?.code === 'string' ? error.code : null
+      const max = formatNumber(MAX_REPLANS)
+      if (code) {
+        const reason = errorText(code, details, String(error?.message ?? ''))
+        text = t`Die Neuplanung brachte keinen brauchbaren Plan: ${reason}`
+      } else
+        text = t`Ein Schritt brachte einen Fehler oder kein Ergebnis, und keine Neuplanung ist mehr übrig (höchstens ${max}).`
+      break
+    }
+    case 'interrupted':
+      text = t`Die Anwendung wurde neu gestartet, während die Kette lief.`
+      break
     default: {
       const max = formatNumber(MAX_FEATURES)
-      const value = typeof details.value === 'number' ? formatNumber(details.value) : null
+      const shown = value !== null ? formatNumber(value) : null
       text =
-        at && value
-          ? t`Schritt ${at} hätte ${value} Objekte erzeugt (höchstens ${max}).`
+        at && shown
+          ? t`Schritt ${at} hätte ${shown} Objekte erzeugt (höchstens ${max}).`
           : at
             ? t`Schritt ${at} hätte mehr als ${max} Objekte erzeugt (höchstens ${max}).`
             : t`Ein Schritt hätte mehr als ${max} Objekte erzeugt (höchstens ${max}).`
@@ -781,15 +842,17 @@ function LimitBox({ view }: { view: ModelActionView }) {
 }
 
 /**
- * M9.4 aborted, M9.5 stopped by a limit: the last complete result is
+ * M9.4 aborted, M9.5 stopped otherwise: the result the server chose is
  * adoptable (*Zwischenstand übernehmen (17)*); the analysis is unchanged
  * until then. After a limit the prompt can go back to the field.
  */
 function StoppedActions({ view }: { view: ModelActionView }) {
-  const last = lastComplete(view)
+  // The server's choice of what to adopt (``query``, ``stamp``), never the client's.
+  const last = adoptable(view)
   const busy = useApproval((s) => s.busy !== null)
   const byUser = aborted(view.stop_reason)
-  const hits = last?.hits != null ? formatNumber(last.hits) : null
+  const count = adoptedHits(view)
+  const hits = count !== null ? formatNumber(count) : null
   const adoptButton = last && (
     <button
       type="button"

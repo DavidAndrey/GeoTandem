@@ -23,6 +23,9 @@ export type PlanAnswer = Extract<ModelAnswer, { kind: 'plan' }>
  */
 export const MAX_STEPS = 8
 
+/** Re-plans of one chain (P4): ``MAX_REPLANS`` of the backend, held to the fixture (``limits.replans``). */
+export const MAX_REPLANS = 2
+
 /**
  * Seconds of one tool-chain request (plan P4): ``CHAIN_TIME_LIMIT_S`` of the
  * backend, held to the fixture (``limits.chain_s``). The run's timer counts up
@@ -36,8 +39,6 @@ export const MAX_FEATURES = 10_000
 /** A record of the tool chain: its answer is a plan (P4). */
 export const isChain = (view: ModelActionView): boolean => view.answer?.kind === 'plan'
 
-/** Steps that ran to their end: their result is complete (M9.4 "Zwischenstand"). */
-const COMPLETE: readonly StepStatus[] = ['ok', 'empty']
 /** Steps that ran, with or without a result. */
 const FINISHED: readonly StepStatus[] = ['ok', 'empty', 'error']
 
@@ -51,11 +52,16 @@ export const started = (view: ModelActionView): boolean =>
 
 export const finished = (step: StepView) => FINISHED.includes(step.status)
 
-/** The last step whose result is complete: what *Zwischenstand übernehmen* takes (M9.4, M9.5). */
-export function lastComplete(view: ModelActionView): StepView | null {
-  const done = view.steps.filter((s) => COMPLETE.includes(s.status))
-  return done[done.length - 1] ?? null
-}
+/**
+ * What *Ergebnis übernehmen* / *Zwischenstand übernehmen* takes (M9.3–M9.5):
+ * the server's choice once the run ended, never the client's. The record's
+ * ``query`` is the last complete step that is no buffer and within the
+ * result-size limit (WP75 ``last_complete``); ``null``: nothing to adopt.
+ */
+export const adoptable = (view: ModelActionView): boolean => view.query != null
+
+/** The hits of the result to adopt: the record's stamp (``null`` when unstamped, e.g. interrupted). */
+export const adoptedHits = (view: ModelActionView): number | null => view.stamp?.count ?? null
 
 /** The step running, waiting for approval, or next to run; ``null`` once none is left. */
 export const current = (view: ModelActionView): StepView | null =>
@@ -72,24 +78,31 @@ export const ranMs = (view: ModelActionView): number =>
   view.steps.reduce((sum, s) => sum + (finished(s) ? (s.duration_ms ?? 0) : 0), 0)
 
 /**
- * Whether the chain halts before each step that needs approval (*Teilautonom*,
- * P4) rather than taking one approval for the whole chain (*Prüfen*). The
- * server decides (WP75, by the level as it was); the panel only words the plan
- * by it and never keys on a level's name: a plan whose steps all need
- * approval is approved once, one that mixes ``auto`` and ``approve`` steps
- * halts before each ``approve`` step. ASSUMED until WP75's server, as in the
- * fake (test/model-mocks.ts).
+ * One approval for the whole chain (*Prüfen*), the server's rule (WP75,
+ * ``one_approval``, store.py ``approve``): no step of the plan as it stands
+ * (every step not removed, those that ran and a re-plan's included) is
+ * ``auto``. Otherwise (*Teilautonom*) an approval clears the next step only
+ * and the run halts before every further ``approve`` step. Never keyed on a
+ * level's name.
  */
-export const stepwise = (view: ModelActionView): boolean => {
-  const steps = planned(view)
-  return steps.some((s) => s.cell === 'auto') && steps.some((s) => s.cell === 'approve')
-}
+export const oneApproval = (view: ModelActionView): boolean =>
+  !planned(view).some((s) => s.cell === 'auto')
 
-/** The steps the run will halt before (M8.2: "die Kette hält vor Schritt 2"), as places. */
-export const halts = (view: ModelActionView): number[] =>
-  planned(view)
-    .map((s, i) => (s.cell === 'approve' && i > 0 ? i + 1 : 0))
+/**
+ * The steps the run will halt before (M8.2: "die Kette hält vor Schritt 2"),
+ * as places: with one approval none; otherwise every ``approve`` step ahead
+ * but the next one, which the approval at hand clears.
+ */
+export function halts(view: ModelActionView): number[] {
+  if (oneApproval(view)) return []
+  const steps = planned(view)
+  const next = steps.findIndex((s) => s.status === 'planned' || s.status === 'waiting')
+  return steps
+    .map((s, i) =>
+      i > next && next >= 0 && s.cell === 'approve' && s.status === 'planned' ? i + 1 : 0,
+    )
     .filter((n) => n > 0)
+}
 
 export type Phase =
   /** M8: proposed, not started; or approved and about to start. */
@@ -123,9 +136,8 @@ export function phaseOf(view: ModelActionView): Phase {
   }
 }
 
-/** Stopped by the user or a restart (M9.4), not by a limit (M9.5). */
-export const aborted = (reason: StopReason | null | undefined) =>
-  reason === 'aborted' || reason === 'interrupted'
+/** Stopped by the user (M9.4), not by a limit, a re-plan or a restart (M9.5). */
+export const aborted = (reason: StopReason | null | undefined) => reason === 'aborted'
 
 const SEES: Record<'ok' | 'error' | 'empty' | 'notEmpty', MessageDescriptor> = {
   ok: msg({ message: 'ok', context: 'model sees' }),

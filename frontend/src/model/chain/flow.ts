@@ -19,7 +19,8 @@
 //   steps removed through ``PATCH .../plan``; there is no way to add a step.
 import { useEffect } from 'react'
 import { create } from 'zustand'
-import { api, type ModelActionView, type PlanEdit } from '../../api/client'
+import { api, ApiRequestError, type ModelActionView, type PlanEdit } from '../../api/client'
+import { backoff } from '../panel/poll'
 import { sameGeneration, useModel, type ModelState } from '../store'
 import { finished, isChain, started } from './steps'
 
@@ -77,11 +78,47 @@ export async function approveChain(view: ModelActionView) {
   if (approved) useModel.getState().received(approved)
 }
 
-/** Runs an approved chain (202, P4); the workplace's polling takes over. */
-export async function runChain(id: number) {
+/** ``run`` tried again after ``busy`` before the failure shows. */
+const BUSY_TRIES = 5
+
+/**
+ * The account's model calls are taken (409 ``busy``, P7), or all of the
+ * instance's (503 ``busy``): also for a moment right after a halt, while the
+ * run that halted gives its place back (WP75). Worth another try.
+ */
+const isBusy = (error: unknown) =>
+  error instanceof ApiRequestError &&
+  (error.status === 409 || error.status === 503) &&
+  error.body?.code === 'busy'
+
+/**
+ * Runs an approved chain (202, P4); the workplace's polling takes over. A
+ * ``busy`` answer is tried again after a growing wait, while the record is
+ * still ``approved`` and the workplace the same.
+ */
+export async function runChain(id: number, tries = 0) {
   useChain.setState((s) => ({ runs: { ...s.runs, [id]: true } }))
-  const running = await request(id, 'run', () => api.model.run(id))
-  if (running) useModel.getState().received(running)
+  const current = sameGeneration()
+  useChain.setState({ busy: { action: id, step: 'run' }, failure: null })
+  try {
+    const running = await api.model.run(id)
+    if (current()) useModel.getState().received(running)
+  } catch (error) {
+    if (!current()) return
+    if (isBusy(error) && tries + 1 < BUSY_TRIES) {
+      setTimeout(
+        () => {
+          if (current() && useModel.getState().views[id]?.status === 'approved')
+            void runChain(id, tries + 1)
+        },
+        backoff(tries + 1),
+      )
+      return
+    }
+    useChain.setState({ failure: { action: id, step: 'run', error } })
+  } finally {
+    if (current()) useChain.setState((s) => (s.busy?.action === id ? { busy: null } : s))
+  }
 }
 
 /** *Erneut starten* after a run request failed. */

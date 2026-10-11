@@ -1,8 +1,8 @@
 // The tool chain's plan and run (plan WP77, design M8, M9) against the fake
-// server of model-mocks.ts, which answers WP75's routes as P4 and the 1.2
-// diagram say (what it assumes beyond them is listed there). Server-shaped
-// data throughout: compact queries in the record, a full dump in the rows'
-// query, naive UTC times with microseconds.
+// server of model-mocks.ts, which answers WP75's routes as its server does
+// (the rules are listed there). Server-shaped data throughout: compact
+// queries in the record and its steps, a full dump in the rows' query, naive
+// UTC times with microseconds, every key of ``model_view``.
 import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import { useAnalysis } from '../../analysis/store'
@@ -21,7 +21,9 @@ import {
   serverShape,
   thinkingView,
   type ChainScript,
+  type FakeError,
   type LevelName,
+  type PlannedStep,
   type ModelServer,
 } from '../../test/model-mocks'
 import {
@@ -44,7 +46,15 @@ import { useApproval } from '../approval/flow'
 import { useModel } from '../store'
 import { registerCompare } from './compare'
 import { useChain } from './flow'
-import { CHAIN_S, MAX_FEATURES, MAX_STEPS, modelSees, valueFields, withValue } from './steps'
+import {
+  CHAIN_S,
+  MAX_FEATURES,
+  MAX_REPLANS,
+  MAX_STEPS,
+  modelSees,
+  valueFields,
+  withValue,
+} from './steps'
 
 beforeEach(resetStores)
 afterEach(done)
@@ -126,6 +136,7 @@ const unchanged = () => {
 describe('contract', () => {
   test('the limits are those of the fixture', () => {
     expect(MAX_STEPS).toBe(MODEL_LIMITS.steps)
+    expect(MAX_REPLANS).toBe(MODEL_LIMITS.replans)
     expect(CHAIN_S).toBe(MODEL_LIMITS.chain_s)
     expect(MAX_FEATURES).toBe(MODEL_LIMITS.max_features)
   })
@@ -133,8 +144,18 @@ describe('contract', () => {
   test('"Modell sieht" says only what D9 allows: ok or the code, empty or not, the count', () => {
     expect(modelSees({ outcome: 'ok', empty: false, count: 24 })).toBe('ok · nicht leer · 24')
     expect(modelSees({ outcome: 'ok', empty: true, count: 0 })).toBe('ok · leer · 0')
-    expect(modelSees({ outcome: 'error', code: 'unknown_attribute', part: 'typ' })).toBe(
-      'Fehler · unknown_attribute · typ',
+    expect(
+      modelSees({
+        outcome: 'error',
+        code: 'unknown_attribute',
+        part: 'typ',
+        empty: null,
+        count: null,
+      }),
+    ).toBe('Fehler · unknown_attribute · typ')
+    // As the server sends it: every key, null where unused.
+    expect(modelSees({ outcome: 'ok', code: null, part: null, empty: false, count: 7 })).toBe(
+      'ok · nicht leer · 7',
     )
   })
 
@@ -174,7 +195,7 @@ describe('plan (M8)', () => {
       expect(steps[i]).toHaveTextContent(step.tool)
     })
     expect(steps[0]).toHaveTextContent('Attributfilter · Freigabe')
-    expect(steps[1]).toHaveTextContent('Abgeleitete Layer · Freigabe')
+    expect(steps[1]).toHaveTextContent('Attributfilter, Abgeleitete Layer · Freigabe')
     expect(steps[2]).toHaveTextContent('Raumfilter · Freigabe')
     expect(card).toHaveTextContent(
       'Eine Freigabe für die ganze Kette; danach läuft sie ohne weitere Halte durch.',
@@ -209,7 +230,7 @@ describe('plan (M8)', () => {
     const { user, calls, card, answer } = await planned('Teilautonom')
     const steps = within(card).getAllByRole('listitem', { name: /^Schritt \d: / })
     expect(steps[0]).toHaveTextContent('Attributfilter · auto')
-    expect(steps[1]).toHaveTextContent('Abgeleitete Layer · Freigabe')
+    expect(steps[1]).toHaveTextContent('Attributfilter, Abgeleitete Layer · Freigabe')
     expect(steps[2]).toHaveTextContent('Raumfilter · auto')
     expect(card).toHaveTextContent('die Kette hält vor Schritt 2 zur Freigabe')
     await waitFor(() => expect(screen.getByRole('button', { name: 'Starten' })).toHaveFocus())
@@ -224,7 +245,9 @@ describe('plan (M8)', () => {
     expect(halted).toHaveTextContent('Schritt 2 von 5')
     const step = stepItem(2)
     expect(step).toHaveAttribute('data-status', 'waiting')
-    expect(step).toHaveTextContent('Braucht Freigabe: Abgeleitete Layer (Stufe Teilautonom)')
+    expect(step).toHaveTextContent(
+      'Braucht Freigabe: Attributfilter, Abgeleitete Layer (Stufe Teilautonom)',
+    )
     expect(halted).toHaveTextContent('Die Laufzeit ist angehalten, solange die Freigabe offen ist.')
     await waitFor(() =>
       expect(within(step).getByRole('button', { name: 'Schritt freigeben' })).toHaveFocus(),
@@ -292,6 +315,17 @@ describe('plan (M8)', () => {
     expect(await within(form).findByRole('alert')).toBeInTheDocument()
     expect(within(card).getByRole('form', { name: 'Plan anpassen' })).toBeInTheDocument()
 
+    // Without steps 3 to 5 the plan would end in the buffer: refused (D3).
+    await user.click(within(form).getByRole('button', { name: /^Schritt 4 entfernen/ }))
+    await user.click(within(form).getByRole('button', { name: /^Schritt 5 entfernen/ }))
+    await user.click(within(form).getByRole('button', { name: 'Änderungen übernehmen' }))
+    await waitFor(() => expect(hits(calls, 'plan')).toHaveLength(2))
+    expect(await within(form).findByRole('alert')).toHaveTextContent(
+      'Diese Abfrage lässt sich in den Bedienelementen nicht vollständig darstellen.',
+    )
+    await user.click(within(form).getByRole('button', { name: /^Schritt 4 behalten/ }))
+    await user.click(within(form).getByRole('button', { name: /^Schritt 5 behalten/ }))
+
     // Keep step 3, remove step 5 (read by none).
     await user.click(within(form).getByRole('button', { name: /^Schritt 3 behalten/ }))
     await user.click(within(form).getByRole('button', { name: /^Schritt 5 entfernen/ }))
@@ -299,13 +333,18 @@ describe('plan (M8)', () => {
     await waitFor(() => expect(screen.queryByRole('form', { name: 'Plan anpassen' })).toBeNull())
 
     const patches = calls.filter((c) => c.key.endsWith('/plan')).map((c) => c.body)
-    expect(patches[1]).toEqual({
+    expect(patches[0]).toMatchObject({ remove: [3] })
+    expect(patches[2]).toEqual({
       change: [{ position: 2, arguments: { ...PLAN.steps[1]?.arguments, distance_m: 300 } }],
       remove: [5],
     })
     const after = await findCard()
     expect(within(after).getByText('Geplante Schritte · 4 von höchstens 8')).toBeInTheDocument()
     expect(within(after).getAllByRole('listitem', { name: /^Schritt \d: / })).toHaveLength(4)
+    // The server's answer: the buffer's query has the new distance.
+    const view = useModel.getState().views[actionView('chain_reference').id]
+    expect(view?.steps[1]?.query).toMatchObject({ buffer: { distance_m: 300 } })
+    expect(view?.steps[4]?.status).toBe('removed')
     expect(hits(calls, 'run')).toEqual([])
     unchanged()
   })
@@ -317,7 +356,7 @@ const secondsText = (ms: number) =>
 
 describe('run (M9)', () => {
   test('M9.1: step n of m, elapsed against the 5:00 cap, results and "Modell sieht" per step, dimmed on the map', async () => {
-    const { calls, server, answer } = await running()
+    const { calls, server, answer } = await running({ script: { pace: 1 } })
     expect(hits(calls, 'approve')).toHaveLength(1)
     expect(hits(calls, 'run')).toHaveLength(1)
     const live = await findCard()
@@ -355,21 +394,27 @@ describe('run (M9)', () => {
     expect(screen.getByRole('textbox', { name: 'Prompt' })).toHaveAttribute('readonly')
     unchanged()
 
-    // The intermediate layers, dimmed, with the caption that they are not applied.
+    // The steps' results, run as the user through Modus A (ids), dimmed, with the
+    // caption that they are not applied.
+    const steps = useModel.getState().views[answer.id]?.steps ?? []
     await waitFor(() =>
-      expect(
-        calls
-          .filter((c) => c.key === 'POST /api/query')
-          .map((c) => (c.body as { source: string }).source),
-      ).toEqual(expect.arrayContaining([`chain_${answer.id}_1`, `chain_${answer.id}_2`])),
+      expect(calls.filter((c) => c.key === 'POST /api/query/ids').map((c) => c.body)).toEqual(
+        expect.arrayContaining([steps[0]?.query, steps[1]?.query]),
+      ),
     )
+    expect(steps[0]?.query).toEqual({
+      schema_version: '2',
+      source: 'schulen',
+      output: 'map',
+      where: { op: 'in', attr: 'typ', values: ['primar'] },
+    })
     const caption = screen.getByRole('note', { name: 'Zwischenstand der Kette' })
     expect(caption).toHaveTextContent('Zwischenstand gedämpft · nicht angewendet')
     expect(caption).toHaveTextContent(`Schritt 1 · ${formatted(CHAIN_HITS[0] ?? 0)}`)
   })
 
   test('the status region speaks per step change, at most once every 3 s', async () => {
-    const { server } = await running()
+    const { server } = await running({ script: { pace: 1 } })
     const region = async () => (await findCard()).querySelector('p[role="status"].sr-only')
     await waitFor(async () => expect(await region()).toHaveTextContent('Schritt 1 von 5 läuft'))
     await tick() // step 2 runs: within 3 s of the last announcement, not yet said
@@ -391,6 +436,9 @@ describe('run (M9)', () => {
     expect(end).toHaveTextContent(`5 Schritte · ${secondsText(total)}`)
     expect(total).toBe(3600)
     expect(within(end).getByLabelText('Trefferzahl der Kette')).toHaveTextContent('10 von 137')
+    // Only the result to adopt carries a stamp, the last step here.
+    const steps = useModel.getState().views[answer.id]?.steps ?? []
+    expect(steps.map((s) => s.stamp?.count ?? null)).toEqual([null, null, null, null, 10])
     expect(within(end).getByRole('button', { name: 'Ergebnis übernehmen' })).toBeEnabled()
     // No comparison until WP78 registers one.
     expect(within(end).queryByRole('button', { name: 'Mit Direktabfrage vergleichen' })).toBeNull()
@@ -449,9 +497,17 @@ describe('run (M9)', () => {
   })
 
   test('M9.4: Abbrechen stops before the next step; the analysis stays until the intermediate result is adopted', async () => {
-    const { user, calls, answer } = await running()
+    const { user, calls, answer } = await running({ script: { pace: 1 } })
     await tick()
     await user.click(within(await findCard()).getByRole('button', { name: 'Abbrechen' }))
+    // Answered at once, still running: the step that runs ends, the poll brings the stop.
+    await waitFor(async () =>
+      expect((await findCard()).querySelector('[data-status="running"]')).toHaveTextContent(
+        'läuft· wird abgebrochen',
+      ),
+    )
+    expect(screen.getByRole('button', { name: 'Abbrechen' })).toBeDisabled()
+    await tick()
     await phase('stopped')
     expect(hits(calls, 'abort')).toHaveLength(1)
     const end = await findCard()
@@ -465,14 +521,15 @@ describe('run (M9)', () => {
     await tick(5000)
     expect(polls(calls, answer.id)).toHaveLength(before)
     unchanged()
-    const second = formatted(CHAIN_HITS[1] ?? 0)
-    await user.click(screen.getByRole('button', { name: `Zwischenstand übernehmen (${second})` }))
+    // Step 2 is a buffer: the result to adopt is step 1 (the server's choice, ``query``).
+    const first = formatted(CHAIN_HITS[0] ?? 0)
+    await user.click(screen.getByRole('button', { name: `Zwischenstand übernehmen (${first})` }))
     await phase('closed')
     expect(rows(useAnalysis.getState().tree)).toHaveLength(1)
     expect(Object.keys(useAnalysis.getState().origin.marks)).toHaveLength(1)
   })
 
-  const REVISED = Array.from({ length: 7 }, (_, i) => ({
+  const REVISED: PlannedStep[] = Array.from({ length: 7 }, (_, i) => ({
     text: `Neuer Schritt ${i + 1}`,
     tool: 'filter',
     arguments: {
@@ -492,20 +549,34 @@ describe('run (M9)', () => {
     {
       reason: 'step_limit',
       // Step 2 empty: the re-plan would bring 2 + 7 = 9 steps (P4: re-planned ones count).
-      script: {
-        hits: { 2: 0 },
-        replans: [{ steps: REVISED, classes: REVISED.map(() => 'query') }],
-      },
+      script: { hits: { 2: 0 }, replans: [REVISED] },
       title: 'Schrittzahl erreicht',
-      text: /mehr als 8 Schritte, neu geplante eingeschlossen \(höchstens 8\)\./,
-      // The empty step 2 is complete: its 0 hits are the last result.
-      adoptable: 0,
+      text: /Die Kette bräuchte 9 Schritte, neu geplante eingeschlossen \(höchstens 8\)\./,
+      adoptable: CHAIN_HITS[0],
     },
     {
       reason: 'time_limit',
       script: { limit: { position: 2, reason: 'time_limit' } },
       title: 'Laufzeit überschritten',
-      text: /höchstens 5:00 je Anfrage/,
+      text: /hielt vor Schritt 2 \(höchstens 5:00 je Anfrage\)/,
+      adoptable: CHAIN_HITS[0],
+    },
+    {
+      reason: 'replan_limit (none left)',
+      // Step 3 fails and the re-plan brings no plan: no re-plan is left after it.
+      script: { errors: { 3: { code: 'unknown_attribute', part: 'typ' } } },
+      title: 'Keine weitere Neuplanung',
+      text: /Ein Schritt brachte einen Fehler oder kein Ergebnis/,
+      adoptable: CHAIN_HITS[0],
+    },
+    {
+      reason: 'replan_limit (failed)',
+      script: {
+        errors: { 3: { code: 'unknown_attribute' } },
+        replanError: { code: 'connection_not_available', details: { reason: 'changed' } },
+      },
+      title: 'Keine weitere Neuplanung',
+      text: /Die Neuplanung brachte keinen brauchbaren Plan: /,
       adoptable: CHAIN_HITS[0],
     },
   ] as {
@@ -548,12 +619,8 @@ describe('run (M9)', () => {
   })
 
   test('a re-plan under Prüfen asks again for the rest; revised steps are marked', async () => {
-    const revised = REVISED.slice(0, 3)
-    const { user, calls } = await running({
-      script: {
-        hits: { 2: 0 },
-        replans: [{ steps: revised, classes: ['query', 'spatial', 'query'] }],
-      },
+    const { user, calls, answer } = await running({
+      script: { hits: { 2: 0 }, replans: [REVISED.slice(0, 3)] },
     })
     await tick()
     await tick()
@@ -562,11 +629,53 @@ describe('run (M9)', () => {
     expect(
       within(await findCard()).getByText('Geplante Schritte · 5 von höchstens 8'),
     ).toBeInTheDocument()
+    // The record keeps its plan: a re-plan changes the steps, never the answer.
+    expect(useModel.getState().views[answer.id]?.answer).toEqual(CASE.answer)
     await user.click(screen.getByRole('button', { name: 'Freigeben und fortsetzen' }))
     await phase('running')
     for (let i = 0; i < 3; i++) await tick()
     await phase('done')
     expect(hits(calls, 'approve')).toHaveLength(2)
+  })
+
+  test('a re-plan after a failed step keeps it as it failed; the new steps follow it', async () => {
+    const { answer } = await running({
+      script: {
+        errors: { 3: { code: 'unknown_attribute', part: 'typ' } },
+        replans: [REVISED.slice(0, 1)],
+      },
+    })
+    await tick()
+    await phase('halt')
+    const steps = useModel.getState().views[answer.id]?.steps ?? []
+    expect(steps.map((s) => [s.position, s.status, s.revised])).toEqual([
+      [1, 'ok', false],
+      [2, 'ok', false],
+      [3, 'error', false],
+      [4, 'planned', true],
+    ])
+    expect(within(stepItem(3)).getByText(/^Modell sieht:/)).toHaveTextContent(
+      'Modell sieht: Fehler · unknown_attribute · typ',
+    )
+    expect(steps[2]?.model_view).toEqual({
+      outcome: 'error',
+      code: 'unknown_attribute',
+      part: 'typ',
+      empty: null,
+      count: null,
+    })
+  })
+
+  test('run answering busy (right after a halt) is tried again', async () => {
+    const { calls } = await planned('Prüfen', { script: { busy: 1 } })
+    await act(async () =>
+      screen.getByRole('button', { name: 'Kette freigeben und starten' }).click(),
+    )
+    await waitFor(() => expect(hits(calls, 'run')).toHaveLength(1))
+    expect(screen.queryByRole('button', { name: 'Erneut starten' })).toBeNull()
+    await tick(2000)
+    await waitFor(() => expect(hits(calls, 'run')).toHaveLength(2))
+    await phase('running')
   })
 
   test('no polling after unmount', async () => {
@@ -611,6 +720,70 @@ describe('run (M9)', () => {
     } finally {
       off()
     }
+  })
+})
+
+describe('the fake server as WP75 answers', () => {
+  const ID = actionView('chain_reference').id
+  const server = (level: LevelName = 'Prüfen', script: ChainScript = {}) =>
+    modelServer([actionView('chain_reference', {}, level)], undefined, script)
+  const ok = <T,>(value: T): Exclude<T, FakeError> => {
+    if (isFakeError(value)) throw new Error(JSON.stringify(value.body))
+    return value as Exclude<T, FakeError>
+  }
+
+  test('a plan that never started is not aborted (409); a token may neither adopt nor edit', () => {
+    const fake = server()
+    const refused = fake.abort(ID)
+    expect(isFakeError(refused) && [refused.status, refused.body.code]).toEqual([
+      409,
+      'not_approved',
+    ])
+    const adopt = fake.adopt(ID, true)
+    const edit = fake.plan(ID, { change: [], remove: [5] }, true)
+    for (const answer of [adopt, edit])
+      expect(isFakeError(answer) && [answer.status, answer.body.code]).toEqual([
+        403,
+        'session_required',
+      ])
+  })
+
+  test('approve turns a waiting step back into planned; reject skips the steps ahead', () => {
+    const fake = server('Teilautonom')
+    ok(fake.approve(ID))
+    ok(fake.run(ID))
+    const halted = ok(fake.poll(ID))
+    expect(halted.status).toBe('proposed')
+    expect(halted.steps[1]?.status).toBe('waiting')
+    expect(ok(fake.approve(ID)).steps[1]?.status).toBe('planned')
+    const other = server('Teilautonom')
+    ok(other.approve(ID))
+    ok(other.run(ID))
+    ok(other.poll(ID))
+    const rejected = ok(other.reject(ID, null))
+    expect(rejected.steps.map((s) => s.status)).toEqual([
+      'ok',
+      'skipped',
+      'skipped',
+      'skipped',
+      'skipped',
+    ])
+  })
+
+  test('run answers running with the steps unchanged; no record stamp past the size limit', () => {
+    const fake = server('Prüfen', { hits: { 5: MODEL_LIMITS.max_features + 1 } })
+    ok(fake.approve(ID))
+    const running = ok(fake.run(ID))
+    expect(running.status).toBe('running')
+    expect(running.steps.every((s) => s.status === 'planned')).toBe(true)
+    const done = ok(fake.poll(ID))
+    // The last complete step is over the limit: nothing to adopt, nothing stamped.
+    expect(done.status).toBe('done')
+    expect(done.stamp).toBeNull()
+    expect(done.query).toBeNull()
+    expect(done.steps.every((s) => s.stamp === null)).toBe(true)
+    const adopt = fake.adopt(ID)
+    expect(isFakeError(adopt) && [adopt.status, adopt.body.code]).toEqual([409, 'not_approved'])
   })
 })
 
