@@ -36,6 +36,7 @@ const DESIGN: Record<StatusKey, [string, LineStyle]> = {
   refused: ['abgewiesen', 'void'],
   stale: ['veraltet', 'void'],
   aborted: ['abgebrochen', 'void'],
+  interrupted: ['unterbrochen', 'void'],
   clarification: ['Rückfrage', 'message'],
   message: ['Meldung', 'message'],
   error: ['Fehler', 'message'],
@@ -128,7 +129,8 @@ describe('statusKey', () => {
       [ref({ status: 'limited', stop_reason: 'time_limit' }), 'limited'],
       [ref({ status: 'limited', stop_reason: 'result_too_large' }), 'limited'],
       [ref({ status: 'limited', stop_reason: 'aborted' }), 'aborted'],
-      [ref({ status: 'limited', stop_reason: 'interrupted' }), 'aborted'],
+      [ref({ status: 'limited', stop_reason: 'interrupted' }), 'interrupted'],
+      [ref({ status: 'limited', stop_reason: 'replan_limit' }), 'limited'],
     ],
     applied: [
       [ref({ status: 'applied', decision: 'accepted' }), 'applied'],

@@ -3286,6 +3286,8 @@ export interface components {
       stamp?: components['schemas']['ResultStamp'] | null
       /** Latency Ms */
       latency_ms?: number | null
+      /** Run Ms */
+      run_ms?: number | null
     }
     /**
      * ModelView

@@ -123,16 +123,21 @@ describe('M12.2 clarification', () => {
 })
 
 describe('M13 approach and cannot-answer', () => {
-  test('M13.1: the chain is offered disabled until E2.5, with what it would do', async () => {
-    const { card } = await answered('other_approach')
+  test('M13.1: the chain is offered, with what it does; it fills the field and never sends (D6)', async () => {
+    const { user, calls, card, answer } = await answered('other_approach')
     expect(within(card).getByRole('status')).toHaveTextContent('Meldung· Arbeitsweise passt nicht')
     expect(card).toHaveTextContent('Puffer und Zählung je Gemeinde nacheinander')
     const offer = within(card).getByRole('button', { name: 'Mit Werkzeugkette versuchen' })
-    expect(offer).toBeDisabled()
+    expect(offer).toBeEnabled()
     expect(offer).toHaveAccessibleDescription(
       'Stellt den Schalter auf Werkzeugkette und setzt denselben Prompt ins Feld. Gesendet wird erst mit Senden.',
     )
-    expect(within(card).getByText('ab E2.5')).toBeInTheDocument()
+    expect(within(card).queryByText('ab E2.5')).toBeNull()
+    await user.click(offer)
+    expect(screen.getByRole('textbox', { name: 'Prompt' })).toHaveValue(answer.prompt)
+    expect(screen.getByRole('radio', { name: 'Werkzeugkette' })).toBeChecked()
+    await tick(3000)
+    expect(posts(calls)).toHaveLength(1)
   })
 
   test('M13.1: the offer switches the toggle and fills the field, and never sends (D6)', async () => {

@@ -16,6 +16,7 @@ import { formatNumber, parseTimestamp } from '../../i18n/locale'
 import { hitsOf } from '../../i18n/phrases'
 import { Approval, Approved, Rejected, Undone, UndoAction } from '../approval/Approval'
 import { byHandOnly, classList, needsApproval } from '../approval/governance'
+import { ChainAnswer } from '../chain/Chain'
 import { openMyActions } from '../log/dialog'
 import { StatusLabel } from '../status'
 import { dialogueViews, useModel } from '../store'
@@ -35,7 +36,7 @@ import { resumePolling } from './poll'
 import { ProblemCard } from './Problem'
 import { recordProblem, requestProblem, technical } from './problems'
 import { abort, focusPrompt, MODEL_CALL_S, prefill, send, usePanel } from './state'
-import { clockTime, minutes } from './time'
+import { clockTime, minutes, seconds } from './time'
 
 type QueryAnswer = Extract<ModelAnswer, { kind: 'query' }>
 
@@ -111,6 +112,9 @@ export function Answer({ view }: { view: ModelActionView }) {
     case 'aborted':
       return <Aborted />
     default:
+      // A tool chain's plan, run and result (design M8, M9): model/chain/.
+      if (view.answer?.kind === 'plan')
+        return <ChainAnswer view={view} actions={<Actions view={view} />} />
       return view.answer?.kind === 'query' ? (
         <Proposal view={view} answer={view.answer} />
       ) : (
@@ -136,7 +140,10 @@ function useElapsed(since: number): number {
   return Math.max(0, (now - since) / 1000)
 }
 
-/** M2.1: the model works. Input locked, a timer up to 2:00, "Abbrechen"; no streaming. */
+/**
+ * M2.1: the model works. Input locked, a timer up to 2:00 (the model call's
+ * limit; also for a chain's plan, one model call, P4), "Abbrechen"; no streaming.
+ */
 function Thinking({ view }: { view: ModelActionView }) {
   const started = usePanel((s) => s.started[view.id]) ?? parseTimestamp(view.created_at).getTime()
   const aborting = usePanel((s) => s.aborting === view.id)
@@ -214,8 +221,9 @@ function Refusal({ view }: { view: ModelActionView }) {
         </p>
         <p>{errorText(code, details, refusal?.message)}</p>
       </div>
-      {/* The offer of the chain shows only once there is one (plan WP67, E2.5). */}
-      {CHAIN_AVAILABLE && code === 'not_representable' && (
+      {/* The offer of the chain shows only once there is one (plan WP67, E2.5), and
+          never on a chain's own refusal. */}
+      {CHAIN_AVAILABLE && code === 'not_representable' && view.approach !== 'chain' && (
         <button
           type="button"
           className="text-accent-700 self-start text-sm"
@@ -260,12 +268,6 @@ function Refusal({ view }: { view: ModelActionView }) {
 
 const approachText = (approach: ModelActionView['approach']) =>
   approach === 'chain' ? t`Werkzeugkette` : t`Direktabfrage`
-
-function seconds(ms: number | null | undefined): string | null {
-  if (ms === null || ms === undefined) return null
-  const s = formatNumber(ms / 1000, { maximumFractionDigits: 0 })
-  return t`${s} s`
-}
 
 /**
  * A query answer through its life: waiting for approval (M5), proposal only

@@ -19,6 +19,12 @@ export const PROMPT_TAB = '[data-tab="prompt"]'
  * limits): ``MODEL_CALL_S`` of the backend's ``model/service.py``, repeated
  * here; a test on each side holds both to the contract fixture
  * (``limits.model_call_s``).
+ *
+ * The working timer (M2.1) should show min(the connection's own timeout, 2:00)
+ * (plan WP77, an E2.3 leftover), but no view the client gets carries that
+ * timeout: neither the record's ``ConnectionSnapshot`` nor the options'
+ * ``ConnectionOption`` (only the administrator's ``ConnectionInfo`` has
+ * ``timeout_s``). So the timer shows this limit until one of them does.
  */
 export const MODEL_CALL_S = 120
 

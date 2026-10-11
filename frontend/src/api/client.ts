@@ -67,6 +67,9 @@ export type KeyFigures = Schemas['KeyFigures']
 export type ExecuteResponse = Schemas['ExecuteResponse']
 export type ModelView = Schemas['ModelView']
 export type StopReason = NonNullable<ModelActionView['stop_reason']>
+export type PlanEdit = Schemas['PlanEdit']
+export type StepEdit = Schemas['StepEdit']
+export type StepStatus = StepView['status']
 /** ``applied_by_hand`` has a server default (false) and goes only with ``proposal_only``. */
 export type DecideRequest = Omit<Schemas['DecideRequest'], 'applied_by_hand'> &
   Partial<Pick<Schemas['DecideRequest'], 'applied_by_hand'>>
@@ -217,6 +220,17 @@ export const api = {
     /** The analysis was changed by hand since this action: its undo is over (design rule 7). */
     touched: (id: number) =>
       request<ModelActionView>(`/api/model/actions/${id}/touched`, { method: 'POST' }),
+    // The tool chain (plan P4, WP75): a plan is approved like a proposal, then run
+    // in the background (202) and polled; its result is adopted, never executed.
+    /** Change values or remove steps of a plan not yet started; never add one (design 17). */
+    editPlan: (id: number, body: PlanEdit) =>
+      request<ModelActionView>(`/api/model/actions/${id}/plan`, json('PATCH', body)),
+    /** 202 with the record ``running``: the client polls it (P4). */
+    run: (id: number) =>
+      request<ModelActionView>(`/api/model/actions/${id}/run`, { method: 'POST' }),
+    /** A ``done`` or ``limited`` chain's result becomes the analysis; with rows (D2). */
+    adopt: (id: number) =>
+      request<ExecuteResponse>(`/api/model/actions/${id}/adopt`, { method: 'POST' }),
   },
   sampleRows: (layer: string, limit = 50) =>
     request<QueryResult>('/api/query', json('POST', { source: layer, output: 'table', limit })),

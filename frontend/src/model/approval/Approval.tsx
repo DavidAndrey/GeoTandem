@@ -3,7 +3,7 @@
 // undo (M2.2, M6.1), undone (M2.3, M6.2) and rejected (M5.3).
 import { Trans } from '@lingui/react/macro'
 import { t } from '@lingui/core/macro'
-import { useEffect, useRef, type KeyboardEvent } from 'react'
+import { useEffect, useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import type { Analysis } from '../../analysis/model'
 import { useAnalysis } from '../../analysis/store'
@@ -22,6 +22,7 @@ import {
   accept,
   canApply,
   chooseReason,
+  escapeRejects,
   execute,
   fingerprint,
   reject,
@@ -170,18 +171,11 @@ export function Approval({ view }: { view: ModelActionView }) {
     if (!choosing) acceptButton.current?.focus()
   }, [view.id, choosing])
 
-  const onKeyDown = (event: KeyboardEvent) => {
-    if (event.key !== 'Escape' || event.defaultPrevented) return
-    // Esc = Ablehnen; the panel must not close on it.
-    event.preventDefault()
-    void reject(view, rejecting?.reason ?? null)
-  }
-
   return (
     <section
       aria-label={t`Freigabe`}
       className="border-divider flex flex-col gap-2 border-t pt-2"
-      onKeyDown={onKeyDown}
+      onKeyDown={escapeRejects(view, rejecting?.reason ?? null)}
     >
       <p className="label-caps">
         <Trans>Freigabe · Änderung gegenüber jetzt</Trans>
@@ -263,8 +257,8 @@ export function Approval({ view }: { view: ModelActionView }) {
   )
 }
 
-/** M5.3 before sending: the optional reason, then *Ablehnen*. */
-function RejectStep({
+/** M5.3 before sending: the optional reason, then *Ablehnen* (also a chain plan's, M8.1). */
+export function RejectStep({
   view,
   reason,
   busy,

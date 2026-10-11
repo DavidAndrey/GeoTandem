@@ -6,6 +6,7 @@
 // Modellaktionen" dialog all go. An answer of the last account still on its
 // way finds the state reset (``sameGeneration``) and changes nothing.
 import { resetApproval } from './approval/flow'
+import { resetChain } from './chain/flow'
 import { useMyActionsDialog } from './log/dialog'
 import { resetHandover } from './panel/handover'
 import { resetPanel } from './panel/state'
@@ -15,6 +16,7 @@ export function resetModelState() {
   // First: the reset count makes every answer still on its way a stale one.
   useModel.getState().reset()
   resetApproval()
+  resetChain()
   resetHandover()
   resetPanel()
   useMyActionsDialog.setState({ open: false })

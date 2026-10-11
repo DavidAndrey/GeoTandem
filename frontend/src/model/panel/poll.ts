@@ -1,6 +1,7 @@
-// Polling the running record (plan P7): ``POST /api/model/prompt`` answers 202
+// Polling the running record (plan P7, P4): ``POST /api/model/prompt`` answers 202
 // with the record ``thinking``; the client asks for it about once a second
-// until its status changes. No streaming.
+// until its status changes; a tool chain's run (``POST .../run``, 202) is polled
+// the same way while it is ``running``. No streaming.
 import { useEffect } from 'react'
 import { api } from '../../api/client'
 import { POLLED, useModel } from '../store'
@@ -10,6 +11,9 @@ export const POLL_MS = 1000
 
 /** Failed polls in a row before the panel says so and waits for "Erneut versuchen". */
 const MAX_FAILURES = 3
+
+/** The wait after ``failures`` failed polls in a row: doubled each time, at most 8 s. */
+export const backoff = (failures: number) => Math.min(POLL_MS * 2 ** failures, 8 * POLL_MS)
 
 /**
  * Polls the record ``useModel().running`` names. Mounted once by the workplace,
@@ -50,7 +54,8 @@ export function useActionPolling() {
         if (stopped) return
         failures += 1
         if (failures >= MAX_FAILURES) usePanel.setState({ pollError: { id, error } })
-        else timer = setTimeout(tick, POLL_MS)
+        // Backing off: a server in trouble is not asked once a second (2 s, 4 s …).
+        else timer = setTimeout(tick, backoff(failures))
       }
     }
     timer = setTimeout(tick, POLL_MS)

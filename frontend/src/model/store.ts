@@ -82,7 +82,17 @@ export function sent(state: ModelState, view: ModelActionView): ModelState {
   const previous = state.pending !== null ? state.views[state.pending] : undefined
   const views = { ...state.views, [view.id]: view }
   if (previous && previous.id !== view.id)
-    views[previous.id] = { ...previous, status: 'superseded', decision: overtaken(previous) }
+    views[previous.id] = {
+      ...previous,
+      status: 'superseded',
+      decision: overtaken(previous),
+      // A chain's steps ahead never run (WP75, store.py ``_end_steps``).
+      steps: previous.steps.map((s) =>
+        s.status === 'planned' || s.status === 'waiting' || s.status === 'running'
+          ? { ...s, status: 'skipped' }
+          : s,
+      ),
+    }
   return {
     ...state,
     views,
