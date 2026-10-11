@@ -111,7 +111,7 @@ Shared, single-writer files and their rule:
 - `frontend/src/locales/de.po` (and `pseudo.po`): written only by `npm run i18n:extract`, which sorts the whole file (so the earlier "one block per WP" rule cannot hold; changed in the WP66 review). A merge conflict here is resolved by taking either side and re-running the extraction after the merge; `npm run i18n:check` is part of every WP gate.
 - `frontend/src/api/schema.d.ts`, `frontend/openapi.json`, `frontend/error-codes.json`, `schema/`: generated only (`make gen`). A conflict is resolved by re-running `make gen` after the merge, never by hand.
 - `backend/src/geotandem/api/routes.py`, `errors.py`: WP62 registers all routers and all error codes up front (stubs answering 501), so later WPs only fill in bodies.
-- Migrations: **0009** for E2.3 (WP63; frozen with the tag `e2.3`), **0010** for E2.4 (WP70: `touched_at`, added in the WP70 review because 0009 was already tagged), **0011** for E2.5 (WP75: step table). No other WP creates a migration; a WP that needs one waits for the integrator to assign the number.
+- Migrations: **0009** for E2.3 (WP63; frozen with the tag `e2.3`), **0010** for E2.4 (WP70: `touched_at`, added in the WP70 review because 0009 was already tagged), **0011** for E2.5 (WP75: step table), **0012** for the E2.5 gate (security review #43: `model_call`, a chain's re-plans counted for the request limit). No other WP creates a migration; a WP that needs one waits for the integrator to assign the number.
 
 ## 4 Work packages
 
