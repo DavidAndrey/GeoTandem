@@ -1,7 +1,6 @@
 // Modus B as the fake API answers it (plan WP62), built from the contract
 // fixture the backend and e2e use too (schema/model-cases/v1.json): a case's
 // answer and expectation become the action record the backend will return.
-import design from '../../../design/e2/fixture/modus-b.json'
 import fixture from '../../../schema/model-cases/v1.json'
 import type {
   ActionPreview,
@@ -542,23 +541,16 @@ export interface ChainScript {
 
 const CHAIN_CASE = modelCase('chain_reference')
 
-/** Step durations of the reference chain (design fixture ``referenzfrage.kette``: 3.6 s in all). */
-export const CHAIN_DURATIONS_MS = design.referenzfrage.kette.map((s) =>
-  Math.round(s.dauer_s * 1000),
-)
+const CHAIN_EXPECT = CHAIN_CASE.expect as { step_hits: number[]; step_ms: number[] }
+
+/** Example step durations of the reference chain (contract fixture ``chain_reference``: 3.6 s in all). */
+export const CHAIN_DURATIONS_MS: number[] = CHAIN_EXPECT.step_ms
 
 /**
- * Hits of the reference chain's steps: the design's intermediate counts stand
- * in (the backend's tests pin the sample data's); the last is the contract's
- * (``chain_reference``: 10 of 137).
+ * Hits of the reference chain's steps on the sample data (contract fixture
+ * ``chain_reference``: 62, 37, 37, 37, then 10 of 137; the backend's tests pin the same).
  */
-export const CHAIN_HITS: number[] = design.referenzfrage.kette.map((s, i, all) =>
-  i === all.length - 1
-    ? (CHAIN_CASE.expect as { hits: number }).hits
-    : typeof s.ergebnis === 'number'
-      ? s.ergebnis
-      : 1,
-)
+export const CHAIN_HITS: number[] = CHAIN_EXPECT.step_hits
 
 const RAN: readonly StepView['status'][] = ['ok', 'empty', 'error']
 const ahead = (s: StepView) => s.status === 'planned' || s.status === 'waiting'
