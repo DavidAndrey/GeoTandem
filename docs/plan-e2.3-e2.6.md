@@ -305,6 +305,7 @@ Open from the gate list:
 - Approval rule: *Prüfen* = one approval for the whole chain; *Teilautonom* = stop before each step whose cell is `approve`, `off` steps make the action proposal-only (D1); strictest cell for the chain-level status.
 - Plan editing `PATCH /api/model/actions/{id}/plan`: change values, remove steps, **no new steps** (design 17); revalidated; result dependencies re-checked (removing a step that a later step reads ⇒ error naming the step).
 - Decisions for WP75 (from WP74 and WP77, 2026-10-11):
+  - F-7.4 (tool calling) is read as structured output: the plan arrives as one `PlanAnswer` in the answer schema and the app calls the registered tools itself; no tool-call round trips with the model (P4). Noted in the E2.5 etappe review.
   - From the WP75 review: one approval for the whole chain only when no step of the whole current plan is `auto` (Prüfen); otherwise a halt before every `approve` step. A re-plan uses the system prompt text stored on the record at plan time, the profile as it is at run time (its hash recorded with the re-plan), and only the record's connection while host and locality are unchanged.
   - `StepView` carries the step's compact `query` (contract change); `layer` is removed. The client draws the dimmed intermediate result by running that query as the user through Modus A (`/api/query/ids`), the same visibility as by hand.
   - A chain halted for approval can be aborted: `proposed → limited`, `stop_reason` `aborted`, its last complete result adoptable.
