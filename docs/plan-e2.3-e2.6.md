@@ -359,6 +359,17 @@ Open from the gate list:
 #### Gate E2.5
 See section 5.2 plus the **security review** of section 5.4 (data-release, `model_view`, intermediate layers, outbound). Done-when (etappen.md): the same question is solvable by both approaches, both end in the same analysis state, derivation, step count and result are viewable side by side.
 
+**Passed 2026-10-11** on `ep-2.3-6` (tag `e2.5`), run in a Linux container on a Windows host through `GATE_RUNNER_CONTAINER`, Playwright with one worker:
+- lint clean; backend 1560 passed, 1 skipped, 4 deselected (the opt-in real-model tests); frontend 582/583 (the one failure is `src/i18n/locale.test.ts`, which fails the same way on main in that container); `make audit` clean;
+- image, first start, both Playwright passes 60 passed and 1 skipped (E2.1 with a local model), restart; the E2.3, E2.4 and E2.5 acceptance included, the comparison dialog test on;
+- etappe review (seams, the full fake-vs-server sweep, the e2e vacuity check, migrations 0011/0012, decision coverage) and security review (5.4, #40–#44 in `security-review.md`), all fixed (`e25-gate-fixes`).
+
+Open from the gate list:
+- the run on a Linux host (`make gate`, default workers);
+- the real-model run;
+- the sign-off of the undecided design deviations below;
+- **the D9 count oracle for external connections without data release** (security-review.md, Gate E2.5): keep as accepted, or report only empty/non-empty or a bucketed count, or switch off re-plans there.
+
 **Design deviations of E2.5** (gate step 6, from the etappe review; to be signed off):
 
 *Deliberate, decided during the WPs:*
