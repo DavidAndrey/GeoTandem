@@ -5,7 +5,7 @@ description = "GeoTandem backend"
 requires-python = ">=3.13"
 dependencies = [
     "geotandem-query",
-    "fastapi>=0.141,<0.142",
+    "fastapi>=0.141,<0.143",
     "uvicorn>=0.37",
     "pydantic>=2.13,<3",
     "pydantic-settings>=2.11",
