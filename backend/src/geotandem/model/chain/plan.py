@@ -29,14 +29,14 @@ never by ``classify`` of the last query: the composition turns a buffer into a
 distance and would hide ``derive``. Nothing here runs a query.
 """
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Final
 
 from pydantic import BaseModel, ValidationError
 
 from geotandem.catalog import ModelProfile
-from geotandem.levels import Level, OpClass, classify
+from geotandem.levels import CellMode, Level, OpClass, classify, strictest
 from geotandem.model.chain.tools import CHAIN, ChainTool
 from geotandem.model.direct import governance
 from geotandem.model.schemas import MAX_STEPS, Governance, PlannedStep, Refusal
@@ -80,26 +80,54 @@ def chain_governance(level: Level, steps: Iterable[CheckedStep]) -> Governance:
     return governance(level, chain_classes(steps))
 
 
+def step_cell(level: Level, step: CheckedStep) -> CellMode:
+    """The cell that governs one step: the strictest of its classes (H4)."""
+    return strictest(level, [c for c in OpClass if c in step.classes])
+
+
+def one_approval(cells: Iterable[CellMode]) -> bool:
+    """Whether the steps ahead, with these cells, are approved as a whole (P4,
+    design M8.1): none of them runs without approval (*Prüfen*), so one
+    approval covers the rest of the chain. Otherwise (*Teilautonom*) the run
+    halts before each step whose cell is ``approve``, and an approval clears
+    that step only; ``auto`` steps never wait (*Automatisch*: never)."""
+    return all(cell is not CellMode.AUTO for cell in cells)
+
+
 def check_plan(
     steps: Sequence[PlannedStep],
     context: ToolContext,
     profile: ModelProfile,
     *,
     done: Sequence[CheckedStep] = (),
+    positions: Sequence[int] | None = None,
+    spent: int | None = None,
 ) -> list[CheckedStep] | Refusal:
     """``steps`` after the completed ``done`` (a re-plan, P4), checked in the
     world of ``profile``, the layer profile the model was given for the
-    account whose read-only view ``context`` holds."""
-    total = len(done) + len(steps)
+    account whose read-only view ``context`` holds.
+
+    ``positions`` are the steps' own, ascending, after every one of ``done``:
+    by default they continue after the last of ``done``. A step names an
+    earlier one by its position; one that is not there (removed from the plan,
+    or failed before a re-plan) is no earlier step. ``spent``: the steps that
+    count against the limit already, by default ``done``; a re-plan counts the
+    failed ones too (P4)."""
+    start = done[-1].position + 1 if done else 1
+    places = list(positions) if positions is not None else [start + i for i in range(len(steps))]
+    if len(places) != len(steps) or places != sorted(set(places)) or (places and places[0] < start):
+        raise ValueError("positions: one per step, ascending, after the completed steps")
+    used = len(done) if spent is None else spent
+    total = used + len(steps)
     if total > MAX_STEPS:
         return Refusal(
             code="step_limit",
             message=f"The chain has {total} steps; at most {MAX_STEPS} are allowed.",
-            details={"value": total, "max": MAX_STEPS, "step": MAX_STEPS + 1},
+            details={"value": total, "max": MAX_STEPS, "step": places[max(MAX_STEPS - used, 0)]},
         )
     checked = list(done)
-    for step in steps:
-        found = _check_step(step, len(checked) + 1, checked, context, profile)
+    for step, position in zip(steps, places, strict=True):
+        found = _check_step(step, position, checked, context, profile)
         if isinstance(found, Refusal):
             return found
         checked.append(found)
@@ -108,6 +136,98 @@ def check_plan(
         message = f"Step {last}: a chain does not end in a buffer; the controls cannot show it."
         return _not_composable("buffer", message, last)
     return checked[len(done) :]
+
+
+# --- the user's edit of a plan (design M8.3, decision 17) ------------------------------
+
+VALUE_KEYS: Final = frozenset({"value", "values", "min", "max", "text", "distance_m"})
+"""Where a step's arguments, conditions included, hold a value the user may
+change (the frontend's plan editor offers the same): everything else, every
+key, operator, layer, attribute and step reference, stays as planned."""
+
+
+def values_only(before: Any, after: Any, key: str = "") -> bool:
+    """``after`` differs from ``before`` in values only (``VALUE_KEYS``)."""
+    if key in VALUE_KEYS:
+        return True
+    if isinstance(before, dict):
+        return (
+            isinstance(after, dict)
+            and before.keys() == after.keys()
+            and all(values_only(before[k], after[k], k) for k in before)
+        )
+    if isinstance(before, list):
+        return (
+            isinstance(after, list)
+            and len(before) == len(after)
+            and all(values_only(b, a, key) for b, a in zip(before, after, strict=True))
+        )
+    return type(before) is type(after) and before == after
+
+
+def reads(step: PlannedStep) -> dict[str, int]:
+    """The earlier steps ``step`` names, by the argument that names each."""
+    chain = CHAIN.get(step.tool)
+    if chain is None:
+        return {}
+    fields = chain.arguments.model_fields
+    named = ((fields[name].alias or name) for name in chain.references)
+    return {
+        key: value
+        for key in named
+        if isinstance(value := step.arguments.get(key), int) and not isinstance(value, bool)
+    }
+
+
+@dataclass(frozen=True)
+class Placed:
+    """A step of a plan at its position."""
+
+    position: int
+    step: PlannedStep
+
+
+def edit_plan(
+    plan: Sequence[Placed], change: Mapping[int, dict[str, Any]], remove: Collection[int]
+) -> list[Placed] | Refusal:
+    """``plan`` (the steps not removed yet) with the values of ``change`` set and
+    the steps of ``remove`` left out; never a step more (design decision 17).
+    Refused as ``invalid_query``, naming the step (``details.step``): a position
+    that is no step of the plan, a step both changed and removed, a change of
+    anything but a value, a removed step a remaining one names, nothing left.
+    The caller checks what remains whole (``check_plan``)."""
+    at = {placed.position: placed for placed in plan}
+    for position in (*change, *remove):
+        if position not in at:
+            return _edit_refused(f"There is no step {position} in the plan.", step=position)
+    for position, arguments in change.items():
+        if position in remove:
+            return _edit_refused(f"Step {position} is changed and removed.", step=position)
+        if not values_only(at[position].step.arguments, arguments):
+            message = f"Step {position}: only values may change, every name stays."
+            return _edit_refused(message, step=position)
+    kept = [
+        Placed(p.position, p.step.model_copy(update={"arguments": change[p.position]}))
+        if p.position in change
+        else p
+        for p in plan
+        if p.position not in remove
+    ]
+    if not kept:
+        return _edit_refused("A plan keeps one step at least.")
+    for placed in kept:
+        for key, position in reads(placed.step).items():
+            if position in remove:
+                message = (
+                    f"Step {placed.position} reads the result of step {position} ('{key}'), "
+                    "which is removed."
+                )
+                return _edit_refused(message, step=placed.position, reads=position, part=key)
+    return kept
+
+
+def _edit_refused(message: str, **details: Any) -> Refusal:
+    return Refusal(code="invalid_query", message=message, details=details)
 
 
 def _refused(refusal: Refusal, position: int) -> Refusal:
@@ -145,15 +265,16 @@ def _check_step(
         return _invalid([{**NESTED, "loc": ["arguments"]}], position)
     fields = type(arguments).model_fields
     resolved: dict[str, Any] = {name: getattr(arguments, name) for name in fields}
+    by_position = {s.position: s for s in earlier}
     for name in chain.references:
         ref = resolved[name]
         if ref is None:
             continue
-        if ref >= position:
+        if ref >= position or ref not in by_position:
             loc = ["arguments", fields[name].alias or name]
             error = {"loc": loc, "msg": "Names no earlier step", "type": "step_reference"}
             return _invalid([error], position)
-        resolved[name] = earlier[ref - 1].query
+        resolved[name] = by_position[ref].query
     try:
         query: QueryObject = chain.tool.call(context, resolved)
     except NotComposable as exc:

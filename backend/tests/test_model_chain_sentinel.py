@@ -23,10 +23,11 @@ from typing import Any
 
 import httpx
 import pytest
+from chain_fixtures import drive, settle
 from fastapi import FastAPI
 from sqlalchemy import select, update
 from test_model_direct import same_refusal
-from test_model_enforcement import CONNECTIONS, account_of, connect
+from test_model_enforcement import CONNECTIONS, PROMPT, account_of, connect
 from test_profile import SENTINELS, sentinel_csv
 
 from geotandem.api.state import AppState
@@ -88,10 +89,10 @@ REVISED = plan(
 """Steps 3 to 6 after the completed 1 and 2."""
 AFTER_ERROR = plan(
     ("buffer", {"layer": "strassen", "distance_m": 500}),
-    ("within", {"of": 1, "in": 2}),
+    ("within", {"of": 1, "in": 3}),
     why="Ohne Strassenklasse, die nicht mehr da ist.",
 )
-"""Steps 2 and 3, after step 2 of ``PLANNED`` failed."""
+"""Steps 3 and 4, after step 2 of ``PLANNED`` failed: it keeps its place (WP75)."""
 
 
 def completion(answer: Body) -> Completion:
@@ -310,22 +311,22 @@ async def test_a_name_shaped_value_in_an_error_never_reaches_the_model(
     run = run_step(checked[0], setup.context, setup.profile)
     assert run.error is not None and run.error.details == {"attribute": NAME_SHAPED}
     assert (run.view.code, run.view.part) == ("unknown_attribute", None)
-    assert NAME_SHAPED not in replan_message([(1, "filter", run.view)], 0)
+    assert NAME_SHAPED not in replan_message([(1, "filter", run.view)], (), 2)
 
 
 async def test_the_data_release_changes_nothing_the_model_receives(
     app: FastAPI, client: httpx.AsyncClient, tmp_path: Path
 ) -> None:
-    """D10: the flag is stored and shown, and it has no effect in E2.5.
-
-    PENDING (WP75): anchored on ``run_chain`` here, which never sees the
-    connection, so today it shows the flag is read nowhere on the way, no more.
-    WP75 re-anchors it on the service and API path (``POST /prompt`` with the
-    chain approach, ``run``), where the connection is resolved."""
+    """D10: the flag is stored and shown, and it has no effect in E2.5. On the
+    application's path (WP75), where the connection is resolved: flipped
+    through the API, a chain asked through the API, approved, run, re-planned
+    after its empty step and adopted; every call the model received, byte for
+    byte the same, and no sentinel in any."""
     connection = await connect(client)
     seed(app.state.geotandem, tmp_path)
     inputs: list[bytes] = []
     released: list[bool] = []
+    models: list[FakeLLMClient] = []
     for flag in (connection["may_receive_data"], not connection["may_receive_data"]):
         changed = await client.patch(
             f"{CONNECTIONS}/{connection['id']}", json={"may_receive_data": flag}
@@ -333,10 +334,23 @@ async def test_the_data_release_changes_nothing_the_model_receives(
         assert changed.status_code == 200, changed.text
         shown = (await client.get(CONNECTIONS)).json()
         assert [c["may_receive_data"] for c in shown] == [flag]
-        setup = Setup(app)
-        released.append(setup.connection.may_receive_data)
-        outcome, model = empty_then_revised(setup)
-        assert outcome.result is not None
+        released.append(Setup(app).connection.may_receive_data)
+        model = FakeLLMClient(script=[completion(PLANNED), completion(REVISED)])
+        app.state.geotandem.client_factory = lambda _endpoint, model=model: model
+        text = "Welche Primarschulen liegen nahe an Kantonsstrassen?"
+        asked = await client.post(PROMPT, json={"text": text, "approach": "chain"})
+        assert asked.status_code == 202, asked.text
+        await settle(app)
+        done, _ = await drive(client, app, asked.json()["id"])
+        assert (done["status"], done["replans"]) == ("done", 1)
+        assert [s["model_view"]["empty"] for s in done["steps"]] == [False, True] + [False] * 4
+        adopted = await client.post(f"/api/model/actions/{done['id']}/adopt")
+        assert adopted.status_code == 200, adopted.text
+        assert len(model.calls) == 2
         inputs.append(received(model))
+        models.append(model)
     assert released == [True, False]
     assert inputs[0] == inputs[1]
+    text = sent(*models)
+    assert '"empty":true' in text
+    assert [s for s in (IN_A_NAME, NAME_SHAPED, HIDDEN, *SENTINELS) if s in text] == []

@@ -83,6 +83,9 @@ BUILT = {
     ("POST", "/api/model/actions/1/execute"): "WP70",
     ("POST", "/api/model/actions/1/undo"): "WP70",
     ("POST", "/api/model/actions/1/touched"): "WP70",
+    ("PATCH", "/api/model/actions/1/plan"): "WP75",
+    ("POST", "/api/model/actions/1/run"): "WP75",
+    ("POST", "/api/model/actions/1/adopt"): "WP75",
     ("GET", "/api/model/my-actions"): "WP73",
     ("GET", "/api/admin/model-actions"): "WP73",
     ("GET", "/api/admin/model-actions/key-figures"): "WP73",
@@ -90,8 +93,8 @@ BUILT = {
     ("GET", "/api/admin/model-actions/1"): "WP73",
 }
 """Routes whose work package has landed: they no longer answer 501
-(``test_model_flow.py``, ``test_model_enforcement.py`` and ``test_model_log.py``
-test them)."""
+(``test_model_flow.py``, ``test_model_enforcement.py``, ``test_model_log.py``
+and ``test_model_chain_flow.py`` test them)."""
 BODIES: dict[str, dict[str, Any]] = {
     "/api/model/prompt": {"text": "Primarschulen in Köniz"},
     "/api/model/actions/1/decide": {"decision": "proposal_only"},

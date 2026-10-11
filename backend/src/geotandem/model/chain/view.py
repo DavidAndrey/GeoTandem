@@ -99,3 +99,11 @@ def model_view(result: StepResult) -> ModelView:
     if isinstance(outcome, bool):
         raise TypeError("a count is a number")
     return ModelView(outcome="ok", empty=outcome == 0, count=outcome)
+
+
+def restored(stored: Mapping[str, Any] | None) -> ModelView | None:
+    """A view ``model_view`` made, as the record keeps it (WP75), read back for
+    the user's view of the step and for a later re-plan. Validated again: a
+    stored view that would not pass ``ModelView`` (no free text, a name for
+    ``part``) is refused, not handed on."""
+    return None if stored is None else ModelView.model_validate(stored)

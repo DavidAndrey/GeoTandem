@@ -72,7 +72,9 @@ def run_step(
         limit = context.limits.max_features
         if last and count > limit:
             raise ResultTooLarge(
-                f"The result has {count} features, more than {limit}.", max_features=limit
+                f"The result has {count} features, more than {limit}.",
+                max_features=limit,
+                count=count,
             )
     except QueryError as exc:
         count, error = None, exc

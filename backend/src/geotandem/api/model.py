@@ -1,10 +1,11 @@
 """Modus B over HTTP: prompt, decide, run (plan E2.3-E2.6, section 6).
 
 Frozen in WP62 with every route, its auth and its answer; each body answers
-501 ``not_implemented`` until its WP fills it in (WP73, WP75, WP76).
+501 ``not_implemented`` until its WP fills it in (WP76).
 WP65 built the prompt of the direct query, the record, ``decide`` and
 ``abort``; WP70 the enforcement: ``approve``, ``reject``, ``execute``,
-``undo``, ``touched`` and the preview (``model/service.py``). Every route
+``undo``, ``touched`` and the preview; WP75 the tool chain: its prompt, the
+plan's edit, ``run`` and ``adopt`` (``model/service.py``). Every route
 needs a signed-in account; a record of another account is ``not_found``
 (404, never 403), as for sessions, and changing one is the owner's alone,
 administrators included.
@@ -96,8 +97,6 @@ def prompt(body: PromptRequest, account: CurrentAccount, flow: Flow) -> ModelAct
     by hand (D1). Closes the account's open record (WP70). One prompt of an
     account at a time (409 ``busy``); all model calls at once are bounded
     (503 ``busy``)."""
-    if body.approach == "chain":
-        raise NotBuilt("WP75")
     return flow.prompt(account, body)
 
 
@@ -178,20 +177,38 @@ def abort(action_id: ActionId, account: CurrentAccount, flow: Flow) -> ModelActi
     return flow.abort(account, action_id)
 
 
-@router.patch("/actions/{action_id}/plan", responses=ERRORS)
-def edit_plan(action_id: ActionId, body: PlanEdit, account: CurrentAccount) -> ModelActionView:
-    raise NotBuilt("WP75")
+@router.patch("/actions/{action_id}/plan", responses=DECISIONS)
+def edit_plan(
+    action_id: ActionId, body: PlanEdit, account: InteractiveAccount, flow: Flow
+) -> ModelActionView:
+    """Change values and remove steps of a chain that waits for approval and has
+    not started; never add one (design M8.3). The plan is checked whole again
+    and governed by the level as it was; 422 names the step a refusal is
+    about. The person's edit: an interactive session only, as ``approve``."""
+    return flow.edit_plan(account, action_id, body)
 
 
 @router.post("/actions/{action_id}/run", status_code=202, responses=CALLS_MODEL)
-def run(action_id: ActionId, account: CurrentAccount) -> ModelActionView:
-    raise NotBuilt("WP75")
+def run(action_id: ActionId, account: CurrentAccount, flow: Flow) -> ModelActionView:
+    """Start an ``approved`` chain, or let it go on after a halt (P4): 202 with
+    the record ``running``; the client polls ``GET /actions/{id}``. The steps
+    run one at a time as the caller's background task, among the model calls
+    (409/503 ``busy``); the record halts for approval where the level as it
+    was asks for it."""
+    return flow.run(account, action_id)
 
 
-@router.post("/actions/{action_id}/adopt", responses=ERRORS)
-def adopt(action_id: ActionId, account: CurrentAccount) -> ExecuteResponse:
-    """A ``done`` or ``limited`` chain's result becomes the analysis (design "Kette übernehmen")."""
-    raise NotBuilt("WP75")
+@router.post(
+    "/actions/{action_id}/adopt",
+    responses={**RUNS, 403: {"model": ErrorBody}},
+    dependencies=[QuerySlot],
+)
+def adopt(action_id: ActionId, account: InteractiveAccount, flow: Flow) -> ExecuteResponse:
+    """A ``done`` or ``limited`` chain's result becomes the analysis (design
+    "Kette übernehmen"): its last complete step as one query object, run as
+    the caller like ``execute``; the other answer with rows. Once only. The
+    person's decision (``accepted``): an interactive session only."""
+    return flow.adopt(account, action_id)
 
 
 @router.post("/actions/{action_id}/compare", status_code=202, responses=CALLS_MODEL)

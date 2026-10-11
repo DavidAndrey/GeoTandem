@@ -347,6 +347,45 @@ class ModelAction(Base):
     called_at: Mapped[datetime | None]
     """When the model call started; ``None`` for a request aborted before it.
     The request limit counts only requests that reached the call (P5)."""
+    run_ms: Mapped[int] = mapped_column(default=0, server_default="0")
+    """A chain's run time so far, its halts for approval left out (P4, WP75):
+    with the planning call's ``latency_ms`` it is held to ``CHAIN_TIME_LIMIT_S``."""
+    turns: Mapped[list[Any] | None] = mapped_column(JSON)
+    """A chain's conversation after the prompt, ``[role, text]`` each: the
+    plans the model gave and every re-plan's input (P4, D9). The model's own
+    words and ``model_view``s, nothing of the data."""
+
+
+class ModelActionStep(Base):
+    """One step of a chain (plan E2.3-E2.6, WP75): what the model planned, how
+    the level governs it, and what became of it. A step's result is its query
+    object and a count, never a table (F-9.5); only the adoptable step gets a
+    stamp. ``position`` is stable: a removed step keeps its place, a re-plan's
+    steps continue after the last step that ran."""
+
+    __tablename__ = "model_action_step"
+    __table_args__ = (UniqueConstraint("action_id", "position"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    action_id: Mapped[int] = mapped_column(ForeignKey("model_action.id", ondelete="CASCADE"))
+    position: Mapped[int]
+    text: Mapped[str]
+    tool: Mapped[str] = mapped_column(String(64))
+    arguments: Mapped[dict[str, Any]] = mapped_column(JSON)
+    """As the model wrote them, or as the user changed their values (``edited``)."""
+    classes: Mapped[list[str]] = mapped_column(JSON)
+    cell: Mapped[str] = mapped_column(String(16))
+    """The strictest cell among ``classes`` at the level as it was."""
+    status: Mapped[str] = mapped_column(String(16))
+    revised: Mapped[bool] = mapped_column(default=False, server_default=false())
+    edited: Mapped[bool] = mapped_column(default=False, server_default=false())
+    approved: Mapped[bool] = mapped_column(default=False, server_default=false())
+    """An approval cleared it to run (``approve``), so the run does not halt before it."""
+    count: Mapped[int | None]
+    stamp: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    model_view: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    query: Mapped[dict[str, Any]] = mapped_column(JSON)
+    duration_ms: Mapped[int | None]
 
 
 class AppMeta(Base):

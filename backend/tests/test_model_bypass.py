@@ -34,6 +34,17 @@ from typing import Any, get_args
 import httpx
 import pytest
 from api_helpers import USER_PASSWORD, Events
+from chain_fixtures import (
+    BUFFER,
+    MUNICIPALITIES,
+    NOWHERE,
+    SCHOOLS,
+    drive,
+    planned,
+    run,
+    stored_chain,
+    within,
+)
 from fastapi import FastAPI, Request
 from model_fixtures import REPO, case, completion
 from sqlalchemy import event, func, select, update
@@ -294,15 +305,17 @@ ACTION_ROUTES: dict[Route, str] = {
     ("POST", "touched"): "applied before",
     ("POST", "execute"): "Teilautonom",
     ("POST", "abort"): "thinking",
+    ("PATCH", "plan"): "chain proposed",
+    ("POST", "run"): "chain approved",
+    ("POST", "adopt"): "chain done",
 }
 """Every built route that names an action, with the record its owner may call it
 on: a level (stored under it), applied by ``execute`` (the last and an earlier
-model change), or still thinking. In the order the owner calls them: undo
-before execute, which would make another record the last model change."""
+model change), still thinking, or a chain (WP75: a plan that waits under
+*Prüfen*, one approved under *Teilautonom*, one run to its end). In the order
+the owner calls them: undo before execute and adopt, which would make another
+record the last model change."""
 PENDING_ROUTES: dict[Route, str] = {
-    ("PATCH", "plan"): "WP75",
-    ("POST", "run"): "WP75",
-    ("POST", "adopt"): "WP75",
     ("POST", "compare"): "WP76",
     ("GET", "comparison"): "WP76",
 }
@@ -345,7 +358,20 @@ async def stage(
         executed = await owner.post(url(record["id"], "execute"))
         assert executed.status_code == 200, executed.text
         applied.append(record["id"])
-    made = {"applied before": applied[0], "applied last": applied[1]}
+    # A chain of one step, query only: auto at Teilautonom, run to its end.
+    model.fake.script.append(planned(SCHOOLS))
+    asked = await owner.post(PROMPT, json={"text": "Schulen", "approach": "chain"})
+    assert asked.status_code == 202, asked.text
+    await settle(app)
+    done, _ = await drive(owner, app, asked.json()["id"])
+    assert done["status"] == "done", done
+    made = {
+        "applied before": applied[0],
+        "applied last": applied[1],
+        "chain done": done["id"],
+        "chain proposed": stored_chain(app, username, "Prüfen", SCHOOLS),
+        "chain approved": stored_chain(app, username, "Teilautonom", SCHOOLS),
+    }
     return {
         route: made[kind]
         if kind in made
@@ -407,8 +433,12 @@ async def test_another_accounts_or_a_forged_id_is_not_found_on_every_route(
     # The owner's same requests pass: the 404 was the account's, not the state's.
     for route, action_id in ids.items():
         response = await call(owner, route, action_id)
-        assert response.status_code == 200, (route, response.text)
-    assert len(ran) == 3  # the preview's ids and total, the execute
+        expected = 202 if route == ("POST", "run") else 200
+        assert response.status_code == expected, (route, response.text)
+    await settle(app)
+    # The preview's ids and total, the execute, the adopt, the run's count and stamp.
+    assert len(ran) == 6
+    assert (await owner.get(url(ids[("POST", "run")]))).json()["status"] == "done"
 
 
 # --- a stale snapshot: the level as it was governs (M7.3) -----------------------------
@@ -847,8 +877,8 @@ READ_ONLY_IMPORTS: dict[str, set[str]] = {
     "geotandem.data": {"DataBackend", "Limits", "Op"},
     "geotandem.data.view": {"LayerView"},
     "geotandem.db.spatialite": {"reading"},
-    # The model's own record: the one table the path writes.
-    "geotandem.db.orm": {"ModelAction"},
+    # The model's own record, a chain's steps with it: the tables the path writes.
+    "geotandem.db.orm": {"ModelAction", "ModelActionStep"},
     # The engine: compiles and runs queries on a read-only connection.
     "geotandem.engine": {
         "QueryError",
@@ -865,7 +895,15 @@ READ_ONLY_IMPORTS: dict[str, set[str]] = {
     "geotandem.engine.errors": {"QueryTimedOut", "ResultTooLarge", "UnknownLayer"},
     "geotandem.engine.result": {"QueryResult", "ResultStamp"},
     # Levels: read and resolved, never chosen or saved here.
-    "geotandem.levels": {"CellMode", "Level", "OpClass", "active_level", "classify", "strictest"},
+    "geotandem.levels": {
+        "CellMode",
+        "Level",
+        "OpClass",
+        "active_level",
+        "classify",
+        "load_levels",
+        "strictest",
+    },
     # The seam to the model.
     "geotandem.llm": {
         "ClientFactory",
@@ -1040,6 +1078,13 @@ async def test_walking_every_model_route_writes_the_action_record_only(
 
     for name in ("run_query", "ids_query", "count_query"):
         monkeypatch.setattr(service, name, keeping(getattr(service, name), 1))
+    step_run = service.run_step
+
+    def counted(step: Any, context: Any, *args: Any, **kwargs: Any) -> Any:
+        views.append(context.backend)  # a chain's step: the model's world over the view
+        return step_run(step, context, *args, **kwargs)
+
+    monkeypatch.setattr(service, "run_step", counted)
     ask_model = DirectQuery.ask
     monkeypatch.setattr(
         DirectQuery,
@@ -1087,10 +1132,33 @@ async def test_walking_every_model_route_writes_the_action_record_only(
         await settle(app)
         assert (await client.get(url(thinking))).status_code == 200
         assert (await client.get("/api/model/my-actions")).status_code == 200
+    # The chain (WP75): plan, edit, approve, run with a halt and a re-plan, an
+    # abort while halted, adopt.
+    await choose(client, level_id=levels["Teilautonom"])
+    steps = [SCHOOLS, ("filter", {"of": 1, "where": NOWHERE}), BUFFER, within(1, 3)]
+    with writes(app, written):
+        model.fake.script.extend([planned(*steps), planned(MUNICIPALITIES, within(1, 3))])
+        asked = await client.post(PROMPT, json={"text": "Schulen", "approach": "chain"})
+        await settle(app)
+        chain_id = asked.json()["id"]
+        edited = await client.patch(url(chain_id, "plan"), json={"change": []})
+        assert edited.status_code == 200, edited.text
+        done, _ = await drive(client, app, chain_id)
+        assert (done["status"], done["replans"]) == ("done", 1)
+        assert (await client.post(url(chain_id, "adopt"))).status_code == 200
+        model.fake.script.append(planned(SCHOOLS, BUFFER, within(1, 2)))
+        asked = await client.post(PROMPT, json={"text": "Schulen", "approach": "chain"})
+        await settle(app)
+        assert (await client.post(url(asked.json()["id"], "approve"))).status_code == 200
+        halted = await run(client, app, asked.json()["id"])
+        assert halted["status"] == "proposed"
+        aborted = await client.post(url(halted["id"], "abort"))
+        assert aborted.json()["status"] == "limited"
 
-    assert {kind for kind, _ in written} <= {"INSERT", "UPDATE"}, written
-    assert {table for _, table in written} == {"model_action"}, written
-    assert all(c.tools == () for c in model.fake.calls)  # the direct path offers no tool
+    assert {kind for kind, _ in written} <= {"INSERT", "UPDATE", "DELETE"}, written
+    assert {table for _, table in written} == {"model_action", "model_action_step"}, written
+    assert {t for kind, t in written if kind == "DELETE"} == {"model_action_step"}  # a re-plan
+    assert all(c.tools == () for c in model.fake.calls)  # neither path offers a tool
 
     assert len(views) >= 12  # the asks, the preview's two counts, the executes
     tries: list[tuple[str, tuple[Any, ...]]] = [
@@ -1198,25 +1266,175 @@ async def attack_preview(s: Scene) -> None:
     assert (await s.other.get(url(hand_only))).json()["previewed_at"] is None
 
 
+async def disable_connections(s: Scene) -> None:
+    for connection in (await s.client.get(CONNECTIONS)).json():
+        off = await s.client.patch(f"{CONNECTIONS}/{connection['id']}", json={"enabled": False})
+        assert off.status_code == 200, off.text
+
+
+async def attack_run(s: Scene) -> None:
+    """A chain runs by the level as it was (P4), never the account's level now:
+    only an ``approved`` chain of the caller's own, never one that waits or
+    is proposal-only, never a direct query; it halts where the snapshot says,
+    and a re-plan goes to no disabled connection. The run itself calls no
+    model, so a connection disabled since the prompt does not stop it."""
+    waits = stored_chain(s.app, "b.muster", "Prüfen", SCHOOLS)
+    hand_only = stored_chain(s.app, "b.muster", "Assistenz", SCHOOLS)
+    halts = stored_chain(s.app, "b.muster", "Teilautonom", SCHOOLS, BUFFER, within(1, 2))
+    empties = stored_chain(
+        s.app,
+        "b.muster",
+        "Teilautonom",
+        SCHOOLS,
+        ("filter", {"of": 1, "where": NOWHERE}),
+        MUNICIPALITIES,
+        within(2, 3),
+    )
+    direct = stored(s.app, "b.muster", "Teilautonom")
+    await edit_levels(s.client, lambda lv: {**lv, "matrix": all_cells("auto")})
+    for action_id in (waits, hand_only, halts, direct):
+        response = await s.other.post(url(action_id, "run"))
+        assert (response.status_code, response.json()["code"]) == (409, "not_approved")
+    refused = await s.other.post(url(hand_only, "approve"))
+    assert (refused.status_code, refused.json()["code"]) == (409, "class_not_allowed")
+    for target in (empties, FORGED):  # another account's: an administrator's too
+        response = await s.client.post(url(target, "run"))
+        assert (response.status_code, response.json()["code"]) == (404, "not_found")
+    assert s.ran == [] and s.model.fake.calls == []
+
+    # Approved, the chain halts before the buffer as Teilautonom said, though
+    # every level is auto now; then the connections go off.
+    assert (await s.other.post(url(halts, "approve"))).status_code == 200
+    halted = await run(s.other, s.app, halts)
+    assert (halted["status"], halted["steps"][1]["status"]) == ("proposed", "waiting")
+    await disable_connections(s)
+    done, _ = await drive(s.other, s.app, halts)
+    assert done["status"] == "done"
+    ended = await run(s.other, s.app, empties)
+    assert (ended["status"], ended["stop_reason"]) == ("limited", "replan_limit")
+    assert ended["error"]["code"] == "connection_not_available"
+    assert s.model.fake.calls == [] and s.model.endpoints == []
+    again = await s.other.post(url(halts, "run"))
+    assert (again.status_code, again.json()["code"]) == (409, "not_approved")
+
+
+async def attack_adopt(s: Scene) -> None:
+    """Only a chain that ended, of the caller's own, once, by a person: a
+    direct query is executed, a chain still waiting or running has nothing
+    to adopt, another account's does not exist, a token does not decide; the
+    level as it was decides, not the level now."""
+    await choose(s.other, level_id=s.levels["Teilautonom"])
+    s.model.fake.script.append(planned(SCHOOLS))
+    asked = await s.other.post(PROMPT, json={"text": "Schulen", "approach": "chain"})
+    await settle(s.app)
+    action_id = asked.json()["id"]
+    waiting = stored_chain(s.app, "b.muster", "Prüfen", SCHOOLS)
+    direct = stored(s.app, "b.muster", "Teilautonom")
+    for target in (action_id, waiting, direct):  # approved, proposed, a direct query
+        response = await s.other.post(url(target, "adopt"))
+        assert (response.status_code, response.json()["code"]) == (409, "not_approved")
+    done, _ = await drive(s.other, s.app, action_id)
+    assert done["status"] == "done"
+    await edit_levels(s.client, lambda lv: {**lv, "matrix": all_cells("off")})
+    s.ran.clear()
+    for target in (action_id, FORGED):
+        response = await s.client.post(url(target, "adopt"))
+        assert (response.status_code, response.json()["code"]) == (404, "not_found")
+    token = await s.other.post(url(action_id, "adopt"), headers=TOKEN)
+    assert (token.status_code, token.json()["code"]) == (403, "session_required")
+    assert s.ran == []
+
+    answers = await asyncio.gather(*(s.other.post(url(action_id, "adopt")) for _ in range(4)))
+    assert sorted(r.status_code for r in answers) == [200, 409, 409, 409]
+    assert {r.json()["code"] for r in answers if r.status_code == 409} == {"already_decided"}
+    assert len(s.ran) == 1  # adopted once, by the level as it was (Teilautonom)
+    replay = await s.other.post(url(action_id, "adopt"))
+    assert (replay.status_code, replay.json()["code"]) == (409, "already_decided")
+    assert len(s.ran) == 1
+
+
+def derive_off(level: Body) -> Body:
+    if level["name"] != "Prüfen":
+        return level
+    return {**level, "matrix": {**level["matrix"], "derive": "off"}}
+
+
+RELATED: Body = {"op": "related", "layer": "strassen", "predicate": "intersects"}
+A_BUFFER: Body = {"layer": "schulen", "distance_m": 100}
+
+
+def change(position: int, arguments: Body, **more: Any) -> Body:
+    return {"change": [{"position": position, "arguments": arguments, **more}]}
+
+
+SMUGGLED: list[tuple[Body, str]] = [
+    # A buffer in place of the filter, a relation in place of its condition: other names.
+    (change(1, A_BUFFER), "invalid_query"),
+    (change(1, {"layer": "schulen", "where": RELATED}), "invalid_query"),
+    # A relation as a value: the step's schema refuses it.
+    (
+        change(1, {"layer": "schulen", "where": {"op": "in", "attr": "typ", "values": [RELATED]}}),
+        "model_query_invalid",
+    ),
+    # A step the plan does not have, a list of steps, a tool beside the values.
+    (change(2, A_BUFFER), "invalid_query"),
+    ({"add": [{"tool": "buffer", "arguments": A_BUFFER}]}, "schema_violation"),
+    ({"steps": [{"tool": "buffer", "arguments": A_BUFFER}]}, "schema_violation"),
+    (change(1, A_BUFFER, tool="buffer"), "schema_violation"),
+    # Nothing left.
+    ({"remove": [1]}, "invalid_query"),
+]
+"""Edits that would bring in a step of another class: none passes."""
+
+
+async def attack_plan(s: Scene) -> None:
+    """An edited plan is checked whole and governed again by the level as it
+    was: no step is added and nothing but a value changes, so no step of an
+    ``off`` class comes in; an approval cannot carry over; another account's
+    plan does not exist; a token does not edit."""
+    await edit_levels(s.client, derive_off)
+    waits = stored_chain(s.app, "b.muster", "Prüfen", SCHOOLS)
+    approved = stored_chain(s.app, "b.muster", "Prüfen", SCHOOLS)
+    assert (await s.other.post(url(approved, "approve"))).status_code == 200
+    before = (await s.other.get(url(waits))).json()
+    assert before["governance"]["classes"] == ["query"]
+    await edit_levels(s.client, lambda lv: {**lv, "matrix": all_cells("auto")})
+    for body, code in SMUGGLED:
+        response = await s.other.patch(url(waits, "plan"), json=body)
+        assert (response.status_code, response.json()["code"]) == (422, code), body
+    late = await s.other.patch(url(approved, "plan"), json={})
+    assert (late.status_code, late.json()["code"]) == (409, "not_approved")
+    for target in (waits, FORGED):
+        response = await s.client.patch(url(target, "plan"), json={})
+        assert (response.status_code, response.json()["code"]) == (404, "not_found")
+    token = await s.other.patch(url(waits, "plan"), json={}, headers=TOKEN)
+    assert (token.status_code, token.json()["code"]) == (403, "session_required")
+    assert (await s.other.get(url(waits))).json() == before
+    # An edit that passes keeps the level as it was: it still waits for approval.
+    kept = await s.other.patch(url(waits, "plan"), json={})
+    assert kept.status_code == 200, kept.text
+    assert (kept.json()["status"], kept.json()["governance"]) == ("proposed", before["governance"])
+    early = await s.other.post(url(waits, "run"))
+    assert (early.status_code, early.json()["code"]) == (409, "not_approved")
+    assert s.ran == [] and s.model.fake.calls == []
+
+
 GUARDED: dict[tuple[str, str], Callable[[Scene], Awaitable[None]]] = {
     ("POST", "/api/model/prompt"): attack_prompt,
     ("POST", "/api/model/actions/{action_id}/execute"): attack_execute,
     ("POST", "/api/model/actions/{action_id}/preview"): attack_preview,
+    ("POST", "/api/model/actions/{action_id}/run"): attack_run,
+    ("POST", "/api/model/actions/{action_id}/adopt"): attack_adopt,
+    ("PATCH", "/api/model/actions/{action_id}/plan"): attack_plan,
 }
 """Every built route that calls the model or runs a model record, with the
 attack that shows it checks level and connection in the backend."""
 GUARDED_PENDING: dict[tuple[str, str], str] = {
-    ("POST", "/api/model/actions/{action_id}/run"): "WP75",
-    ("POST", "/api/model/actions/{action_id}/adopt"): "WP75",
     ("POST", "/api/model/actions/{action_id}/compare"): "WP76",
-    ("PATCH", "/api/model/actions/{action_id}/plan"): "WP75",
 }
 """Such routes still answering 501. The WP that builds one writes its attack
-into ``GUARDED`` and removes it here: run and adopt by the level as it was
-(P4, never the account's level now), compare as a prompt (level and
-connection resolved now, request limit counted), an edited plan revalidated
-and governed again (a step of an ``off`` class inserted or changed into one
-must not run, an approval given before the edit must not carry over)."""
+into ``GUARDED`` and removes it here: compare as a prompt (level and
+connection resolved now, request limit counted)."""
 
 
 def test_every_route_that_calls_the_model_or_runs_a_record_is_guarded(app: FastAPI) -> None:
