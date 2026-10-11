@@ -55,6 +55,7 @@ stateDiagram-v2
   approved --> applied : execute (stored query)
   approved --> running : run (chain)
   running --> done : last step
+  running --> proposed : halt before a step that needs approval, or a re-plan that needs it (chain)
   running --> limited : limit · abort · restart · re-plans used up
   proposed --> limited : abort while halted for approval (chain)
   done --> applied : adopt
