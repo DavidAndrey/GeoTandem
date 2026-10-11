@@ -71,7 +71,8 @@ CODES: dict[str, str] = {
     "model_query_invalid": "The model's query does not match the schema; details.errors.",
     "limit_exceeded": "A query on the model path exceeds details.limit (details.value > max).",
     "not_representable": "The query cannot be shown in the controls without loss (D3).",
-    "step_limit": "The tool chain has more than details.max steps.",
+    "step_limit": "The tool chain has details.value steps, more than details.max; "
+    "details.step is the first beyond them.",
     # Modus B: the routes of model actions
     "not_implemented": "This part of model support is not built yet (details.wp).",
     "context_too_large": "Prompt, layer profile and context exceed the context length.",
@@ -82,7 +83,8 @@ CODES: dict[str, str] = {
     "already_decided": "The action is decided already (details.status).",
     "nothing_to_undo": "The action changed nothing that could be taken back.",
     "undo_blocked": "The analysis was changed by hand since; undo is over.",
-    "time_limit": "The tool chain ran longer than details.max_s and was stopped.",
+    "time_limit": "The tool chain ran longer than details.max seconds and was stopped "
+    "before details.step.",
     "export_too_large": "The log export would hold more than details.max rows.",
     # Model connections: administration and choice
     "connection_name_taken": "A connection of that name exists (details.name).",

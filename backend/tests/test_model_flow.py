@@ -245,21 +245,23 @@ def account_of(app: FastAPI, username: str) -> Account:
 
 OWN_TESTS = {"reference", "aborted", "quota_exceeded", "context_too_large"}
 """Cases with a test of their own below."""
+CHAIN_TESTS = {"chain_reference", "step_limit"}
+"""The tool chain's cases, tested in ``test_model_chain_flow.py`` (WP75)."""
 PENDING_CASES = {
     "follow_up": "WP81",
     "follow_up_hand_edited": "WP81",
     "stale_reference": "WP81",
-    "chain_reference": "WP75",
-    "step_limit": "WP75",
 }
 """Cases whose behaviour arrives with a later WP, which tests them and drops
 them here; the etappe gate needs the WP81 ones gone by E2.6 (plan 5.2)."""
-RECORD_CASES = [c["id"] for c in cases() if c["id"] not in OWN_TESTS | set(PENDING_CASES)]
+RECORD_CASES = [
+    c["id"] for c in cases() if c["id"] not in OWN_TESTS | CHAIN_TESTS | set(PENDING_CASES)
+]
 
 
 def test_every_case_is_tested_or_pending() -> None:
     ids = [c["id"] for c in cases()]
-    assert set(ids) == set(RECORD_CASES) | OWN_TESTS | set(PENDING_CASES)
+    assert set(ids) == set(RECORD_CASES) | OWN_TESTS | CHAIN_TESTS | set(PENDING_CASES)
     for case_id in RECORD_CASES:
         c = case(case_id)
         assert c["approach"] == "direct" and isinstance(c["expect"]["status"], str), case_id
@@ -734,11 +736,6 @@ async def test_without_a_connection_nothing_is_asked(
     assert (response.status_code, response.json()["code"]) == (409, "connection_not_available")
     assert response.json()["details"]["reason"] == "none"
     assert records(app) == 0
-
-
-async def test_the_chain_is_not_built_yet(client: httpx.AsyncClient, model: Model) -> None:
-    response = await client.post(PROMPT, json={"text": "?", "approach": "chain"})
-    assert (response.status_code, response.json()["details"]["wp"]) == (501, "WP75")
 
 
 # --- the request limit (P5) ------------------------------------------------------

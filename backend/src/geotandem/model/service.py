@@ -64,6 +64,28 @@ the one answer with rows; the preview (P2) counts the stored query for the
 user, never for the model, and changes no status. Undo is for the log only:
 the client restores the analysis itself.
 
+The tool chain (WP75, P4) goes the same way up to its answer: the prompt
+with the chain's answer format, one planning call, the plan checked whole
+(``check_plan``) and stored with its steps, governed by the union of their
+classes at the level as it was (``chain_governance``): any class ``off``, a
+proposal only (D1); any ``approve``, ``proposed``; all ``auto``, ``approved``.
+Each step keeps its own cell. Before it runs, the user may change values and
+remove steps (``edit_plan``, never a new step); the plan is checked whole
+again. ``run`` (202, only ``approved``) starts the steps in a thread of
+``ModelCalls``, as a model call is (one per account, a bounded number in
+all): one step at a time, counted at the profile and view as they are at run
+time (``run_step``), its count stored for the user and its ``model_view`` for
+the model. It halts (``proposed``, the step ``waiting``) before a step whose
+cell is ``approve`` that no approval cleared, re-plans after an error or an
+empty step before the last (at most ``MAX_REPLANS``, the re-plan's steps
+continue the count, ``MAX_STEPS`` in all), asks for approval again after a
+re-plan where the level wants it, and stops ``limited`` at the request's
+deadline (``CHAIN_TIME_LIMIT_S``, halts left out), at a last step beyond the
+result-size limit, when re-plans are used up or bring nothing, or when the
+user aborts: the step that runs ends, no other starts. Its last complete
+result waits to be adopted: ``adopt`` runs it as the user, as ``execute``
+runs a direct answer, and is the other answer with rows.
+
 Logs carry ids and codes only, never the prompt or the answer (C15).
 """
 
@@ -88,29 +110,64 @@ from geotandem.connections import ConnectionInfo, ConnectionProblem, Connections
 from geotandem.data import DataBackend, Limits, Op
 from geotandem.data.view import LayerView
 from geotandem.db.orm import ModelAction
-from geotandem.engine import count_query, ids_query, run_query, stamp_of
-from geotandem.engine.errors import QueryTimedOut
-from geotandem.levels import Level, active_level
-from geotandem.llm import ClientFactory, Endpoint, LLMError
-from geotandem.model.direct import DirectAnswer, DirectQuery, direct_prompt
+from geotandem.engine import QueryError, ResultStamp, count_query, ids_query, run_query, stamp_of
+from geotandem.engine.errors import QueryTimedOut, ResultTooLarge
+from geotandem.levels import CellMode, Level, OpClass, active_level
+from geotandem.llm import ClientFactory, Endpoint, LLMClient, LLMError
+from geotandem.model.chain.ask import (
+    ChainState,
+    ask,
+    edits_message,
+    kept_turns,
+    restored_turns,
+)
+from geotandem.model.chain.plan import (
+    CheckedStep,
+    Placed,
+    chain_governance,
+    check_plan,
+    edit_plan,
+    one_approval,
+    step_cell,
+)
+from geotandem.model.chain.run import run_step, stamp
+from geotandem.model.chain.view import restored
+from geotandem.model.direct import DirectAnswer, DirectQuery, governance
 from geotandem.model.errors import ActionError
-from geotandem.model.prompt import FollowUp, Prompt, Turn
+from geotandem.model.prompt import FollowUp, Prompt, Turn, build_prompt
 from geotandem.model.record import (
+    COMPLETE,
+    RAN,
+    Chain,
+    ChainStep,
     ModelActionStore,
     NewAction,
     connection_snapshot,
+    last_complete,
     level_snapshot,
     utc_now,
 )
 from geotandem.model.schemas import (
+    CHAIN_TIME_LIMIT_S,
+    MAX_STEPS,
     MAX_TURNS,
     ActionPreview,
+    CannotAnswer,
+    Clarification,
     DecideRequest,
     ExecuteResponse,
+    Governance,
     ModelActionView,
+    ModelView,
+    PlanAnswer,
+    PlanEdit,
+    PlannedStep,
     PromptRequest,
     QueryAnswer,
+    Refusal,
     RejectRequest,
+    StepStatus,
+    StopReason,
 )
 from geotandem.tools import ToolContext
 from geotandem_query import QueryObject
@@ -146,11 +203,16 @@ def day_start(now: datetime, tz: tzinfo | None = None) -> datetime:
     return aware.astimezone(UTC).replace(tzinfo=None)
 
 
-def close_stale(engine: Engine, clock: Callable[[], datetime] = utc_now) -> list[int]:
+def close_stale(
+    engine: Engine, max_features: int, clock: Callable[[], datetime] = utc_now
+) -> list[int]:
     """The start-up check (P7): nothing in flight survives a restart of the one
-    process, so every ``thinking`` record ends ``failed``; an unexecuted ``auto``
-    answer older than ``MODEL_CALL_S`` is closed too."""
-    return ModelActionStore(engine, clock).close_stale(clock() - timedelta(seconds=MODEL_CALL_S))
+    process, so every ``thinking`` record ends ``failed``, every ``running``
+    chain ``limited``/``interrupted`` with its result within ``max_features``
+    adoptable; an unexecuted ``auto`` answer older than ``MODEL_CALL_S`` is
+    closed too."""
+    older_than = clock() - timedelta(seconds=MODEL_CALL_S)
+    return ModelActionStore(engine, clock).close_stale(older_than, max_features)
 
 
 def read_view(backend: DataBackend, account: Account) -> DataBackend:
@@ -351,11 +413,71 @@ class _Call:
 
     endpoint: Endpoint = field(repr=False)
     deadline: float
-    """``time.monotonic()`` by which the call ends, retries included."""
+    """``PromptFlow.monotonic()`` by which the call ends, retries included."""
     context: ToolContext
     level: Level
     prompt: Prompt = field(repr=False)
     profile: ModelProfile = field(repr=False)
+    approach: str = "direct"
+
+
+@dataclass(frozen=True)
+class _Planned:
+    """The planning call's outcome (P4): a plan checked whole with its steps
+    and their governance, a plan refused, or what the model said instead."""
+
+    answer: PlanAnswer | Clarification | CannotAnswer
+    latency_ms: int
+    steps: list[ChainStep] | None = None
+    governance: Governance | None = None
+    refusal: Refusal | None = None
+
+
+def new_step(level: Level, checked: CheckedStep, **more: Any) -> ChainStep:
+    """A checked step as the record keeps it, with its cell at ``level`` (H4):
+    how the planning call stores a plan, an edit and a re-plan their steps."""
+    planned = checked.step
+    return ChainStep(
+        position=checked.position,
+        text=planned.text,
+        tool=planned.tool,
+        arguments=planned.arguments,
+        query=checked.query,
+        classes=checked.classes,
+        cell=step_cell(level, checked),
+        **more,
+    )
+
+
+def _checked(step: ChainStep) -> CheckedStep:
+    """A stored step as the chain's state takes it again."""
+    planned = PlannedStep(text=step.text, tool=step.tool, arguments=step.arguments)
+    return CheckedStep(step.position, planned, step.query, step.classes)
+
+
+def _snapshot_level(view: ModelActionView, system_prompt: str = "") -> Level:
+    """The level as the record keeps it (H7, M7.3): its matrix governs."""
+    return Level(
+        id=view.level.id,
+        name=view.level.name,
+        matrix=view.level.matrix,
+        system_prompt=system_prompt,
+    )
+
+
+def _adopted(
+    steps: list[ChainStep], context: ToolContext, profile: ModelProfile
+) -> tuple[ChainStep | None, ResultStamp | None]:
+    """A chain's result to adopt (decision 11, ``last_complete``) with its
+    stamp, the only one a chain's steps get."""
+    found = last_complete(steps, context.limits.max_features)
+    if found is None:
+        return None, None
+    try:
+        return found, stamp(found.query, context, profile)
+    except QueryError as exc:  # the stamp's run failed: offered unstamped
+        log.warning("model chain: result not stamped (%s)", exc.code)
+        return found, None
 
 
 @dataclass(frozen=True)
@@ -370,17 +492,21 @@ class PromptFlow:
     """Naive UTC; the record's times and the day the request limit counts."""
     tz: tzinfo | None = None
     """The time zone whose calendar day the request limit counts; ``None``: the server's."""
+    monotonic: Callable[[], float] = time.monotonic
+    """The clock of every time limit: a model call's deadline, a chain's (P4)."""
 
     @property
     def store(self) -> ModelActionStore:
         return ModelActionStore(self.backend.engine, self.clock)
 
+    def _real(self, deadline: float) -> float:
+        """``deadline`` on ``time.monotonic``, for the timer that gives a call up."""
+        return time.monotonic() + (deadline - self.monotonic())
+
     # --- the prompt (P7) ---------------------------------------------------------
 
     def prompt(self, caller: Account, request: PromptRequest) -> ModelActionView:
         """Check, record ``thinking``, start the call; the record as it is now."""
-        if request.approach != "direct":
-            raise ValueError("the tool chain arrives with WP75")
         level = active_level(self.backend.engine, caller.id, admin=caller.role == "admin")
         # One read: the snapshot is of the connection the call goes to (WP71).
         active = self.connections.active_call(caller.id)
@@ -398,8 +524,9 @@ class PromptFlow:
             # Own records only, 404 otherwise; reference and analysis arrive with WP81.
             thread = self.store.thread(caller, request.parent_action_id, MAX_TURNS)
             follow_up = FollowUp(turns=turns_of(thread))
-        prompt = direct_prompt(
+        prompt = build_prompt(
             request.text,
+            approach=request.approach,
             level=level,
             profile=profile,
             follow_up=follow_up,
@@ -408,19 +535,21 @@ class PromptFlow:
         timeout_s = min(endpoint.timeout_s, MODEL_CALL_S)
         call = _Call(
             endpoint=replace(endpoint, timeout_s=timeout_s),
-            deadline=time.monotonic() + timeout_s,
+            deadline=self.monotonic() + timeout_s,
             context=ToolContext(view, self.limits, self.unsupported),
             level=level,
             prompt=prompt,
             profile=profile,
+            approach=request.approach,
         )
         new = NewAction(
             prompt=request.text,
-            approach="direct",
+            approach=request.approach,
             level=level_snapshot(level),
             connection=connection_snapshot(connection),
             profile_hash=profile.hash,
             parent_action_id=request.parent_action_id,
+            level_prompt=level.system_prompt,
         )
         # The account's own call first (review #36): an account that waits for
         # its answer gets 409 and never holds a slot, even for a moment, that
@@ -445,15 +574,16 @@ class PromptFlow:
                     caller.id,
                     action.id,
                     answer,
-                    deadline=call.deadline,
+                    deadline=self._real(call.deadline),
                     expire=partial(self._expired, caller, action.id),
                 )
         except BaseException:
             self.calls.give_back()
             raise
         log.info(
-            "model action %d asked: connection %d, level %d, profile %s",
+            "model action %d asked (%s): connection %d, level %d, profile %s",
             action.id,
+            request.approach,
             connection.id,
             action.level.id,
             profile.hash[:12],
@@ -554,11 +684,15 @@ class PromptFlow:
         self, store: ModelActionStore, caller: Account, action_id: int, call: _Call
     ) -> Callable[[], ModelActionView]:
         """The model's answer, as the write that stores it."""
+        found: DirectAnswer | _Planned
         try:
             client = self.client_factory(call.endpoint)
             try:
-                direct = DirectQuery(client, call.context, call.level)
-                found = direct.ask(call.prompt, profile=call.profile, deadline=call.deadline)
+                if call.approach == "chain":
+                    found = self._plan(client, call)
+                else:
+                    direct = DirectQuery(client, call.context, call.level)
+                    found = direct.ask(call.prompt, profile=call.profile, deadline=call.deadline)
             finally:
                 client.close()
         except LLMError as exc:
@@ -572,14 +706,41 @@ class PromptFlow:
             return partial(self._keep, store, caller, action_id, found)
         return partial(store.fail, caller, action_id, error)
 
+    def _plan(self, client: LLMClient, call: _Call) -> _Planned:
+        """The chain's planning call (P4): one call, the plan checked whole in the
+        model's world (``check_plan``); never run here. Its time counts towards
+        the request's (``CHAIN_TIME_LIMIT_S``), on the flow's clock."""
+        started = self.monotonic()
+        answer = ask(client, call.prompt.messages, call.prompt.schema, call.deadline)
+        latency = round((self.monotonic() - started) * 1000)
+        if not isinstance(answer, PlanAnswer):
+            assert not isinstance(answer, QueryAnswer)  # parse_answer took the chain's kinds only
+            return _Planned(answer, latency)
+        checked = check_plan(answer.steps, call.context, call.profile)
+        if isinstance(checked, Refusal):
+            return _Planned(answer, latency, refusal=checked)
+        steps = [new_step(call.level, step) for step in checked]
+        return _Planned(answer, latency, steps, chain_governance(call.level, checked))
+
     @staticmethod
     def _keep(
-        store: ModelActionStore, caller: Account, action_id: int, found: DirectAnswer
+        store: ModelActionStore, caller: Account, action_id: int, found: DirectAnswer | _Planned
     ) -> ModelActionView:
         answer, latency = found.answer, found.latency_ms
         if found.refusal is not None:
             return store.refuse(caller, action_id, found.refusal, answer=answer, latency_ms=latency)
-        if isinstance(answer, QueryAnswer):
+        if isinstance(found, _Planned) and isinstance(answer, PlanAnswer):
+            assert found.governance is not None and found.steps is not None
+            return store.propose(
+                caller,
+                action_id,
+                answer,
+                query=None,
+                governance=found.governance,
+                latency_ms=latency,
+                steps=found.steps,
+            )
+        if isinstance(answer, QueryAnswer) and isinstance(found, DirectAnswer):
             assert found.governance is not None  # a validated query has its governance
             return store.propose(
                 caller,
@@ -589,6 +750,7 @@ class PromptFlow:
                 governance=found.governance,
                 latency_ms=latency,
             )
+        assert isinstance(answer, Clarification | CannotAnswer)
         return store.answer(caller, action_id, answer, latency_ms=latency)
 
     @staticmethod
@@ -624,11 +786,269 @@ class PromptFlow:
     def abort(self, caller: Account, action_id: int) -> ModelActionView:
         """While the model thinks (M2.1): ``aborted``. A call not started yet never
         reaches the model; a running one ends by its deadline, its answer
-        dropped, and holds the account's next prompt until then."""
-        view = self.store.abort(caller, action_id)
+        dropped, and holds the account's next prompt until then.
+
+        A running chain (P4): the step that runs ends, no other starts; the
+        record says so at once (``stop_reason`` ``aborted``, still ``running``)
+        and ends ``limited`` at the run's next step, its last complete result
+        adoptable. A chain halted for approval ends ``limited`` at once."""
+        try:
+            view = self.store.abort(caller, action_id)
+        except ActionError as refused:
+            if refused.code == "not_found":
+                raise
+            return self._abort_chain(caller, action_id, refused)
         self.calls.cancel(action_id)
         log.info("model action %d: aborted", action_id)
         return view
+
+    def _abort_chain(
+        self, caller: Account, action_id: int, refused: ActionError
+    ) -> ModelActionView:
+        try:
+            chain = self.store.chain(caller, action_id, "abort")
+        except ActionError:
+            raise refused from None
+        status = chain.view.status
+        if status == "running" and self.calls.in_flight(caller.id) == action_id:
+            # The run's event first: the run checks it before every step, the
+            # store refuses its next step once the abort is written.
+            self.calls.cancel(action_id)
+            view = self.store.request_stop(caller, action_id)
+            log.info("model action %d: abort asked, the run stops before its next step", action_id)
+            return view
+        started = any(step.status in RAN for step in chain.steps)
+        waits = status in ("proposed", "approved")
+        if status not in ("running", "proposed", "approved") or (waits and not started):
+            raise refused  # a plan not started is rejected, not aborted
+        # Halted for approval, approved at a halt and not run again, or running
+        # without a run (it was given up): now.
+        view_, profile = profile_for(self.backend, caller)
+        context = ToolContext(view_, self.limits, self.unsupported)
+        result, stamped = _adopted(chain.steps, context, profile)
+        view = self.store.stop(caller, action_id, "aborted", stamped, result=result)
+        log.info("model action %d: aborted, limited", action_id)
+        return view
+
+    # --- the tool chain (P4, WP75) -------------------------------------------------
+
+    def edit_plan(self, caller: Account, action_id: int, edit: PlanEdit) -> ModelActionView:
+        """Change values, remove steps, never add one (design M8.3, decision 17):
+        only a chain that waits for approval and has not started, never a
+        proposal-only one (D1). The plan as it then stands is checked whole, in
+        the model's world as it is now (``check_plan``), and governed again by
+        the level as it was; an approval cannot carry over, since only a
+        ``proposed`` chain is edited. Refusals answer 422 with the code of the
+        check, ``invalid_query`` for the edit itself, naming the step."""
+        self.store.ready(caller, action_id, "plan", ["proposed"])
+        chain = self.store.chain(caller, action_id, "plan")
+        if any(step.status not in ("planned", "removed") for step in chain.steps):
+            raise ActionError(
+                "not_approved",
+                f"Model action {action_id} has started; its plan stays as it ran.",
+                http_status=409,
+                id=action_id,
+                status=chain.view.status,
+            )
+        changes = {change.position: change.arguments for change in edit.change}
+        if len(changes) != len(edit.change):
+            raise _edit_refused(
+                Refusal(code="invalid_query", message="A step is changed once per edit.")
+            )
+        live = [
+            Placed(s.position, PlannedStep(text=s.text, tool=s.tool, arguments=s.arguments))
+            for s in chain.steps
+            if s.status != "removed"
+        ]
+        edited = edit_plan(live, changes, set(edit.remove))
+        if isinstance(edited, Refusal):
+            raise _edit_refused(edited)
+        view, profile = profile_for(self.backend, caller)
+        context = ToolContext(view, self.limits, self.unsupported)
+        checked = check_plan(
+            [p.step for p in edited], context, profile, positions=[p.position for p in edited]
+        )
+        if isinstance(checked, Refusal):
+            raise _edit_refused(checked)
+        level = _snapshot_level(chain.view)
+        by_position = {step.position: step for step in checked}
+        steps = [
+            new_step(
+                level,
+                by_position[s.position],
+                status="planned",
+                edited=s.edited or s.position in changes,
+            )
+            if s.position in by_position
+            else replace(s, status="removed")
+            for s in chain.steps
+        ]
+        result = self.store.edit_plan(caller, action_id, steps, chain_governance(level, checked))
+        log.info(
+            "model action %d: plan edited, %d changed, %d removed",
+            action_id,
+            len(changes),
+            len(set(edit.remove)),
+        )
+        return result
+
+    def run(self, caller: Account, action_id: int) -> ModelActionView:
+        """Start an approved chain's steps, or go on after a halt (P4): 202 at
+        once, the steps in a thread of ``ModelCalls``. Only an ``approved``
+        chain of the caller's with no ``off`` class (``not_approved``,
+        ``class_not_allowed``); one run of an account at a time, a run counted
+        among the model calls (409, 503 ``busy``)."""
+        ready = self.store.ready(caller, action_id, "run", ["approved"])
+        if ready.approach != "chain":
+            raise ActionError(
+                "not_approved",
+                f"Model action {action_id} is a direct query: it is executed, not run.",
+                http_status=409,
+                id=action_id,
+                status=ready.status,
+            )
+        in_flight = self.calls.in_flight(caller.id)
+        if in_flight is not None:
+            raise _busy(in_flight)
+        self.calls.take()
+        try:
+            with self.calls.admission:
+                in_flight = self.calls.in_flight(caller.id)
+                if in_flight is not None:
+                    raise _busy(in_flight)
+                view = self.store.run(caller, action_id)
+                chain = self.store.chain(caller, action_id, "run")
+                expiry = time.monotonic() + self._run_budget(view, chain.run_ms)
+                try:
+                    self.calls.start(
+                        caller.id,
+                        action_id,
+                        partial(self._run, caller, action_id),
+                        deadline=expiry,
+                        expire=partial(self._run_expired, caller, action_id),
+                    )
+                except BaseException:
+                    self._stop_quietly(caller, action_id, "interrupted")
+                    raise
+        except BaseException:
+            self.calls.give_back()
+            raise
+        log.info("model action %d: run", action_id)
+        return view
+
+    def _run_budget(self, view: ModelActionView, run_ms: int) -> float:
+        """Seconds until a run is given up (``ModelCalls``, which adds its grace):
+        what the request has left, and two step limits on top, for the step
+        that runs at the deadline and the stamp of the result after it."""
+        left = CHAIN_TIME_LIMIT_S - ((view.latency_ms or 0) + run_ms) / 1000
+        return max(left, 0) + 2 * self.limits.timeout_s
+
+    def _run(self, caller: Account, action_id: int, cancel: threading.Event) -> None:
+        """The run in its thread. Never raises; gives the slot back."""
+        try:
+            _Runner.start(self, caller, action_id, cancel)
+        except ActionError as exc:
+            # A write found the record moved on (given up at its deadline): it
+            # is closed already.
+            log.info("model action %d: run ended (%s)", action_id, exc.code)
+        except Exception as exc:
+            log.error("model action %d: the run failed (%s)", action_id, type(exc).__name__)
+            self._stop_quietly(caller, action_id, "interrupted")
+        finally:
+            self.calls.finish(caller.id, action_id)
+
+    def _run_expired(self, caller: Account, action_id: int) -> None:
+        """The run outlived the request's deadline and was given up (``ModelCalls``):
+        ``limited``/``time_limit``; the run, should it go on, finds it closed."""
+        self.calls.cancel(action_id)
+        self._stop_quietly(caller, action_id, "time_limit")
+
+    def _stop_quietly(self, caller: Account, action_id: int, reason: StopReason) -> None:
+        """Best effort, without the engine: a record left ``running`` would hold
+        nothing, but say it runs; its last complete result stays, unstamped."""
+        try:
+            chain = self.store.chain(caller, action_id, "run")
+            if chain.view.status != "running":
+                return
+            error = None
+            if reason == "interrupted":
+                error = _error("internal_error", "The run stopped unexpectedly.")
+            result = last_complete(chain.steps, self.limits.max_features)
+            self.store.stop(caller, action_id, reason, result=result, error=error)
+        except Exception as exc:
+            log.error("model action %d: not closed (%s)", action_id, type(exc).__name__)
+
+    def adopt(self, caller: Account, action_id: int) -> ExecuteResponse:
+        """A ``done`` or ``limited`` chain's result becomes the analysis (design
+        "Kette übernehmen"): the record's query, the last complete step that is
+        no buffer, as one query object; run as the caller (visibility, limits)
+        as ``execute`` runs a direct answer, the stamp kept, the rows to the
+        user only. ``accepted`` at every level: the user chose to adopt it.
+        Claimed once, as ``execute`` is."""
+        self.store.ready(caller, action_id, "adopt", ["done", "limited"])
+        if not self.calls.claim(action_id):
+            raise ActionError(
+                "already_decided",
+                f"Model action {action_id} is being adopted already.",
+                http_status=409,
+                id=action_id,
+                status="done",
+            )
+        try:
+            ready = self.store.ready(caller, action_id, "adopt", ["done", "limited"])
+            if ready.approach != "chain":
+                raise _not_runnable(ready, "adopt")
+            query = _stored(ready, "adopt", chain=True)
+            visible = read_view(self.backend, caller)
+            result = run_query(query, visible, self.limits, self.unsupported)
+            view = self.store.adopt(caller, action_id, stamp_of(result))
+        finally:
+            self.calls.release(action_id)
+        log.info("model action %d: adopted, %d features", action_id, result.meta.feature_count)
+        return ExecuteResponse(action=view, result=result)
+
+    # --- what a chain's re-plan asks with (P4) ------------------------------------
+
+    def _chain_prompt(
+        self, caller: Account, chain: Chain, profile: ModelProfile
+    ) -> tuple[Prompt, Level]:
+        """The planning prompt again, for a re-plan: the record's text and
+        thread, the level as it was (H7: its matrix and its system prompt as
+        the record keeps them, never the level's now), the profile at run time,
+        what the model may see now. No size check here: the re-plan's own
+        (``fit``)."""
+        view = chain.view
+        level = _snapshot_level(view, chain.level_prompt)
+        follow_up = None
+        if view.parent_action_id is not None:
+            try:
+                thread = self.store.thread(caller, view.parent_action_id, MAX_TURNS)
+            except ActionError:  # the parent is gone: no turns
+                thread = []
+            follow_up = FollowUp(turns=turns_of(thread))
+        prompt = build_prompt(
+            view.prompt, approach="chain", level=level, profile=profile, follow_up=follow_up
+        )
+        return prompt, level
+
+    def _replan_endpoint(
+        self, caller: Account, view: ModelActionView
+    ) -> tuple[Endpoint, int | None] | None:
+        """The connection the record names, read once with its endpoint (C14,
+        security review #28), and only while it is enabled, still the account's
+        and still what the record says it is (H7): the same host and locality.
+        Its endpoint and context length; ``None`` otherwise."""
+        active = self.connections.active_call(caller.id)
+        if active is None:
+            return None
+        connection, endpoint = active
+        snapshot = view.connection
+        same = (connection.id, connection.host, connection.locality) == (
+            snapshot.id,
+            snapshot.host,
+            snapshot.locality,
+        )
+        return (endpoint, connection.context_length) if same else None
 
     # --- enforcement (D2, P2, WP70) ----------------------------------------------
 
@@ -715,14 +1135,357 @@ class PromptFlow:
         return view
 
 
-def _stored(view: ModelActionView, step: str) -> QueryObject:
-    """The query the record keeps; a chain's result has its own steps (WP75)."""
+def _not_runnable(
+    view: ModelActionView, step: str, why: str = "has no query to run"
+) -> ActionError:
+    return ActionError(
+        "not_approved",
+        f"Model action {view.id} {why}; '{step}' does not apply.",
+        http_status=409,
+        id=view.id,
+        status=view.status,
+    )
+
+
+def _stored(view: ModelActionView, step: str, *, chain: bool = False) -> QueryObject:
+    """The query the record keeps. A chain's is its result, there once its run
+    ended, and only ``adopt`` runs it (``chain``): its approval may cover the
+    next step only, so neither ``execute`` nor the preview runs a chain."""
+    if (view.approach == "chain") != chain:
+        why = "is a tool chain: its steps run ('run')" if not chain else "is no tool chain"
+        raise _not_runnable(view, step, why)
     if view.query is None:
-        raise ActionError(
-            "not_approved",
-            f"Model action {view.id} has no query of its own; '{step}' does not apply.",
-            http_status=409,
-            id=view.id,
-            status=view.status,
-        )
+        why = "has no complete result to adopt" if chain else "has no query of its own"
+        raise _not_runnable(view, step, why)
     return view.query
+
+
+def _edit_refused(refusal: Refusal) -> ActionError:
+    """An edited plan refused (design M8.3): 422 with the check's code."""
+    return ActionError(refusal.code, refusal.message, http_status=422, **refusal.details)
+
+
+@dataclass
+class _Runner:
+    """One stretch of a chain's run (P4): from ``run`` to its end, a halt for
+    approval, or a stop. Built from the record each time, so a run goes on
+    after a halt as it would have: the steps and their views, the re-plans
+    and the conversation are the record's. Every write is a compare-and-set
+    on ``running``: a record closed meanwhile (given up at its deadline)
+    ends the run with ``ActionError``."""
+
+    flow: PromptFlow
+    caller: Account
+    action_id: int
+    cancel: threading.Event
+    """Set by ``abort``: the step that runs ends, no other starts."""
+    view: ModelActionView
+    context: ToolContext
+    profile: ModelProfile
+    level: Level
+    state: ChainState
+    stored: dict[int, ChainStep]
+    """The steps by position as the record has them, kept as the run writes them."""
+    run_ms: int
+    started: float
+    deadline: float
+
+    @classmethod
+    def start(
+        cls, flow: PromptFlow, caller: Account, action_id: int, cancel: threading.Event
+    ) -> None:
+        chain = flow.store.chain(caller, action_id, "run")
+        if chain.view.status != "running":
+            return
+        # The view and the profile as they are now: a step validates at run time.
+        view, profile = profile_for(flow.backend, caller)
+        context = ToolContext(view, flow.limits, flow.unsupported)
+        prompt, level = flow._chain_prompt(caller, chain, profile)
+        answer = chain.view.answer
+        assert isinstance(answer, PlanAnswer)  # a chain's record keeps its plan
+        steps = chain.steps
+        ran = [s for s in steps if s.status in RAN]
+        live = [s for s in steps if s.status in (*COMPLETE, "planned", "waiting")]
+        seen = {}
+        for step in ran:
+            shown = restored(step.view)
+            assert shown is not None  # a step that ran keeps its view
+            seen[step.position] = (step.tool, shown)
+        edits = None
+        if chain.view.replans == 0:
+            removed = [s.position for s in steps if s.status == "removed"]
+            changed = [(s.position, s.arguments) for s in live if s.edited]
+            edits = edits_message(removed, changed) if removed or changed else None
+        turns, asked_with = restored_turns(chain.turns)
+        state = ChainState(
+            prompt,
+            answer,
+            [_checked(s) for s in live],
+            seen=seen,
+            completed=sum(1 for s in live if s.status in COMPLETE),
+            replans=chain.view.replans,
+            turns=turns,
+            spent=len(ran),
+            last=max((s.position for s in ran), default=0),
+            edits=edits,
+            profile_hash=profile.hash,
+            asked_with=asked_with,
+        )
+        started = flow.monotonic()
+        worked_ms = (chain.view.latency_ms or 0) + chain.run_ms
+        runner = cls(
+            flow,
+            caller,
+            action_id,
+            cancel,
+            chain.view,
+            context,
+            profile,
+            level,
+            state,
+            {s.position: s for s in steps},
+            chain.run_ms,
+            started,
+            started + CHAIN_TIME_LIMIT_S - worked_ms / 1000,
+        )
+        runner.go()
+
+    @property
+    def store(self) -> ModelActionStore:
+        return self.flow.store
+
+    def ms(self) -> int:
+        """The run time so far, this stretch's included."""
+        return self.run_ms + round((self.flow.monotonic() - self.started) * 1000)
+
+    def late(self) -> bool:
+        return self.flow.monotonic() >= self.deadline
+
+    def go(self) -> None:
+        state = self.state
+        while (step := state.next) is not None:
+            if self.cancel.is_set():
+                return self.stop("aborted")
+            if self.late():
+                return self.stop("time_limit", self.too_late(step.position))
+            stored = self.stored[step.position]
+            # Only an auto step runs unasked; an off one never (D1).
+            if stored.cell is not CellMode.AUTO and not stored.approved:
+                return self.halt(step.position)
+            if not self.run(step):
+                return None
+            after = state.ran(step, self.state_view(step.position))
+            if after == "done":
+                return self.finish()
+            if after == "stopped":
+                return self.stop("replan_limit")
+            if after == "replan" and not self.replan():
+                return None
+        return self.finish()
+
+    def state_view(self, position: int) -> ModelView:
+        """What the model saw of the step, as the record keeps it."""
+        shown = restored(self.stored[position].view)
+        assert shown is not None
+        return shown
+
+    def run(self, step: CheckedStep) -> bool:
+        """One step, counted; ``False`` when the run stopped at it."""
+        position = step.position
+        try:
+            self.store.step_started(self.caller, self.action_id, position, run_ms=self.ms())
+        except ActionError:
+            self.stop("aborted")  # aborted meanwhile: the step does not start
+            return False
+        last = position == self.state.steps[-1].position
+        run = run_step(step, self.context, self.profile, last=last)
+        status: StepStatus = "error" if run.error else "empty" if run.count == 0 else "ok"
+        shown = run.view.model_dump(mode="json", exclude_none=True)
+        self.store.step_ran(
+            self.caller,
+            self.action_id,
+            position,
+            status=status,
+            count=run.count,
+            view=shown,
+            duration_ms=run.duration_ms,
+            run_ms=self.ms(),
+        )
+        self.stored[position] = replace(
+            self.stored[position],
+            status=status,
+            count=run.count,
+            view=shown,
+            duration_ms=run.duration_ms,
+        )
+        log.info("model action %d: step %d %s", self.action_id, position, status)
+        if isinstance(run.error, ResultTooLarge):
+            limit = self.context.limits.max_features
+            error = _error(
+                "result_too_large",
+                f"The result has more than {limit} features.",
+                step=position,
+                value=run.error.details.get("count"),
+                max=limit,
+            )
+            self.stop("result_too_large", error)
+            return False
+        return True
+
+    def too_late(self, position: int) -> dict[str, Any]:
+        worked = (self.view.latency_ms or 0) / 1000 + self.ms() / 1000
+        return _error(
+            "time_limit",
+            f"The chain ran longer than {CHAIN_TIME_LIMIT_S} s and was stopped.",
+            step=position,
+            value=round(worked),
+            max=CHAIN_TIME_LIMIT_S,
+        )
+
+    def replan(self) -> bool:
+        """A re-plan after an error or an empty step before the last (P4);
+        ``True`` when the run goes on with its steps."""
+        state = self.state
+        if self.cancel.is_set():
+            self.stop("aborted")
+            return False
+        if self.late():
+            self.stop("time_limit", self.too_late(state.last + 1))
+            return False
+        found = self.flow._replan_endpoint(self.caller, self.view)
+        if found is None:
+            message = "The model connection of this chain is disabled or changed since its plan."
+            error = _error("connection_not_available", message, reason="changed")
+            self.stop("replan_limit", error)
+            return False
+        endpoint, state.context_length = found
+        timeout_s = min(endpoint.timeout_s, MODEL_CALL_S)
+        try:
+            messages = state.replan_messages()
+            deadline = min(self.deadline, self.flow.monotonic() + timeout_s)
+            client = self.flow.client_factory(replace(endpoint, timeout_s=timeout_s))
+            try:
+                answer = ask(client, messages, state.prompt.schema, deadline)
+            finally:
+                client.close()
+        except LLMError as exc:
+            if self.late():
+                self.stop("time_limit", self.too_late(state.last + 1))
+            else:
+                self.stop("replan_limit", _error(exc.code, exc.message, cause=exc.cause))
+            return False
+        except ActionError as exc:  # context_too_large, model_unreadable
+            self.stop("replan_limit", _error(exc.code, exc.message, **exc.details))
+            return False
+        if self.cancel.is_set():
+            self.stop("aborted")
+            return False
+        log.info("model action %d: re-planned (%d)", self.action_id, state.replans)
+        if not isinstance(answer, PlanAnswer):
+            self.stop("replan_limit")
+            return False
+        refused = state.revise(answer, self.context, self.profile)
+        if refused is not None:
+            if refused.code == "step_limit":
+                details = refused.details
+                error = _error(
+                    "step_limit",
+                    refused.message,
+                    step=details["step"],
+                    value=details["value"],
+                    max=MAX_STEPS,
+                )
+                self.stop("step_limit", error)
+            else:
+                self.stop("replan_limit", _error(refused.code, refused.message, **refused.details))
+            return False
+        return self.revised()
+
+    def revised(self) -> bool:
+        """The re-plan's steps stored, governed by the level as it was, for the
+        whole chain (the union of the classes of the steps that ran and the new
+        ones, D1): a new step of an ``off`` class stops the run; approval is
+        asked again where the level wants it (P4)."""
+        state = self.state
+        new = state.remaining
+        ran = [s for s in self.stored.values() if s.status in RAN]
+        classes = frozenset[OpClass]().union(*(s.classes for s in ran), *(s.classes for s in new))
+        rules = governance(self.level, classes)
+        if rules.off:
+            off = rules.off[0]
+            position = next(s.position for s in new if off in s.classes)
+            message = f"Step {position} of the re-plan: the level does not allow '{off}'."
+            self.stop("replan_limit", _error("class_not_allowed", message, part=off, step=position))
+            return False
+        steps = [new_step(self.level, s, revised=True) for s in new]
+        try:
+            self.store.revise(
+                self.caller,
+                self.action_id,
+                after=state.last,
+                steps=steps,
+                governance=rules,
+                replans=state.replans,
+                turns=kept_turns(state),
+                run_ms=self.ms(),
+            )
+        except ActionError:
+            self.stop("aborted")  # aborted meanwhile: the re-plan's steps do not come in
+            return False
+        kept = {p: s for p, s in self.stored.items() if p <= state.last or s.status in RAN}
+        self.stored = kept | {s.position: s for s in steps}
+        # One approval for the whole plan as it now stands, as ``approve`` decides.
+        plan = [s.cell for s in self.stored.values() if s.status != "removed"]
+        if one_approval(plan):
+            self.halt(None)
+            return False
+        return True
+
+    def halt(self, waiting: int | None) -> None:
+        """Wait for approval (P4, design M9.2): before ``waiting``, or the re-plan
+        as a whole. An abort that came meanwhile stops the run instead."""
+        try:
+            self.store.halt(
+                self.caller,
+                self.action_id,
+                waiting=waiting,
+                run_ms=self.ms(),
+                replans=self.state.replans,
+                turns=kept_turns(self.state),
+            )
+        except ActionError:
+            self.stop("aborted")
+            return
+        log.info("model action %d: halted for approval", self.action_id)
+
+    def adopted(self) -> tuple[ChainStep | None, ResultStamp | None]:
+        """The result to offer, stamped; nothing is stamped for a record that
+        moved on meanwhile (given up at its deadline, closed at a restart)."""
+        if self.store.chain(self.caller, self.action_id, "run").view.status != "running":
+            raise ActionError(
+                "not_approved",
+                f"Model action {self.action_id} is no longer running.",
+                http_status=409,
+                id=self.action_id,
+            )
+        return _adopted([self.stored[p] for p in sorted(self.stored)], self.context, self.profile)
+
+    def finish(self) -> None:
+        result, stamp = self.adopted()
+        self.store.finish(self.caller, self.action_id, stamp, result=result, run_ms=self.ms())
+        log.info("model action %d: done", self.action_id)
+
+    def stop(self, reason: StopReason, error: dict[str, Any] | None = None) -> None:
+        result, stamp = self.adopted()
+        self.store.stop(
+            self.caller,
+            self.action_id,
+            reason,
+            stamp,
+            result=result,
+            error=error,
+            run_ms=self.ms(),
+            replans=self.state.replans,
+            turns=kept_turns(self.state),
+        )
+        log.info("model action %d: limited (%s)", self.action_id, reason)

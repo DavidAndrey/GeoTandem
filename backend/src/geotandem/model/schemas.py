@@ -120,9 +120,13 @@ prompt (``applied_by_hand`` tells which), never as ``superseded``."""
 RejectReason = Literal["misunderstood", "wrong_layer", "wrong_value", "other"]
 """The optional chip of a rejection (design M5.3)."""
 
-StopReason = Literal["step_limit", "time_limit", "result_too_large", "aborted", "interrupted"]
+StopReason = Literal[
+    "step_limit", "time_limit", "result_too_large", "aborted", "interrupted", "replan_limit"
+]
 """Why a chain stopped before its end (design M9.4, M9.5; ``interrupted``: the
-application restarted while it ran, P4)."""
+application restarted while it ran, P4; ``replan_limit``: a re-plan was due
+and none was left, or the one asked for brought no usable plan, whose
+``error`` or ``refusal`` the record keeps)."""
 
 EngineCode = Literal[
     "invalid_query",
@@ -381,6 +385,8 @@ StepStatus = Literal["planned", "waiting", "running", "ok", "error", "empty", "s
 
 class StepView(BaseModel):
     position: int
+    """1 for the first step; stable: a removed step keeps its place, a re-plan's
+    steps continue after the last step that ran (P4)."""
     text: str
     tool: str
     arguments: dict[str, Any]
@@ -394,10 +400,19 @@ class StepView(BaseModel):
     hits: int | None = None
     """For the user; the model sees ``model_view`` only."""
     stamp: ResultStamp | None = None
-    layer: str | None = None
-    """The intermediate layer this step made, for the dimmed map (design M9.1)."""
+    """The adoptable step's only, once the run ended: the others are counted."""
+    query: QueryObject | None = None
+    """The step's result as one query object, as the editor writes it
+    (``compact``): nothing is materialised. The client draws the dimmed
+    intermediate result (design M9.1) by running it as the user through
+    Modus A (``/api/query/ids``), with the user's own visibility."""
     model_view: ModelView | None = None
     duration_ms: int | None = None
+
+    @field_serializer("query")
+    def _as_written(self, query: QueryObject | None):  # type: ignore[no-untyped-def]
+        """As ``ModelActionView.query``: no unset field, no empty default."""
+        return None if query is None else compact(query)
 
 
 class ModelActionView(BaseModel):

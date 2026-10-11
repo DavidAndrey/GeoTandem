@@ -8,6 +8,7 @@ from alembic.config import Config
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from sqlalchemy import Engine, inspect, text
+from sqlalchemy.exc import IntegrityError
 
 from geotandem.config import Settings
 from geotandem.db import migrate
@@ -311,3 +312,62 @@ def test_touched_at_comes_and_goes_with_0010_and_keeps_the_records(settings: Set
     assert "touched_at" not in {c["name"] for c in inspect(engine).get_columns("model_action")}
     with engine.connect() as conn:
         assert [tuple(r) for r in conn.execute(text(rows))] == before
+
+
+def test_steps_come_and_go_with_0011_and_keep_the_records(settings: Settings) -> None:
+    """WP75: a chain's steps are a table of their own, its run time and its
+    conversation two columns of the action; existing records are direct
+    queries, with no steps and no run time. Steps go with their action."""
+    engine = make_engine(settings)
+    migrate.upgrade(engine, "0010")
+    assert "model_action_step" not in inspect(engine).get_table_names()
+    action = (
+        "INSERT INTO model_action (id, account, created_at, prompt, prompt_hash, approach,"
+        " status, level_id, level_name, level_matrix, level_prompt_hash, connection_id,"
+        " connection_name, connection_model, connection_host, connection_locality,"
+        " profile_hash) VALUES (:id, 'anna', '2026-10-11 08:00:00', 'p', 'h', :approach,"
+        " 'proposed', 1, 'Prüfen', '{}', 'h', 1, 'Lokal', 'm', 'localhost', 'local', 'h')"
+    )
+    with engine.begin() as conn:
+        conn.execute(text(action), {"id": 1, "approach": "direct"})
+    rows = "SELECT id, approach, status FROM model_action ORDER BY id"
+    with engine.connect() as conn:
+        before = [tuple(r) for r in conn.execute(text(rows))]
+
+    migrate.upgrade(engine)
+
+    columns = {c["name"] for c in inspect(engine).get_columns("model_action")}
+    assert {"run_ms", "turns", "level_prompt"} <= columns
+    with engine.begin() as conn:
+        assert tuple(conn.execute(text("SELECT run_ms, turns FROM model_action")).one()) == (
+            0,
+            None,
+        )
+        conn.execute(text(action), {"id": 2, "approach": "chain"})
+        for position in (1, 2):
+            conn.execute(
+                text(
+                    "INSERT INTO model_action_step (action_id, position, text, tool, arguments,"
+                    " classes, cell, status, query) VALUES (2, :position, 'Schritt', 'filter',"
+                    " '{}', '[\"query\"]', 'approve', 'planned', '{\"source\": \"schulen\"}')"
+                ),
+                {"position": position},
+            )
+        twice = text(
+            "INSERT INTO model_action_step (action_id, position, text, tool, arguments, classes,"
+            " cell, status, query) VALUES (2, 1, 's', 'filter', '{}', '[]', 'auto', 'planned',"
+            " '{}')"
+        )
+        with pytest.raises(IntegrityError), conn.begin_nested():  # one step per position
+            conn.execute(twice)
+        conn.execute(text("DELETE FROM model_action WHERE id = 2"))
+        assert conn.scalar(text("SELECT count(*) FROM model_action_step")) == 0
+
+    migrate.downgrade(engine, "0010")
+    assert "model_action_step" not in inspect(engine).get_table_names()
+    assert not {"run_ms", "turns", "level_prompt"} & {
+        c["name"] for c in inspect(engine).get_columns("model_action")
+    }
+    with engine.connect() as conn:
+        assert [tuple(r) for r in conn.execute(text(rows))] == before
+    migrate.upgrade(engine)

@@ -8,8 +8,9 @@ Layout, in this order:
      the very text its hash is taken over (S4), so the recorded hash names
      what the model saw;
    - *Antwortformat*: fixed text and the answer schema of the approach (D7),
-     for the direct approach cut to what the controls can show; written by the
-     application, never part of the editable system prompt.
+     for the direct approach cut to what the controls can show, for the chain
+     with its tools and their arguments (``chain.tools.tool_list``, P4);
+     written by the application, never part of the editable system prompt.
 2. the follow-up turns, oldest first, at most ``MAX_TURNS``: the user's prompt,
    then the assistant's answer in its own words (explanation, assumptions).
    What became of an answer (refused by the application, or the user's
@@ -33,6 +34,7 @@ from typing import Any, Final
 from geotandem.catalog import CHARS_PER_TOKEN, ModelProfile
 from geotandem.levels import Level
 from geotandem.llm import Message
+from geotandem.model.chain.tools import tool_list
 from geotandem.model.errors import ActionError
 from geotandem.model.represent import ALLOWED_FIELDS
 from geotandem.model.result import answer_format, format_text
@@ -92,7 +94,17 @@ _FORMAT: Final[dict[Approach, str]] = {
         'auf einem Bezugslayer stehen in dessen "where" als eine einzige, nicht verneinte '
         "Attributbedingung. Sonst antworte mit cannot_answer und other_approach chain."
     ),
-    "chain": "Antworte mit genau einem JSON-Objekt nach dem Schema unten, ohne weiteren Text.",
+    "chain": (
+        "Antworte mit genau einem JSON-Objekt nach dem Schema unten, ohne weiteren Text.\n"
+        '- "plan": die Schritte einer Werkzeugkette, die die Frage beantwortet. "explanation" '
+        "sagt in ein bis drei Sätzen, wie du vorgehst; jede Annahme steht in "
+        '"assumptions". Die Anwendung führt die Schritte aus, nicht du.\n'
+        '- "clarification": nur wenn keine vernünftige Annahme möglich ist, mit zwei bis '
+        "vier Antwortmöglichkeiten.\n"
+        '- "cannot_answer": wenn die Werkzeuge und Layer die Frage nicht beantworten; '
+        '"missing" nennt, was fehlt. Mit "other_approach": "direct", wenn eine '
+        "Direktabfrage sie lösen kann.\n" + tool_list()
+    ),
 }
 
 
@@ -228,6 +240,18 @@ def build_prompt(
         messages.append(Message("assistant", _assistant(turn)))
         previous = turn
     messages.append(Message("user", _user(text, previous, follow_up)))
+    return Prompt(
+        messages=tuple(messages),
+        schema=answer_format(approach),
+        profile_hash=profile.hash,
+        tokens_estimate=fit(messages, context_length),
+    )
+
+
+def fit(messages: Sequence[Message], context_length: int | None) -> int:
+    """The size estimate of ``messages``; ``context_too_large`` if it exceeds the
+    connection's context length. Every call of a prompt is held to it, a
+    chain's re-plan too."""
     estimate = estimate_tokens(messages)
     if context_length is not None and estimate > context_length:
         raise ActionError(
@@ -237,9 +261,4 @@ def build_prompt(
             tokens_estimate=estimate,
             context_length=context_length,
         )
-    return Prompt(
-        messages=tuple(messages),
-        schema=answer_format(approach),
-        profile_hash=profile.hash,
-        tokens_estimate=estimate,
-    )
+    return estimate

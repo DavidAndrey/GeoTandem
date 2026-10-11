@@ -11,9 +11,10 @@ handler in ``api/errors.py`` turns it into the common error body.
 
 from typing import Any, Literal
 
-from geotandem.model.schemas import ActionErrorCode
+from geotandem.model.schemas import ActionErrorCode, RefusalCode
 
-ErrorCode = ActionErrorCode | Literal["not_found", "bad_request", "busy"]
+ErrorCode = ActionErrorCode | RefusalCode | Literal["not_found", "bad_request", "busy"]
+"""A refusal's code too: an edited plan is checked as the model's was (WP75)."""
 
 
 class ActionError(Exception):
