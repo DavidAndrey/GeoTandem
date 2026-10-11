@@ -247,6 +247,8 @@ OWN_TESTS = {"reference", "aborted", "quota_exceeded", "context_too_large"}
 """Cases with a test of their own below."""
 CHAIN_TESTS = {"chain_reference", "step_limit"}
 """The tool chain's cases, tested in ``test_model_chain_flow.py`` (WP75)."""
+COMPARE_TESTS = {"compare_differs"}
+"""The comparison's cases, tested in ``test_model_compare.py`` (WP76)."""
 PENDING_CASES = {
     "follow_up": "WP81",
     "follow_up_hand_edited": "WP81",
@@ -255,13 +257,16 @@ PENDING_CASES = {
 """Cases whose behaviour arrives with a later WP, which tests them and drops
 them here; the etappe gate needs the WP81 ones gone by E2.6 (plan 5.2)."""
 RECORD_CASES = [
-    c["id"] for c in cases() if c["id"] not in OWN_TESTS | CHAIN_TESTS | set(PENDING_CASES)
+    c["id"]
+    for c in cases()
+    if c["id"] not in OWN_TESTS | CHAIN_TESTS | COMPARE_TESTS | set(PENDING_CASES)
 ]
 
 
 def test_every_case_is_tested_or_pending() -> None:
     ids = [c["id"] for c in cases()]
-    assert set(ids) == set(RECORD_CASES) | OWN_TESTS | CHAIN_TESTS | set(PENDING_CASES)
+    tested = OWN_TESTS | CHAIN_TESTS | COMPARE_TESTS
+    assert set(ids) == set(RECORD_CASES) | tested | set(PENDING_CASES)
     for case_id in RECORD_CASES:
         c = case(case_id)
         assert c["approach"] == "direct" and isinstance(c["expect"]["status"], str), case_id

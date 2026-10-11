@@ -222,10 +222,18 @@ def records(app: FastAPI) -> int:
         return db.scalar(select(func.count()).select_from(ModelAction)) or 0
 
 
-def stored(app: FastAPI, username: str, level_name: str, *, thinking: bool = False) -> int:
+def stored(
+    app: FastAPI,
+    username: str,
+    level_name: str,
+    *,
+    thinking: bool = False,
+    compare_of: int | None = None,
+) -> int:
     """A record of ``PLAIN`` as the service stores an answer (``PromptFlow._keep``),
-    under ``level_name`` as it is now; ``thinking`` stops before the answer.
-    Never supersedes, so one account can hold a record in every state."""
+    under ``level_name`` as it is now; ``thinking`` stops before the answer;
+    ``compare_of`` makes it the repeat of that record (WP76). Never
+    supersedes, so one account can hold a record in every state."""
     state: AppState = app.state.geotandem
     engine = state.backend.engine
     who = account_of(app, username)
@@ -239,6 +247,7 @@ def stored(app: FastAPI, username: str, level_name: str, *, thinking: bool = Fal
         level=level_snapshot(level),
         connection=connection_snapshot(connection),
         profile_hash="p" * 64,
+        compare_of=compare_of,
     )
     action = store.create(who, new, supersede=False)
     if not thinking:
@@ -308,20 +317,18 @@ ACTION_ROUTES: dict[Route, str] = {
     ("PATCH", "plan"): "chain proposed",
     ("POST", "run"): "chain approved",
     ("POST", "adopt"): "chain done",
+    ("GET", "comparison"): "compared",
+    ("POST", "compare"): "applied before",
 }
-"""Every built route that names an action, with the record its owner may call it
+"""Every route that names an action, with the record its owner may call it
 on: a level (stored under it), applied by ``execute`` (the last and an earlier
-model change), still thinking, or a chain (WP75: a plan that waits under
-*Prüfen*, one approved under *Teilautonom*, one run to its end). In the order
-the owner calls them: undo before execute and adopt, which would make another
-record the last model change."""
-PENDING_ROUTES: dict[Route, str] = {
-    ("POST", "compare"): "WP76",
-    ("GET", "comparison"): "WP76",
-}
-"""Routes that still answer 501, the same for every id, so no id tells anything.
-The WP that builds one moves it to ``ACTION_ROUTES``; from then on it answers
-404 for another account's record and for a forged id, or this test fails."""
+model change), still thinking, a chain (WP75: a plan that waits under
+*Prüfen*, one approved under *Teilautonom*, one run to its end), or a
+comparison (WP76: the earlier applied query repeated as a chain, run to its
+end). In the order the owner calls them: undo before execute and adopt,
+which would make another record the last model change; compare on the
+record not undone, which still has a result. Since WP76 every
+route of the contract is built; none answers 501 for any id."""
 BODIES: dict[str, Body] = {
     "decide": {"decision": "proposal_only", "applied_by_hand": True},
     "reject": {"reason": "other"},
@@ -337,8 +344,7 @@ def test_every_action_route_is_listed(app: FastAPI) -> None:
         if path.startswith(prefix)
         for method in item
     }
-    assert found == set(ACTION_ROUTES) | set(PENDING_ROUTES)
-    assert not set(ACTION_ROUTES) & set(PENDING_ROUTES)
+    assert found == set(ACTION_ROUTES)
 
 
 async def stage(
@@ -365,10 +371,18 @@ async def stage(
     await settle(app)
     done, _ = await drive(owner, app, asked.json()["id"])
     assert done["status"] == "done", done
+    # The earlier applied query repeated as a chain (WP76), which closes nothing.
+    model.fake.script.append(planned(SCHOOLS))
+    repeated = await owner.post(url(applied[0], "compare"))
+    assert repeated.status_code == 202, repeated.text
+    await settle(app)
+    compared, _ = await drive(owner, app, repeated.json()["id"])
+    assert compared["status"] == "done", compared
     made = {
         "applied before": applied[0],
         "applied last": applied[1],
         "chain done": done["id"],
+        "compared": compared["id"],
         "chain proposed": stored_chain(app, username, "Prüfen", SCHOOLS),
         "chain approved": stored_chain(app, username, "Teilautonom", SCHOOLS),
     }
@@ -416,11 +430,6 @@ async def test_another_accounts_or_a_forged_id_is_not_found_on_every_route(
             assert (response.status_code, response.json()["code"]) == (404, "not_found"), route
         forged = await call(owner, route, FORGED)
         assert (forged.status_code, forged.json()["code"]) == (404, "not_found"), route
-    for route, wp in PENDING_ROUTES.items():
-        for asker, target in ((them, ids[("GET", "")]), (them, FORGED), (owner, FORGED)):
-            response = await call(asker, route, target)
-            assert response.status_code == 501, (route, response.text)
-            assert response.json()["details"]["wp"] == wp, route
     # A follow-up names its parent: another account's is none (P6).
     follow = await them.post(PROMPT, json={"text": "Und?", "parent_action_id": ids[("GET", "")]})
     assert (follow.status_code, follow.json()["code"]) == (404, "not_found")
@@ -431,13 +440,15 @@ async def test_another_accounts_or_a_forged_id_is_not_found_on_every_route(
     assert {i: (await owner.get(url(i))).json() for i in ids.values()} == before
 
     # The owner's same requests pass: the 404 was the account's, not the state's.
+    model.fake.script.append(planned(SCHOOLS))  # what the repeat of ``compare`` plans
     for route, action_id in ids.items():
         response = await call(owner, route, action_id)
-        expected = 202 if route == ("POST", "run") else 200
+        expected = 202 if route in (("POST", "run"), ("POST", "compare")) else 200
         assert response.status_code == expected, (route, response.text)
-    await settle(app)
-    # The preview's ids and total, the execute, the adopt, the run's count and stamp.
-    assert len(ran) == 6
+        await settle(app)  # the run or the repeat ends before the next request
+    # The preview's ids and total, the execute, the adopt, the run's count and
+    # stamp, the comparison's two id lists (the same schools: no names read).
+    assert len(ran) == 8
     assert (await owner.get(url(ids[("POST", "run")]))).json()["status"] == "done"
 
 
@@ -868,8 +879,16 @@ READ_ONLY_IMPORTS: dict[str, set[str]] = {
     # Who asks, and which layers they see: the names, for a read-only view.
     "geotandem.auth.accounts": {"Account"},
     "geotandem.auth.visibility": {"visible_names"},
-    # The layer profile the model gets (S3), read from the catalog.
-    "geotandem.catalog": {"CHARS_PER_TOKEN", "LayerProfile", "ModelProfile", "model_profile"},
+    # The layer profile the model gets (S3), read from the catalog; for the
+    # person's comparison (WP76), the titles, labels and name attribute.
+    "geotandem.catalog": {
+        "CHARS_PER_TOKEN",
+        "LayerInfo",
+        "LayerProfile",
+        "ModelProfile",
+        "list_layers",
+        "model_profile",
+    },
     # Connections: the account's active one, read for a call (``active_call``).
     "geotandem.connections": {"ConnectionInfo", "ConnectionProblem", "Connections"},
     # The data core's types, its read-only view and the read-only marker of
@@ -889,7 +908,9 @@ READ_ONLY_IMPORTS: dict[str, set[str]] = {
         "run_query",
         "stamp_of",
         "stamp_query",
+        "stamped_ids",
         "validate_query",
+        "values_of",
     },
     "geotandem.engine.compile": {"FID", "GEOM"},
     "geotandem.engine.errors": {"QueryTimedOut", "ResultTooLarge", "UnknownLayer"},
@@ -1051,6 +1072,14 @@ def writes(app: FastAPI, into: list[tuple[str, str]]) -> Iterator[None]:
         event.remove(engine, "before_cursor_execute", seen)
 
 
+SECONDARY: Body = {
+    "schema_version": "2",
+    "source": "schulen",
+    "where": {"op": "in", "attr": "typ", "values": ["sekundar"]},
+}
+"""Classes ``{query}``; no primary school among its hits."""
+
+
 @pytest.mark.parametrize("role", ["admin", "user"])
 async def test_walking_every_model_route_writes_the_action_record_only(
     client: httpx.AsyncClient,
@@ -1075,8 +1104,9 @@ async def test_walking_every_model_route_writes_the_action_record_only(
 
         return kept
 
-    for name in ("run_query", "ids_query", "count_query"):
+    for name in ("run_query", "ids_query", "count_query", "stamped_ids"):
         monkeypatch.setattr(service, name, keeping(getattr(service, name), 1))
+    monkeypatch.setattr(service, "values_of", keeping(service.values_of, 3))
     step_run = service.run_step
 
     def counted(step: Any, context: Any, *args: Any, **kwargs: Any) -> Any:
@@ -1153,6 +1183,16 @@ async def test_walking_every_model_route_writes_the_action_record_only(
         assert halted["status"] == "proposed"
         aborted = await client.post(url(halted["id"], "abort"))
         assert aborted.json()["status"] == "limited"
+    # The comparison (WP76): the adopted chain repeated as a direct query, and
+    # the difference, whose names are read too.
+    with writes(app, written):
+        model.fake.script.append(answer(SECONDARY))
+        repeated = await client.post(url(chain_id, "compare"))
+        assert repeated.status_code == 202, repeated.text
+        await settle(app)
+        comparison = await client.get(url(repeated.json()["id"], "comparison"))
+        assert comparison.status_code == 200, comparison.text
+        assert comparison.json()["only_left"] or comparison.json()["only_right"]
 
     assert {kind for kind, _ in written} <= {"INSERT", "UPDATE", "DELETE"}, written
     assert {table for _, table in written} == {"model_action", "model_action_step"}, written
@@ -1419,6 +1459,99 @@ async def attack_plan(s: Scene) -> None:
     assert s.ran == [] and s.model.fake.calls == []
 
 
+async def attack_compare(s: Scene) -> None:
+    """A repeat is a prompt (P7): the account's level and connection as they
+    are now, never the record's (H6, H7, C14, C17), its request limit, one at
+    a time, only for the caller's own record. A level taken from the user
+    since the first answer does not come back through the repeat; a token
+    asks it as it may ask ``/prompt``, and decides nothing (WP71)."""
+    await choose(s.other, level_id=s.levels["Teilautonom"])
+    first = await ask(s.other, s.app, s.model, PLAIN)
+    assert (first["status"], first["level"]["name"]) == ("approved", "Teilautonom")
+    calls, count = len(s.model.fake.calls), records(s.app)
+    for target in (first["id"], FORGED):  # another account's, an administrator's too
+        response = await s.client.post(url(target, "compare"))
+        assert (response.status_code, response.json()["code"]) == (404, "not_found")
+    assert len(s.model.fake.calls) == calls and records(s.app) == count
+
+    # Teilautonom closed to users: the repeat is asked at the default level.
+    def closed(level: Body) -> Body:
+        return {**level, "selectable": False} if level["name"] == "Teilautonom" else level
+
+    await edit_levels(s.client, closed)
+    s.model.fake.script.append(planned(SCHOOLS))  # the repeat's plan, query only
+    repeated = await s.other.post(url(first["id"], "compare"))
+    assert repeated.status_code == 202, repeated.text
+    await settle(s.app)
+    repeat = (await s.other.get(url(repeated.json()["id"]))).json()
+    assert (repeat["level"]["name"], repeat["status"]) == ("Prüfen", "proposed")
+    assert (repeat["governance"]["cell"], repeat["compare_of"]) == ("approve", first["id"])
+    run_early = await s.other.post(url(repeat["id"], "run"))
+    assert (run_early.status_code, run_early.json()["code"]) == (409, "not_approved")
+    kept = (await s.other.get(url(first["id"]))).json()
+    assert (kept["status"], kept["level"]) == ("approved", first["level"])  # not superseded
+
+    # Two repeats at once: one is asked, the other is the account's second prompt.
+    s.model.fake.script.append(planned(SCHOOLS))
+    s.model.released.clear()
+    both = await asyncio.gather(*(s.other.post(url(first["id"], "compare")) for _ in range(2)))
+    assert sorted(r.status_code for r in both) == [202, 409]
+    assert {r.json()["code"] for r in both if r.status_code == 409} == {"busy"}
+    s.model.released.set()
+    await settle(s.app)
+    # A token asks as for /prompt (a prompt is no decision): accepted, counted.
+    s.model.fake.script.append(planned(SCHOOLS))
+    token = await s.other.post(url(first["id"], "compare"), headers=TOKEN)
+    assert token.status_code == 202, token.text
+    await settle(s.app)
+    assert (
+        await s.other.post(url(token.json()["id"], "approve"), headers=TOKEN)
+    ).status_code == 403
+
+    # The request limit counts a repeat as any request that reached the model.
+    calls, count = len(s.model.fake.calls), records(s.app)
+    await limit(s.client, calls)
+    over = await s.other.post(url(first["id"], "compare"))
+    assert (over.status_code, over.json()["code"]) == (429, "quota_exceeded")
+    # No enabled connection: no repeat.
+    await disable_connections(s)
+    none = await s.other.post(url(first["id"], "compare"))
+    assert (none.status_code, none.json()["code"]) == (409, "connection_not_available")
+    assert len(s.model.fake.calls) == calls and records(s.app) == count
+    assert s.ran == []
+
+
+async def attack_comparison(s: Scene) -> None:
+    """The comparison runs both stored queries for the person, as the preview
+    does (P2): only the caller's own pair, by an interactive session, never a
+    side with an ``off`` class at the level as it was, never one without a
+    result; the level now does not matter. The model is never called."""
+    left = stored(s.app, "b.muster", "Prüfen")
+    right = stored(s.app, "b.muster", "Teilautonom", compare_of=left)
+    for target in (left, right, FORGED):  # another account's, an administrator's too
+        response = await s.client.get(url(target, "comparison"))
+        assert (response.status_code, response.json()["code"]) == (404, "not_found")
+    token = await s.other.get(url(right, "comparison"), headers=TOKEN)
+    assert (token.status_code, token.json()["code"]) == (403, "session_required")
+    assert s.ran == []
+    # The snapshots decide, not the levels now.
+    await edit_levels(s.client, lambda lv: {**lv, "matrix": all_cells("off")})
+    shown = await s.other.get(url(right, "comparison"))
+    assert shown.status_code == 200, shown.text
+    assert len(s.ran) == 2
+    s.ran.clear()
+    hand_only = stored(s.app, "b.muster", "Assistenz", compare_of=left)
+    thinking = stored(s.app, "b.muster", "Prüfen", thinking=True, compare_of=right)
+    for target, code in (
+        (hand_only, "class_not_allowed"),
+        (left, "class_not_allowed"),  # its newest repeat is the proposal-only one
+        (thinking, "not_approved"),
+    ):
+        response = await s.other.get(url(target, "comparison"))
+        assert (response.status_code, response.json()["code"]) == (409, code), target
+    assert s.ran == [] and s.model.fake.calls == []
+
+
 GUARDED: dict[tuple[str, str], Callable[[Scene], Awaitable[None]]] = {
     ("POST", "/api/model/prompt"): attack_prompt,
     ("POST", "/api/model/actions/{action_id}/execute"): attack_execute,
@@ -1426,15 +1559,12 @@ GUARDED: dict[tuple[str, str], Callable[[Scene], Awaitable[None]]] = {
     ("POST", "/api/model/actions/{action_id}/run"): attack_run,
     ("POST", "/api/model/actions/{action_id}/adopt"): attack_adopt,
     ("PATCH", "/api/model/actions/{action_id}/plan"): attack_plan,
+    ("POST", "/api/model/actions/{action_id}/compare"): attack_compare,
+    ("GET", "/api/model/actions/{action_id}/comparison"): attack_comparison,
 }
-"""Every built route that calls the model or runs a model record, with the
-attack that shows it checks level and connection in the backend."""
-GUARDED_PENDING: dict[tuple[str, str], str] = {
-    ("POST", "/api/model/actions/{action_id}/compare"): "WP76",
-}
-"""Such routes still answering 501. The WP that builds one writes its attack
-into ``GUARDED`` and removes it here: compare as a prompt (level and
-connection resolved now, request limit counted)."""
+"""Every route that calls the model or runs a model record, with the attack
+that shows it checks level and connection in the backend. Since WP76 every
+such route of the contract is built."""
 
 
 def test_every_route_that_calls_the_model_or_runs_a_record_is_guarded(app: FastAPI) -> None:
@@ -1451,7 +1581,7 @@ def test_every_route_that_calls_the_model_or_runs_a_record_is_guarded(app: FastA
             rows = "ExecuteResponse" in str(responses.get("200", {}))
             if "429" in responses or "413" in responses or rows or method == "patch":
                 found.add((method.upper(), path))
-    assert found == set(GUARDED) | set(GUARDED_PENDING)
+    assert found == set(GUARDED)
 
 
 @pytest.mark.parametrize("route", GUARDED, ids=lambda r: f"{r[0]} {r[1]}")
@@ -1466,21 +1596,6 @@ async def test_each_guarded_route_checks_level_and_connection_in_the_backend(
 ) -> None:
     ran.clear()
     await GUARDED[route](Scene(client, app, model, ran, other, levels))
-
-
-@pytest.mark.parametrize("route", GUARDED_PENDING, ids=lambda r: f"{r[0]} {r[1]}")
-async def test_a_guarded_route_answers_501_until_its_attack_is_written(
-    client: httpx.AsyncClient, app: FastAPI, levels: dict[str, int], route: tuple[str, str]
-) -> None:
-    own = stored(app, "admin", "Automatisch")
-    method, path = route
-    body = {} if method == "PATCH" else None  # an empty plan edit
-    response = await client.request(method, path.replace("{action_id}", str(own)), json=body)
-    assert response.status_code == 501, (
-        f"{method} {path} is built: write its attack into GUARDED and remove it from "
-        "GUARDED_PENDING (and PENDING_ROUTES)"
-    )
-    assert response.json()["details"]["wp"] == GUARDED_PENDING[route]
 
 
 # --- the connection, read once for the record and the call (TOCTOU) ---------------

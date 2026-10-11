@@ -6220,7 +6220,7 @@
           "model"
         ],
         "summary": "Compare",
-        "description": "Ask again with the other approach (design M10.1): a new action with\n``compare_of``, polled like any other.",
+        "description": "Ask again with the other approach (design M10.1): a new action with\n``compare_of``, polled like any other. A prompt, so as ``/prompt``: the\naccount's level and connection now, its request limit, one at a time\n(409/503 ``busy``). Only an own record with a result to compare; it stays\nopen beside the repeat.",
         "operationId": "compare_api_model_actions__action_id__compare_post",
         "parameters": [
           {
@@ -6345,7 +6345,7 @@
           "model"
         ],
         "summary": "Comparison",
-        "description": "Once both are done: the difference, by feature ids (design M10.2, M10.3).",
+        "description": "Once both have a result (else 409): both stamps and the difference by\nfeature ids, with names (design M10.2, M10.3), computed from both stored\nqueries run as the caller; the model is not asked. Feature ids and names\nfor the person, as the preview's ids (P2): an interactive session only.\nAddressed by either side: the repeat, or the record compared (its newest\nrepeat).",
         "operationId": "comparison_api_model_actions__action_id__comparison_get",
         "parameters": [
           {
@@ -6420,6 +6420,46 @@
               }
             },
             "description": "Not Implemented"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Gateway Timeout"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
           }
         }
       }

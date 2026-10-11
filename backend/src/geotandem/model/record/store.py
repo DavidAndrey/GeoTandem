@@ -646,6 +646,35 @@ class ModelActionStore:
                     row = None
         return found[::-1]
 
+    def compared(self, caller: Account, action_id: int) -> tuple[ModelActionView, ModelActionView]:
+        """The two sides of a comparison (design M10), the caller's own: named by
+        the repeat, its ``compare_of`` and itself; named by the record compared,
+        it and its newest repeat. Another account's record, or one without a
+        comparison, is ``not_found``; a side with an ``off`` class is refused
+        as the preview refuses it (D1, P2): changes nothing."""
+        with Session(reading(self.engine)) as db:
+            row = self._own(db, caller, action_id)
+            if row.compare_of is not None:
+                left, right = self._own(db, caller, row.compare_of), row
+            else:
+                repeat = db.scalar(
+                    select(ModelAction)
+                    .where(ModelAction.user_id == caller.id, ModelAction.compare_of == row.id)
+                    .order_by(ModelAction.id.desc())
+                    .limit(1)
+                )
+                if repeat is None:
+                    raise ActionError(
+                        "not_found",
+                        f"Model action {action_id} has not been compared.",
+                        http_status=404,
+                        id=action_id,
+                    )
+                left, right = row, repeat
+            for side in (left, right):
+                _allowed(side)
+            return self._view(db, left), self._view(db, right)
+
     @staticmethod
     def _where(
         caller: Account, filters: ActionFilters, own: bool = False

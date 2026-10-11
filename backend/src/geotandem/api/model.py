@@ -1,14 +1,14 @@
 """Modus B over HTTP: prompt, decide, run (plan E2.3-E2.6, section 6).
 
-Frozen in WP62 with every route, its auth and its answer; each body answers
-501 ``not_implemented`` until its WP fills it in (WP76).
+Frozen in WP62 with every route, its auth and its answer; each body answered
+501 ``not_implemented`` until its WP filled it in.
 WP65 built the prompt of the direct query, the record, ``decide`` and
 ``abort``; WP70 the enforcement: ``approve``, ``reject``, ``execute``,
 ``undo``, ``touched`` and the preview; WP75 the tool chain: its prompt, the
-plan's edit, ``run`` and ``adopt`` (``model/service.py``). Every route
-needs a signed-in account; a record of another account is ``not_found``
-(404, never 403), as for sessions, and changing one is the owner's alone,
-administrators included.
+plan's edit, ``run`` and ``adopt``; WP76 the comparison (all in
+``model/service.py``). Every route needs a signed-in account; a record of
+another account is ``not_found`` (404, never 403), as for sessions, and
+changing one is the owner's alone, administrators included.
 """
 
 from typing import Annotated, Any
@@ -16,7 +16,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Path, Query
 
 from geotandem.api.auth import CurrentAccount, InteractiveAccount
-from geotandem.api.errors import ErrorBody, Problem
+from geotandem.api.errors import ErrorBody
 from geotandem.api.routes import QuerySlot
 from geotandem.api.state import AppState, get_state
 from geotandem.model.schemas import (
@@ -60,16 +60,6 @@ DECISIONS: dict[int | str, dict[str, Any]] = {**ERRORS, 403: {"model": ErrorBody
 ``decide``. An interactive session only (``session_required``), as for the
 preview (P2): a program acting for the account, a model's or an MCP client's
 token (E4), never approves, rejects or hands over (WP71)."""
-
-
-class NotBuilt(Problem):
-    """A route of the frozen contract whose work package has not landed yet."""
-
-    status = 501
-    code = "not_implemented"
-
-    def __init__(self, wp: str) -> None:
-        super().__init__(f"Not built yet ({wp}).", wp=wp)
 
 
 def prompt_flow(state: Annotated[AppState, Depends(get_state)]) -> PromptFlow:
@@ -212,16 +202,28 @@ def adopt(action_id: ActionId, account: InteractiveAccount, flow: Flow) -> Execu
 
 
 @router.post("/actions/{action_id}/compare", status_code=202, responses=CALLS_MODEL)
-def compare(action_id: ActionId, account: CurrentAccount) -> ModelActionView:
+def compare(action_id: ActionId, account: CurrentAccount, flow: Flow) -> ModelActionView:
     """Ask again with the other approach (design M10.1): a new action with
-    ``compare_of``, polled like any other."""
-    raise NotBuilt("WP76")
+    ``compare_of``, polled like any other. A prompt, so as ``/prompt``: the
+    account's level and connection now, its request limit, one at a time
+    (409/503 ``busy``). Only an own record with a result to compare; it stays
+    open beside the repeat."""
+    return flow.compare(account, action_id)
 
 
-@router.get("/actions/{action_id}/comparison", responses=ERRORS)
-def comparison(action_id: ActionId, account: CurrentAccount) -> Comparison:
-    """Once both are done: the difference, by feature ids (design M10.2, M10.3)."""
-    raise NotBuilt("WP76")
+@router.get(
+    "/actions/{action_id}/comparison",
+    responses={**RUNS, 403: {"model": ErrorBody}},
+    dependencies=[QuerySlot],
+)
+def comparison(action_id: ActionId, account: InteractiveAccount, flow: Flow) -> Comparison:
+    """Once both have a result (else 409): both stamps and the difference by
+    feature ids, with names (design M10.2, M10.3), computed from both stored
+    queries run as the caller; the model is not asked. Feature ids and names
+    for the person, as the preview's ids (P2): an interactive session only.
+    Addressed by either side: the repeat, or the record compared (its newest
+    repeat)."""
+    return flow.comparison(account, action_id)
 
 
 @router.get("/my-actions", responses=ERRORS)

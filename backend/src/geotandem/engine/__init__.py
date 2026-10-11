@@ -7,7 +7,9 @@ from geotandem.engine.execute import (
     run_query,
     stamp_of,
     stamp_query,
+    stamped_ids,
     validate_query,
+    values_of,
 )
 from geotandem.engine.result import Feature, QueryResult, ResultMeta, ResultStamp
 
@@ -22,5 +24,7 @@ __all__ = [
     "run_query",
     "stamp_of",
     "stamp_query",
+    "stamped_ids",
     "validate_query",
+    "values_of",
 ]

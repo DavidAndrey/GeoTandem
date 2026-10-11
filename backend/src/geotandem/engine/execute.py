@@ -11,7 +11,7 @@ from sqlalchemy import func, literal, select
 from geotandem.catalog import get_layer
 from geotandem.data import DataBackend, Limits, Op, QueryTimeout
 from geotandem.engine.compile import FID, GEOJSON, Compiled, compile_query
-from geotandem.engine.errors import QueryTimedOut, ResultTooLarge
+from geotandem.engine.errors import QueryTimedOut, ResultTooLarge, UnknownLayer
 from geotandem.engine.result import Feature, QueryResult, ResultMeta, ResultStamp
 from geotandem_query import QueryObject, query_hash
 
@@ -28,13 +28,7 @@ def run_query(
 ) -> QueryResult:
     started = time.perf_counter()
     compiled = validate_query(query, backend, limits, unsupported)
-    try:
-        rows = backend.execute(compiled.stmt, limits)
-    except QueryTimeout:
-        raise QueryTimedOut(
-            f"The query took longer than {limits.timeout_s:g} s and was stopped.",
-            timeout_s=limits.timeout_s,
-        ) from None
+    rows = _execute(backend, compiled.stmt, limits)
     if len(rows) > limits.max_features:
         raise ResultTooLarge(
             f"The result exceeds {limits.max_features} features. Narrow the query or set 'limit'.",
@@ -70,13 +64,7 @@ def count_query(
     """
     compiled = compile_query(query, backend, COUNT_CAP, unsupported)
     rows = compiled.stmt.with_only_columns(literal(1)).order_by(None).subquery()
-    try:
-        result = backend.execute(select(func.count()).select_from(rows), limits)
-    except QueryTimeout:
-        raise QueryTimedOut(
-            f"The query took longer than {limits.timeout_s:g} s and was stopped.",
-            timeout_s=limits.timeout_s,
-        ) from None
+    result = _execute(backend, select(func.count()).select_from(rows), limits)
     return int(next(iter(result[0].values())))
 
 
@@ -89,8 +77,34 @@ def stamp_query(
     none leave the server. The query's own ordering stays, so a ``limit``
     picks the same features as ``run_query``.
     """
+    return stamped_ids(query, backend, limits, unsupported)[1]
+
+
+def stamped_ids(
+    query: QueryObject, backend: DataBackend, limits: Limits, unsupported: Iterable[Op] = ()
+) -> tuple[list[int], ResultStamp]:
+    """The ids of ``ids_query`` and the stamp of ``stamp_query``, from one run:
+    for a comparison of two results by their features (design M10)."""
     compiled = compile_query(query, backend, COUNT_CAP, unsupported)
-    return _stamp(_ids(compiled, backend, limits), query, _versions(compiled, backend))
+    ids = _ids(compiled, backend, limits)
+    return ids, _stamp(ids, query, _versions(compiled, backend))
+
+
+def values_of(
+    layer: str, attribute: str, ids: Iterable[int], backend: DataBackend, limits: Limits
+) -> dict[int, Any]:
+    """The value of one attribute of the features ``ids`` of ``layer``, by id;
+    a layer outside ``backend`` (a view) is ``unknown_layer``, as for a query."""
+    try:
+        table = backend.layer_table(layer)
+    except KeyError:
+        raise UnknownLayer(f"Unknown layer '{layer}'.", layer=layer) from None
+    wanted = sorted(set(ids))
+    if not wanted:
+        return {}
+    stmt = select(table.c[FID], table.c[attribute]).where(table.c[FID].in_(wanted))
+    rows = _execute(backend, stmt, limits)
+    return {int(row[FID]): row[attribute] for row in rows}
 
 
 def stamp_of(result: QueryResult) -> ResultStamp:
@@ -124,14 +138,19 @@ def ids_query(
 def _ids(compiled: Compiled, backend: DataBackend, limits: Limits) -> list[int]:
     # The query's own ordering stays inside, so a ``limit`` picks what run_query does.
     found = compiled.stmt.with_only_columns(compiled.stmt.selected_columns[FID]).subquery()
+    rows = _execute(backend, select(found.c[FID]).order_by(found.c[FID]), limits)
+    return [int(row[FID]) for row in rows]
+
+
+def _execute(backend: DataBackend, stmt: Any, limits: Limits) -> list[dict[str, Any]]:
+    """``backend.execute`` with its time limit as the engine's error."""
     try:
-        rows = backend.execute(select(found.c[FID]).order_by(found.c[FID]), limits)
+        return backend.execute(stmt, limits)
     except QueryTimeout:
         raise QueryTimedOut(
             f"The query took longer than {limits.timeout_s:g} s and was stopped.",
             timeout_s=limits.timeout_s,
         ) from None
-    return [int(row[FID]) for row in rows]
 
 
 def _versions(compiled: Compiled, backend: DataBackend) -> dict[str, str | None]:

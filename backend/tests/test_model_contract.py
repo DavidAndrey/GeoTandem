@@ -86,6 +86,8 @@ BUILT = {
     ("PATCH", "/api/model/actions/1/plan"): "WP75",
     ("POST", "/api/model/actions/1/run"): "WP75",
     ("POST", "/api/model/actions/1/adopt"): "WP75",
+    ("POST", "/api/model/actions/1/compare"): "WP76",
+    ("GET", "/api/model/actions/1/comparison"): "WP76",
     ("GET", "/api/model/my-actions"): "WP73",
     ("GET", "/api/admin/model-actions"): "WP73",
     ("GET", "/api/admin/model-actions/key-figures"): "WP73",
@@ -93,8 +95,9 @@ BUILT = {
     ("GET", "/api/admin/model-actions/1"): "WP73",
 }
 """Routes whose work package has landed: they no longer answer 501
-(``test_model_flow.py``, ``test_model_enforcement.py``, ``test_model_log.py``
-and ``test_model_chain_flow.py`` test them)."""
+(``test_model_flow.py``, ``test_model_enforcement.py``, ``test_model_log.py``,
+``test_model_chain_flow.py`` and ``test_model_compare.py`` test them). Since
+WP76, every route of the contract."""
 BODIES: dict[str, dict[str, Any]] = {
     "/api/model/prompt": {"text": "Primarschulen in Köniz"},
     "/api/model/actions/1/decide": {"decision": "proposal_only"},
@@ -413,15 +416,12 @@ async def test_every_route_needs_a_session(
     assert (await _call(anonymous, method, path)).status_code == 401
 
 
-async def test_routes_answer_not_implemented_until_built(client: httpx.AsyncClient) -> None:
+async def test_every_route_is_built(client: httpx.AsyncClient) -> None:
+    """No route answers 501 any more (plan 5.2: no stub route left)."""
+    assert set(ROUTES + ADMIN_ROUTES) == set(BUILT)
     for method, path in ROUTES + ADMIN_ROUTES:
-        if (method, path) in BUILT:
-            continue
         response = await _call(client, method, path)
-        assert response.status_code == 501, (method, path, response.text)
-        body = response.json()
-        assert body["code"] == "not_implemented"
-        assert body["details"]["wp"].startswith("WP")
+        assert response.status_code != 501, (method, path, response.text)
 
 
 async def test_the_log_is_for_administrators(client: httpx.AsyncClient) -> None:

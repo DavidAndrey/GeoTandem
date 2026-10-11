@@ -86,6 +86,14 @@ user aborts: the step that runs ends, no other starts. Its last complete
 result waits to be adopted: ``adopt`` runs it as the user, as ``execute``
 runs a direct answer, and is the other answer with rows.
 
+The comparison (WP76, design M10, P7) is a prompt too: ``compare`` asks the
+prompt of a record with a result again with the other approach, as a new
+record that repeats it (``compare_of``), through the same flow with the
+account's level and connection as they are now; the record compared is not
+closed. Once both have a result, ``comparison`` runs both stored queries as
+the user and compares their feature ids; the model is not asked. Taking a
+side is that record's own ``execute`` or ``adopt``, with its own approval.
+
 Logs carry ids and codes only, never the prompt or the answer (C15).
 """
 
@@ -105,12 +113,21 @@ from sqlalchemy.orm import Session
 
 from geotandem.auth.accounts import Account
 from geotandem.auth.visibility import visible_names
-from geotandem.catalog import ModelProfile, model_profile
+from geotandem.catalog import ModelProfile, list_layers, model_profile
 from geotandem.connections import ConnectionInfo, ConnectionProblem, Connections
 from geotandem.data import DataBackend, Limits, Op
 from geotandem.data.view import LayerView
 from geotandem.db.orm import ModelAction
-from geotandem.engine import QueryError, ResultStamp, count_query, ids_query, run_query, stamp_of
+from geotandem.engine import (
+    QueryError,
+    ResultStamp,
+    count_query,
+    ids_query,
+    run_query,
+    stamp_of,
+    stamped_ids,
+    values_of,
+)
 from geotandem.engine.errors import QueryTimedOut, ResultTooLarge
 from geotandem.levels import CellMode, Level, OpClass, active_level
 from geotandem.llm import ClientFactory, Endpoint, LLMClient, LLMError
@@ -132,6 +149,7 @@ from geotandem.model.chain.plan import (
 )
 from geotandem.model.chain.run import run_step, stamp
 from geotandem.model.chain.view import restored
+from geotandem.model.compare import Labels, name_attribute, reason
 from geotandem.model.direct import DirectAnswer, DirectQuery, governance
 from geotandem.model.errors import ActionError
 from geotandem.model.prompt import FollowUp, Prompt, Turn, build_prompt
@@ -154,8 +172,10 @@ from geotandem.model.schemas import (
     ActionPreview,
     CannotAnswer,
     Clarification,
+    Comparison,
     DecideRequest,
     ExecuteResponse,
+    FeatureRef,
     Governance,
     ModelActionView,
     ModelView,
@@ -507,6 +527,14 @@ class PromptFlow:
 
     def prompt(self, caller: Account, request: PromptRequest) -> ModelActionView:
         """Check, record ``thinking``, start the call; the record as it is now."""
+        return self._ask_model(caller, request)
+
+    def _ask_model(
+        self, caller: Account, request: PromptRequest, compare_of: int | None = None
+    ) -> ModelActionView:
+        """The prompt flow (module docstring), for a prompt and for a comparison:
+        a repeat (``compare_of``) waits beside the record it repeats instead of
+        closing the account's open record."""
         level = active_level(self.backend.engine, caller.id, admin=caller.role == "admin")
         # One read: the snapshot is of the connection the call goes to (WP71).
         active = self.connections.active_call(caller.id)
@@ -550,6 +578,7 @@ class PromptFlow:
             profile_hash=profile.hash,
             parent_action_id=request.parent_action_id,
             level_prompt=level.system_prompt,
+            compare_of=compare_of,
         )
         # The account's own call first (review #36): an account that waits for
         # its answer gets 409 and never holds a slot, even for a moment, that
@@ -567,7 +596,10 @@ class PromptFlow:
                 for closed in self.store.fail_thinking(caller, stale, STALE_ERROR):
                     log.warning("model action %d: closed, no call left to finish it", closed)
                 action = self.store.create(
-                    caller, new, admit=partial(self._admit, caller=caller, connection=connection)
+                    caller,
+                    new,
+                    supersede=compare_of is None,
+                    admit=partial(self._admit, caller=caller, connection=connection),
                 )
                 answer = partial(self._answer, caller, action.id, call)
                 self.calls.start(
@@ -1007,6 +1039,84 @@ class PromptFlow:
         log.info("model action %d: adopted, %d features", action_id, result.meta.feature_count)
         return ExecuteResponse(action=view, result=result)
 
+    # --- the comparison (P7, WP76, design M10) ------------------------------------
+
+    def compare(self, caller: Account, action_id: int) -> ModelActionView:
+        """Ask the same prompt again with the other approach (M10.1): a new
+        record that repeats ``action_id`` (``compare_of``), through the prompt
+        flow as any prompt goes, and so with the account's level and connection
+        as they are now, never the record's (H6, C17): a level taken from the
+        user since, or a connection disabled, is not used again by a repeat.
+        Its request counts towards the request limit, and it is the account's
+        one prompt at a time. The record compared stays as it is (no
+        supersede): it is the left side. Only the caller's own record with a
+        result to compare: a direct query with its query, a chain that ended
+        with a result; none with an ``off`` class (``ready``), whose query is
+        not run for the user (P2)."""
+        original = self.store.ready(caller, action_id, "compare", COMPARABLE)
+        if original.query is None:
+            raise _not_runnable(original, "compare", "has no result to compare")
+        request = PromptRequest(
+            text=original.prompt,
+            approach="chain" if original.approach == "direct" else "direct",
+            parent_action_id=original.parent_action_id,
+        )
+        view = self._ask_model(caller, request, compare_of=original.id)
+        log.info("model action %d: compares %d", view.id, original.id)
+        return view
+
+    def comparison(self, caller: Account, action_id: int) -> Comparison:
+        """Both sides once each has a result (M10.2, M10.3): their stamps and the
+        difference by feature ids, computed here from both stored queries run
+        as the caller (visibility, the result-size limit, one time limit for
+        all its reads), never by the model, which is not called. Names from
+        each layer's name attribute, read as the caller; the reason only where
+        the two queries say it (``compare.reason``). Changes nothing: taking a
+        side is that record's own ``execute`` or ``adopt``, under its own level."""
+        left, right = self.store.compared(caller, action_id)
+        queries = _compared(left), _compared(right)
+        view = read_view(self.backend, caller)
+        budget = self.limits.timeout_s
+        deadline = time.monotonic() + budget
+
+        def limits() -> Limits:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise QueryTimedOut(
+                    f"The comparison took longer than {budget:g} s and was stopped.",
+                    timeout_s=budget,
+                )
+            return replace(self.limits, timeout_s=remaining)
+
+        found = []
+        for query in queries:
+            ids, stamped = stamped_ids(query, view, limits(), self.unsupported)
+            if len(ids) > self.limits.max_features:
+                raise ResultTooLarge(
+                    f"The result exceeds {self.limits.max_features} features.",
+                    max_features=self.limits.max_features,
+                )
+            found.append(({(query.source, i) for i in ids}, stamped))
+        (left_ids, left_stamp), (right_ids, right_stamp) = found
+        labels = Labels.of(list_layers(self.backend.engine, view.layer_names()))
+        names = _names(left_ids ^ right_ids, labels, view, limits)
+        refs = [
+            [FeatureRef(id=i, name=names.get((layer, i))) for layer, i in sorted(only)]
+            for only in (left_ids - right_ids, right_ids - left_ids)
+        ]
+        differ = left_ids != right_ids
+        why = reason(*queries, (left.approach, right.approach), labels) if differ else None
+        log.info("model action %d: compared with %d", right.id, left.id)
+        return Comparison(
+            left_action_id=left.id,
+            right_action_id=right.id,
+            left=left_stamp,
+            right=right_stamp,
+            only_left=refs[0],
+            only_right=refs[1],
+            reason=why,
+        )
+
     # --- what a chain's re-plan asks with (P4) ------------------------------------
 
     def _chain_prompt(
@@ -1145,6 +1255,40 @@ def _not_runnable(
         id=view.id,
         status=view.status,
     )
+
+
+COMPARABLE: Final = ("proposed", "approved", "applied", "done", "limited")
+"""Statuses of a record that may have a result to compare (design M10.1: an
+answer waiting or applied, a chain that ended); its query decides."""
+
+
+def _compared(view: ModelActionView) -> QueryObject:
+    """A side's query to compare: there once it has a result, not while the
+    model thinks or a chain waits or runs (409)."""
+    if view.query is None:
+        raise _not_runnable(view, "comparison", "has no result to compare yet")
+    return view.query
+
+
+def _names(
+    features: set[tuple[str, int]],
+    labels: Labels,
+    view: DataBackend,
+    limits: Callable[[], Limits],
+) -> dict[tuple[str, int], str]:
+    """The names of ``features`` (layer, id) from their layer's name attribute
+    (``compare.name_attribute``), read through the caller's ``view``; a layer
+    without one names none."""
+    found = {}
+    for layer in sorted({layer for layer, _ in features}):
+        attribute = name_attribute(labels.layers.get(layer))
+        if attribute is None:
+            continue
+        ids = [i for source, i in features if source == layer]
+        for i, value in values_of(layer, attribute, ids, view, limits()).items():
+            if value is not None:
+                found[(layer, i)] = str(value)
+    return found
 
 
 def _stored(view: ModelActionView, step: str, *, chain: bool = False) -> QueryObject:

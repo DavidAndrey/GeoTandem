@@ -1256,7 +1256,10 @@ export interface paths {
     /**
      * Compare
      * @description Ask again with the other approach (design M10.1): a new action with
-     *     ``compare_of``, polled like any other.
+     *     ``compare_of``, polled like any other. A prompt, so as ``/prompt``: the
+     *     account's level and connection now, its request limit, one at a time
+     *     (409/503 ``busy``). Only an own record with a result to compare; it stays
+     *     open beside the repeat.
      */
     post: operations['compare_api_model_actions__action_id__compare_post']
     delete?: never
@@ -1274,7 +1277,12 @@ export interface paths {
     }
     /**
      * Comparison
-     * @description Once both are done: the difference, by feature ids (design M10.2, M10.3).
+     * @description Once both have a result (else 409): both stamps and the difference by
+     *     feature ids, with names (design M10.2, M10.3), computed from both stored
+     *     queries run as the caller; the model is not asked. Feature ids and names
+     *     for the person, as the preview's ids (P2): an interactive session only.
+     *     Addressed by either side: the repeat, or the record compared (its newest
+     *     repeat).
      */
     get: operations['comparison_api_model_actions__action_id__comparison_get']
     put?: never
@@ -10046,6 +10054,15 @@ export interface operations {
           'application/json': components['schemas']['ErrorBody']
         }
       }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
       /** @description Not Found */
       404: {
         headers: {
@@ -10064,6 +10081,15 @@ export interface operations {
           'application/json': components['schemas']['ErrorBody']
         }
       }
+      /** @description Content Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
       /** @description Unprocessable Content */
       422: {
         headers: {
@@ -10075,6 +10101,24 @@ export interface operations {
       }
       /** @description Not Implemented */
       501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Gateway Timeout */
+      504: {
         headers: {
           [name: string]: unknown
         }
