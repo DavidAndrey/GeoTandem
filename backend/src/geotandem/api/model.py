@@ -71,6 +71,7 @@ def prompt_flow(state: Annotated[AppState, Depends(get_state)]) -> PromptFlow:
         calls=state.model_calls,
         limits=state.limits,
         unsupported=frozenset(state.unsupported),
+        gate=state.query_slots,
     )
 
 
@@ -212,7 +213,7 @@ def compare(action_id: ActionId, account: CurrentAccount, flow: Flow) -> ModelAc
     return flow.compare(account, action_id)
 
 
-@router.get(
+@router.post(
     "/actions/{action_id}/comparison",
     responses={**RUNS, 403: {"model": ErrorBody}},
     dependencies=[QuerySlot],
@@ -222,7 +223,8 @@ def comparison(action_id: ActionId, account: InteractiveAccount, flow: Flow) -> 
     feature ids, with names (design M10.2, M10.3), computed from both stored
     queries run as the caller; the model is not asked. Feature ids and names
     for the person, as the preview's ids (P2): an interactive session only,
-    and a side that waits gets ``previewed_at``. The reason is data (which
+    and a side that waits gets ``previewed_at``; so a ``POST``, a change the
+    origin check covers, as the preview (review #41). The reason is data (which
     layer, which conditions), worded by the interface. Addressed by either
     side: the repeat, or the record compared (its newest repeat with a
     result). 409 ``not_approved`` while a side may still get a result,

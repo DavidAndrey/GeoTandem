@@ -9,6 +9,7 @@ figures of the contract fixture come out of the table exactly.
 import json
 import random
 from collections.abc import Callable
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, get_args
@@ -27,7 +28,7 @@ from geotandem.connections import ConnectionPatch, Connections, ConnectionWrite
 from geotandem.db import migrate
 from geotandem.db.bootstrap import bootstrap
 from geotandem.db.engine import make_engine
-from geotandem.db.orm import ModelAction
+from geotandem.db.orm import ModelAction, ModelActionStep
 from geotandem.engine import ResultStamp
 from geotandem.levels import CellMode, Level, OpClass, load_levels, save_levels
 from geotandem.model.record import (
@@ -41,6 +42,8 @@ from geotandem.model.record import (
 )
 from geotandem.model.record.store import MAX_RAW_QUERY_BYTES
 from geotandem.model.schemas import (
+    MAX_PLAN_STEPS,
+    MAX_STEPS,
     ActionStatus,
     CannotAnswer,
     Clarification,
@@ -716,6 +719,34 @@ def test_a_refused_answer_keeps_its_raw_query_up_to_a_bound(
         assert refused.answer.explanation == "Zu gross."
 
 
+def test_a_refused_plan_keeps_its_first_steps_up_to_a_bound(
+    store: ModelActionStore, people: dict[str, Account]
+) -> None:
+    """Review #40: a refused plan of 1 MB keeps its first ``MAX_STEPS`` steps,
+    their arguments only within 64 kB of canonical JSON, and says what it left
+    out; a small one stays as it came."""
+    anna = people["anna"]
+    step = PLAN.steps[0]
+    big = [
+        step.model_copy(update={"arguments": {"junk": "x" * 16_000}}) for _ in range(MAX_PLAN_STEPS)
+    ]
+    huge = PLAN.model_copy(update={"steps": big})
+    assert len(huge.model_dump_json()) > 1_000_000
+    refused = store.refuse(anna, new(store, anna).id, REFUSAL, answer=huge)
+    assert isinstance(refused.answer, PlanAnswer)
+    assert len(refused.answer.steps) == MAX_STEPS
+    assert [s.arguments for s in refused.answer.steps] == [{"omitted": "too large"}] * MAX_STEPS
+    assert [s.text for s in refused.answer.steps] == [step.text] * MAX_STEPS
+    with Session(store.engine) as db:
+        kept = db.get(ModelAction, refused.id)
+        assert kept is not None and len(json.dumps(kept.answer)) < MAX_RAW_QUERY_BYTES
+
+    nine = PLAN.model_copy(update={"steps": [step] * (MAX_STEPS + 1)})
+    refused = store.refuse(anna, new(store, anna).id, REFUSAL, answer=nine)
+    assert isinstance(refused.answer, PlanAnswer)
+    assert refused.answer.steps == [step] * MAX_STEPS  # arguments kept: small
+
+
 # --- as it was (H7) -------------------------------------------------------------
 
 
@@ -1029,3 +1060,45 @@ def test_key_figures_follow_the_filters(
     assert (level.auto, level.undone, level.acceptance_rate) == (1, 1, None)
     connection = store.key_figures(admin, ActionFilters(connection_id=7))
     assert (connection.accepted, connection.undone_after_approval) == (1, 1)
+
+
+def test_a_re_plan_never_collides_with_a_step_kept_in_its_place(
+    engine: Engine, store: ModelActionStore, people: dict[str, Account]
+) -> None:
+    """E2.5 review: a step after the last that ran which never ran and never
+    will (``skipped``) makes room for the re-plan's step at its place, without
+    an integrity error; a step that ran there refuses the re-plan cleanly."""
+    anna = people["anna"]
+    chain = proposed(store, anna, approach="chain", supersede=False)
+    store.approve(anna, chain)
+    store.run(anna, chain)
+    ran_first_step(store, anna, chain)
+    with Session(engine) as db, db.begin():
+        db.execute(
+            update(ModelActionStep)
+            .where(ModelActionStep.action_id == chain, ModelActionStep.position.in_((2, 3)))
+            .values(status="skipped")
+        )
+    new_steps = [replace(step, revised=True) for step in chain_steps()[1:3]]
+    store.revise(
+        anna, chain, after=1, steps=new_steps, governance=APPROVE, replans=1, turns=[], run_ms=5
+    )
+    view = store.get(anna, chain)
+    assert [(s.position, s.status, s.revised) for s in view.steps][:3] == [
+        (1, "ok", False),
+        (2, "planned", True),
+        (3, "planned", True),
+    ]
+
+    with Session(engine) as db, db.begin():
+        db.execute(
+            update(ModelActionStep)
+            .where(ModelActionStep.action_id == chain, ModelActionStep.position == 2)
+            .values(status="error")
+        )
+    with pytest.raises(ActionError) as refused:
+        store.revise(
+            anna, chain, after=1, steps=new_steps, governance=APPROVE, replans=2, turns=[], run_ms=6
+        )
+    assert refused.value.code == "not_approved"
+    assert store.get(anna, chain).replans == 1  # nothing written

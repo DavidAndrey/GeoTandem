@@ -371,3 +371,39 @@ def test_steps_come_and_go_with_0011_and_keep_the_records(settings: Settings) ->
     with engine.connect() as conn:
         assert [tuple(r) for r in conn.execute(text(rows))] == before
     migrate.upgrade(engine)
+
+
+def test_re_plan_calls_come_and_go_with_0012(settings: Settings) -> None:
+    """Security review #43: a chain's re-plans, one row each, counted for the
+    request limit; rows go with their action, the records stay."""
+    engine = make_engine(settings)
+    migrate.upgrade(engine, "0011")
+    assert "model_call" not in inspect(engine).get_table_names()
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO model_action (id, account, created_at, prompt, prompt_hash,"
+                " approach, status, level_id, level_name, level_matrix, level_prompt_hash,"
+                " connection_id, connection_name, connection_model, connection_host,"
+                " connection_locality, profile_hash) VALUES (1, 'anna', '2026-10-11 08:00:00',"
+                " 'p', 'h', 'chain', 'running', 1, 'Prüfen', '{}', 'h', 1, 'Lokal', 'm',"
+                " 'localhost', 'local', 'h')"
+            )
+        )
+
+    migrate.upgrade(engine)
+
+    assert "model_call" in inspect(engine).get_table_names()
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO model_call (action_id, connection_id, called_at)"
+                " VALUES (1, 1, '2026-10-11 08:01:00')"
+            )
+        )
+        conn.execute(text("DELETE FROM model_action WHERE id = 1"))
+        assert conn.scalar(text("SELECT count(*) FROM model_call")) == 0
+
+    migrate.downgrade(engine, "0011")
+    assert "model_call" not in inspect(engine).get_table_names()
+    migrate.upgrade(engine)

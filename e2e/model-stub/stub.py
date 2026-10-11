@@ -23,6 +23,12 @@ Routes, each also under a prefix ``/case/<id>`` (see below):
     a short time limit (``timeout_s``), so the client gives up first.
 - ``GET /_requests``: every request body received so far, oldest first, for
   privacy assertions; ``DELETE /_requests`` empties the list.
+- ``PUT /_cases/<id>``: adds (or replaces) case ``<id>``, a JSON object shaped
+  as the fixture's cases, for ``/case/<id>``: a test scripts a sequence the
+  fixture has no case for (E2.5: a re-plan that brings a plan the run
+  finishes). Kept until the stub stops.
+- ``POST /_release``: ends every hold under way (``/hold/<seconds>``, below)
+  at once.
 
 Several cases share a prompt ("Primarschulen in Köniz": unreadable,
 unreachable, timeout, ...). By prompt alone the first direct case in fixture
@@ -30,12 +36,18 @@ order answers. A connection whose base URL is ``http://<host>/case/<id>/v1``
 gets case ``<id>`` for every prompt, whatever its text: that is how a test
 picks a failure without a prompt of its own.
 
+A case with a ``replan`` answers a request that continues a conversation
+with the model (one with an assistant turn in it: a tool chain's re-plan, P4)
+with that, and the first call with its ``answer``; without one, ``answer``
+answers both.
+
 A further prefix ``/hold/<seconds>`` (after ``/case/<id>``, if any) holds the
-answer to every request that continues a conversation with the model, one
-with an assistant turn in it: a tool chain's re-plan (P4), a follow-up (P6).
-The first call answers at once. That is how a test keeps a chain ``running``
-long enough to abort it (E2.5): its steps take milliseconds, its re-plan
-waits for the model.
+answer to every request that continues a conversation with the model: a tool
+chain's re-plan (P4), a follow-up (P6). The first call answers at once. That
+is how a test keeps a chain ``running`` long enough to abort it (E2.5): its
+steps take milliseconds, its re-plan waits for the model, until ``<seconds>``
+are over or the test ends the hold (``POST /_release``), whichever is first.
+A release counts for the requests received before it only.
 
     python stub.py [--port 8080] [--cases /cases/v1.json]
 """
@@ -54,6 +66,11 @@ MODEL = os.environ.get("STUB_MODEL", "stub-model")
 SLOW_S = float(os.environ.get("STUB_SLOW_S", "30"))
 CASE_PREFIX = re.compile(r"^/case/([A-Za-z0-9_-]+)(/.*)$")
 HOLD_PREFIX = re.compile(r"^/hold/(\d{1,3})(/.*)$")
+NO_ANSWER = {
+    "kind": "cannot_answer",
+    "explanation": "Für diese Frage hat der Stub keine Antwort.",
+    "missing": [],
+}
 
 
 class Stub:
@@ -63,14 +80,32 @@ class Stub:
         self.by_order = sorted(cases, key=lambda c: c.get("approach") != "direct")
         self.requests: list[Any] = []
         self.lock = threading.Lock()
+        # Each release starts a new generation; a hold waits for the next one.
+        self.released = threading.Condition()
+        self.generation = 0
 
     def record(self, path: str, body: Any) -> None:
         with self.lock:
             self.requests.append({"path": path, "body": body})
 
+    def add(self, case_id: str, case: dict[str, Any]) -> None:
+        with self.lock:
+            self.cases[case_id] = {**case, "id": case_id}
+
+    def hold(self, seconds: float, since: int) -> None:
+        """Waits ``seconds``, or until a release after generation ``since``."""
+        with self.released:
+            self.released.wait_for(lambda: self.generation != since, timeout=seconds)
+
+    def release(self) -> None:
+        with self.released:
+            self.generation += 1
+            self.released.notify_all()
+
     def case_for(self, question: str, forced: str | None) -> dict[str, Any] | None:
         if forced is not None:
-            return self.cases.get(forced)
+            with self.lock:
+                return self.cases.get(forced)
         return next((c for c in self.by_order if c.get("prompt", "").strip() == question), None)
 
 
@@ -166,13 +201,32 @@ class Handler(BaseHTTPRequestHandler):
             self.stub.requests.clear()
         self._send(204, b"")
 
-    def do_POST(self) -> None:
-        forced, hold, path = self._route()
+    def _body(self) -> Any:
         raw = self.rfile.read(int(self.headers.get("Content-Length") or 0))
         try:
-            body = json.loads(raw or b"{}")
+            return json.loads(raw or b"{}")
         except ValueError:
-            body = raw.decode("utf-8", "replace")
+            return raw.decode("utf-8", "replace")
+
+    def do_PUT(self) -> None:
+        match = re.fullmatch(r"/_cases/([A-Za-z0-9_-]+)", self.path)
+        body = self._body()
+        if match is None or not isinstance(body, dict):
+            self._json(404, {"error": {"message": "not found"}})
+            return
+        self.stub.add(match.group(1), body)
+        self._send(204, b"")
+
+    def do_POST(self) -> None:
+        # Before the request is logged: a release the test sends once it has
+        # seen this request in the log counts for it.
+        since = self.stub.generation
+        forced, hold, path = self._route()
+        body = self._body()
+        if path == "/_release":
+            self.stub.release()
+            self._send(204, b"")
+            return
         self.stub.record(self.path, body)
         if path != "/v1/chat/completions" or not isinstance(body, dict):
             self._json(404, {"error": {"message": "not found"}})
@@ -194,7 +248,7 @@ class Handler(BaseHTTPRequestHandler):
 
         messages = body.get("messages", [])
         if hold and continues(messages):
-            time.sleep(hold)  # a re-plan waits; the chain stays running meanwhile
+            self.stub.hold(hold, since)  # a re-plan waits; the chain stays running meanwhile
         case = self.stub.case_for(question_of(messages), forced) or {}
         error = case.get("llm_error")
         if error == "llm_unreachable":
@@ -206,11 +260,8 @@ class Handler(BaseHTTPRequestHandler):
         if "raw" in case:
             self._send(200, completion(case["raw"]))
             return
-        answer = case.get("answer") or {
-            "kind": "cannot_answer",
-            "explanation": "Für diese Frage hat der Stub keine Antwort.",
-            "missing": [],
-        }
+        replan = case.get("replan") if continues(messages) else None
+        answer = replan or case.get("answer") or NO_ANSWER
         self._send(200, completion(json.dumps(answer, ensure_ascii=False)))
 
 

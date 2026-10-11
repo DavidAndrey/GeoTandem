@@ -1047,7 +1047,8 @@
     },
     {
       "id": "step_limit",
-      "screens": ["M9.5"],
+      "screens": ["M3"],
+      "_note": "Nine steps at planning are refused before anything runs: a refusal card (design M3, code step_limit), not a stopped run. M9.5 ('angehalten · Begrenzung', step_limit) is reached only when a re-plan brings the plan over 8 steps (test_the_step_limit_counts_the_re_planned_steps)",
       "approach": "chain",
       "prompt": "Schulen Schritt für Schritt nach Standorten eingrenzen",
       "answer": {

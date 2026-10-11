@@ -392,6 +392,21 @@ class ModelActionStep(Base):
     duration_ms: Mapped[int | None]
 
 
+class ModelCall(Base):
+    """A chain's re-plan call (E2.5 gate, security review #43): the request
+    limit (P5) counts it on the day it happened, beside the records whose
+    first call reached the model (``ModelAction.called_at``)."""
+
+    __tablename__ = "model_call"
+    __table_args__ = (Index("ix_model_call_connection_id_called_at", "connection_id", "called_at"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    action_id: Mapped[int] = mapped_column(ForeignKey("model_action.id", ondelete="CASCADE"))
+    connection_id: Mapped[int]
+    called_at: Mapped[datetime]
+    """Naive UTC from the application's clock, like the record's times."""
+
+
 class AppMeta(Base):
     """Instance-wide facts fixed at first start, e.g. the internal CRS."""
 

@@ -220,9 +220,18 @@ async def set_up(client: httpx.AsyncClient, app: FastAPI, model: Model, row: Row
 
 
 async def run_surface(
-    client: httpx.AsyncClient, app: FastAPI, record_: Body, row: Row, ran: list[str]
+    client: httpx.AsyncClient,
+    app: FastAPI,
+    record_: Body,
+    row: Row,
+    ran: list[str],
+    *,
+    changed: bool = False,
 ) -> None:
-    """As the interface walks it: approve where it waits, run, adopt."""
+    """As the interface walks it: approve where it waits, run, adopt. With
+    ``changed`` the account's level is no longer the record's: a chain that
+    halted midway does not go on (review #43), it stops ``limited`` at the
+    next ``run``, its last complete result adoptable."""
     action_id = record_["id"]
     if row.cell is CellMode.OFF:
         for method, step, code in (
@@ -245,6 +254,9 @@ async def run_surface(
             assert approved.status_code == 200, approved.text
             approvals += 1
         elif current["status"] == "approved":
+            if changed and any(s["status"] in ("ok", "empty") for s in current["steps"]):
+                await stopped_at_halt(client, action_id, ran)
+                return
             await run(client, app, action_id)
         else:
             break
@@ -267,6 +279,21 @@ async def run_surface(
     assert canonical_json(QueryObject.model_validate(current["query"])) == canonical_json(
         QueryObject.model_validate(last)
     )
+
+
+async def stopped_at_halt(client: httpx.AsyncClient, action_id: int, ran: list[str]) -> None:
+    """``run`` after a halt under a level changed since (review #43): no step
+    runs, the chain is ``limited`` at once, ``level_not_available``."""
+    ran.clear()
+    response = await client.post(url(action_id, "run"))
+    assert response.status_code == 202, response.text
+    ended = response.json()
+    assert (ended["status"], ended["stop_reason"]) == ("limited", "replan_limit")
+    assert ended["error"]["code"] == "level_not_available"
+    assert ended["error"]["details"] == {"reason": "changed"}
+    assert len(ran) <= 1  # the stamp of the last complete result, no step
+    adopted = await client.post(url(action_id, "adopt"))
+    assert adopted.status_code == 200, adopted.text
 
 
 @pytest.mark.parametrize("path", PATHS)
@@ -349,7 +376,8 @@ async def test_enforcement_matrix_for_chains(
         assert await record(client, action_id) == proposed
 
     elif path == "level_changed":
-        # Every cell flipped after the prompt: the chain keeps its level (M7.3).
+        # Every cell flipped after the prompt: the chain keeps its level (M7.3)
+        # until it halted midway; then it goes on no further (review #43).
         flipped = {
             c: {"off": "auto", "approve": "auto", "auto": "off"}[cell.value] for c in row.cells
         }
@@ -364,21 +392,27 @@ async def test_enforcement_matrix_for_chains(
             early = await client.post(url(action_id, "run"))
             assert (early.status_code, early.json()["code"]) == (409, "not_approved")
             assert ran == []
-        await run_surface(client, app, proposed, row, ran)
+        await run_surface(client, app, proposed, row, ran, changed=True)
 
     assert len(model.fake.calls) == calls, "no step after the planning asks the model"
 
 
-@pytest.mark.parametrize("cell", [CellMode.APPROVE, CellMode.AUTO], ids=["approve", "auto"])
+CROSSED = [(c, m) for c in (OpClass.QUERY, OpClass.SPATIAL, OpClass.DERIVE) for m in CellMode]
+"""Classes a chain step writes, by every cell: the paths crossed with them."""
+
+
+@pytest.mark.parametrize(("op_class", "cell"), CROSSED, ids=[f"{c}-{m}" for c, m in CROSSED])
 async def test_a_connection_disabled_after_the_plan_leaves_the_chain_runnable(
     client: httpx.AsyncClient,
     app: FastAPI,
     model: Model,
     ran: list[str],
+    op_class: OpClass,
     cell: CellMode,
 ) -> None:
-    """D2: approve, run without a re-plan and adopt call no model."""
-    row = cell_row(OpClass.DERIVE, cell)
+    """D2: approve, run without a re-plan and adopt call no model; an ``off``
+    cell stays refused."""
+    row = cell_row(op_class, cell)
     proposed = await set_up(client, app, model, row)
     for connection in (await client.get("/api/admin/llm/connections")).json():
         off = await client.patch(
@@ -391,19 +425,21 @@ async def test_a_connection_disabled_after_the_plan_leaves_the_chain_runnable(
     assert len(model.fake.calls) == calls
 
 
-@pytest.mark.parametrize("cell", list(CellMode), ids=[c.value for c in CellMode])
+@pytest.mark.parametrize(("op_class", "cell"), CROSSED, ids=[f"{c}-{m}" for c, m in CROSSED])
 async def test_a_level_closed_after_the_plan_still_governs_the_chain(
     client: httpx.AsyncClient,
     app: FastAPI,
     model: Model,
     other: httpx.AsyncClient,
     ran: list[str],
+    op_class: OpClass,
     cell: CellMode,
 ) -> None:
     """Plan 5.3's non-selectable level, for the chain: a user plans under a level
-    of that ``derive`` cell, the administrator then closes it; the chain keeps
-    it (its cells, its halts), and the user's next prompt gets the default."""
-    row = cell_row(OpClass.DERIVE, cell)
+    of that cell, the administrator then closes it; the chain keeps it (its
+    cells, its first approval) until it halted midway, where it goes on no
+    further (review #43), and the user's next prompt gets the default."""
+    row = cell_row(op_class, cell)
     await connect(client)
     ids = await install_levels(client, list(row.levels))
     chosen = await other.put("/api/llm/options", json={"level_id": ids["Zelle"]})
@@ -417,7 +453,7 @@ async def test_a_level_closed_after_the_plan_still_governs_the_chain(
     kept = await record(other, proposed["id"])
     assert (kept["level"]["name"], kept["governance"]) == ("Zelle", proposed["governance"])
     ran.clear()
-    await run_surface(other, app, proposed, row, ran)
+    await run_surface(other, app, proposed, row, ran, changed=True)
 
     model.fake.script.append(row.answer())
     again = await other.post(PROMPT, json={"text": "Schulen?", "approach": "chain"})

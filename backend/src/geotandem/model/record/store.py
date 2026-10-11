@@ -31,7 +31,7 @@ from sqlalchemy.orm import Session, object_session
 from geotandem import audit
 from geotandem.auth.accounts import Account
 from geotandem.connections import ConnectionInfo
-from geotandem.db.orm import ModelAction, ModelActionStep
+from geotandem.db.orm import ModelAction, ModelActionStep, ModelCall
 from geotandem.db.spatialite import reading
 from geotandem.engine import ResultStamp
 from geotandem.levels import CellMode, Level, OpClass
@@ -40,6 +40,7 @@ from geotandem.model.chain.view import restored
 from geotandem.model.errors import ActionError
 from geotandem.model.schemas import (
     MAX_PAGE,
+    MAX_STEPS,
     ActionStatus,
     Approach,
     CannotAnswer,
@@ -102,7 +103,10 @@ or (``refused``, ``answered``) ended without anything to decide (section 2)."""
 
 MAX_RAW_QUERY_BYTES = 64 * 1024
 """The most of a refused answer's raw query a record keeps, as canonical JSON
-(UTF-8); a larger one is kept as ``{"omitted": "too large"}`` (review #35)."""
+(UTF-8); a larger one is kept as ``{"omitted": "too large"}`` (review #35).
+The same bound holds for the steps of a refused plan, of which the record
+keeps the first ``MAX_STEPS`` (review #40)."""
+OMITTED: dict[str, str] = {"omitted": "too large"}
 
 UNDOABLE: frozenset[Decision] = frozenset({"accepted", "auto"})
 """What undo takes back: a change the model made, never the user's own (D2)."""
@@ -347,15 +351,30 @@ def _json(model: Any) -> Any:
     return None if model is None else model.model_dump(mode="json", by_alias=True)
 
 
+def _too_large(value: Any) -> bool:
+    """``value`` as canonical JSON (UTF-8) beyond ``MAX_RAW_QUERY_BYTES``."""
+    text = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return len(text.encode()) > MAX_RAW_QUERY_BYTES
+
+
 def _bounded(answer: AnyAnswer | None) -> Any:
     """A refused answer as the record keeps it (design M3): its raw query only up
-    to ``MAX_RAW_QUERY_BYTES`` of canonical JSON (review #35). Everything else
-    of an answer is bounded by its schema."""
+    to ``MAX_RAW_QUERY_BYTES`` of canonical JSON (review #35); of a refused
+    plan the first ``MAX_STEPS`` steps, and their arguments only while all of
+    them together stay within the same bound, else each step's are omitted
+    (review #40: the schema lets a plan list up to ``MAX_PLAN_STEPS`` steps of
+    any arguments). Everything else of an answer is bounded by its schema."""
     data = _json(answer)
-    if isinstance(data, dict) and isinstance(data.get("query"), dict):
-        text = json.dumps(data["query"], sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-        if len(text.encode()) > MAX_RAW_QUERY_BYTES:
-            data["query"] = {"omitted": "too large"}
+    if not isinstance(data, dict):
+        return data
+    if isinstance(data.get("query"), dict) and _too_large(data["query"]):
+        data["query"] = dict(OMITTED)
+    steps = data.get("steps")
+    if isinstance(steps, list):
+        kept = steps[:MAX_STEPS]
+        if _too_large([step.get("arguments") for step in kept]):
+            kept = [{**step, "arguments": dict(OMITTED)} for step in kept]
+        data["steps"] = kept
     return data
 
 
@@ -365,20 +384,41 @@ def _query_json(query: QueryObject | None) -> dict[str, Any] | None:
 
 
 SHOWN: frozenset[str] = frozenset(
-    {"time_limit", "result_too_large", "step_limit", "connection_not_available"}
+    {
+        "time_limit",
+        "result_too_large",
+        "step_limit",
+        "connection_not_available",
+        "level_not_available",
+        "quota_exceeded",
+        "busy",
+    }
 )
 """Codes of a chain's stop whose ``details`` the user sees, as they name no
-cause: a limit's numbers (``{step, value, max}``, design M9.5), and why a
-re-plan was not sent (``reason``)."""
+cause: a limit's numbers (``{step, value, max}``, design M9.5), why a re-plan
+was not sent (``reason``; the request limit's ``{limit, connection}``, review
+#43), the step no query slot was free for (``{step}``, review #42)."""
+NAMED: frozenset[str] = frozenset({"class_not_allowed", "unknown_layer", "not_representable"})
+"""Codes of a re-plan refused (``replan_limit``) whose ``details`` the user sees
+in part (``NAMES``): the step, the level and the names its words need, from
+the model's own plan and the level, never from rows (E2.5 integrated review)."""
+NAMES: frozenset[str] = frozenset({"step", "level", "op_class", "part", "layer", "attribute"})
 
 
 def _error_for(error: dict[str, Any] | None, detail: bool) -> dict[str, Any] | None:
     """A failure as a view carries it: code and message, and its ``details``
     (the transport's ``cause``, what did not parse) only for ``detail``, the
-    administrator's log (D4, review #37); a chain's stop with what it shows (``SHOWN``)."""
+    administrator's log (D4, review #37); a chain's stop with what it shows
+    (``SHOWN``; of ``NAMED`` codes the ``NAMES``)."""
     if error is None or detail or error.get("code") in SHOWN:
         return error
-    return {"code": error.get("code"), "message": error.get("message"), "details": {}}
+    details = error.get("details") or {}
+    shown = (
+        {k: v for k, v in details.items() if k in NAMES and isinstance(v, str | int)}
+        if error.get("code") in NAMED
+        else {}
+    )
+    return {"code": error.get("code"), "message": error.get("message"), "details": shown}
 
 
 def to_view(
@@ -1435,16 +1475,36 @@ class ModelActionStore:
         run_ms: int,
     ) -> ModelActionView:
         """A re-plan's steps replace those that did not run after position
-        ``after`` (P4): the steps that ran stay, the new ones are ``revised``."""
+        ``after`` (P4): the steps that ran stay, the new ones are ``revised``.
+        A step after ``after`` that never ran and never will (``skipped``) goes
+        too, so a new step never collides with its place (E2.5 review); one
+        that ran there would be a run out of order: refused, nothing written."""
 
         def then(db: Session, row: ModelAction) -> None:
             db.execute(
                 delete(ModelActionStep).where(
                     ModelActionStep.action_id == row.id,
                     ModelActionStep.position > after,
-                    ModelActionStep.status.in_([*AHEAD, "removed"]),
+                    ModelActionStep.status.in_([*AHEAD, "removed", "skipped"]),
                 )
             )
+            taken = set(
+                db.scalars(
+                    select(ModelActionStep.position).where(
+                        ModelActionStep.action_id == row.id,
+                        ModelActionStep.position.in_([s.position for s in steps]),
+                    )
+                )
+            )
+            if taken:
+                raise ActionError(
+                    "not_approved",
+                    f"Model action {row.id}: step {min(taken)} ran already; "
+                    "the re-plan's steps do not come in.",
+                    http_status=409,
+                    id=row.id,
+                    status=row.status,
+                )
             db.add_all(_step_row(row.id, replace(s, revised=True)) for s in steps)
             db.flush()
 
@@ -1502,6 +1562,18 @@ class ModelActionStore:
             caller, action_id, "finish", ["running"], {"status": "done"}, stamp, result, run_ms
         )
 
+    def count_call(
+        self, action_id: int, connection_id: int, admit: Callable[[Session], None]
+    ) -> None:
+        """A chain's re-plan call, counted for the connection's request limit on
+        the day it happens (P5, review #43). ``admit`` checks the limit in the
+        same transaction and raises to refuse; nothing is counted then."""
+        with Session(self.engine) as db, db.begin():
+            admit(db)
+            db.add(
+                ModelCall(action_id=action_id, connection_id=connection_id, called_at=self.clock())
+            )
+
     def stop(
         self,
         caller: Account,
@@ -1518,7 +1590,8 @@ class ModelActionStore:
         """A limit, an abort, a re-plan that brought nothing (P4): ``limited``,
         the last complete result (``result``, stamped) adoptable. Also a chain
         that started and waits, halted for approval (``proposed``) or approved
-        at a halt and not run again (``approved``), when it is aborted."""
+        at a halt and not run again (``approved``), when it is aborted, or run
+        again under a level changed since (``replan_limit``, review #43)."""
         values: dict[str, Any] = {"status": "limited", "stop_reason": reason, "error": error}
         if replans is not None:
             values |= {"replans": replans, "turns": turns}
@@ -1526,7 +1599,8 @@ class ModelActionStore:
         def halted(row: ModelAction) -> bool:
             db = object_session(row)
             assert db is not None
-            return reason == "aborted" and row.approach == "chain" and _started(db, row.id)
+            waits = reason in ("aborted", "replan_limit")
+            return waits and row.approach == "chain" and _started(db, row.id)
 
         def change(row: ModelAction) -> dict[str, Any]:
             if row.status != "running" and not halted(row):

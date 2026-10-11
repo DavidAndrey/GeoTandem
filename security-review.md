@@ -613,3 +613,89 @@ analysis, approval baselines, parked work, hand-over, panel), so the next
 account in the same window sees nothing of the last one's and an answer still
 on its way changes nothing (tested without a reload). A reverse proxy must not
 forward a Bearer `Authorization` header (README).
+
+## Gate E2.5 (plan E2.3–E2.6, 5.2 and 5.4)
+
+Date: 2026-10-11, at the E2.5 etappe gate. Scope: the integrated diff of
+E2.5 (WP74–WP79) on `ep-2.3-6`: the tool chain (`model/chain/`: its tools,
+`model_view`, planning, re-plans), its run and its record (`model/service.py`,
+`model/record/store.py`, migration 0011), the comparison
+(`model/compare.py`), the routes (`api/model.py`), the query slots
+(`api/slots.py`), and the frontend's chain and comparison clients with their
+fakes. Method: `/security-review` on the diff and the checklist of plan 5.4
+item by item, each finding shown by a test that fails on the code before its
+fix.
+
+**Overall:** the model still sees nothing of the data but counts (D9, D10),
+and a chain writes nothing but its record. The findings are about resources a
+chain uses outside the bounds the direct path keeps (#40, #42, #44), one
+route's method (#41), and a level or a request limit that a chain outlived
+(#43).
+
+### Checklist (E2.5)
+
+| Item | Result | Basis |
+|---|---|---|
+| **`model_view` is the only path to the model (D10)** | No finding | `model_view` (`chain/view.py`) is the one function that turns an engine result into what the model sees: `ok`/`error`, a code, `empty`, the count, and a `part` that must be a layer or attribute name written in that step's own arguments. `ModelView` has no free-text field (mypy strict). An AST check holds every call site to it (`test_an_engine_result_reaches_the_model_only_through_model_view`, `test_only_model_view_makes_what_the_model_sees`, `test_the_check_catches_the_cheap_ways_round`); `chain/ask.py`, the one module that talks to the model, imports nothing of the engine; nothing on the model path reads the data-release flag. |
+| **Sentinel test** | No finding | `test_model_chain_sentinel.py`: sentinels in attribute values, geometry and the names of derived layers, a name-shaped one in an error; no sentinel in any message sent to the model (plan, re-plan input, error texts). The data-release flag flipped: the model input is the same byte for byte (D10). End to end (WP79): a sentinel in the data never appears in the stub's request log. |
+| **No intermediate result is written** | No finding | A step is its query object and a count (`count_query`); only the adoptable step gets a stamp, within the result-size limit. Walking every model route as an administrator and as a user writes `model_action`, `model_action_step` and, since #43, `model_call` (an insert per re-plan), nothing else; the view handed on is a `LayerView` whose writes raise; no name of a data-core write is on the path (`test_walking_every_model_route_writes_the_action_record_only`, `test_the_model_path_names_no_write_of_the_data_core`). |
+| **Background task cancellation** | #44 | `abort` sets the run's cancel event; the run checks it before every step and around a re-plan's call, and the store refuses the next step once the abort is written (one compare-and-set, `_going_on`). A run outliving its budget is given up (`_run_expired`), a `running` record found at start-up is closed `interrupted`. At shutdown the calls and runs in flight were not cancelled (#44). |
+| **Resource exhaustion** | #40, #42, #43 | 8 steps, re-planned ones included (`step_limit`), at most 2 re-plans; 10 000 objects (`result_too_large` at the last step, the stamp within the limit); 10 s per step; 120 s per model call, the planning call's and each re-plan's own, both tested on an injected clock; 300 s per request; one run per account among the model-call slots (4). Found: a refused plan stored whole (#40), the chain's queries outside the instance's query slots (#42), re-plans outside the request limit (#43). The comparison keeps the result-size limit and one time budget for all its reads. |
+| **The accepted residual risk of D9, re-read** | Still acceptable, restated | See "Accepted residual risks (E2.5)" below: the count oracle is real, bounded, and an open decision for external connections without data release. |
+
+### New findings
+
+| # | Priority | Finding | Impact |
+|---|---|---|---|
+| 40 | **Low** | **A refused plan was stored whole.** `_bounded` (`record/store.py`) limited a refused answer's raw `query` only (#35); a plan has `steps`, and its schema had no upper bound on their number, nor on a step's `arguments`. | A plan refused for `step_limit` or any check kept every step as the model sent it: up to the answer's size (1 MB, #34) per record, written to the database and sent with every poll of the record and the log. |
+| 41 | **Low** | **The comparison was a `GET` that writes.** `GET /api/model/actions/{id}/comparison` sets `previewed_at` on a waiting side, as the preview does, and the origin check (#8) covers changing methods only. | The same as #39 for the preview: guarded by the `SameSite=Strict` cookie alone, another page could make a signed-in browser compare, and the log claims previews of proposals the user never saw. Nothing leaks. |
+| 42 | **Low** | **A chain's queries ran outside the instance's query slots.** A step's count and the adoptable step's stamp run in the chain's thread, not in a request, and took no slot of the count that bounds queries at once (#5); neither did the stamp of an abort. | Every running chain (one per account, up to the four model-call slots) adds a query of up to 10 s beside the instance's cap of 8: with Modus A saturated, 12 queries at once on a server sized for 8, and the cap that keeps sign-ins and everyone's work responsive did not hold. |
+| 43 | **Medium** | **A chain outlived its level and its connection's request limit.** A re-plan, and a `run` after a halt, made new model calls under the record's level whatever the account's level was now: a level the administrator had edited, or taken from the user, kept governing. The request limit (P5) counted a chain once, at its plan; its re-plans were not counted. | A chain halted for approval can be resumed days later and re-plan under a level the administrator closed (approve and run judge the snapshot, M7.3). A connection whose limit caps a paid model's bill was exceeded up to threefold by chains (a plan and two re-plans each). |
+| 44 | **Low** | **Shutdown left calls and runs going.** `ModelCalls.shutdown` cancelled the timers and the calls not started, but set no cancel event. | A chain running at shutdown went on starting steps and could send a re-plan to the model while the process stopped; a call queued at that moment found no event set. Its record is closed at the next start either way. |
+
+### Status of #40–#44
+
+| # | Fixed |
+|---|---|
+| 40 | A refused plan keeps its first `MAX_STEPS` steps, and their arguments only while together within 64 kB of canonical JSON, else each step's are `{"omitted": "too large"}`. `PlanAnswer.steps` has an upper bound in the parsing schema (`MAX_PLAN_STEPS`, 64): a plan beyond it is `model_unreadable`, one between 9 and 64 steps is `step_limit` as before. Tested with a 1 MB plan. |
+| 41 | The comparison is `POST /api/model/actions/{id}/comparison` (client, fakes, e2e and plan section 6, P7 and WP76 follow); a cross-site `POST` is refused by the origin check, runs nothing and leaves `previewed_at` unset (tested). |
+| 42 | The instance's count of queries at once is one counter shared by requests and threads (`QuerySlots`; a request still waits in the event loop, on no worker thread). Each step and each stamp of a chain takes a slot from it in the chain's thread and gives it back in `finally`, waiting no longer than the query time limit and the request's deadline leave, and no longer than an abort. A step that gets none stops the run before it: `limited`, `interrupted`, `busy` naming the step (or `aborted`, `time_limit` when that came first); never past the cap. A stamp without a slot leaves the result unstamped, as when its run fails. **`abort`** waits for no slot: it takes one if one is free, else its result is offered unstamped, as `_stop_quietly` leaves it, and `adopt` stamps it under its own slot; an abort must answer at once and never fail `busy`, and an unstamped result loses nothing (decided at the gate). Tested with a saturated instance (the step waits, then stops; a slot that comes free lets it go on; the chain never holds more than one), and an abort without a free slot. |
+| 43 | Before a re-plan, and at `run` after a halt, the account's current level must still be the record's (id, matrix, system-prompt hash; the name does not count). Otherwise the chain stops `limited`/`replan_limit` with `level_not_available`, `details.reason` `changed`, before any model call; its last complete result stays adoptable. A re-plan is a model call of its own for the request limit: counted on the day it happens (`model_call`, migration **0012**, one row per re-plan with its connection and time) and refused at the limit before its call (`replan_limit`, `quota_exceeded` with the limit); prompts count them too. Tested: a level edited (matrix, system prompt) or taken away stops the next re-plan and the run after a halt, a renamed one does not; re-plans count toward the limit and the next prompt is refused. M7.3 still holds for everything the record governs (cells, halts, approvals). |
+| 44 | `shutdown` sets every cancel event in flight before it stops the pool: a call not sent is not sent, an answer is dropped, a chain starts no further step or re-plan (tested). |
+
+### Accepted residual risks (E2.5)
+
+- **The D9 count oracle, restated.** A hostile endpoint (an external model, or
+  a local one taken over) can single out one feature, by `near_feature` with
+  a guessable feature id and a tiny distance, or by equality on a unique
+  released attribute, and learn about one bit per step of a released
+  attribute: a count of 0 or 1 for a condition it chooses. At most 8 counts
+  per request (steps, re-planned ones included) and 2 re-plans. It holds with
+  the data release off as well as on, and on external connections. It is
+  bounded by: released attributes only (the layer profile), conditions the
+  controls can show (D3), at most 8 conditions per query, the user's own
+  requests (the model cannot start one), and the request limit (off by
+  default; it now counts every call, #43). Under *Automatisch* and
+  *Teilautonom* it runs without a person looking until the log shows it.
+  Accepted for local connections. **Open decision, not implemented:** for
+  external connections without data release the integrator has put the
+  choice to the user: report only empty/non-empty, or a bucketed count, or
+  no re-plans at all.
+- **Model-call slots held by a chain.** A run holds its account's model-call
+  slot for up to about 325 s (the 300 s request, two step limits for the step
+  at the deadline and the stamp, and the grace), the re-plans' calls
+  included. Four accounts running chains fill the four slots; other prompts
+  get `503 busy` meanwhile.
+- **Cost.** The request limit now counts calls, not requests (#43): a chain
+  spends up to three of a connection's day. The per-account daily limit
+  advised before a cloud demo with a paid key (E2.4) applies all the more.
+- **Changes in flight.** A run reads the layer profile and the account's view
+  once per run stretch (from `run` to its end or a halt): an attribute or a
+  layer withdrawn during the stretch is seen at the next stretch or re-plan,
+  not at the next step. The level is checked at each re-plan and each `run`
+  after a halt (#43), not before every step.
+- **Tokens.** `run` and `compare` take any signed-in credential until E4, like
+  `prompt` and `execute` (E2.4): a token can run a chain the person's level
+  already allows (`auto` cells) and ask for a comparison's repeat; `adopt`,
+  the plan's edit, the comparison and every approval need an interactive
+  session.

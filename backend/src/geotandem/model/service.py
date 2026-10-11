@@ -84,7 +84,11 @@ deadline (``CHAIN_TIME_LIMIT_S``, halts left out), at a last step beyond the
 result-size limit, when re-plans are used up or bring nothing, or when the
 user aborts: the step that runs ends, no other starts. Its last complete
 result waits to be adopted: ``adopt`` runs it as the user, as ``execute``
-runs a direct answer, and is the other answer with rows.
+runs a direct answer, and is the other answer with rows. A step and a stamp
+take one of the instance's query slots (``QueryGate``, security review #42);
+a re-plan, and a ``run`` after a halt, only while the account's level is
+still the record's, and a re-plan counts against the request limit as a
+call of its own (review #43).
 
 The comparison (WP76, design M10, P7) is a prompt too: ``compare`` asks the
 prompt of a record with a result again with the other approach, as a new
@@ -101,14 +105,14 @@ Logs carry ids and codes only, never the prompt or the answer (C15).
 import logging
 import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from concurrent.futures import Future, ThreadPoolExecutor
 from concurrent.futures import wait as wait_for
-from contextlib import suppress
+from contextlib import AbstractContextManager, contextmanager, suppress
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta, tzinfo
 from functools import partial
-from typing import Any, Final
+from typing import Any, Final, Protocol
 
 from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session
@@ -119,7 +123,7 @@ from geotandem.catalog import LayerInfo, ModelProfile, list_layers, model_profil
 from geotandem.connections import ConnectionInfo, ConnectionProblem, Connections
 from geotandem.data import DataBackend, Limits, Op
 from geotandem.data.view import LayerView
-from geotandem.db.orm import ModelAction
+from geotandem.db.orm import ModelAction, ModelCall
 from geotandem.engine import (
     QueryError,
     ResultStamp,
@@ -149,7 +153,7 @@ from geotandem.model.chain.plan import (
     one_approval,
     step_cell,
 )
-from geotandem.model.chain.run import run_step, stamp
+from geotandem.model.chain.run import StepRun, run_step, stamp
 from geotandem.model.chain.view import restored
 from geotandem.model.compare import name_attribute, reason, result_layer
 from geotandem.model.direct import DirectAnswer, DirectQuery, governance
@@ -257,6 +261,15 @@ def _error(code: str, message: str, **details: Any) -> dict[str, Any]:
     return {"code": code, "message": message, "details": details}
 
 
+def _level_changed() -> dict[str, Any]:
+    """A chain's stop: the account's level is no longer the record's (review #43)."""
+    return _error(
+        "level_not_available",
+        "The account's level changed since the plan; the chain makes no further model call.",
+        reason="changed",
+    )
+
+
 def _busy(action_id: int) -> ActionError:
     """The account's prompt ``action_id`` still holds the model (one at a time)."""
     return ActionError(
@@ -284,6 +297,16 @@ def turns_of(thread: list[ModelActionView]) -> list[Turn]:
 
 class ModelCallsBusy(Exception):
     """Every model-call slot is taken: 503 ``busy``, nothing recorded."""
+
+
+class QueryGate(Protocol):
+    """The instance's count of queries at once (``api.slots.QuerySlots``,
+    security review #5), as a thread outside any request takes from it: a
+    chain's step and its stamp (review #42)."""
+
+    def take_thread(self, wait_s: float, stop: Callable[[], bool] = ...) -> bool: ...
+
+    def give_back_thread(self) -> None: ...
 
 
 class ModelCalls:
@@ -421,9 +444,15 @@ class ModelCalls:
         wait_for(running, timeout)
 
     def shutdown(self) -> None:
-        """Calls not started are dropped; their records are closed at the next start."""
+        """Calls not started are dropped; their records are closed at the next
+        start. Every call and run in flight gets its cancel event (review #44):
+        a model call not yet sent is not sent, an answer is dropped, a chain
+        starts no further step or re-plan."""
         with self._lock:
             timers = [t for t in self._held.values() if t is not None]
+            events = list(self._cancel.values())
+        for event in events:
+            event.set()
         for timer in timers:
             timer.cancel()
         self._executor.shutdown(wait=False, cancel_futures=True)
@@ -488,18 +517,27 @@ def _snapshot_level(view: ModelActionView, system_prompt: str = "") -> Level:
 
 
 def _adopted(
-    steps: list[ChainStep], context: ToolContext, profile: ModelProfile
+    steps: list[ChainStep],
+    context: ToolContext,
+    profile: ModelProfile,
+    slot: AbstractContextManager[bool],
 ) -> tuple[ChainStep | None, ResultStamp | None]:
     """A chain's result to adopt (decision 11, ``last_complete``) with its
-    stamp, the only one a chain's steps get."""
+    stamp, the only one a chain's steps get. The stamp is a query of the
+    instance (``slot``, review #42): without a slot the result is offered
+    unstamped, as when the stamp's run fails; ``adopt`` stamps it then."""
     found = last_complete(steps, context.limits.max_features)
     if found is None:
         return None, None
-    try:
-        return found, stamp(found.query, context, profile)
-    except QueryError as exc:  # the stamp's run failed: offered unstamped
-        log.warning("model chain: result not stamped (%s)", exc.code)
-        return found, None
+    with slot as got:
+        if not got:
+            log.warning("model chain: result not stamped (busy)")
+            return found, None
+        try:
+            return found, stamp(found.query, context, profile)
+        except QueryError as exc:  # the stamp's run failed: offered unstamped
+            log.warning("model chain: result not stamped (%s)", exc.code)
+            return found, None
 
 
 @dataclass(frozen=True)
@@ -516,6 +554,25 @@ class PromptFlow:
     """The time zone whose calendar day the request limit counts; ``None``: the server's."""
     monotonic: Callable[[], float] = time.monotonic
     """The clock of every time limit: a model call's deadline, a chain's (P4)."""
+    gate: QueryGate | None = None
+    """The instance's count of queries at once, which a chain's steps and stamps
+    take from (review #42); ``None``: not counted (unit tests)."""
+
+    @contextmanager
+    def query_slot(self, wait_s: float, stop: Callable[[], bool] = lambda: False) -> Iterator[bool]:
+        """One of the instance's query slots for a chain's thread, taken within
+        ``wait_s`` (or until ``stop()``) and given back on leaving; ``False``
+        when none came free (review #42)."""
+        gate = self.gate
+        if gate is None:
+            yield True
+            return
+        got = gate.take_thread(wait_s, stop)
+        try:
+            yield got
+        finally:
+            if got:
+                gate.give_back_thread()
 
     @property
     def store(self) -> ModelActionStore:
@@ -634,24 +691,37 @@ class PromptFlow:
         )
         if thinking is not None:
             raise _busy(thinking)
+        self._within_limit(db, connection)
+
+    def _within_limit(self, db: Session, connection: ConnectionInfo) -> None:
+        """The connection's request limit (P5), when the administrator switched
+        it on: the model calls of the current calendar day, counted from the
+        action table over all accounts, ``quota_exceeded`` at the limit. A
+        prompt counts once it reached the model call, or while it still may
+        (thinking): one refused before any record, or aborted before its call,
+        does not; a chain's re-plan counts as a call of its own on the day it
+        happens (``ModelCall``, review #43)."""
         if not connection.request_limit_enabled:
             return
         limit = connection.request_limit_per_day
         if limit is None:  # the connection rules and the table's check keep it set
             raise RuntimeError(f"connection {connection.id} has a request limit without number")
-        # A request counts once it reached the model call, or while it still may
-        # (thinking): one refused before any record, or aborted before its call,
-        # does not.
-        used = db.scalar(
+        today = day_start(self.clock(), self.tz)
+        prompts = db.scalar(
             select(func.count())
             .select_from(ModelAction)
             .where(
                 ModelAction.connection_id == connection.id,
-                ModelAction.created_at >= day_start(self.clock(), self.tz),
+                ModelAction.created_at >= today,
                 ModelAction.called_at.is_not(None) | (ModelAction.status == "thinking"),
             )
         )
-        if (used or 0) >= limit:
+        replans = db.scalar(
+            select(func.count())
+            .select_from(ModelCall)
+            .where(ModelCall.connection_id == connection.id, ModelCall.called_at >= today)
+        )
+        if (prompts or 0) + (replans or 0) >= limit:
             raise ActionError(
                 "quota_exceeded",
                 f"The {limit} requests per day of the connection '{connection.name}' are "
@@ -859,7 +929,10 @@ class PromptFlow:
         # without a run (it was given up): now.
         view_, profile = profile_for(self.backend, caller)
         context = ToolContext(view_, self.limits, self.unsupported)
-        result, stamped = _adopted(chain.steps, context, profile)
+        # The request's thread waits for no query slot: the abort answers at
+        # once, and without a free slot the result is offered unstamped, as
+        # ``_stop_quietly`` leaves it; ``adopt`` stamps it under its own slot.
+        result, stamped = _adopted(chain.steps, context, profile, self.query_slot(0))
         view = self.store.stop(caller, action_id, "aborted", stamped, result=result)
         log.info("model action %d: aborted, limited", action_id)
         return view
@@ -941,6 +1014,9 @@ class PromptFlow:
                 id=action_id,
                 status=ready.status,
             )
+        chain = self.store.chain(caller, action_id, "run")
+        if any(step.status in RAN for step in chain.steps) and self.level_changed(caller, ready):
+            return self._stop_changed(caller, action_id, chain.steps)
         in_flight = self.calls.in_flight(caller.id)
         if in_flight is not None:
             raise _busy(in_flight)
@@ -968,6 +1044,31 @@ class PromptFlow:
             self.calls.give_back()
             raise
         log.info("model action %d: run", action_id)
+        return view
+
+    def level_changed(self, caller: Account, view: ModelActionView) -> bool:
+        """The account's level now is not the one the record was asked under
+        (id, matrix, system prompt; H7): a chain that goes on after a halt, or
+        re-plans, would make new model calls under a level the account may no
+        longer have (review #43). The name does not count."""
+        level = active_level(self.backend.engine, caller.id, admin=caller.role == "admin")
+        if level.id is None:
+            return True
+        now, then = level_snapshot(level), view.level
+        return (now.id, now.matrix, now.prompt_hash) != (then.id, then.matrix, then.prompt_hash)
+
+    def _stop_changed(
+        self, caller: Account, action_id: int, steps: list[ChainStep]
+    ) -> ModelActionView:
+        """``run`` after a halt under a level changed since (review #43): the
+        chain stops ``limited`` at once, its last complete result adoptable."""
+        visible, profile = profile_for(self.backend, caller)
+        context = ToolContext(visible, self.limits, self.unsupported)
+        result, stamped = _adopted(steps, context, profile, self.query_slot(0))
+        view = self.store.stop(
+            caller, action_id, "replan_limit", stamped, result=result, error=_level_changed()
+        )
+        log.info("model action %d: level changed since the plan, limited", action_id)
         return view
 
     def _run_budget(self, view: ModelActionView, run_ms: int) -> float:
@@ -1154,11 +1255,11 @@ class PromptFlow:
 
     def _replan_endpoint(
         self, caller: Account, view: ModelActionView
-    ) -> tuple[Endpoint, int | None] | None:
+    ) -> tuple[ConnectionInfo, Endpoint] | None:
         """The connection the record names, read once with its endpoint (C14,
         security review #28), and only while it is enabled, still the account's
         and still what the record says it is (H7): the same host and locality.
-        Its endpoint and context length; ``None`` otherwise."""
+        The connection and its endpoint; ``None`` otherwise."""
         active = self.connections.active_call(caller.id)
         if active is None:
             return None
@@ -1169,7 +1270,18 @@ class PromptFlow:
             snapshot.host,
             snapshot.locality,
         )
-        return (endpoint, connection.context_length) if same else None
+        return (connection, endpoint) if same else None
+
+    def _count_replan(self, action_id: int, connection: ConnectionInfo) -> None:
+        """A re-plan is a model call of its own: counted for the connection's
+        request limit on the day it happens, and refused (``quota_exceeded``)
+        once the limit is reached (P5, review #43). Under the admission lock,
+        as a prompt's record is created, so parallel calls pass exactly up to
+        the limit."""
+        with self.calls.admission:
+            self.store.count_call(
+                action_id, connection.id, lambda db: self._within_limit(db, connection)
+            )
 
     # --- enforcement (D2, P2, WP70) ----------------------------------------------
 
@@ -1493,15 +1605,38 @@ class _Runner:
         return shown
 
     def run(self, step: CheckedStep) -> bool:
-        """One step, counted; ``False`` when the run stopped at it."""
+        """One step, counted under one of the instance's query slots (review
+        #42); ``False`` when the run stopped at it."""
         position = step.position
-        try:
-            self.store.step_started(self.caller, self.action_id, position, run_ms=self.ms())
-        except ActionError:
-            self.stop("aborted")  # aborted meanwhile: the step does not start
-            return False
-        last = position == self.state.steps[-1].position
-        run = run_step(step, self.context, self.profile, last=last)
+        left = max(0.0, self.deadline - self.flow.monotonic())
+        wait = min(left, self.flow.limits.timeout_s)
+        with self.flow.query_slot(wait, self.cancel.is_set) as got:
+            if not got:
+                return self.no_slot(position)
+            try:
+                self.store.step_started(self.caller, self.action_id, position, run_ms=self.ms())
+            except ActionError:
+                self.stop("aborted")  # aborted meanwhile: the step does not start
+                return False
+            last = position == self.state.steps[-1].position
+            run = run_step(step, self.context, self.profile, last=last)
+        return self.ran(step, run)
+
+    def no_slot(self, position: int) -> bool:
+        """No query slot came free before the step (review #42): the run stops
+        rather than exceed the instance's count; ``False``."""
+        if self.cancel.is_set():
+            self.stop("aborted")
+        elif self.late():
+            self.stop("time_limit", self.too_late(position))
+        else:
+            message = f"Too many queries ran at the same time; step {position} did not start."
+            self.stop("interrupted", _error("busy", message, step=position))
+        return False
+
+    def ran(self, step: CheckedStep, run: StepRun) -> bool:
+        """The step's outcome stored; ``False`` when the run stopped at it."""
+        position = step.position
         status: StepStatus = "error" if run.error else "empty" if run.count == 0 else "ok"
         shown = run.view.model_dump(mode="json", exclude_none=True)
         self.store.step_ran(
@@ -1555,16 +1690,22 @@ class _Runner:
         if self.late():
             self.stop("time_limit", self.too_late(state.last + 1))
             return False
+        # A level taken away or changed governs no new model call (review #43).
+        if self.flow.level_changed(self.caller, self.view):
+            self.stop("replan_limit", _level_changed())
+            return False
         found = self.flow._replan_endpoint(self.caller, self.view)
         if found is None:
             message = "The model connection of this chain is disabled or changed since its plan."
             error = _error("connection_not_available", message, reason="changed")
             self.stop("replan_limit", error)
             return False
-        endpoint, state.context_length = found
+        connection, endpoint = found
+        state.context_length = connection.context_length
         timeout_s = min(endpoint.timeout_s, MODEL_CALL_S)
         try:
             messages = state.replan_messages()
+            self.flow._count_replan(self.action_id, connection)  # quota_exceeded
             deadline = min(self.deadline, self.flow.monotonic() + timeout_s)
             client = self.flow.client_factory(replace(endpoint, timeout_s=timeout_s))
             try:
@@ -1577,7 +1718,7 @@ class _Runner:
             else:
                 self.stop("replan_limit", _error(exc.code, exc.message, cause=exc.cause))
             return False
-        except ActionError as exc:  # context_too_large, model_unreadable
+        except ActionError as exc:  # context_too_large, quota_exceeded, model_unreadable
             self.stop("replan_limit", _error(exc.code, exc.message, **exc.details))
             return False
         if self.cancel.is_set():
@@ -1585,7 +1726,9 @@ class _Runner:
             return False
         log.info("model action %d: re-planned (%d)", self.action_id, state.replans)
         if not isinstance(answer, PlanAnswer):
-            self.stop("replan_limit")
+            # Told apart from re-plans used up (no error) by the interface.
+            message = "The model answered the re-plan with no plan."
+            self.stop("replan_limit", _error("model_unreadable", message, kind=answer.kind))
             return False
         refused = state.revise(answer, self.context, self.profile)
         if refused is not None:
@@ -1618,7 +1761,15 @@ class _Runner:
             off = rules.off[0]
             position = next(s.position for s in new if off in s.classes)
             message = f"Step {position} of the re-plan: the level does not allow '{off}'."
-            self.stop("replan_limit", _error("class_not_allowed", message, part=off, step=position))
+            error = _error(
+                "class_not_allowed",
+                message,
+                level=self.level.name,
+                op_class=off,
+                part=off,
+                step=position,
+            )
+            self.stop("replan_limit", error)
             return False
         steps = [new_step(self.level, s, revised=True) for s in new]
         try:
@@ -1671,7 +1822,12 @@ class _Runner:
                 http_status=409,
                 id=self.action_id,
             )
-        return _adopted([self.stored[p] for p in sorted(self.stored)], self.context, self.profile)
+        # Waits for a slot no longer than the request's deadline leaves (the
+        # run's expiry allows a step and a stamp past it, ``_run_budget``).
+        left = max(0.0, self.deadline - self.flow.monotonic())
+        slot = self.flow.query_slot(min(left, self.flow.limits.timeout_s))
+        steps = [self.stored[p] for p in sorted(self.stored)]
+        return _adopted(steps, self.context, self.profile, slot)
 
     def finish(self) -> None:
         result, stamp = self.adopted()

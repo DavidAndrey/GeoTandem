@@ -45,6 +45,10 @@ MAX_CONDITIONS = 8
 follow-up starts from (design M3.2, P6); ``and``/``or``/``not`` do not count."""
 MAX_STEPS = 8
 """Steps of one tool chain, re-planned steps included (F-3.9, P4)."""
+MAX_PLAN_STEPS = 64
+"""Steps a plan answer may list at all: up to it, more than ``MAX_STEPS`` is
+refused with ``step_limit`` (and kept as the first ``MAX_STEPS``); beyond it
+the answer is ``model_unreadable`` (review #40)."""
 MAX_REPLANS = 2
 """Re-plan calls of one tool chain (P4)."""
 CHAIN_TIME_LIMIT_S = 300
@@ -256,8 +260,9 @@ class PlanAnswer(_Answer):
     kind: Literal["plan"]
     explanation: Short
     assumptions: list[Assumption] = Field(default=[], max_length=8)
-    steps: list[PlannedStep] = Field(min_length=1)
-    """At most ``MAX_STEPS``: more is refused with ``step_limit``, not cut."""
+    steps: list[PlannedStep] = Field(min_length=1, max_length=MAX_PLAN_STEPS)
+    """At most ``MAX_STEPS``: more is refused with ``step_limit``, not cut;
+    beyond ``MAX_PLAN_STEPS`` the answer is unreadable (review #40)."""
 
 
 ModelAnswer = Annotated[

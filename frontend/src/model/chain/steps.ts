@@ -4,7 +4,7 @@
 // reads the record. The tool names are the server's (WP74 pins them), so
 // nothing here keys on one; a step shows its ``text`` and its ``tool`` as given.
 import { i18n, type MessageDescriptor } from '@lingui/core'
-import { msg, plural } from '@lingui/core/macro'
+import { msg, plural, t } from '@lingui/core/macro'
 import type {
   ModelActionView,
   ModelAnswer,
@@ -60,6 +60,13 @@ export const started = (view: ModelActionView): boolean =>
 export const finished = (step: StepView) => FINISHED.includes(step.status)
 
 /**
+ * The chain's step count (design M9.3 "5 Schritte", M10 "Schritte"): the
+ * steps that ran, with a result or an error; never one planned, skipped or
+ * removed.
+ */
+export const ranCount = (view: ModelActionView): number => view.steps.filter(finished).length
+
+/**
  * What *Ergebnis übernehmen* / *Zwischenstand übernehmen* takes (M9.3–M9.5):
  * the server's choice once the run ended, never the client's. The record's
  * ``query`` is the last complete step that is no buffer and within the
@@ -79,6 +86,17 @@ export const current = (view: ModelActionView): StepView | null =>
 /** "Schritt n von m": the place of ``step`` among the plan's steps (1-based). */
 export const placeOf = (view: ModelActionView, step: StepView): number =>
   planned(view).indexOf(step) + 1
+
+/**
+ * The place of the step at ``position`` (a position the server names, as in
+ * an error's ``step``), also of one the record does not hold, such as a
+ * refused re-plan's: after the plan's steps before it. A removed step has none.
+ */
+export function placeAt(view: ModelActionView, position: number): number | null {
+  const named = view.steps.find((s) => s.position === position)
+  if (named) return named.status === 'removed' ? null : placeOf(view, named)
+  return planned(view).filter((s) => s.position < position).length + 1
+}
 
 /** Milliseconds the steps that ran took (M9.3 "5 Schritte · 3,6 s"). */
 export const ranMs = (view: ModelActionView): number =>
@@ -169,6 +187,28 @@ export function modelSees(view: ModelView): string {
   return parts.join(' · ')
 }
 
+/** A step's state in words, for those who do not see its mark, and for the log (M16.2). */
+export function stepState(step: StepView): string {
+  switch (step.status) {
+    case 'planned':
+      return t`geplant`
+    case 'waiting':
+      return t`wartet auf Freigabe`
+    case 'running':
+      return t`läuft`
+    case 'ok':
+      return t`erledigt`
+    case 'empty':
+      return t`erledigt, leer`
+    case 'error':
+      return t`Fehler`
+    case 'skipped':
+      return t`nicht ausgeführt`
+    case 'removed':
+      return t`entfernt`
+  }
+}
+
 // --- Plan editing (M8.3): values only, never a new step -------------------------
 
 /**
@@ -176,9 +216,10 @@ export function modelSees(view: ModelView): string {
  * change (schema v2: ``compare.value``, ``in.values``, ``between.min``/``max``,
  * ``text_match.text``, a relation's or buffer's ``distance_m``). Names of
  * layers, attributes, operators and the references between steps are no
- * values: changing them is a new question, asked by prompt (design 17).
+ * values: changing them is a new question, asked by prompt (design 17). The
+ * server's ``VALUE_KEYS`` (model/chain/plan.py), held to it by a test.
  */
-const VALUE_KEYS = ['value', 'values', 'min', 'max', 'text', 'distance_m']
+export const VALUE_KEYS: readonly string[] = ['value', 'values', 'min', 'max', 'text', 'distance_m']
 
 export type Path = (string | number)[]
 export type Scalar = string | number | boolean

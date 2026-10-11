@@ -25,6 +25,7 @@ from geotandem.engine import QueryError, count_query, stamp_query
 from geotandem.engine.errors import UnknownAttribute
 from geotandem.importing.run import ImportDecisions, run_import
 from geotandem.levels import OpClass, classify
+from geotandem.llm import Completion
 from geotandem.model.chain import run as chain_run
 from geotandem.model.chain.ask import ChainState
 from geotandem.model.chain.plan import CheckedStep, chain_classes, chain_governance, check_plan
@@ -33,7 +34,15 @@ from geotandem.model.chain.tools import CHAIN
 from geotandem.model.chain.view import StepResult, model_view, names_in
 from geotandem.model.errors import ActionError
 from geotandem.model.prompt import build_prompt
-from geotandem.model.schemas import MAX_REPLANS, ModelView, PlanAnswer, PlannedStep, Refusal
+from geotandem.model.result import parse_answer
+from geotandem.model.schemas import (
+    MAX_PLAN_STEPS,
+    MAX_REPLANS,
+    ModelView,
+    PlanAnswer,
+    PlannedStep,
+    Refusal,
+)
 from geotandem.tools.chain import conjoin
 from geotandem_query import And, QueryObject, canonical_json
 
@@ -364,6 +373,23 @@ def test_the_step_limit_counts_the_completed_steps(world: DataBackend) -> None:
     more = check(world, steps(("filter", {"of": 5, "where": cmp("standorte", "gt", 1)})), done=done)
     assert isinstance(more, list) and more[0].position == 6
     assert more[0].query.source == "schulen"
+
+
+def test_a_plan_beyond_its_schema_bound_is_unreadable() -> None:
+    """Review #40: up to ``MAX_PLAN_STEPS`` steps parse (more than ``MAX_STEPS``
+    is then ``step_limit``, above); beyond, the answer is ``model_unreadable``."""
+    answer = case("chain_reference")["answer"]
+    step = answer["steps"][0]
+    for count, readable in ((MAX_PLAN_STEPS, True), (MAX_PLAN_STEPS + 1, False)):
+        text = json.dumps({**answer, "steps": [step] * count})
+        if readable:
+            parsed = parse_answer(Completion(text=text), "chain")
+            assert isinstance(parsed, PlanAnswer) and len(parsed.steps) == count
+        else:
+            with pytest.raises(ActionError) as caught:
+                parse_answer(Completion(text=text), "chain")
+            assert caught.value.code == "model_unreadable"
+            assert caught.value.details["cause"] == "plan.steps: too_long"
 
 
 # --- model_view (D9, D10) ------------------------------------------------------------

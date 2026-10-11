@@ -26,7 +26,8 @@ const DESIGN: Record<StatusKey, [string, LineStyle]> = {
   approved: ['freigegeben', 'dashed'],
   running: ['läuft', 'dashed'],
   done: ['fertig', 'dashed'],
-  limited: ['angehalten · Begrenzung', 'dashed'],
+  // M9.5 as M9.4: struck through, grey; the card still offers its last result.
+  limited: ['angehalten · Begrenzung', 'void'],
   applied: ['angewendet', 'applied'],
   auto: ['automatisch angewendet', 'applied'],
   by_hand: ['von Hand übernommen', 'applied'],

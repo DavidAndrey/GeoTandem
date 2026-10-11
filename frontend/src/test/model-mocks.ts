@@ -352,9 +352,20 @@ export function serverShape(query: unknown): QueryObject {
 
 /** The record while the model thinks: what ``POST /api/model/prompt`` answers (P7). */
 export function thinkingView(id: CaseId, levelName: LevelName = 'Prüfen'): ModelActionView {
+  // As store.py ``create`` writes it: nothing of the answer yet, not proposal-only.
   return actionView(
     id,
-    { status: 'thinking', decision: null, decided_at: null, answer: null, query: null },
+    {
+      status: 'thinking',
+      decision: null,
+      decided_at: null,
+      answer: null,
+      query: null,
+      proposal_only: false,
+      governance: null,
+      steps: [],
+      latency_ms: null,
+    },
     levelName,
   )
 }
@@ -397,6 +408,9 @@ export function promptRoutes(id: CaseId, levelName: LevelName = 'Prüfen') {
 //   409 ``not_approved`` (the store's ``_wrong_state``).
 // Times are naive UTC with microseconds, as the server writes them.
 
+/** Waiting for the user: a new prompt of the account supersedes them (store.py ``OPEN``). */
+const OPEN: readonly ActionStatus[] = ['proposed', 'approved', 'done', 'limited']
+
 /** Statuses with an edge out of them (store.py ``EDGES``). */
 const MOVABLE: readonly ActionStatus[] = [
   'thinking',
@@ -422,6 +436,41 @@ const fail = (
 
 export const isFakeError = (value: unknown): value is FakeError =>
   typeof value === 'object' && value !== null && 'body' in value && 'status' in value
+
+/** Codes whose ``details`` every view keeps whole (store.py ``SHOWN``): a limit's numbers, why a re-plan was not sent. */
+const SHOWN = [
+  'time_limit',
+  'result_too_large',
+  'step_limit',
+  'connection_not_available',
+  'level_not_available',
+  'quota_exceeded',
+  'busy',
+]
+/** Codes of a refused re-plan whose ``details`` a view keeps in part (store.py ``NAMED``, ``NAMES``). */
+const NAMED = ['class_not_allowed', 'unknown_layer', 'not_representable']
+const NAMES = ['step', 'level', 'op_class', 'part', 'layer', 'attribute']
+
+/**
+ * A failure as a view carries it (store.py ``_error_for``, ``to_view``): code
+ * and message; ``details`` whole for ``SHOWN`` codes, of ``NAMED`` codes the
+ * ``NAMES`` with a text or number value, else none. Only the administrator's
+ * log entry has them all, and the fake has no log entry.
+ */
+export function errorFor(error: ModelActionView['error']): ModelActionView['error'] {
+  if (!error || SHOWN.includes(String(error.code))) return error
+  const details = (error.details ?? {}) as Record<string, unknown>
+  const named = NAMED.includes(String(error.code))
+    ? Object.fromEntries(
+        Object.entries(details).filter(
+          ([key, value]) =>
+            NAMES.includes(key) &&
+            (typeof value === 'string' || (typeof value === 'number' && Number.isInteger(value))),
+        ),
+      )
+    : {}
+  return { code: error.code, message: error.message, details: named }
+}
 
 /** The ten of 137 the reference question finds (fixture ``reference``: hits, total). */
 export const REFERENCE_IDS = [3, 8, 15, 21, 34, 55, 61, 89, 104, 130]
@@ -471,15 +520,21 @@ export function queryResult(
 //   No background here: each poll runs ``pace`` steps (default: all of the
 //   stretch); the one next in line then shows ``running``.
 // - A step ends ``ok``, ``empty`` (0 hits) or ``error`` (``hits`` null), with
-//   ``duration_ms`` and ``model_view`` carrying every key (null where unused).
+//   ``duration_ms`` and ``model_view`` carrying every key (null where unused;
+//   ``part`` only a layer or attribute name the step's own arguments write,
+//   view.py ``_part``).
 //   After an ``error`` step, or an empty one before the last, a re-plan:
 //   none left (``replans``) ⇒ ``limited``/``replan_limit``, ``error`` null;
-//   the script's ``replanError`` ⇒ ``replan_limit`` with it (a connection
-//   no longer available is found before the call: ``replans`` not raised);
-//   no revision scripted ⇒ the model brought no plan ⇒ ``replan_limit``,
-//   ``error`` null; a revision ending in a buffer (``not_representable``) or
-//   with a class ``off`` (``class_not_allowed`` {part, step}) ⇒
-//   ``replan_limit`` with that error.
+//   aborted meanwhile ⇒ ``limited``/``aborted``, none counted, no halt; the
+//   level changed (``levelChanged``) ⇒ ``replan_limit`` with
+//   ``level_not_available`` {reason}; the script's ``replanError`` ⇒
+//   ``replan_limit`` with it (a connection no longer available or the daily
+//   limit is found before the call: ``replans`` not raised, else raised);
+//   no revision scripted ⇒ the model brought no plan ⇒ ``replan_limit``
+//   with ``model_unreadable``; a revision ending in a buffer
+//   (``not_representable`` {step, part}) or with a class ``off``
+//   (``class_not_allowed`` {level, op_class, part, step}) ⇒ ``replan_limit``
+//   with that error. Every view carries an error as ``errorFor`` keeps it.
 //   A revision's steps start after the last step that ran; the steps ahead
 //   and the removed ones after it are deleted, those that ran (an ``error``
 //   one too) stay. Every step that ran counts: spent + new > ``steps`` ⇒
@@ -490,9 +545,12 @@ export function queryResult(
 //   ``run_step``): ``error`` (code ``result_too_large``), ``limited`` with
 //   ``error`` {code, message, details {step, value, max}}; an earlier step
 //   beyond it is counted as any other. ``time_limit`` before a step: {step,
-//   value (s), max}. A restart (or a failed run) ends ``limited``/
-//   ``interrupted`` with the result's ``query`` but no stamp (store.py
-//   ``close_stale``). ``run_ms`` grows by each step's duration.
+//   value (s), max}. No query slot for a step (``noSlot``) ⇒ ``interrupted``
+//   with ``busy`` {step}. Unstamped, with the result's ``query``: a restart
+//   (``interrupt``, store.py ``close_stale``: ``interrupted``, or ``aborted``
+//   when asked for, the error kept); a run given up at its deadline
+//   (``expire``: ``time_limit``, error null); a run that failed (``crash``:
+//   ``interrupted`` with ``internal_error``). ``run_ms`` grows by each step's duration.
 // - The end (``done``, ``limited``): steps ahead or running ``skipped``; the
 //   result is the last complete step (ok, empty) that is no buffer and within
 //   ``max_features``: its query the record's ``query``, its stamp the
@@ -504,13 +562,17 @@ export function queryResult(
 //   poll). ``running`` without a run (``lose``) ⇒ ``limited``/``aborted`` at once. Halted (``proposed``,
 //   or ``approved`` and not running, after a step ran) ⇒ ``limited``/``aborted``
 //   at once. A plan that never started ⇒ 409 ``not_approved``.
-// - ``reject`` (and supersede) of a chain: its steps ahead and running ``skipped``.
-// - ``adopt``: a token ⇒ 403 ``session_required``; every query slot taken ⇒
-//   503 ``busy`` (``queriesBusy``); being adopted already ⇒ 409
+// - ``reject``, ``decide`` and supersede (a new ``prompt``) of a chain: its
+//   steps ahead and running ``skipped`` (``_end_steps``).
+// - ``run`` after a halt under a level that changed (``levelChanged``) ⇒ 202
+//   with the record ``limited``/``replan_limit`` (``level_not_available``).
+// - ``adopt``: every query slot taken ⇒ 503 ``busy`` (``queriesBusy``), then
+//   a token ⇒ 403 ``session_required``; being adopted already ⇒ 409
 //   ``already_decided`` (``claim``); ``done``/``limited`` only;
 //   ``query`` null ⇒ 409 ``not_approved``; → ``applied``/``accepted`` at every
 //   level, Automatisch included, with the stamp of the run as the user;
-//   ``ExecuteResponse`` (the rows' ``query`` as a full dump).
+//   ``ExecuteResponse`` (the rows of the stored query, the hits of the step
+//   it is; their ``query`` as a full dump).
 // - ``PATCH .../plan``: a token ⇒ 403; ``proposed`` only (409), never a class
 //   ``off`` (409 ``class_not_allowed``), not started (409 ``not_approved``); a
 //   step changed twice ⇒ 422; then ``edit_plan``: no such step, changed and
@@ -528,11 +590,22 @@ export interface ChainScript {
   errors?: Record<number, { code: NonNullable<ModelView['code']>; part?: string }>
   /** The request's time runs out before the step at this position (``time_limit``). */
   timeLimit?: number
-  /** The application restarts before the step at this position (``interrupted``). */
+  /** The application restarts before the step at this position (``interrupted``, ``close_stale``). */
   interrupt?: number
+  /** The run is given up at its deadline before the step at this position (``_run_expired``). */
+  expire?: number
+  /** The run itself fails before the step at this position (``_run``: ``_stop_quietly``). */
+  crash?: number
+  /** No query slot comes free for the step at this position (review #42: ``no_slot``). */
+  noSlot?: number
+  /** The account's level is no longer the record's (review #43): no re-plan, no run after a halt. */
+  levelChanged?: boolean
   /** The revised steps of each re-plan in turn. */
   replans?: PlannedStep[][]
-  /** The re-plan call fails with this error (``replan_limit``). */
+  /**
+   * The re-plan fails with this error (``replan_limit``). ``connection_not_available``
+   * and ``quota_exceeded`` are found before the call, the others come of it.
+   */
   replanError?: { code: string; details?: Record<string, unknown> }
   /** Steps run per poll (default: the whole stretch at once). */
   pace?: number
@@ -571,6 +644,10 @@ const started = (view: ModelActionView) =>
 const oneApproval = (steps: readonly StepView[]) =>
   !steps.some((s) => s.status !== 'removed' && s.cell === 'auto')
 
+/** store.py ``_end_steps``: a chain decided without running on; its steps ahead (and running) never run. */
+const endSteps = (steps: readonly StepView[]): StepView[] =>
+  steps.map((s) => (ahead(s) || s.status === 'running' ? { ...s, status: 'skipped' } : s))
+
 const stampOf = (count: number): NonNullable<StepView['stamp']> => ({
   count,
   ids_hash: 'sha256:ids',
@@ -585,6 +662,21 @@ function adoptable(steps: readonly StepView[]): StepView | null {
   )
   const last = complete[complete.length - 1]
   return last && (last.hits ?? 0) <= MODEL_LIMITS.max_features ? last : null
+}
+
+/**
+ * The layer and attribute names written in a step's arguments, conditions
+ * included (view.py ``names_in``: keys ``layer``, ``attr``); a step that reads
+ * an earlier one (``of``, ``in``) names none of that one's.
+ */
+function namesIn(node: unknown, found = new Set<string>()): Set<string> {
+  if (Array.isArray(node)) for (const item of node) namesIn(item, found)
+  else if (typeof node === 'object' && node !== null)
+    for (const [key, value] of Object.entries(node)) {
+      if ((key === 'layer' || key === 'attr') && typeof value === 'string') found.add(value)
+      namesIn(value, found)
+    }
+  return found
 }
 
 const VALUE_KEYS = ['value', 'values', 'min', 'max', 'text', 'distance_m']
@@ -634,7 +726,7 @@ function valuesOnly(before: unknown, after: unknown, key = ''): boolean {
 //   603). The model's answer is stored ``proposed`` whatever the cell
 //   (``store.propose``, store.py 1118-1155, 1139): never ``approved``, so it
 //   is never ``auto`` either (``_unasked``, 559-563).
-// - ``GET .../comparison`` (api/model.py 215-230: its ``QuerySlot`` first, 503
+// - ``POST .../comparison`` (a ``GET`` until the E2.5 gate, review #41; api/model.py 214-230: its ``QuerySlot`` first, 503
 //   ``busy`` when every slot is taken; then an ``InteractiveAccount``, a token
 //   gets 403 ``session_required``) is
 //   ``PromptFlow.comparison`` (service.py 1089-1129): the sides by
@@ -795,8 +887,40 @@ const HIT_PARTS = ['attribute_join', 'buffer', 'spatial_relation', 'aggregate', 
  */
 function restOf(q: Json): string {
   const keys = [...HIT_PARTS, ...(q.limit != null ? ['order_by', 'limit'] : [])]
-  const empty = (k: string) => (k === 'columns' || k === 'order_by' ? [] : null)
-  return stable(Object.fromEntries(keys.map((k) => [k, q[k] ?? empty(k)])))
+  return stable(Object.fromEntries(keys.map((k) => [k, dumpedPart(k, q[k])])))
+}
+
+/** A filter of a part as pydantic dumps it: ``null`` when unset, a condition with its defaults. */
+const dumpedWhere = (where: unknown) => (where ? dumped(where as Json) : null)
+
+/**
+ * A top-level part as pydantic dumps it (geotandem_query/models.py), every
+ * default written out: an unset part ``null``, ``columns`` and ``order_by``
+ * ``[]``; a join's ``prefix``, an aggregate's ``predicate`` and
+ * ``area_fields``, a relation's or a column's ``where``, an order's ``dir``.
+ */
+function dumpedPart(key: string, value: unknown): unknown {
+  if (key === 'columns' || key === 'order_by') {
+    const items = (value ?? []) as Json[]
+    if (key === 'order_by') return items.map((o) => ({ dir: 'asc', ...o }))
+    return items.map((c) =>
+      c.fn === 'value_of'
+        ? { predicate: 'within', ...c, where: dumpedWhere(c.where) }
+        : { ...c, where: dumpedWhere(c.where) },
+    )
+  }
+  if (value === undefined || value === null) return null
+  const part = value as Json
+  switch (key) {
+    case 'attribute_join':
+      return { prefix: null, ...part }
+    case 'aggregate':
+      return { predicate: 'within', area_fields: [], ...part }
+    case 'spatial_relation':
+      return { ...part, where: dumpedWhere(part.where) }
+    default:
+      return part
+  }
 }
 
 /** ``_only`` (compare.py 99-109): ``ours`` less those ``theirs`` has too, one for one. */
@@ -862,9 +986,11 @@ export function modelServer(
     const minute = String(5 + tick).padStart(2, '0')
     return `2026-10-10T14:${minute}:00.${String(tick * 1000 + 271).padStart(6, '0')}`
   }
+  /** Stores ``view``; what it answers is the view (``to_view``): its error as ``errorFor`` keeps it. */
   const set = (view: ModelActionView) => {
-    records.set(view.id, view)
-    return view
+    const shown = { ...view, error: errorFor(view.error) }
+    records.set(view.id, shown)
+    return shown
   }
   const wrongState = (view: ModelActionView, step: string): FakeError =>
     view.decision !== null || !MOVABLE.includes(view.status)
@@ -972,18 +1098,26 @@ export function modelServer(
   }
   const finishRun = (view: ModelActionView, steps: StepView[]) =>
     ended(view, steps, { status: 'done', stop_reason: null })
+  /** ``_Runner.stop`` (stamped), or with ``unstamped`` ``_stop_quietly`` and ``close_stale``. */
   const stopRun = (
     view: ModelActionView,
     steps: StepView[],
     reason: StopReason,
     error: ModelActionView['error'] = null,
-  ) =>
-    ended(view, steps, { status: 'limited', stop_reason: reason, error }, reason === 'interrupted')
-  /** The run waits for approval (store.py ``halt``); the run gives its place back. */
+    unstamped = false,
+  ) => ended(view, steps, { status: 'limited', stop_reason: reason, error }, unstamped)
+  /**
+   * The run waits for approval (store.py ``halt``); the run gives its place
+   * back. An abort that came meanwhile stops it instead (``halt`` refuses it).
+   */
   const halted = (view: ModelActionView, steps: StepView[]): ModelActionView => {
+    if (view.stop_reason === 'aborted') return stopRun(view, steps, 'aborted')
     inFlight.delete(view.id)
     return { ...view, steps, status: 'proposed' }
   }
+  /** The account's level changed since the plan (review #43): the chain stops. */
+  const levelGone = (view: ModelActionView, steps: StepView[]) =>
+    stopRun(view, steps, 'replan_limit', chainError('level_not_available', { reason: 'changed' }))
   /**
    * One step as it ran (``run_step``): its outcome, count, view and duration;
    * the ``last`` step beyond ``max_features`` fails with ``result_too_large``
@@ -997,10 +1131,12 @@ export function modelServer(
     if (failed || tooLarge) {
       s.status = 'error'
       s.hits = null
+      // ``part``: only a name the step's own arguments write (view.py ``_part``).
+      const part = failed?.part
       s.model_view = {
         outcome: 'error',
         code: failed?.code ?? 'result_too_large',
-        part: failed?.part ?? null,
+        part: part !== undefined && namesIn(s.arguments).has(part) ? part : null,
         empty: null,
         count: null,
       }
@@ -1020,20 +1156,30 @@ export function modelServer(
     steps: StepView[],
     last: number,
   ): { view: ModelActionView; steps: StepView[]; halt: boolean } | { stopped: ModelActionView } => {
+    // Used up (``ChainState.ran`` "stopped"): no error, none counted.
     if (view.replans >= MODEL_LIMITS.replans)
       return { stopped: stopRun(view, steps, 'replan_limit') }
-    if (script.replanError?.code === 'connection_not_available') {
-      // Checked before the call (``_replan_endpoint``): no re-plan is counted.
+    // Aborted while the step ran (``_Runner.replan`` checks before the call): none counted.
+    if (view.stop_reason === 'aborted') return { stopped: stopRun(view, steps, 'aborted') }
+    if (script.levelChanged) return { stopped: levelGone(view, steps) }
+    const before = ['connection_not_available', 'quota_exceeded']
+    if (script.replanError && before.includes(script.replanError.code)) {
+      // Checked before the call (``_replan_endpoint``, the request limit): no re-plan is counted.
       const { code, details = {} } = script.replanError
       return { stopped: stopRun(view, steps, 'replan_limit', chainError(code, details)) }
     }
+    // Counted before the call (``replan_messages``), whatever it brings.
     const asked = { ...view, replans: view.replans + 1 }
     if (script.replanError) {
       const { code, details = {} } = script.replanError
       return { stopped: stopRun(asked, steps, 'replan_limit', chainError(code, details)) }
     }
     const revision = script.replans?.[view.replans]
-    if (!revision) return { stopped: stopRun(asked, steps, 'replan_limit') }
+    if (!revision) {
+      // No plan in the answer (a clarification): told apart from re-plans used up by its error.
+      const error = chainError('model_unreadable', { kind: 'clarification' })
+      return { stopped: stopRun(asked, steps, 'replan_limit', error) }
+    }
     const spent = steps.filter((s) => RAN.includes(s.status)).length
     const total = spent + revision.length
     if (total > MODEL_LIMITS.steps) {
@@ -1061,7 +1207,8 @@ export function modelServer(
     const off = rules.off[0]
     if (off) {
       const step = fresh.find((s) => s.classes.includes(off))?.position
-      const error = chainError('class_not_allowed', { part: off, step })
+      const details = { level: view.level.name, op_class: off, part: off, step }
+      const error = chainError('class_not_allowed', details)
       return { stopped: stopRun(asked, steps, 'replan_limit', error) }
     }
     const all = [...kept, ...fresh]
@@ -1079,8 +1226,24 @@ export function modelServer(
       if (!next) return finishRun(current, steps)
       if (!running) {
         // Before a step: an abort, a restart, the time limit, a halt for approval (P4).
+        // A restart (``close_stale``): an abort asked for stays, the error too; unstamped.
+        if (script.interrupt === next.position)
+          return stopRun(
+            current,
+            steps,
+            current.stop_reason ?? 'interrupted',
+            current.error ?? null,
+            true,
+          )
+        // Given up at its deadline (``_run_expired``, ``_stop_quietly``): no error, unstamped.
+        if (script.expire === next.position)
+          return stopRun(current, steps, 'time_limit', null, true)
+        // The run failed (``_run``, ``_stop_quietly``): ``internal_error``, unstamped.
+        if (script.crash === next.position) {
+          const error = chainError('internal_error', {})
+          return stopRun(current, steps, 'interrupted', error, true)
+        }
         if (current.stop_reason === 'aborted') return stopRun(current, steps, 'aborted')
-        if (script.interrupt === next.position) return stopRun(current, steps, 'interrupted')
         if (script.timeLimit === next.position) {
           const details = { step: next.position, value: MODEL_LIMITS.chain_s + 1 }
           const error = chainError('time_limit', { ...details, max: MODEL_LIMITS.chain_s })
@@ -1091,6 +1254,9 @@ export function modelServer(
             current,
             steps.map((s) => (s === next ? { ...s, status: 'waiting' } : s)),
           )
+        // No query slot within the wait (review #42, ``no_slot``).
+        if (script.noSlot === next.position)
+          return stopRun(current, steps, 'interrupted', chainError('busy', { step: next.position }))
         next.status = 'running'
         if (done >= pace) return { ...current, steps }
       }
@@ -1200,9 +1366,7 @@ export function modelServer(
               reject_reason: reason,
               decided_at: now(),
               // A chain's steps ahead never run (store.py ``_end_steps``).
-              steps: view.steps.map((s) =>
-                ahead(s) || s.status === 'running' ? { ...s, status: 'skipped' } : s,
-              ),
+              steps: endSteps(view.steps),
             }),
       ),
     execute: (id: number) =>
@@ -1279,6 +1443,8 @@ export function modelServer(
           applied_by_hand: byHand,
           applied_query: (body.query ?? null) as ModelActionView['applied_query'],
           decided_at: now(),
+          // A chain handed over never runs on (store.py ``_end_steps``).
+          steps: endSteps(view.steps),
         })
       }),
 
@@ -1343,6 +1509,8 @@ export function modelServer(
           status: 'thinking',
           decision: null,
           decided_at: null,
+          // Until the answer (store.py ``create``; ``propose`` sets it from the governance).
+          proposal_only: false,
           answer: null,
           query: null,
           governance: null,
@@ -1350,7 +1518,30 @@ export function modelServer(
           latency_ms: null,
         })
       }),
-    /** ``GET .../comparison``: both sides' stamps, the difference by feature id, the reason. */
+    /**
+     * ``POST /api/model/prompt`` (202): ``thinking`` stored, the next poll
+     * brings ``answer`` (default: the record of that id the server was made
+     * with). Every open record of the account is closed first, an original and
+     * its repeat alike (store.py ``create``, ``_supersede``): ``superseded``, or
+     * ``proposal_only`` for a proposal-only one, a chain's steps ahead skipped.
+     */
+    prompt: (thinking: ModelActionView, answer?: ModelActionView) => {
+      const answered = answer ?? records.get(thinking.id)
+      for (const view of records.values())
+        if (view.id !== thinking.id && OPEN.includes(view.status)) {
+          inFlight.delete(view.id)
+          set({
+            ...view,
+            status: 'superseded',
+            decision: view.proposal_only ? 'proposal_only' : 'superseded',
+            decided_at: now(),
+            steps: endSteps(view.steps),
+          })
+        }
+      if (answered) answers.set(thinking.id, answered)
+      return set({ ...thinking, status: 'thinking', proposal_only: false })
+    },
+    /** ``POST .../comparison``: both sides' stamps, the difference by feature id, the reason. */
     // The route's ``dependencies=[QuerySlot]`` resolve before the account
     // (api/model.py 215-220): every query slot taken is 503 before a token's 403.
     comparison: (id: number, token = false) =>
@@ -1459,8 +1650,17 @@ export function modelServer(
             503,
           )
         }
+        const running = { ...view, status: 'running' as const, stop_reason: null, error: null }
+        // After a halt, under a level no longer the record's (review #43): 202, stopped.
+        if (script.levelChanged && started(view))
+          return set(
+            levelGone(
+              running,
+              view.steps.map((s) => ({ ...s })),
+            ),
+          )
         inFlight.add(id)
-        return set({ ...view, status: 'running', stop_reason: null, error: null })
+        return set(running)
       }),
     /** ``POST .../abort`` (``abort``, ``_abort_chain``). */
     abort: (id: number) =>
@@ -1484,11 +1684,12 @@ export function modelServer(
         return set(stopRun(view, steps, 'aborted'))
       }),
     /** ``POST .../adopt``: a ``done`` or ``limited`` chain's result becomes the analysis. */
+    // The route's ``QuerySlot`` resolves before the account (api/model.py): 503 before a token's 403.
     adopt: (id: number, token = false) =>
-      token
-        ? fail('session_required', 'Only an interactive session may do this.', {}, 403)
-        : queriesBusy
-          ? fail('busy', 'Too many queries are running at the same time.', {}, 503)
+      queriesBusy
+        ? fail('busy', 'Too many queries are running at the same time.', {}, 503)
+        : token
+          ? fail('session_required', 'Only an interactive session may do this.', {}, 403)
           : step<ExecuteResponse>(id, (view) => {
               if (view.status !== 'done' && view.status !== 'limited')
                 return wrongState(view, 'adopt')
@@ -1505,9 +1706,11 @@ export function modelServer(
                   `Model action ${view.id} has no complete result to adopt.`,
                   { id: view.id, status: view.status },
                 )
-              const count = view.stamp?.count ?? 0
+              // The stored query runs as the user (service.py ``adopt``): its rows are
+              // the hits of the step it is, stamped or not (a restart, an expiry).
+              const count = adoptable(view.steps)?.hits ?? view.stamp?.count ?? 0
               const ids =
-                view.status === 'done'
+                count === preview.ids.length
                   ? preview.ids
                   : Array.from({ length: count }, (_, i) => i + 1)
               const result = queryResult(serverShape(view.query), ids)

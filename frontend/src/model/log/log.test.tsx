@@ -502,6 +502,61 @@ describe('M16.2 one entry', () => {
     expect(steps.nextElementSibling).toHaveTextContent('keine Schritte')
   })
 
+  test("a chain's steps in the dialogue's words, numbered by their place in the plan", async () => {
+    const [first, second, third, ...rest] = actionView('chain_reference').steps
+    const chain = actionView('chain_reference', {
+      id: 106,
+      created_at: ago(5),
+      status: 'limited',
+      stop_reason: 'replan_limit',
+      steps: [
+        {
+          ...(first as NonNullable<typeof first>),
+          status: 'ok',
+          hits: 62,
+          duration_ms: 400,
+          model_view: { outcome: 'ok', code: null, part: null, empty: false, count: 62 },
+        },
+        // Removed by hand before the run (M8.3): it has no place.
+        { ...(second as NonNullable<typeof second>), status: 'removed' },
+        {
+          ...(third as NonNullable<typeof third>),
+          status: 'error',
+          duration_ms: 300,
+          model_view: {
+            outcome: 'error',
+            code: 'unknown_attribute',
+            part: null,
+            empty: null,
+            count: null,
+          },
+        },
+        ...rest.map((s) => ({ ...s, status: 'skipped' as const })),
+      ],
+    })
+    logServer([...records(), chain])
+    renderAt(`${LOG_PATH}/106`, <App />)
+    const term = await screen.findByText('Schritte')
+    const items = within(term.nextElementSibling as HTMLElement).getAllByRole('listitem')
+    expect(items.map((li) => li.firstElementChild?.textContent)).toEqual([
+      '1.',
+      '–',
+      '2.',
+      '3.',
+      '4.',
+    ])
+    // The state in words after the tool, never the raw status.
+    expect(items.map((li) => li.querySelector('code')?.nextElementSibling?.textContent)).toEqual([
+      'erledigt',
+      'entfernt',
+      'Fehler',
+      'nicht ausgeführt',
+      'nicht ausgeführt',
+    ])
+    expect(items[0]).toHaveTextContent('Modell sieht: ok · nicht leer · 62')
+    expect(items[2]).toHaveTextContent('Modell sieht: Fehler · unknown_attribute')
+  })
+
   test('an entry that is not there', async () => {
     logServer(records())
     renderAt(`${LOG_PATH}/999`, <App />)

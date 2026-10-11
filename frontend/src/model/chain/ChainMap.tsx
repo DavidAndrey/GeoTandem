@@ -33,10 +33,16 @@ const EARLIER = '#bab6b6'
 
 const SHOWN: readonly Phase[] = ['running', 'halt', 'done', 'stopped']
 
-/** The chain being run or waiting to be adopted: the record polled, else the open one. */
+/**
+ * The chain being run or waiting to be adopted: the record polled, else the
+ * open one. A direct repeat of a chain (WP76) waits beside it, thinking or
+ * pending, and supersedes nothing: the chain's result stays drawn meanwhile.
+ */
 function liveChain(state: ModelState): ModelActionView | null {
   const id = state.running?.id ?? state.pending
-  const view = id === null ? undefined : state.views[id]
+  const found = id === null ? undefined : state.views[id]
+  const view =
+    found && !isChain(found) && found.compare_of != null ? state.views[found.compare_of] : found
   return view && isChain(view) && SHOWN.includes(phaseOf(view)) ? view : null
 }
 

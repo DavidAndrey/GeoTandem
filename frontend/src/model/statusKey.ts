@@ -1,7 +1,7 @@
 // The status language of Modus B (design E2 "Statussprache"): a line style and
 // a text label, never a colour of its own. Dashed = proposal, plan, run; solid
 // accent = applied; grey with the label struck through = undone, rejected,
-// refused, stale, aborted; black = clarification, message, error (nothing
+// refused, stale, aborted, interrupted, stopped by a limit; black = clarification, message, error (nothing
 // proposed). Only the Classical tokens; the text always says the status.
 //
 // The words and styles live here; ``StatusLabel`` (status.tsx) draws them.
@@ -74,6 +74,8 @@ export function lineStyle(key: StatusKey): LineStyle {
     case 'stale':
     case 'aborted':
     case 'interrupted':
+    case 'limited':
+      // M9.5 (limited) as M9.4 (aborted): its last result stays adoptable all the same.
       return 'void'
     case 'clarification':
     case 'message':

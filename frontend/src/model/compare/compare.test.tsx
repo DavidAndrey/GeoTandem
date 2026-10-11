@@ -52,7 +52,7 @@ import { approveChain } from '../chain/flow'
 import { clearHistory } from '../panel/state'
 import { compactQuery } from '../readable'
 import { resumed, sent, useModel } from '../store'
-import { openComparison, repeat, repeatRefusal, takeRefusal } from './flow'
+import { comparisonRefusal, openComparison, repeat, repeatRefusal, takeRefusal } from './flow'
 import { conditionText, featureNames, reasonLines, type Words } from './words'
 
 beforeEach(resetStores)
@@ -229,6 +229,16 @@ describe('M10.1: the way in', () => {
     await user.click(
       within(await latestCard()).getByRole('button', { name: 'Mit Direktabfrage vergleichen' }),
     )
+    // While the model thinks the repeat is no proposal yet (store.py ``create``):
+    // the chain's entry says it runs, not that the model may only propose.
+    expect(useModel.getState().views[REPEAT_ID]).toMatchObject({
+      status: 'thinking',
+      proposal_only: false,
+    })
+    const state = useModel.getState()
+    expect(comparisonRefusal(state, state.views[REPEAT_ID] as ModelActionView)).toMatch(
+      /^Läuft noch: /,
+    )
     await tick()
     expect(server.record(REPEAT_ID)).toMatchObject({ status: 'proposed', proposal_only: true })
     expect(screen.queryByRole('dialog')).toBeNull()
@@ -277,7 +287,7 @@ describe('M10.2: equal hits', () => {
 
     const shown = within(await dialog())
     expect(
-      calls.filter((c) => c.key === `GET /api/model/actions/${REPEAT_ID}/comparison`),
+      calls.filter((c) => c.key === `POST /api/model/actions/${REPEAT_ID}/comparison`),
     ).toHaveLength(1)
     const difference = await shown.findByRole('region', { name: 'Unterschied' })
     expect(difference).toHaveTextContent('Treffermengen gleich 10 = 10, dieselben Objekte')
@@ -303,6 +313,23 @@ describe('M10.2: equal hits', () => {
     expect(
       within(chain).getByRole('button', { name: 'Diese übernehmen: Werkzeugkette' }),
     ).toBeEnabled()
+  })
+
+  test('a chain stopped by a limit: its step count is the steps that ran, not those skipped', async () => {
+    const { user } = await asked('chain_reference', 'reference', 'Prüfen', {
+      script: { timeLimit: 3 },
+    })
+    await user.click(await screen.findByRole('button', { name: 'Kette freigeben und starten' }))
+    for (let i = 0; i < 2; i++) await tick()
+    await waitFor(() => expect(useModel.getState().views[CHAIN_ID]?.status).toBe('limited'))
+    await user.click(
+      within(await latestCard()).getByRole('button', { name: 'Mit Direktabfrage vergleichen' }),
+    )
+    await tick()
+    const chain = within(await dialog()).getByRole('region', { name: 'Werkzeugkette' })
+    // Steps 1 and 2 ran; 3 to 5 were skipped at the limit.
+    expect(chain).toHaveTextContent('Herleitung2 Schritte, Ergebnis als eine Abfrage')
+    expect(chain).toHaveTextContent('Schritte2')
   })
 
   test('a focus trap: the focus starts on ×, Tab stays inside, Esc closes, reopened from the card', async () => {
@@ -437,6 +464,11 @@ describe('M10.3: differing hits', () => {
       compare_of: CHAIN_ID,
     })
     expect(posted(calls, REPEAT_ID, 'execute')).toHaveLength(0)
+    // The chain's result stays marked on the map while its direct repeat is the open one.
+    expect(useModel.getState().pending).toBe(REPEAT_ID)
+    expect(
+      screen.getByRole('note', { name: 'Zwischenstand der Kette', hidden: true }),
+    ).toHaveTextContent('Ergebnis gestrichelt · vorgemerkt, nicht angewendet')
     const shown = within(await dialog())
     expect(await shown.findByRole('region', { name: 'Unterschied' })).toHaveTextContent(
       'Treffermengen gleich',
@@ -452,6 +484,8 @@ describe('M10.3: differing hits', () => {
     expect(
       calls.map((c) => c.key).filter((k) => k.startsWith(`POST /api/model/actions/${REPEAT_ID}/`)),
     ).toEqual([
+      // A POST since the E2.5 gate (security review #41): it stamps ``previewed_at``.
+      `POST /api/model/actions/${REPEAT_ID}/comparison`,
       `POST /api/model/actions/${REPEAT_ID}/approve`,
       `POST /api/model/actions/${REPEAT_ID}/execute`,
     ])
@@ -502,7 +536,7 @@ describe('the comparison refused, in words', () => {
     // Asked with a token, not the login session (api/model.py: an InteractiveAccount).
     const started = await asked('reference', 'chain_reference', 'Prüfen', {
       routes: (server) => ({
-        [`GET /api/model/actions/${REPEAT_ID}/comparison`]: () => {
+        [`POST /api/model/actions/${REPEAT_ID}/comparison`]: () => {
           const refused = server.comparison(REPEAT_ID, true) as FakeError
           return json(refused.body, refused.status)
         },
@@ -828,6 +862,45 @@ describe('the fake server as WP76 answers', () => {
     expect(compareReason(query({ mode: 'starts_with' }), query({}))).toMatchObject({
       kind: 'conditions',
     })
+    // The other parts too (compare.py ``_rest``): a join's, an aggregate's, a relation's defaults.
+    const base = query({ mode: 'starts_with' })
+    const other = query({})
+    const parts = (written: boolean) => ({
+      attribute_join: {
+        layer: 'gemeinden_steuern',
+        left_key: 'gemeinde',
+        right_key: 'name',
+        fields: ['steueranlage'],
+        ...(written ? { prefix: null } : {}),
+      },
+      aggregate: {
+        by_layer: 'schulen',
+        metrics: [{ fn: 'count', as: 'n' }],
+        ...(written ? { predicate: 'within', area_fields: [] } : {}),
+      },
+      spatial_relation: {
+        layer: 'strassen',
+        predicate: 'intersects',
+        ...(written ? { where: null } : {}),
+      },
+      order_by: [{ attr: 'typ', ...(written ? { dir: 'asc' } : {}) }],
+      limit: 5,
+    })
+    // Same parts, written out or left to their defaults: still the conditions differ, one by one.
+    expect(compareReason({ ...base, ...parts(true) }, { ...other, ...parts(false) })).toMatchObject(
+      { kind: 'conditions' },
+    )
+    // A part that differs in a default's place: no reason.
+    expect(
+      compareReason(
+        {
+          ...base,
+          ...parts(false),
+          aggregate: { ...parts(false).aggregate, predicate: 'intersects' },
+        },
+        { ...other, ...parts(false) },
+      ),
+    ).toBeNull()
   })
 
   test('comparison: every query slot taken is 503 before a token is 403', () => {
