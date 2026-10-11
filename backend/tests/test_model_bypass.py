@@ -51,6 +51,7 @@ from sqlalchemy import event, func, select, update
 from sqlalchemy.orm import Session
 from test_model_enforcement import (
     CONNECTIONS,
+    LEVELS,
     OPTIONS,
     PLAIN,
     PROMPT,
@@ -897,7 +898,7 @@ READ_ONLY_IMPORTS: dict[str, set[str]] = {
     "geotandem.data.view": {"LayerView"},
     "geotandem.db.spatialite": {"reading"},
     # The model's own record, a chain's steps with it: the tables the path writes.
-    "geotandem.db.orm": {"ModelAction", "ModelActionStep"},
+    "geotandem.db.orm": {"ModelAction", "ModelActionStep", "ModelCall"},
     # The engine: compiles and runs queries on a read-only connection.
     "geotandem.engine": {
         "QueryError",
@@ -1195,8 +1196,11 @@ async def test_walking_every_model_route_writes_the_action_record_only(
         assert comparison.json()["only_left"] or comparison.json()["only_right"]
 
     assert {kind for kind, _ in written} <= {"INSERT", "UPDATE", "DELETE"}, written
-    assert {table for _, table in written} == {"model_action", "model_action_step"}, written
+    # A re-plan is counted for the request limit as a call of its own (review #43).
+    tables = {"model_action", "model_action_step", "model_call"}
+    assert {table for _, table in written} == tables, written
     assert {t for kind, t in written if kind == "DELETE"} == {"model_action_step"}  # a re-plan
+    assert {k for k, t in written if t == "model_call"} == {"INSERT"}
     assert all(c.tools == () for c in model.fake.calls)  # neither path offers a tool
 
     assert len(views) >= 12  # the asks, the preview's two counts, the executes
@@ -1330,6 +1334,9 @@ async def attack_run(s: Scene) -> None:
         within(2, 3),
     )
     direct = stored(s.app, "b.muster", "Teilautonom")
+    ids = {lv["name"]: lv["id"] for lv in (await s.client.get(LEVELS)).json()["levels"]}
+    chosen = await s.other.put("/api/llm/options", json={"level_id": ids["Teilautonom"]})
+    assert chosen.status_code == 200, chosen.text
     await edit_levels(s.client, lambda lv: {**lv, "matrix": all_cells("auto")})
     for action_id in (waits, hand_only, halts, direct):
         response = await s.other.post(url(action_id, "run"))
@@ -1342,13 +1349,18 @@ async def attack_run(s: Scene) -> None:
     assert s.ran == [] and s.model.fake.calls == []
 
     # Approved, the chain halts before the buffer as Teilautonom said, though
-    # every level is auto now; then the connections go off.
+    # every level is auto now; approved again at the halt, it goes no further
+    # under a level changed since its plan (review #43).
     assert (await s.other.post(url(halts, "approve"))).status_code == 200
     halted = await run(s.other, s.app, halts)
     assert (halted["status"], halted["steps"][1]["status"]) == ("proposed", "waiting")
+    assert (await s.other.post(url(halts, "approve"))).status_code == 200
+    stopped = (await s.other.post(url(halts, "run"))).json()
+    assert (stopped["status"], stopped["error"]["code"]) == ("limited", "level_not_available")
+    # The levels as they were again (the user's is the chains' Teilautonom);
+    # then the connections go off.
+    await install_levels(s.client, fixture_levels())
     await disable_connections(s)
-    done, _ = await drive(s.other, s.app, halts)
-    assert done["status"] == "done"
     ended = await run(s.other, s.app, empties)
     assert (ended["status"], ended["stop_reason"]) == ("limited", "replan_limit")
     assert ended["error"]["code"] == "connection_not_available"

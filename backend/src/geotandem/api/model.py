@@ -71,6 +71,7 @@ def prompt_flow(state: Annotated[AppState, Depends(get_state)]) -> PromptFlow:
         calls=state.model_calls,
         limits=state.limits,
         unsupported=frozenset(state.unsupported),
+        gate=state.query_slots,
     )
 
 

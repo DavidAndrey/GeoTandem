@@ -145,6 +145,24 @@ async def test_the_instance_has_a_total() -> None:
                 pass
 
 
+async def test_a_chains_thread_and_a_request_share_the_instance_count() -> None:
+    """Review #42: a chain's step, in a thread of its own, takes from the same
+    count as a request; neither passes the other at the cap."""
+    slots = QuerySlots(per_account=5, total=1, wait_s=0.05)
+    assert slots.take_thread(0)
+    with pytest.raises(QueriesBusy):
+        async with slots.hold(1):
+            pass
+    assert not slots.take_thread(0.01)
+    assert not slots.take_thread(5, stop=lambda: True)  # an abort ends the wait
+    slots.give_back_thread()
+    async with slots.hold(1):
+        assert not slots.take_thread(0)
+    assert slots.take_thread(0)
+    slots.give_back_thread()
+    assert slots.free == 1
+
+
 async def test_a_waiting_query_gets_the_slot_once_it_is_free() -> None:
     slots = QuerySlots(per_account=1, total=8, wait_s=1)
     order = []

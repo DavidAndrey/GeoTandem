@@ -9,6 +9,7 @@ figures of the contract fixture come out of the table exactly.
 import json
 import random
 from collections.abc import Callable
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, get_args
@@ -27,7 +28,7 @@ from geotandem.connections import ConnectionPatch, Connections, ConnectionWrite
 from geotandem.db import migrate
 from geotandem.db.bootstrap import bootstrap
 from geotandem.db.engine import make_engine
-from geotandem.db.orm import ModelAction
+from geotandem.db.orm import ModelAction, ModelActionStep
 from geotandem.engine import ResultStamp
 from geotandem.levels import CellMode, Level, OpClass, load_levels, save_levels
 from geotandem.model.record import (
@@ -1059,3 +1060,45 @@ def test_key_figures_follow_the_filters(
     assert (level.auto, level.undone, level.acceptance_rate) == (1, 1, None)
     connection = store.key_figures(admin, ActionFilters(connection_id=7))
     assert (connection.accepted, connection.undone_after_approval) == (1, 1)
+
+
+def test_a_re_plan_never_collides_with_a_step_kept_in_its_place(
+    engine: Engine, store: ModelActionStore, people: dict[str, Account]
+) -> None:
+    """E2.5 review: a step after the last that ran which never ran and never
+    will (``skipped``) makes room for the re-plan's step at its place, without
+    an integrity error; a step that ran there refuses the re-plan cleanly."""
+    anna = people["anna"]
+    chain = proposed(store, anna, approach="chain", supersede=False)
+    store.approve(anna, chain)
+    store.run(anna, chain)
+    ran_first_step(store, anna, chain)
+    with Session(engine) as db, db.begin():
+        db.execute(
+            update(ModelActionStep)
+            .where(ModelActionStep.action_id == chain, ModelActionStep.position.in_((2, 3)))
+            .values(status="skipped")
+        )
+    new_steps = [replace(step, revised=True) for step in chain_steps()[1:3]]
+    store.revise(
+        anna, chain, after=1, steps=new_steps, governance=APPROVE, replans=1, turns=[], run_ms=5
+    )
+    view = store.get(anna, chain)
+    assert [(s.position, s.status, s.revised) for s in view.steps][:3] == [
+        (1, "ok", False),
+        (2, "planned", True),
+        (3, "planned", True),
+    ]
+
+    with Session(engine) as db, db.begin():
+        db.execute(
+            update(ModelActionStep)
+            .where(ModelActionStep.action_id == chain, ModelActionStep.position == 2)
+            .values(status="error")
+        )
+    with pytest.raises(ActionError) as refused:
+        store.revise(
+            anna, chain, after=1, steps=new_steps, governance=APPROVE, replans=2, turns=[], run_ms=6
+        )
+    assert refused.value.code == "not_approved"
+    assert store.get(anna, chain).replans == 1  # nothing written

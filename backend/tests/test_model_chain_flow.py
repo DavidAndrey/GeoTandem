@@ -52,6 +52,7 @@ from model_fixtures import case, completion, fixture
 from sqlalchemy.orm import Session
 from test_model_direct import context_of, profile_of, with_sample
 from test_model_enforcement import (
+    LEVELS,
     PROMPT,
     account_of,
     fixture_levels,
@@ -1070,29 +1071,49 @@ async def test_no_step_starts_after_an_abort_was_answered(
     assert len(ran) == counted + 1  # the stamp of step 1, no count of step 3
 
 
-@pytest.mark.parametrize("change", ["edited", "deleted"])
-async def test_a_re_plan_asks_with_the_level_prompt_as_it_was(
+@pytest.mark.parametrize("change", ["renamed", "edited", "matrix", "deleted"])
+async def test_a_re_plan_asks_only_under_the_level_as_it_was(
     client: httpx.AsyncClient, app: FastAPI, model: Model, levels: dict[str, int], change: str
 ) -> None:
-    """H7: the record keeps the level's system prompt; a re-plan asks with it,
-    whether the level's text changed since or the level is gone mid-run."""
+    """H7: the record keeps the level's system prompt; a re-plan asks with it.
+    Review #43: only while the account's level now is still that level (id,
+    matrix, system prompt; the name does not count): a level edited or taken
+    away since stops the run before the re-plan's call, ``level_not_available``
+    with ``reason: changed``; the last complete result stays adoptable."""
     own = {**TWO_CELLS, "name": "Eigen", "system_prompt": "STUFENTEXT-ALT"}
     ids = await install_levels(client, [*fixture_levels(), own][1:])
     await choose(client, ids["Eigen"])
     proposed = await ask_chain(client, app, model, planned(*EMPTY_THEN))
     assert (await client.post(url(proposed["id"], "approve"))).status_code == 200
     kept = [lv for lv in fixture_levels()[1:]]
-    if change == "edited":
-        kept.append({**own, "system_prompt": "STUFENTEXT-NEU"})
-    await install_levels(client, kept)
+    if change == "renamed":  # the same id under a new name
+        stored = {lv["name"]: lv["id"] for lv in (await client.get(LEVELS)).json()["levels"]}
+        body = [{**lv, "id": stored.get(lv["name"])} for lv in kept]
+        body.append({**own, "id": ids["Eigen"], "name": "Umbenannt"})
+        assert (await client.put(LEVELS, json={"levels": body})).status_code == 200
+    else:
+        if change == "edited":
+            kept.append({**own, "system_prompt": "STUFENTEXT-NEU"})
+        elif change == "matrix":
+            kept.append({**own, "matrix": {**own["matrix"], "query": "approve"}})
+        await install_levels(client, kept)
     model.script(planned(MUNICIPALITIES, within(1, 3)))
     ended, _ = await drive(client, app, proposed["id"])
-    assert ended["replans"] == 1
-    first, replan = model.fake.calls
-    assert "STUFENTEXT-ALT" in first.messages[0].content
-    assert "STUFENTEXT-ALT" in replan.messages[0].content
-    assert "STUFENTEXT-NEU" not in replan.messages[0].content
     assert ended["level"]["name"] == "Eigen"
+    if change == "renamed":
+        assert ended["replans"] == 1
+        first, replan = model.fake.calls
+        assert "STUFENTEXT-ALT" in first.messages[0].content
+        assert "STUFENTEXT-ALT" in replan.messages[0].content
+        return
+    assert len(model.fake.calls) == 1  # the plan only: no re-plan was sent
+    assert (ended["status"], ended["stop_reason"], ended["replans"]) == (
+        "limited",
+        "replan_limit",
+        0,
+    )
+    assert ended["error"]["code"] == "level_not_available"
+    assert ended["error"]["details"] == {"reason": "changed"}
 
 
 async def test_a_re_plan_asks_with_the_profile_now_and_records_its_hash(
@@ -1221,11 +1242,12 @@ async def test_a_halted_chain_rejected_or_overtaken_runs_no_further(
     assert statuses(ended) == ["ok", "skipped", "skipped", "skipped", "skipped"]
 
 
-async def test_a_re_plan_after_the_level_changed_is_governed_as_it_was(
+async def test_a_re_plan_after_the_level_changed_is_not_sent(
     client: httpx.AsyncClient, app: FastAPI, model: Model, levels: dict[str, int]
 ) -> None:
-    """M7.3: Teilautonom wants approval for ``derive``; the level turned all
-    ``auto`` after the plan; the re-plan's buffer still waits for approval."""
+    """M7.3 keeps the record's level for what it governs, but review #43: a
+    level changed since the plan (Teilautonom turned all ``auto``) governs no
+    new model call either way; the re-plan is not sent, the run stops."""
     await choose(client, levels["Teilautonom"])
     approved = await ask_chain(client, app, model, planned(*EMPTY_THEN))
     assert approved["status"] == "approved"
@@ -1235,11 +1257,15 @@ async def test_a_re_plan_after_the_level_changed_is_governed_as_it_was(
         [{**lv, "matrix": every} if lv["name"] == "Teilautonom" else lv for lv in fixture_levels()],
     )
     model.script(planned(BUFFER, within(1, 3)))
-    halted = await run(client, app, approved["id"])
-    assert (halted["status"], halted["replans"]) == ("proposed", 1)
-    assert [s["cell"] for s in halted["steps"][2:]] == ["approve", "auto"]
-    assert halted["steps"][2]["status"] == "waiting"
-    assert halted["governance"]["needs_approval"] == ["derive"]
+    ended = await run(client, app, approved["id"])
+    assert (ended["status"], ended["stop_reason"], ended["replans"]) == (
+        "limited",
+        "replan_limit",
+        0,
+    )
+    assert ended["error"]["code"] == "level_not_available"
+    assert len(model.fake.calls) == 1
+    assert ended["governance"] == approved["governance"]  # as it was
 
 
 def test_chain_constants_match_the_fixture() -> None:

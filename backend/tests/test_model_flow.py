@@ -14,6 +14,7 @@ while the model thinks holds the model on an event. Nothing sleeps.
 """
 
 import asyncio
+import functools
 import json
 import logging
 import threading
@@ -645,6 +646,27 @@ def test_a_lingering_call_is_given_up_at_its_deadline() -> None:
     assert cancelled == [True]
     calls.give_back()  # the one slot, given back once: a second release would raise
     calls.shutdown()
+
+
+def test_shutdown_cancels_every_call_in_flight() -> None:
+    """Review #44: at shutdown every call and run in flight finds its cancel
+    event set, so none sends to the model or starts a step any more."""
+    calls = ModelCalls(2)
+    release = threading.Event()
+    seen: dict[int, bool] = {}
+
+    def call(action_id: int, cancel: threading.Event) -> None:
+        release.wait(10)
+        seen[action_id] = cancel.is_set()
+        calls.finish(action_id, action_id)
+
+    for action_id in (1, 2):
+        calls.take()
+        calls.start(action_id, action_id, functools.partial(call, action_id))
+    calls.shutdown()
+    release.set()
+    calls.wait(5)
+    assert seen == {1: True, 2: True}
 
 
 async def test_a_call_that_outlives_its_deadline_frees_the_account(
