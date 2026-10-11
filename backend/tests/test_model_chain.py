@@ -41,6 +41,13 @@ REFERENCE_CASE = case("chain_reference")
 REFERENCE_PLAN = PlanAnswer.model_validate(REFERENCE_CASE["answer"])
 REFERENCE = case("reference")["answer"]["query"]
 COUNTS = [62, 37, 37, 37, 10]
+
+
+def test_the_pinned_counts_are_the_contract_fixture_s() -> None:
+    """The frontend's fake API reads the same counts from the fixture."""
+    from model_fixtures import case
+
+    assert case("chain_reference")["expect"]["step_hits"] == COUNTS
 """Hits of the reference chain's steps on the sample: primary schools, buffered
 cantonal roads B, primary schools near them, municipalities with a high tax
 rate, primary schools in those (design M9.1)."""

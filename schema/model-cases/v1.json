@@ -878,7 +878,10 @@
         "step_classes": ["query", "derive", "spatial", "query", "spatial"],
         "_note": "step_classes: each step's tool's own class (H2, tools.chain), one per step. StepView.classes holds a step's full set (H4): its tool's and those of the conditions it writes, so the buffer step is derive and query; the cell shown per step (WP77) is the strictest of that full set. The chain is governed by the union of all steps' sets (chain_classes), never by classify of step 5's query object, which is the reference query",
         "hits": 10,
-        "total": 137
+        "total": 137,
+        "step_hits": [62, 37, 37, 37, 10],
+        "step_ms": [400, 1800, 600, 300, 500],
+        "_note_steps": "step_hits: each step's count on the sample data (pinned by backend tests test_model_chain*.py); step_ms: example step durations for the fake API (3.6 s in all, as the design's demonstration), not a server guarantee"
       }
     },
     {
@@ -967,10 +970,21 @@
         "comparison": {
           "left_hits": 10,
           "right_hits": 11,
-          "only_left": [{ "id": 18, "name": "Primarstufe Wichtrach" }],
+          "only_left": [
+            {
+              "id": 18,
+              "name": "Primarstufe Wichtrach"
+            }
+          ],
           "only_right": [
-            { "id": 28, "name": "Schule Bernstrasse Ostermundigen" },
-            { "id": 33, "name": "Schule Rüeggisberg" }
+            {
+              "id": 28,
+              "name": "Schule Bernstrasse Ostermundigen"
+            },
+            {
+              "id": 33,
+              "name": "Schule Rüeggisberg"
+            }
           ],
           "reason": {
             "kind": "conditions",
@@ -981,14 +995,24 @@
                   "layer": "strassen",
                   "predicate": "dwithin",
                   "distance_m": 500,
-                  "where": { "op": "compare", "attr": "klasse", "cmp": "eq", "value": "kantonsstrasse_b" }
+                  "where": {
+                    "op": "compare",
+                    "attr": "klasse",
+                    "cmp": "eq",
+                    "value": "kantonsstrasse_b"
+                  }
                 },
                 "right": {
                   "op": "related",
                   "layer": "strassen",
                   "predicate": "dwithin",
                   "distance_m": 800,
-                  "where": { "op": "compare", "attr": "klasse", "cmp": "eq", "value": "kantonsstrasse_b" }
+                  "where": {
+                    "op": "compare",
+                    "attr": "klasse",
+                    "cmp": "eq",
+                    "value": "kantonsstrasse_b"
+                  }
                 }
               },
               {
@@ -996,13 +1020,23 @@
                   "op": "related",
                   "layer": "gemeinden_steuern",
                   "predicate": "within",
-                  "where": { "op": "compare", "attr": "steueranlage", "cmp": "gt", "value": 1.6 }
+                  "where": {
+                    "op": "compare",
+                    "attr": "steueranlage",
+                    "cmp": "gt",
+                    "value": 1.6
+                  }
                 },
                 "right": {
                   "op": "related",
                   "layer": "gemeinden_steuern",
                   "predicate": "within",
-                  "where": { "op": "compare", "attr": "steueranlage", "cmp": "gt", "value": 1.65 }
+                  "where": {
+                    "op": "compare",
+                    "attr": "steueranlage",
+                    "cmp": "gt",
+                    "value": 1.65
+                  }
                 }
               }
             ]
