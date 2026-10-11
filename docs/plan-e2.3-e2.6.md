@@ -358,6 +358,23 @@ Open from the gate list:
 #### Gate E2.5
 See section 5.2 plus the **security review** of section 5.4 (data-release, `model_view`, intermediate layers, outbound). Done-when (etappen.md): the same question is solvable by both approaches, both end in the same analysis state, derivation, step count and result are viewable side by side.
 
+**Design deviations of E2.5** (gate step 6, from the etappe review; to be signed off):
+
+*Deliberate, decided during the WPs:*
+- No buffer as a layer of its own: a chain may not end in a buffer, and nothing derived is created on adopt (D3, WP74 review); step summaries replace the design's "neuer Layer".
+- M8.3: removing a step that another one reads is refused by the server instead of rewiring the dependency.
+- The clock shows "max. 5:00" (P4); the map draws the buffered features, not the buffer zone; "Modell sieht" includes the hit count (D9).
+- The comparison's reason is structured and worded by the frontend; the differing case uses 800 m and Steueranlage > 1.65 (points do not differ for intersects vs within).
+- A plan of more than 8 steps is refused at planning (a refusal card); M9.5 ("angehalten · Begrenzung") is reached only when a re-plan goes over 8.
+- The comparison entry also on a stopped (limited) chain with a result.
+
+*Found by the review, not yet decided:*
+- Labels drop the "Plan ·" and "Kette" prefixes; M8.2 lacks "(Puffer)".
+- M8.3: value fields without units; text values editable; the limit shows 4 after a removal.
+- M9.1: the colour marks the latest step (the screenshot marks earlier ones), a different sidebar text, an added "(zuletzt)".
+- M9.2: the reason names the class, not the step. M9.3: "vorgemerkt" instead of "vorläufig", and an extra map caption. M9.5: an extra "Protokoll" button.
+- M10.1: "Protokoll" as its own button, not in the ⋯ menu. M10.2: no mini maps; the direct side without "Abfrage ansehen" and with its real status instead of "fertig"; "Objekte" instead of "Schulen". M10.3: no "Unterschied auf der Karte zeigen" and no ring outlines.
+
 ### Etappe E2.6 — Transitions and dialogue
 
 #### WP80 — `toAnalysis` and hand-over (FE-dialog)
