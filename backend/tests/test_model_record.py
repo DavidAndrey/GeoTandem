@@ -41,6 +41,8 @@ from geotandem.model.record import (
 )
 from geotandem.model.record.store import MAX_RAW_QUERY_BYTES
 from geotandem.model.schemas import (
+    MAX_PLAN_STEPS,
+    MAX_STEPS,
     ActionStatus,
     CannotAnswer,
     Clarification,
@@ -714,6 +716,34 @@ def test_a_refused_answer_keeps_its_raw_query_up_to_a_bound(
         assert isinstance(refused.answer, QueryAnswer)
         assert refused.answer.query == (raw if kept else {"omitted": "too large"})
         assert refused.answer.explanation == "Zu gross."
+
+
+def test_a_refused_plan_keeps_its_first_steps_up_to_a_bound(
+    store: ModelActionStore, people: dict[str, Account]
+) -> None:
+    """Review #40: a refused plan of 1 MB keeps its first ``MAX_STEPS`` steps,
+    their arguments only within 64 kB of canonical JSON, and says what it left
+    out; a small one stays as it came."""
+    anna = people["anna"]
+    step = PLAN.steps[0]
+    big = [
+        step.model_copy(update={"arguments": {"junk": "x" * 16_000}}) for _ in range(MAX_PLAN_STEPS)
+    ]
+    huge = PLAN.model_copy(update={"steps": big})
+    assert len(huge.model_dump_json()) > 1_000_000
+    refused = store.refuse(anna, new(store, anna).id, REFUSAL, answer=huge)
+    assert isinstance(refused.answer, PlanAnswer)
+    assert len(refused.answer.steps) == MAX_STEPS
+    assert [s.arguments for s in refused.answer.steps] == [{"omitted": "too large"}] * MAX_STEPS
+    assert [s.text for s in refused.answer.steps] == [step.text] * MAX_STEPS
+    with Session(store.engine) as db:
+        kept = db.get(ModelAction, refused.id)
+        assert kept is not None and len(json.dumps(kept.answer)) < MAX_RAW_QUERY_BYTES
+
+    nine = PLAN.model_copy(update={"steps": [step] * (MAX_STEPS + 1)})
+    refused = store.refuse(anna, new(store, anna).id, REFUSAL, answer=nine)
+    assert isinstance(refused.answer, PlanAnswer)
+    assert refused.answer.steps == [step] * MAX_STEPS  # arguments kept: small
 
 
 # --- as it was (H7) -------------------------------------------------------------

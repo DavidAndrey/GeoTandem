@@ -40,6 +40,7 @@ from geotandem.model.chain.view import restored
 from geotandem.model.errors import ActionError
 from geotandem.model.schemas import (
     MAX_PAGE,
+    MAX_STEPS,
     ActionStatus,
     Approach,
     CannotAnswer,
@@ -102,7 +103,10 @@ or (``refused``, ``answered``) ended without anything to decide (section 2)."""
 
 MAX_RAW_QUERY_BYTES = 64 * 1024
 """The most of a refused answer's raw query a record keeps, as canonical JSON
-(UTF-8); a larger one is kept as ``{"omitted": "too large"}`` (review #35)."""
+(UTF-8); a larger one is kept as ``{"omitted": "too large"}`` (review #35).
+The same bound holds for the steps of a refused plan, of which the record
+keeps the first ``MAX_STEPS`` (review #40)."""
+OMITTED: dict[str, str] = {"omitted": "too large"}
 
 UNDOABLE: frozenset[Decision] = frozenset({"accepted", "auto"})
 """What undo takes back: a change the model made, never the user's own (D2)."""
@@ -347,15 +351,30 @@ def _json(model: Any) -> Any:
     return None if model is None else model.model_dump(mode="json", by_alias=True)
 
 
+def _too_large(value: Any) -> bool:
+    """``value`` as canonical JSON (UTF-8) beyond ``MAX_RAW_QUERY_BYTES``."""
+    text = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return len(text.encode()) > MAX_RAW_QUERY_BYTES
+
+
 def _bounded(answer: AnyAnswer | None) -> Any:
     """A refused answer as the record keeps it (design M3): its raw query only up
-    to ``MAX_RAW_QUERY_BYTES`` of canonical JSON (review #35). Everything else
-    of an answer is bounded by its schema."""
+    to ``MAX_RAW_QUERY_BYTES`` of canonical JSON (review #35); of a refused
+    plan the first ``MAX_STEPS`` steps, and their arguments only while all of
+    them together stay within the same bound, else each step's are omitted
+    (review #40: the schema lets a plan list up to ``MAX_PLAN_STEPS`` steps of
+    any arguments). Everything else of an answer is bounded by its schema."""
     data = _json(answer)
-    if isinstance(data, dict) and isinstance(data.get("query"), dict):
-        text = json.dumps(data["query"], sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-        if len(text.encode()) > MAX_RAW_QUERY_BYTES:
-            data["query"] = {"omitted": "too large"}
+    if not isinstance(data, dict):
+        return data
+    if isinstance(data.get("query"), dict) and _too_large(data["query"]):
+        data["query"] = dict(OMITTED)
+    steps = data.get("steps")
+    if isinstance(steps, list):
+        kept = steps[:MAX_STEPS]
+        if _too_large([step.get("arguments") for step in kept]):
+            kept = [{**step, "arguments": dict(OMITTED)} for step in kept]
+        data["steps"] = kept
     return data
 
 
