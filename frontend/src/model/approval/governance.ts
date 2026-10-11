@@ -80,13 +80,19 @@ export const needsApproval = (view: ModelActionView): boolean =>
 export const byHandOnly = (view: ModelActionView): boolean =>
   view.status === 'proposed' && view.answer?.kind === 'query' && proposalOnly(view)
 
-/** An ``auto`` answer the server stored ``approved``: the client executes it at once (P7). */
+/**
+ * An ``auto`` answer the server stored ``approved``: the client executes it at
+ * once (P7). Never a repeat (``compare_of``, WP76): the server stores it
+ * ``proposed`` whatever the cell, so one that is ``approved`` was approved by
+ * the person, whose *Diese übernehmen* executes it (store.py ``_unasked``).
+ */
 export const autoReady = (view: ModelActionView): boolean =>
   view.status === 'approved' &&
   view.decision === null &&
   view.answer?.kind === 'query' &&
   !proposalOnly(view) &&
-  view.governance?.cell === 'auto'
+  view.governance?.cell === 'auto' &&
+  view.compare_of == null
 
 /** The classes of an answer whose cells differ (M6.3): the list says why the strictest governs. */
 export const mixed = (view: ModelActionView): boolean => {

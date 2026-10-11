@@ -7,7 +7,7 @@
 // (M9.5), with the last complete result adoptable. The analysis is unchanged
 // until *übernehmen*.
 import { Trans } from '@lingui/react/macro'
-import { plural, t } from '@lingui/core/macro'
+import { t } from '@lingui/core/macro'
 import { Check, X } from 'lucide-react'
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import type { ModelActionView, StepView } from '../../api/client'
@@ -55,16 +55,11 @@ import {
   placeOf,
   planned,
   ranMs,
+  stepCount,
   oneApproval,
   type Phase,
   type PlanAnswer,
 } from './steps'
-
-/** "5 Schritte". */
-function stepCount(n: number): string {
-  const count = formatNumber(n)
-  return plural(n, { one: `${count} Schritt`, other: `${count} Schritte` })
-}
 
 /** The time now, once a second: the run's clock (M9.1). */
 function useNow(): number {
@@ -720,11 +715,12 @@ function AdoptState({ view }: { view: ModelActionView }) {
  * M9.3: done, the result marked, not applied. *Ergebnis übernehmen* adopts it
  * (in *Prüfen* it counts as *Annehmen*: the chain was approved already);
  * *Als Abfrage ansehen* shows the result as the query object it becomes;
- * *Mit Direktabfrage vergleichen* opens WP78's comparison once it exists.
+ * *Mit Direktabfrage vergleichen* is the comparison's entry (model/compare/,
+ * registered through ``compare.ts``).
  */
 function DoneActions({ view }: { view: ModelActionView }) {
   const [shown, setShown] = useState(false)
-  const compare = useCompare((s) => s.open)
+  const compareEntry = useCompare((s) => s.entry)
   const busy = useApproval((s) => s.busy !== null)
   const count = stepCount(planned(view).length)
   const took = seconds(ranMs(view), 1) ?? ''
@@ -749,11 +745,7 @@ function DoneActions({ view }: { view: ModelActionView }) {
         >
           <Trans>Als Abfrage ansehen</Trans>
         </button>
-        {compare && (
-          <button type="button" className="btn" onClick={() => compare(view)}>
-            <Trans>Mit Direktabfrage vergleichen</Trans>
-          </button>
-        )}
+        {compareEntry?.(view)}
       </div>
       {shown && view.query && <QueryTree query={view.query} line="dashed" />}
       <AdoptState view={view} />
@@ -864,6 +856,7 @@ function StoppedActions({ view }: { view: ModelActionView }) {
   // The server's choice of what to adopt (``query``, ``stamp``), never the client's.
   const last = adoptable(view)
   const busy = useApproval((s) => s.busy !== null)
+  const compareEntry = useCompare((s) => s.entry)
   const byUser = aborted(view.stop_reason)
   const count = adoptedHits(view)
   const hits = count !== null ? formatNumber(count) : null
@@ -895,6 +888,8 @@ function StoppedActions({ view }: { view: ModelActionView }) {
         <button type="button" className="btn" onClick={openMyActions}>
           <Trans>Protokoll</Trans>
         </button>
+        {/* A stopped chain with a result is compared too (service.py ``COMPARABLE``). */}
+        {last && compareEntry?.(view)}
       </div>
       <AdoptState view={view} />
       <p className="text-muted text-xs">

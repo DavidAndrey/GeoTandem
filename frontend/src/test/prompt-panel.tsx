@@ -12,6 +12,8 @@ import {
   isFakeError,
   levelOption,
   modelServer,
+  REPEAT_ID,
+  type CaseId,
   type LevelName,
   type ModelServer,
 } from './model-mocks'
@@ -155,6 +157,51 @@ export function chainRoutes(server: ModelServer, thinking: ModelActionView): Rou
     [`POST ${base}/adopt`]: () => answer(server.adopt(id)),
     [`PATCH ${base}/plan`]: (init: RequestInit | undefined) =>
       answer(server.plan(id, JSON.parse(String(init?.body)) as PlanEdit)),
+  }
+}
+
+/**
+ * The comparison's routes of ``server`` (WP76 as the fake answers it,
+ * ``modelServer``): ``compare`` of the records ``ids``, whose repeat brings
+ * case ``answer``'s answer under ``level`` (the account's level now); each
+ * repeat's poll, approval and chain routes (ids from ``REPEAT_ID`` on);
+ * ``comparison`` named by any of them.
+ */
+export function compareRoutes(
+  server: ModelServer,
+  ids: number[],
+  answer: CaseId,
+  level: LevelName = 'Prüfen',
+  repeats = 2,
+): Routes {
+  const result = (value: unknown, status = 200) =>
+    isFakeError(value) ? json(value.body, value.status) : json(value, status)
+  const repeatIds = Array.from({ length: repeats }, (_, i) => REPEAT_ID + i)
+  return {
+    ...enforcement(server, ...repeatIds),
+    ...Object.fromEntries(
+      ids.map((id) => [
+        `POST /api/model/actions/${id}/compare`,
+        () => result(server.compare(id, answer, level), 202),
+      ]),
+    ),
+    ...Object.fromEntries(
+      [...ids, ...repeatIds].map((id) => [
+        `GET /api/model/actions/${id}/comparison`,
+        () => result(server.comparison(id)),
+      ]),
+    ),
+    ...Object.fromEntries(
+      repeatIds.flatMap((id) => {
+        const base = `/api/model/actions/${id}`
+        return [
+          [`GET ${base}`, () => result(server.poll(id))],
+          [`POST ${base}/run`, () => result(server.run(id), 202)],
+          [`POST ${base}/abort`, () => result(server.abort(id))],
+          [`POST ${base}/adopt`, () => result(server.adopt(id))],
+        ]
+      }),
+    ),
   }
 }
 

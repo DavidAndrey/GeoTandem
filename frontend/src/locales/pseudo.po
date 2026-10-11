@@ -120,6 +120,10 @@ msgstr ""
 msgid "„Daten neu\": ein beteiligter Layer wurde seit dem Speichern aktualisiert. Sitzungen sind privat."
 msgstr ""
 
+#: src/model/compare/CompareDialog.tsx
+msgid "„Diese übernehmen“ ersetzt die aktuelle Analyse und gilt als Freigabe der gewählten Fassung. Die andere Seite bleibt, wie sie ist."
+msgstr ""
+
 #: src/model/panel/HandoverNotice.tsx
 msgid "„Nur in“ entfällt: Der Vorschlag gilt ohne Ihre Einschränkung auf Ausschnitt oder Fläche. „Verwerfen“ stellt sie wieder her."
 msgstr ""
@@ -207,6 +211,10 @@ msgstr ""
 msgid "{count} · {took}"
 msgstr ""
 
+#: src/model/compare/CompareDialog.tsx
+msgid "{count}, Ergebnis als eine Abfrage"
+msgstr ""
+
 #: src/admin/ModelActionPage.tsx
 msgid "{decision} {decided}"
 msgstr ""
@@ -263,6 +271,10 @@ msgstr ""
 msgid "{label} – {level}"
 msgstr ""
 
+#: src/model/panel/Answer.tsx
+msgid "{label} · {again}"
+msgstr ""
+
 #: src/components/ui.tsx
 msgid "{label}: {value} von {max}"
 msgstr ""
@@ -277,6 +289,18 @@ msgstr ""
 
 #: src/admin/ImportWizard.tsx
 msgid "{layer}: {objects} → {read} in der Datei. Felder: {changes}"
+msgstr ""
+
+#: src/model/compare/words.ts
+msgid "{left} nur links, {right} nur rechts"
+msgstr ""
+
+#: src/model/compare/CompareDialog.tsx
+msgid "{leftHits} = {rightHits}, dieselben Objekte"
+msgstr ""
+
+#: src/model/compare/words.ts
+msgid "{leftSide} „{before}“, {rightSide} „{after}“"
 msgstr ""
 
 #: src/admin/ProfilePage.tsx
@@ -331,7 +355,7 @@ msgstr ""
 msgid "{n, plural, one {{count} Schlüsselwert kommt in „{layer}\" mehrfach vor; das erste Objekt gilt.} other {{count} Schlüsselwerte kommen in „{layer}\" mehrfach vor; das erste Objekt gilt.}}"
 msgstr ""
 
-#: src/model/chain/Chain.tsx
+#: src/model/chain/steps.ts
 msgid "{n, plural, one {{count} Schritt} other {{count} Schritte}}"
 msgstr ""
 
@@ -372,6 +396,10 @@ msgstr ""
 msgid "{op} {layer}"
 msgstr ""
 
+#: src/model/compare/CompareDialog.tsx
+msgid "{run} + {plan} Planung"
+msgstr ""
+
 #: src/admin/ConnectionsPage.tsx
 #: src/admin/ModelActionPage.tsx
 #: src/model/panel/time.ts
@@ -381,6 +409,10 @@ msgstr ""
 #: src/model/chain/Chain.tsx
 #: src/model/panel/Answer.tsx
 msgid "{shown} / max. {max}"
+msgstr ""
+
+#: src/model/compare/words.ts
+msgid "{shown} und {count} weitere"
 msgstr ""
 
 #: src/i18n/phrases.ts
@@ -716,6 +748,7 @@ msgid "als"
 msgstr ""
 
 #: src/model/chain/Chain.tsx
+#: src/model/compare/CompareDialog.tsx
 msgid "Als Abfrage ansehen"
 msgstr ""
 
@@ -1506,6 +1539,7 @@ msgid "Datum"
 msgstr ""
 
 #: src/model/chain/Chain.tsx
+#: src/model/compare/CompareDialog.tsx
 msgid "Dauer"
 msgstr ""
 
@@ -1854,6 +1888,10 @@ msgstr ""
 msgid "Die Kacheln kommen von ausserhalb dieser Installation; der Anbieter sieht den Kartenausschnitt."
 msgstr ""
 
+#: src/model/compare/flow.ts
+msgid "Die Kette brachte kein Ergebnis."
+msgstr ""
+
 #: src/model/chain/Chain.tsx
 msgid "Die Kette bräuchte {total} Schritte, neu geplante eingeschlossen (höchstens {max})."
 msgstr ""
@@ -1910,6 +1948,10 @@ msgstr ""
 msgid "Die Treffer sind dieselben."
 msgstr ""
 
+#: src/model/compare/words.ts
+msgid "Die Treffer sind Objekte verschiedener Layer: {leftSide} liefert „{left}“, {rightSide} „{right}“."
+msgstr ""
+
 #: src/i18n/errors.ts
 msgid "Die voreingestellte Anbindung muss für Anwender freigegeben sein."
 msgstr ""
@@ -1939,6 +1981,7 @@ msgid "Diese Abfrage lässt sich in den Bedienelementen nicht vollständig darst
 msgstr ""
 
 #: src/model/approval/flow.ts
+#: src/model/compare/flow.ts
 msgid "Diese Abfrage lässt sich nicht im Editor darstellen und darum nicht anwenden."
 msgstr ""
 
@@ -1963,6 +2006,10 @@ msgstr ""
 msgid "Diese Antwort ist schon die Wiederholung einer anderen; verglichen wird mit dieser."
 msgstr ""
 
+#: src/model/compare/flow.ts
+msgid "Diese Antwort ist schon die Wiederholung mit der anderen Arbeitsweise."
+msgstr ""
+
 #: src/i18n/errors.ts
 msgid "Diese Operation geht hier nicht."
 msgstr ""
@@ -1981,6 +2028,14 @@ msgstr ""
 
 #: src/i18n/errors.ts
 msgid "Diese Stufe steht nicht zur Wahl."
+msgstr ""
+
+#: src/model/compare/CompareDialog.tsx
+msgid "Diese übernehmen"
+msgstr ""
+
+#: src/model/compare/CompareDialog.tsx
+msgid "Diese übernehmen: {name}"
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -2032,7 +2087,6 @@ msgid "Direkt"
 msgstr ""
 
 #: src/model/log/words.ts
-#: src/model/panel/Answer.tsx
 #: src/model/panel/PromptPanel.tsx
 msgid "Direktabfrage"
 msgstr ""
@@ -2104,11 +2158,20 @@ msgstr ""
 msgid "Ein Vorschlag wartet noch auf Freigabe. Er bleibt an die Stufe {bound} gebunden, unter der er gestellt wurde, und wird nicht automatisch angewendet."
 msgstr ""
 
+#: src/model/compare/CompareDialog.tsx
+msgid "eine Abfrage, {count}"
+msgstr ""
+
 #: src/i18n/errors.ts
 msgid "Eine Anbindung „{name}\" gibt es schon."
 msgstr ""
 
+#: src/model/compare/flow.ts
+msgid "Eine Anfrage läuft noch. Wiederholen geht, sobald sie beantwortet ist."
+msgstr ""
+
 #: src/i18n/errors.ts
+#: src/model/compare/flow.ts
 msgid "Eine der beiden Antworten hat kein Ergebnis; es gibt nichts zu vergleichen."
 msgstr ""
 
@@ -2134,6 +2197,10 @@ msgstr ""
 
 #: src/i18n/errors.ts
 msgid "Eine geteilte Abfrage ändert nur, wer sie gespeichert hat; bitte als eigene Kopie speichern."
+msgstr ""
+
+#: src/model/compare/flow.ts
+msgid "Eine Seite läuft noch: Verglichen wird, sobald beide ein Ergebnis haben."
 msgstr ""
 
 #: src/session/SaveAsDialog.tsx
@@ -2265,6 +2332,7 @@ msgstr ""
 
 #: src/admin/ImportLogPage.tsx
 #: src/admin/ModelActionPage.tsx
+#: src/model/compare/CompareDialog.tsx
 #: src/workplace/LayerPanel.tsx
 msgid "Ergebnis"
 msgstr ""
@@ -2857,6 +2925,10 @@ msgstr ""
 msgid "Grund (optional):"
 msgstr ""
 
+#: src/model/compare/CompareDialog.tsx
+msgid "Grund, aus den beiden Abfragen gelesen:"
+msgstr ""
+
 #: src/model/approval/Approval.tsx
 msgid "Grund:"
 msgstr ""
@@ -2883,6 +2955,10 @@ msgstr ""
 
 #: src/map/MapView.tsx
 msgid "Herauszoomen"
+msgstr ""
+
+#: src/model/compare/CompareDialog.tsx
+msgid "Herleitung"
 msgstr ""
 
 #: src/session/ui.ts
@@ -2943,6 +3019,8 @@ msgstr ""
 
 #: src/model/approval/Approval.tsx
 #: src/model/chain/Chain.tsx
+#: src/model/compare/CompareDialog.tsx
+#: src/model/compare/Entry.tsx
 #: src/model/panel/Problem.tsx
 msgid "Ihr Stand ist unverändert."
 msgstr ""
@@ -3371,6 +3449,18 @@ msgstr ""
 msgid "läuft …"
 msgstr ""
 
+#: src/model/compare/flow.ts
+msgid "Läuft noch: Die Kette hat noch kein Ergebnis."
+msgstr ""
+
+#: src/model/compare/flow.ts
+msgid "Läuft noch: Verglichen wird, sobald beide Wege ein Ergebnis haben."
+msgstr ""
+
+#: src/model/compare/flow.ts
+msgid "Läuft noch."
+msgstr ""
+
 #: src/model/chain/Chain.tsx
 msgid "Laufzeit der Kette"
 msgstr ""
@@ -3596,8 +3686,12 @@ msgstr ""
 msgid "Mit aktuellen Daten übernehmen"
 msgstr ""
 
-#: src/model/chain/Chain.tsx
+#: src/model/compare/Entry.tsx
 msgid "Mit Direktabfrage vergleichen"
+msgstr ""
+
+#: src/model/compare/Entry.tsx
+msgid "Mit Direktabfrage wiederholen"
 msgstr ""
 
 #: src/admin/LevelsPage.tsx
@@ -3618,6 +3712,10 @@ msgstr ""
 
 #: src/model/panel/Answer.tsx
 msgid "Mit Werkzeugkette versuchen ›"
+msgstr ""
+
+#: src/model/compare/Entry.tsx
+msgid "Mit Werkzeugkette wiederholen"
 msgstr ""
 
 #: src/operations/OperationDialog.tsx
@@ -3853,6 +3951,18 @@ msgctxt "model sees"
 msgid "nicht leer"
 msgstr ""
 
+#: src/model/compare/flow.ts
+msgid "Nicht mehr im Verlauf. Bitte neu fragen."
+msgstr ""
+
+#: src/model/compare/flow.ts
+msgid "Nicht mehr offen ({status}): Wiederholt wird eine wartende oder angewendete Antwort."
+msgstr ""
+
+#: src/model/compare/flow.ts
+msgid "Nicht mehr offen ({status})."
+msgstr ""
+
 #: src/map/MapSearch.tsx
 msgid "Nichts gefunden."
 msgstr ""
@@ -3905,6 +4015,22 @@ msgstr ""
 msgid "Notiz (optional)"
 msgstr ""
 
+#: src/model/compare/CompareDialog.tsx
+msgid "Nur {leftName}: {leftNames}"
+msgstr ""
+
+#: src/model/compare/words.ts
+msgid "Nur {leftSide}: „{before}“"
+msgstr ""
+
+#: src/model/compare/CompareDialog.tsx
+msgid "Nur {rightName}: {rightNames}"
+msgstr ""
+
+#: src/model/compare/words.ts
+msgid "Nur {rightSide}: „{after}“"
+msgstr ""
+
 #: src/table/TableDock.tsx
 msgid "nur aktueller Kartenausschnitt"
 msgstr ""
@@ -3927,11 +4053,13 @@ msgstr ""
 
 #: src/editor/CompactTree.tsx
 #: src/model/approval/changes.ts
+#: src/model/compare/words.ts
 msgid "nur im Kartenausschnitt"
 msgstr ""
 
 #: src/editor/CompactTree.tsx
 #: src/model/approval/changes.ts
+#: src/model/compare/words.ts
 msgid "nur in der Fläche"
 msgstr ""
 
@@ -3990,12 +4118,20 @@ msgstr ""
 msgid "Ohne {conditions}: ihr Layer ist nicht verfügbar."
 msgstr ""
 
+#: src/model/compare/flow.ts
+msgid "Ohne Ergebnis gibt es nichts zu vergleichen."
+msgstr ""
+
 #: src/model/approval/Approval.tsx
 msgid "Ohne Grund abgelehnt."
 msgstr ""
 
 #: src/editor/CompactTree.tsx
 msgid "ohne Klartext:"
+msgstr ""
+
+#: src/model/compare/words.ts
+msgid "ohne Klartext: {json}"
 msgstr ""
 
 #: src/model/log/words.ts
@@ -4234,6 +4370,14 @@ msgstr ""
 msgid "schneidet"
 msgstr ""
 
+#: src/model/compare/flow.ts
+msgid "Schon angewendet."
+msgstr ""
+
+#: src/model/compare/Entry.tsx
+msgid "Schon wiederholt: Der Vergleich steht bei der Antwort."
+msgstr ""
+
 #: src/model/chain/ChainMap.tsx
 msgid "Schritt {at} · {count} Treffer übernehmbar"
 msgstr ""
@@ -4302,6 +4446,7 @@ msgstr ""
 #: src/admin/ImportWizard.tsx
 #: src/admin/ModelActionPage.tsx
 #: src/model/chain/Chain.tsx
+#: src/model/compare/CompareDialog.tsx
 msgid "Schritte"
 msgstr ""
 
@@ -4502,6 +4647,10 @@ msgstr ""
 msgid "Stufe"
 msgstr ""
 
+#: src/model/compare/flow.ts
+msgid "Stufe {level}: Das Modell darf hier nur vorschlagen (aus: {classes}); seine Abfrage wird für keinen Vergleich ausgeführt."
+msgstr ""
+
 #: src/model/chain/Chain.tsx
 msgid "Stufe {level}: Das Modell darf hier nur vorschlagen (aus: {off}). Eine Werkzeugkette läuft nicht; neue Frage über das Eingabefeld."
 msgstr ""
@@ -4510,8 +4659,16 @@ msgstr ""
 msgid "Stufe {level}: Das Modell darf hier nur vorschlagen (aus: {off}). Keine Vorschau, keine Freigabe, kein Zurücknehmen; „Übernehmen“ im Editor ist Ihre Änderung."
 msgstr ""
 
+#: src/model/compare/flow.ts
+msgid "Stufe {level}: Das Modell darf hier nur vorschlagen; seine Abfrage wird für keinen Vergleich ausgeführt."
+msgstr ""
+
 #: src/model/panel/Answer.tsx
 msgid "Stufe {level}: Das Modell darf hier nur vorschlagen. Keine Vorschau, keine Freigabe, kein Zurücknehmen; „Übernehmen“ im Editor ist Ihre Änderung."
+msgstr ""
+
+#: src/model/compare/flow.ts
+msgid "Stufe {level}: Das Modell darf hier nur vorschlagen. Übernehmen geht nur von Hand im Editor."
 msgstr ""
 
 #: src/admin/ModelLogPage.tsx
@@ -4646,6 +4803,7 @@ msgstr ""
 
 #: src/admin/ModelLogPage.tsx
 #: src/model/chain/Chain.tsx
+#: src/model/compare/CompareDialog.tsx
 #: src/model/log/MyActionsDialog.tsx
 #: src/session/SessionsDialog.tsx
 msgid "Treffer"
@@ -4669,6 +4827,10 @@ msgstr ""
 
 #: src/model/approval/NoticeBar.tsx
 msgid "Treffer: {hitsBefore} → {hitsAfter}"
+msgstr ""
+
+#: src/model/compare/CompareDialog.tsx
+msgid "Treffermengen gleich"
 msgstr ""
 
 #: src/operations/OperationDialog.tsx
@@ -4786,6 +4948,10 @@ msgstr ""
 msgid "unterbrochen"
 msgstr ""
 
+#: src/model/compare/CompareDialog.tsx
+msgid "Unterschied"
+msgstr ""
+
 #: src/admin/wizard.ts
 msgid "unverändert"
 msgstr ""
@@ -4820,6 +4986,18 @@ msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
 msgid "Verbindungstest nicht bestanden"
+msgstr ""
+
+#: src/model/compare/CompareDialog.tsx
+msgid "Vergleich · gleiche Frage, zwei Arbeitsweisen"
+msgstr ""
+
+#: src/model/compare/Entry.tsx
+msgid "Vergleich ansehen"
+msgstr ""
+
+#: src/model/compare/CompareDialog.tsx
+msgid "Vergleich schliessen"
 msgstr ""
 
 #: src/editor/EditorPanel.tsx
@@ -4982,6 +5160,10 @@ msgstr ""
 msgid "Weiter"
 msgstr ""
 
+#: src/model/compare/Entry.tsx
+msgid "Weitere Aktionen"
+msgstr ""
+
 #: src/map/MapSearch.tsx
 msgid "weitere Treffer — genauer suchen"
 msgstr ""
@@ -5008,7 +5190,6 @@ msgstr ""
 
 #: src/model/chain/Chain.tsx
 #: src/model/log/words.ts
-#: src/model/panel/Answer.tsx
 #: src/model/panel/PromptPanel.tsx
 msgid "Werkzeugkette"
 msgstr ""
@@ -5059,6 +5240,14 @@ msgstr ""
 msgid "Wiederhergestellt · {count}, identisch mit dem Speicherstand"
 msgstr ""
 
+#: src/model/panel/Answer.tsx
+msgid "wiederholt als Direktabfrage"
+msgstr ""
+
+#: src/model/panel/Answer.tsx
+msgid "wiederholt mit Werkzeugkette"
+msgstr ""
+
 #: src/model/chain/Chain.tsx
 msgid "Wird abgebrochen: Der laufende Schritt endet noch, dann hält die Kette."
 msgstr ""
@@ -5088,6 +5277,7 @@ msgid "Wird nur jetzt angezeigt. Bitte sicher weitergeben; es muss bei der erste
 msgstr ""
 
 #: src/model/chain/Chain.tsx
+#: src/model/compare/CompareDialog.tsx
 msgid "Wird übernommen …"
 msgstr ""
 

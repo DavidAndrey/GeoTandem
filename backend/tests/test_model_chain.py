@@ -48,6 +48,8 @@ def test_the_pinned_counts_are_the_contract_fixture_s() -> None:
     from model_fixtures import case
 
     assert case("chain_reference")["expect"]["step_hits"] == COUNTS
+
+
 """Hits of the reference chain's steps on the sample: primary schools, buffered
 cantonal roads B, primary schools near them, municipalities with a high tax
 rate, primary schools in those (design M9.1)."""
