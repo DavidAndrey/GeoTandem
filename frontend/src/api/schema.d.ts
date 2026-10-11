@@ -1187,7 +1187,13 @@ export interface paths {
     delete?: never
     options?: never
     head?: never
-    /** Edit Plan */
+    /**
+     * Edit Plan
+     * @description Change values and remove steps of a chain that waits for approval and has
+     *     not started; never add one (design M8.3). The plan is checked whole again
+     *     and governed by the level as it was; 422 names the step a refusal is
+     *     about. The person's edit: an interactive session only, as ``approve``.
+     */
     patch: operations['edit_plan_api_model_actions__action_id__plan_patch']
     trace?: never
   }
@@ -1200,7 +1206,14 @@ export interface paths {
     }
     get?: never
     put?: never
-    /** Run */
+    /**
+     * Run
+     * @description Start an ``approved`` chain, or let it go on after a halt (P4): 202 with
+     *     the record ``running``; the client polls ``GET /actions/{id}``. The steps
+     *     run one at a time as the caller's background task, among the model calls
+     *     (409/503 ``busy``); the record halts for approval where the level as it
+     *     was asks for it.
+     */
     post: operations['run_api_model_actions__action_id__run_post']
     delete?: never
     options?: never
@@ -1219,7 +1232,10 @@ export interface paths {
     put?: never
     /**
      * Adopt
-     * @description A ``done`` or ``limited`` chain's result becomes the analysis (design "Kette übernehmen").
+     * @description A ``done`` or ``limited`` chain's result becomes the analysis (design
+     *     "Kette übernehmen"): its last complete step as one query object, run as
+     *     the caller like ``execute``; the other answer with rows. Once only. The
+     *     person's decision (``accepted``): an interactive session only.
      */
     post: operations['adopt_api_model_actions__action_id__adopt_post']
     delete?: never
@@ -3258,7 +3274,15 @@ export interface components {
       replans: number
       /** Stop Reason */
       stop_reason?:
-        ('step_limit' | 'time_limit' | 'result_too_large' | 'aborted' | 'interrupted') | null
+        | (
+            | 'step_limit'
+            | 'time_limit'
+            | 'result_too_large'
+            | 'aborted'
+            | 'interrupted'
+            | 'replan_limit'
+          )
+        | null
       stamp?: components['schemas']['ResultStamp'] | null
       /** Latency Ms */
       latency_ms?: number | null
@@ -4389,8 +4413,7 @@ export interface components {
       /** Hits */
       hits?: number | null
       stamp?: components['schemas']['ResultStamp'] | null
-      /** Layer */
-      layer?: string | null
+      query?: components['schemas']['QueryObject-Output'] | null
       model_view?: components['schemas']['ModelView'] | null
       /** Duration Ms */
       duration_ms?: number | null
@@ -9638,6 +9661,15 @@ export interface operations {
           'application/json': components['schemas']['ErrorBody']
         }
       }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
       /** @description Not Found */
       404: {
         headers: {
@@ -9808,6 +9840,15 @@ export interface operations {
           'application/json': components['schemas']['ErrorBody']
         }
       }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
       /** @description Not Found */
       404: {
         headers: {
@@ -9826,6 +9867,15 @@ export interface operations {
           'application/json': components['schemas']['ErrorBody']
         }
       }
+      /** @description Content Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
       /** @description Unprocessable Content */
       422: {
         headers: {
@@ -9837,6 +9887,24 @@ export interface operations {
       }
       /** @description Not Implemented */
       501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Gateway Timeout */
+      504: {
         headers: {
           [name: string]: unknown
         }

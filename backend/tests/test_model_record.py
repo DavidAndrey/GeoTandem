@@ -33,6 +33,7 @@ from geotandem.levels import CellMode, Level, OpClass, load_levels, save_levels
 from geotandem.model.record import (
     ActionError,
     ActionFilters,
+    ChainStep,
     ModelActionStore,
     NewAction,
     connection_snapshot,
@@ -121,14 +122,39 @@ def new(
     return store.create(who, NewAction(**values), supersede=supersede)
 
 
+def chain_steps() -> list[ChainStep]:
+    """The plan's steps as the store keeps them (their query objects stand in)."""
+    return [
+        ChainStep(
+            position=i,
+            text=step.text,
+            tool=step.tool,
+            arguments=step.arguments,
+            query=QUERY,
+            classes=frozenset({OpClass.QUERY}),
+            cell=CellMode.APPROVE,
+        )
+        for i, step in enumerate(PLAN.steps, 1)
+    ]
+
+
 def proposed(
     store: ModelActionStore, who: Account, rule: Governance = APPROVE, **fields: Any
 ) -> int:
     action = new(store, who, **fields)
-    answer = PLAN if fields.get("approach") == "chain" else ANSWER
-    query = None if fields.get("approach") == "chain" else QUERY
-    store.propose(who, action.id, answer, query=query, governance=rule, latency_ms=900)
+    chain = fields.get("approach") == "chain"
+    answer = PLAN if chain else ANSWER
+    query = None if chain else QUERY
+    steps = chain_steps() if chain else []
+    store.propose(who, action.id, answer, query=query, governance=rule, latency_ms=900, steps=steps)
     return action.id
+
+
+def ran_first_step(store: ModelActionStore, who: Account, action_id: int) -> None:
+    """Step 1 of a running chain counted 62 hits."""
+    store.step_started(who, action_id, 1, run_ms=1)
+    seen = {"outcome": "ok", "empty": False, "count": 62}
+    store.step_ran(who, action_id, 1, status="ok", count=62, view=seen, duration_ms=3, run_ms=4)
 
 
 # --- the migration --------------------------------------------------------------
@@ -235,21 +261,25 @@ STEPS: dict[str, Step] = {
     "run": lambda s, a, i: s.run(a, i),
     "finish": lambda s, a, i: s.finish(a, i, STAMP),
     "stop": lambda s, a, i: s.stop(a, i, "step_limit", STAMP),
+    "halt": lambda s, a, i: s.halt(a, i, waiting=None, run_ms=0),
+    "abort_halted": lambda s, a, i: s.stop(a, i, "aborted"),
     "adopt": lambda s, a, i: s.adopt(a, i, STAMP),
     "undo": lambda s, a, i: s.undo(a, i),
     "touched": lambda s, a, i: s.touch(a, i),
     "preview": lambda s, a, i: s.mark_previewed(a, i),
     "new_prompt": lambda s, a, i: s.supersede_open(a),
-    "restart": lambda s, a, i: s.close_stale(datetime(2100, 1, 1)),
+    "restart": lambda s, a, i: s.close_stale(datetime(2100, 1, 1), 100),
 }
 
 # Plan 1.2 and section 2, copied here on purpose: the store is checked against
-# the plan, not against itself.
+# the plan, not against itself. ``proposed → limited`` is the chain aborted
+# while it waits for approval (plan WP75); ``running → proposed`` its halt
+# for approval before a step or after a re-plan (P4, ``ActionStatus``).
 PLAN_EDGES: dict[str, set[str]] = {
     "thinking": {"refused", "answered", "proposed", "approved", "aborted", "failed"},
-    "proposed": {"approved", "rejected", "superseded", "applied"},
-    "approved": {"applied", "running", "superseded"},
-    "running": {"done", "limited"},
+    "proposed": {"approved", "rejected", "superseded", "applied", "limited"},
+    "approved": {"applied", "running", "superseded", "limited"},
+    "running": {"done", "limited", "proposed"},
     "done": {"applied", "superseded"},
     "limited": {"applied", "superseded"},
     "applied": {"undone"},
@@ -284,9 +314,17 @@ def check(before: ModelActionView, after: ModelActionView) -> None:
 
 LIKELY: dict[str, list[str]] = {
     "thinking": ["refuse", "answer", "propose", "propose_auto", "propose_off", "propose_plan"],
-    "proposed": ["approve", "reject", "by_hand", "adjusted", "preview", "new_prompt"],
+    "proposed": [
+        "approve",
+        "reject",
+        "by_hand",
+        "adjusted",
+        "preview",
+        "new_prompt",
+        "abort_halted",
+    ],
     "approved": ["execute", "run", "run", "preview", "new_prompt"],
-    "running": ["finish", "stop"],
+    "running": ["finish", "stop", "halt"],
     "done": ["adopt", "new_prompt"],
     "limited": ["adopt", "new_prompt"],
     "applied": ["undo", "undo", "touched"],
@@ -503,6 +541,8 @@ def test_the_start_up_check_closes_what_nobody_will_finish(
     running = proposed(store, anna, approach="chain", supersede=False)
     store.approve(anna, running)
     store.run(anna, running)
+    ran_first_step(store, anna, running)
+    store.step_started(anna, running, 2, run_ms=5)
     store.mark_previewed(anna, approved)
     waiting = proposed(store, anna, supersede=False)
     cutoff = datetime.now(UTC).replace(tzinfo=None) + timedelta(seconds=1)
@@ -517,7 +557,7 @@ def test_the_start_up_check_closes_what_nobody_will_finish(
 
     # Nothing in flight survives a restart, whatever its age; only an auto
     # answer's window is measured.
-    closed = store.close_stale(cutoff)
+    closed = store.close_stale(cutoff, 100)
     assert sorted(closed) == sorted([thinking, auto, running, young])
 
     failed = store.get(anna, thinking)
@@ -529,12 +569,15 @@ def test_the_start_up_check_closes_what_nobody_will_finish(
     assert store.get(beat, auto).decision == "superseded"
     interrupted = store.get(anna, running)
     assert (interrupted.status, interrupted.stop_reason) == ("limited", "interrupted")
+    # The step that ran stays; the one that ran when the server stopped never ends.
+    assert [s.status for s in interrupted.steps] == ["ok"] + ["skipped"] * 4
+    assert interrupted.query == QUERY and interrupted.stamp is None  # step 1, unstamped
     assert store.adopt(anna, running, STAMP).decision == "accepted"  # still adoptable
     assert store.get(anna, approved).status == "approved"  # the user approved it
     assert store.get(anna, waiting).status == "proposed"
     assert store.get(beat, young).status == "failed"
     assert store.get(beat, young_auto).status == "approved"
-    assert store.close_stale(cutoff) == []
+    assert store.close_stale(cutoff, 100) == []
     system = [
         e for e in events if e["event"] == "model_action_decided" and e["username"] == "system"
     ]
@@ -557,22 +600,82 @@ def test_a_chain_runs_and_is_adopted_or_stopped(
     store: ModelActionStore, people: dict[str, Account]
 ) -> None:
     anna = people["anna"]
+    steps = chain_steps()
     done = proposed(store, anna, approach="chain")
     store.approve(anna, done)
+    assert [s.status for s in store.get(anna, done).steps] == ["planned"] * 5
     store.run(anna, done)
-    assert store.finish(anna, done, STAMP).status == "done"
+    for chain_step in steps:  # one approval for the whole chain (all approve)
+        store.step_ran(
+            anna,
+            done,
+            chain_step.position,
+            status="ok",
+            count=10,
+            view={"outcome": "ok", "empty": False, "count": 10},
+            duration_ms=1,
+            run_ms=chain_step.position,
+        )
+    finished = store.finish(anna, done, STAMP, result=steps[-1])
+    assert (finished.status, finished.query, finished.stamp) == ("done", QUERY, STAMP)
+    assert [s.stamp for s in finished.steps] == [None] * 4 + [STAMP]  # the result's only
     adopted = store.adopt(anna, done, STAMP)
     assert (adopted.status, adopted.decision) == ("applied", "accepted")
 
     stopped = proposed(store, anna, AUTO, approach="chain")
     store.run(anna, stopped)
-    limited = store.stop(anna, stopped, "time_limit", STAMP)
+    ran_first_step(store, anna, stopped)
+    limited = store.stop(anna, stopped, "time_limit", STAMP, result=steps[0])
     assert (limited.status, limited.stop_reason, limited.decision) == (
         "limited",
         "time_limit",
         None,
     )
+    assert [s.status for s in limited.steps] == ["ok"] + ["skipped"] * 4
     assert store.adopt(anna, stopped, STAMP).decision == "accepted"
+
+    # Nothing complete: nothing to adopt.
+    empty = proposed(store, anna, AUTO, approach="chain")
+    store.run(anna, empty)
+    store.stop(anna, empty, "aborted")
+    with pytest.raises(ActionError) as refused:
+        store.adopt(anna, empty, STAMP)
+    assert (refused.value.code, refused.value.status) == ("not_approved", 409)
+
+
+def test_a_chain_halts_and_is_aborted_while_it_waits(
+    store: ModelActionStore, people: dict[str, Account]
+) -> None:
+    """``running`` → ``proposed`` before a step (P4); ``proposed`` → ``limited``
+    when the user aborts while it waits; a plan that never started is no halt."""
+    anna = people["anna"]
+    plan_only = proposed(store, anna, approach="chain", supersede=False)
+    with pytest.raises(ActionError) as early:
+        store.stop(anna, plan_only, "aborted")
+    assert early.value.code == "not_approved"
+
+    action_id = proposed(store, anna, approach="chain", supersede=False)
+    store.approve(anna, action_id)
+    store.run(anna, action_id)
+    ran_first_step(store, anna, action_id)
+    halted = store.halt(anna, action_id, waiting=2, run_ms=9)
+    assert halted.status == "proposed"
+    assert [s.status for s in halted.steps] == ["ok", "waiting", "planned", "planned", "planned"]
+    with pytest.raises(ActionError):
+        store.stop(anna, action_id, "time_limit")  # only an abort ends a halt
+    aborted = store.stop(anna, action_id, "aborted", STAMP, result=chain_steps()[0])
+    assert (aborted.status, aborted.stop_reason, aborted.decision) == ("limited", "aborted", None)
+    assert [s.status for s in aborted.steps] == ["ok"] + ["skipped"] * 4
+
+
+def test_a_chain_never_executes(store: ModelActionStore, people: dict[str, Account]) -> None:
+    """Its approval may cover the next step only: ``execute`` would run all."""
+    anna = people["anna"]
+    action_id = proposed(store, anna, AUTO, approach="chain")
+    with pytest.raises(ActionError) as refused:
+        store.execute(anna, action_id, STAMP)
+    assert (refused.value.code, refused.value.details["status"]) == ("not_approved", "approved")
+    assert store.get(anna, action_id).status == "approved"
 
 
 def test_a_preview_is_logged_and_changes_no_status(
@@ -858,7 +961,13 @@ def build(store: ModelActionStore, who: Account, end: str, **fields: Any) -> int
         return action_id
     rule = {"auto": AUTO, "auto_undone": AUTO, "proposal_only": OFF}.get(end, APPROVE)
     action_id = proposed(store, who, rule, supersede=False, **fields)
-    if end in ("accepted", "accepted_undone"):
+    if fields.get("approach") == "chain" and end in ("accepted", "accepted_undone"):
+        # A chain is run and its result adopted (WP75), never executed.
+        store.approve(who, action_id)
+        store.run(who, action_id)
+        store.finish(who, action_id, STAMP, result=chain_steps()[-1])
+        store.adopt(who, action_id, STAMP)
+    elif end in ("accepted", "accepted_undone"):
         store.approve(who, action_id)
         store.execute(who, action_id, STAMP)
     elif end in ("auto", "auto_undone"):

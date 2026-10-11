@@ -1026,10 +1026,10 @@ async def test_the_start_up_check_closes_an_auto_answer_left_unexecuted(
     def at(seconds: float) -> Callable[[], Any]:
         return lambda: arrived + timedelta(seconds=seconds)
 
-    assert close_stale(engine, at(-115 + MODEL_CALL_S + 5)) == []  # by the prompt: over
-    assert close_stale(engine, at(MODEL_CALL_S - 5)) == []
+    assert close_stale(engine, 100, at(-115 + MODEL_CALL_S + 5)) == []  # by the prompt: over
+    assert close_stale(engine, 100, at(MODEL_CALL_S - 5)) == []
     assert (await client.get(url(record["id"]))).json()["status"] == "approved"
-    assert close_stale(engine, at(MODEL_CALL_S + 5)) == [record["id"]]
+    assert close_stale(engine, 100, at(MODEL_CALL_S + 5)) == [record["id"]]
     closed = (await client.get(url(record["id"]))).json()
     assert (closed["status"], closed["decision"]) == ("superseded", "superseded")
 

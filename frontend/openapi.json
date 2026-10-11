@@ -5865,6 +5865,7 @@
           "model"
         ],
         "summary": "Edit Plan",
+        "description": "Change values and remove steps of a chain that waits for approval and has\nnot started; never add one (design M8.3). The plan is checked whole again\nand governed by the level as it was; 422 names the step a refusal is\nabout. The person's edit: an interactive session only, as ``approve``.",
         "operationId": "edit_plan_api_model_actions__action_id__plan_patch",
         "parameters": [
           {
@@ -5949,6 +5950,16 @@
               }
             },
             "description": "Not Implemented"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
           }
         }
       }
@@ -5959,6 +5970,7 @@
           "model"
         ],
         "summary": "Run",
+        "description": "Start an ``approved`` chain, or let it go on after a halt (P4): 202 with\nthe record ``running``; the client polls ``GET /actions/{id}``. The steps\nrun one at a time as the caller's background task, among the model calls\n(409/503 ``busy``); the record halts for approval where the level as it\nwas asks for it.",
         "operationId": "run_api_model_actions__action_id__run_post",
         "parameters": [
           {
@@ -6083,7 +6095,7 @@
           "model"
         ],
         "summary": "Adopt",
-        "description": "A ``done`` or ``limited`` chain's result becomes the analysis (design \"Kette übernehmen\").",
+        "description": "A ``done`` or ``limited`` chain's result becomes the analysis (design\n\"Kette übernehmen\"): its last complete step as one query object, run as\nthe caller like ``execute``; the other answer with rows. Once only. The\nperson's decision (``accepted``): an interactive session only.",
         "operationId": "adopt_api_model_actions__action_id__adopt_post",
         "parameters": [
           {
@@ -6158,6 +6170,46 @@
               }
             },
             "description": "Not Implemented"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "504": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Gateway Timeout"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
           }
         }
       }
@@ -11716,7 +11768,8 @@
                   "time_limit",
                   "result_too_large",
                   "aborted",
-                  "interrupted"
+                  "interrupted",
+                  "replan_limit"
                 ]
               },
               {
@@ -14448,16 +14501,15 @@
               }
             ]
           },
-          "layer": {
+          "query": {
             "anyOf": [
               {
-                "type": "string"
+                "$ref": "#/components/schemas/QueryObject-Output"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Layer"
+            ]
           },
           "model_view": {
             "anyOf": [

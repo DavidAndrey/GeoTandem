@@ -2,14 +2,19 @@
 
 from geotandem.model.errors import ActionError
 from geotandem.model.record.store import (
+    COMPLETE,
     DECIDED,
     EDGES,
     OPEN,
+    RAN,
     UNDOABLE,
     ActionFilters,
+    Chain,
+    ChainStep,
     ModelActionStore,
     NewAction,
     connection_snapshot,
+    last_complete,
     level_snapshot,
     text_hash,
     to_view,
@@ -17,15 +22,20 @@ from geotandem.model.record.store import (
 )
 
 __all__ = [
+    "COMPLETE",
     "DECIDED",
     "EDGES",
     "OPEN",
+    "RAN",
     "UNDOABLE",
     "ActionError",
     "ActionFilters",
+    "Chain",
+    "ChainStep",
     "ModelActionStore",
     "NewAction",
     "connection_snapshot",
+    "last_complete",
     "level_snapshot",
     "text_hash",
     "to_view",

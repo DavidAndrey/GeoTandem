@@ -1,13 +1,16 @@
 """No row content reaches the model through a tool chain (D9, D10; plan WP74, S7).
 
-The application as it runs: its data core with the sample, a model connection
-set up through the API, the administrator's level, read-only view and layer
-profile, and a scripted model. Sentinels sit where a leak would carry them:
-in attribute values of the layers the chain reads (one shaped like a name, as
-``kantonsstrasse_b`` is), in the coordinates of every feature a step finds,
-and in a layer kept from the model, by name and by its rows. The chain plans,
-runs, re-plans after an empty step and after an engine error, and every
-message the model receives, every turn, every re-plan input, is searched.
+The application as it runs, through its API (WP75): its data core with the
+sample, a model connection set up through the API, the administrator's level
+(*Teilautonom*: the run halts before the buffer, so the next stretch of the
+run reads the views of the steps before from the record), read-only view and
+layer profile, and a scripted model. Sentinels sit where a leak would carry
+them: in attribute values of the layers the chain reads (one shaped like a
+name, as ``kantonsstrasse_b`` is), in the coordinates of every feature a step
+finds, and in a layer kept from the model, by name and by its rows. The chain
+is planned, edited by the user, run, re-planned after an empty step and after
+an engine error, and every message the model receives, every turn, every
+re-plan input, is searched.
 
 A step that names the hidden layer is refused exactly as one that names a
 missing layer, and an engine error whose details carry a name-shaped value
@@ -18,15 +21,25 @@ model's input the same, byte for byte.
 """
 
 import json
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 import httpx
 import pytest
+from chain_fixtures import drive, record, settle
 from fastapi import FastAPI
 from sqlalchemy import select, update
 from test_model_direct import same_refusal
-from test_model_enforcement import CONNECTIONS, account_of, connect
+from test_model_enforcement import (
+    CONNECTIONS,
+    PROMPT,
+    account_of,
+    connect,
+    fixture_levels,
+    install_levels,
+    url,
+)
 from test_profile import SENTINELS, sentinel_csv
 
 from geotandem.api.state import AppState
@@ -36,16 +49,11 @@ from geotandem.engine import ids_query, run_query
 from geotandem.engine.compile import FID, GEOM
 from geotandem.engine.errors import UnknownAttribute
 from geotandem.importing.run import ImportDecisions, XYReference, run_import
-from geotandem.levels import active_level
 from geotandem.llm import Completion
 from geotandem.llm.fake import FakeLLMClient
 from geotandem.model.chain import run as chain_run
-from geotandem.model.chain.ask import ChainState, ask, replan_message
-from geotandem.model.chain.plan import check_plan
-from geotandem.model.chain.run import ChainOutcome, StepRun, run_chain, run_step
-from geotandem.model.prompt import Prompt, build_prompt
-from geotandem.model.schemas import PlanAnswer, PlannedStep, Refusal
-from geotandem.model.service import profile_for, read_view
+from geotandem.model.schemas import Refusal
+from geotandem.model.service import read_view
 from geotandem_query import QueryObject
 
 Body = dict[str, Any]
@@ -88,10 +96,10 @@ REVISED = plan(
 """Steps 3 to 6 after the completed 1 and 2."""
 AFTER_ERROR = plan(
     ("buffer", {"layer": "strassen", "distance_m": 500}),
-    ("within", {"of": 1, "in": 2}),
+    ("within", {"of": 1, "in": 3}),
     why="Ohne Strassenklasse, die nicht mehr da ist.",
 )
-"""Steps 2 and 3, after step 2 of ``PLANNED`` failed."""
+"""Steps 3 and 4, after step 2 of ``PLANNED`` failed: it keeps its place (WP75)."""
 
 
 def completion(answer: Body) -> Completion:
@@ -122,64 +130,31 @@ def seed(state: AppState, tmp_path: Path) -> None:
     assert run.status in ("ok", "warning"), run
 
 
-class Setup:
-    """What the application resolves for the administrator's chain request."""
-
-    def __init__(self, app: FastAPI) -> None:
-        state: AppState = app.state.geotandem
-        self.state = state
-        self.admin = account_of(app, "admin")
-        self.level = active_level(state.backend.engine, self.admin.id, admin=True)
-        active = state.connections.active_call(self.admin.id)
-        assert active is not None
-        self.connection = active[0]
-        view, self.profile = profile_for(state.backend, self.admin)
-        self.context = state.tool_context(view)
-
-    def prompt(self, text: str) -> Prompt:
-        return build_prompt(
-            text,
-            approach="chain",
-            level=self.level,
-            profile=self.profile,
-            context_length=self.connection.context_length,
-        )
-
-
-def empty_then_revised(setup: Setup) -> tuple[ChainOutcome, FakeLLMClient]:
-    model = FakeLLMClient(script=[completion(PLANNED), completion(REVISED)])
-    prompt = setup.prompt("Welche Primarschulen liegen nahe an Kantonsstrassen?")
-    return run_chain(model, prompt, setup.context, setup.profile), model
-
-
-def error_then_revised(setup: Setup, app: FastAPI) -> tuple[list[StepRun], FakeLLMClient]:
-    """Planned while ``klasse`` was released, run after it was withdrawn: the
-    buffer fails in the model's world as it is now, and the model re-plans."""
-    model = FakeLLMClient(script=[completion(PLANNED), completion(AFTER_ERROR)])
-    prompt = setup.prompt("Primarschulen nahe Strassen?")
-    answer = ask(model, prompt.messages, prompt.schema)
-    assert isinstance(answer, PlanAnswer)
-    checked = check_plan(answer.steps, setup.context, setup.profile)
-    assert isinstance(checked, list)
-    engine = setup.state.backend.engine
-    update_attribute(engine, "strassen", "klasse", AttributeUpdate(for_model=False))
-    try:
-        _, now = profile_for(setup.state.backend, setup.admin)
-        chain = ChainState(prompt, answer, checked)
-        runs = []
-        while (step := chain.next) is not None:
-            run = run_step(step, setup.context, now)
-            runs.append(run)
-            after = chain.ran(step, run.view)
-            if after == "replan":
-                revised = ask(model, chain.replan_messages(), prompt.schema)
-                assert isinstance(revised, PlanAnswer)
-                assert chain.revise(revised, setup.context, now) is None
-            else:
-                assert after in ("next", "done")
-    finally:
-        update_attribute(engine, "strassen", "klasse", AttributeUpdate(for_model=True))
-    return runs, model
+async def chain(
+    client: httpx.AsyncClient,
+    app: FastAPI,
+    *answers: Body,
+    text: str = "Welche Primarschulen liegen nahe an Kantonsstrassen?",
+    edit: Body | None = None,
+    before_run: Callable[[], None] | None = None,
+) -> tuple[Body, FakeLLMClient]:
+    """A chain asked through the API with ``answers`` as the model's plan and
+    re-plans, edited (``edit``) and run as the interface walks it."""
+    model = FakeLLMClient(script=[completion(a) for a in answers])
+    app.state.geotandem.client_factory = lambda _endpoint: model
+    asked = await client.post(PROMPT, json={"text": text, "approach": "chain"})
+    assert asked.status_code == 202, asked.text
+    await settle(app)
+    action_id = asked.json()["id"]
+    if edit is not None:
+        edited = await client.patch(url(action_id, "plan"), json=edit)
+        assert edited.status_code == 200, edited.text
+    if before_run is not None:
+        before_run()
+    current = await record(client, action_id)
+    if current["status"] in ("proposed", "approved"):
+        current, _ = await drive(client, app, action_id)
+    return current, model
 
 
 def sent(*models: FakeLLMClient) -> str:
@@ -203,20 +178,11 @@ def received(model: FakeLLMClient) -> bytes:
     ).encode()
 
 
-def named(setup: Setup, layer: str) -> ChainOutcome:
-    """A plan whose first step names ``layer``: refused before anything runs."""
-    step = ("filter", {"layer": layer, "where": {"op": "is_null", "attr": "kategorie"}})
-    model = FakeLLMClient(script=[completion(plan(step, why="Die Punkte ohne Kategorie."))])
-    outcome = run_chain(model, setup.prompt("Punkte?"), setup.context, setup.profile)
-    assert outcome.runs == [] and len(model.calls) == 1
-    return outcome
-
-
 EVERY = Limits(max_features=100_000, timeout_s=30)
 """Every feature a step found, for the search; the user's own limit is lower."""
 
 
-def rows(setup: Setup, queries: list[QueryObject]) -> tuple[set[str], set[str]]:
+def rows(app: FastAPI, queries: list[QueryObject]) -> tuple[set[str], set[str]]:
     """The text values and the coordinates of every feature the steps found, as
     the user's run returns them (WGS84) and as the data core stores them (the
     internal CRS)."""
@@ -230,8 +196,8 @@ def rows(setup: Setup, queries: list[QueryObject]) -> tuple[set[str], set[str]]:
         elif isinstance(node, float):
             coordinates.add(repr(node))
 
-    backend = setup.state.backend
-    view = read_view(backend, setup.admin)
+    backend = app.state.geotandem.backend
+    view = read_view(backend, account_of(app, "admin"))
     for query in queries:
         for feature in run_query(query, view, EVERY).features:
             texts.update(v for v in feature.properties.values() if isinstance(v, str))
@@ -246,40 +212,86 @@ def rows(setup: Setup, queries: list[QueryObject]) -> tuple[set[str], set[str]]:
     return texts, coordinates
 
 
+@pytest.fixture
+async def teilautonom(client: httpx.AsyncClient) -> Body:
+    connection = await connect(client)
+    ids = await install_levels(client, fixture_levels())
+    chosen = await client.put("/api/llm/options", json={"level_id": ids["Teilautonom"]})
+    assert chosen.status_code == 200, chosen.text
+    return connection
+
+
 async def test_no_row_content_reaches_the_model_through_a_chain(
-    app: FastAPI, client: httpx.AsyncClient, tmp_path: Path
+    app: FastAPI, client: httpx.AsyncClient, tmp_path: Path, teilautonom: Body
 ) -> None:
-    await connect(client)
     seed(app.state.geotandem, tmp_path)
-    setup = Setup(app)
-    outcome, planned = empty_then_revised(setup)
-    runs, failed = error_then_revised(setup, app)
-    hidden, missing = named(setup, HIDDEN), named(setup, "kitas")
+    engine = app.state.geotandem.backend.engine
+
+    # Planned, its buffer edited by the user, run with a halt before the buffer,
+    # empty at step 2, re-planned with the views read back from the record.
+    edit = {
+        "change": [
+            {
+                "position": 2,
+                "arguments": {"layer": "strassen", "distance_m": 400, "where": NOWHERE},
+            }
+        ]
+    }
+    empty, planned = await chain(client, app, PLANNED, REVISED, edit=edit)
+
+    # Planned while ``klasse`` was released, run after it was withdrawn: the
+    # buffer fails in the model's world as it is now, and the model re-plans.
+    def withdraw() -> None:
+        update_attribute(engine, "strassen", "klasse", AttributeUpdate(for_model=False))
+
+    try:
+        failed, erred = await chain(
+            client, app, PLANNED, AFTER_ERROR, text="Primarschulen nahe Strassen?",
+            before_run=withdraw,
+        )  # fmt: skip
+    finally:
+        update_attribute(engine, "strassen", "klasse", AttributeUpdate(for_model=True))
+
+    step = ("filter", {"layer": HIDDEN, "where": {"op": "is_null", "attr": "kategorie"}})
+    hidden, hidden_model = await chain(client, app, plan(step, why="Punkte."), text="Punkte?")
+    step = ("filter", {"layer": "kitas", "where": {"op": "is_null", "attr": "kategorie"}})
+    missing, missing_model = await chain(client, app, plan(step, why="Punkte."), text="Punkte?")
 
     # The chain did what it should: an empty step, an error, a re-plan after each.
-    assert outcome.refusal is None and outcome.replans == 1
-    assert outcome.result is not None and (outcome.result.view.count or 0) > 0
-    assert [r.view.empty for r in outcome.runs] == [False, True, False, False, False, False]
-    assert runs[1].view.code == "unknown_attribute" and runs[1].error is not None
-    assert len(planned.calls) == len(failed.calls) == 2
-    same_refusal(missing.refusal, hidden.refusal, "kitas", HIDDEN)
-    assert hidden.refusal is not None and hidden.refusal.code == "unknown_layer"
-    text = sent(planned, failed)
+    assert (empty["status"], empty["replans"]) == ("done", 1)
+    assert [s["model_view"]["empty"] for s in empty["steps"]] == [False, True] + [False] * 4
+    assert (failed["status"], failed["replans"]) == ("done", 1)
+    assert failed["steps"][1]["model_view"]["code"] == "unknown_attribute"
+    assert len(planned.calls) == len(erred.calls) == 2
+    same_refusal(
+        Refusal.model_validate(missing["refusal"]),
+        Refusal.model_validate(hidden["refusal"]),
+        "kitas",
+        HIDDEN,
+    )
+    assert hidden["refusal"]["code"] == "unknown_layer" and hidden["steps"] == []
+    text = sent(planned, erred, hidden_model, missing_model)
     assert '"empty":true' in text and '"code":"unknown_attribute","part":"klasse"' in text
+    assert 'Schritt 1 (filter): {"outcome":"ok","empty":false,"count":' in text
+    assert "Der Anwender hat den Plan vor dem Lauf angepasst" in text  # edits_message
 
     # The sentinels are there: in what the steps found, and kept from the profile.
-    found = [r.step.query for r in [*outcome.runs, *runs] if r.view.outcome == "ok"]
-    values, coordinates = rows(setup, found)
+    found = [
+        QueryObject.model_validate(s["query"])
+        for view in (empty, failed)
+        for s in view["steps"]
+        if s["model_view"] and s["model_view"]["outcome"] == "ok"
+    ]
+    values, coordinates = rows(app, found)
     assert any(IN_A_NAME in v for v in values) and NAME_SHAPED in values
     assert any(float(c) > 1_000_000 for c in coordinates)  # the internal CRS (LV95)
     assert any(float(c) < 90 for c in coordinates)  # WGS84
-    assert HIDDEN in setup.state.backend.layer_names() and HIDDEN not in setup.profile.text
-    assert "klasse" in runs[1].error.message  # the user's to read, never the model's
+    assert HIDDEN in app.state.geotandem.backend.layer_names()
 
     # ... and none reached the model.
-    model_wrote = json.dumps([PLANNED, REVISED, AFTER_ERROR], ensure_ascii=False)
-    metadata = setup.profile.text
-    from_rows = {v for v in values if len(v) >= 5 and v not in model_wrote and v not in metadata}
+    model_wrote = json.dumps([PLANNED, REVISED, AFTER_ERROR, edit], ensure_ascii=False)
+    profile = planned.calls[0].messages[0].content
+    from_rows = {v for v in values if len(v) >= 5 and v not in model_wrote and v not in profile}
     assert from_rows, "the sample's rows hold text the model never saw"
     leaked = [s for s in (IN_A_NAME, NAME_SHAPED, HIDDEN, *SENTINELS) if s in text]
     assert leaked == []
@@ -288,44 +300,55 @@ async def test_no_row_content_reaches_the_model_through_a_chain(
 
 
 async def test_a_name_shaped_value_in_an_error_never_reaches_the_model(
-    app: FastAPI, client: httpx.AsyncClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    app: FastAPI,
+    client: httpx.AsyncClient,
+    tmp_path: Path,
+    teilautonom: Body,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """An engine error whose details carry a row value shaped like a name: the
-    model wrote it only as a value, so ``part`` drops it, and the re-plan input
-    has the code alone."""
-    await connect(client)
+    model wrote it only as a value, so ``part`` drops it, and the re-plan's
+    input, as the application's run writes it, has the code alone."""
     seed(app.state.geotandem, tmp_path)
-    setup = Setup(app)
     where = {"op": "compare", "attr": "nummer", "cmp": "ne", "value": NAME_SHAPED}
-    planned = [
-        PlannedStep(text="x", tool="filter", arguments={"layer": "strassen", "where": where})
-    ]
-    checked = check_plan(planned, setup.context, setup.profile)
-    assert not isinstance(checked, Refusal)
+    first = plan(("filter", {"layer": "strassen", "where": where}), why="Strassen.")
+    again = plan(("filter", {"layer": "strassen", "where": ROADS_B}), why="Anders.")
+    original = chain_run.count_query
+    failures = iter([True])
 
-    def failing(*_: Any, **__: Any) -> int:
-        raise UnknownAttribute(f"No '{NAME_SHAPED}' here.", attribute=NAME_SHAPED)
+    def failing(*args: Any, **kwargs: Any) -> int:
+        if next(failures, False):
+            raise UnknownAttribute(f"No '{NAME_SHAPED}' here.", attribute=NAME_SHAPED)
+        return original(*args, **kwargs)
 
     monkeypatch.setattr(chain_run, "count_query", failing)
-    run = run_step(checked[0], setup.context, setup.profile)
-    assert run.error is not None and run.error.details == {"attribute": NAME_SHAPED}
-    assert (run.view.code, run.view.part) == ("unknown_attribute", None)
-    assert NAME_SHAPED not in replan_message([(1, "filter", run.view)], 0)
+    ended, model = await chain(client, app, first, again, text="Strassen?")
+
+    assert (ended["status"], ended["replans"]) == ("done", 1)
+    assert ended["steps"][0]["model_view"] == {
+        "outcome": "error",
+        "code": "unknown_attribute",
+        "part": None,
+        "empty": None,
+        "count": None,
+    }
+    replan_input = model.calls[1].messages[-1]
+    assert replan_input.role == "user" and '"code":"unknown_attribute"' in replan_input.content
+    assert NAME_SHAPED not in replan_input.content
 
 
 async def test_the_data_release_changes_nothing_the_model_receives(
     app: FastAPI, client: httpx.AsyncClient, tmp_path: Path
 ) -> None:
-    """D10: the flag is stored and shown, and it has no effect in E2.5.
-
-    PENDING (WP75): anchored on ``run_chain`` here, which never sees the
-    connection, so today it shows the flag is read nowhere on the way, no more.
-    WP75 re-anchors it on the service and API path (``POST /prompt`` with the
-    chain approach, ``run``), where the connection is resolved."""
+    """D10: the flag is stored and shown, and it has no effect in E2.5. On the
+    application's path (WP75), where the connection is resolved: flipped
+    through the API, a chain asked through the API, approved, run, re-planned
+    after its empty step and adopted; every call the model received, byte for
+    byte the same, and no sentinel in any."""
     connection = await connect(client)
     seed(app.state.geotandem, tmp_path)
     inputs: list[bytes] = []
-    released: list[bool] = []
+    models: list[FakeLLMClient] = []
     for flag in (connection["may_receive_data"], not connection["may_receive_data"]):
         changed = await client.patch(
             f"{CONNECTIONS}/{connection['id']}", json={"may_receive_data": flag}
@@ -333,10 +356,16 @@ async def test_the_data_release_changes_nothing_the_model_receives(
         assert changed.status_code == 200, changed.text
         shown = (await client.get(CONNECTIONS)).json()
         assert [c["may_receive_data"] for c in shown] == [flag]
-        setup = Setup(app)
-        released.append(setup.connection.may_receive_data)
-        outcome, model = empty_then_revised(setup)
-        assert outcome.result is not None
+        done, model = await chain(client, app, PLANNED, REVISED)
+        assert (done["status"], done["replans"]) == ("done", 1)
+        assert [s["model_view"]["empty"] for s in done["steps"]] == [False, True] + [False] * 4
+        adopted = await client.post(url(done["id"], "adopt"))
+        assert adopted.status_code == 200, adopted.text
+        assert len(model.calls) == 2
         inputs.append(received(model))
-    assert released == [True, False]
+        models.append(model)
+    assert [connection["may_receive_data"], not connection["may_receive_data"]] == [True, False]
     assert inputs[0] == inputs[1]
+    text = sent(*models)
+    assert '"empty":true' in text
+    assert [s for s in (IN_A_NAME, NAME_SHAPED, HIDDEN, *SENTINELS) if s in text] == []

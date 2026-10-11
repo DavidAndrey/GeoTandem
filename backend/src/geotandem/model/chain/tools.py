@@ -26,9 +26,11 @@ from geotandem.tools.registry import Tool
 from geotandem_query import QueryObject
 
 Ref = Annotated[
-    int, Field(ge=1, le=MAX_STEPS, description="Position of an earlier step; 1 is the first.")
+    int, Field(ge=1, le=2 * MAX_STEPS, description="Position of an earlier step; 1 is the first.")
 ]
-"""An earlier step, in a planned step's arguments."""
+"""An earlier step, in a planned step's arguments. Positions are stable (WP75):
+a step the user removed keeps its place and a re-plan's steps continue after
+the last step that ran, so a chain of ``MAX_STEPS`` steps may reach beyond it."""
 
 
 @dataclass(frozen=True)

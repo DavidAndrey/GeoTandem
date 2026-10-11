@@ -86,7 +86,8 @@ const MESSAGES: Record<string, Words> = {
   },
   unsupported_operation: () => t`Diese Operation geht hier nicht.`,
   result_too_large: (d) => {
-    const max = number(d.max_features)
+    // A query's limit (max_features), or a chain's stop with step, value and max.
+    const max = number(d.max_features ?? d.max)
     return t`Das Ergebnis hat mehr als ${max} Objekte. Bitte die Abfrage enger fassen.`
   },
   query_timeout: () => t`Die Abfrage hat zu lange gedauert und wurde abgebrochen.`,
@@ -181,7 +182,7 @@ const MESSAGES: Record<string, Words> = {
   undo_blocked: () =>
     t`Die Analyse wurde seither von Hand geändert; die Modelländerung lässt sich nicht mehr zurücknehmen.`,
   time_limit: (d) => {
-    const max = number(d.max_s)
+    const max = number(d.max)
     return t`Die Werkzeugkette lief länger als ${max} Sekunden und wurde angehalten.`
   },
   export_too_large: (d) => {
