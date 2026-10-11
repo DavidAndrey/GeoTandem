@@ -3,6 +3,9 @@
 // (the rules are listed there). Server-shaped data throughout: compact
 // queries in the record and its steps, a full dump in the rows' query, naive
 // UTC times with microseconds, every key of ``model_view``.
+/// <reference types="node" />
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import { useAnalysis } from '../../analysis/store'
@@ -14,6 +17,7 @@ import {
   actionView,
   CHAIN_DURATIONS_MS,
   CHAIN_HITS,
+  errorFor,
   isFakeError,
   MODEL_LIMITS,
   modelCase,
@@ -43,14 +47,17 @@ import { strays } from '../../test/pseudo'
 import { renderAt } from '../../test/render'
 import { Workplace } from '../../workplace/Workplace'
 import { useApproval } from '../approval/flow'
+import { clearHistory } from '../panel/state'
 import { useModel } from '../store'
 import { registerCompare } from './compare'
+import { approveChain } from './flow'
 import {
   CHAIN_S,
   MAX_FEATURES,
   MAX_REPLANS,
   MAX_STEPS,
   modelSees,
+  VALUE_KEYS,
   valueFields,
   withValue,
 } from './steps'
@@ -173,6 +180,20 @@ describe('contract', () => {
     const buffer = PLAN.steps[1]?.arguments
     expect(withValue(buffer, ['distance_m'], 300)).toEqual({ ...buffer, distance_m: 300 })
   })
+
+  test("the plan editor's values are the server's (plan.py VALUE_KEYS)", () => {
+    // The server's own source, read as text.
+    // The tests run in frontend/ (vitest's root); the backend is beside it.
+    const planPy = readFileSync(
+      resolve(process.cwd(), '..', 'backend/src/geotandem/model/chain/plan.py'),
+      'utf8',
+    )
+    const found = /^VALUE_KEYS: Final = frozenset\(\{([^}]*)\}\)/m.exec(planPy)
+    expect(found).not.toBeNull()
+    const keys = [...(found?.[1] ?? '').matchAll(/"([a-z_]+)"/g)].map((m) => m[1])
+    expect(keys.length).toBeGreaterThan(0)
+    expect(new Set(keys)).toEqual(new Set(VALUE_KEYS))
+  })
 })
 
 describe('plan (M8)', () => {
@@ -290,6 +311,36 @@ describe('plan (M8)', () => {
     unchanged()
   })
 
+  test('a new prompt supersedes the plan on the server too: acting on the old card is 409 already_decided', async () => {
+    const next = actionView('clarification')
+    let prompts = 0
+    const { user, server, answer } = await planned('Prüfen', {
+      routes: (server) => ({
+        'POST /api/model/prompt': () =>
+          json(
+            prompts++ === 0
+              ? server.prompt(thinkingView('chain_reference'))
+              : server.prompt(thinkingView('clarification'), next),
+            202,
+          ),
+        [`GET /api/model/actions/${next.id}`]: () => json(server.poll(next.id)),
+      }),
+    })
+    const stale = useModel.getState().views[answer.id] as ModelActionView
+    expect(stale.status).toBe('proposed')
+    await ask(user, next.prompt)
+    await tick()
+    // Closed on the server as store.py ``create`` closes it: superseded, its steps skipped.
+    expect(server.record(answer.id)).toMatchObject({ status: 'superseded', decision: 'superseded' })
+    expect(server.record(answer.id)?.steps.every((s) => s.status === 'skipped')).toBe(true)
+    // A card still showing the plan (another tab, a stale view) acts on it: refused.
+    await act(() => approveChain(stale))
+    const failure = useApproval.getState().failure
+    expect(failure?.action).toBe(answer.id)
+    expect((failure?.error as { body?: { code?: string } }).body?.code).toBe('already_decided')
+    unchanged()
+  })
+
   test('Automatisch: the plan arrives approved and runs without a question', async () => {
     const { calls } = await planned('Automatisch')
     await phase('running')
@@ -391,15 +442,22 @@ describe('run (M9)', () => {
         'läuft· Schritt 3 von 5',
       ),
     )
-    // The request so far as the server counts it: the planning call (6 s), the two
-    // steps that ran (0.4 s + 1.8 s, ``run_ms``), and the third on this clock.
-    expect(useModel.getState().views[answer.id]?.run_ms).toBe(2200)
-    const clock = screen.getByLabelText('Laufzeit der Kette')
-    expect(clock).toHaveTextContent(/^0:0[89] \/ max\. 5:00$/)
+    // The request so far as the server counts it: the planning call (``latency_ms``)
+    // and the run (``run_ms``), whatever the view carries; the step that runs on this clock.
+    const record = useModel.getState().views[answer.id]
+    const base = ((record?.latency_ms ?? 0) + (record?.run_ms ?? 0)) / 1000
+    expect(record?.run_ms).toBeGreaterThan(0)
+    const clockSeconds = () => {
+      const text = screen.getByLabelText('Laufzeit der Kette').textContent ?? ''
+      const found = /^(\d+):(\d\d) \/ max\. 5:00$/.exec(text)
+      expect(found).not.toBeNull()
+      return Number(found?.[1]) * 60 + Number(found?.[2])
+    }
+    expect(clockSeconds()).toBeGreaterThanOrEqual(Math.floor(base))
+    expect(clockSeconds()).toBeLessThanOrEqual(Math.floor(base) + 1)
     await tick(3000)
-    expect(screen.getByLabelText('Laufzeit der Kette')).toHaveTextContent(
-      /^0:1[0-2] \/ max\. 5:00$/,
-    )
+    expect(clockSeconds()).toBeGreaterThanOrEqual(Math.floor(base) + 2)
+    expect(clockSeconds()).toBeLessThanOrEqual(Math.floor(base) + 4)
 
     const first = stepItem(1)
     expect(first).toHaveAttribute('data-status', 'ok')
@@ -620,7 +678,8 @@ describe('run (M9)', () => {
         replanError: { code: 'connection_not_available', details: { reason: 'changed' } },
       },
       title: 'Keine weitere Neuplanung',
-      text: /Die Neuplanung brachte keinen brauchbaren Plan: /,
+      // Found before the call: no re-plan was sent.
+      text: /Keine Neuplanung möglich: Diese Anbindung steht nicht zur Wahl\./,
       adoptable: CHAIN_HITS[0],
     },
   ] as {
@@ -636,9 +695,12 @@ describe('run (M9)', () => {
       for (let i = 0; i < 3; i++) await tick()
       await phase('stopped')
       const end = await findCard()
-      expect(end.querySelector('[data-status="limited"]')).toHaveTextContent(
-        'angehalten · Begrenzung',
-      )
+      const label = end.querySelector('[data-status="limited"]')
+      expect(label).toHaveTextContent('angehalten · Begrenzung')
+      // M9.5 as M9.4: struck through, grey, the card's line too; still adoptable (below).
+      expect(label?.className).toMatch(/\bline-through\b/)
+      expect(end.className).toMatch(/\bborder-neutral-400\b/)
+      expect(end.className).not.toMatch(/\bborder-dashed\b/)
       expect(end).toHaveTextContent('Analyse unverändert')
       expect(end).toHaveTextContent(title)
       expect(end).toHaveTextContent(text)
@@ -714,6 +776,197 @@ describe('run (M9)', () => {
     )
   })
 
+  test('replan_limit: no plan on the second re-plan says so, by its error, not by the count', async () => {
+    const { answer } = await planned('Automatisch', {
+      script: {
+        errors: { 3: { code: 'unknown_attribute' }, 4: { code: 'unknown_attribute' } },
+        replans: [REVISED.slice(0, 1)],
+      },
+    })
+    await phase('running')
+    await tick()
+    await phase('stopped')
+    expect(useModel.getState().views[answer.id]?.replans).toBe(MAX_REPLANS)
+    const end = await findCard()
+    expect(end).toHaveTextContent('Das Modell antwortete auf die Neuplanung nicht mit einem Plan.')
+    expect(end).not.toHaveTextContent('aufgebraucht')
+  })
+
+  test.each([
+    {
+      reason: 'class_not_allowed',
+      script: {
+        replanError: {
+          code: 'class_not_allowed',
+          details: {
+            level: 'Automatisch',
+            op_class: 'derive',
+            part: 'derive',
+            step: 4,
+            cause: 'x',
+          },
+        },
+      },
+      text: /keinen brauchbaren Plan \(Schritt 4\): Auf der Stufe .Automatisch. ist .Abgeleitete Layer. nicht erlaubt\./,
+    },
+    {
+      reason: 'unknown_layer',
+      script: { replanError: { code: 'unknown_layer', details: { layer: 'gewaesser', step: 4 } } },
+      text: /keinen brauchbaren Plan \(Schritt 4\): Den Layer .gewaesser. gibt es nicht oder er ist nicht sichtbar\./,
+    },
+    {
+      reason: 'not_representable',
+      // The re-plan ends in a buffer (D3).
+      script: { replans: [[PLAN.steps[1] as PlannedStep]] },
+      text: /keinen brauchbaren Plan \(Schritt 4\): Diese Abfrage lässt sich in den Bedienelementen nicht vollständig darstellen\./,
+    },
+    {
+      reason: 'level_not_available',
+      script: { levelChanged: true },
+      text: /Ihre Stufe wurde seit dem Plan geändert; unter ihr läuft die Kette nicht weiter\./,
+    },
+    {
+      reason: 'quota_exceeded',
+      script: {
+        replanError: { code: 'quota_exceeded', details: { limit: 50, connection: 'Lokal' } },
+      },
+      text: /Keine Neuplanung möglich: Die 50 Anfragen pro Tag an diese Anbindung sind aufgebraucht\./,
+    },
+  ] as { reason: string; script: ChainScript; text: RegExp }[])(
+    'M9.5 replan_limit ($reason): the refused re-plan in words, with the names it needs',
+    async ({ script, text }) => {
+      await planned('Automatisch', {
+        script: { errors: { 3: { code: 'unknown_attribute' } }, ...script },
+      })
+      await phase('running')
+      await tick()
+      await phase('stopped')
+      const end = await findCard()
+      expect(end).toHaveTextContent('Keine weitere Neuplanung')
+      expect(end).toHaveTextContent(text)
+      unchanged()
+    },
+  )
+
+  test.each([
+    {
+      reason: 'given up at its deadline',
+      script: { expire: 3 },
+      label: 'limited',
+      title: 'Laufzeit überschritten',
+      text: 'Die Kette lief länger als erlaubt (höchstens 5:00 je Anfrage).',
+      adopt: 'Zwischenstand übernehmen',
+    },
+    {
+      reason: 'failed',
+      script: { crash: 3 },
+      label: 'interrupted',
+      title: 'Lauf unterbrochen',
+      text: 'Die Anwendung wurde neu gestartet, oder der Lauf selbst ist fehlgeschlagen.',
+      adopt: 'Zwischenstand übernehmen',
+    },
+    {
+      reason: 'no query slot',
+      script: { noSlot: 3 },
+      label: 'interrupted',
+      title: 'Lauf unterbrochen',
+      text: 'Zu viele Abfragen liefen gleichzeitig; die Kette wurde vor Schritt 3 angehalten.',
+      adopt: `Zwischenstand übernehmen (${formatted(CHAIN_HITS[0] ?? 0)})`,
+    },
+  ] as {
+    reason: string
+    script: ChainScript
+    label: string
+    title: string
+    text: string
+    adopt: string
+  }[])('a run $reason: its words; the result stays adoptable', async (c) => {
+    const { user, calls } = await running({ script: c.script })
+    await tick()
+    await phase('stopped')
+    const end = await findCard()
+    expect(end.querySelector(`[data-status="${c.label}"]`)).toBeInTheDocument()
+    expect(end).toHaveTextContent(c.title)
+    expect(end).toHaveTextContent(c.text)
+    // The stored query runs as the user, stamped by the run or not (unstamped here).
+    await user.click(within(end).getByRole('button', { name: c.adopt }))
+    await phase('closed')
+    expect(hits(calls, 'adopt')).toHaveLength(1)
+    expect(rows(useAnalysis.getState().tree)).toHaveLength(1)
+  })
+
+  test('a run after a halt under a level changed meanwhile stops at once (review #43)', async () => {
+    const { user } = await planned('Teilautonom', { script: { levelChanged: true } })
+    await user.click(await screen.findByRole('button', { name: 'Starten' }))
+    await phase('running')
+    await tick()
+    await phase('halt')
+    await user.click(screen.getByRole('button', { name: 'Schritt freigeben' }))
+    await phase('stopped')
+    const end = await findCard()
+    expect(end).toHaveTextContent('Ihre Stufe wurde seit dem Plan geändert')
+    expect(stepItem(2)).toHaveAttribute('data-status', 'skipped')
+    unchanged()
+  })
+
+  test('Abbrechen while a step runs that then fails: stopped, no re-plan asked, no halt', async () => {
+    const { user, answer } = await running({
+      script: {
+        pace: 1,
+        errors: { 2: { code: 'unknown_attribute' } },
+        replans: [REVISED.slice(0, 1)],
+      },
+    })
+    await tick()
+    await user.click(within(await findCard()).getByRole('button', { name: 'Abbrechen' }))
+    await waitFor(async () =>
+      expect((await findCard()).querySelector('[data-status="running"]')).toHaveTextContent(
+        'läuft· wird abgebrochen',
+      ),
+    )
+    await tick()
+    await phase('stopped')
+    const end = await findCard()
+    expect(end.querySelector('[data-status="aborted"]')).toHaveTextContent(
+      'abgebrochen· nach Schritt 2',
+    )
+    expect(screen.queryByRole('button', { name: 'Freigeben und fortsetzen' })).toBeNull()
+    const record = useModel.getState().views[answer.id]
+    expect([record?.status, record?.stop_reason, record?.replans]).toEqual([
+      'limited',
+      'aborted',
+      0,
+    ])
+    expect(record?.steps.some((s) => s.revised)).toBe(false)
+  })
+
+  test('an approved chain that left the dialogue ("Verlauf leeren") is still run', async () => {
+    let runs = 0
+    const id = actionView('chain_reference').id
+    const { user, calls, server } = await planned('Teilautonom', {
+      routes: (server) => ({
+        [`POST /api/model/actions/${id}/run`]: () => {
+          // The run that halted gives its place back a moment late (WP75): busy once.
+          if (runs++ === 1)
+            return json({ code: 'busy', message: 'busy', details: { reason: 'running', id } }, 409)
+          const answer = server.run(id)
+          return isFakeError(answer) ? json(answer.body, answer.status) : json(answer, 202)
+        },
+      }),
+    })
+    await user.click(await screen.findByRole('button', { name: 'Starten' }))
+    await phase('running')
+    await tick()
+    await phase('halt')
+    await user.click(screen.getByRole('button', { name: 'Schritt freigeben' }))
+    await waitFor(() => expect(hits(calls, 'run')).toHaveLength(2))
+    act(() => clearHistory())
+    expect(useModel.getState().dialogue).toEqual([])
+    await tick(2000)
+    await waitFor(() => expect(hits(calls, 'run')).toHaveLength(3))
+    expect(server.record(id)?.status).toBe('running')
+  })
+
   test('a re-plan under Prüfen asks again for the rest; revised steps are marked', async () => {
     const { user, calls, answer } = await running({
       script: { hits: { 2: 0 }, replans: [REVISED.slice(0, 3)] },
@@ -738,9 +991,10 @@ describe('run (M9)', () => {
   })
 
   test('a re-plan after a failed step keeps it as it failed; the new steps follow it', async () => {
+    // Step 4 writes the attribute it filters on: the model sees its name (view.py ``_part``).
     const { answer } = await running({
       script: {
-        errors: { 3: { code: 'unknown_attribute', part: 'typ' } },
+        errors: { 4: { code: 'unknown_attribute', part: 'steueranlage' } },
         replans: [REVISED.slice(0, 1)],
       },
     })
@@ -750,19 +1004,20 @@ describe('run (M9)', () => {
     expect(steps.map((s) => [s.position, s.status, s.revised])).toEqual([
       [1, 'ok', false],
       [2, 'ok', false],
-      [3, 'error', false],
-      [4, 'planned', true],
+      [3, 'ok', false],
+      [4, 'error', false],
+      [5, 'planned', true],
     ])
-    expect(within(stepItem(3)).getByText(/^Modell sieht:/)).toHaveTextContent(
-      'Modell sieht: Fehler · unknown_attribute · typ',
+    expect(within(stepItem(4)).getByText(/^Modell sieht:/)).toHaveTextContent(
+      'Modell sieht: Fehler · unknown_attribute · steueranlage',
     )
     expect(await findCard()).toHaveTextContent(
-      'Schritt 3 brachte einen Fehler; die Kette wurde neu geplant',
+      'Schritt 4 brachte einen Fehler; die Kette wurde neu geplant',
     )
-    expect(steps[2]?.model_view).toEqual({
+    expect(steps[3]?.model_view).toEqual({
       outcome: 'error',
       code: 'unknown_attribute',
-      part: 'typ',
+      part: 'steueranlage',
       empty: null,
       count: null,
     })
@@ -1010,7 +1265,139 @@ describe('the fake server as WP75 answers', () => {
     expect([forbidden.stop_reason, forbidden.error?.code, forbidden.error?.details]).toEqual([
       'replan_limit',
       'class_not_allowed',
-      { part: 'derive', step: 4 },
+      { level: 'Automatisch', op_class: 'derive', part: 'derive', step: 4 },
+    ])
+  })
+
+  test("a view keeps an error's details as store.py ``_error_for`` does", () => {
+    const error = (code: string, details: Record<string, unknown>) => ({
+      code,
+      message: 'm',
+      details,
+    })
+    // Limits and why no re-plan was sent: whole.
+    for (const code of [
+      'time_limit',
+      'step_limit',
+      'busy',
+      'quota_exceeded',
+      'level_not_available',
+    ])
+      expect(errorFor(error(code, { step: 2, cause: 'x' }))?.details).toEqual({
+        step: 2,
+        cause: 'x',
+      })
+    // A refused re-plan: the names its words need, text or number only.
+    expect(
+      errorFor(
+        error('unknown_layer', { layer: 'seen', step: 4, cause: 'trace', at: 1, deep: { a: 1 } }),
+      )?.details,
+    ).toEqual({ layer: 'seen', step: 4 })
+    // Anything else: none (the transport's cause, what did not parse).
+    expect(errorFor(error('model_unreadable', { kind: 'clarification' }))?.details).toEqual({})
+    expect(errorFor(error('llm_timeout', { cause: 'read timed out' }))?.details).toEqual({})
+    expect(errorFor(null)).toBeNull()
+  })
+
+  test('the model sees a name only where the step writes it: step 3 (of, in) names none', () => {
+    const fake = server('Automatisch', {
+      errors: { 3: { code: 'unknown_attribute', part: 'typ' } },
+    })
+    ok(fake.run(ID))
+    const stopped = ok(fake.poll(ID))
+    expect(stopped.steps[2]?.model_view).toMatchObject({ code: 'unknown_attribute', part: null })
+    // No plan in the re-plan's answer: ``model_unreadable``, its details not shown.
+    expect([
+      stopped.stop_reason,
+      stopped.replans,
+      stopped.error?.code,
+      stopped.error?.details,
+    ]).toEqual(['replan_limit', 1, 'model_unreadable', {}])
+  })
+
+  test('aborted while a step runs that then fails: limited/aborted, no re-plan, no halt', () => {
+    const fake = server('Prüfen', {
+      pace: 1,
+      errors: { 2: { code: 'unknown_attribute' } },
+      replans: [[PLAN.steps[0] as PlannedStep]],
+    })
+    ok(fake.approve(ID))
+    ok(fake.run(ID))
+    ok(fake.poll(ID)) // step 1 ran, step 2 runs
+    expect(ok(fake.abort(ID)).stop_reason).toBe('aborted')
+    const stopped = ok(fake.poll(ID))
+    expect([stopped.status, stopped.stop_reason, stopped.replans]).toEqual([
+      'limited',
+      'aborted',
+      0,
+    ])
+    expect(stopped.steps.map((s) => s.status)).toEqual([
+      'ok',
+      'error',
+      'skipped',
+      'skipped',
+      'skipped',
+    ])
+  })
+
+  test('run endings: given up, failed, restarted, no query slot; adopt has rows unstamped too', () => {
+    const end = (script: ChainScript) => {
+      const fake = server('Automatisch', script)
+      ok(fake.run(ID))
+      return { fake, view: ok(fake.poll(ID)) }
+    }
+    const expired = end({ expire: 3 }).view
+    expect([expired.stop_reason, expired.error, expired.stamp]).toEqual(['time_limit', null, null])
+    const crashed = end({ crash: 3 }).view
+    expect([crashed.stop_reason, crashed.error?.code, crashed.stamp]).toEqual([
+      'interrupted',
+      'internal_error',
+      null,
+    ])
+    const { fake, view: restarted } = end({ interrupt: 3 })
+    expect([restarted.stop_reason, restarted.error, restarted.stamp]).toEqual([
+      'interrupted',
+      null,
+      null,
+    ])
+    expect(restarted.query).not.toBeNull()
+    // The stored query runs as the user: the hits of step 1, though nothing was stamped.
+    const adopted = ok(fake.adopt(ID))
+    expect(adopted.result.features).toHaveLength(CHAIN_HITS[0] ?? 0)
+    expect(adopted.action.stamp?.count).toBe(CHAIN_HITS[0])
+    const slot = end({ noSlot: 3 }).view
+    expect([slot.stop_reason, slot.error?.code, slot.error?.details]).toEqual([
+      'interrupted',
+      'busy',
+      { step: 3 },
+    ])
+  })
+
+  test('decide on a chain skips its steps ahead (store.py _end_steps)', () => {
+    const fake = modelServer([actionView('chain_reference', {}, 'Assistenz')])
+    const decided = ok(fake.decide(ID, { decision: 'proposal_only', applied_by_hand: true }))
+    expect(decided.steps.every((s) => s.status === 'skipped')).toBe(true)
+  })
+
+  test('a new prompt supersedes every open record of the account; acting on one is 409', () => {
+    const fake = server('Teilautonom')
+    ok(fake.approve(ID))
+    ok(fake.run(ID))
+    expect(ok(fake.poll(ID)).status).toBe('proposed') // halted before step 2
+    ok(fake.prompt({ ...thinkingView('reference'), id: 500 }))
+    const closed = fake.record(ID)
+    expect([closed?.status, closed?.decision]).toEqual(['superseded', 'superseded'])
+    expect(closed?.steps.map((s) => s.status)).toEqual([
+      'ok',
+      'skipped',
+      'skipped',
+      'skipped',
+      'skipped',
+    ])
+    expect(code(fake.approve(ID))).toEqual([
+      409,
+      'already_decided',
+      { id: ID, status: 'superseded', decision: 'superseded' },
     ])
   })
 
@@ -1020,7 +1407,10 @@ describe('the fake server as WP75 answers', () => {
     ok(fake.poll(ID))
     fake.queriesBusy(true)
     expect((code(fake.adopt(ID)) as unknown[])[0]).toBe(503)
+    // The route's QuerySlot first (api/model.py): 503 before a token's 403.
+    expect((code(fake.adopt(ID, true)) as unknown[]).slice(0, 2)).toEqual([503, 'busy'])
     fake.queriesBusy(false)
+    expect((code(fake.adopt(ID, true)) as unknown[]).slice(0, 2)).toEqual([403, 'session_required'])
     fake.claim(ID)
     expect((code(fake.adopt(ID)) as unknown[]).slice(0, 2)).toEqual([409, 'already_decided'])
   })

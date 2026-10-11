@@ -6,11 +6,12 @@ import { Trans } from '@lingui/react/macro'
 import { t } from '@lingui/core/macro'
 import type { ReactNode } from 'react'
 import { Link, useParams } from 'react-router'
-import type { ModelActionView, OpClass, StepView } from '../api/client'
+import type { ModelActionView, OpClass } from '../api/client'
 import { ErrorNotice, Loading } from '../components/ui'
 import { LocalityBadge } from '../components/LocalityBadge'
 import { errorText, type Details } from '../i18n/errors'
 import { formatNumber } from '../i18n/locale'
+import { modelSees, placeOf, stepState } from '../model/chain/steps'
 import { useLogEntry } from '../model/log/queries'
 import { approachText, decisionText, entryOutcome, modeText, reasonText } from '../model/log/words'
 import { StatusLabel } from '../model/status'
@@ -179,7 +180,7 @@ function Entry({ view }: { view: ModelActionView }) {
         )}
         {view.approach === 'chain' && (
           <Row label={t`Schritte`}>
-            <Steps steps={view.steps} />
+            <Steps view={view} />
           </Row>
         )}
         <Row label={t`Entscheidung`}>
@@ -223,40 +224,35 @@ function Decision({ view }: { view: ModelActionView }) {
   )
 }
 
-/** The chain's steps (design M16.2 "Schritte bei Kette"): call, result, what the model saw. */
-function Steps({ steps }: { steps: StepView[] }) {
+/**
+ * The chain's steps (design M16.2 "Schritte bei Kette"): call, state, result,
+ * what the model saw, in the dialogue's words (model/chain/steps.ts). Numbered
+ * by their place in the plan as the dialogue numbers them; a step removed by
+ * hand (M8.3) has none.
+ */
+function Steps({ view }: { view: ModelActionView }) {
+  const steps = view.steps
   if (steps.length === 0) return <span className="text-muted">{t`keine Schritte`}</span>
   return (
     <ol className="flex flex-col gap-1">
-      {steps.map((step) => (
-        <li key={step.position} className="flex flex-wrap items-baseline gap-2">
-          <span className="tabular-nums">{formatNumber(step.position)}.</span>
-          <span>{step.text}</span>
-          <code className="font-mono text-xs">{step.tool}</code>
-          <span className="text-muted">{step.status}</span>
-          {step.hits != null && <span>{hits(step.hits)}</span>}
-          {step.model_view && (
-            <span className="font-mono text-xs">
-              {t`Modell sieht`}: {modelSees(step.model_view)}
+      {steps.map((step) => {
+        const seen = step.model_view ? modelSees(step.model_view) : null
+        return (
+          <li key={step.position} className="flex flex-wrap items-baseline gap-2">
+            <span className="tabular-nums">
+              {step.status === 'removed' ? '–' : `${formatNumber(placeOf(view, step))}.`}
             </span>
-          )}
-          {step.duration_ms != null && (
-            <span className="text-muted">{seconds(step.duration_ms)}</span>
-          )}
-        </li>
-      ))}
+            <span>{step.text}</span>
+            <code className="font-mono text-xs">{step.tool}</code>
+            <span className="text-muted">{stepState(step)}</span>
+            {step.hits != null && <span>{hits(step.hits)}</span>}
+            {seen && <span className="font-mono text-xs">{t`Modell sieht: ${seen}`}</span>}
+            {step.duration_ms != null && (
+              <span className="text-muted">{seconds(step.duration_ms)}</span>
+            )}
+          </li>
+        )
+      })}
     </ol>
   )
 }
-
-/** ``ok · nicht leer · 10`` as the model got it (D9): flags, a code, a count. */
-const modelSees = (seen: NonNullable<StepView['model_view']>) =>
-  [
-    seen.outcome,
-    seen.code,
-    seen.part,
-    seen.empty == null ? null : seen.empty ? t`leer` : t`nicht leer`,
-    seen.count == null ? null : String(seen.count),
-  ]
-    .filter(Boolean)
-    .join(' · ')

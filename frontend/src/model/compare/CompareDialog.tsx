@@ -30,7 +30,7 @@ import { hitsOf } from '../../i18n/phrases'
 import { useApproval } from '../approval/flow'
 import { conditionCount } from '../approval/governance'
 import { StepSummary } from '../chain/StepSummary'
-import { isChain, planned, ranMs, stepCount } from '../chain/steps'
+import { isChain, planned, ranCount, ranMs, stepCount } from '../chain/steps'
 import { approachText } from '../log/words'
 import { seconds } from '../panel/time'
 import { compactQuery, readQuery, type ReadNode } from '../readable'
@@ -194,9 +194,9 @@ function Side({ view, hits }: { view: ModelActionView; hits: number | null }) {
   const layer = resultLayerOf(view.query)
   const total = catalog?.find((l) => l.name === layer)?.feature_count
   const heading = `compare-side-${view.id}`
-  const count = chain
-    ? stepCount(steps.length)
-    : conditionCount(leaves(readQuery(view.query).tree.children))
+  // The steps that ran (M9.3, M10), never one planned or skipped.
+  const ran = chain ? ranCount(view) : 1
+  const count = chain ? stepCount(ran) : conditionCount(leaves(readQuery(view.query).tree.children))
   const derivation = chain ? t`${count}, Ergebnis als eine Abfrage` : t`eine Abfrage, ${count}`
   const plan = seconds(view.latency_ms)
   const run = seconds(ranMs(view), 1)
@@ -219,7 +219,7 @@ function Side({ view, hits }: { view: ModelActionView; hits: number | null }) {
         <dt className="label-caps">
           <Trans>Schritte</Trans>
         </dt>
-        <dd className="tabular-nums">{formatNumber(chain ? steps.length : 1)}</dd>
+        <dd className="tabular-nums">{formatNumber(ran)}</dd>
         <dt className="label-caps">
           <Trans>Dauer</Trans>
         </dt>

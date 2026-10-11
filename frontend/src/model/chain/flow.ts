@@ -71,8 +71,14 @@ function refetch(id: number) {
  */
 export async function approveChain(view: ModelActionView) {
   if (useApproval.getState().busy) return
-  await approve(view)
+  const approved = await approve(view)
+  // Approved, but no longer in the dialogue ("Verlauf leeren" while the approval
+  // was on its way): ``useChainRunner`` no longer sees it, yet it would wait
+  // approved on the server for good. It is run, as it would have been.
+  if (approved?.status === 'approved' && !inDialogue(approved.id)) void runChain(approved.id)
 }
+
+const inDialogue = (id: number) => useModel.getState().dialogue.includes(id)
 
 /** ``run`` tried again after ``busy`` before the failure shows. */
 const BUSY_TRIES = 5
@@ -90,7 +96,9 @@ const isBusy = (error: unknown) =>
 /**
  * Runs an approved chain (202, P4); the workplace's polling takes over. A
  * ``busy`` answer is tried again after a growing wait, while the record is
- * still ``approved`` and the workplace the same. Any other failure is shown
+ * still ``approved`` and the workplace the same; also once it has left the
+ * dialogue ("Verlauf leeren"): approved, it would wait on the server for good
+ * (the server refuses one that moved on). Any other failure is shown
  * and the record asked for again: a run the server started all the same
  * (an answer lost on the way) is polled on.
  */
@@ -108,7 +116,8 @@ export async function runChain(id: number, tries = 0) {
     useApproval.setState({ failure: null })
     setTimeout(
       () => {
-        if (current() && useModel.getState().views[id]?.status === 'approved')
+        const known = useModel.getState().views[id]
+        if (current() && (known === undefined || known.status === 'approved'))
           void runChain(id, tries + 1)
       },
       backoff(tries + 1),

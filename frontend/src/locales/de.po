@@ -1917,6 +1917,10 @@ msgid "Die Laufzeit ist angehalten, solange die Freigabe offen ist."
 msgstr "Die Laufzeit ist angehalten, solange die Freigabe offen ist."
 
 #: src/model/chain/Chain.tsx
+msgid "Die Neuplanung brachte keinen brauchbaren Plan (Schritt {at}): {reason}"
+msgstr "Die Neuplanung brachte keinen brauchbaren Plan (Schritt {at}): {reason}"
+
+#: src/model/chain/Chain.tsx
 msgid "Die Neuplanung brachte keinen brauchbaren Plan: {reason}"
 msgstr "Die Neuplanung brachte keinen brauchbaren Plan: {reason}"
 
@@ -2282,7 +2286,7 @@ msgstr "entfällt:"
 msgid "Entfernen"
 msgstr "Entfernen"
 
-#: src/model/chain/Chain.tsx
+#: src/model/chain/steps.ts
 msgid "entfernt"
 msgstr "entfernt"
 
@@ -2411,11 +2415,11 @@ msgid "Erläuterung"
 msgstr "Erläuterung"
 
 #: src/admin/ImportWizard.tsx
-#: src/model/chain/Chain.tsx
+#: src/model/chain/steps.ts
 msgid "erledigt"
 msgstr "erledigt"
 
-#: src/model/chain/Chain.tsx
+#: src/model/chain/steps.ts
 msgid "erledigt, leer"
 msgstr "erledigt, leer"
 
@@ -2570,7 +2574,7 @@ msgstr "Fassung"
 
 #: src/admin/ImportRunPage.tsx
 #: src/admin/ModelActionPage.tsx
-#: src/model/chain/Chain.tsx
+#: src/model/chain/steps.ts
 #: src/model/log/words.ts
 #: src/model/statusKey.ts
 msgid "Fehler"
@@ -2800,7 +2804,7 @@ msgstr "Geometrie ungültig"
 msgid "Geometrien gebildet"
 msgstr "Geometrien gebildet"
 
-#: src/model/chain/Chain.tsx
+#: src/model/chain/steps.ts
 msgid "geplant"
 msgstr "geplant"
 
@@ -3041,6 +3045,10 @@ msgstr "Ihre Eingaben werden protokolliert"
 msgid "Ihre Eingaben werden protokolliert. Administratoren sehen alle Einträge samt Prompt."
 msgstr "Ihre Eingaben werden protokolliert. Administratoren sehen alle Einträge samt Prompt."
 
+#: src/model/chain/Chain.tsx
+msgid "Ihre Stufe wurde seit dem Plan geändert; unter ihr läuft die Kette nicht weiter."
+msgstr "Ihre Stufe wurde seit dem Plan geändert; unter ihr läuft die Kette nicht weiter."
+
 #: src/i18n/errors.ts
 msgid "Ihre vorige Anfrage ist beim Modell noch nicht zu Ende. Bitte gleich nochmals versuchen."
 msgstr "Ihre vorige Anfrage ist beim Modell noch nicht zu Ende. Bitte gleich nochmals versuchen."
@@ -3262,6 +3270,10 @@ msgstr "Keine Modellanbindung eingerichtet"
 msgid "keine Modellanbindung für dieses Konto"
 msgstr "keine Modellanbindung für dieses Konto"
 
+#: src/model/chain/Chain.tsx
+msgid "Keine Neuplanung möglich: {reason}"
+msgstr "Keine Neuplanung möglich: {reason}"
+
 #: src/table/TableDock.tsx
 msgid "Keine Objekte."
 msgstr "Keine Objekte."
@@ -3440,7 +3452,7 @@ msgid "Lauf unterbrochen"
 msgstr "Lauf unterbrochen"
 
 #: src/admin/format.ts
-#: src/model/chain/Chain.tsx
+#: src/model/chain/steps.ts
 #: src/model/statusKey.ts
 msgid "läuft"
 msgstr "läuft"
@@ -3546,10 +3558,6 @@ msgstr "Layer-Detail"
 #: src/admin/ModelActionPage.tsx
 msgid "Layer-Steckbrief"
 msgstr "Layer-Steckbrief"
-
-#: src/admin/ModelActionPage.tsx
-msgid "leer"
-msgstr "leer"
 
 #: src/model/chain/steps.ts
 msgctxt "model sees"
@@ -3758,9 +3766,6 @@ msgid "Modell nicht erreichbar"
 msgstr "Modell nicht erreichbar"
 
 #: src/admin/ModelActionPage.tsx
-msgid "Modell sieht"
-msgstr "Modell sieht"
-
 #: src/model/chain/Chain.tsx
 msgid "Modell sieht: {seen}"
 msgstr "Modell sieht: {seen}"
@@ -3922,7 +3927,7 @@ msgstr "nicht am"
 msgid "nicht angewendet"
 msgstr "nicht angewendet"
 
-#: src/model/chain/Chain.tsx
+#: src/model/chain/steps.ts
 msgid "nicht ausgeführt"
 msgstr "nicht ausgeführt"
 
@@ -3941,10 +3946,6 @@ msgstr "nicht freigegeben"
 #: src/queries/SavedQueries.tsx
 msgid "Nicht gespeichert"
 msgstr "Nicht gespeichert"
-
-#: src/admin/ModelActionPage.tsx
-msgid "nicht leer"
-msgstr "nicht leer"
 
 #: src/model/chain/steps.ts
 msgctxt "model sees"
@@ -5125,7 +5126,7 @@ msgstr "war automatisch angewendet · {hits} Treffer"
 msgid "Warnung"
 msgstr "Warnung"
 
-#: src/model/chain/Chain.tsx
+#: src/model/chain/steps.ts
 #: src/model/statusKey.ts
 msgid "wartet auf Freigabe"
 msgstr "wartet auf Freigabe"
@@ -5375,6 +5376,14 @@ msgstr "Zoomen"
 #: src/model/log/words.ts
 msgid "zu komplex"
 msgstr "zu komplex"
+
+#: src/model/chain/Chain.tsx
+msgid "Zu viele Abfragen liefen gleichzeitig; die Kette wurde angehalten."
+msgstr "Zu viele Abfragen liefen gleichzeitig; die Kette wurde angehalten."
+
+#: src/model/chain/Chain.tsx
+msgid "Zu viele Abfragen liefen gleichzeitig; die Kette wurde vor Schritt {at} angehalten."
+msgstr "Zu viele Abfragen liefen gleichzeitig; die Kette wurde vor Schritt {at} angehalten."
 
 #: src/model/log/words.ts
 msgid "zu viele Bedingungen"

@@ -141,7 +141,8 @@ export function enforcement(server: ModelServer, ...ids: number[]): Routes {
  * answers it, ``modelServer``: the rules and what they assume are listed
  * there), with the approval routes of ``enforcement``. The poll ``GET`` is the
  * server's: a running chain moves on one step per poll. ``POST /api/model/prompt``
- * answers 202 with ``thinking`` (P7); the first poll brings the plan.
+ * answers 202 with ``thinking`` (P7), the account's open records superseded
+ * (``ModelServer.prompt``); the first poll brings the plan.
  */
 export function chainRoutes(server: ModelServer, thinking: ModelActionView): Routes {
   const id = thinking.id
@@ -150,7 +151,7 @@ export function chainRoutes(server: ModelServer, thinking: ModelActionView): Rou
     isFakeError(value) ? json(value.body, value.status) : json(value, status)
   return {
     ...enforcement(server, id),
-    'POST /api/model/prompt': () => json(thinking, 202),
+    'POST /api/model/prompt': () => json(server.prompt(thinking), 202),
     [`GET ${base}`]: () => answer(server.poll(id)),
     [`POST ${base}/run`]: () => answer(server.run(id), 202),
     [`POST ${base}/abort`]: () => answer(server.abort(id)),

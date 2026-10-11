@@ -13,7 +13,7 @@ import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 
 import type { ModelActionView, StepView } from '../../api/client'
 import { useLayers } from '../../api/queries'
 import { ErrorNotice } from '../../components/ui'
-import { errorText } from '../../i18n/errors'
+import { errorText, type Details } from '../../i18n/errors'
 import { formatNumber } from '../../i18n/locale'
 import { hitsOf } from '../../i18n/phrases'
 import { RejectStep, Rejected, Undone } from '../approval/Approval'
@@ -52,10 +52,13 @@ import {
   MAX_STEPS,
   modelSees,
   phaseOf,
+  placeAt,
   placeOf,
   planned,
+  ranCount,
   ranMs,
   stepCount,
+  stepState,
   oneApproval,
   type Phase,
   type PlanAnswer,
@@ -299,28 +302,6 @@ function Steps({ view, phase }: { view: ModelActionView; phase: Phase }) {
       {phase === 'halt' && current(view)?.status !== 'waiting' && <HaltApproval view={view} />}
     </section>
   )
-}
-
-/** The step's state in words, for those who do not see the mark. */
-function stepState(step: StepView): string {
-  switch (step.status) {
-    case 'planned':
-      return t`geplant`
-    case 'waiting':
-      return t`wartet auf Freigabe`
-    case 'running':
-      return t`läuft`
-    case 'ok':
-      return t`erledigt`
-    case 'empty':
-      return t`erledigt, leer`
-    case 'error':
-      return t`Fehler`
-    case 'skipped':
-      return t`nicht ausgeführt`
-    case 'removed':
-      return t`entfernt`
-  }
 }
 
 function Mark({ step, place }: { step: StepView; place: number }) {
@@ -722,7 +703,8 @@ function DoneActions({ view }: { view: ModelActionView }) {
   const [shown, setShown] = useState(false)
   const compareEntry = useCompare((s) => s.entry)
   const busy = useApproval((s) => s.busy !== null)
-  const count = stepCount(planned(view).length)
+  // The steps that ran, and their time (M9.3 "5 Schritte · 3,6 s").
+  const count = stepCount(ranCount(view))
   const took = seconds(ranMs(view), 1) ?? ''
   return (
     <div className="flex flex-col gap-2">
@@ -777,21 +759,51 @@ function limitTitle(view: ModelActionView): string {
   }
 }
 
+/** Codes of a refused re-plan that name its step (store.py ``NAMED``): "Schritt n". */
+const NAMES_STEP = ['class_not_allowed', 'unknown_layer', 'not_representable']
+
 /**
- * M9.5: why the chain stopped, with the numbers the server gives
- * (``error.details``: ``step``, ``value``, ``max``); the same shape for steps,
- * time and size, a re-plan that brought nothing and a restart.
+ * Why a re-plan brought no plan to run on (``replan_limit``), from the stop's
+ * error: none, the re-plans are used up; ``model_unreadable``, the model
+ * answered with no plan; no call made (the level or the connection changed,
+ * the daily limit); else its refusal, with the step it names.
+ */
+function replanText(view: ModelActionView, at: string | null): string {
+  const error = view.error
+  const code = typeof error?.code === 'string' ? error.code : null
+  const details = (error?.details ?? {}) as Details
+  if (code === null) {
+    const max = formatNumber(MAX_REPLANS)
+    return t`Ein Schritt brachte einen Fehler oder kein Ergebnis, und die Neuplanungen sind aufgebraucht (höchstens ${max}).`
+  }
+  switch (code) {
+    case 'model_unreadable':
+      return t`Das Modell antwortete auf die Neuplanung nicht mit einem Plan.`
+    case 'level_not_available':
+      return t`Ihre Stufe wurde seit dem Plan geändert; unter ihr läuft die Kette nicht weiter.`
+    case 'connection_not_available':
+    case 'quota_exceeded': {
+      const reason = errorText(code, details, String(error?.message ?? ''))
+      return t`Keine Neuplanung möglich: ${reason}`
+    }
+  }
+  const reason = errorText(code, details, String(error?.message ?? ''))
+  return NAMES_STEP.includes(code) && at
+    ? t`Die Neuplanung brachte keinen brauchbaren Plan (Schritt ${at}): ${reason}`
+    : t`Die Neuplanung brachte keinen brauchbaren Plan: ${reason}`
+}
+
+/**
+ * M9.5: why the chain stopped, with the numbers and names the server gives
+ * (``error.details``: ``step``, ``value``, ``max``; a refused re-plan's
+ * ``level``, ``op_class``, ``layer``, …); the same shape for steps, time and
+ * size, a re-plan that brought nothing, a step without a query slot and a restart.
  */
 function LimitBox({ view }: { view: ModelActionView }) {
-  const details = (view.error?.details ?? {}) as Record<string, unknown>
+  const details = (view.error?.details ?? {}) as Details
   const position = typeof details.step === 'number' ? details.step : null
-  const named = view.steps.find((s) => s.position === position)
-  const at =
-    named && named.status !== 'removed'
-      ? formatNumber(placeOf(view, named))
-      : position !== null
-        ? formatNumber(position)
-        : null
+  const place = position !== null ? placeAt(view, position) : null
+  const at = place !== null ? formatNumber(place) : null
   const value = typeof details.value === 'number' ? details.value : null
   let text: string
   switch (view.stop_reason) {
@@ -811,22 +823,17 @@ function LimitBox({ view }: { view: ModelActionView }) {
         : t`Die Kette lief länger als erlaubt (höchstens ${max} je Anfrage).`
       break
     }
-    case 'replan_limit': {
-      const error = view.error
-      const code = typeof error?.code === 'string' ? error.code : null
-      const max = formatNumber(MAX_REPLANS)
-      if (code) {
-        const reason = errorText(code, details, String(error?.message ?? ''))
-        text = t`Die Neuplanung brachte keinen brauchbaren Plan: ${reason}`
-      } else if (view.replans < MAX_REPLANS)
-        // A re-plan was asked for and answered with something other than a plan.
-        text = t`Das Modell antwortete auf die Neuplanung nicht mit einem Plan.`
-      else
-        text = t`Ein Schritt brachte einen Fehler oder kein Ergebnis, und die Neuplanungen sind aufgebraucht (höchstens ${max}).`
+    case 'replan_limit':
+      text = replanText(view, at)
       break
-    }
     case 'interrupted':
-      text = t`Der Lauf wurde unterbrochen: Die Anwendung wurde neu gestartet, oder der Lauf selbst ist fehlgeschlagen.`
+      // No query slot came free for a step (``busy``), or a restart, or the run failed.
+      text =
+        view.error?.code === 'busy'
+          ? at
+            ? t`Zu viele Abfragen liefen gleichzeitig; die Kette wurde vor Schritt ${at} angehalten.`
+            : t`Zu viele Abfragen liefen gleichzeitig; die Kette wurde angehalten.`
+          : t`Der Lauf wurde unterbrochen: Die Anwendung wurde neu gestartet, oder der Lauf selbst ist fehlgeschlagen.`
       break
     default: {
       const max = formatNumber(MAX_FEATURES)
@@ -912,16 +919,20 @@ function StoppedActions({ view }: { view: ModelActionView }) {
 }
 
 /**
- * Nothing adoptable although a step's result is complete: the last complete
- * one that is no buffer is beyond the result-size limit (WP75 ``last_complete``).
+ * Nothing adoptable although a step that is no buffer brought a complete
+ * result: the server chose no result (``query``, WP75 ``last_complete``), and
+ * the one reason it leaves such a step out is the result-size limit. The
+ * server decides; no count is judged here.
  */
 function overLimit(view: ModelActionView): boolean {
-  const complete = view.steps.filter(
-    (s) =>
-      (s.status === 'ok' || s.status === 'empty') &&
-      !(s.query as { buffer?: unknown } | null | undefined)?.buffer,
+  return (
+    !adoptable(view) &&
+    view.steps.some(
+      (s) =>
+        (s.status === 'ok' || s.status === 'empty') &&
+        !(s.query as { buffer?: unknown } | null | undefined)?.buffer,
+    )
   )
-  return (complete[complete.length - 1]?.hits ?? 0) > MAX_FEATURES
 }
 
 /** Adopted: "angewendet" with the hits the chain brought. */
