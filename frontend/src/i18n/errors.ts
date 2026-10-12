@@ -172,6 +172,8 @@ const MESSAGES: Record<string, Words> = {
     return t`Die frühere Antwort nutzt den Layer „${layer}", den es nicht mehr gibt.`
   },
   model_unreadable: () => t`Die Antwort des Modells ist nicht lesbar.`,
+  model_truncated: () =>
+    t`Das Modell hat seine Antwort nicht beendet: Die Länge, die die Anbindung erlaubt, war aufgebraucht. Meist denkt das Modell zu lange, oder der Kontext ist zu klein.`,
   quota_exceeded: (d) => {
     const limit = number(d.limit)
     return t`Die ${limit} Anfragen pro Tag an diese Anbindung sind aufgebraucht. Die Grenze setzt ein Administrator.`

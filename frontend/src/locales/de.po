@@ -945,6 +945,10 @@ msgstr "Anpassen …"
 msgid "Antwort"
 msgstr "Antwort"
 
+#: src/model/panel/Problem.tsx
+msgid "Antwort abgeschnitten"
+msgstr "Antwort abgeschnitten"
+
 #: src/admin/ConnectionsPage.tsx
 msgid "Antwort nach JSON-Schema"
 msgstr "Antwort nach JSON-Schema"
@@ -1432,6 +1436,10 @@ msgid "Das Modell hat nicht rechtzeitig geantwortet."
 msgstr "Das Modell hat nicht rechtzeitig geantwortet."
 
 #: src/i18n/errors.ts
+msgid "Das Modell hat seine Antwort nicht beendet: Die Länge, die die Anbindung erlaubt, war aufgebraucht. Meist denkt das Modell zu lange, oder der Kontext ist zu klein."
+msgstr "Das Modell hat seine Antwort nicht beendet: Die Länge, die die Anbindung erlaubt, war aufgebraucht. Meist denkt das Modell zu lange, oder der Kontext ist zu klein."
+
+#: src/i18n/errors.ts
 msgid "Das Modell ist nicht erreichbar."
 msgstr "Das Modell ist nicht erreichbar."
 
@@ -1791,6 +1799,10 @@ msgstr "Die Anfrage wurde abgebrochen. Ihr Stand ist unverändert."
 #: src/i18n/errors.ts
 msgid "Die Anfrage wurde abgelehnt."
 msgstr "Die Anfrage wurde abgelehnt."
+
+#: src/model/chain/Chain.tsx
+msgid "Die Antwort des Modells auf die Neuplanung wurde abgeschnitten, ehe sie einen Plan enthielt."
+msgstr "Die Antwort des Modells auf die Neuplanung wurde abgeschnitten, ehe sie einen Plan enthielt."
 
 #: src/i18n/errors.ts
 msgid "Die Antwort des Modells hat nicht die erwartete Form."

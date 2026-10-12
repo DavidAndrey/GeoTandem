@@ -5,7 +5,9 @@ What the prompt demands and what is accepted are the same set of answers:
 and for the direct approach the query object down to what the controls can
 show (D3); ``parse_answer`` accepts exactly those kinds. A reply that is not
 JSON, nests too deep, does not fit the schema or is of another approach's kind
-is ``model_unreadable``. Its ``details.cause`` names error types and schema
+is ``model_unreadable``, or ``model_truncated`` when the model stopped at its
+length limit (``finish_reason`` "length"): an answer that reads is taken
+whatever the finish reason. Its ``details.cause`` names error types and schema
 locations only, never the model's text: the record shows it to the user and
 the log keeps it (C15).
 """
@@ -194,8 +196,32 @@ def unreadable(cause: str) -> ActionError:
     )
 
 
+def truncated(completion: Completion) -> ActionError:
+    """An answer cut off at the length limit (testplan E-5): the context is
+    full, or the model's own thinking used it up. Unreadable because cut, so
+    the administrator learns what to change, not only that it failed."""
+    return ActionError(
+        "model_truncated",
+        "The model stopped at its length limit before its answer was complete.",
+        http_status=502,
+        prompt_tokens=completion.prompt_tokens,
+        completion_tokens=completion.completion_tokens,
+    )
+
+
 def parse_answer(completion: Completion, approach: Approach) -> Answer:
-    """The completion as an answer of ``approach``; ``model_unreadable`` otherwise."""
+    """The completion as an answer of ``approach``; ``model_truncated`` when it
+    does not read and the model stopped at its length limit, ``model_unreadable``
+    otherwise."""
+    try:
+        return _parse(completion, approach)
+    except ActionError:
+        if completion.finish_reason == "length":
+            raise truncated(completion) from None
+        raise
+
+
+def _parse(completion: Completion, approach: Approach) -> Answer:
     try:
         data = completion.parsed
         if data is None:

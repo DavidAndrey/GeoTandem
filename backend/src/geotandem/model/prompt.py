@@ -92,7 +92,9 @@ _FORMAT: Final[dict[Approach, str]] = {
         'Spalten, kein Puffer, keine Verknüpfung, keine Zusammenfassung und kein "not" '
         'direkt in einem "not". Bedingungen '
         'auf einem Bezugslayer stehen in dessen "where" als eine einzige, nicht verneinte '
-        "Attributbedingung. Sonst antworte mit cannot_answer und other_approach chain."
+        "Attributbedingung. Sonst antworte mit cannot_answer und other_approach chain.\n"
+        '«Wie viele …?» beantwortest du mit "query" für diese Objekte: Die Anwendung '
+        "zeigt ihre Anzahl. Das ist kein Grund für cannot_answer."
     ),
     "chain": (
         "Antworte mit genau einem JSON-Objekt nach dem Schema unten, ohne weiteren Text.\n"

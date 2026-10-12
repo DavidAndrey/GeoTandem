@@ -222,6 +222,8 @@ Alle Läufe Temperatur 0, Seeds 1–3, Stufe *Prüfen*, Ollama mit 16 k Kontext.
 | `codes-gemma4` | gemma4:12b | aus | ✔ | Fassung 2, Codes (E-2) | 39/51 | |
 | `e3-qwen3` | qwen3:8b | aus | ✔ | Fassung 2, Codes, Formen (E-3) | 33/51 | |
 | `e3-gemma4` | gemma4:12b | aus | ✔ | Fassung 2, Codes, Formen (E-3) | 39/51 | |
+| `e6-qwen3` | qwen3:8b | aus | ✔ | wie e3, «wie viele» (E-6) | 30/51 | |
+| `e6-gemma4` | gemma4:12b | aus | ✔ | wie e3, «wie viele» (E-6) | **44/51** | |
 
 Je Fall:
 
@@ -273,8 +275,8 @@ anderen Layer scheiterte vor dem Fix ohne Ausnahme.
 | E-2 | **Beschriftung ⇒ Code** — *umgesetzt 2026-10-12* | – | Die Anwendung liest eine Beschriftung oder einen Code in anderer Schreibweise als den Code, vor der Prüfung, in der Direktabfrage und in jedem Kettenschritt ([labels.py](../backend/src/geotandem/model/labels.py)). Gemessen: qwen3 28 ⇒ 30/51, gemma4 unverändert 39/51. Die Werte stimmen jetzt; was qwen3 noch falsch macht, sind weggelassene Bedingungen, UND statt ODER und `and` mit einem Argument (E-3) | `codes-*` |
 | E-3 | **Harmlose Formen** — *umgesetzt 2026-10-12* | – | `and`/`or` mit einem Argument und `not` von `not` werden vor der Prüfung in ihre schlichte Form gebracht, in der Direktabfrage und in jedem Kettenschritt ([shapes.py](../backend/src/geotandem/model/shapes.py)); der Eintrag speichert die schlichte Abfrage, die Antwort des Modells bleibt unverändert. `represent.to_analysis` lehnt diese Formen weiterhin ab (gemeinsame Fälle mit dem Frontend unverändert). Gemessen: qwen3 30 ⇒ 33/51, keine Ablehnung wegen der Form mehr; gemma4 unverändert 39/51. Bekannte Lücke: Der Pfad einer Annahme (`condition`) zeigt nach dem Umschreiben ins Leere, wenn er durch das entfernte `and` führte; «ändern» fehlt dann bei dieser Annahme | `e3-*` |
 | E-4 | **Denken** | aus · an mit Obergrenze für die Antwortlänge (`max_tokens`) · je Modell | aus für gemma4 (Schleife, auch mit 64 k Kontext); für qwen3 nur mit Obergrenze und Zeitlimit über 120 s; den Kontext nicht vergrössern, er hilft keinem der beiden | `think-*`, 3.4 |
-| E-5 | **Abgeschnittene Antwort melden** | `model_unreadable` wie heute · eigener Code (z. B. `llm_truncated`) aus `finish_reason: length` | eigener Code, damit Administratoren Kontext oder Denken anpassen | – |
-| E-6 | **„Wie viele“-Fragen** | wie heute · Regel im Antwortformat: die Objekte liefern, die Anwendung zeigt die Anzahl | Regel ergänzen | `log2` |
+| E-5 | **Abgeschnittene Antwort melden** — *umgesetzt 2026-10-12* | – | Eigener Code `model_truncated` (502), wenn die Antwort nicht lesbar ist und das Modell an seiner Längengrenze stoppte (`finish_reason: length`); `details` nennt `prompt_tokens` und `completion_tokens`. Eine lesbare Antwort gilt unabhängig vom Grund des Endes. Oberfläche: «Antwort abgeschnitten», Hinweis auf zu langes Denken oder zu kleinen Kontext, Details mit den Tokens, Verweis für Administratoren, «Anbindung wechseln»; in der Kette eigener Text bei der Neuplanung. Geprüft: gemma4 mit Denken endet jetzt `error:model_truncated` statt `model_unreadable` | `e5-probe-gemma4` |
+| E-6 | **«Wie viele»-Fragen** — *umgesetzt 2026-10-12* | – | Ein Satz im Antwortformat der Direktabfrage: «Wie viele …?» mit `query` beantworten, die Anwendung zeigt die Anzahl; kein Grund für `cannot_answer`. Gemessen: gemma4 39 ⇒ **44/51** (`log2` 0 ⇒ 2/3, nebenbei `doc5` 0 ⇒ 3/3); qwen3 33 ⇒ 30/51, weil es in `doc3` nun den Filter «Bahn» weglässt, eine Frage, die der Satz nicht betrifft (siehe 7, Punkt 6) | `e6-*` |
 | E-7 | **Werte im Steckbrief** (z. B. Gemeindenamen) | nur Metadaten (S3, heute) · kurze Wertelisten für kleine Textfelder · Werkzeug zum Nachschlagen in der Kette | erst messen: Mit dem Fix schreibt das Modell „Bern“, „Köniz“ richtig über den Namen | `log2`, `doc1`, `in-gemeinde-bahn` |
 
 Nicht in dieser Messung, aber offen:
@@ -303,6 +305,11 @@ Nicht in dieser Messung, aber offen:
 5. **Als Ritual:** Vor jeder Änderung an Prompt, Schema, Steckbrief oder
    Modell ein Lauf mit neuem Label; das Ergebnis kommt in die Tabelle in
    Abschnitt 4.
+6. **Streuung messen:** Bei Temperatur 0 geben die drei Seeds praktisch
+   dieselbe Antwort; ein Fall ist damit eine einzige Stichprobe. Ein Satz an
+   anderer Stelle des Prompts kippte bei qwen3 `doc3` von 3/3 auf 0/3 (E-6).
+   Die Messung sollte mit Temperatur über 0 (z. B. 0,3) und fünf Seeds laufen,
+   damit ein Unterschied von wenigen Fällen von Zufall zu trennen ist.
 
 ---
 

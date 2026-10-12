@@ -180,6 +180,7 @@ ActionErrorCode = Literal[
     "context_too_large",
     "stale_reference",
     "model_unreadable",
+    "model_truncated",
     "quota_exceeded",
     "not_approved",
     "already_decided",
