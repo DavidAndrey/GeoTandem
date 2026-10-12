@@ -300,7 +300,7 @@ anderen Layer scheiterte vor dem Fix ohne Ausnahme.
 | E-5 | **Abgeschnittene Antwort melden** — *umgesetzt 2026-10-12* | – | Eigener Code `model_truncated` (502), wenn die Antwort nicht lesbar ist und das Modell an seiner Längengrenze stoppte (`finish_reason: length`); `details` nennt `prompt_tokens` und `completion_tokens`. Eine lesbare Antwort gilt unabhängig vom Grund des Endes. Oberfläche: «Antwort abgeschnitten», Hinweis auf zu langes Denken oder zu kleinen Kontext, Details mit den Tokens, Verweis für Administratoren, «Anbindung wechseln»; in der Kette eigener Text bei der Neuplanung. Geprüft: gemma4 mit Denken endet jetzt `error:model_truncated` statt `model_unreadable` | `e5-probe-gemma4` |
 | E-6 | **«Wie viele»-Fragen** — *umgesetzt 2026-10-12* | – | Ein Satz im Antwortformat der Direktabfrage: «Wie viele …?» mit `query` beantworten, die Anwendung zeigt die Anzahl; kein Grund für `cannot_answer`. Gemessen: gemma4 39 ⇒ **44/51** (`log2` 0 ⇒ 2/3, nebenbei `doc5` 0 ⇒ 3/3); qwen3 33 ⇒ 30/51, weil es in `doc3` nun den Filter «Bahn» weglässt, eine Frage, die der Satz nicht betrifft (siehe 7, Punkt 6) | `e6-*` |
 | E-7 | **Werte im Steckbrief** (z. B. Gemeindenamen) | nur Metadaten (S3, heute) · kurze Wertelisten für kleine Textfelder · Werkzeug zum Nachschlagen in der Kette | erst messen: Mit dem Fix schreibt das Modell „Bern“, „Köniz“ richtig über den Namen | `log2`, `doc1`, `in-gemeinde-bahn` |
-| E-8 | **Hinweis «erste Frage» in der Nutzernachricht?** (V-3) | in der Systemnachricht wie gemergt: Invariante bleibt, das Leck bleibt bei gemma4 (0/5) · in der Nutzernachricht vor «Frage: », wie Folgefragen schon Anwendungstext tragen: Leck behoben (5/5, gesamt 138 statt 130 von 165); Bypass-Test und Sicherheitsreview Zeile «Prompt injection» werden umformuliert zu «die Nutzernachricht ist der Prompttext, davor höchstens fester Text der Anwendung» | Nutzernachricht: der Hinweis ist fest und unabhängig von der Eingabe, das Muster besteht bei Folgefragen schon. Entscheid beim Sicherheitsverantwortlichen | `x-ohne-kontext`, `t3-v27b` gegen `t3-v27c` |
+| E-8 | **Hinweis «erste Frage»** — *entschieden 2026-10-12: Systemnachricht* | – | Der Hinweis bleibt am Ende der Systemnachricht; die Invariante «die Nutzernachricht ist der Prompttext und nichts sonst» bleibt unverändert. Das Einsickern der Beispiele bleibt damit bei gemma4 offen (0/5). Weitere Varianten der Platzierung (eigene Systemnachricht, Beispiele als Gesprächszüge, Reihenfolge, Anzahl) und weitere Modelle: [testplan-system-context.md](testplan-system-context.md) | `t3-v27b` gegen `t3-v27c` |
 
 Nicht in dieser Messung, aber offen:
 
@@ -478,6 +478,11 @@ Ein Test hält fest, dass jede Beispielantwort des Prompts eine gültige Antwort
 ist (`test_every_example_of_the_prompt_is_a_valid_answer`); beim Schreiben
 war eine Klammer verrutscht.
 
+Vorbehalt zu qwen3: Derselbe Stand streut zwischen zwei Seed-Blöcken um 6 von
+165, ganze Fälle kippen ([testplan-system-context.md](testplan-system-context.md),
+2.5). Die qwen3-Spalte zeigt Richtungen; belastbar ist ein qwen3-Befund nur,
+wo er über mehrere Läufe gleich bleibt (wie `log2` 0/5 in v27, v27b, v27c).
+
 **Offen nach der Umsetzung:**
 
 - gemma4: n06 liest «Primarschulen» als `primarstufe = true` (16 statt 7):
@@ -491,7 +496,8 @@ war eine Klammer verrutscht.
 ### Empfohlene Reihenfolge
 
 1. ~~V-2 bis V-7~~ umgesetzt (oben).
-   Offen daraus: E-8 (Abschnitt 6).
+   Daraus E-8, entschieden: Systemnachricht. Weiter in
+   [testplan-system-context.md](testplan-system-context.md).
 2. **V-8** in der Administration, ohne Code.
 3. **V-1** als eigenes Arbeitspaket: Es ändert den Ablauf eines Aufrufs und
    den Eintrag (zwei Antworten, Latenz, Tageslimit) und braucht Tests über den

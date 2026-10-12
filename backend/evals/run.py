@@ -113,7 +113,13 @@ def main() -> int:
     )
     parser.add_argument("--temperature", type=float, default=0)
     parser.add_argument(
-        "--repeat", type=int, default=3, help="runs per case; seeds 1..N, so repeats differ"
+        "--repeat",
+        type=int,
+        default=3,
+        help="runs per case; seeds start..start+N-1, so repeats differ",
+    )
+    parser.add_argument(
+        "--seed-start", type=int, default=1, help="first seed; another start measures the noise"
     )
     parser.add_argument("--only", help="comma-separated case ids")
     parser.add_argument("--label", default="run")
@@ -149,12 +155,13 @@ def main() -> int:
             "effort": args.effort,
             "examples": not args.no_examples,
             "temperature": args.temperature,
+            "seeds": [args.seed_start, args.seed_start + args.repeat - 1],
             "level": level.name,
         }
         log.write(json.dumps(header) + "\n")
         for case in cases:
             tally[case["id"]] = Counter()
-            for seed in range(1, args.repeat + 1):
+            for seed in range(args.seed_start, args.seed_start + args.repeat):
                 endpoint = Endpoint(
                     base_url=args.url,
                     model=args.model,

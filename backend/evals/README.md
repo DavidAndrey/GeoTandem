@@ -19,7 +19,14 @@ it whole; to compare prompt variants, run both with `--temperature 0.3
 
 ```sh
 uv run python evals/run.py --model gemma4:12b --temperature 0.3 --repeat 5 --label t3-mine
+uv run python evals/run.py --model gemma4:12b --temperature 0.3 --repeat 5 --seed-start 6 --label t3-mine-s6
+uv run python evals/compare.py --changed t3-mine t3-mine-s6
 ```
+
+A second seed block (`--seed-start 6`) measures the noise of a model: about
+±2 of 165 for gemma4:12b, ±6 for qwen3:8b (docs/testplan-system-context.md).
+`compare.py` puts runs side by side by label; `--changed` keeps the cases
+that differ.
 
 Verdicts:
 
