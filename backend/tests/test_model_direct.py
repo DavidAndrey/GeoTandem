@@ -39,7 +39,15 @@ from geotandem.llm import Completion, LLMError
 from geotandem.llm.fake import FakeLLMClient
 from geotandem.model.direct import DirectAnswer, DirectQuery, direct_prompt
 from geotandem.model.errors import ActionError
-from geotandem.model.prompt import ANSWER_TOKENS, FollowUp, Turn, build_prompt, estimate_tokens
+from geotandem.model.prompt import (
+    _EXAMPLES,
+    ANSWER_TOKENS,
+    FIRST,
+    FollowUp,
+    Turn,
+    build_prompt,
+    estimate_tokens,
+)
 from geotandem.model.represent import (
     LayerShape,
     NotRepresentable,
@@ -508,6 +516,7 @@ def test_the_prompt_holds_level_profile_and_format(world: DataBackend) -> None:
     assert format_text("direct") in system.content
     assert call.schema == answer_format("direct")
     assert user.content == case("reference")["prompt"]
+    assert system.content.endswith(FIRST)
     assert prompt.messages == call.messages
     assert prompt.tokens_estimate == estimate_tokens(call.messages)
     assert prompt.tokens_estimate > ANSWER_TOKENS
@@ -579,8 +588,9 @@ def test_too_large_a_context_is_refused_before_any_call(world: DataBackend) -> N
 
 def test_the_budget_counts_the_turns(world: DataBackend) -> None:
     profile = profile_of(world)
-    alone = build_prompt("?", approach="direct", level=CHECK, profile=profile)
-    follow_up = FollowUp(turns=[Turn("x" * 3000, "y" * 3000)])
+    short = FollowUp(turns=[Turn("a", "b")])
+    alone = build_prompt("?", approach="direct", level=CHECK, profile=profile, follow_up=short)
+    follow_up = FollowUp(turns=[Turn("a", "b"), Turn("x" * 3000, "y" * 3000)])
     longer = build_prompt("?", approach="direct", level=CHECK, profile=profile, follow_up=follow_up)
     assert longer.tokens_estimate == alone.tokens_estimate + 2000
     with pytest.raises(ActionError):
@@ -786,3 +796,36 @@ def test_the_finish_reason_alone_changes_nothing() -> None:
     with pytest.raises(ActionError) as raised:
         parse_answer(Completion(text="{", finish_reason="stop"), "direct")
     assert raised.value.code == "model_unreadable"
+
+
+def test_every_example_of_the_prompt_is_a_valid_answer() -> None:
+    """A model copies the examples' form: each must be an answer the
+    application accepts as written, with a schema-valid query."""
+    answers = [
+        json.loads(line) for line in _EXAMPLES["direct"].splitlines() if line.startswith("{")
+    ]
+    assert len(answers) >= 5
+    for answer in answers:
+        parsed = parse_answer(Completion(text=json.dumps(answer)), "direct")
+        if isinstance(parsed, QueryAnswer):
+            QueryObject.model_validate(parsed.query)
+
+
+def test_only_a_prompt_that_builds_on_nothing_is_called_the_first() -> None:
+    """testplan V-3: without the note, models took the worked examples for
+    earlier queries. It closes the system message, so the user message stays
+    the prompt text; a follow-up gets none."""
+    profile = ModelProfile(layers=[], hash="", size_chars=0, tokens_estimate=0)
+    profile._text = "{}"
+    first = build_prompt("Frage 1", approach="direct", level=CHECK, profile=profile)
+    assert first.messages[0].content.endswith(FIRST)
+    assert first.messages[-1].content == "Frage 1"
+    follow = build_prompt(
+        "Frage 2",
+        approach="direct",
+        level=CHECK,
+        profile=profile,
+        follow_up=FollowUp(turns=[Turn("Frage 1", "Antwort 1")]),
+    )
+    assert FIRST not in follow.messages[0].content
+    assert [m.content for m in follow.messages[1:]] == ["Frage 1", "Antwort 1", "Frage 2"]

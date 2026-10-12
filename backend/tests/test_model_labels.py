@@ -63,6 +63,12 @@ def test_a_label_unlike_its_code_becomes_the_code() -> None:
     assert found.where == query("schulen", eq("typ", "primar", "ne")).where
 
 
+@pytest.mark.parametrize("written", ["sekundarstufe_i", "Sekundarstufe-I", "sekundarstufe  i"])
+def test_words_joined_otherwise_are_the_same_label(written: str) -> None:
+    found = as_codes(query("schulen", eq("typ", written)), PROFILE)
+    assert found.where == query("schulen", eq("typ", "sekundar")).where
+
+
 def test_each_value_of_a_list_is_read() -> None:
     written = {"op": "in", "attr": "verkehrsmittel", "values": ["Bahn", "bus", "Tram"]}
     found = as_codes(query("haltestellen", written), PROFILE)

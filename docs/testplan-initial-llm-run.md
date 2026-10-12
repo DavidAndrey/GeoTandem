@@ -198,8 +198,8 @@ Gemessen mit dem Prompt von doc4 (4 894 bzw. 5 016 Tokens), Denken `medium`:
   möglich und ist ein Grund für eine Obergrenze ([E-4](#6-offene-entscheide)).
 
 Nebenbei: qwen3 beantwortet doc4 hier mit `typ = "sekundar"` statt
-`sekundarstufe = true`. Das ist eine vertretbare Lesart, die der Fall heute
-als falsch zählt ([7](#7-nächste-schritte), Punkt 2).
+`sekundarstufe = true`. In den Beispieldaten sind das dieselben 62 Schulen;
+die Bewertung über die Objekt-IDs zählt beide Lesarten als richtig.
 
 ---
 
@@ -224,6 +224,28 @@ Alle Läufe Temperatur 0, Seeds 1–3, Stufe *Prüfen*, Ollama mit 16 k Kontext.
 | `e3-gemma4` | gemma4:12b | aus | ✔ | Fassung 2, Codes, Formen (E-3) | 39/51 | |
 | `e6-qwen3` | qwen3:8b | aus | ✔ | wie e3, «wie viele» (E-6) | 30/51 | |
 | `e6-gemma4` | gemma4:12b | aus | ✔ | wie e3, «wie viele» (E-6) | **44/51** | |
+
+Ab 2026-10-12 abends: **33 Fälle** (17 + N1–N15 + `x-ohne-kontext`), und
+zum Vergleich von Prompt-Varianten **Temperatur 0,3 mit 5 Seeds** (165
+Antworten je Lauf), weil bei Temperatur 0 die Seeds fast gleich antworten
+(7, Punkt 6):
+
+| Label | Modell | Stand | Temperatur × Seeds | Bestanden |
+|---|---|---|---|---:|
+| `v0-gemma4` / `v27-gemma4` | gemma4:12b | vor / nach V-2–V-7 | 0 × 3 | 69/99 ⇒ 71/99 |
+| `v0-qwen3` / `v27-qwen3` | qwen3:8b | vor / nach V-2–V-7 | 0 × 3 | 51/99 ⇒ 51/99 |
+| `t3-v0-gemma4` | gemma4:12b | vor V-2–V-7 | 0,3 × 5 | 109/165 |
+| `t3-v27-gemma4` | gemma4:12b | V-2–V-7, erste Fassung | 0,3 × 5 | 134/165 |
+| `t3-v27b-gemma4` | gemma4:12b | V-2–V-7, nachgebessert | 0,3 × 5 | **138/165** |
+| `t3-v0-qwen3` | qwen3:8b | vor V-2–V-7 | 0,3 × 5 | 85/165 |
+| `t3-v27-qwen3` | qwen3:8b | V-2–V-7, erste Fassung | 0,3 × 5 | 94/165 |
+| `t3-v27b-qwen3` | qwen3:8b | V-2–V-7, nachgebessert | 0,3 × 5 | 89/165 |
+| `t3-v27c-gemma4` | gemma4:12b | wie v27b, Hinweis «erste Frage» in der Systemnachricht (gemergter Stand) | 0,3 × 5 | **130/165** |
+| `t3-v27c-qwen3` | qwen3:8b | wie v27b, Hinweis in der Systemnachricht (gemergter Stand) | 0,3 × 5 | 93/165 |
+
+Bei Temperatur 0 sah V-2–V-7 nach +2 aus; mit Streuung sind es bei gemma4
++29 von 165. Ein Vergleich bei Temperatur 0 mit drei Seeds trägt keine
+Entscheidung.
 
 Je Fall:
 
@@ -278,6 +300,7 @@ anderen Layer scheiterte vor dem Fix ohne Ausnahme.
 | E-5 | **Abgeschnittene Antwort melden** — *umgesetzt 2026-10-12* | – | Eigener Code `model_truncated` (502), wenn die Antwort nicht lesbar ist und das Modell an seiner Längengrenze stoppte (`finish_reason: length`); `details` nennt `prompt_tokens` und `completion_tokens`. Eine lesbare Antwort gilt unabhängig vom Grund des Endes. Oberfläche: «Antwort abgeschnitten», Hinweis auf zu langes Denken oder zu kleinen Kontext, Details mit den Tokens, Verweis für Administratoren, «Anbindung wechseln»; in der Kette eigener Text bei der Neuplanung. Geprüft: gemma4 mit Denken endet jetzt `error:model_truncated` statt `model_unreadable` | `e5-probe-gemma4` |
 | E-6 | **«Wie viele»-Fragen** — *umgesetzt 2026-10-12* | – | Ein Satz im Antwortformat der Direktabfrage: «Wie viele …?» mit `query` beantworten, die Anwendung zeigt die Anzahl; kein Grund für `cannot_answer`. Gemessen: gemma4 39 ⇒ **44/51** (`log2` 0 ⇒ 2/3, nebenbei `doc5` 0 ⇒ 3/3); qwen3 33 ⇒ 30/51, weil es in `doc3` nun den Filter «Bahn» weglässt, eine Frage, die der Satz nicht betrifft (siehe 7, Punkt 6) | `e6-*` |
 | E-7 | **Werte im Steckbrief** (z. B. Gemeindenamen) | nur Metadaten (S3, heute) · kurze Wertelisten für kleine Textfelder · Werkzeug zum Nachschlagen in der Kette | erst messen: Mit dem Fix schreibt das Modell „Bern“, „Köniz“ richtig über den Namen | `log2`, `doc1`, `in-gemeinde-bahn` |
+| E-8 | **Hinweis «erste Frage» in der Nutzernachricht?** (V-3) | in der Systemnachricht wie gemergt: Invariante bleibt, das Leck bleibt bei gemma4 (0/5) · in der Nutzernachricht vor «Frage: », wie Folgefragen schon Anwendungstext tragen: Leck behoben (5/5, gesamt 138 statt 130 von 165); Bypass-Test und Sicherheitsreview Zeile «Prompt injection» werden umformuliert zu «die Nutzernachricht ist der Prompttext, davor höchstens fester Text der Anwendung» | Nutzernachricht: der Hinweis ist fest und unabhängig von der Eingabe, das Muster besteht bei Folgefragen schon. Entscheid beim Sicherheitsverantwortlichen | `x-ohne-kontext`, `t3-v27b` gegen `t3-v27c` |
 
 Nicht in dieser Messung, aber offen:
 
@@ -294,9 +317,9 @@ Nicht in dieser Messung, aber offen:
 2. **Fälle ergänzen**, ehe weiter am Prompt gearbeitet wird; 17 Fälle tragen
    noch keinen feinen Vergleich: Zählfragen, Datumsbereiche, `in`-Listen,
    Tabellen-Join (`gemeindedaten`), Rückfragen (`clarification`), und je eine
-   Frage pro Fehlerart aus Abschnitt 5. Fälle mit zwei vertretbaren Lesarten
-   (doc4: `typ = "sekundar"` oder `sekundarstufe = true`) erhalten mehrere
-   Referenzabfragen.
+   Frage pro Fehlerart aus Abschnitt 5. Fälle mit zwei vertretbaren Lesarten,
+   die in den Daten verschiedene Objekte liefern, erhalten mehrere
+   Referenzabfragen. Vorschlag: die 15 Fragen aus [Abschnitt 9](#9-manuelle-prüfung-15-neue-fragen).
 3. **Die Kette messen:** `evals/run.py` um `--approach chain` erweitern
    (Plan prüfen, Schritte ausführen, Ergebnis-IDs vergleichen); vorher das
    `where` der Schritte im Schema einschränken.
@@ -327,3 +350,150 @@ uv run python evals/run.py --model gemma4:12b --label fewshot2-gemma4
 Ein Lauf mit 51 Aufrufen dauert ohne Denken 1–4 Minuten, mit Denken rund
 25 Minuten (qwen3:8b). Die Ergebnisdateien in `evals/results/` enthalten jede
 Antwort im Wortlaut; die Fehler liest man dort.
+
+---
+
+## 9 Manuelle Prüfung: 15 neue Fragen
+
+> Stand 2026-10-12, für einen Lauf von Hand im Arbeitsplatz. Jede Frage zielt
+> auf eine Lücke der 17 Fälle oder eine Fehlerart aus Abschnitt 5. Die
+> erwarteten Trefferzahlen sind mit der Referenzabfrage auf den Beispieldaten
+> gerechnet (unten). Nach der Bewertung kommen die Fragen mit Referenz in
+> [cases.json](../backend/evals/cases.json).
+
+**Vorgehen:** Stufe *Prüfen*, Verbindung wie zu bewerten (gemma4:12b ohne
+Denken empfohlen, zum Vergleich qwen3:8b). Jede Frage als neue Anfrage, nicht
+als Folgefrage. Ansatz «direkt», wo nicht anders vermerkt. Notieren: Antwortart,
+Trefferzahl, Erklärung und Annahmen, ✔ / ≈ / ✘.
+
+**Bewertung:** ✔ richtige Treffer *oder* die erwartete Antwortart · ≈ andere,
+aber vertretbare Lesart, als Annahme genannt · ✘ falsch, erfunden oder
+abgelehnt, wo eine Abfrage möglich war.
+
+| # | Frage | Ansatz | Prüft | Erwartet | Bewertung |
+|---|---|---|---|---|---|
+| N1 | Wie viele Tramhaltestellen gibt es? | direkt | Zählfrage (E-6), Code über Beschriftung | Abfrage `verkehrsmittel = tram` · **72** || ✔ #13 · 72 (Modell schrieb «Tram», E-2 machte daraus `tram`) |
+| N2 | Zeig die Haltestellen der Kategorien III bis V. | direkt | «bis» auf einer Codeliste: Liste statt Bereich | `kategorie` ist eins von III, IV, V · **593** || ✘ #14, #16 · `between` 3–5 auf dem Text-Code ⇒ `wrong_value_type` |
+| N3 | Welche Gemeinden haben mehr als 10 000 Einwohner? | direkt, dann Kette | Tabellen-Layer `gemeindedaten`: braucht eine Verknüpfung, die weder Direktabfrage noch Kette kennt | `cannot_answer`, nennt die Verknüpfung mit Gemeindedaten; keine erfundene Bedingung auf `gemeinden`. (Von Hand in Modus A: 10 Gemeinden, Beispiel 8 in filters.md) || ✘ #15, #17 · `einwohner` auf `gemeinden` erfunden ⇒ `unknown_attribute`; Kette #18: Filter auf Tabellen-Layer ⇒ `not_representable` |
+| N4 | Zeig mir die grossen Gemeinden. | direkt | Mehrdeutigkeit | Rückfrage (Fläche oder Einwohner?) **oder** Abfrage auf `flaeche_km2` mit Schwelle als Annahme (> 30 km²: **9**) || ≈ #19–21 · gute Rückfrage; zweite Rückfrage mit 50/100/200 km² (grösste Gemeinde 57 km²); mit «30» dann 9 ✔ |
+| N5 | In welchen Gemeinden gibt es eine französischsprachige Schule? | direkt | Richtung der Beziehung (`contains`, nicht `within`) | Gemeinden `contains` Schulen (`sprache = fr`) · **1** || ✔ #22 · 1 |
+| N6 | Primarschulen höchstens 400 m von einer Tramhaltestelle | direkt | Filter auf dem richtigen Layer: `primar` auf Schulen, `tram` auf Haltestellen | `typ = primar` UND ≤ 400 m zu Haltestellen (`verkehrsmittel = tram`) · **7** || ≈ #23 · `primarstufe = true` statt `typ = primar` ⇒ 16 statt 7, ohne Annahme |
+| N7 | Schulen höchstens 300 m von einer Bushaltestelle der Kategorie II | direkt, dann Kette | Zwei Filter auf dem anderen Layer: die Bedienelemente zeigen nur einen | direkt: `cannot_answer` mit Hinweis auf die Kette (keine Abfrage, die einen Filter weglässt); Kette: Haltestellen filtern (bus, II), dann Schulen in der Nähe · **25** || ✘ #24 · Abfrage mit zwei Filtern ⇒ `not_representable` statt `cannot_answer`; Kette #25: «bus» weggelassen, `"of": "1"` ⇒ `model_query_invalid` |
+| N8 | Welche Schulen bieten die Sekundarstufe I an? | direkt | Ja/Nein-Attribut gegen Code von `typ` | `sekundarstufe = true` oder `typ = sekundar`, beide **62** (dieselben Schulen) || ✔ #26 (Kette) · 62 |
+| N9 | Welche Haltestellen liegen ausserhalb der Stadt Bern? | direkt | Verneinte Raumbeziehung, «Stadt» = Gemeinde | NICHT liegt in Gemeinden (`name = Bern`) · **704** von 961 || ✘ #27, #28 · unnötige Rückfrage; dann Name *enthält* «Bern» ⇒ 644 statt 704 (schliesst auch Bremgarten, Muri, Wohlen bei Bern aus) |
+| N10 | Welche Strassen führen durch Köniz? | direkt | Linie zu Fläche: `intersects`, nicht `within` | Strassen schneiden Gemeinden (`name = Köniz`) · **16** || ✘ #29 · `within` statt `intersects` ⇒ 5 statt 16 |
+| N11 | Haltestellen mit 1000 bis 5000 Einwohnern im Einzugsgebiet | direkt | Zahlenbereich, «Einwohner» auf dem richtigen Layer (Haltestellen, nicht Gemeindedaten) | `einwohner` zwischen 1000 und 5000 · **399** || ✔ #30 · 399 |
+| N12 | Wo sind die Schiffsanlegestellen? | direkt | Code ohne Daten | Abfrage `verkehrsmittel = schiff` · **0** Treffer; ✘ ist ein `cannot_answer` («gibt es nicht»): Das Modell kennt keine Inhalte || ✔ #31 · 0 |
+| N13 | Schulen im Umkreis von 1 km um den Bahnhof Bern | direkt | Benanntes Einzelobjekt ohne bekannte fid; Werte unbekannt (E-7) | ≤ 1000 m zu Haltestellen (`name = Bern`; die Bahnhaltestelle heisst «Bern», fid 47) · **4**. Typischer Fehler: «Bahnhof Bern» als Name (0 Treffer) oder `near_feature` mit geratener fid; ≈ wenn die Annahme zum Namen genannt ist || ✘ #32 · Name enthält «Bahnhof Bern» ⇒ 0 (die Haltestelle heisst «Bern»); abgelehnt |
+| N14 | Welche Schulen haben mehr als 300 Schülerinnen und Schüler? | direkt | Fehlendes Attribut, keine Ersatzgrösse erfinden | `cannot_answer`, `missing` nennt die Schülerzahl; ✘ eine Bedingung auf `standorte` || ✔ #33 · `missing` nennt die Schülerzahl |
+| N15 | Wie viele Schulen gibt es in jeder Gemeinde? | direkt, dann Kette | Zusammenfassung je Gemeinde: kann keiner der Ansätze | `cannot_answer` in beiden; nennt die Zusammenfassung (Modus A kann sie: Bern 27, Köniz 11, Belp 7, …) || ≈ #34 · `cannot_answer` richtig, aber `other_approach: chain`, obwohl die Kette nicht zusammenfassen kann |
+
+Abgedeckt: Zählen (N1, N15), Codelisten (N1, N2, N12), Tabellen-Layer (N3),
+Rückfrage (N4), Richtung (N5, N10), falscher Layer (N6, N11), zwei Filter
+(N7), Bedeutung (N8), Verneinung (N9), Zahlenbereich (N11), Einzelobjekt (N13),
+Ehrlichkeit bei fehlenden Daten (N3, N12, N14, N15), Kette (N3, N7, N15).
+Nicht abgedeckt: Datumsbereiche (die Beispieldaten haben kein Datumsattribut)
+und Folgefragen (erst mit WP81).
+
+<details>
+<summary>Referenzabfragen (Trefferzahlen auf <code>bern-mittelland-2026-10-03</code>)</summary>
+
+```json
+{"N1":  {"source":"haltestellen","where":{"op":"compare","attr":"verkehrsmittel","cmp":"eq","value":"tram"}},
+ "N2":  {"source":"haltestellen","where":{"op":"in","attr":"kategorie","values":["III","IV","V"]}},
+ "N4":  {"source":"gemeinden","where":{"op":"compare","attr":"flaeche_km2","cmp":"gt","value":30}},
+ "N5":  {"source":"gemeinden","where":{"op":"related","layer":"schulen","predicate":"contains","where":{"op":"compare","attr":"sprache","cmp":"eq","value":"fr"}}},
+ "N6":  {"source":"schulen","where":{"op":"and","args":[{"op":"compare","attr":"typ","cmp":"eq","value":"primar"},{"op":"related","layer":"haltestellen","predicate":"dwithin","distance_m":400,"where":{"op":"compare","attr":"verkehrsmittel","cmp":"eq","value":"tram"}}]}},
+ "N7":  {"source":"schulen","where":{"op":"related","layer":"haltestellen","predicate":"dwithin","distance_m":300,"where":{"op":"and","args":[{"op":"compare","attr":"verkehrsmittel","cmp":"eq","value":"bus"},{"op":"compare","attr":"kategorie","cmp":"eq","value":"II"}]}}},
+ "N8":  {"source":"schulen","where":{"op":"compare","attr":"sekundarstufe","cmp":"eq","value":true}},
+ "N9":  {"source":"haltestellen","where":{"op":"not","arg":{"op":"related","layer":"gemeinden","predicate":"within","where":{"op":"compare","attr":"name","cmp":"eq","value":"Bern"}}}},
+ "N10": {"source":"strassen","where":{"op":"related","layer":"gemeinden","predicate":"intersects","where":{"op":"compare","attr":"name","cmp":"eq","value":"Köniz"}}},
+ "N11": {"source":"haltestellen","where":{"op":"between","attr":"einwohner","min":1000,"max":5000}},
+ "N12": {"source":"haltestellen","where":{"op":"compare","attr":"verkehrsmittel","cmp":"eq","value":"schiff"}},
+ "N13": {"source":"schulen","where":{"op":"related","layer":"haltestellen","predicate":"dwithin","distance_m":1000,"where":{"op":"compare","attr":"name","cmp":"eq","value":"Bern"}}}}
+```
+
+N3, N14 und N15 haben keine Referenzabfrage: Erwartet ist `cannot_answer`.
+N7 ist in der Direktabfrage nicht darstellbar; die Referenz gilt für die Kette.
+</details>
+
+---
+
+## 10 Ergebnis der manuellen Prüfung und Verbesserungen
+
+> Stand 2026-10-12. Lauf im Container mit dem Stand von main nach E-2, E-3,
+> E-5, E-6 (Image 17:56), gemma4:12b ohne Denken, Stufe *Prüfen*. Datensätze
+> #6–#34 in `model_action`; #6 und #7 stammen vom Vorabend, noch ohne
+> Schema-Fix, und zählen nicht.
+
+**Ergebnis N1–N15: 6 ✔ · 3 ≈ · 6 ✘.** Dazu die freien Fragen #8–#12:
+#8 (79 ✔), #10 Ittigen ✔, #12 Riggisberg ✔, **#11 «wie viele Schulen in
+Bern» ✘**: Name *enthält* «Bern» ⇒ 38 statt 27.
+
+Bemerkenswert:
+
+- **Vier der sechs ✘ sind Ablehnungen der Anwendung** (N2, N3, N7 zweimal).
+  Das Modell bekommt die Ablehnung nie zu sehen und kann sich nicht
+  korrigieren; der Anwender sieht nur eine Fehlermeldung.
+- **Zwei Fehler sind still** (#11, N9): Name *enthält* statt *gleich* liefert
+  eine plausible, aber falsche Zahl. Gefährlicher als eine Ablehnung, weil
+  nichts darauf hinweist.
+- **Die Beispiele sickern in den Verlauf** (#9): Auf «passe die Distanz auf
+  100m an» bot das Modell «die Distanz in der letzten Abfrage (Spielplätze
+  nahe Primarschulen)» an. Das ist Beispiel 2 aus dem Prompt.
+- E-2 wirkt im Betrieb (N1: «Tram» ⇒ `tram`).
+
+### Verbesserungen, nach Wirkung geordnet
+
+| # | Verbesserung | Behebt | Art | Aufwand |
+|---|---|---|---|---|
+| V-1 | **Ein Korrekturversuch nach einer Ablehnung.** Lehnt die Anwendung die Abfrage ab (`unknown_attribute`, `wrong_value_type`, `not_representable`, `model_query_invalid`), bekommt das Modell die Ablehnung einmal zurück: «Deine Abfrage wurde abgewiesen: … Korrigiere sie oder antworte mit cannot_answer.» Der Eintrag hält beide Antworten fest; zählt als ein Aufruf mehr (Tageslimit, Zeitlimit). | N2, N3, N7 (direkt und Kette), voraussichtlich auch #25 | Code (Ablauf, Eintrag) | mittel |
+| V-2 | **Namen mit «gleich», nicht «enthält».** Regel im Antwortformat: Ein Objekt mit Namen (Gemeinde, Gewässer) mit `compare eq`; `text_match contains` nur, wenn nach einem Teil des Namens gefragt ist. Dazu ein Beispiel, in dem «Altstadt» auch in «Altstadt-Nord» vorkommt. | #11, N9 (stille Fehler) | Prompt | klein |
+| V-3 | **Beispiele klar vom Verlauf trennen.** Den Abschnitt «# Beispiele» einleiten mit: «Erfundene Beispiele, kein Teil des Gesprächs; der Anwender hat sie nie gestellt.» Messen, ob #9 verschwindet; sonst die Beispiele vor den Layer-Steckbrief stellen. | #9 | Prompt | klein |
+| V-4 | **Linien und Flächen:** Regel «durch, entlang, quer durch ⇒ `intersects`; `within` nur, wenn das Objekt ganz in der Fläche liegen soll», mit Beispiel auf einem Linien-Layer. | N10 | Prompt | klein |
+| V-5 | **Was kein Ansatz kann, ehrlich sagen.** Im Antwortformat der Direktabfrage: Attribute eines Tabellen-Layers (`kind: table`) lassen sich nicht filtern; Verknüpfen, Zusammenfassen, Zählen je Gruppe kann auch die Kette nicht ⇒ `cannot_answer` *ohne* `other_approach`. Dieselbe Regel im Format der Kette. | N3, N15, #18 | Prompt | klein |
+| V-6 | **Bereiche auf Codes als Liste.** Regel: «Von … bis …» auf einem Attribut mit `codes` ⇒ `in` mit allen Codes dazwischen, in der Reihenfolge der Codeliste. | N2 | Prompt | klein |
+| V-7 | **Rückfragen begrenzen.** Regel: höchstens eine Rückfrage, danach mit Annahme antworten; Optionen nur innerhalb bekannter Wertebereiche (`range`). «Stadt X» heisst Gemeinde X, keine Rückfrage. | N4, N9 | Prompt | klein |
+| V-8 | **Metadaten ergänzen (Administration, kein Code):** `range` für `gemeinden.flaeche_km2` (1,3–57,3 km²) und `haltestellen.einwohner`; Beschreibungen, die `schulen.typ` («höchste Stufe») und `schulen.primarstufe` («bietet die Stufe an, auch Schulen mit Sek I») unterscheiden. | N4, N6 | Daten | klein |
+| V-9 | **Argumente der Kette im Schema einschränken** (schon offen, Abschnitt 6): `where` als Bedingung, `of` als Zahl. | N7 Kette (#25), Versuch 3 aus Abschnitt 1 | Code (Schema) | mittel |
+| V-10 | **Benannte Einzelobjekte** («Bahnhof Bern»): hängt an E-7. Kurzfristig eine Regel «für ein benanntes Objekt den kürzesten Namen verwenden und als Annahme nennen»; langfristig ein Werkzeug, das Namen nachschlägt. | N13 | Prompt / E-7 | klein / gross |
+
+### Umsetzung V-2 bis V-7 (2026-10-12)
+
+Umgesetzt in [prompt.py](../backend/src/geotandem/model/prompt.py) und
+[labels.py](../backend/src/geotandem/model/labels.py); gemessen mit 33 Fällen,
+Temperatur 0,3, 5 Seeds (Abschnitt 4):
+
+| | Umsetzung | gemma4:12b | qwen3:8b |
+|---|---|---|---|
+| V-2 | Regel «Namen mit `eq`, nie `text_match`», mit dem Grund (Altstadt/Altstadt-Nord) | n09 0 ⇒ 5/5 | n09 0 ⇒ 5/5 |
+| V-3 | Beispiele als «kein Teil des Gesprächs» eingeleitet, *und* ein Hinweis «erste Frage» (`FIRST`), wenn der Prompt auf nichts aufbaut. Die Einleitung allein wirkte nicht. Der Hinweis wirkt bei gemma4 **nur in der Nutzernachricht** (v27b: 5/5); dort verletzt er die Invariante des Sicherheitsreviews «die Nutzernachricht ist der Prompttext und nichts sonst». Gemergt ist er deshalb in der Systemnachricht (v27c), wo er bei gemma4 nicht wirkt: **E-8** | `x-ohne-kontext` v27b 0 ⇒ 5/5, v27c 0/5 | war 5/5, bleibt |
+| V-4 | Regel «durch, entlang, in bei Linien ⇒ `intersects`», Beispiel auf erfundenem Linien-Layer `wanderwege` | n10 0 ⇒ 5/5 | n10 1 ⇒ 2/5 |
+| V-5 | Tabellen-Layer, Verknüpfen und Zählen je Gruppe in keinem Ansatz ⇒ `cannot_answer` ohne `other_approach`; was die Kette kann. Abgegrenzt: «wie viele» ohne «je» ist kein Zählen je Gruppe | n03 0 ⇒ 5/5, n15 1 ⇒ 5/5 | n15 0 ⇒ 1/5; **log2 5 ⇒ 0/5**: qwen3 lehnt nun jede Zählfrage ab |
+| V-6 | «von … bis …» auf Codes ⇒ `in`; «A oder B» auf einem Attribut ⇒ `in`, nie `and` | n02 0 ⇒ 5/5, doc2 bleibt 5/5 | n02 bleibt 5/5 |
+| V-7 | höchstens eine Rückfrage; Zahlen in Optionen nur innerhalb `range`; «Stadt X» ist Gemeinde X, mit Beispiel «Stadt Seedorf» | n09 (s. V-2) | n09 (s. V-2) |
+| zu E-2 | Codezuordnung ignoriert Leerzeichen, Unterstrich und Bindestrich (`sekundarstufe_i` ⇒ `sekundar`) | n08 4 ⇒ 5/5 | n08 3 ⇒ 5/5 |
+
+Ein Test hält fest, dass jede Beispielantwort des Prompts eine gültige Antwort
+ist (`test_every_example_of_the_prompt_is_a_valid_answer`); beim Schreiben
+war eine Klammer verrutscht.
+
+**Offen nach der Umsetzung:**
+
+- gemma4: n06 liest «Primarschulen» als `primarstufe = true` (16 statt 7):
+  V-8 (Beschreibungen in den Metadaten). n07 (zwei Filter) und n13
+  («Bahnhof Bern») brauchen V-1 bzw. E-7. doc4, doc6 unverändert 0/5.
+- qwen3: lehnt Zählfragen ab (log2, n01), wiederholt bei n12 die Frage als
+  Rückfrage, bietet bei n15 trotz Regel die Kette an. Das sind Grenzen des
+  kleineren Modells; weitere Regeln dafür würden auf qwen3 hin optimieren.
+  Empfehlung bleibt E-1: gemma4:12b.
+
+### Empfohlene Reihenfolge
+
+1. ~~V-2 bis V-7~~ umgesetzt (oben).
+   Offen daraus: E-8 (Abschnitt 6).
+2. **V-8** in der Administration, ohne Code.
+3. **V-1** als eigenes Arbeitspaket: Es ändert den Ablauf eines Aufrufs und
+   den Eintrag (zwei Antworten, Latenz, Tageslimit) und braucht Tests über den
+   ganzen Ablauf.
+4. **V-9** mit der Messung der Kette (Abschnitt 7, Punkt 3).

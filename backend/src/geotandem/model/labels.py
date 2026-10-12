@@ -10,12 +10,15 @@ query with the code. The controls show a code by its label, so what the user
 sees does not change.
 
 Only a value that is no code of its attribute and matches exactly one code or
-label, ignoring case, is replaced; any other value stays and is checked as
-before. Equality and list conditions only (``compare`` with ``eq``/``ne``,
-``in``): an order or a text match on a code means something else. A
-relation's filter is read against the related layer's codes.
+label, ignoring case and whether words are joined by spaces, underscores or
+hyphens ("sekundarstufe_i" for "Sekundarstufe I"), is replaced; any other
+value stays and is checked as before. Equality and list conditions only
+(``compare`` with ``eq``/``ne``, ``in``): an order or a text match on a code
+means something else. A relation's filter is read against the related
+layer's codes.
 """
 
+import re
 from collections.abc import Mapping
 from typing import Any
 
@@ -34,11 +37,16 @@ def codes_of(profile: ModelProfile) -> dict[str, dict[str, dict[str, str]]]:
     }
 
 
+def _plain(text: str) -> str:
+    """Case, and spaces, underscores and hyphens between words, ignored."""
+    return " ".join(re.split(r"[\s_-]+", text.casefold())).strip()
+
+
 def _code(value: Any, codes: Mapping[str, str]) -> Any:
     if not isinstance(value, str) or value in codes:
         return value
-    wanted = value.casefold()
-    found = {code for code, label in codes.items() if wanted in (code.casefold(), label.casefold())}
+    wanted = _plain(value)
+    found = {code for code, label in codes.items() if wanted in (_plain(code), _plain(label))}
     return found.pop() if len(found) == 1 else value
 
 
