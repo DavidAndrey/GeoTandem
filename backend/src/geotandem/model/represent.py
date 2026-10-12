@@ -5,8 +5,10 @@ catalog result layer, rewritten in Python; ``to_analysis`` is its inverse. A
 query is **representable** exactly when ``to_analysis`` finds an analysis and
 ``to_query`` of that analysis has the query's canonical form: the controls show
 what the model wrote, and applying it sends the same query back. A model may
-mean the same with another shape (``and`` of one argument); that is refused
-rather than rewritten, so the query on the record is the one the user sees.
+mean the same with another shape (``and`` of one argument); ``to_analysis``
+refuses it. The model path writes such shapes plain before it gets here
+(``shapes.plain``, testplan E-3) and keeps the plain query on the record, so
+the query on the record is still the one the user sees.
 
 The analysis is the query part of the frontend's state (``QueryPart`` of
 ``analysis/model.ts``: result layer, condition tree, restriction) plus the

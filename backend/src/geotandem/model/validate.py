@@ -11,8 +11,10 @@ In order, each step ending in a ``Refusal``:
 
 1. the query-object schema: an extra field, such as a write-shaped
    ``delete``, is refused, never ignored (F-9.5) ⇒ ``model_query_invalid``
-   with ``details.errors``; then a code's label written for the code becomes
-   the code (``labels.as_codes``), and the query goes on as rewritten;
+   with ``details.errors``; then a shape that means the same is written
+   plain (``shapes.plain``: ``and`` of one, ``not`` of ``not``) and a code's
+   label written for the code becomes the code (``labels.as_codes``), and the
+   query goes on as rewritten;
 2. the engine's validation in the model's world; its codes pass through
    (``RefusalCode`` names every validation code of the engine);
 3. representability in the controls ⇒ ``not_representable`` (D3);
@@ -41,6 +43,7 @@ from geotandem.levels import OpClass, classify
 from geotandem.model.labels import as_codes
 from geotandem.model.represent import NotRepresentable, catalog_of, count_conditions, to_analysis
 from geotandem.model.schemas import MAX_CONDITIONS, MAX_LISTED, Refusal
+from geotandem.model.shapes import plain
 from geotandem.tools import ToolContext
 from geotandem_query import QueryObject
 
@@ -130,7 +133,7 @@ def validate_model_query(
         return invalid(schema_errors(exc))
     except RecursionError:
         return invalid([NESTED])
-    return check_query(as_codes(query, profile), context, profile)
+    return check_query(as_codes(plain(query), profile), context, profile)
 
 
 NESTED: Final = {"loc": [], "msg": "Nested too deeply", "type": "recursion_loop"}

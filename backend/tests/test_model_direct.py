@@ -745,3 +745,16 @@ def test_a_code_label_is_checked_and_kept_as_its_code(world: DataBackend) -> Non
     where = found.query.model_dump(mode="json")["where"]
     assert where["args"][0]["value"] == "primar"
     assert where["args"][1]["where"]["value"] == "bahn"
+
+
+def test_a_shape_that_means_the_same_is_kept_plain(world: DataBackend) -> None:
+    """testplan E-3: an ``and`` of one and ``not`` of ``not`` pass, stored plain."""
+    kindergarten = {"op": "compare", "attr": "kindergarten", "cmp": "eq", "value": False}
+    written = {
+        "source": "schulen",
+        "where": {"op": "and", "args": [{"op": "not", "arg": {"op": "not", "arg": kindergarten}}]},
+        "output": "map",
+    }
+    found = check(world, written)
+    assert isinstance(found, Validated)
+    assert found.query.model_dump(mode="json", exclude_none=True)["where"] == kindergarten
