@@ -67,6 +67,7 @@
   "missing_key": "The row has no key value.",
   "mixed_geometry_types": "The file mixes geometry types.",
   "model_query_invalid": "The model's query does not match the schema; details.errors.",
+  "model_truncated": "The model stopped at its length limit before its answer was complete.",
   "model_unreadable": "The model's answer does not fit the answer schema.",
   "name_clash": "A joined, computed or aggregated attribute takes a used name.",
   "name_taken": "A session or query of that name exists; details.existing is its id.",

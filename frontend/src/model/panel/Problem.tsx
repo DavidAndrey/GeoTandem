@@ -18,16 +18,17 @@ import { minutes } from './time'
 const FINAL = ['quota_exceeded', 'llm_rate_limited', 'context_too_large', 'stale_reference']
 const LIMIT = ['quota_exceeded', 'llm_rate_limited']
 /** Codes where another connection may help. */
-const SWITCH = ['llm_unreachable', 'llm_timeout', 'llm_server_error']
+const SWITCH = ['llm_unreachable', 'llm_timeout', 'llm_server_error', 'model_truncated']
 /** Codes an administrator can do something about. */
-const ADMIN = ['llm_unreachable', 'llm_unauthorized', 'llm_not_found', ...LIMIT]
+const ADMIN = ['llm_unreachable', 'llm_unauthorized', 'llm_not_found', 'model_truncated', ...LIMIT]
 /** Codes with a technical cause worth showing under "Details". */
-const DETAILED = ['model_unreadable', 'llm_bad_response', 'internal_error']
+const DETAILED = ['model_unreadable', 'model_truncated', 'llm_bad_response', 'internal_error']
 
 function title(code: string): string {
   if (code === 'llm_unreachable') return t`Modell nicht erreichbar`
   if (code === 'llm_timeout') return t`Zeitüberschreitung`
   if (code === 'model_unreadable' || code === 'llm_bad_response') return t`Antwort nicht lesbar`
+  if (code === 'model_truncated') return t`Antwort abgeschnitten`
   if (LIMIT.includes(code)) return t`Grenzwert erreicht`
   return t`Anfrage nicht ausgeführt`
 }

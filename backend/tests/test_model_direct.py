@@ -758,3 +758,31 @@ def test_a_shape_that_means_the_same_is_kept_plain(world: DataBackend) -> None:
     found = check(world, written)
     assert isinstance(found, Validated)
     assert found.query.model_dump(mode="json", exclude_none=True)["where"] == kindergarten
+
+
+def test_an_answer_cut_at_the_length_limit_says_so() -> None:
+    """testplan E-5: the context filled up (or the thinking used it), and the
+    record says that, not only that the answer does not read."""
+    cut = Completion(
+        text='{"kind": "query", "explanation": "Gem',
+        finish_reason="length",
+        prompt_tokens=4894,
+        completion_tokens=11487,
+    )
+    with pytest.raises(ActionError) as raised:
+        parse_answer(cut, "direct")
+    assert (raised.value.code, raised.value.status) == ("model_truncated", 502)
+    assert raised.value.details == {"prompt_tokens": 4894, "completion_tokens": 11487}
+    with pytest.raises(ActionError) as raised:
+        parse_answer(Completion(text="", finish_reason="length"), "chain")
+    assert raised.value.code == "model_truncated"
+
+
+def test_the_finish_reason_alone_changes_nothing() -> None:
+    whole = json.dumps(case("clarification")["answer"])
+    assert parse_answer(Completion(text=whole, finish_reason="length"), "direct").kind == (
+        "clarification"
+    )
+    with pytest.raises(ActionError) as raised:
+        parse_answer(Completion(text="{", finish_reason="stop"), "direct")
+    assert raised.value.code == "model_unreadable"

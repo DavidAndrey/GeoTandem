@@ -765,7 +765,7 @@ const NAMES_STEP = ['class_not_allowed', 'unknown_layer', 'not_representable']
 /**
  * Why a re-plan brought no plan to run on (``replan_limit``), from the stop's
  * error: none, the re-plans are used up; ``model_unreadable``, the model
- * answered with no plan; no call made (the level or the connection changed,
+ * answered with no plan; ``model_truncated``, its answer was cut off; no call made (the level or the connection changed,
  * the daily limit); else its refusal, with the step it names.
  */
 function replanText(view: ModelActionView, at: string | null): string {
@@ -779,6 +779,8 @@ function replanText(view: ModelActionView, at: string | null): string {
   switch (code) {
     case 'model_unreadable':
       return t`Das Modell antwortete auf die Neuplanung nicht mit einem Plan.`
+    case 'model_truncated':
+      return t`Die Antwort des Modells auf die Neuplanung wurde abgeschnitten, ehe sie einen Plan enthielt.`
     case 'level_not_available':
       return t`Ihre Stufe wurde seit dem Plan geändert; unter ihr läuft die Kette nicht weiter.`
     case 'connection_not_available':

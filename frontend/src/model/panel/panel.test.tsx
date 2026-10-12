@@ -567,6 +567,23 @@ describe('errors (M14)', () => {
     expect(screen.getByText(/code: model_unreadable/)).toBeInTheDocument()
   })
 
+  test('testplan E-5: an answer cut at the length limit says so, with its tokens', async () => {
+    await answered('unreadable', {
+      error: {
+        code: 'model_truncated',
+        message: 'cut',
+        details: { prompt_tokens: 4894, completion_tokens: 11487 },
+      },
+    })
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Antwort abgeschnitten')
+    expect(alert).toHaveTextContent(
+      'Meist denkt das Modell zu lange, oder der Kontext ist zu klein.',
+    )
+    expect(screen.getByText(/completion_tokens: 11487/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Erneut versuchen' })).toBeInTheDocument()
+  })
+
   test('M14.4: the request limit is named, no retry, the prompt stays in the field', async () => {
     const user = fakeTimers()
     backend({

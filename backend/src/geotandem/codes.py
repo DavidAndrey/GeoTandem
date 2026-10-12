@@ -78,6 +78,7 @@ CODES: dict[str, str] = {
     "context_too_large": "Prompt, layer profile and context exceed the context length.",
     "stale_reference": "The earlier answer uses a layer that is gone (details.layer).",
     "model_unreadable": "The model's answer does not fit the answer schema.",
+    "model_truncated": "The model stopped at its length limit before its answer was complete.",
     "quota_exceeded": "The connection's requests per day are used up (details.limit).",
     "not_approved": "Only an approved action runs; this one is details.status.",
     "already_decided": "The action is decided already (details.status).",
