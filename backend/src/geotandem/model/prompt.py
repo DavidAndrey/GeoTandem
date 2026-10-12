@@ -108,6 +108,65 @@ _FORMAT: Final[dict[Approach, str]] = {
 }
 
 
+_EXAMPLES: Final[dict[Approach, str]] = {
+    "direct": (
+        "# Beispiele\n"
+        "Die Beispiele zeigen die Form an erfundenen Layern. Verwende nur die Layer und "
+        "Attribute des Layer-Steckbriefs. Erfundener Steckbrief der Beispiele: "
+        'baeume.art codes {"qu":"Eiche","ti":"Linde"}; quartiere.name (Text); '
+        'schulhaeuser.stufe codes {"prim":"Primarschule","sek":"Sekundarschule"}; '
+        "schulhaeuser.oeffentlich (Ja/Nein); "
+        'parzellen.zone codes {"W2":"Wohnzone 2","GE":"Gewerbezone"}; spielplaetze.\n'
+        "- Ein Ort, der ein Objekt eines anderen Layers ist («in der Altstadt»): Bedingung "
+        '"related" mit "within" auf diesen Layer und einer Bedingung auf seinen Namen. '
+        "Rate nie eine Nummer oder Kennung.\n"
+        '- Nähe zu Objekten eines Layers: "related" mit "dwithin" und "distance_m"; '
+        '«weiter als» ist "not" um diese Bedingung. Ohne Zahl («nahe», «in der Nähe») '
+        'nimm 300 m an und nenne es als Annahme. "near_feature" meint ein einzelnes '
+        "Objekt mit bekannter fid; du kennst keine fids, verwende es nicht.\n"
+        "- Eine Bedingung auf die Objekte des anderen Layers («Primarschulen», «die Aare») "
+        'steht im "where" des "related", mit dessen Attributen.\n'
+        '- Werte mit "codes": der Schlüssel links, nie die Beschriftung rechts '
+        '(«Eiche» ⇒ "qu"). Ja/Nein-Attribute vergleichst du mit true oder false.\n'
+        "- Nur Bedingungen, nach denen gefragt ist; keine zusätzlichen «ist nicht leer».\n"
+        '- Eine einzige Bedingung steht direkt in "where", nicht in einem "and" oder "or" '
+        "mit nur einem Argument.\n"
+        "\nFrage: Welche Eichen stehen in der Altstadt?\n"
+        '{"kind":"query","explanation":"Bäume der Art Eiche, die im Quartier Altstadt liegen.",'
+        '"assumptions":[],"query":{"source":"baeume","where":{"op":"and","args":['
+        '{"op":"compare","attr":"art","cmp":"eq","value":"qu"},'
+        '{"op":"related","layer":"quartiere","predicate":"within",'
+        '"where":{"op":"compare","attr":"name","cmp":"eq","value":"Altstadt"}}]},'
+        '"output":"map"}}\n'
+        "\nFrage: Spielplätze in der Nähe von Primarschulen\n"
+        '{"kind":"query","explanation":"Spielplätze, die nahe bei mindestens einer '
+        'Primarschule liegen.","assumptions":[{"text":"«In der Nähe» heisst höchstens 300 m.",'
+        '"condition":[]}],"query":{"source":"spielplaetze","where":{"op":"related",'
+        '"layer":"schulhaeuser","predicate":"dwithin","distance_m":300,'
+        '"where":{"op":"compare","attr":"stufe","cmp":"eq","value":"prim"}},"output":"map"}}\n'
+        "\nFrage: Parzellen in der Wohnzone 2, die mehr als 1 km vom nächsten Spielplatz "
+        "entfernt sind\n"
+        '{"kind":"query","explanation":"Parzellen der Wohnzone 2 ohne Spielplatz im Umkreis '
+        'von 1 km.","assumptions":[],"query":{"source":"parzellen","where":{"op":"and",'
+        '"args":[{"op":"compare","attr":"zone","cmp":"eq","value":"W2"},'
+        '{"op":"not","arg":{"op":"related","layer":"spielplaetze","predicate":"dwithin",'
+        '"distance_m":1000}}]},"output":"map"}}\n'
+        "\nFrage: Quartiere ohne öffentliches Schulhaus\n"
+        '{"kind":"query","explanation":"Quartiere, in denen kein öffentliches Schulhaus '
+        'liegt.","assumptions":[],"query":{"source":"quartiere","where":{"op":"not","arg":'
+        '{"op":"related","layer":"schulhaeuser","predicate":"contains",'
+        '"where":{"op":"compare","attr":"oeffentlich","cmp":"eq","value":true}}},'
+        '"output":"map"}}\n'
+        "\nFrage: Wie viele Velowege gibt es?\n"
+        '{"kind":"cannot_answer","explanation":"Kein Layer beschreibt Velowege.",'
+        '"missing":["ein Layer mit Velowegen"]}'
+    ),
+}
+"""Worked examples after the answer format (direct approach only): invented
+layers, so they fit any data core and name no layer an account may not see
+(S3); the harness in ``evals/`` measures what they change."""
+
+
 @dataclass(frozen=True)
 class Turn:
     """An earlier prompt and what came of it (P6): text only, never a query or rows."""
@@ -179,6 +238,8 @@ def system_message(level: Level, profile: ModelProfile, approach: Approach) -> s
         + "\nJSON-Schema der Antwort:\n"
         + format_text(approach)
     )
+    if approach in _EXAMPLES:
+        sections.append(_EXAMPLES[approach])
     return "\n\n".join(sections)
 
 

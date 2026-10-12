@@ -685,3 +685,27 @@ def test_nothing_on_the_model_path_reads_the_data_release() -> None:
             n.value for n in ast.walk(tree) if isinstance(n, ast.Constant)
         }
         assert "may_receive_data" not in words, name
+
+
+def test_a_step_reads_a_code_label_as_its_code(world: DataBackend) -> None:
+    """testplan E-2, as in the direct query: the step keeps the code."""
+    labelled = steps(
+        ("filter", {"layer": "schulen", "where": cmp("typ", "eq", "Primarstufe")}),
+        (
+            "buffer",
+            {
+                "layer": "strassen",
+                "distance_m": 500,
+                "where": cmp("klasse", "eq", "Kantonsstrasse Kategorie B"),
+            },
+        ),
+        ("within", {"of": 1, "in": 2}),
+    )
+    coded = steps(
+        ("filter", {"layer": "schulen", "where": cmp("typ", "eq", "primar")}),
+        ROADS_B,
+        ("within", {"of": 1, "in": 2}),
+    )
+    assert [canonical_json(s.query) for s in checked(world, labelled)] == [
+        canonical_json(s.query) for s in checked(world, coded)
+    ]

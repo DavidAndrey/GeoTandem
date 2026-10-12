@@ -53,6 +53,7 @@ from geotandem.model.schemas import (
     MAX_CONDITION_PATH,
     MAX_LISTED,
     MAX_TURNS,
+    Approach,
     ModelAnswer,
     QueryAnswer,
     Refusal,
@@ -701,3 +702,46 @@ def test_incomplete_rows_drop_out_of_the_query() -> None:
         "source": "schulen",
         "where": {"op": "in", "attr": "typ", "values": ["primar"]},
     }
+
+
+@pytest.mark.parametrize("approach", ["direct", "chain"])
+def test_each_definition_opens_with_its_tag(approach: Approach) -> None:
+    """Constrained output writes properties in schema order: a condition whose
+    ``op`` came after ``layer`` (``related``) was out of a model's reach once it
+    had written ``{"op":`` (evals/README.md)."""
+    for name, definition in answer_format(approach)["$defs"].items():
+        properties = list(definition.get("properties", {}))
+        for tag in ("op", "kind"):
+            if tag in properties:
+                assert properties[0] == tag, name
+
+
+def test_a_code_label_is_checked_and_kept_as_its_code(world: DataBackend) -> None:
+    """testplan E-2: "Bahn" for ``bahn``, inside a relation too, then checked."""
+    raw = {
+        "source": "schulen",
+        "where": {
+            "op": "and",
+            "args": [
+                {"op": "compare", "attr": "typ", "cmp": "eq", "value": "Primarstufe"},
+                {
+                    "op": "related",
+                    "layer": "haltestellen",
+                    "predicate": "dwithin",
+                    "distance_m": 300,
+                    "where": {
+                        "op": "compare",
+                        "attr": "verkehrsmittel",
+                        "cmp": "eq",
+                        "value": "Bahn",
+                    },
+                },
+            ],
+        },
+        "output": "map",
+    }
+    found = check(world, raw)
+    assert isinstance(found, Validated)
+    where = found.query.model_dump(mode="json")["where"]
+    assert where["args"][0]["value"] == "primar"
+    assert where["args"][1]["where"]["value"] == "bahn"

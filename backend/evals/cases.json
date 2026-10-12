@@ -1,0 +1,120 @@
+{
+  "_about": "Questions to a real model over the sample dataset (evals/README.md). A case passes when the model's query is accepted and returns the same feature ids as 'gold'; where a question has more than one fair reading, 'require' names what the query must contain instead (source layer, and per condition op, layer, predicate, attribute, value, and a distance range). 'expect' names a non-query answer kind. Questions are worded as users ask them, not as docs/filters.md titles them; the prompt's examples (model/prompt.py) use invented layers, so no case is answered there.",
+  "cases": [
+    {
+      "id": "doc1-primar-koeniz",
+      "prompt": "Welche Primarschulen gibt es in Köniz?",
+      "gold": {"source": "schulen", "where": {"op": "and", "args": [
+        {"op": "compare", "attr": "typ", "cmp": "eq", "value": "primar"},
+        {"op": "related", "layer": "gemeinden", "predicate": "within",
+         "where": {"op": "compare", "attr": "name", "cmp": "eq", "value": "Köniz"}}]}}
+    },
+    {
+      "id": "doc2-gut-erschlossen",
+      "prompt": "Zeig mir die Haltestellen der Kategorie I oder II und alle Bahnhaltestellen.",
+      "gold": {"source": "haltestellen", "where": {"op": "or", "args": [
+        {"op": "in", "attr": "kategorie", "values": ["I", "II"]},
+        {"op": "compare", "attr": "verkehrsmittel", "cmp": "eq", "value": "bahn"}]}}
+    },
+    {
+      "id": "doc3-weit-von-bahn",
+      "prompt": "Welche Schulen sind mehr als 1 km von der nächsten Bahnhaltestelle entfernt?",
+      "gold": {"source": "schulen", "where": {"op": "not", "arg":
+        {"op": "related", "layer": "haltestellen", "predicate": "dwithin", "distance_m": 1000,
+         "where": {"op": "compare", "attr": "verkehrsmittel", "cmp": "eq", "value": "bahn"}}}}
+    },
+    {
+      "id": "doc4-ohne-sek",
+      "prompt": "In welchen Gemeinden gibt es keine Schule mit Sekundarstufe I?",
+      "gold": {"source": "gemeinden", "where": {"op": "not", "arg":
+        {"op": "related", "layer": "schulen", "predicate": "contains",
+         "where": {"op": "compare", "attr": "sekundarstufe", "cmp": "eq", "value": true}}}}
+    },
+    {
+      "id": "doc5-aare",
+      "prompt": "Durch welche Gemeinden fliesst die Aare?",
+      "gold": {"source": "gemeinden", "where":
+        {"op": "related", "layer": "gewaesser", "predicate": "intersects",
+         "where": {"op": "compare", "attr": "name", "cmp": "eq", "value": "Aare"}}}
+    },
+    {
+      "id": "doc6-verschachtelt",
+      "prompt": "Deutschsprachige Schulen höchstens 300 m von einer Haltestelle, die entweder eine Sekundarstufe I oder mehr als ein Schulhaus haben.",
+      "gold": {"source": "schulen", "where": {"op": "and", "args": [
+        {"op": "compare", "attr": "sprache", "cmp": "eq", "value": "de"},
+        {"op": "or", "args": [
+          {"op": "compare", "attr": "sekundarstufe", "cmp": "eq", "value": true},
+          {"op": "compare", "attr": "standorte", "cmp": "gt", "value": 1}]},
+        {"op": "related", "layer": "haltestellen", "predicate": "dwithin", "distance_m": 300}]}}
+    },
+    {
+      "id": "log1-haltestellen-nahe-schulen",
+      "prompt": "Welche Haltestellen liegen nahe an Schulen?",
+      "require": {"source": "haltestellen", "conditions": [
+        {"op": "related", "layer": "schulen", "predicate": "dwithin", "distance_m": [50, 1000]}]}
+    },
+    {
+      "id": "log2-schulen-in-bern",
+      "prompt": "wie viele Schulen gibt es auf der Gemeinde Bern ?",
+      "gold": {"source": "schulen", "where":
+        {"op": "related", "layer": "gemeinden", "predicate": "within",
+         "where": {"op": "compare", "attr": "name", "cmp": "eq", "value": "Bern"}}}
+    },
+    {
+      "id": "log4-schulen-200m",
+      "prompt": "Schulen mit Haltestellen maximal 200m entfernt",
+      "gold": {"source": "schulen", "where":
+        {"op": "related", "layer": "haltestellen", "predicate": "dwithin", "distance_m": 200}}
+    },
+    {
+      "id": "attr-franzoesisch",
+      "prompt": "Wo sind die französischsprachigen Schulen?",
+      "gold": {"source": "schulen", "where":
+        {"op": "compare", "attr": "sprache", "cmp": "eq", "value": "fr"}}
+    },
+    {
+      "id": "attr-schulhaeuser",
+      "prompt": "Schulen mit mehr als drei Schulhäusern",
+      "gold": {"source": "schulen", "where":
+        {"op": "compare", "attr": "standorte", "cmp": "gt", "value": 3}}
+    },
+    {
+      "id": "attr-ohne-kindergarten",
+      "prompt": "Welche Schulen haben keinen Kindergarten?",
+      "gold": {"source": "schulen", "where":
+        {"op": "compare", "attr": "kindergarten", "cmp": "eq", "value": false}}
+    },
+    {
+      "id": "attr-flaeche",
+      "prompt": "Gemeinden, die grösser als 30 km² sind",
+      "gold": {"source": "gemeinden", "where":
+        {"op": "compare", "attr": "flaeche_km2", "cmp": "gt", "value": 30}}
+    },
+    {
+      "id": "text-beginnt-bern",
+      "prompt": "Haltestellen, deren Name mit Bern beginnt",
+      "gold": {"source": "haltestellen", "where":
+        {"op": "text_match", "attr": "name", "text": "Bern", "mode": "starts_with", "case_sensitive": false}}
+    },
+    {
+      "id": "in-gemeinde-bahn",
+      "prompt": "Bahnhaltestellen in Ostermundigen",
+      "gold": {"source": "haltestellen", "where": {"op": "and", "args": [
+        {"op": "compare", "attr": "verkehrsmittel", "cmp": "eq", "value": "bahn"},
+        {"op": "related", "layer": "gemeinden", "predicate": "within",
+         "where": {"op": "compare", "attr": "name", "cmp": "eq", "value": "Ostermundigen"}}]}}
+    },
+    {
+      "id": "dist-nationalstrasse",
+      "prompt": "Schulen im Umkreis von 500 m um eine Nationalstrasse",
+      "gold": {"source": "schulen", "where":
+        {"op": "related", "layer": "strassen", "predicate": "dwithin", "distance_m": 500,
+         "where": {"op": "compare", "attr": "klasse", "cmp": "eq", "value": "nationalstrasse"}}}
+    },
+    {
+      "id": "none-spitaeler",
+      "prompt": "Wie viele Spitäler gibt es in Bern?",
+      "expect": "cannot_answer"
+    }
+  ]
+}

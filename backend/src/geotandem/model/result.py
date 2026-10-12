@@ -78,9 +78,24 @@ def _format(approach: Approach) -> dict[str, Any]:
         }
     if approach == "direct":
         _controls_only(defs)
+    _tag_first(defs)
     schema["$defs"] = {name: defs[name] for name in sorted(_reachable(schema, defs))}
     drop_titles(schema)
     return schema
+
+
+def _tag_first(defs: dict[str, Any]) -> None:
+    """Each definition's tag (``op``, ``kind``) as its first property. Order
+    means nothing to a validator, but constrained output (Ollama, llama.cpp)
+    writes properties in schema order: ``related`` inherits ``layer`` before
+    its ``op``, so a model that opens a condition with ``"op"``, as every
+    other one starts, could never write it (evals/README.md)."""
+    for definition in defs.values():
+        properties = definition.get("properties")
+        for tag in ("op", "kind"):
+            if isinstance(properties, dict) and tag in properties:
+                definition["properties"] = {tag: properties[tag]} | properties
+                break
 
 
 def _controls_only(defs: dict[str, Any]) -> None:
