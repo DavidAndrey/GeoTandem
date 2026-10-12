@@ -20,6 +20,10 @@ Layout, in this order:
    when the prompt follows an answer (P6), a note when the user changed it by
    hand since (M11.2), and the prompt text.
 
+A prompt with neither turns nor an analysis ends its system message with
+``FIRST``: without it, models took the worked examples for earlier queries of
+the conversation (testplan V-3).
+
 The size is estimated as the layer profile is (S5, ``CHARS_PER_TOKEN``, erring
 high) over every message, plus ``ANSWER_TOKENS`` for the answer. Over the
 connection's declared context length ⇒ ``context_too_large`` before any call;
@@ -92,9 +96,16 @@ _FORMAT: Final[dict[Approach, str]] = {
         'Spalten, kein Puffer, keine Verknüpfung, keine Zusammenfassung und kein "not" '
         'direkt in einem "not". Bedingungen '
         'auf einem Bezugslayer stehen in dessen "where" als eine einzige, nicht verneinte '
-        "Attributbedingung. Sonst antworte mit cannot_answer und other_approach chain.\n"
-        '«Wie viele …?» beantwortest du mit "query" für diese Objekte: Die Anwendung '
-        "zeigt ihre Anzahl. Das ist kein Grund für cannot_answer."
+        "Attributbedingung. Sonst antworte mit cannot_answer und other_approach chain: "
+        "Die Werkzeugkette filtert, puffert und verbindet Schritte räumlich (nahe, in, "
+        "ausserhalb, schneidet), auch mit mehreren Bedingungen auf einem Layer.\n"
+        'Attribute eines Layers mit "kind": "table" lassen sich in keinem Ansatz abfragen, '
+        "auch nicht über einen anderen Layer. Verknüpfen und Zusammenfassen oder Zählen je "
+        "Gruppe («je Gemeinde», «pro …») kann auch die Werkzeugkette nicht. Dann antworte "
+        'mit cannot_answer ohne other_approach und nenne in "missing", was fehlt.\n'
+        "«Wie viele …?» ohne «je» oder «pro» ist kein Zählen je Gruppe: Beantworte sie mit "
+        '"query" für diese Objekte, die Anwendung zeigt ihre Anzahl. Das ist kein Grund '
+        "für cannot_answer."
     ),
     "chain": (
         "Antworte mit genau einem JSON-Objekt nach dem Schema unten, ohne weiteren Text.\n"
@@ -105,23 +116,42 @@ _FORMAT: Final[dict[Approach, str]] = {
         "vier Antwortmöglichkeiten.\n"
         '- "cannot_answer": wenn die Werkzeuge und Layer die Frage nicht beantworten; '
         '"missing" nennt, was fehlt. Mit "other_approach": "direct", wenn eine '
-        "Direktabfrage sie lösen kann.\n" + tool_list()
+        "Direktabfrage sie lösen kann.\n"
+        'Layer mit "kind": "table" kann kein Werkzeug verwenden. Verknüpfen und '
+        "Zusammenfassen oder Zählen je Gruppe gibt es nicht: Dann antworte mit "
+        "cannot_answer ohne other_approach.\n" + tool_list()
     ),
 }
 
 
+FIRST: Final = (
+    "# Gespräch\n"
+    "Die folgende Frage ist die erste des Gesprächs. Es gibt keine frühere Abfrage und "
+    "keine Analyse, auf die sie sich beziehen kann."
+)
+"""Closes the system message of a prompt that builds on nothing (V-3). In the
+system message, not the user's: the user message stays the prompt text and
+nothing else (security review, prompt injection)."""
+
 _EXAMPLES: Final[dict[Approach, str]] = {
     "direct": (
         "# Beispiele\n"
-        "Die Beispiele zeigen die Form an erfundenen Layern. Verwende nur die Layer und "
-        "Attribute des Layer-Steckbriefs. Erfundener Steckbrief der Beispiele: "
-        'baeume.art codes {"qu":"Eiche","ti":"Linde"}; quartiere.name (Text); '
+        "Erfundene Beispiele an erfundenen Layern. Sie sind kein Teil des Gesprächs: Der "
+        "Anwender hat diese Fragen nie gestellt, und es gibt keine frühere Abfrage dazu. "
+        "Verwende nur die Layer und Attribute des Layer-Steckbriefs. Erfundener Steckbrief "
+        'der Beispiele: baeume.art codes {"qu":"Eiche","ti":"Linde"}; quartiere.name (Text); '
         'schulhaeuser.stufe codes {"prim":"Primarschule","sek":"Sekundarschule"}; '
         "schulhaeuser.oeffentlich (Ja/Nein); "
-        'parzellen.zone codes {"W2":"Wohnzone 2","GE":"Gewerbezone"}; spielplaetze.\n'
+        'parzellen.zone codes {"W2":"Wohnzone 2","GE":"Gewerbezone"}; spielplaetze; '
+        "wanderwege (Linien); orte.name (Gemeinden, Text).\n"
         "- Ein Ort, der ein Objekt eines anderen Layers ist («in der Altstadt»): Bedingung "
         '"related" mit "within" auf diesen Layer und einer Bedingung auf seinen Namen. '
         "Rate nie eine Nummer oder Kennung.\n"
+        '- Ein Objekt mit Namen (Gemeinde, Quartier, Gewässer, Haltestelle): "compare" mit '
+        '"eq" auf den Namen, nie "text_match": «Altstadt» träfe sonst auch «Altstadt-Nord». '
+        '"text_match" nur, wenn nach einem Teil gefragt ist («beginnt mit», «enthält»).\n'
+        "- Linien (Strassen, Flüsse, Wege) zu Flächen: «durch», «entlang», «in» heisst "
+        '"intersects"; "within" nur, wenn die Linie ganz in der Fläche liegen soll.\n'
         '- Nähe zu Objekten eines Layers: "related" mit "dwithin" und "distance_m"; '
         '«weiter als» ist "not" um diese Bedingung. Ohne Zahl («nahe», «in der Nähe») '
         'nimm 300 m an und nenne es als Annahme. "near_feature" meint ein einzelnes '
@@ -129,7 +159,13 @@ _EXAMPLES: Final[dict[Approach, str]] = {
         "- Eine Bedingung auf die Objekte des anderen Layers («Primarschulen», «die Aare») "
         'steht im "where" des "related", mit dessen Attributen.\n'
         '- Werte mit "codes": der Schlüssel links, nie die Beschriftung rechts '
-        '(«Eiche» ⇒ "qu"). Ja/Nein-Attribute vergleichst du mit true oder false.\n'
+        '(«Eiche» ⇒ "qu"). Ja/Nein-Attribute vergleichst du mit true oder false. '
+        '«Von … bis …» auf einem Attribut mit "codes": "in" mit allen Codes dazwischen, in '
+        'der Reihenfolge der Codeliste, nie "between" (Codes sind Text). «A oder B» auf '
+        'demselben Attribut ist "in" mit beiden Werten, nie "and".\n'
+        "- Höchstens eine Rückfrage: Folgt die Frage auf deine Rückfrage, antworte mit einer "
+        'Annahme. Zahlen in Optionen nur innerhalb von "range", wenn es sie gibt. «Stadt X» '
+        "oder «Dorf X» ist die Gemeinde X, ohne Rückfrage.\n"
         "- Nur Bedingungen, nach denen gefragt ist; keine zusätzlichen «ist nicht leer».\n"
         '- Eine einzige Bedingung steht direkt in "where", nicht in einem "and" oder "or" '
         "mit nur einem Argument.\n"
@@ -159,9 +195,20 @@ _EXAMPLES: Final[dict[Approach, str]] = {
         '{"op":"related","layer":"schulhaeuser","predicate":"contains",'
         '"where":{"op":"compare","attr":"oeffentlich","cmp":"eq","value":true}}},'
         '"output":"map"}}\n'
-        "\nFrage: Wie viele Velowege gibt es?\n"
-        '{"kind":"cannot_answer","explanation":"Kein Layer beschreibt Velowege.",'
-        '"missing":["ein Layer mit Velowegen"]}'
+        "\nFrage: Welche Wanderwege führen durch die Altstadt?\n"
+        '{"kind":"query","explanation":"Wanderwege, die das Quartier Altstadt schneiden.",'
+        '"assumptions":[],"query":{"source":"wanderwege","where":{"op":"related",'
+        '"layer":"quartiere","predicate":"intersects","where":{"op":"compare","attr":"name",'
+        '"cmp":"eq","value":"Altstadt"}},"output":"map"}}\n'
+        "\nFrage: Spielplätze ausserhalb der Stadt Seedorf\n"
+        '{"kind":"query","explanation":"Spielplätze, die nicht in der Gemeinde Seedorf '
+        'liegen.","assumptions":[{"text":"«Stadt Seedorf» ist die Gemeinde Seedorf.",'
+        '"condition":[]}],"query":{"source":"spielplaetze","where":{"op":"not","arg":'
+        '{"op":"related","layer":"orte","predicate":"within","where":{"op":"compare",'
+        '"attr":"name","cmp":"eq","value":"Seedorf"}}},"output":"map"}}\n'
+        "\nFrage: Wie viele Sitzbänke gibt es?\n"
+        '{"kind":"cannot_answer","explanation":"Kein Layer beschreibt Sitzbänke.",'
+        '"missing":["ein Layer mit Sitzbänken"]}'
     ),
 }
 """Worked examples after the answer format (direct approach only): invented
@@ -296,7 +343,10 @@ def build_prompt(
     context_length: int | None = None,
 ) -> Prompt:
     """The messages for ``text``; ``context_too_large`` if they do not fit."""
-    messages = [Message("system", system_message(level, profile, approach))]
+    system = system_message(level, profile, approach)
+    if not (follow_up and (follow_up.turns or follow_up.analysis is not None)):
+        system += "\n\n" + FIRST
+    messages = [Message("system", system)]
     previous: Turn | None = None
     for turn in list(follow_up.turns if follow_up else ())[-MAX_TURNS:]:
         messages.append(Message("user", _user(turn.prompt, previous)))

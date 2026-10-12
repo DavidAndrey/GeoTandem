@@ -225,6 +225,28 @@ Alle Läufe Temperatur 0, Seeds 1–3, Stufe *Prüfen*, Ollama mit 16 k Kontext.
 | `e6-qwen3` | qwen3:8b | aus | ✔ | wie e3, «wie viele» (E-6) | 30/51 | |
 | `e6-gemma4` | gemma4:12b | aus | ✔ | wie e3, «wie viele» (E-6) | **44/51** | |
 
+Ab 2026-10-12 abends: **33 Fälle** (17 + N1–N15 + `x-ohne-kontext`), und
+zum Vergleich von Prompt-Varianten **Temperatur 0,3 mit 5 Seeds** (165
+Antworten je Lauf), weil bei Temperatur 0 die Seeds fast gleich antworten
+(7, Punkt 6):
+
+| Label | Modell | Stand | Temperatur × Seeds | Bestanden |
+|---|---|---|---|---:|
+| `v0-gemma4` / `v27-gemma4` | gemma4:12b | vor / nach V-2–V-7 | 0 × 3 | 69/99 ⇒ 71/99 |
+| `v0-qwen3` / `v27-qwen3` | qwen3:8b | vor / nach V-2–V-7 | 0 × 3 | 51/99 ⇒ 51/99 |
+| `t3-v0-gemma4` | gemma4:12b | vor V-2–V-7 | 0,3 × 5 | 109/165 |
+| `t3-v27-gemma4` | gemma4:12b | V-2–V-7, erste Fassung | 0,3 × 5 | 134/165 |
+| `t3-v27b-gemma4` | gemma4:12b | V-2–V-7, nachgebessert | 0,3 × 5 | **138/165** |
+| `t3-v0-qwen3` | qwen3:8b | vor V-2–V-7 | 0,3 × 5 | 85/165 |
+| `t3-v27-qwen3` | qwen3:8b | V-2–V-7, erste Fassung | 0,3 × 5 | 94/165 |
+| `t3-v27b-qwen3` | qwen3:8b | V-2–V-7, nachgebessert | 0,3 × 5 | 89/165 |
+| `t3-v27c-gemma4` | gemma4:12b | wie v27b, Hinweis «erste Frage» in der Systemnachricht (gemergter Stand) | 0,3 × 5 | **130/165** |
+| `t3-v27c-qwen3` | qwen3:8b | wie v27b, Hinweis in der Systemnachricht (gemergter Stand) | 0,3 × 5 | 93/165 |
+
+Bei Temperatur 0 sah V-2–V-7 nach +2 aus; mit Streuung sind es bei gemma4
++29 von 165. Ein Vergleich bei Temperatur 0 mit drei Seeds trägt keine
+Entscheidung.
+
 Je Fall:
 
 | Fall | baseline-qwen3 | fix-only-qwen3 | fewshot2-qwen3 | think-medium-qwen3 | fix-only-gemma4 | fewshot2-gemma4 | think-low-gemma4 |
@@ -278,6 +300,7 @@ anderen Layer scheiterte vor dem Fix ohne Ausnahme.
 | E-5 | **Abgeschnittene Antwort melden** — *umgesetzt 2026-10-12* | – | Eigener Code `model_truncated` (502), wenn die Antwort nicht lesbar ist und das Modell an seiner Längengrenze stoppte (`finish_reason: length`); `details` nennt `prompt_tokens` und `completion_tokens`. Eine lesbare Antwort gilt unabhängig vom Grund des Endes. Oberfläche: «Antwort abgeschnitten», Hinweis auf zu langes Denken oder zu kleinen Kontext, Details mit den Tokens, Verweis für Administratoren, «Anbindung wechseln»; in der Kette eigener Text bei der Neuplanung. Geprüft: gemma4 mit Denken endet jetzt `error:model_truncated` statt `model_unreadable` | `e5-probe-gemma4` |
 | E-6 | **«Wie viele»-Fragen** — *umgesetzt 2026-10-12* | – | Ein Satz im Antwortformat der Direktabfrage: «Wie viele …?» mit `query` beantworten, die Anwendung zeigt die Anzahl; kein Grund für `cannot_answer`. Gemessen: gemma4 39 ⇒ **44/51** (`log2` 0 ⇒ 2/3, nebenbei `doc5` 0 ⇒ 3/3); qwen3 33 ⇒ 30/51, weil es in `doc3` nun den Filter «Bahn» weglässt, eine Frage, die der Satz nicht betrifft (siehe 7, Punkt 6) | `e6-*` |
 | E-7 | **Werte im Steckbrief** (z. B. Gemeindenamen) | nur Metadaten (S3, heute) · kurze Wertelisten für kleine Textfelder · Werkzeug zum Nachschlagen in der Kette | erst messen: Mit dem Fix schreibt das Modell „Bern“, „Köniz“ richtig über den Namen | `log2`, `doc1`, `in-gemeinde-bahn` |
+| E-8 | **Hinweis «erste Frage» in der Nutzernachricht?** (V-3) | in der Systemnachricht wie gemergt: Invariante bleibt, das Leck bleibt bei gemma4 (0/5) · in der Nutzernachricht vor «Frage: », wie Folgefragen schon Anwendungstext tragen: Leck behoben (5/5, gesamt 138 statt 130 von 165); Bypass-Test und Sicherheitsreview Zeile «Prompt injection» werden umformuliert zu «die Nutzernachricht ist der Prompttext, davor höchstens fester Text der Anwendung» | Nutzernachricht: der Hinweis ist fest und unabhängig von der Eingabe, das Muster besteht bei Folgefragen schon. Entscheid beim Sicherheitsverantwortlichen | `x-ohne-kontext`, `t3-v27b` gegen `t3-v27c` |
 
 Nicht in dieser Messung, aber offen:
 
@@ -435,12 +458,40 @@ Bemerkenswert:
 | V-9 | **Argumente der Kette im Schema einschränken** (schon offen, Abschnitt 6): `where` als Bedingung, `of` als Zahl. | N7 Kette (#25), Versuch 3 aus Abschnitt 1 | Code (Schema) | mittel |
 | V-10 | **Benannte Einzelobjekte** («Bahnhof Bern»): hängt an E-7. Kurzfristig eine Regel «für ein benanntes Objekt den kürzesten Namen verwenden und als Annahme nennen»; langfristig ein Werkzeug, das Namen nachschlägt. | N13 | Prompt / E-7 | klein / gross |
 
+### Umsetzung V-2 bis V-7 (2026-10-12)
+
+Umgesetzt in [prompt.py](../backend/src/geotandem/model/prompt.py) und
+[labels.py](../backend/src/geotandem/model/labels.py); gemessen mit 33 Fällen,
+Temperatur 0,3, 5 Seeds (Abschnitt 4):
+
+| | Umsetzung | gemma4:12b | qwen3:8b |
+|---|---|---|---|
+| V-2 | Regel «Namen mit `eq`, nie `text_match`», mit dem Grund (Altstadt/Altstadt-Nord) | n09 0 ⇒ 5/5 | n09 0 ⇒ 5/5 |
+| V-3 | Beispiele als «kein Teil des Gesprächs» eingeleitet, *und* ein Hinweis «erste Frage» (`FIRST`), wenn der Prompt auf nichts aufbaut. Die Einleitung allein wirkte nicht. Der Hinweis wirkt bei gemma4 **nur in der Nutzernachricht** (v27b: 5/5); dort verletzt er die Invariante des Sicherheitsreviews «die Nutzernachricht ist der Prompttext und nichts sonst». Gemergt ist er deshalb in der Systemnachricht (v27c), wo er bei gemma4 nicht wirkt: **E-8** | `x-ohne-kontext` v27b 0 ⇒ 5/5, v27c 0/5 | war 5/5, bleibt |
+| V-4 | Regel «durch, entlang, in bei Linien ⇒ `intersects`», Beispiel auf erfundenem Linien-Layer `wanderwege` | n10 0 ⇒ 5/5 | n10 1 ⇒ 2/5 |
+| V-5 | Tabellen-Layer, Verknüpfen und Zählen je Gruppe in keinem Ansatz ⇒ `cannot_answer` ohne `other_approach`; was die Kette kann. Abgegrenzt: «wie viele» ohne «je» ist kein Zählen je Gruppe | n03 0 ⇒ 5/5, n15 1 ⇒ 5/5 | n15 0 ⇒ 1/5; **log2 5 ⇒ 0/5**: qwen3 lehnt nun jede Zählfrage ab |
+| V-6 | «von … bis …» auf Codes ⇒ `in`; «A oder B» auf einem Attribut ⇒ `in`, nie `and` | n02 0 ⇒ 5/5, doc2 bleibt 5/5 | n02 bleibt 5/5 |
+| V-7 | höchstens eine Rückfrage; Zahlen in Optionen nur innerhalb `range`; «Stadt X» ist Gemeinde X, mit Beispiel «Stadt Seedorf» | n09 (s. V-2) | n09 (s. V-2) |
+| zu E-2 | Codezuordnung ignoriert Leerzeichen, Unterstrich und Bindestrich (`sekundarstufe_i` ⇒ `sekundar`) | n08 4 ⇒ 5/5 | n08 3 ⇒ 5/5 |
+
+Ein Test hält fest, dass jede Beispielantwort des Prompts eine gültige Antwort
+ist (`test_every_example_of_the_prompt_is_a_valid_answer`); beim Schreiben
+war eine Klammer verrutscht.
+
+**Offen nach der Umsetzung:**
+
+- gemma4: n06 liest «Primarschulen» als `primarstufe = true` (16 statt 7):
+  V-8 (Beschreibungen in den Metadaten). n07 (zwei Filter) und n13
+  («Bahnhof Bern») brauchen V-1 bzw. E-7. doc4, doc6 unverändert 0/5.
+- qwen3: lehnt Zählfragen ab (log2, n01), wiederholt bei n12 die Frage als
+  Rückfrage, bietet bei n15 trotz Regel die Kette an. Das sind Grenzen des
+  kleineren Modells; weitere Regeln dafür würden auf qwen3 hin optimieren.
+  Empfehlung bleibt E-1: gemma4:12b.
+
 ### Empfohlene Reihenfolge
 
-1. **V-2 bis V-7 zusammen** (nur Prompt): ein Lauf von `evals/run.py` vorher
-   und nachher. Vorher die 15 Fragen in `cases.json` übernehmen, damit die
-   Messung sie enthält (N3, N14, N15 mit `expect: cannot_answer`, N7 direkt mit
-   `expect: cannot_answer`).
+1. ~~V-2 bis V-7~~ umgesetzt (oben).
+   Offen daraus: E-8 (Abschnitt 6).
 2. **V-8** in der Administration, ohne Code.
 3. **V-1** als eigenes Arbeitspaket: Es ändert den Ablauf eines Aufrufs und
    den Eintrag (zwei Antworten, Latenz, Tageslimit) und braucht Tests über den

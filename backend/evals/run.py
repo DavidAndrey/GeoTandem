@@ -73,8 +73,18 @@ def grade(
     backend: SpatiaLiteBackend,
 ) -> str:
     """``pass``, or the first thing that went wrong, as a short tag."""
+    said = json.dumps(answer.model_dump(mode="json"), ensure_ascii=False).casefold()
+    for word in case.get("forbid", []):
+        if word.casefold() in said:
+            return f"forbidden:{word}"
+    if answer.kind in case.get("also", []):
+        return PASS
     if "expect" in case:
-        return PASS if answer.kind == case["expect"] else f"kind:{answer.kind}"
+        if answer.kind != case["expect"]:
+            return f"kind:{answer.kind}"
+        if "other_approach" in case and answer.other_approach != case["other_approach"]:
+            return f"other_approach:{answer.other_approach}"
+        return PASS
     if not isinstance(answer, QueryAnswer):
         return f"kind:{answer.kind}"
     if refusal is not None:
