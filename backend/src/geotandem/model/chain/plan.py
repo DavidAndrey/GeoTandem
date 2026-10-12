@@ -41,6 +41,7 @@ from geotandem.model.chain.tools import CHAIN, ChainTool
 from geotandem.model.direct import governance
 from geotandem.model.labels import as_codes
 from geotandem.model.schemas import MAX_STEPS, Governance, PlannedStep, Refusal
+from geotandem.model.shapes import plain
 from geotandem.model.validate import NESTED, check_query, invalid, schema_errors
 from geotandem.tools import ToolContext
 from geotandem.tools.chain import NotComposable
@@ -286,7 +287,7 @@ def _check_step(
             reason = "lying in a buffer is lying within its distance for points only"
             message = f"Step {position}: 'in': {reason}"
             return _not_composable("in", message, position)
-    query = as_codes(query, profile)
+    query = as_codes(plain(query), profile)
     shown = query.model_copy(update={"buffer": None}) if query.buffer is not None else None
     found = check_query(query, context, profile, shown=shown)
     if isinstance(found, Refusal):

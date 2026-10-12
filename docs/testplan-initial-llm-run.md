@@ -220,6 +220,8 @@ Alle Läufe Temperatur 0, Seeds 1–3, Stufe *Prüfen*, Ollama mit 16 k Kontext.
 | `think-low-gemma4` | gemma4:12b | `low` | ✔ | Fassung 2 | 13/17 | 13,6 s |
 | `codes-qwen3` | qwen3:8b | aus | ✔ | Fassung 2, Codes (E-2) | 30/51 | |
 | `codes-gemma4` | gemma4:12b | aus | ✔ | Fassung 2, Codes (E-2) | 39/51 | |
+| `e3-qwen3` | qwen3:8b | aus | ✔ | Fassung 2, Codes, Formen (E-3) | 33/51 | |
+| `e3-gemma4` | gemma4:12b | aus | ✔ | Fassung 2, Codes, Formen (E-3) | 39/51 | |
 
 Je Fall:
 
@@ -269,7 +271,7 @@ anderen Layer scheiterte vor dem Fix ohne Ausnahme.
 |---|---|---|---|---|
 | E-1 | **Modell der Verbindung** | qwen3:8b bleibt · gemma4:12b · qwen3:8b mit Denken | gemma4:12b ohne Denken: bestes Ergebnis, schnellste Antwort | Läufe in 4 |
 | E-2 | **Beschriftung ⇒ Code** — *umgesetzt 2026-10-12* | – | Die Anwendung liest eine Beschriftung oder einen Code in anderer Schreibweise als den Code, vor der Prüfung, in der Direktabfrage und in jedem Kettenschritt ([labels.py](../backend/src/geotandem/model/labels.py)). Gemessen: qwen3 28 ⇒ 30/51, gemma4 unverändert 39/51. Die Werte stimmen jetzt; was qwen3 noch falsch macht, sind weggelassene Bedingungen, UND statt ODER und `and` mit einem Argument (E-3) | `codes-*` |
-| E-3 | **Harmlose Formen normalisieren** (`and`/`or` mit einem Argument, verschachteltes `and`) | „ablehnen statt umschreiben“ wie heute (`represent.py`) · normalisieren und die normalisierte Abfrage speichern, damit Angezeigtes und Gespeichertes gleich bleiben | normalisieren | `refused:not_representable` in den Läufen |
+| E-3 | **Harmlose Formen** — *umgesetzt 2026-10-12* | – | `and`/`or` mit einem Argument und `not` von `not` werden vor der Prüfung in ihre schlichte Form gebracht, in der Direktabfrage und in jedem Kettenschritt ([shapes.py](../backend/src/geotandem/model/shapes.py)); der Eintrag speichert die schlichte Abfrage, die Antwort des Modells bleibt unverändert. `represent.to_analysis` lehnt diese Formen weiterhin ab (gemeinsame Fälle mit dem Frontend unverändert). Gemessen: qwen3 30 ⇒ 33/51, keine Ablehnung wegen der Form mehr; gemma4 unverändert 39/51. Bekannte Lücke: Der Pfad einer Annahme (`condition`) zeigt nach dem Umschreiben ins Leere, wenn er durch das entfernte `and` führte; «ändern» fehlt dann bei dieser Annahme | `e3-*` |
 | E-4 | **Denken** | aus · an mit Obergrenze für die Antwortlänge (`max_tokens`) · je Modell | aus für gemma4 (Schleife, auch mit 64 k Kontext); für qwen3 nur mit Obergrenze und Zeitlimit über 120 s; den Kontext nicht vergrössern, er hilft keinem der beiden | `think-*`, 3.4 |
 | E-5 | **Abgeschnittene Antwort melden** | `model_unreadable` wie heute · eigener Code (z. B. `llm_truncated`) aus `finish_reason: length` | eigener Code, damit Administratoren Kontext oder Denken anpassen | – |
 | E-6 | **„Wie viele“-Fragen** | wie heute · Regel im Antwortformat: die Objekte liefern, die Anwendung zeigt die Anzahl | Regel ergänzen | `log2` |
