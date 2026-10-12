@@ -715,3 +715,33 @@ def test_each_definition_opens_with_its_tag(approach: Approach) -> None:
             if tag in properties:
                 assert properties[0] == tag, name
 
+
+def test_a_code_label_is_checked_and_kept_as_its_code(world: DataBackend) -> None:
+    """testplan E-2: "Bahn" for ``bahn``, inside a relation too, then checked."""
+    raw = {
+        "source": "schulen",
+        "where": {
+            "op": "and",
+            "args": [
+                {"op": "compare", "attr": "typ", "cmp": "eq", "value": "Primarstufe"},
+                {
+                    "op": "related",
+                    "layer": "haltestellen",
+                    "predicate": "dwithin",
+                    "distance_m": 300,
+                    "where": {
+                        "op": "compare",
+                        "attr": "verkehrsmittel",
+                        "cmp": "eq",
+                        "value": "Bahn",
+                    },
+                },
+            ],
+        },
+        "output": "map",
+    }
+    found = check(world, raw)
+    assert isinstance(found, Validated)
+    where = found.query.model_dump(mode="json")["where"]
+    assert where["args"][0]["value"] == "primar"
+    assert where["args"][1]["where"]["value"] == "bahn"
