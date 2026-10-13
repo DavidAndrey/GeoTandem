@@ -6,17 +6,23 @@ dataset and the default level; only the grading is the harness's own. See
 ``evals/README.md``.
 
     uv run python evals/run.py --model qwen3:8b --label baseline
+    uv run python evals/run.py --model qwen3:8b --variant p9 --label p9-qwen3
 """
 
 import argparse
 import json
+import statistics
 import sys
 import tempfile
 import time
 from collections import Counter
+from collections.abc import Sequence
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+from variants import VARIANTS, load_examples, prompt_hash, with_examples
 
 from geotandem.catalog import model_profile
 from geotandem.config import Settings
@@ -25,11 +31,11 @@ from geotandem.data.spatialite import SpatiaLiteBackend
 from geotandem.db.bootstrap import bootstrap
 from geotandem.engine import ids_query
 from geotandem.levels.store import load_levels
-from geotandem.llm import Endpoint, LLMError
+from geotandem.llm import Completion, Endpoint, LLMError, Message
 from geotandem.llm.openai_compat import OpenAICompatClient
-from geotandem.model import prompt as prompt_module
 from geotandem.model.direct import DirectQuery, direct_prompt
 from geotandem.model.errors import ActionError
+from geotandem.model.prompt import Prompt
 from geotandem.model.schemas import QueryAnswer
 from geotandem.sample.load import load_sample
 from geotandem.tools import ToolContext
@@ -38,6 +44,18 @@ from geotandem_query import QueryObject
 HERE = Path(__file__).parent
 LIMITS = Limits(max_features=10_000, timeout_s=10)
 PASS = "pass"
+
+
+class Recording(OpenAICompatClient):
+    """The real client, keeping its last completion: tokens for every answer
+    (H-3), the verbatim text when the answer does not read (H-4)."""
+
+    last: Completion | None = None
+
+    def complete(self, messages: Sequence[Message], **kwargs: Any) -> Completion:
+        self.last = None
+        self.last = super().complete(messages, **kwargs)
+        return self.last
 
 
 def query_of(doc: dict[str, Any]) -> QueryObject:
@@ -104,6 +122,20 @@ def grade(
     return PASS
 
 
+def cost(records: list[dict[str, Any]]) -> list[str]:
+    """Median latency and mean tokens over the answers that have them."""
+    found = []
+    for key, name, average in [
+        ("latency_ms", "latency median {:.0f} ms", statistics.median),
+        ("prompt_tokens", "prompt {:.0f} tokens", statistics.mean),
+        ("completion_tokens", "answer {:.0f} tokens", statistics.mean),
+    ]:
+        values = [r[key] for r in records if r.get(key) is not None]
+        found.append(name.format(average(values)) if values else name.split(" {")[0] + " -")
+    errors = sum(r["verdict"].startswith("error:") for r in records)
+    return [*found, f"{errors} errors"]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--url", default="http://127.0.0.1:11434/v1")
@@ -126,11 +158,29 @@ def main() -> int:
     parser.add_argument(
         "--no-examples",
         action="store_true",
-        help="leave the prompt's worked examples out (to measure them)",
+        help="leave the prompt's examples section out, rules included (to measure it)",
+    )
+    parser.add_argument(
+        "--variant",
+        default="p0",
+        choices=sorted(VARIANTS),
+        help="how the messages are rebuilt (docs/testplan-system-context.md, 5)",
+    )
+    parser.add_argument(
+        "--examples",
+        metavar="NAME",
+        help="examples/NAME.txt in place of the prompt's examples section",
+    )
+    parser.add_argument(
+        "--show",
+        action="store_true",
+        help="print the messages of the first case as they would be sent, and stop",
     )
     args = parser.parse_args()
-    if args.no_examples:
-        prompt_module._EXAMPLES.clear()
+    if args.no_examples and (args.examples or args.variant != "p0"):
+        parser.error("--no-examples takes neither --examples nor a variant")
+    examples = "" if args.no_examples else load_examples(args.examples) if args.examples else None
+    variant = VARIANTS[args.variant]
 
     cases = json.loads((HERE / "cases.json").read_text("utf-8"))["cases"]
     if args.only:
@@ -144,16 +194,34 @@ def main() -> int:
     level = next(lv for lv in load_levels(engine) if lv.is_default)
     context = ToolContext(backend=backend, limits=LIMITS)
 
+    def build(text: str) -> Prompt:
+        """The prompt of ``text`` as this run sends it: examples, then variant."""
+        prompt = direct_prompt(text, level=level, profile=profile)
+        messages = variant(with_examples(list(prompt.messages), examples))
+        return replace(prompt, messages=tuple(messages))
+
+    if args.show:
+        for message in build(cases[0]["prompt"]).messages:
+            print(f"===== {message.role} ({len(message.content)} chars)\n{message.content}\n")
+        return 0
+    # Over the prompt of a placeholder question: one hash names the run's
+    # template, whatever the cases (H-5).
+    template = build("{prompt}")
+
     out = HERE / "results" / f"{datetime.now():%Y%m%d-%H%M%S}-{args.label}.jsonl"
     out.parent.mkdir(exist_ok=True)
     tally: dict[str, Counter[str]] = {}
+    records: list[dict[str, Any]] = []
     started = time.monotonic()
     with out.open("w", encoding="utf-8") as log:
         header = {
             "label": args.label,
             "model": args.model,
             "effort": args.effort,
-            "examples": not args.no_examples,
+            "variant": args.variant,
+            "examples": "none" if args.no_examples else args.examples or "default",
+            "prompt_sha256": prompt_hash(list(template.messages), template.schema),
+            "messages": [m.role for m in template.messages],
             "temperature": args.temperature,
             "seeds": [args.seed_start, args.seed_start + args.repeat - 1],
             "level": level.name,
@@ -170,9 +238,9 @@ def main() -> int:
                     timeout_s=300,
                     reasoning_effort=args.effort,
                 )
-                prompt = direct_prompt(case["prompt"], level=level, profile=profile)
+                prompt = build(case["prompt"])
                 record: dict[str, Any] = {"case": case["id"], "seed": seed}
-                client = OpenAICompatClient(endpoint)
+                client = Recording(endpoint)
                 try:
                     found = DirectQuery(client, context, level).ask(prompt, profile=profile)
                     verdict = grade(case, found.answer, found.refusal, found.query, backend)
@@ -181,11 +249,24 @@ def main() -> int:
                         "refusal": found.refusal.model_dump(mode="json") if found.refusal else None,
                         "latency_ms": found.latency_ms,
                     }
-                except (LLMError, ActionError) as exc:
+                except LLMError as exc:
                     verdict = f"error:{exc.code}"
+                    record |= {"cause": exc.cause, "retries": exc.retries}
+                except ActionError as exc:
+                    verdict = f"error:{exc.code}"
+                    record["details"] = exc.details
                 finally:
                     client.close()
+                if (completion := client.last) is not None:
+                    record |= {
+                        "prompt_tokens": completion.prompt_tokens,
+                        "completion_tokens": completion.completion_tokens,
+                        "finish_reason": completion.finish_reason,
+                    }
+                    if verdict.startswith("error:"):
+                        record |= {"latency_ms": completion.latency_ms, "raw": completion.text}
                 record["verdict"] = verdict
+                records.append(record)
                 log.write(json.dumps(record, ensure_ascii=False) + "\n")
                 tally[case["id"]][verdict] += 1
                 print(f"{case['id']:<32} seed {seed}  {verdict}", flush=True)
@@ -193,9 +274,10 @@ def main() -> int:
     runs = sum(sum(c.values()) for c in tally.values())
     passed = sum(c[PASS] for c in tally.values())
     print(
-        f"\n{args.label} · {args.model} · effort {args.effort} · "
+        f"\n{args.label} · {args.model} · effort {args.effort} · {args.variant} · "
         f"{passed}/{runs} passed · {time.monotonic() - started:.0f} s · {out}"
     )
+    print("  " + " · ".join(cost(records)))
     for case_id, counts in tally.items():
         rest = ", ".join(f"{k} x{n}" for k, n in counts.items() if k != PASS)
         print(f"  {counts[PASS]}/{sum(counts.values())}  {case_id:<32} {rest}")

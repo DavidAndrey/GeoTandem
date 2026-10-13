@@ -215,15 +215,15 @@ mit E-8 und S3.
 | # | Variante | Was sich ändert | Frage | Messbar heute | Einsetzbar |
 |---|---|---|---|---|---|
 | **P0** | Referenz (Stand main) | – | – | ✔ | ✔ |
-| P1 | Keine Beispiele, Regeln bleiben | Abschnitt `# Beispiele` nur mit den Regeln | Wie viel tragen die Beispiele selbst? | teilweise (`--no-examples` entfernt auch die Regeln) | ✔ |
-| P2 | Beispiele als Gesprächszüge | je Beispiel ein Paar user/assistant vor der Frage, Systemnachricht ohne Beispiele | Lernen Modelle aus Zügen besser als aus Text? Nimmt das Einsickern (2.3) zu? | nach Harness-Erweiterung | ✘ verletzt «zwei Nachrichten» (E-8) |
-| P3 | Hinweise und Beispiele in der Nutzernachricht | vor `Frage: <Prompttext>` | Bestätigt sich 2.3 für Beispiele und Regeln, nicht nur für den Hinweis? | nach Harness-Erweiterung | ✘ verletzt E-8 |
-| P4 | Beispiele ohne Regeln | Regeln V-2 bis V-7 gestrichen, Beispiele bleiben | Reichen Beispiele allein? | nach Harness-Erweiterung | ✔ |
-| P5 | Beispiele vor dem Steckbrief | Reihenfolge: Systemprompt, Beispiele, Steckbrief, Format, Schema | Wirkt ein Abschnitt stärker am Anfang oder am Ende? | nach Harness-Erweiterung | ✔ |
-| P6 | Anzahl Beispiele: 3 / 7 / 12 | 3: nur Ort, Nähe, cannot_answer; 12: dazu `in`-Liste, `between`, «ausserhalb», `contains`, Rückfrage, Zählfrage | Wo liegt der Nutzen pro Token? | 3 ✔ (kürzen), 12 nach Harness-Erweiterung | ✔ |
-| P7 | Beispiele auf echten Layern | aus dem Steckbrief des Kontos erzeugt | Helfen echte Namen (Gemeinden, Codes) mehr als erfundene? | nach Harness-Erweiterung | nur je Konto erzeugt (S3) |
-| P8 | Schema nicht als Text | JSON-Schema (8,6 k Zeichen) nur als eingeschränkte Ausgabe, nicht im Prompt | Kostet der grösste Abschnitt mehr Aufmerksamkeit, als er bringt? | nach Harness-Erweiterung | ✔ |
-| P9 | Hinweis `FIRST` als eigene Systemnachricht | eine zweite system-Nachricht direkt vor der Frage | Wirkt eine eigene Nachricht wie die Nutzernachricht (2.3), ohne E-8 zu verletzen? | nach Harness-Erweiterung | zu prüfen: drei Nachrichten statt zwei, Bypass-Test anpassen |
+| P1 | Keine Beispiele, Regeln bleiben | Abschnitt `# Beispiele` nur mit den Regeln | Wie viel tragen die Beispiele selbst? | ✔ `--variant p1` | ✔ |
+| P2 | Beispiele als Gesprächszüge | je Beispiel ein Paar user/assistant vor der Frage, Systemnachricht ohne Beispiele | Lernen Modelle aus Zügen besser als aus Text? Nimmt das Einsickern (2.3) zu? | ✔ `--variant p2` | ✘ verletzt «zwei Nachrichten» (E-8) |
+| P3 | Hinweise und Beispiele in der Nutzernachricht | vor `Frage: <Prompttext>` | Bestätigt sich 2.3 für Beispiele und Regeln, nicht nur für den Hinweis? | ✔ `--variant p3` | ✘ verletzt E-8 |
+| P4 | Beispiele ohne Regeln | Regeln V-2 bis V-7 gestrichen, Beispiele bleiben | Reichen Beispiele allein? | ✔ `--variant p4` | ✔ |
+| P5 | Beispiele vor dem Steckbrief | Reihenfolge: Systemprompt, Beispiele, Steckbrief, Format, Schema | Wirkt ein Abschnitt stärker am Anfang oder am Ende? | ✔ `--variant p5` | ✔ |
+| P6 | Anzahl Beispiele: 3 / 7 / 12 | 3: nur Ort, Nähe, cannot_answer; 12: dazu `in`-Liste, `between`, «ausserhalb», `contains`, Rückfrage, Zählfrage | Wo liegt der Nutzen pro Token? | ✔ `--examples 3`, `--examples 12` | ✔ |
+| P7 | Beispiele auf echten Layern | aus dem Steckbrief des Kontos erzeugt | Helfen echte Namen (Gemeinden, Codes) mehr als erfundene? | `--examples`, Beispielsatz noch zu schreiben | nur je Konto erzeugt (S3) |
+| P8 | Schema nicht als Text | JSON-Schema (8,6 k Zeichen) nur als eingeschränkte Ausgabe, nicht im Prompt | Kostet der grösste Abschnitt mehr Aufmerksamkeit, als er bringt? | ✔ `--variant p8` | ✔ |
+| P9 | Hinweis `FIRST` als eigene Systemnachricht | eine zweite system-Nachricht direkt vor der Frage | Wirkt eine eigene Nachricht wie die Nutzernachricht (2.3), ohne E-8 zu verletzen? | ✔ `--variant p9` | zu prüfen: drei Nachrichten statt zwei, Bypass-Test anpassen |
 
 P9 ist die naheliegende Antwort auf 2.3: Sie hält den Anwendungstext aus der
 Nutzernachricht heraus und rückt ihn trotzdem nahe an die Frage.
@@ -246,6 +246,28 @@ bis eine Variante gewinnt.
 | H-5 | Laufkopf um Variante und Prompt-Hash ergänzen | Nachvollziehbarkeit |
 
 `--seed-start` (zweiter Seed-Block) und `evals/compare.py` gibt es schon.
+
+**Stand 2026-10-13: H-1 bis H-5 umgesetzt**
+([evals/README.md](../backend/evals/README.md), «Prompt variants»):
+
+- H-1: `--variant p0…p9` in `evals/variants.py`; `--show` zeigt die
+  Nachrichten eines Falls, ohne ein Modell zu fragen. P2 setzt die Beispiele
+  als Züge und lässt die Regeln in der Systemnachricht; P3 verschiebt
+  Beispiele, Regeln und `FIRST` in die Nutzernachricht.
+- H-2: `evals/examples/3.txt` (Ort, Nähe, cannot_answer) und `12.txt` (die 7
+  von P0, dazu `in`-Liste, `between` auf dem erfundenen
+  `parzellen.flaeche`, Rückfrage, «wie viele» als Abfrage, «je Quartier» als
+  cannot_answer ohne other_approach). Die erfundenen Layer bleiben dieselben,
+  die `forbid`-Liste von `x-ohne-kontext` deckt sie weiter ab. Für P7 fehlt
+  noch ein Satz auf den Layern der Beispieldaten; er darf keinen Fall
+  wörtlich beantworten.
+- H-3: `prompt_tokens`, `completion_tokens`, `finish_reason` je Antwort,
+  auch bei `error:*`; am Ende des Laufs Median der Antwortzeit und mittlere
+  Tokens.
+- H-4: bei `error:*` der Rohtext (`raw`) oder die Ursache der Verbindung
+  (`cause`).
+- H-5: Laufkopf mit `variant`, `examples`, `prompt_sha256` und den Rollen der
+  Nachrichten.
 
 ---
 

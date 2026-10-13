@@ -28,7 +28,40 @@ A second seed block (`--seed-start 6`) measures the noise of a model: about
 `compare.py` puts runs side by side by label; `--changed` keeps the cases
 that differ.
 
-Verdicts:
+## Prompt variants
+
+The placement runs of [docs/testplan-system-context.md](../../docs/testplan-system-context.md)
+(section 5) rebuild the messages `direct_prompt` wrote before they are sent,
+so the application stays as it is until a variant wins
+([variants.py](variants.py)):
+
+| Option | Effect |
+|---|---|
+| `--variant p0` | as the application sends it (default) |
+| `--variant p1` | no worked examples, the rules stay |
+| `--variant p2` | the worked examples as user/assistant turns (measurement only, E-8) |
+| `--variant p3` | examples, rules and the first-question note in the user message (measurement only, E-8) |
+| `--variant p4` | worked examples without the rules |
+| `--variant p5` | examples before the layer profile |
+| `--variant p8` | the JSON schema only as constrained output, not as text |
+| `--variant p9` | the first-question note as a system message of its own |
+| `--examples NAME` | [examples/NAME.txt](examples/) in place of the examples section (P6: `3`, `12`), applied before the variant |
+| `--show` | print the messages of the first case as they would be sent, and stop |
+
+An example set is a whole `# Beispiele` section: intro with the invented layer
+profile, the rule lines (`- …`), then `Frage: …` and the answer JSON on the
+next line, blocks separated by a blank line. Every answer is checked against
+the answer schema and the query schema when the set loads.
+
+Each answer records `prompt_tokens`, `completion_tokens` and `finish_reason`;
+an `error:*` answer also its verbatim text (`raw`) when the model sent one, or
+the transport's `cause`. The run's first line names `variant`, `examples` and
+`prompt_sha256`, a hash over the messages and schema of a placeholder
+question: two runs with the same hash sent the same prompt. The summary ends
+with the median latency, mean tokens and the number of errors.
+
+## Verdicts
+
 
 | Verdict | Meaning |
 |---|---|
