@@ -111,7 +111,8 @@ Zahl der Läufe je Verdikt (Bedeutung siehe [Evals-README](../backend/evals/READ
 
 Befunde je Modell, die Ursache der Abbrüche von gpt-oss:20b (leere Antwort
 trotz gemeldeter Tokens), die Fälle je Lauf, die Liste der Ergebnisdateien
-und der Entscheid für Phase 2 stehen in
+und der Entscheid für Phase 2 (gemma4:12b, gemma4:e4b, qwen3:14b,
+qwen3.5:9b) stehen in
 [testplan-system-context.md](testplan-system-context.md), Abschnitt 8.1.
 
 Zu den Fragen unter «Offen» von Lauf 1: Die Spitze ist mit 330 Antworten je

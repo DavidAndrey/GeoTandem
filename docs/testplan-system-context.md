@@ -190,8 +190,8 @@ ist die Grösse in Ollama (`/api/tags`).
 | gemma4:12b | 8,0 GB | Q4_K_M | **Referenz** | Denken aus (Schleife, 2.6) |
 | gemma4:e4b | 6,6 GB | Q4_K_M | **Hauptmodell** (gesetzt) | kleineres gemma: zeigt, ob eine Variante familienspezifisch wirkt |
 | qwen3:14b | 9,3 GB | Q4_K_M | **Hauptmodell** (gesetzt) | Denken aus; ersetzt qwen3:8b |
-| gpt-oss:20b | 13,8 GB | MXFP4 | **Platz 4: Vorschlag**, Entscheid offen | nur mit `--effort medium`; Denken lässt sich nicht abschalten |
-| qwen3.5:9b | 6,6 GB | Q4_K_M | Reserve für Platz 4 | |
+| qwen3.5:9b | 6,6 GB | Q4_K_M | **Hauptmodell** (Platz 4, gesetzt) | Denken aus; gewählt wegen der Antwortzeit (8.1) |
+| gpt-oss:20b | 13,8 GB | MXFP4 | nicht gewählt | mit `--effort medium` gleichauf mit der Referenz, aber 3- bis 4-mal so langsam; Denken lässt sich nicht abschalten |
 | qwen3:8b | 5,2 GB | Q4_K_M | ausgeschieden | bisheriges zweites Hauptmodell; streut stark (2.5) |
 | ministral-3:14b | 9,1 GB | Q4_K_M | ausgeschieden | |
 | phi4:latest | 9,1 GB | Q4_K_M | ausgeschieden | nimmt Beispiel-Layer für echt |
@@ -283,8 +283,8 @@ bis eine Variante gewinnt.
 1. **Phase 1, Modellwahl:** P0 auf allen lokalen Modellen aus Abschnitt 4,
    Seeds 1–5; die besten mit Seeds 6–10 bestätigen. **Erledigt
    2026-10-13** (8.1): Phase 2 läuft mit vier Modellen, gemma4:12b
-   (Referenz), gemma4:e4b, qwen3:14b und einem vierten (Vorschlag
-   gpt-oss:20b mit `--effort medium`, Entscheid offen).
+   (Referenz), gemma4:e4b, qwen3:14b und qwen3.5:9b. Vor Phase 2 folgt
+   eine Phase 1b (wird noch beschrieben).
 2. **Phase 2, Platzierung:** H-1 bis H-5 umsetzen (erledigt, Abschnitt 6).
    Dann P1, P4, P5, P6, P8, P9 (einsetzbar) auf allen vier Modellen. P2, P3,
    P7 als Messung, um zu wissen, was E-8 und S3 kosten. Regel 3.5 gilt je
@@ -313,10 +313,10 @@ Prompt-Hash `prompt_sha256` =
 | Modell | Effort | Seeds 1–5 | Seeds 6–10 | Summe /330 | Differenz der Blöcke | Antwortzeit Median | p90 | Antwort-Tokens Ø | Abbrüche (`error:*`) | Abfragen auf Beispiel-Layern | Ergebnis |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
 | gemma4:12b | none | 130 | 132 | **262** | 2 | 1,4 s | 2,1 s | 79 | 0 | 0 | Referenz |
-| gpt-oss:20b | medium | 134 | 126 | **260** | 8 | 4,5 s | 8,8 s | 472 | 8 | 5 | Vorschlag Platz 4 |
+| gpt-oss:20b | medium | 134 | 126 | **260** | 8 | 4,5 s | 8,8 s | 472 | 8 | 5 | nicht gewählt |
 | gemma4:e4b | none | 126 | 126 | **252** | 0 | 0,8 s | 1,5 s | 130 | 0 | 0 | Hauptmodell |
 | qwen3:14b | none | 125 | 125 | **250** | 0 | 3,0 s | 4,4 s | 115 | 0 | 0 | Hauptmodell |
-| qwen3.5:9b | none | 112 | 113 | 225 | 1 | 1,6 s | 2,4 s | 87 | 0 | 0 | Reserve |
+| qwen3.5:9b | none | 112 | 113 | 225 | 1 | 1,6 s | 2,4 s | 87 | 0 | 0 | Hauptmodell (Platz 4) |
 | ministral-3:14b | none | 107 | 118 | 225 | 11 | 2,6 s | 4,5 s | 119 | 0 | 0 | ausgeschieden |
 | phi4:latest | none | 111 | 114 | 225 | 3 | 2,1 s | 3,1 s | 83 | 0 | 12 | ausgeschieden |
 | gpt-oss:20b | low | 101 | 93 | 194 | 8 | 1,5 s | 2,5 s | 233 | 24 | 3 | ausgeschieden |
@@ -341,8 +341,10 @@ gpt-oss:20b dagegen antwortet auf denselben Seed nicht immer gleich (unten).
 **Schwellen für Phase 2** (3, Punkt 2), aus der Differenz der Blöcke:
 gemma4:12b ±2, gemma4:e4b und qwen3:14b ±0 in der Summe, aber einzelne Fälle
 wandern um bis zu 3 von 5 (qwen3:14b `n15` 5 ⇒ 2, `doc6` 2 ⇒ 4,
-`x-ohne-kontext` 3 ⇒ 5), deshalb auch für sie **5 von 165**. gpt-oss:20b
-`medium` streut um 8: wie qwen3:8b immer beide Blöcke, Schwelle **10 von 330**.
+`x-ohne-kontext` 3 ⇒ 5), deshalb auch für sie **5 von 165**. qwen3.5:9b
+(Differenz 1, Fälle wandern um bis zu 3 von 5: `in-gemeinde-bahn` 1 ⇒ 3,
+`n13` 5 ⇒ 2) ebenso **5 von 165**. gpt-oss:20b `medium` (nicht gewählt)
+streut um 8 und bräuchte immer beide Blöcke.
 
 #### Befunde je Modell
 
@@ -375,7 +377,7 @@ Aus den Antworten in `results/*.jsonl` gelesen; Beispiele wörtlich gekürzt.
   in `log2` eine Rückfrage nach der Gemeindenummer mit erfundenen Optionen
   («gem_nr 1001», «gem_nr 2002»). Einmal der Beispiel-Layer `orte` (`n09`).
 - **qwen3.5:9b**: stabil (112/113), schnell, ohne Abbrüche, aber 25 bis 37
-  unter den vier oben. Bleibt Reserve, falls Platz 4 nicht gpt-oss wird.
+  unter den vier oben. Platz 4 (Entscheid unten).
 - **ministral-3:14b**: streut am stärksten (107 gegen 118). Fragt zurück,
   wo eine Annahme genügt: `n09` «Welche Stadt ist gemeint?» mit Bern,
   Münchenbuchsee, Zollikofen, Worb; `n13` mit erfundenen Bahnhöfen
@@ -436,14 +438,16 @@ nur einzelne. Das sind die Fälle, an denen Phase 2 eine Wirkung zeigen kann.
 
 - **Gesetzt** (2026-10-13): gemma4:12b (Referenz), gemma4:e4b, qwen3:14b.
   qwen3:8b scheidet aus: 58 bis 70 unter diesen dreien und streut stark.
-- **Platz 4, Vorschlag gpt-oss:20b mit `--effort medium`**: Summe gleichauf
-  mit der Referenz (260 gegen 262), eine dritte Modellfamilie und das
-  einzige Denkmodell; löst Fälle, die die Referenz nicht löst (oben).
-  Dagegen: Es streut um 8 (immer beide Blöcke), braucht 3- bis 4-mal so
-  lange wie gemma4:12b (ein Variantenlauf mit beiden Blöcken rund 30
-  Minuten) und bricht in 2 bis 3 % der Antworten leer ab.
-- **Reserve qwen3.5:9b**: stabil und schnell, aber 25 bis 37 unter den drei
-  gesetzten und eine zweite qwen-Familie.
+- **Platz 4: qwen3.5:9b** (Entscheid 2026-10-13): Die Antwortzeit ist ein
+  Vorteil für die Anwendung. 1,6 s Median gegen 4,5 s bei gpt-oss:20b,
+  stabil (112/113), ohne Abbrüche. In Kauf genommen: 25 bis 37 unter den
+  drei anderen und eine zweite qwen-Familie neben qwen3:14b.
+- **Nicht gewählt: gpt-oss:20b mit `--effort medium`**: Summe gleichauf mit
+  der Referenz (260 gegen 262), eine dritte Modellfamilie und das einzige
+  Denkmodell; löst Fälle, die die Referenz nicht löst (oben). Dagegen: 3-
+  bis 4-mal so lange wie gemma4:12b, streut um 8 (immer beide Blöcke, ein
+  Variantenlauf rund 30 Minuten) und bricht in 2 bis 3 % der Antworten
+  leer ab.
 - Ausgeschieden: ministral-3:14b, phi4, granite4.2:8b, lfm2.5:8b,
   gpt-oss:20b mit `low`, sowie aus dem Sweep deepseek-r1:8b,
   mistral-small:22b und mistral-nemo:12b.
@@ -521,12 +525,11 @@ Wortlaut, mit Tokens, Rohtext bei Abbruch und Laufkopf):
 
 ### 8.2 Varianten
 
-Seeds 1–5, je Modell gegen sein P0; Schwellen in 8.1. Platz 4 nach dem
-Entscheid aus 8.1 (P0 hier für gpt-oss:20b `medium`).
+Seeds 1–5, je Modell gegen sein P0; Schwellen in 8.1.
 
-| Variante | gemma4:12b | gemma4:e4b | qwen3:14b | Platz 4 | gekippte Fälle | Entscheid |
+| Variante | gemma4:12b | gemma4:e4b | qwen3:14b | qwen3.5:9b | gekippte Fälle | Entscheid |
 |---|---:|---:|---:|---:|---|---|
-| P0 | 130/165 | 126/165 | 125/165 | 134/165 | – | Referenz |
+| P0 | 130/165 | 126/165 | 125/165 | 112/165 | – | Referenz |
 | P1 | | | | | | |
 | P4 | | | | | | |
 | P5 | | | | | | |
