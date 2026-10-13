@@ -84,3 +84,38 @@ Zahl der Läufe je Verdikt (Bedeutung siehe [Evals-README](../backend/evals/READ
 - Ranking der Spitze mit `--repeat 10` und anderem `--seed-start` absichern.
 - gpt-oss mit höherem Effort und die Ursache der `error`-Fälle prüfen.
 - Andere Quantisierungen und Kontextlängen.
+
+## Lauf 2: Phase 1 des Testplans (2026-10-13)
+
+| | |
+|---|---|
+| Stand | Commit `d42f86a`, Arbeitsbaum sauber; `prompt_sha256` `55e708badb92…` für alle Läufe |
+| Hardware, Ollama | wie Lauf 1 |
+| Fälle | 33 Fälle × Seeds 1–5 und 6–10 = 330 Antworten je Modell |
+| Parameter | Temperatur 0.3, Effort `none`; gpt-oss:20b mit `low` und `medium` |
+| Aufruf | `uv run python evals/run.py --model <m> --temperature 0.3 --repeat 5 [--seed-start 6] --label p0-<m>[-s6]` |
+| Neu gegenüber Lauf 1 | ministral-3:14b, granite4.2:8b, lfm2.5:8b; Tokens und Rohtext je Antwort (H-3, H-4) |
+
+| Modell | Effort | Summe /330 | Seeds 1–5 / 6–10 | Median | Abbrüche |
+|---|---|---:|---:|---:|---:|
+| gemma4:12b | none | 262 | 130 / 132 | 1,4 s | 0 |
+| gpt-oss:20b | medium | 260 | 134 / 126 | 4,5 s | 8 |
+| gemma4:e4b | none | 252 | 126 / 126 | 0,8 s | 0 |
+| qwen3:14b | none | 250 | 125 / 125 | 3,0 s | 0 |
+| qwen3.5:9b | none | 225 | 112 / 113 | 1,6 s | 0 |
+| ministral-3:14b | none | 225 | 107 / 118 | 2,6 s | 0 |
+| phi4:latest | none | 225 | 111 / 114 | 2,1 s | 0 |
+| gpt-oss:20b | low | 194 | 101 / 93 | 1,5 s | 24 |
+| granite4.2:8b | none | 20 | 10 / 10 | 3,4 s | 0 |
+| lfm2.5:8b | none | 8 | 5 / 3 | 0,8 s | 0 |
+
+Befunde je Modell, die Ursache der Abbrüche von gpt-oss:20b (leere Antwort
+trotz gemeldeter Tokens), die Fälle je Lauf, die Liste der Ergebnisdateien
+und der Entscheid für Phase 2 (gemma4:12b, gemma4:e4b, qwen3:14b,
+qwen3.5:9b) stehen in
+[testplan-system-context.md](testplan-system-context.md), Abschnitt 8.1.
+
+Zu den Fragen unter «Offen» von Lauf 1: Die Spitze ist mit 330 Antworten je
+Modell abgesichert (gemma4:12b vor gemma4:e4b und qwen3:14b, Abstand 10 bis
+12). Die `error`-Fälle von gpt-oss sind leere Antworten; mit `medium` sind
+es 8 statt 24 von 330.
