@@ -1,0 +1,20 @@
+# Beispiele
+Erfundene Beispiele an erfundenen Layern. Sie sind kein Teil des Gesprächs: Der Anwender hat diese Fragen nie gestellt, und es gibt keine frühere Abfrage dazu. Verwende nur die Layer und Attribute des Layer-Steckbriefs. Erfundener Steckbrief der Beispiele: baeume.art codes {"qu":"Eiche","ti":"Linde"}; quartiere.name (Text); schulhaeuser.stufe codes {"prim":"Primarschule","sek":"Sekundarschule"}; schulhaeuser.oeffentlich (Ja/Nein); parzellen.zone codes {"W2":"Wohnzone 2","GE":"Gewerbezone"}; spielplaetze; wanderwege (Linien); orte.name (Gemeinden, Text).
+- Ein Ort, der ein Objekt eines anderen Layers ist («in der Altstadt»): Bedingung "related" mit "within" auf diesen Layer und einer Bedingung auf seinen Namen. Rate nie eine Nummer oder Kennung.
+- Ein Objekt mit Namen (Gemeinde, Quartier, Gewässer, Haltestelle): "compare" mit "eq" auf den Namen, nie "text_match": «Altstadt» träfe sonst auch «Altstadt-Nord». "text_match" nur, wenn nach einem Teil gefragt ist («beginnt mit», «enthält»).
+- Linien (Strassen, Flüsse, Wege) zu Flächen: «durch», «entlang», «in» heisst "intersects"; "within" nur, wenn die Linie ganz in der Fläche liegen soll.
+- Nähe zu Objekten eines Layers: "related" mit "dwithin" und "distance_m"; «weiter als» ist "not" um diese Bedingung. Ohne Zahl («nahe», «in der Nähe») nimm 300 m an und nenne es als Annahme. "near_feature" meint ein einzelnes Objekt mit bekannter fid; du kennst keine fids, verwende es nicht.
+- Eine Bedingung auf die Objekte des anderen Layers («Primarschulen», «die Aare») steht im "where" des "related", mit dessen Attributen.
+- Werte mit "codes": der Schlüssel links, nie die Beschriftung rechts («Eiche» ⇒ "qu"). Ja/Nein-Attribute vergleichst du mit true oder false. «Von … bis …» auf einem Attribut mit "codes": "in" mit allen Codes dazwischen, in der Reihenfolge der Codeliste, nie "between" (Codes sind Text). «A oder B» auf demselben Attribut ist "in" mit beiden Werten, nie "and".
+- Höchstens eine Rückfrage: Folgt die Frage auf deine Rückfrage, antworte mit einer Annahme. Zahlen in Optionen nur innerhalb von "range", wenn es sie gibt. «Stadt X» oder «Dorf X» ist die Gemeinde X, ohne Rückfrage.
+- Nur Bedingungen, nach denen gefragt ist; keine zusätzlichen «ist nicht leer».
+- Eine einzige Bedingung steht direkt in "where", nicht in einem "and" oder "or" mit nur einem Argument.
+
+Frage: Welche Eichen stehen in der Altstadt?
+{"kind":"query","explanation":"Bäume der Art Eiche, die im Quartier Altstadt liegen.","assumptions":[],"query":{"source":"baeume","where":{"op":"and","args":[{"op":"compare","attr":"art","cmp":"eq","value":"qu"},{"op":"related","layer":"quartiere","predicate":"within","where":{"op":"compare","attr":"name","cmp":"eq","value":"Altstadt"}}]},"output":"map"}}
+
+Frage: Spielplätze in der Nähe von Primarschulen
+{"kind":"query","explanation":"Spielplätze, die nahe bei mindestens einer Primarschule liegen.","assumptions":[{"text":"«In der Nähe» heisst höchstens 300 m.","condition":[]}],"query":{"source":"spielplaetze","where":{"op":"related","layer":"schulhaeuser","predicate":"dwithin","distance_m":300,"where":{"op":"compare","attr":"stufe","cmp":"eq","value":"prim"}},"output":"map"}}
+
+Frage: Wie viele Sitzbänke gibt es?
+{"kind":"cannot_answer","explanation":"Kein Layer beschreibt Sitzbänke.","missing":["ein Layer mit Sitzbänken"]}
