@@ -1,6 +1,6 @@
 # Testplan: Systemprompt und Kontext (Modus B)
 
-> Stand: 2026-10-12 · Ausgangsstand main `0d82853` (V-2 bis V-7) ·
+> Stand: 2026-10-13 (Phase 1 abgeschlossen, 8.1) · Ausgangsstand main `0d82853` (V-2 bis V-7) ·
 > Beispieldaten `bern-mittelland-2026-10-03` · Ollama 0.34.0, RTX 5060 Ti
 > (16 GB) · Vorgänger: [testplan-initial-llm-run.md](testplan-initial-llm-run.md)
 > · Messung: [backend/evals/](../backend/evals/README.md)
@@ -182,16 +182,23 @@ die Anwendung meldet das seit E-5 als `model_truncated`.
 
 ## 4 Modelle
 
-| Modell | Grösse (Q4_K_M) | Lokal vorhanden | Rolle | Hinweise |
+Stand nach Phase 1 (2026-10-13, Ergebnisse und Begründung in 8.1). Grösse
+ist die Grösse in Ollama (`/api/tags`).
+
+| Modell | Grösse | Quant. | Rolle in Phase 2 | Hinweise |
 |---|---:|---|---|---|
-| gemma4:12b | 8,0 GB | ✔ | **Referenz** | Denken aus (Schleife, 2.6) |
-| qwen3:8b | 5,2 GB | ✔ | zweites Hauptmodell | Denken aus; zusätzlich ein Lauf mit `--effort medium` |
-| gemma4:e4b | 6,6 GB | ✔ | kleineres gemma | gleiche Familie: zeigt, ob die Beispiele familienspezifisch wirken |
-| deepseek-r1:8b | 5,2 GB | ✔ | Denkmodell | im ersten Lauf prüfen, ob `--effort none` das Denken abschaltet; auf `model_truncated` und Zeit achten (Zeitlimit des Laufs 300 s) |
-| qwen3:14b | ~9 GB | – | grösseres qwen | passt neben nichts anderem in 16 GB |
-| phi4:14b | ~9 GB | – | andere Familie | |
-| mistral-small3.2:24b | ~15 GB | – | obere Grenze lokal | knapp im Speicher, vorher allein laden |
-| llama3.1:8b | ~5 GB | – | verbreitetes 8B | |
+| gemma4:12b | 8,0 GB | Q4_K_M | **Referenz** | Denken aus (Schleife, 2.6) |
+| gemma4:e4b | 6,6 GB | Q4_K_M | **Hauptmodell** (gesetzt) | kleineres gemma: zeigt, ob eine Variante familienspezifisch wirkt |
+| qwen3:14b | 9,3 GB | Q4_K_M | **Hauptmodell** (gesetzt) | Denken aus; ersetzt qwen3:8b |
+| gpt-oss:20b | 13,8 GB | MXFP4 | **Platz 4: Vorschlag**, Entscheid offen | nur mit `--effort medium`; Denken lässt sich nicht abschalten |
+| qwen3.5:9b | 6,6 GB | Q4_K_M | Reserve für Platz 4 | |
+| qwen3:8b | 5,2 GB | Q4_K_M | ausgeschieden | bisheriges zweites Hauptmodell; streut stark (2.5) |
+| ministral-3:14b | 9,1 GB | Q4_K_M | ausgeschieden | |
+| phi4:latest | 9,1 GB | Q4_K_M | ausgeschieden | nimmt Beispiel-Layer für echt |
+| granite4.2:8b | 5,3 GB | Q4_K_M | ausgeschieden | fragt fast immer zurück |
+| lfm2.5:8b | 5,2 GB | Q4_K_M | ausgeschieden | nimmt Beispiel-Layer für echt |
+| deepseek-r1:8b | 5,2 GB | Q4_K_M | ausgeschieden | 6/99 im Sweep ([benchmarks.md](benchmarks.md), Lauf 1), 57 s je Antwort; nicht erneut gemessen |
+| mistral-small:22b, mistral-nemo:12b | 12,6 / 7,1 GB | Q4_0 | ausgeschieden | 64/99 und 52/99 im Sweep; mistral-small läuft nicht ganz im VRAM |
 
 Vor dem Ziehen die aktuellen Namen und Grössen in der Ollama-Bibliothek
 prüfen. Ein Modell, das die eingeschränkte Ausgabe nicht beherrscht, zeigt
@@ -274,11 +281,15 @@ bis eine Variante gewinnt.
 ## 7 Ablauf
 
 1. **Phase 1, Modellwahl:** P0 auf allen lokalen Modellen aus Abschnitt 4,
-   Seeds 1–5; die zwei besten mit Seeds 6–10 bestätigen. Ergebnis: zwei
-   Hauptmodelle für Phase 2 (heute gemma4:12b und qwen3:8b).
-2. **Phase 2, Platzierung:** H-1 bis H-5 umsetzen. Dann P1, P4, P5, P6, P8, P9
-   (einsetzbar) auf beiden Hauptmodellen. P2, P3, P7 als Messung, um zu
-   wissen, was E-8 und S3 kosten.
+   Seeds 1–5; die besten mit Seeds 6–10 bestätigen. **Erledigt
+   2026-10-13** (8.1): Phase 2 läuft mit vier Modellen, gemma4:12b
+   (Referenz), gemma4:e4b, qwen3:14b und einem vierten (Vorschlag
+   gpt-oss:20b mit `--effort medium`, Entscheid offen).
+2. **Phase 2, Platzierung:** H-1 bis H-5 umsetzen (erledigt, Abschnitt 6).
+   Dann P1, P4, P5, P6, P8, P9 (einsetzbar) auf allen vier Modellen. P2, P3,
+   P7 als Messung, um zu wissen, was E-8 und S3 kosten. Regel 3.5 gilt je
+   Modell: Eine Variante, die einem der vier um mehr als seine Schwelle
+   schadet, wird nicht übernommen.
 3. **Phase 3, Bestätigung:** Gewinner mit Seeds 6–10. Die 15 Fragen aus
    testplan-initial-llm-run, Abschnitt 9, von Hand in der Anwendung
    nachprüfen. Erst dann wird eine Variante in `prompt.py` übernommen.
@@ -291,31 +302,244 @@ bis eine Variante gewinnt.
 
 ### 8.1 Modelle (P0, Temperatur 0,3)
 
-| Modell | Seeds 1–5 | Seeds 6–10 | Antwortzeit (Median) | Abbrüche | Bemerkung |
-|---|---:|---:|---:|---|---|
-| gemma4:12b | 130/165 | 132/165 | | | Referenz |
-| qwen3:8b | 93/165 | 99/165 | | | streut stark (2.5) |
-| gemma4:e4b | | | | | |
-| deepseek-r1:8b | | | | | |
+**Lauf:** 2026-10-13, Phase 1 nach Abschnitt 3: P0, 33 Fälle, Temperatur
+0,3, Seeds 1–5 und 6–10 (je 165 Antworten), Stufe *Prüfen*, Effort `none`
+ausser gpt-oss:20b. Commit `d42f86a` (main, Arbeitsbaum sauber), Ollama 0.34.0,
+RTX 5060 Ti 16 GB, `OLLAMA_CONTEXT_LENGTH=16384`. Alle Läufe haben denselben
+Prompt-Hash `prompt_sha256` =
+`55e708badb92a05fae633636946292a947435f6553903966482311dd9c6a2eb2`
+(Laufkopf, H-5): Alle Modelle sahen denselben Prompt.
+
+| Modell | Effort | Seeds 1–5 | Seeds 6–10 | Summe /330 | Differenz der Blöcke | Antwortzeit Median | p90 | Antwort-Tokens Ø | Abbrüche (`error:*`) | Abfragen auf Beispiel-Layern | Ergebnis |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| gemma4:12b | none | 130 | 132 | **262** | 2 | 1,4 s | 2,1 s | 79 | 0 | 0 | Referenz |
+| gpt-oss:20b | medium | 134 | 126 | **260** | 8 | 4,5 s | 8,8 s | 472 | 8 | 5 | Vorschlag Platz 4 |
+| gemma4:e4b | none | 126 | 126 | **252** | 0 | 0,8 s | 1,5 s | 130 | 0 | 0 | Hauptmodell |
+| qwen3:14b | none | 125 | 125 | **250** | 0 | 3,0 s | 4,4 s | 115 | 0 | 0 | Hauptmodell |
+| qwen3.5:9b | none | 112 | 113 | 225 | 1 | 1,6 s | 2,4 s | 87 | 0 | 0 | Reserve |
+| ministral-3:14b | none | 107 | 118 | 225 | 11 | 2,6 s | 4,5 s | 119 | 0 | 0 | ausgeschieden |
+| phi4:latest | none | 111 | 114 | 225 | 3 | 2,1 s | 3,1 s | 83 | 0 | 12 | ausgeschieden |
+| gpt-oss:20b | low | 101 | 93 | 194 | 8 | 1,5 s | 2,5 s | 233 | 24 | 3 | ausgeschieden |
+| qwen3:8b¹ | none | 93 | 99 | 192 | 6 | | | | | | ausgeschieden |
+| granite4.2:8b | none | 10 | 10 | 20 | 0 | 3,4 s | 4,0 s | 195 | 0 | 0 | ausgeschieden |
+| lfm2.5:8b | none | 5 | 3 | 8 | 2 | 0,8 s | 1,1 s | 167 | 0 | 178 | ausgeschieden |
+
+¹ Läufe `t3-v27c-qwen3` und `t3-v27c-qwen3-s6` vom 2026-10-12 (Abschnitt 2.5),
+vor H-3: ohne Zeiten und Tokens im Laufkopf.
+
+Antwortzeit und Tokens über beide Blöcke (330 Antworten). «Abfragen auf
+Beispiel-Layern»: Antworten, deren Abfrage einen erfundenen Layer der
+Beispiele nennt (`baeume`, `quartiere`, `schulhaeuser`, `parzellen`,
+`spielplaetze`, `wanderwege`, `orte`), als `source` oder als Bezugslayer.
+
+**Reproduzierbarkeit:** Die neuen Läufe von gemma4:12b geben Fall für Fall
+dieselben Zahlen wie `t3-v27c-gemma4` und `-s6` vom Vortag (130 und 132,
+dieselben zwei Fälle verschieden; verglichen sind die Zahlen je Fall, nicht
+der Wortlaut). Die älteren gemma4-Zahlen in diesem Dokument bleiben gültig.
+gpt-oss:20b dagegen antwortet auf denselben Seed nicht immer gleich (unten).
+
+**Schwellen für Phase 2** (3, Punkt 2), aus der Differenz der Blöcke:
+gemma4:12b ±2, gemma4:e4b und qwen3:14b ±0 in der Summe, aber einzelne Fälle
+wandern um bis zu 3 von 5 (qwen3:14b `n15` 5 ⇒ 2, `doc6` 2 ⇒ 4,
+`x-ohne-kontext` 3 ⇒ 5), deshalb auch für sie **5 von 165**. gpt-oss:20b
+`medium` streut um 8: wie qwen3:8b immer beide Blöcke, Schwelle **10 von 330**.
+
+#### Befunde je Modell
+
+Aus den Antworten in `results/*.jsonl` gelesen; Beispiele wörtlich gekürzt.
+
+- **gemma4:12b** (Referenz): unverändert. Scheitert ganz an `doc4-ohne-sek`,
+  `doc6`, `n06`, `n07`, `n13` und fast ganz an `doc5-aare` und
+  `x-ohne-kontext` (Abschnitt 2.3).
+- **gemma4:e4b**: gleich stabil wie gemma4:12b, im Median fast doppelt so
+  schnell (0,8 gegen 1,4 s).
+  Scheitert ganz, wo gemma4:12b besteht: `log2` «wie viele Schulen … Bern»
+  mit `cannot_answer` (das Muster aus 2.4), `in-gemeinde-bahn` ohne den
+  Filter «Bahn» (18 statt 1 Objekt), `n03` mit einer Abfrage auf die Tabelle
+  `gemeindedaten`. Löst `n06` (10/10), das gemma4:12b und qwen3:14b nie lösen.
+- **qwen3:14b**: Summe gleich in beiden Blöcken, Fälle wandern (oben).
+  Dieselben drei Lücken wie gemma4:e4b (`log2`, `in-gemeinde-bahn`, `n03`),
+  dazu `n05` (dreimal `unknown_attribute`). Besser als beide gemmas bei
+  `doc5-aare` (10/10) und `doc6` (6/10).
+- **gpt-oss:20b, `medium`**: beste Summe im ersten Block (134), 126 im
+  zweiten. Ergänzt die Referenz: löst `doc5-aare` (10/10), `in-gemeinde-bahn`
+  (10/10) und `n06` (9/10), wo gemma4:12b 1, 10 und 0 hat. Restliche Fehler
+  wie bei anderen: «Bahnhof Bern» als Name einer Haltestelle (`n13`, 0/10),
+  zwei Bedingungen im Filter eines `related` (`n07`), die Beispielabfragen
+  als Optionen der Rückfrage in `x-ohne-kontext` (0/10). 8 leere Antworten
+  (`model_unreadable`, unten). Kosten: 4,5 s Median, 8,8 s p90, rund
+  15 Minuten je Block (gemma4:12b 4 bis 5).
+- **gpt-oss:20b, `low`**: instabil (101 gegen 93) und 24 leere Antworten.
+  Erfindet Lücken: `doc1` «Der Layer "schulen" enthält keine Informationen
+  über den Namen der Gemeinde» (`cannot_answer`), `n01` «keine Zählung»;
+  in `log2` eine Rückfrage nach der Gemeindenummer mit erfundenen Optionen
+  («gem_nr 1001», «gem_nr 2002»). Einmal der Beispiel-Layer `orte` (`n09`).
+- **qwen3.5:9b**: stabil (112/113), schnell, ohne Abbrüche, aber 25 bis 37
+  unter den vier oben. Bleibt Reserve, falls Platz 4 nicht gpt-oss wird.
+- **ministral-3:14b**: streut am stärksten (107 gegen 118). Fragt zurück,
+  wo eine Annahme genügt: `n09` «Welche Stadt ist gemeint?» mit Bern,
+  Münchenbuchsee, Zollikofen, Worb; `n13` mit erfundenen Bahnhöfen
+  («Bahnhof Bern Lötschberg»); `doc6` 8/10 Rückfragen. Lehnt `log2` als
+  «Zählung je Gruppe» ab. `log4` mit einer ungefragten Bedingung
+  `is_null name` auf den Haltestellen (0 statt 79 Objekte, 9/10).
+- **phi4**: nimmt die Beispiele für echt: `n06` immer auf dem Beispiel-Layer
+  `schulhaeuser` (`unknown_layer`, 10/10), `x-ohne-kontext` bietet die
+  Beispielabfragen als frühere Abfragen an (10/10). Dazu falsche Werte
+  («Sekundarstufe I» als `typ = "sek"`, `doc4`; «die Aare» ohne Namen als
+  alle Hauptgewässer, `doc5`), Rückfragen statt Antwort (`n12`) und zwei
+  Bedingungen im Filter eines `related` (`n07`, `n13`).
+- **granite4.2:8b**: 155 von 165 Antworten sind Rückfragen, auch bei
+  `attr-flaeche` («Bitte bestätige …, wenn ja, bitte mit 'yes' antworten»).
+  Besteht nur die zwei Fälle, in denen eine Rückfrage gilt (`n04`,
+  `x-ohne-kontext`, je 10/10). Unbrauchbar.
+- **lfm2.5:8b**: 178 von 330 Abfragen auf Beispiel-Layern (`schulhaeuser`
+  usw.), Erklärungen auf Englisch. Unbrauchbar.
+
+#### gpt-oss:20b: leere Antworten
+
+Alle 32 Abbrüche von gpt-oss:20b (24 `low`, 8 `medium`) sind
+`model_unreadable` mit «not JSON: Expecting value at char 0» oder
+`model_truncated` (2, bei 10 802 und 10 803 Antwort-Tokens). Der Rohtext
+(`raw`, H-4) ist in **jedem** Fall leer, obwohl Ollama 38 bis 10 803
+Antwort-Tokens meldet.
+
+Nachgeprüft mit einer direkten Anfrage an `/v1/chat/completions` (dieselben
+Nachrichten, dasselbe Schema als `response_format`, Temperatur 0,3):
+
+- Dieselbe Anfrage mit demselben Seed (`doc6` Seed 1, `log4` Seed 2,
+  `doc1` Seed 4 achtmal, `n03` Seed 1 `medium`) antwortet nun lesbar:
+  Der Fehler kommt nicht aus dem Seed.
+- `attr-schulhaeuser` mit Seeds 11–30 (`low`): **3 von 20 leer**. Das Feld
+  `reasoning` ist jedes Mal kurz und richtig («Need to query schulen layer,
+  attribute standorte >3. Use compare gt.»), `content` ist `''`, gemeldet
+  werden 98, 2 922 und 3 995 Antwort-Tokens.
+
+Das Modell denkt also richtig und schreibt dann eine Antwort, die nicht
+ankommt; die Tokens gehen in eine Ausgabe, die Ollama nicht zurückgibt.
+Vermutung, nicht geprüft: Unter der eingeschränkten Ausgabe schreibt
+gpt-oss Leerraum, den die Grammatik vor dem JSON erlaubt, bis zum Stopp
+oder zur Längengrenze. Die Anwendung meldet das richtig als
+`model_unreadable` bzw. `model_truncated`. Mit `medium` tritt es seltener
+auf (8 von 330 gegen 24 von 330). Offen: Ursache bei Ollama prüfen; ob die
+Anwendung eine leere Antwort einmal wiederholen soll, ist ein eigener
+Entscheid.
+
+#### Fälle, die alle vier Modelle nicht lösen
+
+Über die vier Modelle von Phase 2 (je 10 Antworten): `n07-zwei-filter`
+(0, 0, 0, 1: zwei Bedingungen auf dem Bezugslayer, die die Bedienelemente
+nicht zeigen) und `n13-bahnhof-bern` (0, 3, 0, 0: «Bahnhof Bern» ist kein
+Name im Layer). `x-ohne-kontext` (1, 6, 8, 0) und `doc6` (0, 0, 6, 5) lösen
+nur einzelne. Das sind die Fälle, an denen Phase 2 eine Wirkung zeigen kann.
+
+#### Entscheid Phase 1
+
+- **Gesetzt** (2026-10-13): gemma4:12b (Referenz), gemma4:e4b, qwen3:14b.
+  qwen3:8b scheidet aus: 58 bis 70 unter diesen dreien und streut stark.
+- **Platz 4, Vorschlag gpt-oss:20b mit `--effort medium`**: Summe gleichauf
+  mit der Referenz (260 gegen 262), eine dritte Modellfamilie und das
+  einzige Denkmodell; löst Fälle, die die Referenz nicht löst (oben).
+  Dagegen: Es streut um 8 (immer beide Blöcke), braucht 3- bis 4-mal so
+  lange wie gemma4:12b (ein Variantenlauf mit beiden Blöcken rund 30
+  Minuten) und bricht in 2 bis 3 % der Antworten leer ab.
+- **Reserve qwen3.5:9b**: stabil und schnell, aber 25 bis 37 unter den drei
+  gesetzten und eine zweite qwen-Familie.
+- Ausgeschieden: ministral-3:14b, phi4, granite4.2:8b, lfm2.5:8b,
+  gpt-oss:20b mit `low`, sowie aus dem Sweep deepseek-r1:8b,
+  mistral-small:22b und mistral-nemo:12b.
+
+#### Fälle je Lauf
+
+`evals/compare.py` über alle Läufe von Phase 1 (bestanden von 5 je Fall und
+Block):
+
+| Fall | p0-gemma4_12b | p0-gemma4_12b-s6 | p0-gemma4_e4b | p0-gemma4_e4b-s6 | p0-qwen3_14b | p0-qwen3_14b-s6 | p0-gpt-oss-medium | p0-gpt-oss-medium-s6 | p0-gpt-oss-low | p0-gpt-oss-low-s6 | p0-qwen3.5_9b | p0-qwen3.5_9b-s6 | p0-ministral-3_14b | p0-ministral-3_14b-s6 | p0-phi4 | p0-phi4-s6 | p0-granite4.2_8b | p0-granite4.2_8b-s6 | p0-lfm2.5_8b | p0-lfm2.5_8b-s6 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| `doc1-primar-koeniz` | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 4/5 | 5/5 | 0/5 | 1/5 | 2/5 | 1/5 | 5/5 | 5/5 | 4/5 | 5/5 | 0/5 | 0/5 | 0/5 | 0/5 |
+| `doc2-gut-erschlossen` | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 4/5 | 5/5 | 5/5 | 5/5 | 5/5 | 4/5 | 0/5 | 0/5 | 0/5 | 0/5 |
+| `doc3-weit-von-bahn` | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 4/5 | 1/5 | 0/5 | 4/5 | 5/5 | 4/5 | 4/5 | 0/5 | 0/5 | 0/5 | 0/5 |
+| `doc4-ohne-sek` | 0/5 | 0/5 | 4/5 | 5/5 | 5/5 | 4/5 | 3/5 | 3/5 | 4/5 | 1/5 | 3/5 | 4/5 | 0/5 | 2/5 | 0/5 | 1/5 | 0/5 | 0/5 | 0/5 | 0/5 |
+| `doc5-aare` | 0/5 | 1/5 | 3/5 | 2/5 | 5/5 | 5/5 | 5/5 | 5/5 | 3/5 | 0/5 | 4/5 | 5/5 | 3/5 | 5/5 | 0/5 | 0/5 | 0/5 | 0/5 | 0/5 | 0/5 |
+| `doc6-verschachtelt` | 0/5 | 0/5 | 0/5 | 0/5 | 2/5 | 4/5 | 2/5 | 3/5 | 0/5 | 0/5 | 0/5 | 0/5 | 1/5 | 0/5 | 1/5 | 1/5 | 0/5 | 0/5 | 0/5 | 0/5 |
+| `log1-haltestellen-nahe-schulen` | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 4/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 0/5 | 0/5 | 0/5 | 0/5 |
+| `log2-schulen-in-bern` | 5/5 | 5/5 | 0/5 | 0/5 | 0/5 | 0/5 | 4/5 | 0/5 | 0/5 | 0/5 | 2/5 | 0/5 | 1/5 | 1/5 | 5/5 | 4/5 | 0/5 | 0/5 | 0/5 | 0/5 |
+| `log4-schulen-200m` | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 4/5 | 4/5 | 5/5 | 5/5 | 5/5 | 0/5 | 1/5 | 5/5 | 5/5 | 0/5 | 0/5 | 0/5 | 0/5 |
+| `attr-franzoesisch` | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 0/5 | 0/5 | 3/5 | 1/5 |
+| `attr-schulhaeuser` | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 4/5 | 3/5 | 4/5 | 5/5 | 5/5 | 4/5 | 5/5 | 5/5 | 5/5 | 0/5 | 0/5 | 0/5 | 0/5 |
+| `attr-ohne-kindergarten` | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 4/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 0/5 | 0/5 | 0/5 | 0/5 |
+| `attr-flaeche` | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 4/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 0/5 | 0/5 | 1/5 | 0/5 |
+| `text-beginnt-bern` | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 0/5 | 0/5 | 0/5 | 0/5 |
+| `in-gemeinde-bahn` | 5/5 | 5/5 | 0/5 | 0/5 | 0/5 | 0/5 | 5/5 | 5/5 | 1/5 | 0/5 | 1/5 | 3/5 | 0/5 | 0/5 | 4/5 | 5/5 | 0/5 | 0/5 | 0/5 | 0/5 |
+| `dist-nationalstrasse` | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 4/5 | 4/5 | 5/5 | 5/5 | 4/5 | 5/5 | 5/5 | 5/5 | 0/5 | 0/5 | 0/5 | 0/5 |
+| `none-spitaeler` | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 4/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 0/5 | 0/5 | 0/5 | 0/5 |
+| `n01-tram-zaehlen` | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 4/5 | 4/5 | 0/5 | 0/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 4/5 | 0/5 | 0/5 | 0/5 | 0/5 |
+| `n02-kategorie-bereich` | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 0/5 | 0/5 | 0/5 | 0/5 |
+| `n03-einwohner-tabelle` | 5/5 | 5/5 | 0/5 | 0/5 | 0/5 | 0/5 | 2/5 | 5/5 | 2/5 | 2/5 | 0/5 | 0/5 | 0/5 | 0/5 | 0/5 | 0/5 | 0/5 | 0/5 | 0/5 | 0/5 |
+| `n04-grosse-gemeinden` | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 4/5 | 4/5 | 4/5 | 1/5 | 0/5 | 5/5 | 5/5 | 4/5 | 5/5 | 5/5 | 5/5 | 0/5 | 0/5 |
+| `n05-gemeinde-franz-schule` | 5/5 | 5/5 | 1/5 | 2/5 | 0/5 | 0/5 | 3/5 | 2/5 | 1/5 | 0/5 | 2/5 | 3/5 | 4/5 | 5/5 | 3/5 | 2/5 | 0/5 | 0/5 | 0/5 | 0/5 |
+| `n06-primar-tram` | 0/5 | 0/5 | 5/5 | 5/5 | 0/5 | 0/5 | 4/5 | 5/5 | 2/5 | 1/5 | 0/5 | 0/5 | 2/5 | 5/5 | 0/5 | 0/5 | 0/5 | 0/5 | 0/5 | 0/5 |
+| `n07-zwei-filter` | 0/5 | 0/5 | 0/5 | 0/5 | 0/5 | 0/5 | 1/5 | 0/5 | 0/5 | 0/5 | 0/5 | 0/5 | 0/5 | 0/5 | 0/5 | 0/5 | 0/5 | 0/5 | 0/5 | 0/5 |
+| `n08-sekundarstufe` | 5/5 | 5/5 | 4/5 | 3/5 | 5/5 | 5/5 | 4/5 | 3/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 0/5 | 0/5 | 0/5 | 0/5 |
+| `n09-ausserhalb-bern` | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 4/5 | 3/5 | 4/5 | 5/5 | 5/5 | 0/5 | 0/5 | 5/5 | 5/5 | 0/5 | 0/5 | 0/5 | 0/5 |
+| `n10-strassen-durch-koeniz` | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 3/5 | 4/5 | 5/5 | 5/5 | 4/5 | 5/5 | 5/5 | 5/5 | 0/5 | 0/5 | 0/5 | 0/5 |
+| `n11-einwohner-bereich` | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 4/5 | 4/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 0/5 | 0/5 | 1/5 | 2/5 |
+| `n12-schiff-leer` | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 4/5 | 4/5 | 3/5 | 1/5 | 4/5 | 5/5 | 5/5 | 5/5 | 0/5 | 0/5 | 0/5 | 0/5 | 0/5 | 0/5 |
+| `n13-bahnhof-bern` | 0/5 | 0/5 | 2/5 | 1/5 | 0/5 | 0/5 | 0/5 | 0/5 | 0/5 | 0/5 | 5/5 | 2/5 | 0/5 | 0/5 | 0/5 | 0/5 | 0/5 | 0/5 | 0/5 | 0/5 |
+| `n14-schuelerzahl` | 5/5 | 5/5 | 4/5 | 5/5 | 5/5 | 5/5 | 4/5 | 5/5 | 5/5 | 5/5 | 3/5 | 3/5 | 5/5 | 5/5 | 4/5 | 5/5 | 0/5 | 0/5 | 0/5 | 0/5 |
+| `n15-je-gemeinde` | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 2/5 | 5/5 | 2/5 | 5/5 | 5/5 | 5/5 | 5/5 | 5/5 | 4/5 | 2/5 | 4/5 | 0/5 | 0/5 | 0/5 | 0/5 |
+| `x-ohne-kontext` | 0/5 | 1/5 | 3/5 | 3/5 | 3/5 | 5/5 | 0/5 | 0/5 | 1/5 | 0/5 | 1/5 | 2/5 | 0/5 | 0/5 | 0/5 | 0/5 | 5/5 | 5/5 | 0/5 | 0/5 |
+| **Summe** | **130/165** | **132/165** | **126/165** | **126/165** | **125/165** | **125/165** | **134/165** | **126/165** | **101/165** | **93/165** | **112/165** | **113/165** | **107/165** | **118/165** | **111/165** | **114/165** | **10/165** | **10/165** | **5/165** | **3/165** |
+
+#### Läufe
+
+Ergebnisdateien in `backend/evals/results/` (nicht im Git; jede Antwort im
+Wortlaut, mit Tokens, Rohtext bei Abbruch und Laufkopf):
+
+| Label | Datei |
+|---|---|
+| `p0-gemma4_e4b` | `20261013-174101-p0-gemma4_e4b.jsonl` |
+| `p0-gemma4_e4b-s6` | `20261013-174452-p0-gemma4_e4b-s6.jsonl` |
+| `p0-qwen3_14b` | `20261013-174729-p0-qwen3_14b.jsonl` |
+| `p0-qwen3_14b-s6` | `20261013-175608-p0-qwen3_14b-s6.jsonl` |
+| `p0-qwen3.5_9b` | `20261013-180451-p0-qwen3.5_9b.jsonl` |
+| `p0-qwen3.5_9b-s6` | `20261013-180956-p0-qwen3.5_9b-s6.jsonl` |
+| `p0-phi4` | `20261013-183514-p0-phi4.jsonl` |
+| `p0-phi4-s6` | `20261013-184138-p0-phi4-s6.jsonl` |
+| `p0-gpt-oss-low` | `20261013-184748-p0-gpt-oss-low.jsonl` |
+| `p0-gpt-oss-low-s6` | `20261013-185655-p0-gpt-oss-low-s6.jsonl` |
+| `p0-gpt-oss-medium` | `20261013-190409-p0-gpt-oss-medium.jsonl` |
+| `p0-ministral-3_14b` | `20261013-191830-p0-ministral-3_14b.jsonl` |
+| `p0-ministral-3_14b-s6` | `20261013-192626-p0-ministral-3_14b-s6.jsonl` |
+| `p0-granite4.2_8b` | `20261013-193432-p0-granite4.2_8b.jsonl` |
+| `p0-granite4.2_8b-s6` | `20261013-194338-p0-granite4.2_8b-s6.jsonl` |
+| `p0-lfm2.5_8b` | `20261013-195258-p0-lfm2.5_8b.jsonl` |
+| `p0-lfm2.5_8b-s6` | `20261013-195526-p0-lfm2.5_8b-s6.jsonl` |
+| `p0-gemma4_12b` | `20261013-195752-p0-gemma4_12b.jsonl` |
+| `p0-gemma4_12b-s6` | `20261013-200241-p0-gemma4_12b-s6.jsonl` |
+| `p0-gpt-oss-medium-s6` | `20261013-200710-p0-gpt-oss-medium-s6.jsonl` |
+| `t3-v27c-qwen3`, `t3-v27c-qwen3-s6` | `20261012-192916-t3-v27c-qwen3.jsonl`, `20261012-201518-t3-v27c-qwen3-s6.jsonl` |
 
 ### 8.2 Varianten
 
-| Variante | gemma4:12b | qwen3:8b | gekippte Fälle | Entscheid |
-|---|---:|---:|---|---|
-| P0 | 130/165 | 93/165 | – | Referenz |
-| P1 | | | | |
-| P4 | | | | |
-| P5 | | | | |
-| P6 (3) | | | | |
-| P6 (12) | | | | |
-| P8 | | | | |
-| P9 | | | | |
-| P2 (nur Messung) | | | | |
-| P3 (nur Messung) | 138/165¹ | 89/165¹ | | E-8: nein |
-| P7 (nur Messung) | | | | |
+Seeds 1–5, je Modell gegen sein P0; Schwellen in 8.1. Platz 4 nach dem
+Entscheid aus 8.1 (P0 hier für gpt-oss:20b `medium`).
+
+| Variante | gemma4:12b | gemma4:e4b | qwen3:14b | Platz 4 | gekippte Fälle | Entscheid |
+|---|---:|---:|---:|---:|---|---|
+| P0 | 130/165 | 126/165 | 125/165 | 134/165 | – | Referenz |
+| P1 | | | | | | |
+| P4 | | | | | | |
+| P5 | | | | | | |
+| P6 (3) | | | | | | |
+| P6 (12) | | | | | | |
+| P8 | | | | | | |
+| P9 | | | | | | |
+| P2 (nur Messung) | | | | | | |
+| P3 (nur Messung) | 138/165¹ | | | | | E-8: nein |
+| P7 (nur Messung) | | | | | | |
 
 ¹ Nur der Hinweis `FIRST` in der Nutzernachricht (`t3-v27b`), nicht die
-Beispiele.
+Beispiele; qwen3:8b damals 89/165 gegen 93/165 (Abschnitt 2.3).
 
 ---
 
@@ -330,4 +554,6 @@ uv run python evals/compare.py --changed p0-gemma4 p0-gemma4-s6
 
 Die Ergebnisdateien (`evals/results/`, nicht im Git) enthalten jede Antwort
 im Wortlaut. Die Läufe dieses Dokuments: `t3-v0-*`, `t3-v27-*`,
-`t3-v27b-*`, `t3-v27c-*`, `t3-v27c-*-s6`.
+`t3-v27b-*`, `t3-v27c-*`, `t3-v27c-*-s6`; Phase 1: `p0-*` (Liste in 8.1).
+gpt-oss:20b braucht `--effort medium` (bzw. `low`); alle anderen laufen mit
+dem Standard `none`.
