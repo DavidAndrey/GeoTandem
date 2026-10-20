@@ -294,7 +294,7 @@ Unterschied ist belegt. Luna +3,0 Prozentpunkte (95 %: −7,9 … +13,6, ein
 Block), gemma4:e4b −3,0, qwen3:14b −3,6; nur 9 der 33 Fälle unterscheiden
 sich überhaupt. 15 Fälle bestehen alle Modelle.
 
-**Held-out-Satz** (Entwurf 2026-10-20, zur Durchsicht): 30 Abfragen und 8
+**Held-out-Satz** (2026-10-20, vom Projektverantwortlichen durchgesehen und freigegeben): 30 Abfragen und 8
 Verhaltensfälle (Rückfrage, Kette, Puffer, Löschen, Injektion, unbekannter
 Layer, Tabelle, Zählen je Gruppe). Jede Referenzabfrage ist gegen die
 Beispieldaten und die Prüfung der Direktabfrage gelaufen, und eine
