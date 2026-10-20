@@ -559,6 +559,21 @@ def test_follow_up_turns_carry_words_never_queries(world: DataBackend) -> None:
     assert last.endswith(case("follow_up_hand_edited")["prompt"])
 
 
+@pytest.mark.parametrize("fence", ["```json\n{}\n```", "```\n{}\n```\n", "  ```json \n{}\n  ```  "])
+def test_an_answer_in_one_code_fence_reads(fence: str) -> None:
+    """Without constrained output a model writes the object in a fence (X-7)."""
+    text = json.dumps(case("cannot_answer")["answer"])
+    answer = parse_answer(Completion(text=fence.replace("{}", text)), "direct")
+    assert answer.kind == "cannot_answer"
+
+
+def test_text_around_a_fence_does_not_read() -> None:
+    text = json.dumps(case("cannot_answer")["answer"])
+    with pytest.raises(ActionError) as caught:
+        parse_answer(Completion(text=f"Hier ist die Antwort:\n```json\n{text}\n```"), "direct")
+    assert caught.value.code == "model_unreadable"
+
+
 def test_turns_of_other_answers() -> None:
     clarification = parse_answer(
         Completion(text=json.dumps(case("clarification")["answer"])), "direct"

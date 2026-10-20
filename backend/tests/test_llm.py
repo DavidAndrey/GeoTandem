@@ -24,6 +24,7 @@ from geotandem.llm import (
     ToolSpec,
     classify_host,
     host_of,
+    openai_compat,
 )
 from geotandem.llm.fake import FakeLLMClient
 from geotandem.llm.openai_compat import MAX_RESPONSE_BYTES, OpenAICompatClient
@@ -112,6 +113,78 @@ def test_schema_output_is_requested_and_parsed_verbatim() -> None:
     assert len(stub.chat_requests()) == 2
 
 
+UNION = {
+    "$defs": {
+        "A": {"type": "object", "properties": {"kind": {"const": "a"}}},
+        "B": {"type": "object", "properties": {"kind": {"const": "b"}}},
+    },
+    "oneOf": [{"$ref": "#/$defs/A"}, {"$ref": "#/$defs/B"}],
+    "discriminator": {"propertyName": "kind"},
+}
+
+
+def refused_format() -> httpx2.Response:
+    message = "Invalid schema for response_format 'answer': … Wie viele Schulen?"
+    error = {"message": message, "type": "invalid_request_error", "param": "response_format"}
+    return httpx2.Response(400, json={"error": error})
+
+
+@pytest.fixture(autouse=True)
+def _no_wrapped_endpoints() -> Iterator[None]:
+    openai_compat._WRAPPED.clear()
+    yield
+    openai_compat._WRAPPED.clear()
+
+
+def test_a_root_union_goes_as_it_is_where_the_endpoint_takes_it() -> None:
+    """Ollama keeps the request it had: wrapping cost gemma4 15 of 330 (X-6)."""
+    stub = OllamaStub(answers=[chat('{"kind": "a"}')])
+    with client(stub) as llm:
+        answer = llm.complete(ASK, schema=UNION)
+    assert stub.chat_requests()[0].body["response_format"]["json_schema"]["schema"] == UNION
+    assert answer.parsed == {"kind": "a"}
+
+
+def test_a_refused_root_union_is_sent_again_wrapped_and_stays_wrapped() -> None:
+    """OpenAI refuses a root combinator; the reply is unwrapped, and one that
+    comes unwrapped anyway is kept."""
+    stub = OllamaStub(
+        answers=[refused_format(), chat('{"answer": {"kind": "a"}}'), chat('{"kind": "b"}')]
+    )
+    with client(stub) as llm:
+        wrapped = llm.complete(ASK, schema=UNION)
+    with client(stub) as llm:  # a new client, as every call builds one (C8)
+        plain = llm.complete(ASK, schema=UNION)
+
+    sent = [r.body["response_format"]["json_schema"]["schema"] for r in stub.chat_requests()]
+    assert sent[0] == UNION
+    assert (
+        sent[1]
+        == sent[2]
+        == {
+            "type": "object",
+            "properties": {
+                "answer": {"oneOf": UNION["oneOf"], "discriminator": UNION["discriminator"]}
+            },
+            "required": ["answer"],
+            "$defs": UNION["$defs"],
+        }
+    )
+    assert (wrapped.parsed, wrapped.text) == ({"kind": "a"}, '{"answer": {"kind": "a"}}')
+    assert plain.parsed == {"kind": "b"}
+
+
+def test_a_refused_format_that_wrapping_cannot_help_is_a_rejection() -> None:
+    stub = OllamaStub(answers=[refused_format()] * 3)
+    with client(stub) as llm:
+        plain = error_of(lambda: llm.complete(ASK, schema=SCHEMA))
+        union = error_of(lambda: llm.complete(ASK, schema=UNION))
+    assert (plain.code, plain.cause, union.code) == ("llm_rejected", "HTTP 400", "llm_rejected")
+    # The object schema is not wrapped; the union is tried once wrapped, then given up.
+    assert len(stub.chat_requests()) == 3
+    assert "Schulen" not in str(plain) + str(union)
+
+
 def test_tools_are_offered_and_calls_parsed() -> None:
     calls = [
         {"name": "describe_layer", "arguments": '{"layer": "schulen"}'},
@@ -169,6 +242,31 @@ def test_transient_failures_are_retried_twice_with_backoff() -> None:
     with client(stub, sleep=waits.append) as llm:
         answer = llm.complete(ASK)
     assert (answer.text, answer.retries, waits) == ("ok", 2, [0.5, 1.0])
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        {"message": "Wie viele Schulen? (echoed)", "type": "insufficient_quota"},
+        {"message": "Wie viele Schulen?", "type": "x", "code": "credit_balance_exhausted"},
+    ],
+)
+def test_an_exhausted_balance_is_its_own_code_and_not_retried(error: dict[str, str]) -> None:
+    stub = OllamaStub(answers=[httpx2.Response(429, json={"error": error})] * 3)
+    with client(stub, sleep=lambda _: None) as llm:
+        found = error_of(lambda: llm.complete(ASK))
+    assert (found.code, found.retries, len(stub.chat_requests())) == ("llm_quota_exhausted", 0, 1)
+    # Only the listed value leaves the body (C13, X-5).
+    assert found.cause in ("HTTP 429 insufficient_quota", "HTTP 429 credit_balance_exhausted")
+    assert "Schulen" not in str(found)
+
+
+def test_an_unlisted_error_type_stays_a_rate_limit() -> None:
+    body = {"error": {"message": "slow down", "type": "requests", "code": "rate_limit_exceeded"}}
+    stub = OllamaStub(answers=[httpx2.Response(429, json=body)] * 3)
+    with client(stub, sleep=lambda _: None) as llm:
+        found = error_of(lambda: llm.complete(ASK))
+    assert (found.code, found.cause) == ("llm_rate_limited", "HTTP 429")
 
 
 @pytest.mark.parametrize(

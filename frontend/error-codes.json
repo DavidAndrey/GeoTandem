@@ -53,6 +53,7 @@
   "llm_invalid_url": "The base URL is not http(s) with a host, or carries credentials.",
   "llm_model_missing": "The endpoint does not offer the model (details.model).",
   "llm_not_found": "The endpoint or the model does not exist.",
+  "llm_quota_exhausted": "The endpoint's account has no balance left.",
   "llm_rate_limited": "The endpoint limits requests; retried and gave up.",
   "llm_redirect": "The endpoint redirected; redirects are not followed.",
   "llm_rejected": "The endpoint rejected the request (HTTP 4xx).",

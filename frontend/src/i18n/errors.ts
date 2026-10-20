@@ -224,6 +224,8 @@ const MESSAGES: Record<string, Words> = {
   llm_unauthorized: () => t`Der Zugangsschlüssel wurde abgelehnt.`,
   llm_not_found: () => t`Diese Adresse oder dieses Modell gibt es dort nicht.`,
   llm_rate_limited: () => t`Das Modell nimmt gerade keine weiteren Anfragen an.`,
+  llm_quota_exhausted: () =>
+    t`Das Guthaben beim Anbieter des Modells ist aufgebraucht. Eine Administratorin oder ein Administrator muss es aufladen.`,
   llm_server_error: () => t`Beim Modell ist ein Fehler aufgetreten.`,
   llm_rejected: () => t`Das Modell hat die Anfrage abgelehnt.`,
   llm_bad_response: () => t`Die Antwort des Modells hat nicht die erwartete Form.`,

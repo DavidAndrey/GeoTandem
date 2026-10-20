@@ -60,6 +60,29 @@ the transport's `cause`. The run's first line names `variant`, `examples` and
 question: two runs with the same hash sent the same prompt. The summary ends
 with the median latency, mean tokens and the number of errors.
 
+## Fair comparisons (testplan-external-models, 9)
+
+| Option | Effect |
+|---|---|
+| `--cases heldout` | [heldout.json](heldout.json) in place of [cases.json](cases.json): questions no prompt change is tuned on |
+| `--no-format` | no constrained output; the schema only as text in the prompt, as every endpoint can take it (H-8) |
+| `--api-key-env NAME` | the endpoint's key from the environment variable `NAME`; the run header names the variable, never the key |
+
+`compare.py` joins seed blocks with `+`, sums per case tag with `--by-tag`,
+and with `--stats` compares each column with the first case by case (wins,
+losses, mean difference with a bootstrap interval, sign test): the answers of
+one case are not independent, so the sample is the cases.
+
+```sh
+uv run python evals/compare.py --stats --by-tag ho-luna+ho-luna-s6 ho-gemma4_12b+ho-gemma4_12b-s6
+```
+
+A case may list `gold_any`, several fair readings that select different
+features; any one passes. `tags` group the cases; `needs-values` marks one
+that only a model knowing attribute values can pass. A held-out case is never
+a reason to change the prompt: a change is judged on cases.json and
+confirmed on heldout.json.
+
 ## Verdicts
 
 

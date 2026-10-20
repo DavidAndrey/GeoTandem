@@ -11,6 +11,7 @@ dataset and the default level; only the grading is the harness's own. See
 
 import argparse
 import json
+import os
 import statistics
 import sys
 import tempfile
@@ -32,6 +33,7 @@ from geotandem.db.bootstrap import bootstrap
 from geotandem.engine import ids_query
 from geotandem.levels.store import load_levels
 from geotandem.llm import Completion, Endpoint, LLMError, Message
+from geotandem.llm.hosts import host_of
 from geotandem.llm.openai_compat import OpenAICompatClient
 from geotandem.model.direct import DirectQuery, direct_prompt
 from geotandem.model.errors import ActionError
@@ -48,12 +50,17 @@ PASS = "pass"
 
 class Recording(OpenAICompatClient):
     """The real client, keeping its last completion: tokens for every answer
-    (H-3), the verbatim text when the answer does not read (H-4)."""
+    (H-3), the verbatim text when the answer does not read (H-4). With
+    ``text_only`` the schema is not sent as constrained output; the prompt
+    still holds it as text, as for an endpoint that ignores it (H-8)."""
 
     last: Completion | None = None
+    text_only = False
 
     def complete(self, messages: Sequence[Message], **kwargs: Any) -> Completion:
         self.last = None
+        if self.text_only:
+            kwargs["schema"] = None
         self.last = super().complete(messages, **kwargs)
         return self.last
 
@@ -108,10 +115,12 @@ def grade(
     if refusal is not None:
         return f"refused:{refusal.code}"
     assert query is not None
-    if "gold" in case:
-        want = ids_query(query_of(case["gold"]), backend, LIMITS)
+    if "gold" in case or "gold_any" in case:
+        # More than one fair reading with different features: any one passes.
+        golds = case.get("gold_any") or [case["gold"]]
         got = ids_query(query, backend, LIMITS)
-        return PASS if got == want else f"wrong:{len(got)}≠{len(want)}"
+        wants = [ids_query(query_of(gold), backend, LIMITS) for gold in golds]
+        return PASS if got in wants else f"wrong:{len(got)}≠{len(wants[0])}"
     need = case["require"]
     if query.source != need["source"]:
         return f"wrong:source={query.source}"
@@ -141,6 +150,11 @@ def main() -> int:
     parser.add_argument("--url", default="http://127.0.0.1:11434/v1")
     parser.add_argument("--model", required=True)
     parser.add_argument(
+        "--api-key-env",
+        metavar="NAME",
+        help="the API key from this environment variable; the run names it, never its value",
+    )
+    parser.add_argument(
         "--effort", default="none", choices=["default", "none", "low", "medium", "high"]
     )
     parser.add_argument("--temperature", type=float, default=0)
@@ -154,6 +168,17 @@ def main() -> int:
         "--seed-start", type=int, default=1, help="first seed; another start measures the noise"
     )
     parser.add_argument("--only", help="comma-separated case ids")
+    parser.add_argument(
+        "--cases",
+        default="cases",
+        metavar="NAME",
+        help="NAME.json of this directory: cases (tuning set, default) or heldout",
+    )
+    parser.add_argument(
+        "--no-format",
+        action="store_true",
+        help="no constrained output; the schema only as text in the prompt (H-8)",
+    )
     parser.add_argument("--label", default="run")
     parser.add_argument(
         "--no-examples",
@@ -181,8 +206,13 @@ def main() -> int:
         parser.error("--no-examples takes neither --examples nor a variant")
     examples = "" if args.no_examples else load_examples(args.examples) if args.examples else None
     variant = VARIANTS[args.variant]
+    api_key = None
+    if args.api_key_env:
+        api_key = os.environ.get(args.api_key_env)
+        if not api_key:
+            parser.error(f"--api-key-env: {args.api_key_env} is not set")
 
-    cases = json.loads((HERE / "cases.json").read_text("utf-8"))["cases"]
+    cases = json.loads((HERE / f"{args.cases}.json").read_text("utf-8"))["cases"]
     if args.only:
         cases = [c for c in cases if c["id"] in args.only.split(",")]
 
@@ -217,8 +247,12 @@ def main() -> int:
         header = {
             "label": args.label,
             "model": args.model,
+            "host": host_of(args.url),
+            "api_key_env": args.api_key_env,
             "effort": args.effort,
             "variant": args.variant,
+            "cases": args.cases,
+            "format": "text" if args.no_format else "constrained",
             "examples": "none" if args.no_examples else args.examples or "default",
             "prompt_sha256": prompt_hash(list(template.messages), template.schema),
             "messages": [m.role for m in template.messages],
@@ -233,6 +267,7 @@ def main() -> int:
                 endpoint = Endpoint(
                     base_url=args.url,
                     model=args.model,
+                    api_key=api_key,
                     seed=seed,
                     temperature=args.temperature,
                     timeout_s=300,
@@ -241,6 +276,7 @@ def main() -> int:
                 prompt = build(case["prompt"])
                 record: dict[str, Any] = {"case": case["id"], "seed": seed}
                 client = Recording(endpoint)
+                client.text_only = args.no_format
                 try:
                     found = DirectQuery(client, context, level).ask(prompt, profile=profile)
                     verdict = grade(case, found.answer, found.refusal, found.query, backend)

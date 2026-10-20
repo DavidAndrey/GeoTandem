@@ -699,3 +699,24 @@ route's method (#41), and a level or a request limit that a chain outlived
   already allows (`auto` cells) and ask for a comparison's repeat; `adopt`,
   the plan's edit, the comparison and every approval need an interactive
   session.
+
+## Adapter change, phase 1b (testplan-external-models X-5, X-6)
+
+Date: 2026-10-20. Scope: `llm/openai_compat.py` only.
+
+- **One field of an error body is now read (X-5).** OpenAI sends an
+  exhausted balance as 429, which was `llm_rate_limited` and retried twice.
+  The adapter now reads `type` and `code` of the error object (as the SDK
+  already parses them) and compares each against the fixed set
+  `QUOTA_CODES`. Only a listed value leaves, in `cause`
+  (`HTTP 429 insufficient_quota`); the message, which may echo the request,
+  never does (tested with a prompt word in the body). Not retried. C13 holds:
+  no body text reaches a response or a log line.
+- **The answer schema may go wrapped (X-6).** A schema whose root is not a
+  plain object goes as it is; only after a 400 whose `param` is
+  `response_format` is it sent once more as `{"answer": <schema>}` with
+  `$defs` at the root, and wrapped for that base URL and model for the rest
+  of the process (the `param` field is the only part of that body read). The
+  reply is unwrapped only when it is exactly that one key. A reply that is not
+  wrapped is parsed as before and checked by `parse_answer` as before, so the
+  wrapper adds no path around the answer's validation.
