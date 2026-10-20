@@ -193,6 +193,7 @@ Antwort (H-3).
 | X-2 | **Temperatur in der Anbindung**: Claude 5.x lehnt jeden Wert unter 1 ab, die Vorgabe ist 0 | vorerst 1 von Hand eintragen; falls der Rauchtest das auch für OpenAI zeigt: Vorgabe 1 für externe Anbindungen oder eine Option «nicht senden» (ändert C4) |
 | X-3 | **Eingeschränkte Ausgabe bei Anthropic**: ignoriert, das Schema wirkt nur als Text | nach dem Lauf: nichts tun, solange `model_unreadable` unter 2 % liegt; sonst einen nativen Adapter abwägen (ändert tech-stack 3.5) |
 | X-4 | **`strict: true` für OpenAI** | nur wenn der Lauf Antworten ausserhalb des Schemas zeigt; vorher prüfen, ob das Antwortschema die strikte Teilmenge erfüllt |
+| X-5 | **Erschöpftes Guthaben erkennen** (8.1) | `error.code` gegen eine feste Liste lesen, eigener Code ohne Wiederholung; braucht eine Ergänzung von C13 im Sicherheitsreview |
 
 ---
 
@@ -204,6 +205,22 @@ Antwort (H-3).
 |---|---|---|---|---|---:|
 | Anthropic | | | | | |
 | OpenAI | | | | | |
+
+**2026-10-20, `gpt-6-luna`, erster Versuch (`x-smoke-luna`):** 0/3, jede
+Antwort `error:llm_rate_limited` nach zwei Wiederholungen. Ursache laut
+Antwortkörper (von Hand gelesen): `insufficient_quota` /
+`credit_balance_exhausted`, das Konto hat kein Guthaben. Der Schlüssel ist
+gültig: Im Verbindungstest sind `reachable` (127 Modelle), `authorised` und
+`model` grün, `json_schema` scheitert mit HTTP 429. Der Schlüssel steht in
+keiner Ergebnisdatei. Weiter, sobald Guthaben geladen ist.
+
+**Befund für die Anwendung (X-5):** OpenAI meldet ein erschöpftes Guthaben
+als 429. Der Adapter liest den Antwortkörper nicht (C13), nennt es deshalb
+«The endpoint limits requests» und wiederholt zweimal ohne Aussicht. Eine
+Administratorin sucht so am falschen Ort. Vorschlag: aus dem Fehlerkörper nur
+das Feld `error.code` lesen und gegen eine feste Liste prüfen (z. B.
+`insufficient_quota` ⇒ eigener Code `llm_quota_exhausted`, keine
+Wiederholung); kein Text des Körpers gelangt nach aussen.
 
 ### 8.2 P0
 
