@@ -16,8 +16,9 @@ from pathlib import Path
 HERE = Path(__file__).parent
 
 
-def passes(label: str) -> dict[str, tuple[int, int]]:
-    """Case id → (passed, runs) of the newest run with ``label``."""
+def passes(label: str) -> tuple[dict[str, tuple[int, int]], int]:
+    """Case id → (passed, runs) of the newest run with ``label``, and its
+    number of ``error:*`` answers."""
     # <date>-<time>-<label>.jsonl; "v27-x" must not match "t3-v27-x".
     files = sorted(
         path
@@ -27,13 +28,15 @@ def passes(label: str) -> dict[str, tuple[int, int]]:
     if not files:
         raise SystemExit(f"no run labelled {label!r} in {HERE / 'results'}")
     counts: dict[str, list[int]] = defaultdict(lambda: [0, 0])
+    errors = 0
     with files[-1].open(encoding="utf-8") as lines:
         next(lines)  # the run's header
         for line in lines:
             record = json.loads(line)
             counts[record["case"]][0] += record["verdict"] == "pass"
             counts[record["case"]][1] += 1
-    return {case: (n[0], n[1]) for case, n in counts.items()}
+            errors += record["verdict"].startswith("error:")
+    return {case: (n[0], n[1]) for case, n in counts.items()}, errors
 
 
 def main() -> int:
@@ -41,7 +44,8 @@ def main() -> int:
     parser.add_argument("labels", nargs="+")
     parser.add_argument("--changed", action="store_true", help="only cases that differ")
     args = parser.parse_args()
-    runs = {label: passes(label) for label in args.labels}
+    loaded = {label: passes(label) for label in args.labels}
+    runs = {label: found for label, (found, _) in loaded.items()}
     cases = [c["id"] for c in json.loads((HERE / "cases.json").read_text("utf-8"))["cases"]]
 
     def cell(label: str, case: str) -> str:
@@ -61,6 +65,7 @@ def main() -> int:
         total = sum(n[1] for n in runs[label].values())
         sums.append(f"**{passed}/{total}**")
     print("| **Summe** | " + " | ".join(sums) + " |")
+    print("| Fehler (`error:*`) | " + " | ".join(str(n) for _, n in loaded.values()) + " |")
     return 0
 
 

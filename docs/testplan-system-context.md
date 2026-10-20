@@ -285,6 +285,10 @@ bis eine Variante gewinnt.
    2026-10-13** (8.1): Phase 2 läuft mit vier Modellen, gemma4:12b
    (Referenz), gemma4:e4b, qwen3:14b und qwen3.5:9b. Vor Phase 2 folgt
    eine Phase 1b (wird noch beschrieben).
+1b. **Phase 1b, obere Referenz (extern):** P0 auf je einem Modell von
+   Anthropic und OpenAI; Fälle, die auch diese verfehlen, vor Phase 2
+   bereinigen; dazu die Nutzbarkeit beider Anbieter in der Anwendung.
+   Eigener Plan: [testplan-external-models.md](testplan-external-models.md).
 2. **Phase 2, Platzierung:** H-1 bis H-5 umsetzen (erledigt, Abschnitt 6).
    Dann P1, P4, P5, P6, P8, P9 (einsetzbar) auf allen vier Modellen. P2, P3,
    P7 als Messung, um zu wissen, was E-8 und S3 kosten. Regel 3.5 gilt je

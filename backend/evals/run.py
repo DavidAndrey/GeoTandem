@@ -11,6 +11,7 @@ dataset and the default level; only the grading is the harness's own. See
 
 import argparse
 import json
+import os
 import statistics
 import sys
 import tempfile
@@ -32,6 +33,7 @@ from geotandem.db.bootstrap import bootstrap
 from geotandem.engine import ids_query
 from geotandem.levels.store import load_levels
 from geotandem.llm import Completion, Endpoint, LLMError, Message
+from geotandem.llm.hosts import host_of
 from geotandem.llm.openai_compat import OpenAICompatClient
 from geotandem.model.direct import DirectQuery, direct_prompt
 from geotandem.model.errors import ActionError
@@ -141,6 +143,11 @@ def main() -> int:
     parser.add_argument("--url", default="http://127.0.0.1:11434/v1")
     parser.add_argument("--model", required=True)
     parser.add_argument(
+        "--api-key-env",
+        metavar="NAME",
+        help="the API key from this environment variable; the run names it, never its value",
+    )
+    parser.add_argument(
         "--effort", default="none", choices=["default", "none", "low", "medium", "high"]
     )
     parser.add_argument("--temperature", type=float, default=0)
@@ -181,6 +188,11 @@ def main() -> int:
         parser.error("--no-examples takes neither --examples nor a variant")
     examples = "" if args.no_examples else load_examples(args.examples) if args.examples else None
     variant = VARIANTS[args.variant]
+    api_key = None
+    if args.api_key_env:
+        api_key = os.environ.get(args.api_key_env)
+        if not api_key:
+            parser.error(f"--api-key-env: {args.api_key_env} is not set")
 
     cases = json.loads((HERE / "cases.json").read_text("utf-8"))["cases"]
     if args.only:
@@ -217,6 +229,8 @@ def main() -> int:
         header = {
             "label": args.label,
             "model": args.model,
+            "host": host_of(args.url),
+            "api_key_env": args.api_key_env,
             "effort": args.effort,
             "variant": args.variant,
             "examples": "none" if args.no_examples else args.examples or "default",
@@ -233,6 +247,7 @@ def main() -> int:
                 endpoint = Endpoint(
                     base_url=args.url,
                     model=args.model,
+                    api_key=api_key,
                     seed=seed,
                     temperature=args.temperature,
                     timeout_s=300,
