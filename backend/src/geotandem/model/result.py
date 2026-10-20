@@ -14,6 +14,7 @@ the log keeps it (C15).
 
 import copy
 import json
+import re
 from functools import cache
 from typing import Any, Final
 
@@ -221,12 +222,23 @@ def parse_answer(completion: Completion, approach: Approach) -> Answer:
         raise
 
 
+_FENCE = re.compile(r"\A\s*```(?:json)?[ \t]*\n(.*)\n[ \t]*```\s*\Z", re.DOTALL)
+
+
+def _unfenced(text: str) -> str:
+    """``text`` without one Markdown code fence around it. An endpoint that does
+    not constrain the output (Anthropic's compatibility, X-7) often writes
+    ```` ```json ```` around the object; nothing else is taken off."""
+    found = _FENCE.match(text)
+    return found.group(1) if found else text
+
+
 def _parse(completion: Completion, approach: Approach) -> Answer:
     try:
         data = completion.parsed
         if data is None:
             try:
-                data = json.loads(completion.text)
+                data = json.loads(_unfenced(completion.text))
             except json.JSONDecodeError as exc:
                 # The decoder's message names a position, never the text.
                 raise unreadable(f"not JSON: {exc.msg} at char {exc.pos}") from None

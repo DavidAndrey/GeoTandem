@@ -1,38 +1,75 @@
 {
-  "_about": "Questions to a real model over the sample dataset (evals/README.md). A case passes when the model's query is accepted and returns the same feature ids as 'gold'; where a question has more than one fair reading, 'require' names what the query must contain instead (source layer, and per condition op, layer, predicate, attribute, value, and a distance range). 'expect' names a non-query answer kind. Questions are worded as users ask them, not as docs/filters.md titles them; the prompt's examples (model/prompt.py) use invented layers, so no case is answered there. 'also' names further answer kinds that pass; 'other_approach' (with 'expect' cannot_answer) is checked when present, null meaning none offered; 'forbid' fails an answer whose text holds one of the words (the prompt's invented example layers). Cases n01-n15: docs/testplan-initial-llm-run.md, 9.",
+  "_about": "Questions to a real model over the sample dataset (evals/README.md). A case passes when the model's query is accepted and returns the same feature ids as 'gold'; where a question has more than one fair reading, 'require' names what the query must contain instead (source layer, and per condition op, layer, predicate, attribute, value, and a distance range). 'expect' names a non-query answer kind. Questions are worded as users ask them, not as docs/filters.md titles them; the prompt's examples (model/prompt.py) use invented layers, so no case is answered there. 'also' names further answer kinds that pass; 'other_approach' (with 'expect' cannot_answer) is checked when present, null meaning none offered; 'forbid' fails an answer whose text holds one of the words (the prompt's invented example layers). Cases n01-n15: docs/testplan-initial-llm-run.md, 9. 'gold_any' lists several fair readings that select different features; any one passes (doc1: typ is the highest level, so a school with primarstufe is a Primarschule too). 'tags' group the cases for compare.py --by-tag; 'needs-values' marks a case only a model that knows attribute values can pass (E-7).",
   "cases": [
     {
       "id": "doc1-primar-koeniz",
       "prompt": "Welche Primarschulen gibt es in Köniz?",
-      "gold": {
-        "source": "schulen",
-        "where": {
-          "op": "and",
-          "args": [
-            {
-              "op": "compare",
-              "attr": "typ",
-              "cmp": "eq",
-              "value": "primar"
-            },
-            {
-              "op": "related",
-              "layer": "gemeinden",
-              "predicate": "within",
-              "where": {
+      "tags": [
+        "spatial",
+        "in",
+        "combination",
+        "ambiguous"
+      ],
+      "gold_any": [
+        {
+          "source": "schulen",
+          "where": {
+            "op": "and",
+            "args": [
+              {
                 "op": "compare",
-                "attr": "name",
+                "attr": "typ",
                 "cmp": "eq",
-                "value": "Köniz"
+                "value": "primar"
+              },
+              {
+                "op": "related",
+                "layer": "gemeinden",
+                "predicate": "within",
+                "where": {
+                  "op": "compare",
+                  "attr": "name",
+                  "cmp": "eq",
+                  "value": "Köniz"
+                }
               }
-            }
-          ]
+            ]
+          }
+        },
+        {
+          "source": "schulen",
+          "where": {
+            "op": "and",
+            "args": [
+              {
+                "op": "compare",
+                "attr": "primarstufe",
+                "cmp": "eq",
+                "value": true
+              },
+              {
+                "op": "related",
+                "layer": "gemeinden",
+                "predicate": "within",
+                "where": {
+                  "op": "compare",
+                  "attr": "name",
+                  "cmp": "eq",
+                  "value": "Köniz"
+                }
+              }
+            ]
+          }
         }
-      }
+      ]
     },
     {
       "id": "doc2-gut-erschlossen",
       "prompt": "Zeig mir die Haltestellen der Kategorie I oder II und alle Bahnhaltestellen.",
+      "tags": [
+        "combination",
+        "in-list"
+      ],
       "gold": {
         "source": "haltestellen",
         "where": {
@@ -59,6 +96,11 @@
     {
       "id": "doc3-weit-von-bahn",
       "prompt": "Welche Schulen sind mehr als 1 km von der nächsten Bahnhaltestelle entfernt?",
+      "tags": [
+        "spatial",
+        "near",
+        "negation"
+      ],
       "gold": {
         "source": "schulen",
         "where": {
@@ -81,6 +123,11 @@
     {
       "id": "doc4-ohne-sek",
       "prompt": "In welchen Gemeinden gibt es keine Schule mit Sekundarstufe I?",
+      "tags": [
+        "spatial",
+        "negation",
+        "two-layers"
+      ],
       "gold": {
         "source": "gemeinden",
         "where": {
@@ -102,6 +149,10 @@
     {
       "id": "doc5-aare",
       "prompt": "Durch welche Gemeinden fliesst die Aare?",
+      "tags": [
+        "spatial",
+        "two-layers"
+      ],
       "gold": {
         "source": "gemeinden",
         "where": {
@@ -120,6 +171,11 @@
     {
       "id": "doc6-verschachtelt",
       "prompt": "Deutschsprachige Schulen höchstens 300 m von einer Haltestelle, die entweder eine Sekundarstufe I oder mehr als ein Schulhaus haben.",
+      "tags": [
+        "combination",
+        "nesting",
+        "near"
+      ],
       "gold": {
         "source": "schulen",
         "where": {
@@ -161,6 +217,11 @@
     {
       "id": "log1-haltestellen-nahe-schulen",
       "prompt": "Welche Haltestellen liegen nahe an Schulen?",
+      "tags": [
+        "spatial",
+        "near",
+        "ambiguous"
+      ],
       "require": {
         "source": "haltestellen",
         "conditions": [
@@ -179,6 +240,11 @@
     {
       "id": "log2-schulen-in-bern",
       "prompt": "wie viele Schulen gibt es auf der Gemeinde Bern ?",
+      "tags": [
+        "spatial",
+        "in",
+        "count"
+      ],
       "gold": {
         "source": "schulen",
         "where": {
@@ -197,6 +263,10 @@
     {
       "id": "log4-schulen-200m",
       "prompt": "Schulen mit Haltestellen maximal 200m entfernt",
+      "tags": [
+        "spatial",
+        "near"
+      ],
       "gold": {
         "source": "schulen",
         "where": {
@@ -210,6 +280,10 @@
     {
       "id": "attr-franzoesisch",
       "prompt": "Wo sind die französischsprachigen Schulen?",
+      "tags": [
+        "attribute",
+        "code"
+      ],
       "gold": {
         "source": "schulen",
         "where": {
@@ -223,6 +297,10 @@
     {
       "id": "attr-schulhaeuser",
       "prompt": "Schulen mit mehr als drei Schulhäusern",
+      "tags": [
+        "attribute",
+        "range"
+      ],
       "gold": {
         "source": "schulen",
         "where": {
@@ -236,6 +314,10 @@
     {
       "id": "attr-ohne-kindergarten",
       "prompt": "Welche Schulen haben keinen Kindergarten?",
+      "tags": [
+        "attribute",
+        "negation"
+      ],
       "gold": {
         "source": "schulen",
         "where": {
@@ -249,6 +331,10 @@
     {
       "id": "attr-flaeche",
       "prompt": "Gemeinden, die grösser als 30 km² sind",
+      "tags": [
+        "attribute",
+        "range"
+      ],
       "gold": {
         "source": "gemeinden",
         "where": {
@@ -262,6 +348,10 @@
     {
       "id": "text-beginnt-bern",
       "prompt": "Haltestellen, deren Name mit Bern beginnt",
+      "tags": [
+        "attribute",
+        "text"
+      ],
       "gold": {
         "source": "haltestellen",
         "where": {
@@ -276,6 +366,11 @@
     {
       "id": "in-gemeinde-bahn",
       "prompt": "Bahnhaltestellen in Ostermundigen",
+      "tags": [
+        "spatial",
+        "in",
+        "combination"
+      ],
       "gold": {
         "source": "haltestellen",
         "where": {
@@ -305,6 +400,11 @@
     {
       "id": "dist-nationalstrasse",
       "prompt": "Schulen im Umkreis von 500 m um eine Nationalstrasse",
+      "tags": [
+        "spatial",
+        "near",
+        "two-layers"
+      ],
       "gold": {
         "source": "schulen",
         "where": {
@@ -324,11 +424,17 @@
     {
       "id": "none-spitaeler",
       "prompt": "Wie viele Spitäler gibt es in Bern?",
+      "tags": [
+        "unknown-layer"
+      ],
       "expect": "cannot_answer"
     },
     {
       "id": "n01-tram-zaehlen",
       "prompt": "Wie viele Tramhaltestellen gibt es?",
+      "tags": [
+        "count"
+      ],
       "gold": {
         "source": "haltestellen",
         "where": {
@@ -342,6 +448,10 @@
     {
       "id": "n02-kategorie-bereich",
       "prompt": "Zeig die Haltestellen der Kategorien III bis V.",
+      "tags": [
+        "attribute",
+        "in-list"
+      ],
       "gold": {
         "source": "haltestellen",
         "where": {
@@ -358,12 +468,19 @@
     {
       "id": "n03-einwohner-tabelle",
       "prompt": "Welche Gemeinden haben mehr als 10 000 Einwohner?",
+      "tags": [
+        "table"
+      ],
       "expect": "cannot_answer",
       "other_approach": null
     },
     {
       "id": "n04-grosse-gemeinden",
       "prompt": "Zeig mir die grossen Gemeinden.",
+      "tags": [
+        "ambiguous",
+        "clarification"
+      ],
       "also": [
         "clarification"
       ],
@@ -380,6 +497,10 @@
     {
       "id": "n05-gemeinde-franz-schule",
       "prompt": "In welchen Gemeinden gibt es eine französischsprachige Schule?",
+      "tags": [
+        "spatial",
+        "two-layers"
+      ],
       "gold": {
         "source": "gemeinden",
         "where": {
@@ -398,6 +519,12 @@
     {
       "id": "n06-primar-tram",
       "prompt": "Primarschulen höchstens 400 m von einer Tramhaltestelle",
+      "tags": [
+        "spatial",
+        "near",
+        "two-layers",
+        "combination"
+      ],
       "gold": {
         "source": "schulen",
         "where": {
@@ -428,11 +555,17 @@
     {
       "id": "n07-zwei-filter",
       "prompt": "Schulen höchstens 300 m von einer Bushaltestelle der Kategorie II",
+      "tags": [
+        "chain"
+      ],
       "expect": "cannot_answer"
     },
     {
       "id": "n08-sekundarstufe",
       "prompt": "Welche Schulen bieten die Sekundarstufe I an?",
+      "tags": [
+        "attribute"
+      ],
       "gold": {
         "source": "schulen",
         "where": {
@@ -446,6 +579,10 @@
     {
       "id": "n09-ausserhalb-bern",
       "prompt": "Welche Haltestellen liegen ausserhalb der Stadt Bern?",
+      "tags": [
+        "spatial",
+        "outside"
+      ],
       "gold": {
         "source": "haltestellen",
         "where": {
@@ -467,6 +604,10 @@
     {
       "id": "n10-strassen-durch-koeniz",
       "prompt": "Welche Strassen führen durch Köniz?",
+      "tags": [
+        "spatial",
+        "in"
+      ],
       "gold": {
         "source": "strassen",
         "where": {
@@ -485,6 +626,10 @@
     {
       "id": "n11-einwohner-bereich",
       "prompt": "Haltestellen mit 1000 bis 5000 Einwohnern im Einzugsgebiet",
+      "tags": [
+        "attribute",
+        "range"
+      ],
       "gold": {
         "source": "haltestellen",
         "where": {
@@ -498,6 +643,10 @@
     {
       "id": "n12-schiff-leer",
       "prompt": "Wo sind die Schiffsanlegestellen?",
+      "tags": [
+        "attribute",
+        "code"
+      ],
       "gold": {
         "source": "haltestellen",
         "where": {
@@ -511,6 +660,11 @@
     {
       "id": "n13-bahnhof-bern",
       "prompt": "Schulen im Umkreis von 1 km um den Bahnhof Bern",
+      "tags": [
+        "spatial",
+        "near",
+        "needs-values"
+      ],
       "gold": {
         "source": "schulen",
         "where": {
@@ -530,17 +684,28 @@
     {
       "id": "n14-schuelerzahl",
       "prompt": "Welche Schulen haben mehr als 300 Schülerinnen und Schüler?",
+      "tags": [
+        "unknown-attribute"
+      ],
       "expect": "cannot_answer"
     },
     {
       "id": "n15-je-gemeinde",
       "prompt": "Wie viele Schulen gibt es in jeder Gemeinde?",
+      "tags": [
+        "count",
+        "per-group"
+      ],
       "expect": "cannot_answer",
       "other_approach": null
     },
     {
       "id": "x-ohne-kontext",
       "prompt": "passe die Distanz auf 100m an",
+      "tags": [
+        "context",
+        "clarification"
+      ],
       "expect": "clarification",
       "also": [
         "cannot_answer"

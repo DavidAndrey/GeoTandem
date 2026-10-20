@@ -195,6 +195,7 @@ Antwort (H-3).
 | X-4 | **`strict: true` für OpenAI** | nur wenn der Lauf Antworten ausserhalb des Schemas zeigt; vorher prüfen, ob das Antwortschema die strikte Teilmenge erfüllt |
 | X-5 | **Erschöpftes Guthaben erkennen** (8.1) — *umgesetzt 2026-10-20* | `type` und `code` des Fehlerkörpers gegen `QUOTA_CODES`; Code `llm_quota_exhausted`, keine Wiederholung, im Arbeitsplatz «Grenzwert erreicht» mit Hinweis an die Administration; C9 und C13 ergänzt ([plan-e2.0-e2.2.md](plan-e2.0-e2.2.md)), Sicherheitsreview nachgeführt |
 | X-6 | **Antwortschema verpacken** (8.1) — *umgesetzt 2026-10-20* | im Adapter nur als Rückfallebene, wenn der Anbieter das Schema mit `param: response_format` abweist; für alle Anbieter verpackt kostete gemma4 −15/330 (Regel 3.5 des Kontext-Testplans: nicht übernommen) |
+| X-7 | **Antwort in einem Code-Zaun** — *umgesetzt 2026-10-20* | `parse_answer` nimmt genau einen ```` ```json ```` -Zaun um das Objekt ab; ohne eingeschränkte Ausgabe schreiben gemma4 (und vermutlich Claude) ihn fast immer. Text um den Zaun bleibt `model_unreadable` |
 
 ---
 
@@ -273,3 +274,47 @@ Prompt, ein anderer Tokenizer.
 
 | Anbieter | Verbindungstest | Direktabfrage (5) | Werkzeugkette (5) | Bemerkungen |
 |---|---|---|---|---|
+
+---
+
+## 9 Fairer Vergleich und Held-out-Fragen
+
+Der erste Vergleich (8.2) war in fünf Punkten schief. So wird er gerade gestellt:
+
+| Schieflage | Massnahme |
+|---|---|
+| Luna 165, die lokalen Modelle 330 Antworten | zweiter Block für Luna (`x-p0-luna-s6`) |
+| Ausgabe verschieden erzwungen: Grammatik (Ollama), verpackt (Luna), gar nicht (Claude) | zusätzlich eine gemeinsame Bedingung **nur Text** (`--no-format`, H-8) neben «wie eingesetzt» |
+| Prompt an gemma4 und qwen3 abgestimmt (V-2 bis V-7 aus ihren Fehlern) | **Held-out-Satz** [heldout.json](../backend/evals/heldout.json): 38 Fragen, an denen nie abgestimmt wird |
+| vertretbare Lesart als falsch bewertet (`doc1`) | `gold_any`: mehrere Referenzabfragen, jede gilt |
+| Summe ohne Streuung; fünf Antworten eines Falls sind nicht unabhängig | `compare.py --stats`: je Fall gepaart, besser/schlechter/gleich, mittlerer Unterschied mit Bootstrap-Intervall über die Fälle, Vorzeichentest; `--by-tag` je Fähigkeit |
+
+**Befund vorweg (Tuning-Satz, P0, je zwei Blöcke gegen gemma4:12b):** kein
+Unterschied ist belegt. Luna +3,0 Prozentpunkte (95 %: −7,9 … +13,6, ein
+Block), gemma4:e4b −3,0, qwen3:14b −3,6; nur 9 der 33 Fälle unterscheiden
+sich überhaupt. 15 Fälle bestehen alle Modelle.
+
+**Held-out-Satz** (Entwurf 2026-10-20, zur Durchsicht): 30 Abfragen und 8
+Verhaltensfälle (Rückfrage, Kette, Puffer, Löschen, Injektion, unbekannter
+Layer, Tabelle, Zählen je Gruppe). Jede Referenzabfrage ist gegen die
+Beispieldaten und die Prüfung der Direktabfrage gelaufen, und eine
+naheliegende falsche Lesart liefert andere Objekte (`h14` musste dafür
+umformuliert werden: Mit nur einer französischsprachigen Schule unterschied
+die Klammerung nichts). Drei Fälle fragen dasselbe in drei Wortlauten
+(`paraphrase:muensingen`), zwei in Englisch und Mundart (`language`).
+Nicht verwendete Attribute sind jetzt abgedeckt: `gewaesser.typ`,
+`laenge_km`, `haltestellen.arbeitsplaetze`, `strassen.klasse`,
+`schulen.standorte`.
+
+**Tags im Tuning-Satz:** `n13` trägt `needs-values` (die Bahnhaltestelle
+heisst «Bern», daneben gibt es «Bern, Hauptbahnhof»; kein Modell kann das aus
+Metadaten wissen), `doc1` hat `gold_any` (`typ` ist die *höchste* Stufe, eine
+Schule mit `primarstufe` ist auch eine Primarschule).
+
+**Läufe:** je Modell (gpt-6-luna, gemma4:12b, gemma4:e4b, qwen3:14b)
+Held-out mit zwei Blöcken, dazu «nur Text» auf beiden Sätzen mit einem Block.
+Labels `ho-*`, `ho-*-s6`, `tx-*`, `txho-*`.
+
+### 9.1 Ergebnisse
+
+(folgt)
