@@ -1403,6 +1403,10 @@ msgstr "Das geht nur in einer angemeldeten Sitzung im Browser, nicht mit einem Z
 msgid "Das Gesuchte gibt es nicht (mehr)."
 msgstr "Das Gesuchte gibt es nicht (mehr)."
 
+#: src/i18n/errors.ts
+msgid "Das Guthaben beim Anbieter des Modells ist aufgebraucht. Eine Administratorin oder ein Administrator muss es aufladen."
+msgstr "Das Guthaben beim Anbieter des Modells ist aufgebraucht. Eine Administratorin oder ein Administrator muss es aufladen."
+
 #: src/admin/UsersPage.tsx
 msgid "Das Konto und seine Anmeldungen werden entfernt. Das Importprotokoll behält den Namen."
 msgstr "Das Konto und seine Anmeldungen werden entfernt. Das Importprotokoll behält den Namen."

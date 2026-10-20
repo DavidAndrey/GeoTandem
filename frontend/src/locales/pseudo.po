@@ -1403,6 +1403,10 @@ msgstr ""
 msgid "Das Gesuchte gibt es nicht (mehr)."
 msgstr ""
 
+#: src/i18n/errors.ts
+msgid "Das Guthaben beim Anbieter des Modells ist aufgebraucht. Eine Administratorin oder ein Administrator muss es aufladen."
+msgstr ""
+
 #: src/admin/UsersPage.tsx
 msgid "Das Konto und seine Anmeldungen werden entfernt. Das Importprotokoll behält den Namen."
 msgstr ""

@@ -106,6 +106,7 @@ CODES: dict[str, str] = {
     "llm_unauthorized": "The endpoint refused the credentials.",
     "llm_not_found": "The endpoint or the model does not exist.",
     "llm_rate_limited": "The endpoint limits requests; retried and gave up.",
+    "llm_quota_exhausted": "The endpoint's account has no balance left.",
     "llm_server_error": "The endpoint failed (HTTP 5xx).",
     "llm_rejected": "The endpoint rejected the request (HTTP 4xx).",
     "llm_bad_response": "The endpoint's answer is not a valid response.",

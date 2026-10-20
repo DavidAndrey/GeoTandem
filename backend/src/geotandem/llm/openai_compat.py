@@ -24,6 +24,16 @@ Guards, each tested on the transport actually used:
   ``llm_bad_response`` (``cause`` "too large") past ``MAX_RESPONSE_BYTES``;
   it is asked for uncompressed, and a compressed one is refused, so the limit
   is what is decoded too.
+- An exhausted balance is ``llm_quota_exhausted``, not retried. The error body
+  is read for its ``type`` and ``code`` fields only, each compared against
+  ``QUOTA_CODES``; nothing else of it goes further (C13, X-5).
+- A schema whose root is not a plain object (the answer union is a ``oneOf``)
+  goes as it is first. Only when the endpoint refuses it (400 naming
+  ``param: response_format``, OpenAI) is it sent again wrapped as
+  ``{"answer": …}``, and from then on wrapped for that endpoint and model.
+  Wrapping for every endpoint cost gemma4:12b 15 of 330 answers, so Ollama
+  keeps the request it had. The reply is unwrapped; one that came unwrapped
+  is taken as it is (X-6).
 """
 
 import json
@@ -52,6 +62,16 @@ log = logging.getLogger("geotandem.llm")
 
 MAX_RETRIES = 2
 RETRY_STATUS = frozenset({408, 409, 425, 429})
+QUOTA_CODES = frozenset(
+    {"insufficient_quota", "credit_balance_exhausted", "billing_hard_limit_reached"}
+)
+"""Error ``type`` or ``code`` values meaning the account has no balance left
+(OpenAI sends them with 429). Asking again cannot help."""
+WRAP_KEY = "answer"
+_WRAPPED: set[tuple[str, str]] = set()
+"""Endpoints (base URL, model) that refused a root combinator: wrapped from
+then on, for the life of the process. Clients are built per call (C8)."""
+_COMBINATORS = ("oneOf", "anyOf", "allOf", "enum", "const", "not")
 CONNECT_TIMEOUT_S = 5.0
 PROBE_TIMEOUT_S = 5.0
 
@@ -62,6 +82,10 @@ direct query's answer is a few kilobytes; the cap is far above it."""
 _SENT_HEADERS = frozenset(
     {"accept", "accept-encoding", "content-type", "content-length", "host", "user-agent"}
 )
+
+
+class _FormatRefused(Exception):
+    """A 400 that names ``response_format``: ``complete`` may wrap and ask again."""
 
 
 class _Refused(Exception):
@@ -262,6 +286,33 @@ def _status_error(status: int, retries: int) -> LLMError:
     return LLMError(code, message, cause=f"HTTP {status}", retries=retries)
 
 
+def _quota(exc: openai.APIStatusError) -> str | None:
+    """The ``QUOTA_CODES`` value the error names, else ``None``; only the
+    body's ``type`` and ``code`` are looked at, and only a listed value leaves."""
+    for value in (getattr(exc, "type", None), getattr(exc, "code", None)):
+        if isinstance(value, str) and value in QUOTA_CODES:
+            return value
+    return None
+
+
+def _needs_wrap(schema: dict[str, Any]) -> bool:
+    return schema.get("type") != "object" or any(k in schema for k in _COMBINATORS)
+
+
+def _wrapped(schema: dict[str, Any]) -> dict[str, Any]:
+    """``schema`` as the one property of an object; ``$defs`` stay at the root,
+    so every ``#/$defs/…`` reference resolves as before."""
+    inner = {k: v for k, v in schema.items() if k != "$defs"}
+    wrapper: dict[str, Any] = {
+        "type": "object",
+        "properties": {WRAP_KEY: inner},
+        "required": [WRAP_KEY],
+    }
+    if "$defs" in schema:
+        wrapper["$defs"] = schema["$defs"]
+    return wrapper
+
+
 def _cause(exc: BaseException) -> str:
     inner = exc.__cause__ or exc.__context__
     return f"{type(inner).__name__}: {inner}" if inner else type(exc).__name__
@@ -371,6 +422,15 @@ class OpenAICompatClient:
                 )
                 retryable = True
             except openai.APIStatusError as exc:
+                if (quota := _quota(exc)) is not None:
+                    raise LLMError(
+                        "llm_quota_exhausted",
+                        "The endpoint's account has no balance left.",
+                        cause=f"HTTP {exc.status_code} {quota}",
+                        retries=retries,
+                    ) from None
+                if exc.status_code == 400 and getattr(exc, "param", None) == "response_format":
+                    raise _FormatRefused from None
                 error = _status_error(exc.status_code, retries)
                 retryable = exc.status_code in RETRY_STATUS or exc.status_code >= 500
             except openai.APIError as exc:
@@ -407,11 +467,21 @@ class OpenAICompatClient:
             request["seed"] = endpoint.seed
         if endpoint.reasoning_effort != "default":
             request["reasoning_effort"] = endpoint.reasoning_effort
-        if schema is not None:
-            request["response_format"] = {
+        key = (endpoint.base_url, endpoint.model)
+        wrap = schema is not None and _needs_wrap(schema) and key in _WRAPPED
+
+        def format_(wrapped: bool) -> dict[str, Any]:
+            assert schema is not None
+            return {
                 "type": "json_schema",
-                "json_schema": {"name": schema_name, "schema": schema},
+                "json_schema": {
+                    "name": schema_name,
+                    "schema": _wrapped(schema) if wrapped else schema,
+                },
             }
+
+        if schema is not None:
+            request["response_format"] = format_(wrap)
         if tools:
             request["tools"] = [
                 {
@@ -432,7 +502,18 @@ class OpenAICompatClient:
 
         started = self._clock()
         try:
-            response, retries = self._with_retries(create, deadline)
+            try:
+                response, retries = self._with_retries(create, deadline)
+            except _FormatRefused:
+                if schema is None or wrap or not _needs_wrap(schema):
+                    raise _status_error(400, 0) from None
+                _WRAPPED.add(key)
+                wrap = True
+                request["response_format"] = format_(True)
+                try:
+                    response, retries = self._with_retries(create, deadline)
+                except _FormatRefused:
+                    raise _status_error(400, 0) from None
         except LLMError as exc:
             log.info(
                 "llm call failed: model=%s code=%s retries=%d",
@@ -456,6 +537,8 @@ class OpenAICompatClient:
                 parsed = json.loads(text)
             except ValueError as exc:
                 parse_error = str(exc)
+            if wrap and isinstance(parsed, dict) and parsed.keys() == {WRAP_KEY}:
+                parsed = parsed[WRAP_KEY]
         usage = getattr(response, "usage", None)
         completion = Completion(
             text=text,

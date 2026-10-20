@@ -15,8 +15,14 @@ import { technical, type Problem } from './problems'
 import { minutes } from './time'
 
 /** Codes where trying again changes nothing (design M14.4: no button then). */
-const FINAL = ['quota_exceeded', 'llm_rate_limited', 'context_too_large', 'stale_reference']
-const LIMIT = ['quota_exceeded', 'llm_rate_limited']
+const FINAL = [
+  'quota_exceeded',
+  'llm_rate_limited',
+  'llm_quota_exhausted',
+  'context_too_large',
+  'stale_reference',
+]
+const LIMIT = ['quota_exceeded', 'llm_rate_limited', 'llm_quota_exhausted']
 /** Codes where another connection may help. */
 const SWITCH = ['llm_unreachable', 'llm_timeout', 'llm_server_error', 'model_truncated']
 /** Codes an administrator can do something about. */

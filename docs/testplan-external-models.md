@@ -193,7 +193,8 @@ Antwort (H-3).
 | X-2 | **Temperatur in der Anbindung**: Claude 5.x lehnt jeden Wert unter 1 ab, die Vorgabe ist 0 | vorerst 1 von Hand eintragen; falls der Rauchtest das auch für OpenAI zeigt: Vorgabe 1 für externe Anbindungen oder eine Option «nicht senden» (ändert C4) |
 | X-3 | **Eingeschränkte Ausgabe bei Anthropic**: ignoriert, das Schema wirkt nur als Text | nach dem Lauf: nichts tun, solange `model_unreadable` unter 2 % liegt; sonst einen nativen Adapter abwägen (ändert tech-stack 3.5) |
 | X-4 | **`strict: true` für OpenAI** | nur wenn der Lauf Antworten ausserhalb des Schemas zeigt; vorher prüfen, ob das Antwortschema die strikte Teilmenge erfüllt |
-| X-5 | **Erschöpftes Guthaben erkennen** (8.1) | `error.code` gegen eine feste Liste lesen, eigener Code ohne Wiederholung; braucht eine Ergänzung von C13 im Sicherheitsreview |
+| X-5 | **Erschöpftes Guthaben erkennen** (8.1) — *umgesetzt 2026-10-20* | `type` und `code` des Fehlerkörpers gegen `QUOTA_CODES`; Code `llm_quota_exhausted`, keine Wiederholung, im Arbeitsplatz «Grenzwert erreicht» mit Hinweis an die Administration; C9 und C13 ergänzt ([plan-e2.0-e2.2.md](plan-e2.0-e2.2.md)), Sicherheitsreview nachgeführt |
+| X-6 | **Antwortschema verpacken** (8.1) — *umgesetzt 2026-10-20* | im Adapter nur als Rückfallebene, wenn der Anbieter das Schema mit `param: response_format` abweist; für alle Anbieter verpackt kostete gemma4 −15/330 (Regel 3.5 des Kontext-Testplans: nicht übernommen) |
 
 ---
 
@@ -214,6 +215,29 @@ gültig: Im Verbindungstest sind `reachable` (127 Modelle), `authorised` und
 `model` grün, `json_schema` scheitert mit HTTP 429. Der Schlüssel steht in
 keiner Ergebnisdatei. Weiter, sobald Guthaben geladen ist.
 
+**2026-10-20, nach dem Aufladen:** Verbindungstest der Anwendung **grün**
+(alle Schritte, `json_schema` 3,8 s, `tool_call` 4,1 s; Temperatur 0,3,
+Effort `none`). Der Rauchtest dagegen 0/3 mit `llm_rejected`, mit Temperatur
+0,3 wie 1: OpenAI weist das Antwortschema ab, «schema must have type 'object'
+and not have 'oneOf'/'anyOf'/'allOf'/'enum'/'const'/'not' at the top level».
+Das Antwortschema der Direktabfrage ist eine `oneOf`-Vereinigung der
+Antwortarten; Ollama nimmt sie an, OpenAI nicht. Der Verbindungstest prüft nur
+ein schlichtes Objekt und merkte es deshalb nicht.
+
+**Behoben mit X-6** (Adapter): Ein Schema, dessen Wurzel kein schlichtes
+Objekt ist, geht zuerst unverändert hinaus. Weist der Anbieter es mit 400 und
+`param: response_format` ab, fragt der Adapter einmal neu mit
+`{"answer": …}` (`$defs` an der Wurzel) und verpackt für diese Adresse und
+dieses Modell von da an immer; die Antwort wird ausgepackt. Eine nicht
+verpackte Antwort (Anthropic wertet `response_format` nicht aus) gilt wie
+bisher. Die erste Fassung verpackte für alle Anbieter und kostete gemma4
+15 von 330 Antworten (8.2); Ollama erhält deshalb dieselbe Anfrage wie vorher.
+Rauchtest mit der Rückfallebene: 3/3 (`x-smoke-luna-fallback`).
+
+| Anbieter | Modell | angenommene Parameter | abgelehnt | JSON lesbar | Kosten je Aufruf |
+|---|---|---|---|---|---:|
+| OpenAI | `gpt-6-luna` | `temperature` 0,3 und 1, `seed`, `reasoning_effort: none`, `json_schema` (verpackt), `tools` | `json_schema` mit `oneOf` an der Wurzel | ja, 165/165 | ≈ 0,0008 USD (7 400 Tokens Eingabe, 100 Ausgabe) |
+
 **Befund für die Anwendung (X-5):** OpenAI meldet ein erschöpftes Guthaben
 als 429. Der Adapter liest den Antwortkörper nicht (C13), nennt es deshalb
 «The endpoint limits requests» und wiederholt zweimal ohne Aussicht. Eine
@@ -226,15 +250,24 @@ Wiederholung); kein Text des Körpers gelangt nach aussen.
 
 | Modell | Bestanden | `model_unreadable` | übrige `error:*` | Antwortzeit (Median) | Kosten |
 |---|---:|---:|---:|---:|---:|
-| gemma4:12b (Referenz, T 0,3) | 130/165 | | | | – |
-| qwen3:8b (T 0,3) | 93/165 | | | | – |
-| gpt-6-luna (`none`) | | | | | |
+| gemma4:12b (Referenz, T 0,3, Seeds 1–5 / 6–10) | 130 / 132 | 0 | 0 | 1,1 s | – |
+| gemma4:12b, Schema immer verpackt (erste Fassung X-6, **verworfen**) | 126 / 121 | 0 | 0 | 1,5 s | – |
+| qwen3:14b (T 0,3) | 125/165 | 0 | 0 | | – |
+| **gpt-6-luna** (`none`, T 0,3) | **136/165** | 0 | 0 | 2,1 s | ≈ 0,13 USD |
 | claude-sonnet-5-5 | | | | | |
+
+Luna liest im Mittel 7 438 Tokens Eingabe gegen 5 573 bei gemma4: derselbe
+Prompt, ein anderer Tokenizer.
 
 ### 8.3 Fälle nach Klasse
 
-| Fall | gemma4 | qwen3 | Claude | OpenAI | Klasse | Folge |
-|---|---:|---:|---:|---:|---|---|
+| Fall | gemma4:12b | qwen3:14b | Luna | Klasse | Befund | Folge |
+|---|---:|---:|---:|---|---|---|
+| `n13-bahnhof-bern` | 0/5 | 0/5 | 0/5 | **Anwendung** | alle schreiben `name = "Bahnhof Bern"`, die Haltestelle heisst «Bern» | kein Modell kann den Wert aus Metadaten wissen: E-7 (Werte im Steckbrief) |
+| `n07-zwei-filter` | 0/5 | 0/5 | 0/5 | **Schema** | alle schreiben zwei Bedingungen auf den Bezugslayer, obwohl die Regel eine einzige verlangt; die Anwendung weist sie als `not_representable` ab | die Grenze ins Schema der Direktabfrage (`_controls_only`), statt sie nur zu sagen; die Abweisung als Netz wirkt |
+| `doc1-primar-koeniz` | 5/5 | 5/5 | 0/5 | **Fall** | Luna liest «Primarschulen» als `primarstufe = true` (8 statt 4), zudem dreimal `contains` statt `within` | zweite Referenzabfrage `primarstufe = true` prüfen (testplan-initial-llm-run 7.2); `contains` ist falsch |
+| `doc4-ohne-sek` | 0/5 | 5/5 | 2/5 | **Regel** | «In welchen Gemeinden …» gilt als Zählen je Gruppe: `cannot_answer` mit Verweis auf «Verknüpfen und Zusammenfassen» | die Regel «je Gemeinde» schärfer abgrenzen; Kandidat für Phase 2 |
+| `doc6-verschachtelt`, `n06-primar-tram`, `x-ohne-kontext` | 0/5 | 2, 0, 3 | 2, 3, 5 | Modell lokal | Luna löst sie (teilweise) | bleibt Gegenstand von Phase 2 |
 
 ### 8.4 Anwendung
 
