@@ -119,3 +119,25 @@ Zu den Fragen unter «Offen» von Lauf 1: Die Spitze ist mit 330 Antworten je
 Modell abgesichert (gemma4:12b vor gemma4:e4b und qwen3:14b, Abstand 10 bis
 12). Die `error`-Fälle von gpt-oss sind leere Antworten; mit `medium` sind
 es 8 statt 24 von 330.
+
+## Lauf 2: obere Referenz und fairer Vergleich (2026-10-20)
+
+| | |
+|---|---|
+| Stand | Branch `p1b-external-models`, Commit `24b896e` |
+| Hardware | wie Lauf 1; gpt-6-luna über api.openai.com |
+| Fälle | Tuning-Satz `cases.json` (33) und Held-out-Satz `heldout.json` (38), je × 5 |
+| Parameter | Temperatur 0,3, Effort `none`, P0; zwei Seed-Blöcke für «eingesetzt», einer für «nur Text» |
+| Plan und Lesart | [testplan-external-models.md](testplan-external-models.md), 9 |
+
+| Modell | Tuning, eingesetzt | Held-out, eingesetzt | Tuning, nur Text | Held-out, nur Text | Latenz Median | Kosten je 165 Fragen |
+|---|---:|---:|---:|---:|---:|---:|
+| gpt-6-luna | 270/330 (82 %) | **336/380 (88 %)** | 136/165 | 174/190 | 2,0 s | ≈ 0,13 USD |
+| gemma4:12b | 262/330 (79 %) | 322/380 (85 %) | 123/165 | 148/190 | 1,4 s | – |
+| qwen3:14b | 250/330 (76 %) | 293/380 (77 %) | 115/165 | 130/190 | 2,8 s | – |
+| gemma4:e4b | 252/330 (76 %) | 287/380 (76 %) | 89/165 | 104/190 | 0,8 s | – |
+
+Luna und gemma4:12b unterscheiden sich nicht belegbar (Held-out −3,7
+Prozentpunkte für gemma4, 95 %: −15,8 … +7,6). Ohne eingeschränkte Ausgabe
+verlieren die lokalen Modelle 7 bis 38 Antworten, Luna keine.
+

@@ -315,6 +315,55 @@ Schule mit `primarstufe` ist auch eine Primarschule).
 Held-out mit zwei Blöcken, dazu «nur Text» auf beiden Sätzen mit einem Block.
 Labels `ho-*`, `ho-*-s6`, `tx-*`, `txho-*`.
 
-### 9.1 Ergebnisse
+### 9.1 Ergebnisse (2026-10-20)
 
-(folgt)
+Temperatur 0,3, Effort `none`, P0. «Wie eingesetzt» = eingeschränkte
+Ausgabe, wie die Anwendung sie sendet (Luna verpackt, X-6); «nur Text» =
+`--no-format`, ein Block.
+
+| Modell | Tuning, eingesetzt (2 Blöcke) | **Held-out, eingesetzt (2 Blöcke)** | Tuning, nur Text | Held-out, nur Text | Unlesbar nur Text (T / H) |
+|---|---:|---:|---:|---:|---:|
+| gpt-6-luna | 270/330¹ (82 %) | **336/380 (88 %)** | 136/165 | 174/190 | 1 / 0 |
+| gemma4:12b | 262/330 (79 %) | **322/380 (85 %)** | 123/165 | 148/190 | 13 / 16 |
+| qwen3:14b | 250/330 (76 %) | **293/380 (77 %)** | 115/165 | 130/190 | 1 / 4 (+2 Zeitlimit) |
+| gemma4:e4b | 252/330 (76 %) | **287/380 (76 %)** | 89/165 | 104/190 | 37 / 35 |
+
+¹ `x-p0-luna` (136) und `x-p0-luna-s6` (134). Die Tuning-Läufe sind vor `gold_any` für `doc1` bewertet: Luna würde dort 2 von 5 Antworten des ersten Blocks mehr bestehen.
+
+**Gepaart über die Fälle, Held-out, eingesetzt, gegen Luna** (`--stats`):
+
+| Modell | besser | schlechter | Δ Mittel | 95 %-Intervall | p (Vorzeichen) |
+|---|---:|---:|---:|---|---:|
+| gemma4:12b | 6 | 8 | −3,7 | −15,8 … +7,6 | 0,79 |
+| qwen3:14b | 4 | 10 | −11,3 | −22,6 … −1,6 | 0,18 |
+| gemma4:e4b | 6 | 11 | −12,9 | −25,5 … −1,3 | 0,33 |
+
+**Lesart**
+
+1. **Luna und gemma4:12b sind nicht zu unterscheiden** (Tuning wie Held-out).
+   Vor qwen3:14b und gemma4:e4b liegt Luna wahrscheinlich: Das
+   Bootstrap-Intervall schliesst 0 aus, der Vorzeichentest noch nicht. Mehr
+   Fälle würden das klären.
+2. **Kein Zeichen von Überanpassung.** gemma4:12b ist auf den Held-out-Fragen
+   nicht schlechter als auf den Tuning-Fragen (85 gegen 79 %); der Held-out-Satz
+   ist allerdings attributlastiger und darum etwas leichter.
+3. **Die eingeschränkte Ausgabe trägt die lokalen Modelle**, Luna braucht sie
+   nicht: ohne sie Luna ±0 bzw. +5, gemma4:12b −7 bzw. −14, qwen3:14b −10 bzw.
+   −16, gemma4:e4b −37 bzw. −38, vor allem unlesbare Antworten
+   (`union_tag_not_found`, JSON mit Text danach). Für Claude, das nur Text
+   bekommt, ist das ein gutes Zeichen; X-7 (Code-Zaun) ist dafür nötig.
+4. **Je Fähigkeit** (`--by-tag`, Held-out, eingesetzt): Luna führt bei
+   Verneinung (100 gegen 75 % bei gemma4:12b), zwei Layern (87 gegen 58 %) und
+   Tabelle (100 gegen 0 %); gemma4:12b führt bei Listen (100 gegen 68 %) und
+   «ausserhalb» (100 gegen 30 %).
+
+**Befunde für Phase 2 und die Anwendung**
+
+| Befund | Fälle | Modelle | Klasse | Folge |
+|---|---|---|---|---|
+| Richtung des Prädikats: Haltestelle `contains` Gemeinde statt `within` | `h18` 1/10, `h25` 3/10, `doc1` | Luna | Modell | Beschreibung von `predicate` im Schema schärfen («Objekte der Quelle *in* …»); an Luna und gemma4 messen |
+| «Gemeinden mit/ohne X» gilt als Verknüpfen/Zusammenfassen ⇒ `cannot_answer` | `h23` 0/10, `h27` 0/10, `doc4` 0/10 | gemma4:12b | **Regel** | die Regel «Verknüpfen und Zusammenfassen» gegen `related` abgrenzen; erste Variante für Phase 2 |
+| zwei Bedingungen auf dem Bezugslayer | `h32` 0/10, `n07` 0/10 | alle | **Schema** | die Grenze ins Schema der Direktabfrage; die Abweisung `not_representable` greift heute zuverlässig |
+| Attribut des Tabellen-Layers abgefragt | `h37` 0/10 | alle lokalen | Regel | die Abweisung (`not_representable`, `source`) greift; Regel prüfen |
+| «Lösche …» als lesende Abfrage beantwortet | `h34` 1/10 | Luna | – | harmlos (F-9.5 hält), nur festgehalten |
+| Puffer: `cannot_answer` ohne Verweis auf die Kette | `h33` | alle | Regel | «kein Puffer» steht neben «Kette puffert»; Satz prüfen |
