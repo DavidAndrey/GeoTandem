@@ -548,6 +548,44 @@ Seeds 1–5, je Modell gegen sein P0; Schwellen in 8.1.
 ¹ Nur der Hinweis `FIRST` in der Nutzernachricht (`t3-v27b`), nicht die
 Beispiele; qwen3:8b damals 89/165 gegen 93/165 (Abschnitt 2.3).
 
+### 8.3 Regel- und Schemavarianten aus Phase 1b (2026-10-21)
+
+Aus den Befunden der oberen Referenz
+([testplan-external-models.md](testplan-external-models.md), 9.1). Je ein
+Block auf dem Tuning-Satz (33 × 5) und dem Held-out-Satz (38 × 5), gegen P0
+derselben Modelle; Branches `p2-related-rule` (`2da7575`) und
+`p2-related-schema` (`7e97264`), **nicht gemergt**.
+
+| Variante | Änderung | gemma4:12b T / H | gemma4:e4b T / H | qwen3:14b T / H | qwen3.5:9b T / H | Zielfälle | Entscheid |
+|---|---|---:|---:|---:|---:|---|---|
+| P0 | – | 130 · 132 / 162 · 160 | 126 · 126 / 142 · 145 | 125 · 125 / 146 · 147 | 112 · 113 / 131 · 139 | – | Referenz |
+| **R1** | Satz «Eine Bedingung auf die Objekte eines anderen Layers ist kein Verknüpfen …» im Antwortformat | 130 / 164 | 126 / 141 | 122 / **135** | 106 / 122 | gemma4 `doc4`, `h23`, `h27` bleiben 0/5 | **verworfen**: kein Zielgewinn, qwen3:14b −11 im Held-out |
+| **S1** | im Schema der Direktabfrage `where` eines `related` nur eine Attributbedingung | 133 / 163 | 126 / 140 | 120 / 153 | 108 / 127 | `n07`, `h32`: alle `kind:query` | **verworfen**: Abfragen werden still falsch |
+
+T = Tuning (/165), H = Held-out (/190); P0 mit beiden Seed-Blöcken.
+
+**R1: Was die Regel nicht trifft.** gemma4:12b schreibt bei `h23` jetzt eine
+Abfrage statt `cannot_answer`, aber mit verkehrter Richtung
+(Gemeinde `within` Haltestelle statt `contains`, 74 statt 36 Gemeinden). Bei
+`doc4` und `h27` denkt es an die Gemeindenummer und den Tabellen-Layer
+(«über eine Gemeindennummer auf einen Table-Layer zu aggregieren»). qwen3:14b
+lässt bei `h23` neu den Filter «Bahn» weg. Die gemeinsame Ursache bei mehreren
+Modellen (auch Luna, `h18`, `h25`, `doc1`) ist die **Richtung von
+`predicate`**, nicht die Regel zum Verknüpfen. Nächste Variante R2: die
+Richtung im Schema und in den Regeln eindeutig beschreiben («Objekte der
+Quelle liegen *in* den Objekten von `layer`: `within`»).
+
+**S1: Eine Grenze im Schema kann gefährlicher sein als die Abweisung.** Mit
+nur einer erlaubten Bedingung lässt jedes Modell in **40 von 40** Antworten
+auf `n07`/`h32` eine der beiden weg (nur «Bus» oder nur «Kategorie II»), und
+die Anwendung nimmt die Abfrage an: Die Nutzerin sieht ein falsches Ergebnis
+ohne Hinweis. Heute weist die Anwendung die Abfrage mit zwei Bedingungen als
+`not_representable` ab, das ist das sichere Verhalten. Die Grenze bleibt
+deshalb in der Prüfung, nicht im Schema. Allgemein: Die eingeschränkte Ausgabe
+zwingt eine Form; sie wählt nicht `cannot_answer`, wenn die Form fehlt.
+Nebenbefund: qwen3:14b gewinnt unter S1 `h18` und `h25` (0 ⇒ 5/5), weil es
+die Gemeindeliste als `in` statt als Gruppe schreibt.
+
 ---
 
 ## 9 Reproduzieren
