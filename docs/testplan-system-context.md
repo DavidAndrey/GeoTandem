@@ -289,8 +289,9 @@ bis eine Variante gewinnt.
    Anthropic und OpenAI; Fälle, die auch diese verfehlen, vor Phase 2
    bereinigen; dazu die Nutzbarkeit beider Anbieter in der Anwendung.
    Eigener Plan: [testplan-external-models.md](testplan-external-models.md).
-   Ergebnis: **claude-haiku-5-5** ist die externe Referenz und läuft in
-   Phase 2 neben den vier lokalen Hauptmodellen mit (X-11).
+   Ergebnis: **claude-haiku-5-5** und **gpt-6-luna** sind die externen
+   Referenzen und laufen in Phase 2 neben den vier lokalen Hauptmodellen mit,
+   je ein Anbieter, damit keiner bevorzugt wird (X-11).
 2. **Phase 2, Platzierung:** H-1 bis H-5 umsetzen (erledigt, Abschnitt 6).
    Dann P1, P4, P5, P6, P8, P9 (einsetzbar) auf allen vier Modellen. P2, P3,
    P7 als Messung, um zu wissen, was E-8 und S3 kosten. Regel 3.5 gilt je
