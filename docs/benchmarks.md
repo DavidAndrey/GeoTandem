@@ -158,5 +158,5 @@ die Zahlen von Lauf 2 ab. Lesart: [testplan-external-models.md](testplan-externa
 | qwen3:14b | 250/330 (76 %) | 293/380 (77 %) | 2,8 s | lokal |
 | qwen3.5:9b | 225/330 (68 %) | 270/380 (71 %) | 1,6 s | lokal |
 
-Sonnet mit X-10 neu bewertet (Text nach dem JSON-Objekt). Externe Referenz für
-weitere Läufe: claude-haiku-5-5 (X-11).
+Sonnet mit X-10 neu bewertet (Text nach dem JSON-Objekt). Externe Referenzen für
+weitere Läufe: claude-haiku-5-5 und gpt-6-luna (X-11).

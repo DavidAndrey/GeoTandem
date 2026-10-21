@@ -427,5 +427,5 @@ unveränderten Fällen ändert sie 0 Urteile.
 | # | Entscheid | Empfehlung |
 |---|---|---|
 | X-10 | **Text nach dem JSON-Objekt** (Sonnet 4/355) — *umgesetzt 2026-10-21* | `parse_answer` nimmt das erste vollständige Objekt, wenn danach nur noch etwas folgt; Text davor liest weiterhin nicht. `regrade.py` liest gespeicherte unlesbare Antworten neu (`raw`): Sonnet 157 ⇒ 158, 183 ⇒ 185 |
-| X-11 | **Externe Referenz** — *entschieden 2026-10-21* | **claude-haiku-5-5**: so gut wie Sonnet 5.5 (Unterschied nicht belegt) bei einem Zwanzigstel der Kosten. Läuft in jeder weiteren Messung mit, zwei Blöcke, Temperatur 1; Sonnet und Luna nur bei Bedarf |
+| X-11 | **Externe Referenzen** — *entschieden 2026-10-21* | **claude-haiku-5-5** (so gut wie Sonnet 5.5, Unterschied nicht belegt, bei einem Zwanzigstel der Kosten) **und gpt-6-luna**, damit der Vergleich keinen Anbieter bevorzugt. Beide laufen in jeder weiteren Messung mit, je zwei Blöcke auf beiden Sätzen, in der Form, die die Anwendung sendet (Haiku nur Text, Temperatur 1; Luna verpackt, Temperatur 0,3, Effort `none`). Zusammen ≈ 1,60 USD je vollständigem Vergleich; Sonnet nur bei Bedarf |
 
