@@ -151,10 +151,12 @@ die Zahlen von Lauf 2 ab. Lesart: [testplan-external-models.md](testplan-externa
 | Modell | Tuning | Held-out | Latenz Median | Kosten je Frage |
 |---|---:|---:|---:|---:|
 | claude-haiku-5-5 | 318/330 (96 %) | 374/380 (98 %) | 3,2 s | ≈ 0,0013 USD |
-| claude-sonnet-5-5 (1 Block) | 157/165 (95 %) | 183/190 (96 %) | 2,5 s | ≈ 0,024 USD |
+| claude-sonnet-5-5 (1 Block) | 158/165 (96 %) | 185/190 (97 %) | 2,5 s | ≈ 0,024 USD |
 | gpt-6-luna | 280/330 (85 %) | 336/380 (88 %) | 2,0 s | ≈ 0,0008 USD |
 | gemma4:12b | 272/330 (82 %) | 322/380 (85 %) | 1,4 s | lokal |
 | gemma4:e4b | 252/330 (76 %) | 287/380 (76 %) | 0,8 s | lokal |
 | qwen3:14b | 250/330 (76 %) | 293/380 (77 %) | 2,8 s | lokal |
 | qwen3.5:9b | 225/330 (68 %) | 270/380 (71 %) | 1,6 s | lokal |
 
+Sonnet mit X-10 neu bewertet (Text nach dem JSON-Objekt). Externe Referenz für
+weitere Läufe: claude-haiku-5-5 (X-11).

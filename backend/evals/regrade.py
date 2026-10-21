@@ -6,7 +6,8 @@ A case changed (a second fair reading in ``gold_any``) needs no new model
 call: each answer is checked and graded as ``run.py`` does, over a fresh
 sample dataset, and the run is written again as ``results/<time>-<label>.jsonl``
 with ``regraded_from`` in its header, so ``compare.py`` takes it as the newest.
-Answers that were errors stay errors.
+Answers that were errors stay errors, except an unreadable one the parser
+now reads (its verbatim ``raw``, H-4).
 """
 
 import json
@@ -23,6 +24,7 @@ from geotandem.config import Settings
 from geotandem.data.spatialite import SpatiaLiteBackend
 from geotandem.db.bootstrap import bootstrap
 from geotandem.llm import Completion
+from geotandem.model.errors import ActionError
 from geotandem.model.result import parse_answer
 from geotandem.model.schemas import QueryAnswer
 from geotandem.model.validate import Validated, validate_model_query
@@ -56,8 +58,17 @@ def main() -> int:
             log.write(json.dumps(header | {"regraded_from": source.name}) + "\n")
             for line in lines[1:]:
                 record = json.loads(line)
+                answer = None
                 if record.get("answer") is not None:
                     answer = parse_answer(Completion(text=json.dumps(record["answer"])), "direct")
+                elif record["verdict"] == "error:model_unreadable" and record.get("raw"):
+                    # Read again: the parser may have learnt to read it (X-7, X-10).
+                    try:
+                        answer = parse_answer(Completion(text=record["raw"]), "direct")
+                        record["answer"] = answer.model_dump(mode="json")
+                    except ActionError:
+                        pass
+                if answer is not None:
                     query = refusal = None
                     if isinstance(answer, QueryAnswer):
                         checked = validate_model_query(answer.query, context, profile)

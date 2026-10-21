@@ -385,14 +385,16 @@ unveränderten Fällen ändert sie 0 Urteile.
 | Modell | Tuning | Held-out | Latenz Median | Kosten je Frage | Eingabe-Tokens |
 |---|---:|---:|---:|---:|---:|
 | **claude-haiku-5-5** | **318/330 (96 %)** | **374/380 (98 %)** | 3,2 s | ≈ 0,0013 USD | 9 900 |
-| claude-sonnet-5-5 | 157/165 (95 %) | 183/190 (96 %) | 2,5 s | ≈ 0,024 USD | 9 900 |
+| claude-sonnet-5-5 | 158/165 (96 %)¹ | 185/190 (97 %)¹ | 2,5 s | ≈ 0,024 USD | 9 900 |
 | gpt-6-luna | 280/330 (85 %) | 336/380 (88 %) | 2,0 s | ≈ 0,0008 USD | 7 400 |
 | gemma4:12b | 272/330 (82 %) | 322/380 (85 %) | 1,4 s | lokal | 5 600 |
 | gemma4:e4b | 252/330 (76 %) | 287/380 (76 %) | 0,8 s | lokal | 5 600 |
 | qwen3:14b | 250/330 (76 %) | 293/380 (77 %) | 2,8 s | lokal | 5 600 |
 | qwen3.5:9b | 225/330 (68 %) | 270/380 (71 %) | 1,6 s | lokal | 5 600 |
 
-**Gepaart gegen Sonnet** (`--stats`, Fälle als Stichprobe):
+¹ Mit X-10 neu bewertet (vorher 157 und 183): die vier Antworten mit Text nach dem Objekt lesen jetzt.
+
+**Gepaart gegen Sonnet** (`--stats`, Fälle als Stichprobe, vor X-10):
 
 | Modell | Tuning Δ (95 %) | p | Held-out Δ (95 %) | p |
 |---|---|---:|---|---:|
@@ -424,5 +426,6 @@ unveränderten Fällen ändert sie 0 Urteile.
 
 | # | Entscheid | Empfehlung |
 |---|---|---|
-| X-10 | **Text nach dem JSON-Objekt** (Sonnet 4/355) | das erste vollständige Objekt nehmen, wenn danach nur Text folgt; wie X-7 nur im Pfad ohne eingeschränkte Ausgabe wirksam |
+| X-10 | **Text nach dem JSON-Objekt** (Sonnet 4/355) — *umgesetzt 2026-10-21* | `parse_answer` nimmt das erste vollständige Objekt, wenn danach nur noch etwas folgt; Text davor liest weiterhin nicht. `regrade.py` liest gespeicherte unlesbare Antworten neu (`raw`): Sonnet 157 ⇒ 158, 183 ⇒ 185 |
+| X-11 | **Externe Referenz** — *entschieden 2026-10-21* | **claude-haiku-5-5**: so gut wie Sonnet 5.5 (Unterschied nicht belegt) bei einem Zwanzigstel der Kosten. Läuft in jeder weiteren Messung mit, zwei Blöcke, Temperatur 1; Sonnet und Luna nur bei Bedarf |
 

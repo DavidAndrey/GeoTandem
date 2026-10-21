@@ -233,12 +233,25 @@ def _unfenced(text: str) -> str:
     return found.group(1) if found else text
 
 
+def _first_object(text: str) -> Any:
+    """The JSON value ``text`` starts with, text after it ignored: without
+    constrained output a model sometimes explains itself after the object
+    (Sonnet 4 of 355, X-10). Text before it still does not read."""
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as exc:
+        if exc.msg != "Extra data":
+            raise
+        value, _ = json.JSONDecoder().raw_decode(text.lstrip())
+        return value
+
+
 def _parse(completion: Completion, approach: Approach) -> Answer:
     try:
         data = completion.parsed
         if data is None:
             try:
-                data = json.loads(_unfenced(completion.text))
+                data = _first_object(_unfenced(completion.text))
             except json.JSONDecodeError as exc:
                 # The decoder's message names a position, never the text.
                 raise unreadable(f"not JSON: {exc.msg} at char {exc.pos}") from None
