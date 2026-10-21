@@ -567,6 +567,14 @@ def test_an_answer_in_one_code_fence_reads(fence: str) -> None:
     assert answer.kind == "cannot_answer"
 
 
+def test_text_after_the_object_is_ignored() -> None:
+    """Sonnet sometimes explains itself after the object (X-10)."""
+    text = json.dumps(case("cannot_answer")["answer"])
+    for tail in ["\n\nDie Frage betrifft Daten, die fehlen.", ' {"kind": "query"}']:
+        answer = parse_answer(Completion(text=text + tail), "direct")
+        assert answer.kind == "cannot_answer"
+
+
 def test_text_around_a_fence_does_not_read() -> None:
     text = json.dumps(case("cannot_answer")["answer"])
     with pytest.raises(ActionError) as caught:

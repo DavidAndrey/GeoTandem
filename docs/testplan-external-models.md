@@ -196,6 +196,8 @@ Antwort (H-3).
 | X-5 | **Erschöpftes Guthaben erkennen** (8.1) — *umgesetzt 2026-10-20* | `type` und `code` des Fehlerkörpers gegen `QUOTA_CODES`; Code `llm_quota_exhausted`, keine Wiederholung, im Arbeitsplatz «Grenzwert erreicht» mit Hinweis an die Administration; C9 und C13 ergänzt ([plan-e2.0-e2.2.md](plan-e2.0-e2.2.md)), Sicherheitsreview nachgeführt |
 | X-6 | **Antwortschema verpacken** (8.1) — *umgesetzt 2026-10-20* | im Adapter nur als Rückfallebene, wenn der Anbieter das Schema mit `param: response_format` abweist; für alle Anbieter verpackt kostete gemma4 −15/330 (Regel 3.5 des Kontext-Testplans: nicht übernommen) |
 | X-7 | **Antwort in einem Code-Zaun** — *umgesetzt 2026-10-20* | `parse_answer` nimmt genau einen ```` ```json ```` -Zaun um das Objekt ab; ohne eingeschränkte Ausgabe schreiben gemma4 (und vermutlich Claude) ihn fast immer. Text um den Zaun bleibt `model_unreadable` |
+| X-8 | **Schema als Text, wenn der Anbieter es abweist** — *umgesetzt 2026-10-21* | Anthropics Kompatibilität wertet `response_format` entgegen ihrer Dokumentation aus: verlangt `strict: true` und weist rekursive Schemas ab («Circular reference … And -> And»), das Abfrageschema ist rekursiv. Nach einem 400 auf eine Anfrage mit Schema fragt der Adapter einmal ohne `response_format`; gemerkt erst, wenn es eine Antwort brachte |
+| X-9 | **`anthropic-version` senden** — *umgesetzt 2026-10-21* | Anthropics Modellliste verlangt den Header; ohne ihn scheiterte der Verbindungstest beim ersten Schritt. Mit X-8 und X-9 ist der Verbindungstest für Sonnet 5.5 und Haiku 5.5 grün |
 
 ---
 
@@ -367,3 +369,63 @@ Ausgabe, wie die Anwendung sie sendet (Luna verpackt, X-6); «nur Text» =
 | Attribut des Tabellen-Layers abgefragt | `h37` 0/10 | alle lokalen | Regel | die Abweisung (`not_representable`, `source`) greift; Regel prüfen |
 | «Lösche …» als lesende Abfrage beantwortet | `h34` 1/10 | Luna | – | harmlos (F-9.5 hält), nur festgehalten |
 | Puffer: `cannot_answer` ohne Verweis auf die Kette | `h33` | alle | Regel | «kein Puffer» steht neben «Kette puffert»; Satz prüfen |
+
+### 9.2 Claude Sonnet 5.5 und Haiku 5.5 (2026-10-21)
+
+Über Anthropics Kompatibilität mit X-8 und X-9, also **nur Text** (die
+eingeschränkte Ausgabe weist Anthropic für das rekursive Schema ab),
+Temperatur 1 (Claude lehnt jeden Wert darunter ab), Effort nicht gesendet.
+Sonnet ein Block, Haiku zwei. Alle Tuning-Läufe sind mit `evals/regrade.py`
+gegen die berichtigten Fälle neu bewertet: `n06` hat wie `doc1` jetzt
+`gold_any` (`primarstufe = true` ist eine vertretbare Lesart von
+«Primarschule»; gemma4:12b, Luna, Sonnet und Haiku lasen sie so). Die
+Neubewertung prüft und bewertet die gespeicherten Antworten wie `run.py`; auf
+unveränderten Fällen ändert sie 0 Urteile.
+
+| Modell | Tuning | Held-out | Latenz Median | Kosten je Frage | Eingabe-Tokens |
+|---|---:|---:|---:|---:|---:|
+| **claude-haiku-5-5** | **318/330 (96 %)** | **374/380 (98 %)** | 3,2 s | ≈ 0,0013 USD | 9 900 |
+| claude-sonnet-5-5 | 158/165 (96 %)¹ | 185/190 (97 %)¹ | 2,5 s | ≈ 0,024 USD | 9 900 |
+| gpt-6-luna | 280/330 (85 %) | 336/380 (88 %) | 2,0 s | ≈ 0,0008 USD | 7 400 |
+| gemma4:12b | 272/330 (82 %) | 322/380 (85 %) | 1,4 s | lokal | 5 600 |
+| gemma4:e4b | 252/330 (76 %) | 287/380 (76 %) | 0,8 s | lokal | 5 600 |
+| qwen3:14b | 250/330 (76 %) | 293/380 (77 %) | 2,8 s | lokal | 5 600 |
+| qwen3.5:9b | 225/330 (68 %) | 270/380 (71 %) | 1,6 s | lokal | 5 600 |
+
+¹ Mit X-10 neu bewertet (vorher 157 und 183): die vier Antworten mit Text nach dem Objekt lesen jetzt.
+
+**Gepaart gegen Sonnet** (`--stats`, Fälle als Stichprobe, vor X-10):
+
+| Modell | Tuning Δ (95 %) | p | Held-out Δ (95 %) | p |
+|---|---|---:|---|---:|
+| Haiku 5.5 | +1,2 (−4,8 … +8,5) | 1,00 | +2,1 (−2,6 … +8,7) | 0,69 |
+| Luna | −10,3 (−18,2 … −3,6) | 0,04 | −7,9 (−15,8 … −1,1) | 0,07 |
+| gemma4:12b | −12,7 (−24,8 … −2,4) | 0,22 | −11,6 (−22,4 … −2,6) | 0,02 |
+| qwen3:14b | −19,4 (−32,4 … −7,6) | 0,01 | −19,2 (−31,3 … −8,7) | 0,00 |
+
+**Lesart**
+
+1. **Haiku und Sonnet sind gleich gut**, und beide sind die besten Modelle
+   der Messung: rund 10 Prozentpunkte vor Luna und 12 vor gemma4:12b, auf
+   beiden Sätzen, ohne eingeschränkte Ausgabe. Haiku kostet ein Zwanzigstel von
+   Sonnet und etwa so viel wie Luna.
+2. **Was Claude noch verfehlt:** `n13` (Werte nötig, E-7); `n07`/`h32`
+   bei Sonnet (zwei Filter, wie alle anderen; Haiku antwortet hier richtig mit
+   `cannot_answer` und Kette, 9/10 und 10/10); `h34` bei Haiku 3/10 als
+   lesende Abfrage auf «Lösche …» (harmlos, F-9.5 hält). Je Tag liegen beide
+   Claude-Modelle fast überall bei 100 %, auch bei Verneinung, zwei Layern,
+   Listen und Tabelle, wo die lokalen Modelle schwach sind.
+3. **Unlesbar:** Sonnet 4 von 355 Antworten, alle gültiges JSON mit Text
+   danach («Extra data»); Haiku 2, beide `condition` als Zahlen in Text.
+   X-7 nimmt nur einen Code-Zaun ab, nicht Text nach dem Objekt; ob das erste
+   Objekt einer Antwort gelten soll, ist ein eigener Entscheid (X-10).
+4. **Vorbehalte:** Temperatur 1 gegen 0,3; Seeds wirken bei Anthropic nicht;
+   Sonnet nur ein Block. Der Abstand zu den anderen Modellen ist auf beiden
+   Sätzen gleich gerichtet und gross, der Vergleich Haiku–Sonnet bräuchte für
+   eine Aussage unter 5 Prozentpunkten mehr Fälle.
+
+| # | Entscheid | Empfehlung |
+|---|---|---|
+| X-10 | **Text nach dem JSON-Objekt** (Sonnet 4/355) — *umgesetzt 2026-10-21* | `parse_answer` nimmt das erste vollständige Objekt, wenn danach nur noch etwas folgt; Text davor liest weiterhin nicht. `regrade.py` liest gespeicherte unlesbare Antworten neu (`raw`): Sonnet 157 ⇒ 158, 183 ⇒ 185 |
+| X-11 | **Externe Referenz** — *entschieden 2026-10-21* | **claude-haiku-5-5**: so gut wie Sonnet 5.5 (Unterschied nicht belegt) bei einem Zwanzigstel der Kosten. Läuft in jeder weiteren Messung mit, zwei Blöcke, Temperatur 1; Sonnet und Luna nur bei Bedarf |
+

@@ -1,5 +1,5 @@
 {
-  "_about": "Questions to a real model over the sample dataset (evals/README.md). A case passes when the model's query is accepted and returns the same feature ids as 'gold'; where a question has more than one fair reading, 'require' names what the query must contain instead (source layer, and per condition op, layer, predicate, attribute, value, and a distance range). 'expect' names a non-query answer kind. Questions are worded as users ask them, not as docs/filters.md titles them; the prompt's examples (model/prompt.py) use invented layers, so no case is answered there. 'also' names further answer kinds that pass; 'other_approach' (with 'expect' cannot_answer) is checked when present, null meaning none offered; 'forbid' fails an answer whose text holds one of the words (the prompt's invented example layers). Cases n01-n15: docs/testplan-initial-llm-run.md, 9. 'gold_any' lists several fair readings that select different features; any one passes (doc1: typ is the highest level, so a school with primarstufe is a Primarschule too). 'tags' group the cases for compare.py --by-tag; 'needs-values' marks a case only a model that knows attribute values can pass (E-7).",
+  "_about": "Questions to a real model over the sample dataset (evals/README.md). A case passes when the model's query is accepted and returns the same feature ids as 'gold'; where a question has more than one fair reading, 'require' names what the query must contain instead (source layer, and per condition op, layer, predicate, attribute, value, and a distance range). 'expect' names a non-query answer kind. Questions are worded as users ask them, not as docs/filters.md titles them; the prompt's examples (model/prompt.py) use invented layers, so no case is answered there. 'also' names further answer kinds that pass; 'other_approach' (with 'expect' cannot_answer) is checked when present, null meaning none offered; 'forbid' fails an answer whose text holds one of the words (the prompt's invented example layers). Cases n01-n15: docs/testplan-initial-llm-run.md, 9. 'gold_any' lists several fair readings that select different features; any one passes (doc1, n06: typ is the highest level, so a school with primarstufe is a Primarschule too). 'tags' group the cases for compare.py --by-tag; 'needs-values' marks a case only a model that knows attribute values can pass (E-7).",
   "cases": [
     {
       "id": "doc1-primar-koeniz",
@@ -523,34 +523,63 @@
         "spatial",
         "near",
         "two-layers",
-        "combination"
+        "combination",
+        "ambiguous"
       ],
-      "gold": {
-        "source": "schulen",
-        "where": {
-          "op": "and",
-          "args": [
-            {
-              "op": "compare",
-              "attr": "typ",
-              "cmp": "eq",
-              "value": "primar"
-            },
-            {
-              "op": "related",
-              "layer": "haltestellen",
-              "predicate": "dwithin",
-              "distance_m": 400,
-              "where": {
+      "gold_any": [
+        {
+          "source": "schulen",
+          "where": {
+            "op": "and",
+            "args": [
+              {
                 "op": "compare",
-                "attr": "verkehrsmittel",
+                "attr": "typ",
                 "cmp": "eq",
-                "value": "tram"
+                "value": "primar"
+              },
+              {
+                "op": "related",
+                "layer": "haltestellen",
+                "predicate": "dwithin",
+                "distance_m": 400,
+                "where": {
+                  "op": "compare",
+                  "attr": "verkehrsmittel",
+                  "cmp": "eq",
+                  "value": "tram"
+                }
               }
-            }
-          ]
+            ]
+          }
+        },
+        {
+          "source": "schulen",
+          "where": {
+            "op": "and",
+            "args": [
+              {
+                "op": "compare",
+                "attr": "primarstufe",
+                "cmp": "eq",
+                "value": true
+              },
+              {
+                "op": "related",
+                "layer": "haltestellen",
+                "predicate": "dwithin",
+                "distance_m": 400,
+                "where": {
+                  "op": "compare",
+                  "attr": "verkehrsmittel",
+                  "cmp": "eq",
+                  "value": "tram"
+                }
+              }
+            ]
+          }
         }
-      }
+      ]
     },
     {
       "id": "n07-zwei-filter",

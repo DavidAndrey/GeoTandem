@@ -132,8 +132,10 @@ def refused_format() -> httpx2.Response:
 @pytest.fixture(autouse=True)
 def _no_wrapped_endpoints() -> Iterator[None]:
     openai_compat._WRAPPED.clear()
+    openai_compat._TEXT_ONLY.clear()
     yield
     openai_compat._WRAPPED.clear()
+    openai_compat._TEXT_ONLY.clear()
 
 
 def test_a_root_union_goes_as_it_is_where_the_endpoint_takes_it() -> None:
@@ -174,15 +176,62 @@ def test_a_refused_root_union_is_sent_again_wrapped_and_stays_wrapped() -> None:
     assert plain.parsed == {"kind": "b"}
 
 
-def test_a_refused_format_that_wrapping_cannot_help_is_a_rejection() -> None:
-    stub = OllamaStub(answers=[refused_format()] * 3)
+def test_a_format_refused_every_way_is_a_rejection() -> None:
+    """Plain, wrapped (the union only), then text only; each refused: given up,
+    and nothing is remembered (X-6, X-8)."""
+    stub = OllamaStub(answers=[refused_format()] * 5)
     with client(stub) as llm:
         plain = error_of(lambda: llm.complete(ASK, schema=SCHEMA))
         union = error_of(lambda: llm.complete(ASK, schema=UNION))
     assert (plain.code, plain.cause, union.code) == ("llm_rejected", "HTTP 400", "llm_rejected")
-    # The object schema is not wrapped; the union is tried once wrapped, then given up.
-    assert len(stub.chat_requests()) == 3
+    formats = [r.body.get("response_format") is not None for r in stub.chat_requests()]
+    assert formats == [True, False, True, True, False]
     assert "Schulen" not in str(plain) + str(union)
+    assert not openai_compat._WRAPPED and not openai_compat._TEXT_ONLY
+
+
+def rejected() -> httpx2.Response:
+    """Anthropic's compatibility: a 400 that names no field (X-8)."""
+    error = {"type": "invalid_request_error", "message": "json_schema.strict … Wie viele Schulen?"}
+    return httpx2.Response(400, json={"error": error})
+
+
+def test_a_refused_schema_is_sent_again_as_text_only_and_stays_so() -> None:
+    fenced = '```json\n{"kind": "a"}\n```'
+    stub = OllamaStub(answers=[rejected(), chat(fenced), chat('{"kind": "b"}')])
+    with client(stub) as llm:
+        first = llm.complete(ASK, schema=UNION)
+    with client(stub) as llm:  # a new client, as every call builds one (C8)
+        second = llm.complete(ASK, schema=UNION)
+
+    sent = [r.body.get("response_format") for r in stub.chat_requests()]
+    assert sent[0] is not None and sent[1] is None and sent[2] is None
+    # Not parsed here: parse_answer takes the fence off (X-7).
+    assert (first.text, first.parsed, first.retries) == (fenced, None, 0)
+    assert second.parsed == {"kind": "b"}
+
+
+def test_a_400_that_text_only_does_not_cure_changes_nothing() -> None:
+    """A 400 for another reason (a temperature the model refuses) is not taken
+    for a format the endpoint cannot do."""
+    stub = OllamaStub(answers=[rejected(), rejected(), chat('{"count": 1}')])
+    with client(stub) as llm:
+        error = error_of(lambda: llm.complete(ASK, schema=SCHEMA))
+        again = llm.complete(ASK, schema=SCHEMA)
+    assert error.code == "llm_rejected"
+    assert [r.body.get("response_format") is not None for r in stub.chat_requests()] == [
+        True,
+        False,
+        True,
+    ]
+    assert again.parsed == {"count": 1}
+
+
+def test_a_400_without_a_schema_is_not_asked_again() -> None:
+    stub = OllamaStub(answers=[rejected()] * 2)
+    with client(stub) as llm:
+        error = error_of(lambda: llm.complete(ASK))
+    assert (error.code, len(stub.chat_requests())) == ("llm_rejected", 1)
 
 
 def test_tools_are_offered_and_calls_parsed() -> None:
@@ -484,9 +533,11 @@ def test_only_our_headers_leave(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "authorization" not in without_key
     for headers in (with_key, without_key):
         assert set(headers) <= {
-            "accept", "accept-encoding", "authorization", "content-type",
-            "content-length", "host", "user-agent",
+            "accept", "accept-encoding", "anthropic-version", "authorization",
+            "content-type", "content-length", "host", "user-agent",
         }  # fmt: skip
+        # Anthropic's model list needs it; every other endpoint ignores it (X-9).
+        assert headers["anthropic-version"] == "2023-06-01"
 
 
 # --- what the endpoint offers (C3) -----------------------------------------------

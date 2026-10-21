@@ -77,6 +77,9 @@ one case are not independent, so the sample is the cases.
 uv run python evals/compare.py --stats --by-tag ho-luna+ho-luna-s6 ho-gemma4_12b+ho-gemma4_12b-s6
 ```
 
+`regrade.py <label> …` grades the stored answers of runs again against the
+current cases, without asking a model; it changes nothing on unchanged cases.
+
 A case may list `gold_any`, several fair readings that select different
 features; any one passes. `tags` group the cases; `needs-values` marks one
 that only a model knowing attribute values can pass. A held-out case is never
