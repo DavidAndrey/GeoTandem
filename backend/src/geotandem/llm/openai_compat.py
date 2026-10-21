@@ -34,6 +34,14 @@ Guards, each tested on the transport actually used:
   Wrapping for every endpoint cost gemma4:12b 15 of 330 answers, so Ollama
   keeps the request it had. The reply is unwrapped; one that came unwrapped
   is taken as it is (X-6).
+- Any other 400 to a request with a schema is asked once more without
+  ``response_format``, the schema then only as text in the prompt: Anthropic's
+  compatibility endpoint wants ``strict: true`` and refuses recursive schemas,
+  which the query schema is, and names no field (X-8). The step down is
+  remembered for that endpoint and model only once it brought an answer, so a
+  400 for another reason (a temperature the model refuses) changes nothing.
+- ``anthropic-version`` is sent with every request: Anthropic's model list
+  needs it, every other endpoint ignores it (X-9).
 """
 
 import json
@@ -71,7 +79,10 @@ WRAP_KEY = "answer"
 _WRAPPED: set[tuple[str, str]] = set()
 """Endpoints (base URL, model) that refused a root combinator: wrapped from
 then on, for the life of the process. Clients are built per call (C8)."""
+_TEXT_ONLY: set[tuple[str, str]] = set()
+"""Endpoints (base URL, model) that answered only without ``response_format``."""
 _COMBINATORS = ("oneOf", "anyOf", "allOf", "enum", "const", "not")
+ANTHROPIC_VERSION = "2023-06-01"
 CONNECT_TIMEOUT_S = 5.0
 PROBE_TIMEOUT_S = 5.0
 
@@ -80,7 +91,15 @@ MAX_RESPONSE_BYTES: Final = 1024 * 1024
 direct query's answer is a few kilobytes; the cap is far above it."""
 
 _SENT_HEADERS = frozenset(
-    {"accept", "accept-encoding", "content-type", "content-length", "host", "user-agent"}
+    {
+        "accept",
+        "accept-encoding",
+        "anthropic-version",
+        "content-type",
+        "content-length",
+        "host",
+        "user-agent",
+    }
 )
 
 
@@ -361,6 +380,7 @@ class OpenAICompatClient:
             request.headers["Authorization"] = f"Bearer {self.endpoint.api_key}"
         # Uncompressed: the size limit is what is read and what is decoded (#34).
         request.headers["Accept-Encoding"] = "identity"
+        request.headers["anthropic-version"] = ANTHROPIC_VERSION  # X-9
 
     def close(self) -> None:
         self._http.close()
@@ -468,7 +488,13 @@ class OpenAICompatClient:
         if endpoint.reasoning_effort != "default":
             request["reasoning_effort"] = endpoint.reasoning_effort
         key = (endpoint.base_url, endpoint.model)
-        wrap = schema is not None and _needs_wrap(schema) and key in _WRAPPED
+        mode = (
+            "text"
+            if key in _TEXT_ONLY
+            else "wrapped"
+            if schema is not None and _needs_wrap(schema) and key in _WRAPPED
+            else "plain"
+        )
 
         def format_(wrapped: bool) -> dict[str, Any]:
             assert schema is not None
@@ -480,8 +506,20 @@ class OpenAICompatClient:
                 },
             }
 
-        if schema is not None:
-            request["response_format"] = format_(wrap)
+        def use(mode: str) -> None:
+            request.pop("response_format", None)
+            if schema is not None and mode != "text":
+                request["response_format"] = format_(mode == "wrapped")
+
+        def step_down(mode: str, named: bool) -> str | None:
+            """The format to try after a 400 (X-6, X-8); ``None``: give up."""
+            if schema is None or mode == "text":
+                return None
+            if mode == "plain" and named and _needs_wrap(schema):
+                return "wrapped"
+            return "text"
+
+        use(mode)
         if tools:
             request["tools"] = [
                 {
@@ -501,19 +539,25 @@ class OpenAICompatClient:
             return self._sdk.chat.completions.create(**request, timeout=timeout)
 
         started = self._clock()
+        first = mode
         try:
-            try:
-                response, retries = self._with_retries(create, deadline)
-            except _FormatRefused:
-                if schema is None or wrap or not _needs_wrap(schema):
-                    raise _status_error(400, 0) from None
-                _WRAPPED.add(key)
-                wrap = True
-                request["response_format"] = format_(True)
+            while True:
                 try:
                     response, retries = self._with_retries(create, deadline)
+                    break
                 except _FormatRefused:
+                    following = step_down(mode, named=True)
+                except LLMError as exc:
+                    if (exc.code, exc.cause) != ("llm_rejected", "HTTP 400"):
+                        raise
+                    following = step_down(mode, named=False)
+                if following is None:
                     raise _status_error(400, 0) from None
+                mode = following
+                use(mode)
+            if mode != first:
+                (_WRAPPED if mode == "wrapped" else _TEXT_ONLY).add(key)
+                log.info("llm format: model=%s from=%s to=%s", endpoint.model, first, mode)
         except LLMError as exc:
             log.info(
                 "llm call failed: model=%s code=%s retries=%d",
@@ -537,7 +581,7 @@ class OpenAICompatClient:
                 parsed = json.loads(text)
             except ValueError as exc:
                 parse_error = str(exc)
-            if wrap and isinstance(parsed, dict) and parsed.keys() == {WRAP_KEY}:
+            if mode == "wrapped" and isinstance(parsed, dict) and parsed.keys() == {WRAP_KEY}:
                 parsed = parsed[WRAP_KEY]
         usage = getattr(response, "usage", None)
         completion = Completion(
