@@ -720,3 +720,11 @@ Date: 2026-10-20. Scope: `llm/openai_compat.py` only.
   reply is unwrapped only when it is exactly that one key. A reply that is not
   wrapped is parsed as before and checked by `parse_answer` as before, so the
   wrapper adds no path around the answer's validation.
+- **A refused schema goes as text only (X-8, 2026-10-21).** After a 400 to a
+  request with a schema (after wrapping, where that applies) the adapter asks
+  once more without `response_format`, and keeps to that for the base URL and
+  model once it answered. No part of the error body is read for this. The
+  answer is checked by `parse_answer` and the query by `validate_model_query`
+  as before; only the grammar is gone, which the checks never relied on.
+- **`anthropic-version` on every request (X-9).** A fixed value added to the
+  header allowlist; it tells an endpoint nothing about the instance.
