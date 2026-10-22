@@ -544,16 +544,51 @@ heutigen Fälle neu bewertet (`gold_any` für `doc1` und `n06`).
 | Variante | gemma4:12b | gemma4:e4b | qwen3:14b | qwen3.5:9b | Haiku 5.5 | Luna | gekippte Fälle | Entscheid |
 |---|---:|---:|---:|---:|---:|---:|---|---|
 | P0 | 135 | 126 | 125 | 112 | 318 | 280 | – | Referenz |
-| P1 | | | | | | | | |
-| P4 | | | | | | | | |
-| P5 | | | | | | | | |
-| P6 (3) | | | | | | | | |
-| P6 (12) | | | | | | | | |
-| P8 | | | | | | | | |
-| P9 | | | | | | | | |
-| P2 (nur Messung) | | | | | | | | |
+| P1 | 127 (−8) | **97 (−29)** | **96 (−29)** | **75 (−37)** | 314 (−4) | 264 (−16) | breit | **verworfen**: die Beispiele tragen die kleinen Modelle |
+| P4 | 125 (−10) | 125 (−1) | 121 (−4) | 99 (−13) | 318 (±0) | 272 (−8) | breit | **verworfen**: die Regeln tragen gemma4:12b und qwen3.5:9b |
+| P5 | **144 (+9)** | 120 (−6) | 125 (±0) | 99 (−13) | 317 (−1) | 272 (−8) | | **verworfen**: gemma4:e4b −6, qwen3.5:9b −13 |
+| P6 (3) | 121 (−14) | 115 (−11) | 120 (−5) | 96 (−16) | 316 (−2) | 281 (+1) | breit | **verworfen** |
+| P6 (12) | 132 (−3) | 131 (+5) | 125 (±0) | 103 (−9) | 318 (±0) | **293 (+13)** | qwen3:14b `doc6` 2⇒5, `log2` 0⇒5, aber `doc3` 5⇒2, `doc5` 5⇒1; gemma4:12b `n03` 5⇒0 | **verworfen**: qwen3.5:9b −9 |
+| P8 | 123 (−12) | 111 (−15) | 111 (−14) | 80 (−32) | **256 (−62)** | 272 (−8) | breit; Haiku 31 unlesbar | **verworfen**: alle verlieren; ohne eingeschränkte Ausgabe fehlt das Schema ganz |
+| P9 | 138 (+3) | **132 (+6)** | 125 (±0) | 107 (−5) | 320 (+2) | 285 (+5) | `x-ohne-kontext` gemma4:12b 0⇒5, e4b 3⇒5 (beabsichtigt); Luna `n03` 10⇒1, davon 6 **still falsch** | **Kandidat für Phase 3**, mit Vorbehalt (unten) |
+| P2 (nur Messung) | | | | | | | | offen |
 | P3 (nur Messung) | 138/165¹ | | | | | | | E-8: nein |
-| P7 (nur Messung) | | | | | | | | |
+| P7 (nur Messung) | | | | | | | | offen, Beispielsatz fehlt |
+
+Lauf 2026-10-22, 56 Läufe, keine Abbrüche; Labels `<variante>-<modell>`, P6
+als `p6e3-*` und `p6e12-*` (`--variant p0 --examples 3|12`), extern
+`<variante>-haiku`, `-haiku-s6`, `-luna`, `-luna-s6`. Kosten extern ≈ 5 USD.
+
+**Befunde**
+
+1. **Beispiele und Regeln tragen beide.** Ohne Beispiele (P1) verlieren die
+   drei kleineren lokalen Modelle rund 30 von 165, ohne Regeln (P4)
+   gemma4:12b und qwen3.5:9b 10 bis 13. Drei Beispiele (P6) sind zu wenig,
+   zwölf helfen Luna (+13) und gemma4:e4b (+5), schaden aber qwen3.5:9b
+   (−9) und verschieben bei qwen3:14b Fälle in beide Richtungen.
+2. **Haiku ist gegen die Platzierung unempfindlich** (±4), ausser bei P8:
+   Haiku bekommt keine eingeschränkte Ausgabe, ohne den Schematext fehlt ihm
+   das Schema ganz. P8 wäre nur möglich, wenn Anbieter ohne eingeschränkte
+   Ausgabe den Text behalten.
+3. **P5 ist modellabhängig:** gemma4:12b +9, qwen3.5:9b −13. Kein
+   gemeinsamer Gewinn.
+4. **P9 wirkt wie beabsichtigt** (2.3): Der Hinweis `FIRST` direkt vor der
+   Frage löst `x-ohne-kontext` bei beiden gemma4-Modellen. Kein lokales
+   Modell verliert mehr als 5 (qwen3.5:9b genau −5: `n13` 5⇒3, `n14` 3⇒1).
+   **Vorbehalt:** Luna beantwortet `n03` («Gemeinden mit mehr als 10 000
+   Einwohnern», Einwohner nur im Tabellen-Layer) in 6 von 10 Antworten mit
+   allen Gemeinden ohne Filter, die Erklärung behauptet aber «mehr als
+   10’000 Einwohnern». Die Anwendung nimmt die Abfrage an. Unter P0 kommt
+   das bei keinem Modell vor (lokal 15 × Abweisung, sonst bestanden).
+5. **Befund für die Anwendung, unabhängig von P9:** Die Prüfung erkennt nicht,
+   dass eine Erklärung einen Filter nennt, den die Abfrage nicht hat (wie S1,
+   8.3). Abhilfe wäre die Annahme «ohne Filter» als Hinweis in der
+   Anwendung oder ein Abgleich der Bedingungen mit `assumptions`; das ist ein
+   eigener Entscheid.
+
+**Weiter mit Phase 3 für P9:** Seeds 6–10 der vier lokalen Modelle,
+Held-out-Satz für alle sechs, `n03` unter P9 bei Luna lesen; vorher klären,
+ob drei Nachrichten mit E-8 vereinbar sind (Bypass-Test, Sicherheitsreview).
 
 ¹ Nur der Hinweis `FIRST` in der Nutzernachricht (`t3-v27b`), nicht die
 Beispiele; qwen3:8b damals 89/165 gegen 93/165 (Abschnitt 2.3).
