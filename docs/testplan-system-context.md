@@ -284,7 +284,7 @@ bis eine Variante gewinnt.
    Seeds 1–5; die besten mit Seeds 6–10 bestätigen. **Erledigt
    2026-10-13** (8.1): Phase 2 läuft mit vier Modellen, gemma4:12b
    (Referenz), gemma4:e4b, qwen3:14b und qwen3.5:9b. Vor Phase 2 folgt
-   eine Phase 1b (wird noch beschrieben).
+   Phase 1b.
 1b. **Phase 1b, obere Referenz (extern):** P0 auf je einem Modell von
    Anthropic und OpenAI; Fälle, die auch diese verfehlen, vor Phase 2
    bereinigen; dazu die Nutzbarkeit beider Anbieter in der Anwendung.
@@ -296,7 +296,12 @@ bis eine Variante gewinnt.
    Dann P1, P4, P5, P6, P8, P9 (einsetzbar) auf allen vier Modellen. P2, P3,
    P7 als Messung, um zu wissen, was E-8 und S3 kosten. Regel 3.5 gilt je
    Modell: Eine Variante, die einem der vier um mehr als seine Schwelle
-   schadet, wird nicht übernommen.
+   schadet, wird nicht übernommen. Haiku und Luna laufen je mit zwei Blöcken
+   mit (X-11); ein Schaden bei ihnen über 10 von 330 wird gelesen und im
+   Entscheid genannt. Gemessen wird nur auf dem Tuning-Satz: Der
+   Held-out-Satz bleibt für die Gewinner in Phase 3, sonst wählt Phase 2 an
+   ihm aus (8.3 hat ihn für R1 und S1 schon mitgemessen; übernommen wurde
+   nichts).
 3. **Phase 3, Bestätigung:** Gewinner mit Seeds 6–10. Die 15 Fragen aus
    testplan-initial-llm-run, Abschnitt 9, von Hand in der Anwendung
    nachprüfen. Erst dann wird eine Variante in `prompt.py` übernommen.
@@ -532,21 +537,23 @@ Wortlaut, mit Tokens, Rohtext bei Abbruch und Laufkopf):
 
 ### 8.2 Varianten
 
-Seeds 1–5, je Modell gegen sein P0; Schwellen in 8.1.
+Tuning-Satz, lokale Modelle Seeds 1–5 (/165), je Modell gegen sein P0
+(Schwellen in 8.1); Haiku und Luna je zwei Blöcke (/330, X-11). P0 gegen die
+heutigen Fälle neu bewertet (`gold_any` für `doc1` und `n06`).
 
-| Variante | gemma4:12b | gemma4:e4b | qwen3:14b | qwen3.5:9b | gekippte Fälle | Entscheid |
-|---|---:|---:|---:|---:|---|---|
-| P0 | 130/165 | 126/165 | 125/165 | 112/165 | – | Referenz |
-| P1 | | | | | | |
-| P4 | | | | | | |
-| P5 | | | | | | |
-| P6 (3) | | | | | | |
-| P6 (12) | | | | | | |
-| P8 | | | | | | |
-| P9 | | | | | | |
-| P2 (nur Messung) | | | | | | |
-| P3 (nur Messung) | 138/165¹ | | | | | E-8: nein |
-| P7 (nur Messung) | | | | | | |
+| Variante | gemma4:12b | gemma4:e4b | qwen3:14b | qwen3.5:9b | Haiku 5.5 | Luna | gekippte Fälle | Entscheid |
+|---|---:|---:|---:|---:|---:|---:|---|---|
+| P0 | 135 | 126 | 125 | 112 | 318 | 280 | – | Referenz |
+| P1 | | | | | | | | |
+| P4 | | | | | | | | |
+| P5 | | | | | | | | |
+| P6 (3) | | | | | | | | |
+| P6 (12) | | | | | | | | |
+| P8 | | | | | | | | |
+| P9 | | | | | | | | |
+| P2 (nur Messung) | | | | | | | | |
+| P3 (nur Messung) | 138/165¹ | | | | | | | E-8: nein |
+| P7 (nur Messung) | | | | | | | | |
 
 ¹ Nur der Hinweis `FIRST` in der Nutzernachricht (`t3-v27b`), nicht die
 Beispiele; qwen3:8b damals 89/165 gegen 93/165 (Abschnitt 2.3).
