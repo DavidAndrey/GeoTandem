@@ -110,6 +110,27 @@ Das Modell ersetzt die Oberfläche nicht, es füllt sie aus. Was das Modell
 vorschlägt, kann man danach von Hand weiterbearbeiten. Umgekehrt kann eine von
 Hand gebaute Analyse der Ausgangspunkt für eine Frage sein.
 
+### Petras Frage in Modus B
+
+Petra tippt ihre Frage ins Feld: «Welche Primarschulen liegen nahe an
+Kantonsstrassen, in Gemeinden mit hoher Steueranlage?» Das Modell antwortet mit
+seiner Lesart und den Annahmen, die es dafür trifft («nahe» heisst höchstens
+500 m, «hohe Steueranlage» über 1.6), und mit dem Abfrageobjekt. Auf der
+Stufe *Prüfen* sieht sie, was sich an ihrer Analyse ändern würde und wie viele
+Schulen übrig blieben, und nimmt an. Die drei Bedingungen stehen jetzt im
+Editor, markiert mit «Modell».
+
+Sie öffnet den Editor und ändert 500 m auf 300 m; die Marke dieser Zeile fällt
+weg. Dann fragt sie weiter: «Welche davon haben mehr als einen Standort?» Über
+dem Feld steht *Bezug: aktuelle Analyse*: Das Modell erfährt, dass sie den
+Stand von Hand geändert hat, und ergänzt ihre Analyse statt seiner alten
+Antwort. Hätte sie lieber neu angefangen, hätte ein × die Frage ohne Bezug
+gestellt.
+
+Geht etwas schief (das Modell antwortet nicht, oder die Antwort nutzt einen
+Layer, den es nicht mehr gibt), sagt die Anwendung das in Worten, und Petras
+Stand ist unverändert.
+
 ## 5 Die Gesamtlandkarte
 
 ```mermaid
