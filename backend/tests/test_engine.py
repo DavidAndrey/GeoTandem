@@ -258,6 +258,17 @@ def _rounded(properties: dict[str, Any]) -> dict[str, Any]:
             "wrong_value_type", "holds int values",
         ),
         (
+            # Seen from a model (Phase 2, P2): an ordering on a yes/no attribute.
+            {"source": "schulen", "where": {"op": "compare", "attr": "primarstufe", "cmp": "le",
+                                            "value": True}},
+            "wrong_value_type", "have no order",
+        ),
+        (
+            {"source": "schulen", "where": {"op": "between", "attr": "primarstufe",
+                                            "min": False, "max": True}},
+            "wrong_value_type", "have no order",
+        ),
+        (
             {"source": "schulen", "where": {"op": "text_match", "attr": "standorte", "text": "1"}},
             "attribute_not_text", "needs a text attribute",
         ),

@@ -1,6 +1,6 @@
 # Testplan: externe Modelle als obere Referenz (Phase 1b)
 
-> Stand: 2026-10-20 · Ausgangsstand main `d42f86a` (H-1 bis H-5) ·
+> Stand: 2026-10-22, **abgeschlossen** (Abschnitt 10) · Ausgangsstand main `d42f86a` (H-1 bis H-5) ·
 > Beispieldaten `bern-mittelland-2026-10-03` · Einordnung: Phase 1b von
 > [testplan-system-context.md](testplan-system-context.md), zwischen Modellwahl
 > (Phase 1) und Platzierung (Phase 2) · Messung: [backend/evals/](../backend/evals/README.md)
@@ -32,9 +32,10 @@ Die Dokumente nummerieren nach mehreren Schemata nebeneinander:
 | P0 … P9, H-1 … H-5 | Varianten der Platzierung, Erweiterungen des Harness | ebd., 5 und 6 |
 | Lauf 1, 2 … | fortgeschriebene Benchmarks | [benchmarks.md](benchmarks.md) |
 
-Stand heute: **Phase 1** ist mit Lauf 1 (zehn Ollama-Modelle) und den
-Seed-Blöcken von gemma4 und qwen3 erledigt; **Phase 2** hat ihren Harness
-(H-1 bis H-5), aber noch keinen Variantenlauf. Dieser Plan fügt **Phase 1b**
+Stand 2026-10-22: **Phase 1** ist mit Lauf 1 (zehn Ollama-Modelle) und den
+Seed-Blöcken der vier Hauptmodelle erledigt, **Phase 1b** mit diesem Plan
+(Abschnitt 10); **Phase 2** beginnt mit den vier lokalen Hauptmodellen und den
+zwei externen Referenzen aus X-11. Dieser Plan fügte **Phase 1b**
 dazwischen ein. Seine Erweiterungen heissen **H-6 …**, seine Entscheide
 **X-1 …** (X für extern, ohne Verwechslung mit den Etappen E).
 
@@ -85,6 +86,12 @@ nicht steht, prüft der Rauchtest (Schritt 1); in der Spalte steht dann «?».
 | API-Schlüssel | – | – | der Harness setzt ihn mit `--api-key-env` (H-6) |
 | Prompt-Caching | nicht über die Kompatibilität | automatisch | nur Kosten, nicht das Ergebnis |
 
+**Nach dem Lauf** (8.1, 9.2) weicht Anthropic von dieser Tabelle ab:
+`response_format` wird nicht ignoriert, sondern ausgewertet; ohne `strict: true`
+und für das rekursive Abfrageschema antwortet es mit 400 (X-8), die
+Modellliste verlangt `anthropic-version` (X-9). OpenAI nimmt Temperatur 0,3
+und `seed` an, weist aber `oneOf` an der Wurzel des Schemas ab (X-6).
+
 Folgerung: Für den Lauf genügt **eine** Änderung am Harness (H-6). Die
 Anwendung kommt ohne Änderung aus, solange die Anbindung eine Temperatur
 trägt, die der Anbieter annimmt (Claude: 1; Luna: Rauchtest), und bei Luna
@@ -116,10 +123,11 @@ aus diesem Dokument übernommen.
 
 | Anbieter | Modell | Rolle | Effort |
 |---|---|---|---|
-| Anthropic | `claude-sonnet-5-5` | Hauptlauf | `default` (nicht steuerbar) |
-| Anthropic | `claude-opus-5-5` | Obergrenze, wenn Sonnet Fälle verfehlt | `default` |
-| OpenAI | `gpt-6-luna` | **erster Hauptlauf** | `none`, dann `low` |
-| OpenAI | grösseres Modell der GPT-6-Reihe | nur wenn Luna Fälle verfehlt, die gemma4 löst | `none` |
+| Anthropic | `claude-sonnet-5-5` | Hauptlauf; gelaufen, ein Block je Satz (9.2) | `default` (nicht steuerbar) |
+| Anthropic | `claude-haiku-5-5` | günstigster Vergleich; gelaufen, zwei Blöcke je Satz (9.2); **externe Referenz** (X-11) | `default` |
+| Anthropic | `claude-opus-5-5` | Obergrenze, wenn Sonnet Fälle verfehlt; nicht nötig (Sonnet 158/165) | `default` |
+| OpenAI | `gpt-6-luna` | **erster Hauptlauf**; gelaufen, zwei Blöcke je Satz (9.1); **externe Referenz** (X-11) | `none` (`low` nicht gelaufen) |
+| OpenAI | grösseres Modell der GPT-6-Reihe | nur wenn Luna Fälle verfehlt, die gemma4 löst; nicht gelaufen | `none` |
 
 ---
 
@@ -183,16 +191,23 @@ Rauchtests, zwei Hauptläufe, ein Opus-Lauf und die Prüfung von Hand liegen
 zusammen unter 30 USD. Die tatsächlichen Tokens stehen nach dem Lauf in jeder
 Antwort (H-3).
 
+**Tatsächlich** (aus `prompt_tokens`/`completion_tokens`): Claude liest
+9 900 Tokens je Frage, nicht gut 5 000 (anderer Tokenizer, Schema als Text),
+Luna 7 400. Je Frage ≈ 0,024 USD (Sonnet), ≈ 0,0013 USD (Haiku),
+≈ 0,0008 USD (Luna). Ein Block von 165 Fragen kostet damit ≈ 4 USD mit
+Sonnet, ≈ 0,21 USD mit Haiku, ≈ 0,13 USD mit Luna. Phase 1b zusammen, aus
+den Aufrufen gerechnet: rund 11 USD (Luna 1 077, Haiku 714, Sonnet 362).
+
 ---
 
-## 7 Offene Entscheide
+## 7 Entscheide
 
 | # | Entscheid | Empfehlung |
 |---|---|---|
 | X-1 | **Freigabe**: Steckbrief der Beispieldaten an Anthropic und OpenAI — *entschieden 2026-10-20* | ja, nur Beispieldaten, nur für diese Phase; *darf Inhalte erhalten* bleibt aus |
-| X-2 | **Temperatur in der Anbindung**: Claude 5.x lehnt jeden Wert unter 1 ab, die Vorgabe ist 0 | vorerst 1 von Hand eintragen; falls der Rauchtest das auch für OpenAI zeigt: Vorgabe 1 für externe Anbindungen oder eine Option «nicht senden» (ändert C4) |
-| X-3 | **Eingeschränkte Ausgabe bei Anthropic**: ignoriert, das Schema wirkt nur als Text | nach dem Lauf: nichts tun, solange `model_unreadable` unter 2 % liegt; sonst einen nativen Adapter abwägen (ändert tech-stack 3.5) |
-| X-4 | **`strict: true` für OpenAI** | nur wenn der Lauf Antworten ausserhalb des Schemas zeigt; vorher prüfen, ob das Antwortschema die strikte Teilmenge erfüllt |
+| X-2 | **Temperatur in der Anbindung**: Claude 5.x lehnt jeden Wert unter 1 ab, die Vorgabe ist 0 | vorerst 1 von Hand eintragen; falls der Rauchtest das auch für OpenAI zeigt: Vorgabe 1 für externe Anbindungen oder eine Option «nicht senden» (ändert C4). *Stand 2026-10-22:* OpenAI nimmt 0,3 an, nur Claude braucht 1; bleibt beim Eintrag von Hand, C4 unverändert |
+| X-3 | **Eingeschränkte Ausgabe bei Anthropic**: ignoriert, das Schema wirkt nur als Text | nach dem Lauf: nichts tun, solange `model_unreadable` unter 2 % liegt; sonst einen nativen Adapter abwägen (ändert tech-stack 3.5). *Stand 2026-10-22:* Annahme falsch, Anthropic weist das Schema ab (X-8); nur Text, unlesbar Haiku 2 von 710, Sonnet nach X-10 0 von 355: kein nativer Adapter |
+| X-4 | **`strict: true` für OpenAI** | nur wenn der Lauf Antworten ausserhalb des Schemas zeigt; vorher prüfen, ob das Antwortschema die strikte Teilmenge erfüllt. *Stand 2026-10-22:* nicht nötig, Luna 0 unlesbare Antworten in 710 |
 | X-5 | **Erschöpftes Guthaben erkennen** (8.1) — *umgesetzt 2026-10-20* | `type` und `code` des Fehlerkörpers gegen `QUOTA_CODES`; Code `llm_quota_exhausted`, keine Wiederholung, im Arbeitsplatz «Grenzwert erreicht» mit Hinweis an die Administration; C9 und C13 ergänzt ([plan-e2.0-e2.2.md](plan-e2.0-e2.2.md)), Sicherheitsreview nachgeführt |
 | X-6 | **Antwortschema verpacken** (8.1) — *umgesetzt 2026-10-20* | im Adapter nur als Rückfallebene, wenn der Anbieter das Schema mit `param: response_format` abweist; für alle Anbieter verpackt kostete gemma4 −15/330 (Regel 3.5 des Kontext-Testplans: nicht übernommen) |
 | X-7 | **Antwort in einem Code-Zaun** — *umgesetzt 2026-10-20* | `parse_answer` nimmt genau einen ```` ```json ```` -Zaun um das Objekt ab; ohne eingeschränkte Ausgabe schreiben gemma4 (und vermutlich Claude) ihn fast immer. Text um den Zaun bleibt `model_unreadable` |
@@ -204,11 +219,6 @@ Antwort (H-3).
 ## 8 Ergebnisse
 
 ### 8.1 Rauchtest
-
-| Anbieter | Modell | angenommene Parameter | abgelehnt | JSON lesbar | Kosten je Aufruf |
-|---|---|---|---|---|---:|
-| Anthropic | | | | | |
-| OpenAI | | | | | |
 
 **2026-10-20, `gpt-6-luna`, erster Versuch (`x-smoke-luna`):** 0/3, jede
 Antwort `error:llm_rate_limited` nach zwei Wiederholungen. Ursache laut
@@ -240,6 +250,7 @@ Rauchtest mit der Rückfallebene: 3/3 (`x-smoke-luna-fallback`).
 | Anbieter | Modell | angenommene Parameter | abgelehnt | JSON lesbar | Kosten je Aufruf |
 |---|---|---|---|---|---:|
 | OpenAI | `gpt-6-luna` | `temperature` 0,3 und 1, `seed`, `reasoning_effort: none`, `json_schema` (verpackt), `tools` | `json_schema` mit `oneOf` an der Wurzel | ja, 165/165 | ≈ 0,0008 USD (7 400 Tokens Eingabe, 100 Ausgabe) |
+| Anthropic | `claude-sonnet-5-5`, `claude-haiku-5-5` (2026-10-21) | `temperature` 1, `tools`, Schema nur als Text (X-8) | `temperature` unter 1; `json_schema` ohne `strict` und rekursiv; `/v1/models` ohne `anthropic-version` (X-9) | ja, mit X-7 und X-10 (9.2) | ≈ 0,024 / 0,0013 USD (9 900 Tokens Eingabe) |
 
 **Befund für die Anwendung (X-5):** OpenAI meldet ein erschöpftes Guthaben
 als 429. Der Adapter liest den Antwortkörper nicht (C13), nennt es deshalb
@@ -257,7 +268,12 @@ Wiederholung); kein Text des Körpers gelangt nach aussen.
 | gemma4:12b, Schema immer verpackt (erste Fassung X-6, **verworfen**) | 126 / 121 | 0 | 0 | 1,5 s | – |
 | qwen3:14b (T 0,3) | 125/165 | 0 | 0 | | – |
 | **gpt-6-luna** (`none`, T 0,3) | **136/165** | 0 | 0 | 2,1 s | ≈ 0,13 USD |
-| claude-sonnet-5-5 | | | | | |
+| claude-sonnet-5-5 (T 1, nur Text, ein Block) | 158/165 | 0 (nach X-10) | 0 | 2,5 s | ≈ 4 USD |
+| claude-haiku-5-5 (T 1, nur Text) | 159 / 159 | 0 / 0 | 1 / 0 | 3,2 s | ≈ 0,21 USD |
+
+Alle Zeilen gegen die heutigen Fälle (`gold_any` für `doc1` und `n06`) neu
+bewertet; die erste Fassung dieser Tabelle stand vor `gold_any` (Luna damals
+136). Einzelheiten in 9.1 und 9.2.
 
 Luna liest im Mittel 7 438 Tokens Eingabe gegen 5 573 bei gemma4: derselbe
 Prompt, ein anderer Tokenizer.
@@ -276,6 +292,12 @@ Prompt, ein anderer Tokenizer.
 
 | Anbieter | Verbindungstest | Direktabfrage (5) | Werkzeugkette (5) | Bemerkungen |
 |---|---|---|---|---|
+| OpenAI, `gpt-6-luna` | grün (2026-10-20), T 0,3, Effort `none` | nicht von Hand geprüft | nicht von Hand geprüft | Schritt 6 offen |
+| Anthropic, Sonnet und Haiku 5.5 | grün mit X-8 und X-9 (2026-10-21), T 1 | nicht von Hand geprüft | nicht von Hand geprüft | Schritt 6 offen |
+
+Schritt 6 (Prüfung von Hand in der Anwendung) ist nicht gemacht. Er gehört in
+Phase 3 des Kontext-Testplans, wo die 15 Fragen ohnehin von Hand
+nachgeprüft werden; dann je Anbieter mit.
 
 ---
 
@@ -429,3 +451,28 @@ unveränderten Fällen ändert sie 0 Urteile.
 | X-10 | **Text nach dem JSON-Objekt** (Sonnet 4/355) — *umgesetzt 2026-10-21* | `parse_answer` nimmt das erste vollständige Objekt, wenn danach nur noch etwas folgt; Text davor liest weiterhin nicht. `regrade.py` liest gespeicherte unlesbare Antworten neu (`raw`): Sonnet 157 ⇒ 158, 183 ⇒ 185 |
 | X-11 | **Externe Referenzen** — *entschieden 2026-10-21* | **claude-haiku-5-5** (so gut wie Sonnet 5.5, Unterschied nicht belegt, bei einem Zwanzigstel der Kosten) **und gpt-6-luna**, damit der Vergleich keinen Anbieter bevorzugt. Beide laufen in jeder weiteren Messung mit, je zwei Blöcke auf beiden Sätzen, in der Form, die die Anwendung sendet (Haiku nur Text, Temperatur 1; Luna verpackt, Temperatur 0,3, Effort `none`). Zusammen ≈ 1,60 USD je vollständigem Vergleich; Sonnet nur bei Bedarf |
 
+---
+
+## 10 Abschluss und Übergabe an Phase 2
+
+Beide Fragen vom Anfang sind beantwortet:
+
+1. **Obere Referenz.** Claude Haiku und Sonnet 5.5 lösen 96–98 % beider
+   Sätze, Luna 85–88 %, gemma4:12b 82–85 %. Was auch Claude verfehlt, ist
+   ein Fall für die Anwendung (`n13`, E-7) oder harmlos (`h34`). Bereinigt
+   wurden `doc1` und `n06` (`gold_any`); die Tags und der Held-out-Satz (9)
+   machen Phase 2 messbarer.
+2. **Nutzbarkeit.** Beide Anbieter laufen über `openai_compat`, mit X-5
+   bis X-10 im Adapter und im Parser; Verbindungstest grün. Offen bleibt nur
+   die Prüfung von Hand (8.4), sie läuft in Phase 3 mit.
+
+**Für Phase 2** ([testplan-system-context.md](testplan-system-context.md),
+7 und 8.2):
+
+- **Externe Referenzen** (X-11): Haiku 5.5 (nur Text, T 1) und Luna
+  (verpackt, T 0,3, Effort `none`), je zwei Blöcke. Sie zeigen, ob eine
+  Variante nur den lokalen Modellen hilft oder dem Prompt allgemein; die
+  Schwelle von 3.5 gilt weiter für die vier lokalen Hauptmodelle.
+- **Kandidaten aus 8.3 und 9.1:** Richtung von `predicate` (R2), die Regel
+  zum Puffer (`h33`), der Tabellen-Layer (`h37`). R1 und S1 sind verworfen
+  (Kontext-Testplan 8.3).

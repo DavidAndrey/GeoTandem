@@ -284,7 +284,7 @@ bis eine Variante gewinnt.
    Seeds 1–5; die besten mit Seeds 6–10 bestätigen. **Erledigt
    2026-10-13** (8.1): Phase 2 läuft mit vier Modellen, gemma4:12b
    (Referenz), gemma4:e4b, qwen3:14b und qwen3.5:9b. Vor Phase 2 folgt
-   eine Phase 1b (wird noch beschrieben).
+   Phase 1b.
 1b. **Phase 1b, obere Referenz (extern):** P0 auf je einem Modell von
    Anthropic und OpenAI; Fälle, die auch diese verfehlen, vor Phase 2
    bereinigen; dazu die Nutzbarkeit beider Anbieter in der Anwendung.
@@ -296,7 +296,13 @@ bis eine Variante gewinnt.
    Dann P1, P4, P5, P6, P8, P9 (einsetzbar) auf allen vier Modellen. P2, P3,
    P7 als Messung, um zu wissen, was E-8 und S3 kosten. Regel 3.5 gilt je
    Modell: Eine Variante, die einem der vier um mehr als seine Schwelle
-   schadet, wird nicht übernommen.
+   schadet, wird nicht übernommen. **Erledigt 2026-10-23** (8.2): Grundlinie
+   bleibt P0, einziger Kandidat P9, P7 zu E-7. Haiku und Luna laufen je mit zwei Blöcken
+   mit (X-11); ein Schaden bei ihnen über 10 von 330 wird gelesen und im
+   Entscheid genannt. Gemessen wird nur auf dem Tuning-Satz: Der
+   Held-out-Satz bleibt für die Gewinner in Phase 3, sonst wählt Phase 2 an
+   ihm aus (8.3 hat ihn für R1 und S1 schon mitgemessen; übernommen wurde
+   nichts).
 3. **Phase 3, Bestätigung:** Gewinner mit Seeds 6–10. Die 15 Fragen aus
    testplan-initial-llm-run, Abschnitt 9, von Hand in der Anwendung
    nachprüfen. Erst dann wird eine Variante in `prompt.py` übernommen.
@@ -532,24 +538,93 @@ Wortlaut, mit Tokens, Rohtext bei Abbruch und Laufkopf):
 
 ### 8.2 Varianten
 
-Seeds 1–5, je Modell gegen sein P0; Schwellen in 8.1.
+Tuning-Satz, lokale Modelle Seeds 1–5 (/165), je Modell gegen sein P0
+(Schwellen in 8.1); Haiku und Luna je zwei Blöcke (/330, X-11). P0 gegen die
+heutigen Fälle neu bewertet (`gold_any` für `doc1` und `n06`).
 
-| Variante | gemma4:12b | gemma4:e4b | qwen3:14b | qwen3.5:9b | gekippte Fälle | Entscheid |
-|---|---:|---:|---:|---:|---|---|
-| P0 | 130/165 | 126/165 | 125/165 | 112/165 | – | Referenz |
-| P1 | | | | | | |
-| P4 | | | | | | |
-| P5 | | | | | | |
-| P6 (3) | | | | | | |
-| P6 (12) | | | | | | |
-| P8 | | | | | | |
-| P9 | | | | | | |
-| P2 (nur Messung) | | | | | | |
-| P3 (nur Messung) | 138/165¹ | | | | | E-8: nein |
-| P7 (nur Messung) | | | | | | |
+| Variante | gemma4:12b | gemma4:e4b | qwen3:14b | qwen3.5:9b | Haiku 5.5 | Luna | gekippte Fälle | Entscheid |
+|---|---:|---:|---:|---:|---:|---:|---|---|
+| P0 | 135 | 126 | 125 | 112 | 318 | 280 | – | Referenz |
+| P1 | 127 (−8) | **97 (−29)** | **96 (−29)** | **75 (−37)** | 314 (−4) | 264 (−16) | breit | **verworfen**: die Beispiele tragen die kleinen Modelle |
+| P4 | 125 (−10) | 125 (−1) | 121 (−4) | 99 (−13) | 318 (±0) | 272 (−8) | breit | **verworfen**: die Regeln tragen gemma4:12b und qwen3.5:9b |
+| P5 | **144 (+9)** | 120 (−6) | 125 (±0) | 99 (−13) | 317 (−1) | 272 (−8) | | **verworfen**: gemma4:e4b −6, qwen3.5:9b −13 |
+| P6 (3) | 121 (−14) | 115 (−11) | 120 (−5) | 96 (−16) | 316 (−2) | 281 (+1) | breit | **verworfen** |
+| P6 (12) | 132 (−3) | 131 (+5) | 125 (±0) | 103 (−9) | 318 (±0) | **293 (+13)** | qwen3:14b `doc6` 2⇒5, `log2` 0⇒5, aber `doc3` 5⇒2, `doc5` 5⇒1; gemma4:12b `n03` 5⇒0 | **verworfen**: qwen3.5:9b −9 |
+| P8 | 123 (−12) | 111 (−15) | 111 (−14) | 80 (−32) | **256 (−62)** | 272 (−8) | breit; Haiku 31 unlesbar | **verworfen**: alle verlieren; ohne eingeschränkte Ausgabe fehlt das Schema ganz |
+| P9 | 138 (+3) | **132 (+6)** | 125 (±0) | 107 (−5) | 320 (+2) | 285 (+5) | `x-ohne-kontext` gemma4:12b 0⇒5, e4b 3⇒5 (beabsichtigt); Luna `n03` 10⇒1, davon 6 **still falsch** | **Kandidat für Phase 3**, mit Vorbehalt (unten) |
+| P2 (nur Messung) | 120 (−15) | 112 (−14) | 121 (−4) | 99 (−13) | 309 (−9) | **134 (−146)** | Luna hält die erfundenen Beispiel-Layer für die echten (89 × `cannot_answer`) | E-8: nein; Züge sickern ein (2.3) |
+| P3 (nur Messung) | 127 (−8)¹ | 134 (+8) | 118 (−7) | 103 (−9) | 316 (−2) | 276 (−4) | | E-8: nein; P9 erreicht mehr |
+| P7 (nur Messung) | – | – | – | – | – | – | – | **zurückgestellt** zu E-7 (unten) |
 
-¹ Nur der Hinweis `FIRST` in der Nutzernachricht (`t3-v27b`), nicht die
-Beispiele; qwen3:8b damals 89/165 gegen 93/165 (Abschnitt 2.3).
+Lauf 2026-10-22, 56 Läufe, keine Abbrüche; Labels `<variante>-<modell>`, P6
+als `p6e3-*` und `p6e12-*` (`--variant p0 --examples 3|12`), extern
+`<variante>-haiku`, `-haiku-s6`, `-luna`, `-luna-s6`. Kosten extern ≈ 5 USD.
+
+**Befunde**
+
+1. **Beispiele und Regeln tragen beide.** Ohne Beispiele (P1) verlieren die
+   drei kleineren lokalen Modelle rund 30 von 165, ohne Regeln (P4)
+   gemma4:12b und qwen3.5:9b 10 bis 13. Drei Beispiele (P6) sind zu wenig,
+   zwölf helfen Luna (+13) und gemma4:e4b (+5), schaden aber qwen3.5:9b
+   (−9) und verschieben bei qwen3:14b Fälle in beide Richtungen.
+2. **Haiku ist gegen die Platzierung unempfindlich** (±4), ausser bei P8:
+   Haiku bekommt keine eingeschränkte Ausgabe, ohne den Schematext fehlt ihm
+   das Schema ganz. P8 wäre nur möglich, wenn Anbieter ohne eingeschränkte
+   Ausgabe den Text behalten.
+3. **P5 ist modellabhängig:** gemma4:12b +9, qwen3.5:9b −13. Kein
+   gemeinsamer Gewinn.
+4. **P9 wirkt wie beabsichtigt** (2.3): Der Hinweis `FIRST` direkt vor der
+   Frage löst `x-ohne-kontext` bei beiden gemma4-Modellen. Kein lokales
+   Modell verliert mehr als 5 (qwen3.5:9b genau −5: `n13` 5⇒3, `n14` 3⇒1).
+   **Vorbehalt:** Luna beantwortet `n03` («Gemeinden mit mehr als 10 000
+   Einwohnern», Einwohner nur im Tabellen-Layer) in 6 von 10 Antworten mit
+   allen Gemeinden ohne Filter, die Erklärung behauptet aber «mehr als
+   10’000 Einwohnern». Die Anwendung nimmt die Abfrage an. Unter P0 kommt
+   das bei keinem Modell vor (lokal 15 × Abweisung, sonst bestanden).
+5. **Befund für die Anwendung, unabhängig von P9:** Die Prüfung erkennt nicht,
+   dass eine Erklärung einen Filter nennt, den die Abfrage nicht hat (wie S1,
+   8.3). Abhilfe wäre die Annahme «ohne Filter» als Hinweis in der
+   Anwendung oder ein Abgleich der Bedingungen mit `assumptions`; das ist ein
+   eigener Entscheid.
+
+6. **Was E-8 kostet (P2, P3, 2026-10-23): nichts.** Beispiele als
+   Gesprächszüge (P2) schaden allen, am meisten Luna: Es liest die Züge als
+   früheres Gespräch über die erfundenen Layer und antwortet in 89 von 330
+   Fällen «die bekannten Layer enthalten keine Schulen». Alles in die
+   Nutzernachricht (P3) ist modellabhängig (gemma4:e4b +8, die übrigen −2 bis
+   −9). P9 hält zwei Nachrichten ohne Anwendungstext beim Nutzer und
+   erreicht bei fünf von sechs Modellen mehr als P3 (gemma4:e4b 132 gegen
+   134).
+7. **Absturz in der Prüfung, behoben.** Unter P2 schrieb qwen3.5:9b einmal
+   `compare` mit `le` auf einem Ja/Nein-Attribut; die Prüfung liess es
+   durch, SQLAlchemy warf `ArgumentError`, der Lauf brach ab. Das betraf jede
+   Abfrage mit Ordnung auf einem Ja/Nein-Attribut, nicht nur Modus B. Jetzt
+   weist `compile` `lt`/`le`/`gt`/`ge` und `between` auf Ja/Nein-Attributen
+   als `wrong_value_type` ab (Test in `test_engine.py`); der Lauf
+   `p2-qwen3.5_9b` ist danach neu gelaufen.
+
+**Phase 2 abgeschlossen (2026-10-23).** Grundlinie bleibt P0; einziger
+Kandidat ist P9.
+
+**P7 zurückgestellt (2026-10-23).** Ein Beispielsatz auf den Layern der
+Beispieldaten müsste erst so geschrieben werden, dass er keinen Fall wörtlich
+beantwortet, sonst misst P7 die Fälle statt der Platzierung. Und selbst ein
+Gewinn wäre nur einsetzbar, wenn die Anwendung die Beispiele je Konto erzeugt
+(S3). Beides gehört zu E-7 (Werte im Steckbrief): kontoeigenes Wissen für das
+Modell. P7 wird dort gemessen.
+
+**Einordnung (2026-10-23):** Phase 2 setzt die **Grundlinie für einen
+gemeinsamen Prompt**. Die Ergebnisse zeigen schon, dass die beste Platzierung
+je Modell verschieden ist (P5, P6 (12)); längerfristig ist ein Prompt je
+Modell oder Modellfamilie wahrscheinlich. Diese Grundlinie ist der Massstab,
+an dem ein solcher Ansatz sich messen muss.
+
+**Weiter mit Phase 3 für P9:** Seeds 6–10 der vier lokalen Modelle,
+Held-out-Satz für alle sechs, `n03` unter P9 bei Luna lesen; vorher klären,
+ob drei Nachrichten mit E-8 vereinbar sind (Bypass-Test, Sicherheitsreview).
+
+¹ Früher (Abschnitt 2.3) 138/165 mit nur dem Hinweis `FIRST` in der Nutzernachricht (`t3-v27b`), nicht den
+Beispielen; qwen3:8b damals 89/165 gegen 93/165 (Abschnitt 2.3).
 
 ### 8.3 Regel- und Schemavarianten aus Phase 1b (2026-10-21)
 
