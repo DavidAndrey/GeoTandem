@@ -73,7 +73,10 @@ export interface LastChange {
 
 interface ApprovalState {
   last: LastChange | null
-  /** The analysis when a proposal arrived, to tell a hand edit meanwhile (M5.2). */
+  /**
+   * The analysis a prompt was sent against (or, for a record picked up again,
+   * when its proposal arrived), to tell a hand edit meanwhile (M5.2, WP82).
+   */
   baselines: Record<number, string>
   busy: { action: number; step: Step } | null
   failure: { action: number; step: Step; error: unknown } | null
@@ -81,6 +84,8 @@ interface ApprovalState {
   rejecting: { action: number; reason: RejectReason | null } | null
   /** Auto answers whose execution has started: never twice. */
   started: Record<number, true>
+  /** Auto answers held back: the analysis was changed by hand since the prompt (WP82). */
+  held: Record<number, true>
   /** Answers parked until the editor closes, by record. */
   parked: Record<number, 'execute' | 'undo'>
   /** What an undo put back, by record: the "vorher" of M2.3, M6.2. */
@@ -94,6 +99,7 @@ const initial = (): ApprovalState => ({
   failure: null,
   rejecting: null,
   started: {},
+  held: {},
   parked: {},
   restored: {},
 })
@@ -427,10 +433,37 @@ function runAuto(model: ModelState) {
   if (useAnalysis.getState().draft !== null || layerList() === undefined) return
   for (const id of model.dialogue) {
     const view = model.views[id]
-    if (!view || !autoReady(view) || useApproval.getState().started[id]) continue
+    const { started, baselines } = useApproval.getState()
+    if (!view || !autoReady(view) || started[id]) continue
+    // Changed by hand while the model worked: the answer is about the state
+    // before, so it waits for the user instead of landing on top (M5.2, WP82).
+    const base = baselines[id]
+    if (base !== undefined && base !== fingerprint(committed())) {
+      useApproval.setState((s) => ({
+        started: { ...s.started, [id]: true },
+        held: { ...s.held, [id]: true },
+      }))
+      continue
+    }
     useApproval.setState((s) => ({ started: { ...s.started, [id]: true } }))
     void execute(view)
   }
+}
+
+/** The fingerprint a prompt is sent against; ``noteSent`` keeps it for its record. */
+export const sentFingerprint = (): string => fingerprint(committed())
+
+/** The analysis record ``id`` was asked against (``sentFingerprint`` before the request). */
+export function noteSent(id: number, at: string) {
+  useApproval.setState((s) => (id in s.baselines ? s : { baselines: { ...s.baselines, [id]: at } }))
+}
+
+/** *Trotzdem anwenden* of an auto answer held back: the stored query on top of the new state. */
+export async function applyHeld(view: ModelActionView) {
+  useApproval.setState((s) => ({
+    held: Object.fromEntries(Object.entries(s.held).filter(([id]) => Number(id) !== view.id)),
+  }))
+  await execute(view)
 }
 
 /** Notes the analysis a proposal was made against, once (M5.2). */

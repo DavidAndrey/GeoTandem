@@ -42,6 +42,8 @@ import {
   resetStores,
   thinking as isThinking,
   tick,
+  expectUnchanged,
+  workplace,
 } from '../../test/prompt-panel'
 import { strays } from '../../test/pseudo'
 import { renderAt } from '../../test/render'
@@ -1057,9 +1059,12 @@ describe('run (M9)', () => {
         },
       }),
     })
+    const before = workplace()
     await user.click(screen.getByRole('button', { name: 'Kette freigeben und starten' }))
     const retry = await screen.findByRole('button', { name: 'Erneut starten' })
     expect(hits(calls, 'run')).toHaveLength(1)
+    // Approved, its run refused: the analysis and the dialogue are as they were (WP82).
+    expectUnchanged(before, actionView('chain_reference').id)
     // The record is asked for again: a run the server started all the same is polled on.
     await waitFor(() =>
       expect(polls(calls, actionView('chain_reference').id).length).toBeGreaterThan(1),
@@ -1108,9 +1113,11 @@ describe('run (M9)', () => {
     await phase('running')
     await tick()
     await phase('halt')
+    const before = workplace()
     await user.click(screen.getByRole('button', { name: 'Kette abbrechen' }))
     expect(await screen.findByRole('alert')).toBeInTheDocument()
     await phase('halt')
+    expectUnchanged(before)
   })
 
   test('the comparison hook: the finished chain shows the entry registered last', async () => {

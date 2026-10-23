@@ -11,6 +11,7 @@ import { actionView, thinkingView } from '../../test/model-mocks'
 import {
   ask,
   backend,
+  expectUnchanged,
   done,
   fakeTimers,
   json,
@@ -18,8 +19,10 @@ import {
   openPanel,
   promptFlow,
   resetStores,
+  somethingToLose,
   thinking,
   tick,
+  workplace,
 } from '../../test/prompt-panel'
 import { proposalDraft } from '../panel/draft'
 import { useModel } from '../store'
@@ -160,6 +163,32 @@ describe('M11.3 a stale answer', () => {
     expect(card).not.toHaveTextContent('nicht mehr anwendbar')
     expect(within(card).getAllByRole('button').length).toBeGreaterThan(0)
     expect(screen.queryByText(/^Bezug:/)).toBeNull()
+  })
+})
+
+describe('refused follow-ups (WP82)', () => {
+  test('stale_reference: said, and the analysis and the dialogue stay as they were', async () => {
+    let sent = 0
+    const { user } = await answered(actionView('reference'), {
+      'POST /api/model/prompt': () =>
+        sent++ === 0
+          ? json(thinkingView('reference'), 202)
+          : json(
+              {
+                code: 'stale_reference',
+                message: 'gone',
+                details: { layer: 'gemeinden_steuern' },
+              },
+              409,
+            ),
+    })
+    somethingToLose()
+    const before = workplace()
+    await ask(user, 'Welche davon haben mehr als einen Standort?')
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Die frühere Antwort nutzt den Layer „gemeinden_steuern", den es nicht mehr gibt.',
+    )
+    expectUnchanged(before)
   })
 })
 

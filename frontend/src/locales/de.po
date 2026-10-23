@@ -4512,6 +4512,10 @@ msgid "Seed"
 msgstr "Seed"
 
 #: src/model/approval/Approval.tsx
+msgid "Seit dem Prompt von Hand geändert: nicht automatisch angewendet. Die Antwort bezieht sich auf den Stand davor."
+msgstr "Seit dem Prompt von Hand geändert: nicht automatisch angewendet. Die Antwort bezieht sich auf den Stand davor."
+
+#: src/model/approval/Approval.tsx
 msgid "Seit der Modelländerung von Hand geändert. Bitte im Editor zurücksetzen."
 msgstr "Seit der Modelländerung von Hand geändert. Bitte im Editor zurücksetzen."
 
@@ -4917,6 +4921,10 @@ msgstr "Trennzeichen"
 #: src/admin/ImportWizard.tsx
 msgid "Trennzeichen „{delimiter}\""
 msgstr "Trennzeichen „{delimiter}\""
+
+#: src/model/approval/Approval.tsx
+msgid "Trotzdem anwenden"
+msgstr "Trotzdem anwenden"
 
 #: src/admin/CatalogPage.tsx
 #: src/admin/LayerPage.tsx
