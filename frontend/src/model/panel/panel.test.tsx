@@ -25,6 +25,9 @@ import {
   promptFlow,
   resetStores,
   tick,
+  expectUnchanged,
+  somethingToLose,
+  workplace,
 } from '../../test/prompt-panel'
 import { strays } from '../../test/pseudo'
 import { renderAt } from '../../test/render'
@@ -49,16 +52,22 @@ const polls = (calls: { key: string }[], id: number) =>
 /** Types the prompt and sends it with Ctrl+Enter. */
 const ask = (user: ReturnType<typeof userEvent.setup>, text = PROMPT) => typeAndSend(user, text)
 
-/** Sends a case's prompt and lets the first poll bring its answer. */
-async function answered(id: CaseId, patch = {}) {
+/**
+ * Sends a case's prompt and lets the first poll bring its answer. ``lose``: the
+ * workplace has something to lose first (WP82); ``before`` is it as the prompt
+ * found it.
+ */
+async function answered(id: CaseId, patch = {}, lose = false) {
   const user = fakeTimers()
   const answer = actionView(id, patch, 'Assistenz')
   const calls = backend(promptFlow(thinkingView(id), answer))
   await openPanel()
+  if (lose) somethingToLose()
+  const before = workplace()
   await ask(user, answer.prompt)
   await thinking()
   await tick()
-  return { user, calls, answer }
+  return { user, calls, answer, before }
 }
 
 const decides = (calls: { key: string; body: unknown }[]) =>
@@ -494,8 +503,9 @@ describe('answer (M2, M4)', () => {
 
 describe('refusal (M3)', () => {
   test('M3.1: reason in words as an alert, code under Details, query viewable but not applicable', async () => {
-    const { user, calls, answer } = await answered('unknown_layer')
+    const { user, calls, answer, before } = await answered('unknown_layer', {}, true)
     const alert = await screen.findByRole('alert')
+    expectUnchanged(before)
     expect(alert).toHaveTextContent('abgewiesen')
     expect(alert).toHaveTextContent('Ein Layer fehlt oder ist nicht sichtbar.')
     expect(alert).not.toHaveTextContent('unknown_layer')
@@ -520,25 +530,28 @@ describe('refusal (M3)', () => {
   })
 
   test('M3.2: the limit names the counts', async () => {
-    await answered('limit_exceeded')
+    const { before } = await answered('limit_exceeded', {}, true)
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Die Abfrage hat 10 Bedingungen; im Modus B sind höchstens 8 möglich.',
     )
+    expectUnchanged(before)
   })
 
   test('M3.3: not representable, with the offer of the chain (E2.5)', async () => {
-    await answered('not_representable')
+    const { before } = await answered('not_representable', {}, true)
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Diese Abfrage lässt sich in den Bedienelementen nicht vollständig darstellen.',
     )
+    expectUnchanged(before)
     expect(screen.getByRole('button', { name: 'Mit Werkzeugkette versuchen ›' })).toBeEnabled()
   })
 })
 
 describe('errors (M14)', () => {
   test('M14.1: unreachable — what happened, state unchanged, retry, switch, admin link', async () => {
-    const { user, calls, answer } = await answered('unreachable')
+    const { user, calls, answer, before } = await answered('unreachable', {}, true)
     const alert = await screen.findByRole('alert')
+    expectUnchanged(before)
     expect(alert).toHaveTextContent('Modell nicht erreichbar')
     expect(alert).toHaveTextContent('Die Anbindung „Lokales Modell“ antwortet nicht.')
     expect(alert).toHaveTextContent('Ihr Stand ist unverändert.')
@@ -553,18 +566,22 @@ describe('errors (M14)', () => {
   })
 
   test('M14.2: a timeout at an external connection keeps the host', async () => {
-    await answered('timeout', {
-      connection: { ...EXTERNAL, locality: 'external' },
-    })
+    const { before } = await answered(
+      'timeout',
+      { connection: { ...EXTERNAL, locality: 'external' } },
+      true,
+    )
     const alert = await screen.findByRole('alert')
+    expectUnchanged(before)
     expect(alert).toHaveTextContent('Zeitüberschreitung')
     expect(alert).toHaveTextContent('Nach 2:00 kam keine Antwort.')
     expect(alert).toHaveTextContent('api.anbieter.example')
   })
 
   test('M14.3: an unreadable answer, its code under Details', async () => {
-    await answered('unreadable')
+    const { before } = await answered('unreadable', {}, true)
     expect(await screen.findByRole('alert')).toHaveTextContent('Antwort nicht lesbar')
+    expectUnchanged(before)
     expect(screen.getByText(/code: model_unreadable/)).toBeInTheDocument()
   })
 
@@ -592,8 +609,11 @@ describe('errors (M14)', () => {
         json({ code: 'quota_exceeded', message: 'limit', details: { limit: 50 } }, 429),
     })
     await openPanel()
+    somethingToLose()
+    const before = workplace()
     await ask(user)
     const alert = await screen.findByRole('alert')
+    expectUnchanged(before)
     expect(alert).toHaveTextContent('Grenzwert erreicht')
     expect(alert).toHaveTextContent('Die 50 Anfragen pro Tag an diese Anbindung sind aufgebraucht.')
     expect(alert).toHaveTextContent('Ihr Stand ist unverändert.')
@@ -616,8 +636,10 @@ describe('errors (M14)', () => {
     await ask(user)
     await tick()
     await screen.findByRole('button', { name: 'In Editor übernehmen' })
+    const before = workplace()
     await ask(user, 'Und die Kitas?')
     expect(await screen.findByRole('alert')).toHaveTextContent('Grenzwert erreicht')
+    expectUnchanged(before)
     // "Ihr Stand ist unverändert" includes the dialogue: the proposal is still takeable.
     expect(screen.getByRole('button', { name: 'In Editor übernehmen' })).toBeEnabled()
     expect(screen.getAllByRole('article', { name: 'Antwort' })).toHaveLength(2)

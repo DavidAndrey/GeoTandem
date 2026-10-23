@@ -2,8 +2,10 @@
 // the contract's layers and one connection, the stores reset.
 import { act, cleanup, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { vi } from 'vitest'
+import { expect, vi } from 'vitest'
+import type { AttributeRow } from '../analysis/model'
 import { useAnalysis } from '../analysis/store'
+import { newAttributeRow } from '../analysis/tree'
 import type { LLMOptions, ModelActionView, PlanEdit, RejectReason } from '../api/client'
 import { useMapView } from '../map/view'
 import { attribute, layer, signedIn } from './fixtures'
@@ -327,4 +329,47 @@ export function done() {
   cleanup()
   vi.useRealTimers()
   vi.unstubAllGlobals()
+}
+
+/**
+ * A workplace with something to lose (WP82): a condition set by hand, one the
+ * model set (marked "Modell") and "Nur in". The state a failure must keep.
+ */
+export function somethingToLose() {
+  const analysis = useAnalysis.getState()
+  const own: AttributeRow = { ...newAttributeRow('standorte'), operator: 'gt', value: 1 }
+  const model: AttributeRow = { ...newAttributeRow('typ'), operator: 'eq', value: 'sekundar' }
+  analysis.edit()
+  analysis.addNode('root', own)
+  analysis.addNode('root', model)
+  useAnalysis.getState().apply()
+  useAnalysis.getState().markOrigin([model.id])
+  useAnalysis.getState().setRestriction({ kind: 'view', bbox: [7.8, 46.8, 8, 47] })
+}
+
+/** What a failure must leave as it was (F-5.17, F-5.18): analysis, editor, dialogue. */
+export function workplace() {
+  const analysis = useAnalysis.getState()
+  const model = useModel.getState()
+  return structuredClone({
+    analysis: analysis.snapshot(),
+    editor: analysis.draft,
+    dialogue: model.dialogue.map((id) => model.views[id]),
+  })
+}
+
+/**
+ * ``before`` (``workplace()``) still holds after a failure (plan WP82): the
+ * analysis whole, origin marks and "Nur in" included, the editor, and the
+ * dialogue's earlier answers as they were. A failure may add its own record at
+ * the end (a refused or failed answer); the field keeps the prompt by design.
+ * ``changed``: the record the failed step was about, whose status may move on
+ * (an approval that went through before its run failed).
+ */
+export function expectUnchanged(before: ReturnType<typeof workplace>, changed?: number) {
+  const now = workplace()
+  expect(now.analysis).toEqual(before.analysis)
+  expect(now.editor).toEqual(before.editor)
+  const kept = (views: typeof now.dialogue) => views.filter((view) => view?.id !== changed)
+  expect(kept(now.dialogue.slice(0, before.dialogue.length))).toEqual(kept(before.dialogue))
 }

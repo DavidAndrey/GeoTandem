@@ -22,6 +22,8 @@ import { canTakeOver, takeOver } from '../panel/handover'
 import { changeList, type Change } from './changes'
 import {
   accept,
+  applyHeld,
+  editedSinceSent,
   canApply,
   chooseReason,
   escapeRejects,
@@ -156,7 +158,11 @@ export function Approval({ view }: { view: ModelActionView }) {
   const draft = proposalDraft(view.query, view.id, catalog)
   const changes = draft ? changeList(analysis, draft, catalog) : []
   const baseline = useApproval((s) => s.baselines[view.id])
-  const changed = baseline !== undefined && baseline !== fingerprint(analysis)
+  // Since the proposal arrived, or by hand while the model worked (WP82).
+  useApproval((s) => s.edits)
+  const changed =
+    (baseline !== undefined && baseline !== fingerprint(analysis)) ||
+    editedSinceSent(view.id, analysis)
   const busy = useApproval((s) => (s.busy?.action === view.id ? s.busy.step : null))
   const failure = useApproval((s) => (s.failure?.action === view.id ? s.failure.error : null))
   const rejecting = useApproval((s) => (s.rejecting?.action === view.id ? s.rejecting : null))
@@ -328,8 +334,23 @@ export function Approved({ view }: { view: ModelActionView }) {
     s.failure?.action === view.id && s.failure.step === 'execute' ? s.failure.error : null,
   )
   const parked = useApproval((s) => s.parked[view.id] === 'execute')
+  const held = useApproval((s) => s.held[view.id] === true)
   const editing = useAnalysis((s) => s.draft !== null)
   const waitsForEditor = parked || (editing && autoReady(view))
+  if (held)
+    return (
+      <div className="flex flex-col gap-1">
+        <p role="status" className="text-sm">
+          <Trans>
+            Seit dem Prompt von Hand geändert: nicht automatisch angewendet. Die Antwort bezieht
+            sich auf den Stand davor.
+          </Trans>
+        </p>
+        <button type="button" className="btn self-start" onClick={() => void applyHeld(view)}>
+          <Trans>Trotzdem anwenden</Trans>
+        </button>
+      </div>
+    )
   if (failure)
     return (
       <div className="flex flex-col gap-1">

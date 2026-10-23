@@ -7,7 +7,7 @@ import { QueryClient } from '@tanstack/react-query'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import type { AttributeRow } from '../../analysis/model'
-import { useAnalysis, type AnalysisSnapshot } from '../../analysis/store'
+import { currentAnalysis, useAnalysis, type AnalysisSnapshot } from '../../analysis/store'
 import { newAttributeRow, rows } from '../../analysis/tree'
 import type { LLMOptions, ModelActionView } from '../../api/client'
 import { activate } from '../../i18n/i18n'
@@ -37,6 +37,8 @@ import {
   resetStores,
   thinking,
   tick,
+  expectUnchanged,
+  workplace,
 } from '../../test/prompt-panel'
 import { strays } from '../../test/pseudo'
 import { fakeApi, renderAt } from '../../test/render'
@@ -45,7 +47,7 @@ import { Workplace } from '../../workplace/Workplace'
 import { useModel } from '../store'
 import { canTakeOver, takeOver } from '../panel/handover'
 import { clearHistory } from '../panel/state'
-import { startRejecting, useApproval, watchModel } from './flow'
+import { editedSinceSent, fingerprint, startRejecting, useApproval, watchModel } from './flow'
 
 beforeEach(resetStores)
 afterEach(done)
@@ -141,6 +143,19 @@ const meanwhile = (during: () => void, answer: () => Response) => () => {
   during()
   return answer()
 }
+/** A hand edit: one more condition on the result layer, applied. */
+const handEdit = () => {
+  const analysis = useAnalysis.getState()
+  analysis.edit()
+  analysis.addNode('root', { ...newAttributeRow('standorte'), operator: 'gt', value: 1 })
+  useAnalysis.getState().apply()
+}
+
+/** The prompt's POST, with a hand edit while it is on its way (WP82). */
+const editedWhileAsking = (level: LevelName) => ({
+  'POST /api/model/prompt': meanwhile(handEdit, () => json(thinkingView('reference', level), 202)),
+})
+
 const answerOf = (value: unknown) =>
   isFakeError(value) ? json(value.body, value.status) : json(value)
 
@@ -268,6 +283,17 @@ describe('approval (M5)', () => {
     )
   })
 
+  test('M5.2 while the model works: a hand edit before the answer is named at once (WP82)', async () => {
+    const { card } = await answered('Prüfen', undefined, { routes: editedWhileAsking('Prüfen') })
+    const approval = within(card).getByRole('region', { name: 'Freigabe' })
+    expect(
+      await within(approval).findByText('Stand hat sich seit dem Vorschlag geändert'),
+    ).toBeInTheDocument()
+    expect(within(approval).getAllByRole('listitem')[0]).toHaveTextContent(
+      '− entfällt: Standorte > 1',
+    )
+  })
+
   test('M5.3: Ablehnen asks for the optional reason; the chip goes with the rejection', async () => {
     const { user, card, calls } = await answered()
     await user.click(within(card).getByRole('button', { name: 'Ablehnen' }))
@@ -325,11 +351,12 @@ describe('approval (M5)', () => {
     const { user, card } = await answered('Prüfen', answer, {
       server: { ...answer, governance: off },
     })
+    const before = workplace()
     await user.click(within(card).getByRole('button', { name: 'Annehmen' }))
     expect(await within(card).findByRole('alert')).toHaveTextContent(
       'Auf der Stufe „Prüfen" ist „Raumfilter" nicht erlaubt.',
     )
-    expect(useAnalysis.getState().tree.children).toEqual([])
+    expectUnchanged(before)
     cleanup()
 
     resetStores()
@@ -339,11 +366,12 @@ describe('approval (M5)', () => {
           json({ code: 'not_implemented', message: 'Not built yet (WP70).', details: {} }, 501),
       },
     })
+    const stubBefore = workplace()
     await stub.user.click(within(stub.card).getByRole('button', { name: 'Annehmen' }))
     expect(await within(stub.card).findByRole('alert')).toHaveTextContent(
       'Dieser Teil der Modellunterstützung ist noch nicht verfügbar.',
     )
-    expect(useAnalysis.getState().tree.children).toEqual([])
+    expectUnchanged(stubBefore)
   })
 
   test('a failed run after the approval says so and can be repeated; the state stays', async () => {
@@ -362,10 +390,12 @@ describe('approval (M5)', () => {
         },
       },
     })
+    const before = workplace()
     await user.click(within(card).getByRole('button', { name: 'Annehmen' }))
     expect(await within(card).findByRole('alert')).toBeInTheDocument()
     expect(card).toHaveTextContent('Ihr Stand ist unverändert.')
-    expect(useAnalysis.getState().tree.children).toEqual([])
+    // The approval went through, its run failed: only that record moved on.
+    expectUnchanged(before, answer.id)
     expect(within(card).getAllByRole('status')[0]).toHaveTextContent('freigegeben')
     await user.click(within(card).getByRole('button', { name: 'Erneut ausführen' }))
     await waitFor(() => expect(rows(useAnalysis.getState().tree)).toHaveLength(3))
@@ -472,6 +502,21 @@ describe('auto (M6)', () => {
     await waitFor(() => expect(rows(useAnalysis.getState().tree)).toHaveLength(3))
     await tick(2000)
     expect(keys(calls)).toEqual([`POST /api/model/actions/${AUTO().id}/execute`])
+  })
+
+  test('a hand edit while the model works holds the auto answer back; it lands only on request (WP82)', async () => {
+    const { user, calls, card } = await answered('Teilautonom', AUTO(), {
+      routes: editedWhileAsking('Teilautonom'),
+    })
+    await tick(2000)
+    expect(keys(calls)).toEqual([])
+    expect(rows(useAnalysis.getState().tree)).toHaveLength(1)
+    expect(card).toHaveTextContent('nicht automatisch angewendet')
+
+    await user.click(within(card).getByRole('button', { name: 'Trotzdem anwenden' }))
+    await waitFor(() =>
+      expect(keys(calls)).toEqual([`POST /api/model/actions/${AUTO().id}/execute`]),
+    )
   })
 
   test('M6.1: an auto answer is executed at once; the bar names it; × hides only', async () => {
@@ -701,6 +746,28 @@ describe('auto (M6)', () => {
     expect(within(card).queryByRole('region', { name: 'Freigabe' })).toBeNull()
     await tick(2000)
     expect(calls.filter((c) => /preview|approve|execute/.test(c.key))).toEqual([])
+  })
+})
+
+describe('edited since sent (WP82)', () => {
+  test('only hand edits count, and only while the analysis is not what was sent', () => {
+    const sent = currentAnalysis(useAnalysis.getState())
+    const other = {
+      ...sent,
+      tree: {
+        ...sent.tree,
+        children: [{ ...newAttributeRow('standorte'), operator: 'gt' as const, value: 1 }],
+      },
+    }
+    useApproval.setState({ edits: 2, sent: { 5: { edits: 2, analysis: fingerprint(sent) } } })
+    // The flow's own change (another answer applied, an undo) moves no counter.
+    expect(editedSinceSent(5, other)).toBe(false)
+    useApproval.setState({ edits: 3 })
+    expect(editedSinceSent(5, other)).toBe(true)
+    // Edited by hand and back, or a draft applied as it was sent: nothing to hold.
+    expect(editedSinceSent(5, sent)).toBe(false)
+    // A record not sent from this workplace (picked up again after a reload).
+    expect(editedSinceSent(6, other)).toBe(false)
   })
 })
 

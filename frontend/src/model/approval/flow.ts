@@ -33,7 +33,7 @@ import type { KeyboardEvent } from 'react'
 import { create } from 'zustand'
 import type { Analysis } from '../../analysis/model'
 import { canBeResult, resultLayer, resultQuery } from '../../analysis/query'
-import { useAnalysis, type AnalysisSnapshot } from '../../analysis/store'
+import { currentAnalysis, useAnalysis, type AnalysisSnapshot } from '../../analysis/store'
 import {
   api,
   ApiRequestError,
@@ -75,12 +75,21 @@ interface ApprovalState {
   last: LastChange | null
   /** The analysis when a proposal arrived, to tell a hand edit meanwhile (M5.2). */
   baselines: Record<number, string>
+  /** Hand edits of the committed analysis so far; the flow's own changes do not count. */
+  edits: number
+  /**
+   * What a prompt was sent with (WP82): the hand edits so far and the analysis
+   * as sent (with an open editor's draft, as a follow-up sends it).
+   */
+  sent: Record<number, { edits: number; analysis: string }>
   busy: { action: number; step: Step } | null
   failure: { action: number; step: Step; error: unknown } | null
   /** "Ablehnen" asks for the optional reason first (M5.3). */
   rejecting: { action: number; reason: RejectReason | null } | null
   /** Auto answers whose execution has started: never twice. */
   started: Record<number, true>
+  /** Auto answers held back: the analysis was changed by hand since the prompt (WP82). */
+  held: Record<number, true>
   /** Answers parked until the editor closes, by record. */
   parked: Record<number, 'execute' | 'undo'>
   /** What an undo put back, by record: the "vorher" of M2.3, M6.2. */
@@ -90,10 +99,13 @@ interface ApprovalState {
 const initial = (): ApprovalState => ({
   last: null,
   baselines: {},
+  edits: 0,
+  sent: {},
   busy: null,
   failure: null,
   rejecting: null,
   started: {},
+  held: {},
   parked: {},
   restored: {},
 })
@@ -145,6 +157,7 @@ const shape = (analysis: Analysis) =>
 
 /** A hand edit after the last model change: its undo is over, reported once (WP70). */
 function handEdited() {
+  useApproval.setState((s) => ({ edits: s.edits + 1 }))
   const last = useApproval.getState().last
   if (!last || last.touched) return
   useApproval.setState({ last: { ...last, touched: true } })
@@ -428,9 +441,48 @@ function runAuto(model: ModelState) {
   for (const id of model.dialogue) {
     const view = model.views[id]
     if (!view || !autoReady(view) || useApproval.getState().started[id]) continue
+    // Changed by hand while the model worked: the answer is about the state
+    // before, so it waits for the user instead of landing on top (M5.2, WP82).
+    if (editedSinceSent(id, committed())) {
+      useApproval.setState((s) => ({
+        started: { ...s.started, [id]: true },
+        held: { ...s.held, [id]: true },
+      }))
+      continue
+    }
     useApproval.setState((s) => ({ started: { ...s.started, [id]: true } }))
     void execute(view)
   }
+}
+
+/** What a prompt is sent with, taken before the request; ``noteSent`` keeps it for its record. */
+export const sentWith = () => ({
+  edits: useApproval.getState().edits,
+  analysis: fingerprint(currentAnalysis(useAnalysis.getState())),
+})
+
+export function noteSent(id: number, at: ReturnType<typeof sentWith>) {
+  useApproval.setState((s) => (id in s.sent ? s : { sent: { ...s.sent, [id]: at } }))
+}
+
+/**
+ * The user changed the analysis by hand since record ``id`` was asked, and it
+ * is no longer what was sent (WP82): an edit undone by hand, or an open draft
+ * the user applied as sent, is none; the flow's own changes (another answer
+ * applied, an undo) never count. ``false`` for a record not sent from here.
+ */
+export function editedSinceSent(id: number, now: Analysis): boolean {
+  const { sent, edits } = useApproval.getState()
+  const at = sent[id]
+  return at !== undefined && edits !== at.edits && fingerprint(now) !== at.analysis
+}
+
+/** *Trotzdem anwenden* of an auto answer held back: the stored query on top of the new state. */
+export async function applyHeld(view: ModelActionView) {
+  useApproval.setState((s) => ({
+    held: Object.fromEntries(Object.entries(s.held).filter(([id]) => Number(id) !== view.id)),
+  }))
+  await execute(view)
 }
 
 /** Notes the analysis a proposal was made against, once (M5.2). */

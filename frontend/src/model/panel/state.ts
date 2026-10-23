@@ -6,6 +6,7 @@ import { create } from 'zustand'
 import { resultQuery } from '../../analysis/query'
 import { currentAnalysis, useAnalysis } from '../../analysis/store'
 import { api, ApiRequestError, type ModelActionView, type PromptRequest } from '../../api/client'
+import { noteSent, sentWith } from '../approval/flow'
 import { POLLED, sameGeneration, useModel, type Approach } from '../store'
 
 /** The prompt field, for actions that hand it the focus ("Prompt ändern"). */
@@ -93,9 +94,12 @@ export async function send(text: string, approach: Approach, parent: number | nu
         }
   // A reset meanwhile (sign-out): the answer is the last account's, never this dialogue's.
   const current = sameGeneration()
+  // What the prompt is about: a hand edit before the answer arrives shows (M5.2).
+  const against = sentWith()
   try {
     const view = await api.model.prompt(body)
     if (!current()) return
+    noteSent(view.id, against)
     usePanel.setState((s) => ({ sending: false, started: { ...s.started, [view.id]: Date.now() } }))
     useModel.getState().sent(view)
   } catch (error) {
