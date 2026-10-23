@@ -1249,6 +1249,14 @@ msgstr "Beziehung"
 msgid "Bezug"
 msgstr "Bezug"
 
+#: src/model/dialog/ReferenceMark.tsx
+msgid "Bezug: aktuelle Analyse"
+msgstr "Bezug: aktuelle Analyse"
+
+#: src/model/dialog/ReferenceMark.tsx
+msgid "Bezug: letzte Antwort"
+msgstr "Bezug: letzte Antwort"
+
 #: src/editor/EditorPanel.tsx
 msgid "Bezugslayer"
 msgstr "Bezugslayer"
@@ -1336,6 +1344,10 @@ msgstr "Ctrl+S"
 #: src/i18n/errors.ts
 msgid "Dafür braucht es die Rolle Administrator."
 msgstr "Dafür braucht es die Rolle Administrator."
+
+#: src/model/panel/Answer.tsx
+msgid "danach von Hand geändert"
+msgstr "danach von Hand geändert"
 
 #: src/admin/ModelActionPage.tsx
 msgid "danach von Hand geändert {touched}"
@@ -1819,6 +1831,10 @@ msgstr "Die Antwort des Modells ist keine gültige Abfrage."
 #: src/i18n/errors.ts
 msgid "Die Antwort des Modells ist nicht lesbar."
 msgstr "Die Antwort des Modells ist nicht lesbar."
+
+#: src/model/panel/Answer.tsx
+msgid "Die Antwort nutzt den Layer „{layer}“, den es nicht mehr gibt. Sie kann nicht mehr angewendet oder im Editor geöffnet werden."
+msgstr "Die Antwort nutzt den Layer „{layer}“, den es nicht mehr gibt. Sie kann nicht mehr angewendet oder im Editor geöffnet werden."
 
 #: src/i18n/errors.ts
 msgid "Die Anwendung ist bereits eingerichtet."
@@ -3976,6 +3992,10 @@ msgctxt "model sees"
 msgid "nicht leer"
 msgstr "nicht leer"
 
+#: src/model/panel/Answer.tsx
+msgid "nicht mehr anwendbar"
+msgstr "nicht mehr anwendbar"
+
 #: src/model/compare/flow.ts
 msgid "Nicht mehr im Verlauf. Bitte neu fragen."
 msgstr "Nicht mehr im Verlauf. Bitte neu fragen."
@@ -4143,6 +4163,10 @@ msgstr "Öffnen"
 msgid "Ohne {conditions}: ihr Layer ist nicht verfügbar."
 msgstr "Ohne {conditions}: ihr Layer ist nicht verfügbar."
 
+#: src/model/dialog/ReferenceMark.tsx
+msgid "Ohne Bezug fragen"
+msgstr "Ohne Bezug fragen"
+
 #: src/model/compare/flow.ts
 msgid "Ohne Ergebnis gibt es nichts zu vergleichen."
 msgstr "Ohne Ergebnis gibt es nichts zu vergleichen."
@@ -4239,6 +4263,10 @@ msgstr "Prompt ändern"
 #: src/model/panel/PromptPanel.tsx
 msgid "Prompt eingeben"
 msgstr "Prompt eingeben"
+
+#: src/model/panel/Answer.tsx
+msgid "Prompt erneut senden"
+msgstr "Prompt erneut senden"
 
 #: src/model/panel/PromptPanel.tsx
 msgid "Prompt nicht verfügbar: keine Modellanbindung aktiv. Klassik ist voll nutzbar."

@@ -194,17 +194,17 @@ function decided(query: unknown): unknown {
   return parts
 }
 
+/** Two query objects the editor would write alike (``decided``, in canonical form). */
+export const sameQuery = (a: unknown, b: unknown): boolean =>
+  canonical(decided(a)) === canonical(decided(b))
+
 type AnalysisState = ReturnType<typeof useAnalysis.getState>
 
 /** What "Übernehmen" of the handed-over draft amounts to (see the head of this file). */
 export function decisionFor(handover: Handover, applied: AnalysisState): DecideRequest {
   const query = resultQuery(currentAnalysis(applied))
   const marksKept = rows(handover.proposal).every((row) => applied.origin.marks[row.id])
-  if (
-    !handover.adjust &&
-    marksKept &&
-    canonical(decided(query)) === canonical(decided(handover.query))
-  )
+  if (!handover.adjust && marksKept && sameQuery(query, handover.query))
     return { decision: 'proposal_only', applied_by_hand: true }
   return { decision: 'adjusted', query }
 }

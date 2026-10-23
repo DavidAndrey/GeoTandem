@@ -10,6 +10,8 @@ import { Link } from 'react-router'
 import { useShallow } from 'zustand/react/shallow'
 import { useAnalysis } from '../../analysis/store'
 import { useLayers, useMe } from '../../api/queries'
+import { useStaleLayer } from '../dialog/reference'
+import { ReferenceMark } from '../dialog/ReferenceMark'
 import { useModel, type ModelState } from '../store'
 import { useActiveModel } from './active'
 import { Dialogue } from './Answer'
@@ -162,10 +164,15 @@ function Composer() {
   )
   const sending = usePanel((s) => s.sending)
   const question = useModel(openQuestion)
+  const referenced = useModel((s) => (s.reference === null ? undefined : s.views[s.reference]))
+  const stale = useStaleLayer(referenced) !== null
   const { connection, level } = useActiveModel()
   const locked = running !== null || sending
-  // While the latest answer asks back, the field gives the free answer (M12.2).
-  const submit = () => void send(draft, approach, question)
+  // While the latest answer asks back, the field gives the free answer (M12.2);
+  // otherwise the prompt follows the reference, unless × took it away or its
+  // layer is gone (P6, M11.1, M11.3).
+  const reference = referenced && !stale ? referenced : undefined
+  const submit = () => void send(draft, approach, question ?? reference?.id ?? null)
   const levelName = level?.name ?? ''
   const name = connection?.name ?? ''
   const host = connection?.host ?? ''
@@ -188,6 +195,7 @@ function Composer() {
           <Trans>Ihre Eingabe beantwortet die Rückfrage.</Trans>
         </p>
       )}
+      {question === null && reference && <ReferenceMark view={reference} />}
       <textarea
         id={PROMPT_INPUT}
         aria-describedby={question !== null && !locked ? 'prompt-answers' : undefined}
