@@ -60,6 +60,21 @@ the transport's `cause`. The run's first line names `variant`, `examples` and
 question: two runs with the same hash sent the same prompt. The summary ends
 with the median latency, mean tokens and the number of errors.
 
+## Metadata ablation (testplan-system-context, Phase 4)
+
+`--profile MODE` strips part of the sample data's metadata before the layer
+profile is built ([profiles.py](profiles.py)); the run header names the mode
+and the profile's hash. `full` is the profile as loaded and sends the P0 prompt
+unchanged.
+
+| Mode | The model no longer sees |
+|---|---|
+| `no-desc` | layer and attribute descriptions |
+| `no-labels` | attribute labels (the column name stands in) |
+| `no-domains` | code lists and ranges, as an unconfirmed proposal leaves them (S2); the code reading of E-2 goes with them |
+| `raw` | all three, the units, and layer titles (the layer name stands in): a plain import |
+| `raw-codes` | as `raw`, but the domains confirmed as the import proposes them: each code is its own label, ranges stay |
+
 ## Fair comparisons (testplan-external-models, 9)
 
 | Option | Effect |

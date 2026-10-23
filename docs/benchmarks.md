@@ -174,3 +174,23 @@ die Grundlinie des gemeinsamen Prompts; die Zahlen von Lauf 3 gelten weiter.
 Die besten Varianten sind je Modell verschieden (P5 für gemma4:12b, P6 mit 12
 Beispielen und P9 für Luna: Held-out 336 ⇒ 361/380). Nebenbei behoben: eine
 Ordnung auf einem Ja/Nein-Attribut war ein 500 statt `wrong_value_type`.
+
+## Lauf 5: Metadaten des Steckbriefs, Phase 4 (2026-10-23)
+
+Branch `p4-ablation`; P0 mit weniger Metadaten (`--profile`), sechs Modelle,
+Tuning-Satz, je zwei Blöcke (/330). Einzelheiten:
+[testplan-system-context.md](testplan-system-context.md), 8.5.
+
+| Modell | P0 | ohne Beschreibungen | ohne Beschriftungen | ohne Codelisten | schlichter Import | Import, Codelisten bestätigt |
+|---|---:|---:|---:|---:|---:|---:|
+| claude-haiku-5-5 | 318 | 316 | 315 | 252 | 249 | 309 |
+| gpt-6-luna | 280 | 276 | 270 | 201 | 183 | 262 |
+| gemma4:12b | 272 | 249 | 233 | 189 | 142 | 212 |
+| gemma4:e4b | 252 | 264 | 242 | 184 | 157 | 211 |
+| qwen3:14b | 250 | 261 | 219 | 177 | 151 | 222 |
+| qwen3.5:9b | 225 | 220 | 199 | 154 | 163 | 201 |
+
+**Ergebnis:** Die Codelisten tragen bei allen Modellen am meisten; ein
+schlichter Import kostet mehr als der Wechsel des Modells. Die bestätigte
+Codeliste des Imports bringt Haiku und Luna fast auf P0, den lokalen Modellen
+fehlen danach die Beschriftungen.

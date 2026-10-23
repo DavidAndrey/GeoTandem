@@ -307,6 +307,14 @@ bis eine Variante gewinnt.
    testplan-initial-llm-run, Abschnitt 9, von Hand in der Anwendung
    nachprüfen. Erst dann wird eine Variante in `prompt.py` übernommen. **Erledigt
    2026-10-23** (8.4): P9 bestätigt sich nicht; P0 bleibt die Grundlinie.
+3b. **Phase 4, Metadaten des Steckbriefs** (2026-10-23, vor dem Plan für E3): Was tragen Beschreibungen, Beschriftungen und
+   Wertebereiche? `--profile` mit `no-desc`, `no-labels`, `no-domains` und
+   `raw` (wie ein schlichter Import) auf den vier lokalen Hauptmodellen und
+   Haiku und Luna, je zwei Blöcke auf dem Tuning-Satz; Referenz ist P0
+   (`full`, derselbe Prompt-Hash). Keine Variante wird übernommen: Gemessen
+   wird, welche Metadaten ein Administrator pflegen sollte und ob Wertelisten
+   und Synonyme (E-7) zu E3 gehören. **Erledigt 2026-10-23** (8.5), mit
+   `raw-codes` als fünftem Modus.
 4. **Ergebnis** in Abschnitt 8 eintragen. Ein Entscheid, der E-8 oder S3
    berührt, kommt in den Sicherheitsreview.
 
@@ -721,6 +729,86 @@ Die Prüfung der 15 Fragen von Hand entfällt damit für P9.
 
 Damit ist die Grundlinie für den gemeinsamen Prompt **P0 auf main**, mit den
 Zahlen aus 8.1 und dieser Tabelle als Massstab.
+
+---
+
+### 8.5 Phase 4: Metadaten des Steckbriefs (2026-10-23)
+
+Je Modus fehlt dem Modell ein Teil der kuratierten Metadaten der Beispieldaten
+(`--profile`, [evals/profiles.py](../backend/evals/profiles.py)); Abfrage,
+Prüfung und Daten bleiben gleich. Tuning-Satz, je zwei Blöcke (/330); Referenz
+P0 (`full`, Prompt-Hash `55e708badb92` wie in Phase 1 bis 3). Labels
+`a-<modus>-<modell>[-s6]`, 60 Läufe; Kosten extern geschätzt ≈ 3,5 USD.
+
+| Modus | Fehlt | gemma4:12b | gemma4:e4b | qwen3:14b | qwen3.5:9b | Haiku 5.5 | Luna |
+|---|---|---:|---:|---:|---:|---:|---:|
+| P0 (`full`) | – | 272 | 252 | 250 | 225 | 318 | 280 |
+| `no-desc` | Beschreibungen von Layern und Attributen | 249 (−23) | 264 (+12) | 261 (+11) | 220 (−5) | 316 (−2) | 276 (−4) |
+| `no-labels` | Beschriftungen der Attribute | 233 (−39) | 242 (−10) | 219 (−31) | 199 (−26) | 315 (−3) | 270 (−10) |
+| `no-domains` | Codelisten und Wertebereiche | **189 (−83)** | **184 (−68)** | **177 (−73)** | **154 (−71)** | **252 (−66)** | **201 (−79)** |
+| `raw` | alles, dazu Einheiten und Layertitel: ein schlichter Import | 142 (−130) | 157 (−95) | 151 (−99) | 163 (−62) | 249 (−69) | 183 (−97) |
+| `raw-codes` | wie `raw`, die vorgeschlagenen Codelisten bestätigt (Code = Beschriftung) | 212 (−60) | 211 (−41) | 222 (−28) | 201 (−24) | 309 (−9) | 262 (−18) |
+
+Gepaart über die Fälle (`compare.py --stats`, Δ Mittel in Prozentpunkten je
+Fall): `no-domains` −20 bis −25 bei allen sechs, `raw` −19 bis −39, jedes
+Intervall ohne 0. `no-desc` bei keinem Modell belegt (Intervalle schliessen 0
+ein); `no-labels` bei gemma4:12b, qwen3:14b und qwen3.5:9b knapp belegt (−8 bis
+−12), bei gemma4:e4b, Haiku und Luna nicht. `raw-codes` gegen P0: Haiku −2,7,
+Luna −5,5, beide Intervalle mit 0; lokal −7 bis −18.
+
+**Befunde**
+
+1. **Die Codelisten tragen am meisten, bei allen Modellen.** Ohne sie verlieren
+   alle 66 bis 83 von 330, auch Haiku. Es fallen die Fälle, die einen Code
+   brauchen (`attr-franzoesisch` «fr», `doc2`/`doc3` «bahn», `doc6`, `n05`:
+   10 ⇒ 0/10 bei Haiku und Luna); mit den Codes fällt auch das Lesen der
+   Beschriftung als Code (E-2) weg.
+2. **Die bestätigte Codeliste des Imports holt das meiste zurück.** `raw-codes`
+   gegen `raw`: +60 und +79 bei Haiku und Luna, +38 (qwen3.5:9b) bis +71 bei den
+   lokalen Modellen. Haiku und Luna sind damit fast bei P0: Die
+   Werte zu kennen genügt ihnen, Beschriftungen brauchen sie kaum. Den lokalen
+   Modellen fehlen danach noch 24 bis 60, und zwar die Beschriftungen (3).
+3. **Beschriftungen verbinden die Wörter des Anwenders mit den Spalten.** Ohne
+   «Anzahl Schulhäuser» erkennt gemma4:12b `standorte` nicht und antwortet
+   `cannot_answer` (`attr-schulhaeuser` 10 ⇒ 0/10); ebenso `n03`, `n11`, `n14`
+   unter `raw-codes`. Das ist die Lücke, die Synonyme schliessen würden (E-7).
+4. **Beschreibungen wirken in beide Richtungen, je nach Wortlaut.** Ohne sie
+   schreibt gemma4:12b den Code `prim` aus den erfundenen Beispielen statt
+   `primar` (14-mal, unter P0 nie): `doc1` und `n06` 10 ⇒ 0/10. Mit ihnen rät
+   qwen3:14b `gem_nr = 1`, weil eine Beschreibung «Schlüssel auf
+   gemeinden.gem_nr» sagt (`log2` 0/10); ohne sie nimmt es den Gemeindenamen
+   (7/10), ebenso `in-gemeinde-bahn` 0 ⇒ 10/10. Eine Beschreibung, die den
+   Verbund erklärt, lädt zum Raten von Kennungen ein.
+5. **Ohne Werte raten die Modelle, offen oder still.** Haiku nennt jede
+   Vermutung als Annahme («Die genauen Werte kenne ich nicht», `text_match`
+   «franz»); gemma4:12b und qwen3:14b schreiben die meisten falschen
+   Antworten ohne Annahme (unter `no-domains` 9 von 92 bzw. 15 von 101 mit
+   Annahme). Rund zwei Drittel der falschen Antworten liefern **0 Treffer**:
+   ein Signal, das die Anwendung erkennen könnte (Gleichheit auf einem
+   Textattribut ohne Codeliste, 0 Treffer).
+6. **Ein schlichter Import kostet mehr als die Modellwahl.** Haiku auf `raw`
+   (249) liegt unter gemma4:12b auf P0 (272); die lokalen Modelle fallen auf
+   `raw` um 62 bis 130. Für Kundendaten ist die Pflege der Metadaten der
+   grössere Hebel als das Modell.
+7. **Nebenbefund:** Luna liefert unter `raw` und `raw-codes` 12-mal
+   `model_unreadable` (vor allem Rückfragen zu `n11`, `finish_reason: stop`),
+   unter P0 nie; Ursache nicht geprüft.
+
+**Was daraus für E3 folgt**
+
+- Der Bewertungslauf auf eigenen Daten misst Modell *und* Metadaten. Die
+  Vergleichsdarstellung braucht einen Hinweis auf den Stand des Steckbriefs
+  (bestätigte Codelisten, Beschriftungen), sonst wird ein Metadatenmangel als
+  Modellschwäche gelesen.
+- Reihenfolge der Pflege für den Administrator: Codelisten bestätigen, dann
+  Beschriftungen, dann Beschreibungen, die die Bedeutung nennen und nicht den
+  Verbund. Das gehört in die Importhilfe und eine Vollständigkeitsanzeige des
+  Steckbriefs.
+- E-7 (Synonyme, Werte für benannte Objekte) setzt dort an, wo nach `raw-codes`
+  die lokalen Modelle noch verlieren (3); ob es in E3 gehört, entscheidet der
+  Plan.
+- «0 Treffer bei einem Wert ausserhalb jeder Codeliste» ist ein Kandidat für
+  das Urteil «still falsch» der Bewertung und für einen Hinweis im Betrieb.
 
 ---
 
