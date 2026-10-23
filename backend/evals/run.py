@@ -23,6 +23,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from profiles import PROFILES, strip
 from variants import VARIANTS, load_examples, prompt_hash, with_examples
 
 from geotandem.catalog import model_profile
@@ -197,6 +198,12 @@ def main() -> int:
         help="examples/NAME.txt in place of the prompt's examples section",
     )
     parser.add_argument(
+        "--profile",
+        default="full",
+        choices=list(PROFILES),
+        help="strip metadata from the layer profile (docs/testplan-system-context.md, Phase 4)",
+    )
+    parser.add_argument(
         "--show",
         action="store_true",
         help="print the messages of the first case as they would be sent, and stop",
@@ -220,6 +227,7 @@ def main() -> int:
     engine = bootstrap(settings)
     backend = SpatiaLiteBackend(engine, settings.internal_crs)
     load_sample(backend)
+    strip(engine, args.profile)
     profile = model_profile(engine, backend.layer_names())
     level = next(lv for lv in load_levels(engine) if lv.is_default)
     context = ToolContext(backend=backend, limits=LIMITS)
@@ -254,6 +262,8 @@ def main() -> int:
             "cases": args.cases,
             "format": "text" if args.no_format else "constrained",
             "examples": "none" if args.no_examples else args.examples or "default",
+            "profile": args.profile,
+            "profile_sha256": profile.hash,
             "prompt_sha256": prompt_hash(list(template.messages), template.schema),
             "messages": [m.role for m in template.messages],
             "temperature": args.temperature,
