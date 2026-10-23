@@ -728,3 +728,17 @@ Date: 2026-10-20. Scope: `llm/openai_compat.py` only.
   as before; only the grammar is gone, which the checks never relied on.
 - **`anthropic-version` on every request (X-9).** A fixed value added to the
   header allowlist; it tells an endpoint nothing about the instance.
+
+## Engine fix from Phase 2 (2026-10-23)
+
+Scope: `engine/compile.py`, `_check_ordered`.
+
+- **An ordering on a yes/no attribute was an unhandled exception.**
+  `compare` with `lt`/`le`/`gt`/`ge`, or `between`, on a boolean attribute
+  passed the value check (`True` is a bool) and then raised SQLAlchemy's
+  `ArgumentError` while the query was built: a 500 for any signed-in user
+  sending such a query, and an aborted check of a model answer in Modus B.
+  Found when qwen3.5:9b wrote `primarstufe le true` (testplan-system-context
+  8.2). Now refused as `wrong_value_type` before the expression is built;
+  tested for `compare` and `between`. No data was exposed: the error was
+  raised before any SQL ran.

@@ -175,6 +175,8 @@ class Compiler:
             case m.Compare():
                 self.use(Op.ATTRIBUTE_FILTER)
                 col = scope.attr(c.attr)
+                if c.cmp in _ORDERING:
+                    _check_ordered(scope, c.attr, col)
                 [value] = _check_values(scope, c.attr, col, [c.value])
                 if c.cmp in _ORDERING and _python_type(col) is str:
                     # "before / after" in text follows the text rules, not bytes (F-2.14).
@@ -183,6 +185,7 @@ class Compiler:
             case m.Between():
                 self.use(Op.ATTRIBUTE_FILTER)
                 col = scope.attr(c.attr)
+                _check_ordered(scope, c.attr, col)
                 _check_values(scope, c.attr, col, [c.min, c.max])
                 return col.between(c.min, c.max)
             case m.InList():
@@ -491,6 +494,17 @@ def _check_values(scope: Scope, name: str, col: ColumnElement[Any], values: list
                 expected=expected.__name__,
             )
     return checked
+
+
+def _check_ordered(scope: Scope, name: str, col: ColumnElement[Any]) -> None:
+    """Yes/no values have no order; SQLAlchemy would raise on ``<=`` with a bool."""
+    if _python_type(col) is bool:
+        raise WrongValueType(
+            f"Attribute '{name}' of '{scope.layer}' holds bool values, which have no order; "
+            "compare with 'eq' or 'ne'.",
+            attribute=name,
+            expected="bool",
+        )
 
 
 def _iso_date(value: Any) -> date | None:
