@@ -23,6 +23,7 @@ import { changeList, type Change } from './changes'
 import {
   accept,
   applyHeld,
+  editedSinceSent,
   canApply,
   chooseReason,
   escapeRejects,
@@ -157,7 +158,11 @@ export function Approval({ view }: { view: ModelActionView }) {
   const draft = proposalDraft(view.query, view.id, catalog)
   const changes = draft ? changeList(analysis, draft, catalog) : []
   const baseline = useApproval((s) => s.baselines[view.id])
-  const changed = baseline !== undefined && baseline !== fingerprint(analysis)
+  // Since the proposal arrived, or by hand while the model worked (WP82).
+  useApproval((s) => s.edits)
+  const changed =
+    (baseline !== undefined && baseline !== fingerprint(analysis)) ||
+    editedSinceSent(view.id, analysis)
   const busy = useApproval((s) => (s.busy?.action === view.id ? s.busy.step : null))
   const failure = useApproval((s) => (s.failure?.action === view.id ? s.failure.error : null))
   const rejecting = useApproval((s) => (s.rejecting?.action === view.id ? s.rejecting : null))

@@ -7,7 +7,7 @@ import { QueryClient } from '@tanstack/react-query'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import type { AttributeRow } from '../../analysis/model'
-import { useAnalysis, type AnalysisSnapshot } from '../../analysis/store'
+import { currentAnalysis, useAnalysis, type AnalysisSnapshot } from '../../analysis/store'
 import { newAttributeRow, rows } from '../../analysis/tree'
 import type { LLMOptions, ModelActionView } from '../../api/client'
 import { activate } from '../../i18n/i18n'
@@ -47,7 +47,7 @@ import { Workplace } from '../../workplace/Workplace'
 import { useModel } from '../store'
 import { canTakeOver, takeOver } from '../panel/handover'
 import { clearHistory } from '../panel/state'
-import { startRejecting, useApproval, watchModel } from './flow'
+import { editedSinceSent, fingerprint, startRejecting, useApproval, watchModel } from './flow'
 
 beforeEach(resetStores)
 afterEach(done)
@@ -746,6 +746,28 @@ describe('auto (M6)', () => {
     expect(within(card).queryByRole('region', { name: 'Freigabe' })).toBeNull()
     await tick(2000)
     expect(calls.filter((c) => /preview|approve|execute/.test(c.key))).toEqual([])
+  })
+})
+
+describe('edited since sent (WP82)', () => {
+  test('only hand edits count, and only while the analysis is not what was sent', () => {
+    const sent = currentAnalysis(useAnalysis.getState())
+    const other = {
+      ...sent,
+      tree: {
+        ...sent.tree,
+        children: [{ ...newAttributeRow('standorte'), operator: 'gt' as const, value: 1 }],
+      },
+    }
+    useApproval.setState({ edits: 2, sent: { 5: { edits: 2, analysis: fingerprint(sent) } } })
+    // The flow's own change (another answer applied, an undo) moves no counter.
+    expect(editedSinceSent(5, other)).toBe(false)
+    useApproval.setState({ edits: 3 })
+    expect(editedSinceSent(5, other)).toBe(true)
+    // Edited by hand and back, or a draft applied as it was sent: nothing to hold.
+    expect(editedSinceSent(5, sent)).toBe(false)
+    // A record not sent from this workplace (picked up again after a reload).
+    expect(editedSinceSent(6, other)).toBe(false)
   })
 })
 

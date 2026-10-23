@@ -21,8 +21,8 @@ const leave = (persisted: boolean) => {
   window.dispatchEvent(event)
 }
 
-test('the running record is aborted on the way out, the request outliving the page', () => {
-  useModel.setState({ running: { id: 7, status: 'thinking' } })
+test('a running chain is stopped on the way out, the request outliving the page', () => {
+  useModel.setState({ running: { id: 7, status: 'running' } })
   leave(false)
   expect(fetch).toHaveBeenCalledWith(
     '/api/model/actions/7/abort',
@@ -30,9 +30,12 @@ test('the running record is aborted on the way out, the request outliving the pa
   )
 })
 
-test('nothing running, or a page kept for the back button: nothing is sent', () => {
+test('nothing running, a page kept for the back button, or a prompt still thinking: nothing is sent', () => {
   leave(false)
   useModel.setState({ running: { id: 7, status: 'running' } })
   leave(true)
+  // A reload fires pagehide too, and picks a thinking prompt up again (P7).
+  useModel.setState({ running: { id: 8, status: 'thinking' } })
+  leave(false)
   expect(fetch).not.toHaveBeenCalled()
 })
