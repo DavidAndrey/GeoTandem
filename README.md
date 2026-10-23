@@ -338,8 +338,10 @@ Layer-Steckbrief des Kontos an das Modell (nur Metadaten, nie Zeileninhalte).
   dass Eingaben protokolliert werden.
 - **Fehler** (Modell nicht erreichbar, Zeitüberschreitung, unlesbare Antwort,
   Grenzwert) lassen Analyse, Editor und Verlauf unverändert; der Prompt bleibt
-  im Feld. Wer das Fenster schliesst, während das Modell arbeitet, bricht die
-  Anfrage ab.
+  im Feld. Wer das Fenster schliesst, während eine Werkzeugkette läuft, hält
+  sie an (das letzte vollständige Zwischenergebnis bleibt im Protokoll
+  übernehmbar); eine Direktabfrage, an der das Modell noch denkt, nimmt der
+  Arbeitsplatz nach einem Neuladen wieder auf.
 
 **Ollama aufsetzen** (als Container mit `docker run` oder Compose, mit
 NVIDIA-GPU, oder nativ auf dem Host): [docs/ollama.md](docs/ollama.md).
