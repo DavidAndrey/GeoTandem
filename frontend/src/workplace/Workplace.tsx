@@ -40,6 +40,7 @@ import { TableDock } from '../table/TableDock'
 import { catalogInfo, geometryKind, labelAttribute, layerTitle, panelOrder } from './layerInfo'
 import { LayerPanel } from './LayerPanel'
 import { QueryPanel } from './QueryPanel'
+import { abortOnClose } from '../model/dialog/unload'
 import { SavedQueries } from '../queries/SavedQueries'
 import { Swatch } from './Swatch'
 
@@ -57,6 +58,8 @@ export function Workplace() {
   useChainRunner()
   // The hand-over before the approval flow, in this order (see ``watchModel``).
   useEffect(() => watchModel(client), [client])
+  // Closing the window aborts what the model is working on (WP82).
+  useEffect(abortOnClose, [])
   return (
     <div
       className={`grid h-full gap-4 ${editing || prompt ? 'grid-cols-[250px_460px_minmax(0,1fr)]' : 'grid-cols-[250px_minmax(0,1fr)]'}`}
