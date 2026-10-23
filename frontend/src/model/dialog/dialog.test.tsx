@@ -49,7 +49,7 @@ async function answered(answer: ModelActionView = actionView('reference'), route
 describe('reference kind and stale layers', () => {
   const view = actionView('reference')
   const applied = () => {
-    const draft = proposalDraft(view.query, view.id)
+    const draft = proposalDraft(view.query, view.id, LAYERS)
     if (!draft) throw new Error('the reference question is representable')
     return { ...currentAnalysis(useAnalysis.getState()), tree: draft.tree }
   }
