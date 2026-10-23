@@ -29,12 +29,15 @@ export default defineConfig({
     },
     // Modus B against the model stub (e2e/model-stub, from E2.3 on): its
     // connections would otherwise become the default the E2.1 test expects
-    // to set itself, so it runs after that one.
+    // to set itself, so it runs after that one. One file at a time: the suites
+    // change the levels every account shares (E2.4 puts spatial on Freigabe
+    // for Teilautonom while E2.5 expects it on auto).
     {
       name: 'stub',
       use: { ...devices['Desktop Chrome'] },
       grep: /@stub/,
       dependencies: ['llm'],
+      workers: 1,
     },
   ],
 })
