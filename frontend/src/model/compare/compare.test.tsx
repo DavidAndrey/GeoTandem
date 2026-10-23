@@ -4,10 +4,12 @@
 // throughout: compact queries in the records, a full dump in the reason's
 // conditions and the rows' query, naive UTC times with microseconds.
 import { act, screen, waitFor, within } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, test } from 'vitest'
+import { QueryClient } from '@tanstack/react-query'
+import { afterEach, beforeEach, describe, expect, onTestFinished, test } from 'vitest'
 import { useAnalysis } from '../../analysis/store'
 import { rows } from '../../analysis/tree'
 import type { ModelActionView } from '../../api/client'
+import { keys } from '../../api/queries'
 import { labelsFor } from '../../editor/fields'
 import { activate } from '../../i18n/i18n'
 import { messages as pseudo } from '../../locales/pseudo.po'
@@ -47,7 +49,7 @@ import {
 import { strays } from '../../test/pseudo'
 import { renderAt } from '../../test/render'
 import { Workplace } from '../../workplace/Workplace'
-import { accept, undo, useApproval } from '../approval/flow'
+import { accept, undo, useApproval, watchModel } from '../approval/flow'
 import { approveChain } from '../chain/flow'
 import { clearHistory } from '../panel/state'
 import { compactQuery } from '../readable'
@@ -647,6 +649,10 @@ describe('the reason in words (structured, WP76)', () => {
 
 describe('taking a side honours its governance', () => {
   test('an off side, an applied one, a chain without a result', () => {
+    // The workplace's cache with the layer list: a query is read against it (D3).
+    const client = new QueryClient()
+    client.setQueryData(keys.layerList, LAYERS)
+    onTestFinished(watchModel(client))
     expect(takeRefusal(actionView('reference', {}, 'Assistenz'))).toMatch(
       /^Stufe Assistenz: Das Modell darf hier nur vorschlagen/,
     )

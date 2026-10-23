@@ -4,6 +4,7 @@
 import { Trans } from '@lingui/react/macro'
 import { t } from '@lingui/core/macro'
 import { rows } from '../../analysis/tree'
+import { useLayers } from '../../api/queries'
 import { formatNumber } from '../../i18n/locale'
 import { proposalDraft } from '../panel/draft'
 import { FRAME } from '../statusKey'
@@ -14,9 +15,11 @@ import { awaiting, usePreview } from './waiting'
 export function PendingProposal() {
   const view = useModel(awaiting)
   const preview = usePreview(view)
+  const catalog = useLayers().data
   if (!view) return null
-  const draft = proposalDraft(view.query, view.id)
-  const conditions = conditionCount(draft ? rows(draft.tree).length : 0)
+  const draft = proposalDraft(view.query, view.id, catalog)
+  // Without the layer list the rows are not known yet (D3): no count rather than 0.
+  const conditions = catalog ? conditionCount(draft ? rows(draft.tree).length : 0) : null
   const count = preview.data ? formatNumber(preview.data.count) : null
   return (
     <div
@@ -27,7 +30,9 @@ export function PendingProposal() {
       <span className="border-accent text-accent-700 self-start rounded-full border border-dashed px-2">
         <Trans>Vorschlag offen</Trans>
       </span>
-      <p>{count === null ? conditions : t`${conditions} · Vorschau ${count}`}</p>
+      {conditions !== null && (
+        <p>{count === null ? conditions : t`${conditions} · Vorschau ${count}`}</p>
+      )}
       <p className="text-muted">
         <Trans>wird erst bei Annehmen übernommen</Trans>
       </p>

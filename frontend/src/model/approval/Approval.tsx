@@ -15,6 +15,8 @@ import { formatNumber } from '../../i18n/locale'
 import { rows } from '../../analysis/tree'
 import { hitsOf } from '../../i18n/phrases'
 import { useActiveModel } from '../panel/active'
+import { useCatalog } from '../panel/catalog'
+import { CatalogNote } from '../panel/CatalogNote'
 import { proposalDraft } from '../panel/draft'
 import { canTakeOver, takeOver } from '../panel/handover'
 import { changeList, type Change } from './changes'
@@ -81,7 +83,8 @@ export function ChangeLines({ changes }: { changes: Change[] }) {
 function PreviewLine({ view, analysis }: { view: ModelActionView; analysis: Analysis }) {
   const preview = usePreview(view)
   const counts = useCounts(analysis)
-  const source = proposalDraft(view.query, view.id)?.result
+  const catalog = useLayers().data
+  const source = proposalDraft(view.query, view.id, catalog)?.result
   if (preview.isPending)
     return (
       <p className="text-muted text-xs">
@@ -148,9 +151,9 @@ function ClassList({ view }: { view: ModelActionView }) {
  */
 export function Approval({ view }: { view: ModelActionView }) {
   const analysis = useCommitted()
-  const catalog = useLayers().data
+  const { catalog, known, failed } = useCatalog()
   const editing = useAnalysis((s) => s.draft !== null)
-  const draft = proposalDraft(view.query, view.id)
+  const draft = proposalDraft(view.query, view.id, catalog)
   const changes = draft ? changeList(analysis, draft, catalog) : []
   const baseline = useApproval((s) => s.baselines[view.id])
   const changed = baseline !== undefined && baseline !== fingerprint(analysis)
@@ -159,7 +162,7 @@ export function Approval({ view }: { view: ModelActionView }) {
   const rejecting = useApproval((s) => (s.rejecting?.action === view.id ? s.rejecting : null))
   const { level } = useActiveModel()
   const acceptButton = useRef<HTMLButtonElement>(null)
-  const applicable = canApply(view)
+  const applicable = canApply(view, catalog)
   const governance = view.governance
   const needs = classList(governance?.needs_approval ?? [])
   const levelName = view.level.name
@@ -206,11 +209,12 @@ export function Approval({ view }: { view: ModelActionView }) {
           {t`Gestellt unter Stufe ${levelName}; dieser Vorschlag folgt weiter ihr und wird nicht automatisch angewendet.`}
         </p>
       )}
-      {!applicable && (
+      {known && !applicable && (
         <p className="text-muted text-xs">
           <Trans>Diese Abfrage lässt sich nicht im Editor darstellen.</Trans>
         </p>
       )}
+      <CatalogNote failed={failed} />
       {rejecting ? (
         <RejectStep view={view} reason={rejecting.reason} busy={busy !== null} />
       ) : (
@@ -227,8 +231,8 @@ export function Approval({ view }: { view: ModelActionView }) {
           <button
             type="button"
             className="btn"
-            disabled={busy !== null || editing || !canTakeOver(view)}
-            onClick={() => takeOver(view)}
+            disabled={busy !== null || editing || !canTakeOver(view, catalog)}
+            onClick={() => takeOver(view, catalog)}
           >
             <Trans>Anpassen …</Trans>
           </button>

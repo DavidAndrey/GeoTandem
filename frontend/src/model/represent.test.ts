@@ -1,36 +1,43 @@
-// Representability, both sides (plan D3): every query the server lets through
-// as representable (schema/model-cases/represent.json, backend represent.py)
-// becomes an editor draft here, and the draft, applied, writes back the same
-// query object. So "In Editor übernehmen" works for every proposal the server
-// makes, and "as proposed" can be told by comparing queries.
+// Representability, both sides (plan D3, WP80): ``toAnalysis`` (analysis/query.ts)
+// agrees with the backend's ``to_analysis`` (represent.py) on every case of
+// schema/model-cases/represent.json, over the case file's catalog. A query the
+// server lets through finds the case's analysis, becomes an editor draft, and
+// the draft, applied, writes back the same query object; a query it refuses is
+// refused here too, naming the same part. So "In Editor übernehmen" works for
+// every proposal the server makes, and "as proposed" can be told by comparing
+// queries.
 import { expect, test } from 'vitest'
 import cases from '../../../schema/model-cases/represent.json'
 import type { Analysis } from '../analysis/model'
-import { resultQuery } from '../analysis/query'
+import { canonicalQuery, resultQuery, toAnalysis } from '../analysis/query'
+import type { FieldType } from '../editor/describe'
+import { attribute, layer } from '../test/fixtures'
 import { proposalDraft } from './panel/draft'
 import { readQuery } from './readable'
 
-/** The schema's defaults a case may leave out and the server's view carries
- * (``compact`` keeps every set value, defaults included). */
-const DEFAULTS: Record<string, Record<string, unknown>> = {
-  text_match: { mode: 'contains', case_sensitive: false },
-  near_feature: { distance_m: 0 },
-}
+/** The case file's catalog (kind and field types per layer) as the layer list. */
+const CATALOG = Object.entries(
+  cases.catalog as Record<string, { kind: 'vector' | 'table'; attributes: Record<string, string> }>,
+).map(([name, shape]) =>
+  layer({
+    name,
+    title: name,
+    kind: shape.kind,
+    attributes: Object.entries(shape.attributes).map(([attr, type]) =>
+      attribute({ name: attr, label: attr, data_type: type as FieldType }),
+    ),
+  }),
+)
 
-/** JSON with sorted keys, as the server sends the query: defaults filled in. */
-function canonical(query: unknown): string {
-  const sort = (v: unknown): unknown => {
-    if (Array.isArray(v)) return v.map(sort)
-    if (v === null || typeof v !== 'object') return v
-    const op = (v as { op?: unknown }).op
-    const filled = { ...(typeof op === 'string' ? DEFAULTS[op] : {}), ...v }
-    return Object.fromEntries(
-      Object.keys(filled)
-        .sort()
-        .map((k) => [k, sort((filled as Record<string, unknown>)[k])]),
-    )
-  }
-  return JSON.stringify(sort({ schema_version: '2', output: 'map', ...(query as object) }))
+/** A tree without its node ids: the case file leaves them out. */
+function withoutIds(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(withoutIds)
+  if (value === null || typeof value !== 'object') return value
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([key]) => key !== 'id')
+      .map(([key, inner]) => [key, withoutIds(inner)]),
+  )
 }
 
 function applied(result: string, tree: Analysis['tree']): Analysis {
@@ -51,25 +58,43 @@ function applied(result: string, tree: Analysis['tree']): Analysis {
 }
 
 test.each(cases.representable.map((c) => [c.id, c] as const))(
-  'representable "%s": a draft that writes the same query back',
+  'representable "%s": the case\'s analysis, and a draft that writes the same query back',
   (_, c) => {
-    const draft = proposalDraft(c.query, 7)
+    const found = toAnalysis(c.query, CATALOG)
+    expect(found.part).toBeNull()
+    const { symbology, ...analysis } = c.analysis
+    expect(symbology).toBeNull()
+    expect(withoutIds(found.analysis)).toEqual(analysis)
+    const draft = proposalDraft(c.query, 7, CATALOG)
     expect(draft).not.toBeNull()
     if (!draft) return
     expect(draft.result).toBe(c.query.source)
-    expect(canonical(resultQuery(applied(draft.result, draft.tree)))).toBe(canonical(c.query))
+    const query = resultQuery(applied(draft.result, draft.tree))
+    expect(canonicalQuery(query)).toBe(canonicalQuery(c.query))
+    // analysis → query → analysis
+    expect(toAnalysis(query, CATALOG)).toEqual(found)
   },
 )
 
-// The other direction needs the field types the server checks (the frontend
-// reads no catalog here): its cases are refused before they reach a draft.
-test.each(
-  ['double_negation', 'negated_outside', 'view_restriction_only', 'one_row_and_view_restriction']
-    .map((id) => cases.not_representable.find((c) => c.id === id))
-    .map((c) => [c?.id, c] as const),
-)('refused on both sides "%s": no draft', (_, c) => {
-  expect(c).toBeDefined()
-  expect(proposalDraft(c?.query, 7)).toBeNull()
+test.each(cases.not_representable.map((c) => [c.id, c] as const))(
+  'refused on both sides "%s": the same part, no draft',
+  (_, c) => {
+    expect(toAnalysis(c.query, CATALOG)).toEqual({ analysis: null, part: c.part })
+    expect(proposalDraft(c.query, 7, CATALOG)).toBeNull()
+  },
+)
+
+test('without the layer list nothing is representable: the source is unknown', () => {
+  const [one] = cases.representable.filter((c) => c.id === 'one_compare')
+  expect(toAnalysis(one?.query, undefined)).toEqual({ analysis: null, part: 'source' })
+  expect(proposalDraft(one?.query, 7, undefined)).toBeNull()
+})
+
+test("a draft's row ids are the action's, so origin marks never fall on another answer", () => {
+  const [reference] = cases.representable.filter((c) => c.id === 'reference')
+  const draft = proposalDraft(reference?.query, 7, CATALOG)
+  expect(draft?.tree.id).toBe('root')
+  expect(draft?.tree.children.map((child) => child.id)).toEqual(['m7:q0.0', 'm7:q0.1', 'm7:q0.2'])
 })
 
 test('a date range on ge and le is one row, as the editor writes it', () => {

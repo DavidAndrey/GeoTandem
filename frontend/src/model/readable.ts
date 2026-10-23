@@ -3,13 +3,12 @@
 // (analysis/model.ts), so the existing words (editor/describe.ts) say them; a
 // condition the controls cannot show stays as JSON, never guessed.
 //
-// Two readers: the answer's tree shows it, and the draft of a proposal
-// (panel/draft.ts) takes its rows into the editor, from where the user's
-// "Übernehmen" brings them into the analysis. So the rows must write back
-// exactly the query they were read from (``resultQuery``); the shared case
-// list of plan D3 (schema/model-cases/represent.json, represent.test.ts) holds
-// both sides to it. This is the narrow inverse of E2.3, not WP80's general
-// ``toAnalysis``.
+// It shows the answer's tree, also of a query the editor cannot take: it
+// knows no catalog. Whether the editor can take a proposal, and the rows its
+// draft gets, are ``toAnalysis``'s (analysis/query.ts, D3; panel/draft.ts),
+// which reads against the layers and refuses what the controls do not offer.
+// Both give the same rows for a query the editor takes, with the same ids
+// (``q0``, ``q0.1`` …), so an assumption's path finds its row in either.
 //
 // Input is raw JSON on purpose: a refused answer keeps its query as the model
 // wrote it (plan WP62), and it must still be viewable. Keys that are null or

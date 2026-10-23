@@ -285,6 +285,8 @@ function Take({ view }: { view: ModelActionView }) {
   const mine = useApproval((s) => s.busy?.action === view.id)
   const failure = useApproval((s) => (s.failure?.action === view.id ? s.failure.error : null))
   const inDialogue = useModel((s) => s.dialogue.includes(view.id))
+  // ``takeRefusal`` reads the layer list from the cache: this renders again when it arrives.
+  useLayers()
   const refusal = takeRefusal(view, inDialogue)
   const hint = `take-refusal-${view.id}`
   const name = approachText(view.approach)

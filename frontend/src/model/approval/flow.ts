@@ -28,7 +28,7 @@
 //   cache the map and the table read (``seedHits``), so the applied query is
 //   not run a second time and the log's stamp is what the user sees.
 import { t } from '@lingui/core/macro'
-import type { QueryClient } from '@tanstack/react-query'
+import { hashKey, type QueryClient } from '@tanstack/react-query'
 import type { KeyboardEvent } from 'react'
 import { create } from 'zustand'
 import type { Analysis } from '../../analysis/model'
@@ -38,10 +38,12 @@ import {
   api,
   ApiRequestError,
   type ExecuteResponse,
+  type LayerInfo,
   type ModelActionView,
   type QueryResult,
   type RejectReason,
 } from '../../api/client'
+import { keys } from '../../api/queries'
 import { seedHits } from '../../map/data'
 import { proposalDraft } from '../panel/draft'
 import { useHandover, watchHandover } from '../panel/handover'
@@ -101,7 +103,10 @@ export const useApproval = create<ApprovalState>()(initial)
 /** Work waiting for the editor to close (see ``whenEditorClosed``). */
 let waiting: (() => void)[] = []
 
-/** The workplace's query cache while it is mounted (``watchModel``): ``execute`` seeds its hits. */
+/**
+ * The workplace's query cache while it is mounted (``watchModel``): ``execute``
+ * seeds its hits, ``layerList`` reads the catalog from it.
+ */
 let results: QueryClient | null = null
 
 /**
@@ -147,9 +152,22 @@ function handEdited() {
   api.model.touched(last.action).catch(() => undefined)
 }
 
-/** Whether the record's stored query can become the analysis (D3: the editor shows it whole). */
-export function canApply(view: ModelActionView): boolean {
-  const draft = proposalDraft(view.query, view.id)
+/**
+ * The layer list of the workplace's query cache (``useLayers``), as the
+ * controls know the layers: what a stored query is read against (D3,
+ * ``toAnalysis``). ``undefined`` before it has loaded.
+ */
+export const layerList = () => results?.getQueryData<LayerInfo[]>(keys.layerList)
+
+/**
+ * Whether the record's stored query can become the analysis (D3: the editor
+ * shows it whole over the layers of ``catalog``).
+ */
+export function canApply(
+  view: ModelActionView,
+  catalog: readonly LayerInfo[] | undefined = layerList(),
+): boolean {
+  const draft = proposalDraft(view.query, view.id, catalog)
   if (!draft) return false
   const shown = useAnalysis.getState().layers.find((l) => l.id === draft.result)
   return !shown || canBeResult(shown)
@@ -195,8 +213,9 @@ function seedResult(result: QueryResult | undefined) {
  * marked "Modell"; ``result``, the run's rows, are its hits.
  */
 function apply(view: ModelActionView, result?: QueryResult): boolean {
-  const draft = proposalDraft(view.query, view.id)
-  if (!draft || !canApply(view)) return false
+  const catalog = layerList()
+  const draft = proposalDraft(view.query, view.id, catalog)
+  if (!draft || !canApply(view, catalog)) return false
   const before = useAnalysis.getState().snapshot()
   changeAnalysis(() => {
     // A model query has no "Nur in" (D3) and is no saved query: both go.
@@ -398,9 +417,14 @@ export const chooseReason = (reason: RejectReason | null) =>
 
 export const stopRejecting = () => useApproval.setState({ rejecting: null })
 
-/** Executes the auto answers of the dialogue that wait (P7), unless the editor is open. */
+/**
+ * Executes the auto answers of the dialogue that wait (P7), unless the editor
+ * is open or the layer list has not arrived: without it no query can be told
+ * representable (D3), so the answer waits for it (``watchModel``) instead of
+ * failing as "not representable".
+ */
 function runAuto(model: ModelState) {
-  if (useAnalysis.getState().draft !== null) return
+  if (useAnalysis.getState().draft !== null || layerList() === undefined) return
   for (const id of model.dialogue) {
     const view = model.views[id]
     if (!view || !autoReady(view) || useApproval.getState().started[id]) continue
@@ -480,7 +504,14 @@ export function watchModel(client: QueryClient): () => void {
   results = client
   const offHandover = watchHandover()
   const offApproval = watchApproval()
+  // An auto answer that arrived before the layer list runs once it is there.
+  const list = hashKey(keys.layerList)
+  const offLayers = client.getQueryCache().subscribe((event) => {
+    if (event.type === 'updated' && event.query.queryHash === list && event.query.state.data)
+      runAuto(useModel.getState())
+  })
   return () => {
+    offLayers()
     offApproval()
     offHandover()
     if (results === client) results = null

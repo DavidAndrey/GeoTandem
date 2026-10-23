@@ -10,8 +10,16 @@ import type {
   Restriction,
   SpatialOperator,
 } from './model'
-import { emptyTree, explainColumns, layerQuery, resultQuery, rowQueries, totalQuery } from './query'
-import { random, randomNode } from '../test/random'
+import {
+  emptyTree,
+  explainColumns,
+  layerQuery,
+  resultQuery,
+  rowQueries,
+  toAnalysis,
+  totalQuery,
+} from './query'
+import { canonicalPart, random, randomNode, ROUND_TRIP_LAYERS } from '../test/random'
 
 const catalog = (id: string, layer = id): DisplayLayer => ({
   id,
@@ -317,4 +325,100 @@ test('a reversed range is sent as typed; the query object normalises it', () => 
   const query = resultQuery(analysis(tree))
   assertValidQuery(query)
   expect(query?.where).toEqual({ op: 'between', attr: 'schueler', min: 500, max: 100 })
+})
+
+// --- analysis → query → analysis: the round trip of D3 ---------------------------
+
+/** A tree without its node ids: on the way back they are the readable tree's. */
+function withoutIds(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(withoutIds)
+  if (value === null || typeof value !== 'object') return value
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([key]) => key !== 'id')
+      .map(([key, inner]) => [key, withoutIds(inner)]),
+  )
+}
+
+test('analysis → query → analysis is identical for every canonical analysis (D3)', () => {
+  const seen = new Set<string>()
+  for (let seed = 1; seed <= 2000; seed++) {
+    const part = canonicalPart(random(seed))
+    const query = resultQuery(analysis(part.tree, { layers: [catalog(part.result)] }))
+    assertValidQuery(query)
+    const back = toAnalysis(query, ROUND_TRIP_LAYERS)
+    expect(back.part, `seed ${seed}: ${JSON.stringify(query)}`).toBeNull()
+    expect(withoutIds(back.analysis), `seed ${seed}`).toEqual(withoutIds(part))
+    part.tree.children.forEach((child) => tag(child, seen))
+  }
+  // The generator reaches every kind of node with every operator it may have.
+  const attribute = [
+    ...['eq', 'ne', 'lt', 'le', 'gt', 'ge', 'in', 'is_empty'],
+    ...['contains', 'starts_with', 'ends_with', 'between:number', 'between:date'],
+  ]
+  const spatial = ['in', 'outside', 'intersects', 'contains', 'near', 'far']
+  expect([...seen].sort()).toEqual(
+    [
+      ...['group:and', 'group:or', 'not group:and', 'not group:or'],
+      ...attribute.map((op) => `attribute:${op}`),
+      ...['not attribute', 'not spatial:intersects', 'not spatial:contains'],
+      ...spatial.map((op) => `spatial:${op}`),
+      ...spatial.map((op) => `spatial:${op} with filter`),
+      ...['reference', 'not reference'],
+    ].sort(),
+  )
+})
+
+/** Coverage tags of a node and its subtree: kind, operator, NICHT, a relation's filter. */
+function tag(node: Node, seen: Set<string>) {
+  const negated = node.not ? 'not ' : ''
+  switch (node.kind) {
+    case 'group':
+      seen.add(`${negated}group:${node.op}`)
+      node.children.forEach((child) => tag(child, seen))
+      return
+    case 'attribute': {
+      const range = typeof node.min === 'string' ? 'date' : 'number'
+      seen.add(`attribute:${node.operator}${node.operator === 'between' ? `:${range}` : ''}`)
+      if (node.not) seen.add('not attribute')
+      return
+    }
+    case 'spatial':
+      seen.add(`spatial:${node.operator}${node.filter ? ' with filter' : ''}`)
+      if (node.not) seen.add(`not spatial:${node.operator}`)
+      return
+    case 'reference':
+      seen.add(`${negated}reference`)
+  }
+}
+
+test('toAnalysis at the edges, as represent.py reads them', () => {
+  const part = (where: unknown, catalog = ROUND_TRIP_LAYERS) =>
+    toAnalysis({ source: 'schulen', where }, catalog).part
+  // Date bounds out of order are no date range but two rows, which the editor writes so.
+  const reversed = {
+    op: 'and',
+    args: [
+      { op: 'compare', attr: 'eroeffnet', cmp: 'ge', value: '2021-01-01' },
+      { op: 'compare', attr: 'eroeffnet', cmp: 'le', value: '2020-01-01' },
+    ],
+  }
+  expect(part(reversed)).toBeNull()
+  expect(
+    toAnalysis({ source: 'schulen', where: reversed }, ROUND_TRIP_LAYERS).analysis?.tree,
+  ).toMatchObject({ children: [{ operator: 'ge' }, { operator: 'le' }] })
+  // Without the layer list the source is unknown; a table layer is no result and no relation.
+  expect(toAnalysis({ source: 'schulen' }, undefined).part).toBe('source')
+  expect(toAnalysis({ source: 'gemeindedaten' }, ROUND_TRIP_LAYERS).part).toBe('source')
+  expect(part({ op: 'related', layer: 'gemeindedaten', predicate: 'intersects' })).toBe('related')
+  expect(part({ op: 'near_feature', layer: 'schulen', fid: 1 })).toBe('near_feature')
+  // A schema version before 2 is read as 2 (each version only adds), null keys set nothing.
+  expect(
+    toAnalysis(
+      { schema_version: '1', source: 'schulen', limit: null, where: null },
+      ROUND_TRIP_LAYERS,
+    ),
+  ).toMatchObject({ part: null, analysis: { result: 'schulen', tree: { children: [] } } })
+  // ``select: []`` is set, not the default (``compact``): the safety net refuses it.
+  expect(toAnalysis({ source: 'schulen', select: [] }, ROUND_TRIP_LAYERS).part).toBe('where')
 })

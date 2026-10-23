@@ -1932,6 +1932,14 @@ msgstr "Die Kopie übernimmt Daten, Feldbeschreibungen und die Sichtbarkeit; sie
 msgid "Die Laufzeit ist angehalten, solange die Freigabe offen ist."
 msgstr "Die Laufzeit ist angehalten, solange die Freigabe offen ist."
 
+#: src/model/compare/flow.ts
+msgid "Die Layerliste fehlt noch; Übernehmen geht erst danach."
+msgstr "Die Layerliste fehlt noch; Übernehmen geht erst danach."
+
+#: src/model/panel/CatalogNote.tsx
+msgid "Die Layerliste fehlt; ob sich die Abfrage im Editor darstellen lässt, ist darum offen."
+msgstr "Die Layerliste fehlt; ob sich die Abfrage im Editor darstellen lässt, ist darum offen."
+
 #: src/model/chain/Chain.tsx
 msgid "Die Neuplanung brachte keinen brauchbaren Plan (Schritt {at}): {reason}"
 msgstr "Die Neuplanung brachte keinen brauchbaren Plan (Schritt {at}): {reason}"

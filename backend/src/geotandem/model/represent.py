@@ -95,7 +95,9 @@ _TOPOLOGICAL: Final[dict[str, SpatialOperator]] = {
     "intersects": "intersects",
     "contains": "contains",
 }
-_ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+# The whole text, as the frontend's ``/^…$/`` reads it: ``$`` of ``match`` would
+# also take "2020-12-31\n" (case ``date_bound_with_a_line_break``).
+_ISO_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 ALLOWED_FIELDS: Final = ("schema_version", "source", "where", "output")
 """Top-level fields a proposal may set (the controls also write ``symbology``,
@@ -414,7 +416,7 @@ class _Inverse:
             return None
         if not (isinstance(low.value, str) and isinstance(high.value, str)):
             return None
-        if not (_ISO_DATE.match(low.value) and _ISO_DATE.match(high.value)):
+        if not (_ISO_DATE.fullmatch(low.value) and _ISO_DATE.fullmatch(high.value)):
             return None
         if low.value > high.value or self.field_type(layer, low.attr, "compare") != "date":
             return None
