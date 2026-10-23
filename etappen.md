@@ -122,6 +122,15 @@ menschlicher Kontrolle.
 > Modell sieht je Schritt nur ok/Fehler, leer/nicht leer und die Trefferzahl
 > (D9, D10). E2.3 bleibt intern und wird erst mit E2.4 ausgeliefert (P1).
 
+> **E2.6 umgesetzt (2026-10-23, WP80–WP84):** Übergänge zwischen Modus A und
+> B mit Herkunftsmarke «Modell», Folgefragen mit Bezug auf die letzte Antwort
+> und den aktuellen Stand (× fragt ohne Bezug), veraltete Antworten, Fehler
+> ohne Zustandsverlust, Handänderungen während das Modell arbeitet. Abnahme in
+> `e2e/tests/acceptance-e2.6.spec.ts`; Abweichungen und Offenes in
+> [docs/plan-e2.3-e2.6.md](docs/plan-e2.3-e2.6.md), Gate E2.6. Damit ist E2
+> umgesetzt; offen bleibt die Vorführung mit einem echten Modell und die
+> Abnahme der Designabweichungen.
+
 **Vorführung E2:** Ein Anwender ohne GIS-Vorkenntnisse beantwortet die
 Fragestellung aus E1 per Prompt; ein zweiter Durchlauf zeigt einen Fall, in dem
 die Prüfung vor der Ausführung einen Modellfehler abfängt
