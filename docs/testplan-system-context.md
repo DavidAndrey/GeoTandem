@@ -667,6 +667,23 @@ Nebenbefund: qwen3:14b gewinnt unter S1 `h18` und `h25` (0 ⇒ 5/5), weil es
 die Gemeindeliste als `in` statt als Gruppe schreibt.
 
 
+**R2: Richtung von `predicate` als Regel (2026-10-23, verworfen).** Ein Satz in
+den Regeln der Beispiele: «Die Objekte von "source" stehen links, die von
+"layer" rechts», mit je einem Beispiel für `within` und `contains` an den
+erfundenen Layern. Tuning-Satz, lokal ein Block, extern zwei
+(Branch `p2-r2`, nicht gemergt):
+
+| | gemma4:12b | gemma4:e4b | qwen3:14b | qwen3.5:9b | Haiku | Luna |
+|---|---:|---:|---:|---:|---:|---:|
+| P0 | 135 | 126 | 125 | 112 | 318 | 280 |
+| R2 | 135 (±0) | 121 (−5) | **114 (−11)** | **99 (−13)** | 319 (+1) | 281 (+1) |
+
+Das Ziel trifft R2 bei Luna (`doc1` 6 ⇒ 10/10, jetzt `within`), aber die Regel
+zieht andere Fälle mit: gemma4:12b `doc1` 5 ⇒ 2, Luna `doc4` 4 ⇒ 1 und `n05`
+5 ⇒ 2, qwen3:14b und qwen3.5:9b verlieren breit. **Verworfen** nach 3.5. Die
+Richtung bleibt ein Fehler einzelner Modelle; ein Kandidat für einen Prompt je
+Modell (Luna), nicht für den gemeinsamen.
+
 ### 8.4 Phase 3: P9 bestätigen (2026-10-23)
 
 P9 gegen P0, je zwei Blöcke auf beiden Sätzen (lokal Seeds 1–5 und 6–10;
