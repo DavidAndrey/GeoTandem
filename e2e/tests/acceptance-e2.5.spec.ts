@@ -528,6 +528,11 @@ async function ask(
     .getByRole("list", { name: "Verlauf" })
     .locator(":scope > li");
   const before = await items.count();
+  // Each prompt here is a fresh question (E2.6 made the next one a follow-up of
+  // the last answer, P6): a follow-up continues a conversation with the model,
+  // which the stub holds on the connection E25 Halt (its doc).
+  const fresh = panel.getByRole("button", { name: "Ohne Bezug fragen" });
+  if (await fresh.isVisible()) await fresh.click();
   await panel.getByRole("textbox", { name: "Prompt" }).fill(text);
   const posted = page.waitForResponse(
     (r) =>
