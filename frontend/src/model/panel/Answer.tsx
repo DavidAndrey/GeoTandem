@@ -23,7 +23,7 @@ import { useStaleLayer } from '../dialog/reference'
 import { openMyActions } from '../log/dialog'
 import { approachText } from '../log/words'
 import { StatusLabel } from '../status'
-import { dialogueViews, useModel } from '../store'
+import { dialogueViews, OPEN, useModel } from '../store'
 import { FRAME, lineStyle, statusKey } from '../statusKey'
 import { QueryTree } from '../tree'
 import { CHAIN_AVAILABLE } from './chain'
@@ -136,7 +136,9 @@ function Earlier({ view }: { view: ModelActionView }) {
 
 export function Answer({ view }: { view: ModelActionView }) {
   const stale = useStaleLayer(view)
-  if (stale !== null) return <Stale view={view} layer={stale} />
+  // An open record keeps its card, so it can still be declined (M11.3).
+  if (stale !== null && !OPEN.includes(view.status) && view.status !== 'refused')
+    return <Stale view={view} layer={stale} />
   switch (view.status) {
     case 'thinking':
       return <Thinking view={view} />

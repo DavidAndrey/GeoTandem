@@ -129,11 +129,11 @@ describe('M11.2 changed by hand since', () => {
 })
 
 describe('M11.3 a stale answer', () => {
+  const applied = () => actionView('reference', { status: 'applied', decision: 'accepted' })
+  const without = LAYERS.filter((layer) => layer.name !== 'gemeinden_steuern')
+
   test('its layer gone, it is stale, offers a fresh prompt and is no reference', async () => {
-    const catalog = LAYERS.filter((layer) => layer.name !== 'gemeinden_steuern')
-    const { user, calls, answer } = await answered(actionView('reference'), {
-      'GET /api/layers': catalog,
-    })
+    const { user, calls, answer } = await answered(applied(), { 'GET /api/layers': without })
     const card = screen.getByRole('article', { name: 'Antwort' })
     expect(card).toHaveTextContent('veraltet')
     expect(card).toHaveTextContent('nicht mehr anwendbar')
@@ -144,6 +144,22 @@ describe('M11.3 a stale answer', () => {
     await user.click(within(card).getByRole('button', { name: 'Prompt erneut senden' }))
     await waitFor(() => expect(posts(calls)).toHaveLength(2))
     expect(posts(calls)[1]).toEqual({ text: answer.prompt, approach: 'direct' })
+  })
+
+  test('a layer withdrawn from the model is gone for it too, as the server checks', async () => {
+    const withdrawn = LAYERS.map((layer) =>
+      layer.name === 'gemeinden_steuern' ? { ...layer, for_model: false } : layer,
+    )
+    await answered(applied(), { 'GET /api/layers': withdrawn })
+    expect(screen.getByRole('article', { name: 'Antwort' })).toHaveTextContent('veraltet')
+  })
+
+  test('an open proposal keeps its card and controls, but is no reference', async () => {
+    await answered(actionView('reference'), { 'GET /api/layers': without })
+    const card = screen.getByRole('article', { name: 'Antwort' })
+    expect(card).not.toHaveTextContent('nicht mehr anwendbar')
+    expect(within(card).getAllByRole('button').length).toBeGreaterThan(0)
+    expect(screen.queryByText(/^Bezug:/)).toBeNull()
   })
 })
 

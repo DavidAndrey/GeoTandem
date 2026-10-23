@@ -53,6 +53,7 @@ from geotandem.model.represent import (
     NotRepresentable,
     QueryPart,
     count_conditions,
+    query_layers,
     to_analysis,
     to_query,
     without_restriction,
@@ -882,3 +883,15 @@ def test_the_restriction_is_split_off_as_the_editor_writes_it(
     rest, found = without_restriction(query)
     expected = QueryObject.model_validate({"source": "schulen", "where": kept})
     assert (canonical_json(rest), found) == (canonical_json(expected), kind)
+
+
+def test_the_layers_of_a_query_are_its_names_never_a_symbologys_values() -> None:
+    """WP81: what a follow-up's parent depends on (M11.3), read from the query
+    itself, not from the first error a check happens to find."""
+    query = QueryObject.model_validate(
+        {
+            **case("reference")["answer"]["query"],
+            "symbology": {"kind": "categorized", "attr": "typ", "colors": {"layer": "#aa3300"}},
+        }
+    )
+    assert query_layers(query) == {"schulen", "strassen", "gemeinden_steuern"}

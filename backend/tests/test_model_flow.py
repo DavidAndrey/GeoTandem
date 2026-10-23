@@ -1083,20 +1083,25 @@ async def test_the_reply_to_a_clarification_carries_its_question(
     option = clarification["answer"]["options"][1]
 
     model.script("cannot_answer")
-    response = await client.post(PROMPT, json={"text": option, "parent_action_id": parent["id"]})
+    # With the analysis as the client sends it along (no condition yet).
+    response = await client.post(
+        PROMPT,
+        json={"text": option, "parent_action_id": parent["id"], "analysis": {"source": "schulen"}},
+    )
     assert response.status_code == 202, response.text
     await model.settle()
     record = (await client.get(action_url(response.json()["id"]))).json()
 
     assert record["parent_action_id"] == parent["id"]
-    # No analysis sent, and the parent had no query: the reply refers to the answer.
+    # A question has no query to compare with: the reply refers to it, unchanged.
     assert record["reference"] == "last_answer"
     [call] = model.fake.calls
     assert [m.role for m in call.messages] == ["system", "user", "assistant", "user"]
     assert call.messages[1].content == clarification["prompt"]
     assert clarification["answer"]["question"] in call.messages[2].content
     assert all(o in call.messages[2].content for o in clarification["answer"]["options"])
-    assert call.messages[3].content == option
+    assert call.messages[3].content.endswith("Frage: " + option)
+    assert "von Hand geändert" not in call.messages[3].content
 
 
 async def test_the_turns_reach_back_over_own_records_only(
@@ -1198,6 +1203,24 @@ async def test_the_map_restriction_stays_the_users(client: httpx.AsyncClient, mo
     question = call.messages[-1].content
     assert canonical_json(QueryObject.model_validate(c["analysis"])) in question
     assert "bbox" not in question and "«Nur in»" in question
+
+
+@pytest.mark.usefixtures("areas")
+async def test_a_styled_result_layer_is_the_users_too(
+    client: httpx.AsyncClient, model: Model
+) -> None:
+    """The client writes the result layer's symbology into the query: display,
+    like "Nur in", so neither refused nor a hand edit, and not for the model."""
+    c = case("follow_up")
+    parent = await outcome(client, model, "reference")
+    model.fake.calls.clear()
+    styled = {**c["analysis"], "symbology": {"kind": "single", "color": "#aa3300"}}
+
+    record = await follow(client, model, "follow_up", parent["id"], styled)
+
+    assert (record["status"], record["reference"]) == ("proposed", "last_answer")
+    [call] = model.fake.calls
+    assert "#aa3300" not in call.messages[-1].content
 
 
 @pytest.mark.usefixtures("areas")
