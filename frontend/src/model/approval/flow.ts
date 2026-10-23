@@ -161,8 +161,12 @@ function handEdited() {
   const last = useApproval.getState().last
   if (!last || last.touched) return
   useApproval.setState({ last: { ...last, touched: true } })
-  // For the log's undo rule; the button here is off already.
-  api.model.touched(last.action).catch(() => undefined)
+  // For the log's undo rule; the button here is off already. The record comes
+  // back with ``touched_at``: the answer says it was changed by hand (M11.2).
+  api.model
+    .touched(last.action)
+    .then((view) => useModel.getState().received(view))
+    .catch(() => undefined)
 }
 
 /**

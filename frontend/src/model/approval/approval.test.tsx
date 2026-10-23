@@ -580,6 +580,8 @@ describe('auto (M6)', () => {
     act(() => useAnalysis.getState().setRestriction({ kind: 'view', bbox: [7.8, 46.8, 8, 47] }))
     act(() => useAnalysis.getState().setRestriction(null))
     await waitFor(() => expect(bodies(calls, 'touched')).toHaveLength(1))
+    // The record comes back touched, and the answer says so (M11.2).
+    expect(await within(card).findByText('danach von Hand geändert')).toBeInTheDocument()
     // The bar stays until the next change: this was one.
     expect(screen.queryByRole('complementary', { name: 'Modell hat angewendet' })).toBeNull()
     const undo = within(card).getByRole('button', { name: 'Rückgängig' })
