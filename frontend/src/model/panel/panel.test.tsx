@@ -746,3 +746,55 @@ test('a running request survives switching to Klassik and back', async () => {
   await act(async () => useModel.getState().setOpen(true))
   expect(await screen.findByRole('article', { name: 'Antwort' })).toHaveTextContent('Vorschlag')
 })
+
+describe('between the modes (WP80, M15.1)', () => {
+  /** B2 or the panel: the column between sidebar and map (design M1, Q3). */
+  const middle = () =>
+    screen.getByRole('complementary', { name: 'Seitenleiste' }).nextElementSibling
+
+  test('Im Editor öffnen: B2 in the panel\'s place, the rows marked "Modell", the dialogue kept', async () => {
+    const { user, calls, editor } = await takenOver()
+    await user.click(within(editor).getByRole('button', { name: 'Übernehmen' }))
+    await waitFor(() => expect(decides(calls)).toHaveLength(1))
+    await user.click(screen.getByRole('tab', { name: 'Prompt' }))
+    const card = await screen.findByRole('article', { name: 'Antwort' })
+    expect(middle()).toBe(screen.getByRole('region', { name: 'Prompt' }))
+
+    await user.click(within(card).getByRole('button', { name: 'Im Editor öffnen' }))
+    // B2 takes the panel's column, Klassik is chosen; the applied rows keep their mark (P3).
+    const opened = await screen.findByRole('region', { name: 'Abfrage-Editor' })
+    expect(screen.queryByRole('region', { name: 'Prompt' })).toBeNull()
+    expect(middle()).toBe(opened)
+    expect(screen.getByRole('tab', { name: 'Klassik' })).toHaveAttribute('aria-selected', 'true')
+    expect(within(opened).getAllByText('Modell')).toHaveLength(3)
+    // Opening is no decision and no hand edit: nothing more is reported.
+    expect(decides(calls)).toHaveLength(1)
+
+    // Back to the prompt: the dialogue is as it was, the answer still applied.
+    await user.click(within(opened).getByRole('button', { name: 'Verwerfen' }))
+    await user.click(screen.getByRole('tab', { name: 'Prompt' }))
+    const again = await screen.findByRole('article', { name: 'Antwort' })
+    expect(within(again).getByRole('status')).toHaveTextContent('von Hand übernommen')
+    expect(useModel.getState().dialogue).toEqual([REFERENCE.id])
+    expect(Object.keys(useAnalysis.getState().origin.marks)).toHaveLength(3)
+  })
+
+  test('Klassik and back to Prompt keeps the text in the field and the answered dialogue', async () => {
+    const { user } = await answered('reference')
+    expect(await screen.findByRole('article', { name: 'Antwort' })).toBeInTheDocument()
+    const field = screen.getByRole('textbox', { name: 'Prompt' })
+    await user.click(field)
+    await user.paste('Welche davon haben mehr als einen Standort?')
+
+    await user.click(screen.getByRole('tab', { name: 'Klassik' }))
+    expect(screen.queryByRole('region', { name: 'Prompt' })).toBeNull()
+    await user.click(screen.getByRole('tab', { name: 'Prompt' }))
+
+    expect(await screen.findByRole('textbox', { name: 'Prompt' })).toHaveValue(
+      'Welche davon haben mehr als einen Standort?',
+    )
+    const card = await screen.findByRole('article', { name: 'Antwort' })
+    expect(within(card).getByRole('button', { name: 'In Editor übernehmen' })).toBeEnabled()
+    expect(useModel.getState().dialogue).toEqual([REFERENCE.id])
+  })
+})

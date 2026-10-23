@@ -4,6 +4,7 @@
 import { Trans } from '@lingui/react/macro'
 import { t } from '@lingui/core/macro'
 import { rows } from '../../analysis/tree'
+import { useLayers } from '../../api/queries'
 import { formatNumber } from '../../i18n/locale'
 import { proposalDraft } from '../panel/draft'
 import { FRAME } from '../statusKey'
@@ -14,8 +15,9 @@ import { awaiting, usePreview } from './waiting'
 export function PendingProposal() {
   const view = useModel(awaiting)
   const preview = usePreview(view)
+  const catalog = useLayers().data
   if (!view) return null
-  const draft = proposalDraft(view.query, view.id)
+  const draft = proposalDraft(view.query, view.id, catalog)
   const conditions = conditionCount(draft ? rows(draft.tree).length : 0)
   const count = preview.data ? formatNumber(preview.data.count) : null
   return (

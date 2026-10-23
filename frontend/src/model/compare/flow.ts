@@ -31,7 +31,7 @@
 import { t } from '@lingui/core/macro'
 import { create } from 'zustand'
 import { api, ApiRequestError, type ModelActionView } from '../../api/client'
-import { accept, adopt, canApply, execute, useApproval } from '../approval/flow'
+import { accept, adopt, canApply, execute, layerList, useApproval } from '../approval/flow'
 import { classList, proposalOnly } from '../approval/governance'
 import { isChain } from '../chain/steps'
 import { usePanel } from '../panel/state'
@@ -239,7 +239,7 @@ export function takeRefusal(view: ModelActionView, inDialogue = true): string | 
     case 'proposed':
     case 'approved':
       if (isChain(view)) return t`Läuft noch: Die Kette hat noch kein Ergebnis.`
-      if (!canApply(view))
+      if (!canApply(view, layerList()))
         return t`Diese Abfrage lässt sich nicht im Editor darstellen und darum nicht anwenden.`
       break
     case 'done':

@@ -1,5 +1,8 @@
 // Analysis state → query objects (schema v2). Pure and exhaustively tested:
 // every query the interface sends comes from here (etappen E1.5 "fertig wenn").
+// ``toAnalysis`` at the end is the inverse for the model path (D3).
+import type { LayerInfo } from '../api/client'
+import { operatorsFor, type FieldType } from '../editor/describe'
 import type {
   Analysis,
   AttributeRow,
@@ -9,9 +12,13 @@ import type {
   Group,
   Node,
   QueryObject,
+  QueryPart,
   Recipe,
+  ReferenceRow,
   Restriction,
   Row,
+  Scalar,
+  SpatialRow,
 } from './model'
 
 const base = (source: string): QueryObject => ({ schema_version: '2', source, output: 'map' })
@@ -328,3 +335,371 @@ export const emptyTree = (id = 'root'): Group => ({
   not: false,
   children: [],
 })
+
+// --- query → analysis (D3, plan WP80) ---------------------------------------------------
+//
+// ``toAnalysis`` is ``to_analysis`` of the backend's ``model/represent.py``,
+// rewritten in TypeScript: the same refusals, the same choices where several
+// analyses give one query, and the same check at the end, that ``resultQuery``
+// of the analysis found gives the query back in canonical form. Both sides run
+// the shared case list (schema/model-cases/represent.json, represent.test.ts).
+// It serves the model path, so it finds only what the editor's draft of a
+// proposal takes (model/panel/draft.ts): a condition tree, never a restriction
+// ("Nur in" is the map's), never a symbology, never ``not`` of a ``not``.
+// Where several analyses give the same query, it picks:
+//
+// - the root is an ``and`` group, never negated; an ``and`` at the top gives its
+//   arguments as the root's children, anything else is the root's only child;
+// - ``not`` of a ``within`` relation is "liegt ausserhalb", ``not`` of a distance
+//   relation "> Distanz zu"; otherwise ``not`` sets the node's NICHT;
+// - ``and`` of a ``ge`` and a ``le`` compare on one date field, both ISO dates in
+//   order, is one date range row ("zwischen").
+//
+// The controls know the layers from the catalog (the layer list, ``useLayers``):
+// the result is a vector layer; a row names a field of its layer with an
+// operator ``operatorsFor`` offers for the field's type, a number range on a
+// number field and a date range on a date field; a relation or reference names
+// another vector layer, never the result layer itself; a relation's filter is
+// one attribute row of the related layer, without NICHT.
+//
+// Input is raw JSON, as the record holds it: keys that are null set nothing,
+// and the schema's defaults count as written (``text_match`` without ``mode``).
+// Node ids are the readable tree's (model/readable.ts): ``q0`` is the where
+// clause, ``q0.1`` its second argument, ``q0.1.where`` a relation's filter.
+
+/**
+ * The analysis the controls show for a query (``analysis``), or the part they
+ * cannot show (``part``: the first top-level field in schema order or the
+ * condition ``op``, represent.py ``NotRepresentable``; the refusal's
+ * ``details.part`` on the server).
+ */
+export type Representation = { analysis: QueryPart; part: null } | { analysis: null; part: string }
+
+/** The query object's fields in schema order (``QueryObject``), for the part a refusal names. */
+const QUERY_FIELDS = [
+  'schema_version',
+  'source',
+  'attribute_join',
+  'where',
+  'buffer',
+  'spatial_relation',
+  'aggregate',
+  'columns',
+  'select',
+  'order_by',
+  'limit',
+  'symbology',
+  'output',
+]
+
+/** What a proposal may set; the controls also write ``symbology``, the draft does not take it. */
+const ALLOWED_FIELDS = ['schema_version', 'source', 'where', 'output']
+
+/** Lists the schema fills in by default: empty, they set nothing. */
+const LIST_DEFAULTS = ['columns', 'order_by']
+
+const COMPARE: readonly string[] = ['eq', 'ne', 'lt', 'le', 'gt', 'ge']
+const TEXT_MODES: readonly string[] = ['contains', 'starts_with', 'ends_with']
+const TOPOLOGICAL: Record<string, SpatialRow['operator']> = {
+  within: 'in',
+  intersects: 'intersects',
+  contains: 'contains',
+}
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
+
+type Json = Record<string, unknown>
+
+const isObject = (value: unknown): value is Json =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+const isScalar = (value: unknown): value is Scalar =>
+  typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
+
+const isNumber = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value)
+
+const unset = (value: unknown) =>
+  value === null || value === undefined || (Array.isArray(value) && value.length === 0)
+
+/** Thrown inside ``toAnalysis`` only and caught there: the first part the controls cannot show. */
+class NotRepresentable {
+  readonly part: string
+  constructor(part: string) {
+    this.part = part
+  }
+}
+
+/** Defaults the schema fills in where a condition leaves them out (``geotandem_query.models``). */
+const CONDITION_DEFAULTS: Record<string, Json> = {
+  text_match: { mode: 'contains', case_sensitive: false },
+  near_feature: { distance_m: 0 },
+  geometry: { predicate: 'intersects' },
+}
+
+/**
+ * A query object as the server compares it (``canonical_json``): sorted keys,
+ * nothing null, the schema's defaults filled in, a version 0 or 1 read as 2 and
+ * a number range's bounds in order (the schema normalises them, ``Between``).
+ */
+export function canonicalQuery(query: unknown): string {
+  const filled = (value: unknown): unknown => {
+    if (Array.isArray(value)) return value.map(filled)
+    if (!isObject(value)) return value
+    const op = typeof value.op === 'string' ? value.op : ''
+    const out: Json = { ...CONDITION_DEFAULTS[op] }
+    for (const [key, inner] of Object.entries(value))
+      if (inner !== null && inner !== undefined) out[key] = filled(inner)
+    if (op === 'between' && isNumber(out.min) && isNumber(out.max) && out.min > out.max)
+      [out.min, out.max] = [out.max, out.min]
+    return out
+  }
+  const sorted = (value: unknown): unknown => {
+    if (Array.isArray(value)) return value.map(sorted)
+    if (!isObject(value)) return value
+    return Object.fromEntries(
+      Object.keys(value)
+        .sort()
+        .map((key) => [key, sorted(value[key])]),
+    )
+  }
+  if (!isObject(query)) return JSON.stringify(query)
+  const top: Json = {}
+  for (const [key, value] of Object.entries(query)) {
+    if (value === null || value === undefined) continue
+    if (LIST_DEFAULTS.includes(key) && Array.isArray(value) && value.length === 0) continue
+    top[key] = filled(value)
+  }
+  const version = top.schema_version
+  top.schema_version = version === undefined || version === '0' || version === '1' ? '2' : version
+  top.output ??= 'map'
+  return JSON.stringify(sorted(top))
+}
+
+const attributeRow = (id: string, attr: string, patch: Partial<AttributeRow>): AttributeRow => ({
+  id,
+  kind: 'attribute',
+  not: false,
+  attr,
+  operator: 'eq',
+  value: null,
+  min: null,
+  max: null,
+  values: [],
+  ...patch,
+})
+
+/** The query the editor's draft of ``part`` sends: ``resultQuery`` on its catalog layer. */
+function partQuery(part: QueryPart): QueryObject | null {
+  const layer: DisplayLayer = {
+    id: part.result,
+    source: { kind: 'catalog', layer: part.result },
+    visible: true,
+    opacity: 1,
+    symbology: null,
+  }
+  return resultQuery({ layers: [layer], result: layer.id, tree: part.tree, restriction: null })
+}
+
+/**
+ * The analysis the controls show for ``query`` over the layers of ``catalog``,
+ * or the part they cannot show without loss (D3). Never a guess: whatever is
+ * found writes the query back (``resultQuery``) in canonical form. Without a
+ * catalog (the layer list still loading) every source is unknown.
+ */
+export function toAnalysis(
+  query: unknown,
+  catalog: readonly LayerInfo[] | undefined,
+): Representation {
+  try {
+    return { analysis: findAnalysis(query, catalog ?? []), part: null }
+  } catch (error) {
+    if (error instanceof NotRepresentable) return { analysis: null, part: error.part }
+    throw error
+  }
+}
+
+function findAnalysis(query: unknown, catalog: readonly LayerInfo[]): QueryPart {
+  if (!isObject(query)) throw new NotRepresentable('source')
+  for (const name of QUERY_FIELDS)
+    if (!ALLOWED_FIELDS.includes(name) && !unset(query[name])) throw new NotRepresentable(name)
+  // A key the schema does not know: the server refuses such an object outright.
+  const unknown = Object.keys(query).find((k) => !QUERY_FIELDS.includes(k) && !unset(query[k]))
+  if (unknown !== undefined) throw new NotRepresentable(unknown)
+  if (!unset(query.output) && query.output !== 'map') throw new NotRepresentable('output')
+  const source = typeof query.source === 'string' ? query.source : null
+  // A table layer is never the result (B11).
+  if (catalog.find((l) => l.name === source)?.kind !== 'vector' || source === null)
+    throw new NotRepresentable('source')
+  const tree = unset(query.where) ? emptyTree() : new Inverse(catalog, source).root(query.where)
+  const part: QueryPart = { result: source, tree, restriction: null }
+  const written = partQuery(part)
+  // A safety net: the inverse is meant to fail first, naming the part.
+  if (!written || canonicalQuery(written) !== canonicalQuery(query))
+    throw new NotRepresentable('where')
+  return part
+}
+
+/** ``_Inverse`` of represent.py: the conditions of a raw where clause as rows and groups. */
+class Inverse {
+  readonly catalog: readonly LayerInfo[]
+  readonly source: string
+  constructor(catalog: readonly LayerInfo[], source: string) {
+    this.catalog = catalog
+    this.source = source
+  }
+
+  root(condition: unknown): Group {
+    if (
+      isObject(condition) &&
+      condition.op === 'and' &&
+      Array.isArray(condition.args) &&
+      condition.args.length >= 2 &&
+      this.dates(condition, this.source, 'q0') === null
+    ) {
+      const children = condition.args.map((arg, i) => this.node(arg, this.source, `q0.${i}`))
+      return { ...emptyTree(), children }
+    }
+    return { ...emptyTree(), children: [this.node(condition, this.source, 'q0')] }
+  }
+
+  fieldType(layer: string, attr: string, op: string): FieldType {
+    const info = this.catalog.find((l) => l.name === layer)
+    const found = info?.attributes.find((a) => a.name === attr)?.data_type
+    // Not a field the editor lists.
+    if (found === undefined) throw new NotRepresentable(op)
+    return found
+  }
+
+  /** ``ge`` and ``le`` on one date field, ISO dates in order: a date range row. */
+  dates(condition: Json, layer: string, id: string): AttributeRow | null {
+    if (!Array.isArray(condition.args) || condition.args.length !== 2) return null
+    const [low, high] = condition.args as unknown[]
+    if (!isObject(low) || !isObject(high) || low.op !== 'compare' || high.op !== 'compare')
+      return null
+    const attr = low.attr
+    if (low.cmp !== 'ge' || high.cmp !== 'le' || typeof attr !== 'string' || attr !== high.attr)
+      return null
+    const [from, to] = [low.value, high.value]
+    if (typeof from !== 'string' || typeof to !== 'string') return null
+    if (!ISO_DATE.test(from) || !ISO_DATE.test(to)) return null
+    if (from > to || this.fieldType(layer, attr, 'compare') !== 'date') return null
+    return attributeRow(id, attr, { operator: 'between', min: from, max: to })
+  }
+
+  /** ``row``, if the editor offers its operator for the field's type. */
+  attribute(op: string, layer: string, row: AttributeRow): AttributeRow {
+    const type = this.fieldType(layer, row.attr, op)
+    if (!operatorsFor(type).includes(row.operator)) throw new NotRepresentable(op)
+    // A date range comes as ge and le.
+    if (row.operator === 'between' && type !== 'integer' && type !== 'real')
+      throw new NotRepresentable(op)
+    return row
+  }
+
+  /** Relations and references name another vector layer (``LayerSelect``). */
+  otherLayer(layer: unknown, op: string): string {
+    const info = this.catalog.find((l) => l.name === layer)
+    if (info?.kind !== 'vector' || info.name === this.source) throw new NotRepresentable(op)
+    return info.name
+  }
+
+  node(condition: unknown, layer: string, id: string): Node {
+    if (!isObject(condition) || typeof condition.op !== 'string')
+      throw new NotRepresentable('where')
+    const c = condition
+    const op = condition.op
+    const row = (patch: Partial<AttributeRow>) => {
+      if (typeof c.attr !== 'string') throw new NotRepresentable(op)
+      return this.attribute(op, layer, attributeRow(id, c.attr, patch))
+    }
+    switch (op) {
+      case 'and':
+      case 'or': {
+        if (!Array.isArray(c.args) || c.args.length < 2) throw new NotRepresentable(op)
+        const dates = op === 'and' ? this.dates(c, layer, id) : null
+        if (dates) return dates
+        const children = c.args.map((arg, i) => this.node(arg, layer, `${id}.${i}`))
+        return { id, kind: 'group', op, not: false, children }
+      }
+      case 'not':
+        if (isObject(c.arg) && c.arg.op === 'not') throw new NotRepresentable(op)
+        return negated(this.node(c.arg, layer, id))
+      case 'compare':
+        if (typeof c.cmp !== 'string' || !COMPARE.includes(c.cmp) || !isScalar(c.value))
+          throw new NotRepresentable(op)
+        if (c.value === '') throw new NotRepresentable(op)
+        return row({ operator: c.cmp as AttributeRow['operator'], value: c.value })
+      case 'between': {
+        if (!isNumber(c.min) || !isNumber(c.max)) throw new NotRepresentable(op)
+        // Either order: the schema normalises "zwischen 4 und 2" to 2–4.
+        const [min, max] = c.min <= c.max ? [c.min, c.max] : [c.max, c.min]
+        return row({ operator: 'between', min, max })
+      }
+      case 'in':
+        if (!Array.isArray(c.values) || c.values.length === 0 || !c.values.every(isScalar))
+          throw new NotRepresentable(op)
+        return row({ operator: 'in', values: c.values })
+      case 'text_match': {
+        const mode = c.mode ?? 'contains'
+        if (typeof mode !== 'string' || !TEXT_MODES.includes(mode)) throw new NotRepresentable(op)
+        if ((c.case_sensitive ?? false) !== false) throw new NotRepresentable(op)
+        if (typeof c.text !== 'string' || c.text === '') throw new NotRepresentable(op)
+        return row({ operator: mode as AttributeRow['operator'], value: c.text })
+      }
+      case 'is_null':
+        return row({ operator: 'is_empty' })
+      case 'near_feature': {
+        const distance = c.distance_m ?? 0
+        if (typeof c.fid !== 'number' || !Number.isInteger(c.fid)) throw new NotRepresentable(op)
+        if (!isNumber(distance) || distance < 0) throw new NotRepresentable(op)
+        const reference: ReferenceRow = {
+          id,
+          kind: 'reference',
+          not: false,
+          layer: this.otherLayer(c.layer, op),
+          fid: c.fid,
+          label: '',
+          distance_m: distance,
+        }
+        return reference
+      }
+      case 'related': {
+        const predicate = typeof c.predicate === 'string' ? c.predicate : ''
+        const topological = TOPOLOGICAL[predicate]
+        const distance = predicate === 'dwithin' && isNumber(c.distance_m) ? c.distance_m : null
+        if (!topological && distance === null) throw new NotRepresentable(op)
+        const related = this.otherLayer(c.layer, op)
+        const spatial: SpatialRow = {
+          id,
+          kind: 'spatial',
+          not: false,
+          operator: topological ?? 'near',
+          layer: related,
+          distance_m: distance,
+          filter: this.filter(c.where, related, `${id}.where`),
+        }
+        return spatial
+      }
+    }
+    // bbox and geometry: the map's restriction, never the model's.
+    throw new NotRepresentable(op)
+  }
+
+  /**
+   * A relation's filter: one attribute row of the related layer ("+ Filter"),
+   * which has no NICHT toggle.
+   */
+  filter(where: unknown, layer: string, id: string): AttributeRow | null {
+    if (unset(where)) return null
+    const node = this.node(where, layer, id)
+    if (node.kind !== 'attribute' || node.not) throw new NotRepresentable('related')
+    return node
+  }
+}
+
+function negated(node: Node): Node {
+  // Never negated already: ``not`` of a ``not`` is refused above.
+  if (node.kind === 'spatial' && (node.operator === 'in' || node.operator === 'near'))
+    return { ...node, operator: node.operator === 'in' ? 'outside' : 'far' }
+  return { ...node, not: true }
+}

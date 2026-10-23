@@ -30,6 +30,7 @@ import {
   enforcement,
   fakeTimers,
   json,
+  LAYERS,
   llmOptions,
   promptFlow,
   resetStores,
@@ -548,7 +549,7 @@ describe('auto (M6)', () => {
     await screen.findByRole('region', { name: 'Abfrage-Editor' })
     expect(keys(calls)).toEqual([])
     // Approved, not proposed: no hand-over is offered, and the server would refuse one.
-    expect(canTakeOver(useModel.getState().views[answer.id] as ModelActionView)).toBe(false)
+    expect(canTakeOver(useModel.getState().views[answer.id] as ModelActionView, LAYERS)).toBe(false)
     const decide = Object.values(decideRoute(answer.id, 'approved'))[0] as (
       i: RequestInit,
     ) => Response
@@ -709,7 +710,7 @@ describe('watchModel', () => {
           hidden: true,
         },
       })
-      expect(takeOver(answer)).toBe(true)
+      expect(takeOver(answer, LAYERS)).toBe(true)
       expect(useApproval.getState().last?.touched).toBe(false)
       // "Übernehmen" in the editor: the draft becomes the analysis.
       useAnalysis.getState().apply()

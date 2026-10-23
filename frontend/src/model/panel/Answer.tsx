@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { currentAnalysis, useAnalysis } from '../../analysis/store'
 import type { Assumption as AssumptionData, ModelActionView, ModelAnswer } from '../../api/client'
+import { useLayers } from '../../api/queries'
 import { ErrorNotice } from '../../components/ui'
 import { useCounts } from '../../editor/useCounts'
 import { errorText } from '../../i18n/errors'
@@ -383,8 +384,11 @@ function Proposal({ view, answer }: { view: ModelActionView; answer: QueryAnswer
  */
 function Assumption({ view, assumption }: { view: ModelActionView; assumption: AssumptionData }) {
   const path = assumption.condition
+  const catalog = useLayers().data
   // The analysis decides whether an applied answer's row is still there.
-  const editable = useAnalysis((s) => s.draft === null && !!path && canEditAssumption(view, path))
+  const editable = useAnalysis(
+    (s) => s.draft === null && !!path && canEditAssumption(view, path, catalog),
+  )
   const text = assumption.text
   return (
     <li className="flex items-baseline gap-1.5">
@@ -397,7 +401,7 @@ function Assumption({ view, assumption }: { view: ModelActionView; assumption: A
           type="button"
           className="text-accent-700 text-xs"
           aria-label={t`Annahme ändern: ${text}`}
-          onClick={() => editAssumption(view, path)}
+          onClick={() => editAssumption(view, path, catalog)}
         >
           <Trans>ändern</Trans>
         </button>
@@ -444,8 +448,9 @@ function Actions({ view }: { view: ModelActionView }) {
   const setOpen = useModel((s) => s.setOpen)
   // Applied, its decision not yet reported: "Erneut vermerken", not a second take-over.
   const reporting = useHandover((s) => s.failed?.action === view.id)
-  const representable = proposalDraft(view.query, view.id) !== null
-  const takeable = !reporting && canTakeOver(view)
+  const catalog = useLayers().data
+  const representable = proposalDraft(view.query, view.id, catalog) !== null
+  const takeable = !reporting && canTakeOver(view, catalog)
   return (
     <div className="flex flex-wrap items-center gap-2">
       {byHandOnly(view) && (
@@ -453,7 +458,7 @@ function Actions({ view }: { view: ModelActionView }) {
           type="button"
           className="btn btn-primary"
           disabled={!takeable || editing}
-          onClick={() => takeOver(view)}
+          onClick={() => takeOver(view, catalog)}
         >
           <Trans>In Editor übernehmen</Trans>
         </button>

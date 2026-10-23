@@ -38,10 +38,12 @@ import {
   api,
   ApiRequestError,
   type ExecuteResponse,
+  type LayerInfo,
   type ModelActionView,
   type QueryResult,
   type RejectReason,
 } from '../../api/client'
+import { keys } from '../../api/queries'
 import { seedHits } from '../../map/data'
 import { proposalDraft } from '../panel/draft'
 import { useHandover, watchHandover } from '../panel/handover'
@@ -101,7 +103,10 @@ export const useApproval = create<ApprovalState>()(initial)
 /** Work waiting for the editor to close (see ``whenEditorClosed``). */
 let waiting: (() => void)[] = []
 
-/** The workplace's query cache while it is mounted (``watchModel``): ``execute`` seeds its hits. */
+/**
+ * The workplace's query cache while it is mounted (``watchModel``): ``execute``
+ * seeds its hits, ``layerList`` reads the catalog from it.
+ */
 let results: QueryClient | null = null
 
 /**
@@ -147,9 +152,22 @@ function handEdited() {
   api.model.touched(last.action).catch(() => undefined)
 }
 
-/** Whether the record's stored query can become the analysis (D3: the editor shows it whole). */
-export function canApply(view: ModelActionView): boolean {
-  const draft = proposalDraft(view.query, view.id)
+/**
+ * The layer list of the workplace's query cache (``useLayers``), as the
+ * controls know the layers: what a stored query is read against (D3,
+ * ``toAnalysis``). ``undefined`` before it has loaded.
+ */
+export const layerList = () => results?.getQueryData<LayerInfo[]>(keys.layerList)
+
+/**
+ * Whether the record's stored query can become the analysis (D3: the editor
+ * shows it whole over the layers of ``catalog``).
+ */
+export function canApply(
+  view: ModelActionView,
+  catalog: readonly LayerInfo[] | undefined = layerList(),
+): boolean {
+  const draft = proposalDraft(view.query, view.id, catalog)
   if (!draft) return false
   const shown = useAnalysis.getState().layers.find((l) => l.id === draft.result)
   return !shown || canBeResult(shown)
@@ -195,8 +213,9 @@ function seedResult(result: QueryResult | undefined) {
  * marked "Modell"; ``result``, the run's rows, are its hits.
  */
 function apply(view: ModelActionView, result?: QueryResult): boolean {
-  const draft = proposalDraft(view.query, view.id)
-  if (!draft || !canApply(view)) return false
+  const catalog = layerList()
+  const draft = proposalDraft(view.query, view.id, catalog)
+  if (!draft || !canApply(view, catalog)) return false
   const before = useAnalysis.getState().snapshot()
   changeAnalysis(() => {
     // A model query has no "Nur in" (D3) and is no saved query: both go.
