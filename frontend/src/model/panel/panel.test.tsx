@@ -18,6 +18,7 @@ import {
   thinking,
   EXTERNAL,
   fakeTimers,
+  heldLayers,
   json,
   llmOptions,
   openPanel,
@@ -796,5 +797,39 @@ describe('between the modes (WP80, M15.1)', () => {
     const card = await screen.findByRole('article', { name: 'Antwort' })
     expect(within(card).getByRole('button', { name: 'In Editor übernehmen' })).toBeEnabled()
     expect(useModel.getState().dialogue).toEqual([REFERENCE.id])
+  })
+})
+
+describe('before the layer list (D3)', () => {
+  /** The reference proposal, answered while ``layers`` answers the layer list. */
+  async function proposedWith(layers: object) {
+    const user = fakeTimers()
+    backend({ ...promptFlow(thinkingView('reference'), REFERENCE), ...layers })
+    await openPanel()
+    await ask(user)
+    await thinking()
+    await tick()
+    return screen.findByRole('article', { name: 'Antwort' })
+  }
+
+  test('still loading: the hand-over waits, no refusal is claimed; then it is offered', async () => {
+    const layers = heldLayers()
+    const card = await proposedWith(layers.routes)
+    expect(within(card).getByRole('button', { name: 'In Editor übernehmen' })).toBeDisabled()
+    expect(card).not.toHaveTextContent('nicht im Editor darstellen')
+    expect(card).not.toHaveTextContent('Layerliste')
+    await layers.release()
+    await waitFor(() =>
+      expect(within(card).getByRole('button', { name: 'In Editor übernehmen' })).toBeEnabled(),
+    )
+  })
+
+  test('failed to load: a short note says so, not that the query cannot be shown', async () => {
+    const card = await proposedWith({
+      'GET /api/layers': () => json({ code: 'internal', message: 'kaputt' }, 500),
+    })
+    expect(await within(card).findByText(/Die Layerliste fehlt/)).toBeInTheDocument()
+    expect(within(card).getByRole('button', { name: 'In Editor übernehmen' })).toBeDisabled()
+    expect(card).not.toHaveTextContent('nicht im Editor darstellen')
   })
 })

@@ -28,7 +28,7 @@
 //   cache the map and the table read (``seedHits``), so the applied query is
 //   not run a second time and the log's stamp is what the user sees.
 import { t } from '@lingui/core/macro'
-import type { QueryClient } from '@tanstack/react-query'
+import { hashKey, type QueryClient } from '@tanstack/react-query'
 import type { KeyboardEvent } from 'react'
 import { create } from 'zustand'
 import type { Analysis } from '../../analysis/model'
@@ -417,9 +417,14 @@ export const chooseReason = (reason: RejectReason | null) =>
 
 export const stopRejecting = () => useApproval.setState({ rejecting: null })
 
-/** Executes the auto answers of the dialogue that wait (P7), unless the editor is open. */
+/**
+ * Executes the auto answers of the dialogue that wait (P7), unless the editor
+ * is open or the layer list has not arrived: without it no query can be told
+ * representable (D3), so the answer waits for it (``watchModel``) instead of
+ * failing as "not representable".
+ */
 function runAuto(model: ModelState) {
-  if (useAnalysis.getState().draft !== null) return
+  if (useAnalysis.getState().draft !== null || layerList() === undefined) return
   for (const id of model.dialogue) {
     const view = model.views[id]
     if (!view || !autoReady(view) || useApproval.getState().started[id]) continue
@@ -499,7 +504,14 @@ export function watchModel(client: QueryClient): () => void {
   results = client
   const offHandover = watchHandover()
   const offApproval = watchApproval()
+  // An auto answer that arrived before the layer list runs once it is there.
+  const list = hashKey(keys.layerList)
+  const offLayers = client.getQueryCache().subscribe((event) => {
+    if (event.type === 'updated' && event.query.queryHash === list && event.query.state.data)
+      runAuto(useModel.getState())
+  })
   return () => {
+    offLayers()
     offApproval()
     offHandover()
     if (results === client) results = null

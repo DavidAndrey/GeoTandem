@@ -656,6 +656,63 @@
       "conditions": 2
     },
     {
+      "id": "date_bound_with_a_line_break",
+      "note": "an ISO date is the whole text: \"2020-12-31\\n\" is no date, so ge and le are two rows, not a date range",
+      "query": {
+        "source": "schulen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "eroeffnet",
+              "cmp": "ge",
+              "value": "2020-01-01"
+            },
+            {
+              "op": "compare",
+              "attr": "eroeffnet",
+              "cmp": "le",
+              "value": "2020-12-31\n"
+            }
+          ]
+        }
+      },
+      "analysis": {
+        "result": "schulen",
+        "tree": {
+          "kind": "group",
+          "not": false,
+          "op": "and",
+          "children": [
+            {
+              "kind": "attribute",
+              "not": false,
+              "attr": "eroeffnet",
+              "operator": "ge",
+              "value": "2020-01-01",
+              "min": null,
+              "max": null,
+              "values": []
+            },
+            {
+              "kind": "attribute",
+              "not": false,
+              "attr": "eroeffnet",
+              "operator": "le",
+              "value": "2020-12-31\n",
+              "min": null,
+              "max": null,
+              "values": []
+            }
+          ]
+        },
+        "restriction": null,
+        "symbology": null
+      },
+      "conditions": 2
+    },
+    {
       "id": "text_match",
       "query": {
         "source": "schulen",

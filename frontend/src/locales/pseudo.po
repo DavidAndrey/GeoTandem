@@ -1932,6 +1932,14 @@ msgstr ""
 msgid "Die Laufzeit ist angehalten, solange die Freigabe offen ist."
 msgstr ""
 
+#: src/model/compare/flow.ts
+msgid "Die Layerliste fehlt noch; Übernehmen geht erst danach."
+msgstr ""
+
+#: src/model/panel/CatalogNote.tsx
+msgid "Die Layerliste fehlt; ob sich die Abfrage im Editor darstellen lässt, ist darum offen."
+msgstr ""
+
 #: src/model/chain/Chain.tsx
 msgid "Die Neuplanung brachte keinen brauchbaren Plan (Schritt {at}): {reason}"
 msgstr ""

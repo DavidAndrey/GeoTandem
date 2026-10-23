@@ -29,6 +29,7 @@ import {
   done,
   enforcement,
   fakeTimers,
+  heldLayers,
   json,
   LAYERS,
   llmOptions,
@@ -458,6 +459,20 @@ describe('approval (M5)', () => {
 
 describe('auto (M6)', () => {
   const AUTO = () => actionView('reference', {}, 'Teilautonom')
+
+  test('an auto answer before the layer list waits for it, then runs once (D3)', async () => {
+    const layers = heldLayers()
+    const { calls, card } = await answered('Teilautonom', AUTO(), { routes: layers.routes })
+    await tick(2000)
+    // Not yet known representable: neither executed nor refused as unrepresentable.
+    expect(keys(calls)).toEqual([])
+    expect(card).not.toHaveTextContent('nicht im Editor darstellen')
+    expect(useApproval.getState().failure).toBeNull()
+    await layers.release()
+    await waitFor(() => expect(rows(useAnalysis.getState().tree)).toHaveLength(3))
+    await tick(2000)
+    expect(keys(calls)).toEqual([`POST /api/model/actions/${AUTO().id}/execute`])
+  })
 
   test('M6.1: an auto answer is executed at once; the bar names it; × hides only', async () => {
     const { user, calls, card } = await answered('Teilautonom', AUTO())

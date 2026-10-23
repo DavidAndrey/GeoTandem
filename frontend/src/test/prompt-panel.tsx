@@ -253,6 +253,31 @@ export const thinking = () =>
 
 export const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status })
 
+/**
+ * ``GET /api/layers`` held open: every request waits until ``release`` sends
+ * ``LAYERS`` (a slow layer list); after it, the list comes at once.
+ */
+export function heldLayers() {
+  const waiting: ReadableStreamDefaultController<Uint8Array>[] = []
+  let released = false
+  return {
+    routes: {
+      'GET /api/layers': () =>
+        released
+          ? json(LAYERS)
+          : new Response(new ReadableStream<Uint8Array>({ start: (c) => void waiting.push(c) })),
+    },
+    release: () =>
+      act(async () => {
+        released = true
+        for (const c of waiting.splice(0)) {
+          c.enqueue(new TextEncoder().encode(JSON.stringify(LAYERS)))
+          c.close()
+        }
+      }),
+  }
+}
+
 /** The POST answers 202 with ``thinking``; the polls bring ``answers`` one by one, the last repeats. */
 export function promptFlow(thinking: ModelActionView, ...answers: ModelActionView[]) {
   let polls = 0

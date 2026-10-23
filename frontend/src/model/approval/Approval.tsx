@@ -15,6 +15,8 @@ import { formatNumber } from '../../i18n/locale'
 import { rows } from '../../analysis/tree'
 import { hitsOf } from '../../i18n/phrases'
 import { useActiveModel } from '../panel/active'
+import { useCatalog } from '../panel/catalog'
+import { CatalogNote } from '../panel/CatalogNote'
 import { proposalDraft } from '../panel/draft'
 import { canTakeOver, takeOver } from '../panel/handover'
 import { changeList, type Change } from './changes'
@@ -149,7 +151,7 @@ function ClassList({ view }: { view: ModelActionView }) {
  */
 export function Approval({ view }: { view: ModelActionView }) {
   const analysis = useCommitted()
-  const catalog = useLayers().data
+  const { catalog, known, failed } = useCatalog()
   const editing = useAnalysis((s) => s.draft !== null)
   const draft = proposalDraft(view.query, view.id, catalog)
   const changes = draft ? changeList(analysis, draft, catalog) : []
@@ -207,11 +209,12 @@ export function Approval({ view }: { view: ModelActionView }) {
           {t`Gestellt unter Stufe ${levelName}; dieser Vorschlag folgt weiter ihr und wird nicht automatisch angewendet.`}
         </p>
       )}
-      {!applicable && (
+      {known && !applicable && (
         <p className="text-muted text-xs">
           <Trans>Diese Abfrage lässt sich nicht im Editor darstellen.</Trans>
         </p>
       )}
+      <CatalogNote failed={failed} />
       {rejecting ? (
         <RejectStep view={view} reason={rejecting.reason} busy={busy !== null} />
       ) : (

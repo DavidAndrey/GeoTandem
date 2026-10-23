@@ -26,6 +26,8 @@ import { StatusLabel } from '../status'
 import { dialogueViews, useModel } from '../store'
 import { FRAME, lineStyle, statusKey } from '../statusKey'
 import { QueryTree } from '../tree'
+import { useCatalog } from './catalog'
+import { CatalogNote } from './CatalogNote'
 import { CHAIN_AVAILABLE } from './chain'
 import { proposalDraft } from './draft'
 import {
@@ -448,7 +450,7 @@ function Actions({ view }: { view: ModelActionView }) {
   const setOpen = useModel((s) => s.setOpen)
   // Applied, its decision not yet reported: "Erneut vermerken", not a second take-over.
   const reporting = useHandover((s) => s.failed?.action === view.id)
-  const catalog = useLayers().data
+  const { catalog, known, failed } = useCatalog()
   const representable = proposalDraft(view.query, view.id, catalog) !== null
   const takeable = !reporting && canTakeOver(view, catalog)
   return (
@@ -482,11 +484,12 @@ function Actions({ view }: { view: ModelActionView }) {
       </button>
       {/* M10.1: ⋯ *Mit Werkzeugkette wiederholen*, and once compared *Vergleich ansehen*. */}
       <CompareMenu view={view} />
-      {byHandOnly(view) && !representable && (
+      {byHandOnly(view) && known && !representable && (
         <p className="text-muted w-full text-xs">
           <Trans>Diese Abfrage lässt sich nicht im Editor darstellen.</Trans>
         </p>
       )}
+      {byHandOnly(view) && <CatalogNote failed={failed} />}
     </div>
   )
 }

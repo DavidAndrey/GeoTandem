@@ -349,22 +349,48 @@ test('analysis → query → analysis is identical for every canonical analysis 
     const back = toAnalysis(query, ROUND_TRIP_LAYERS)
     expect(back.part, `seed ${seed}: ${JSON.stringify(query)}`).toBeNull()
     expect(withoutIds(back.analysis), `seed ${seed}`).toEqual(withoutIds(part))
-    JSON.stringify(part.tree, (key, value: unknown) => {
-      if (key === 'operator' || key === 'kind') seen.add(String(value))
-      if (key === 'not' && value === true) seen.add('not')
-      return value
-    })
+    part.tree.children.forEach((child) => tag(child, seen))
   }
-  // The generator reaches every kind of node and every operator, and NICHT.
-  expect(seen).toEqual(
-    new Set([
-      ...['group', 'attribute', 'spatial', 'reference', 'not'],
-      ...['eq', 'ne', 'lt', 'le', 'gt', 'ge', 'between', 'in', 'is_empty'],
-      ...['contains', 'starts_with', 'ends_with'],
-      ...['in', 'outside', 'intersects', 'near', 'far'],
-    ]),
+  // The generator reaches every kind of node with every operator it may have.
+  const attribute = [
+    ...['eq', 'ne', 'lt', 'le', 'gt', 'ge', 'in', 'is_empty'],
+    ...['contains', 'starts_with', 'ends_with', 'between:number', 'between:date'],
+  ]
+  const spatial = ['in', 'outside', 'intersects', 'contains', 'near', 'far']
+  expect([...seen].sort()).toEqual(
+    [
+      ...['group:and', 'group:or', 'not group:and', 'not group:or'],
+      ...attribute.map((op) => `attribute:${op}`),
+      ...['not attribute', 'not spatial:intersects', 'not spatial:contains'],
+      ...spatial.map((op) => `spatial:${op}`),
+      ...spatial.map((op) => `spatial:${op} with filter`),
+      ...['reference', 'not reference'],
+    ].sort(),
   )
 })
+
+/** Coverage tags of a node and its subtree: kind, operator, NICHT, a relation's filter. */
+function tag(node: Node, seen: Set<string>) {
+  const negated = node.not ? 'not ' : ''
+  switch (node.kind) {
+    case 'group':
+      seen.add(`${negated}group:${node.op}`)
+      node.children.forEach((child) => tag(child, seen))
+      return
+    case 'attribute': {
+      const range = typeof node.min === 'string' ? 'date' : 'number'
+      seen.add(`attribute:${node.operator}${node.operator === 'between' ? `:${range}` : ''}`)
+      if (node.not) seen.add('not attribute')
+      return
+    }
+    case 'spatial':
+      seen.add(`spatial:${node.operator}${node.filter ? ' with filter' : ''}`)
+      if (node.not) seen.add(`not spatial:${node.operator}`)
+      return
+    case 'reference':
+      seen.add(`${negated}reference`)
+  }
+}
 
 test('toAnalysis at the edges, as represent.py reads them', () => {
   const part = (where: unknown, catalog = ROUND_TRIP_LAYERS) =>

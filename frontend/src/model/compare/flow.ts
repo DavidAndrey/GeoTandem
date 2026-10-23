@@ -239,6 +239,9 @@ export function takeRefusal(view: ModelActionView, inDialogue = true): string | 
     case 'proposed':
     case 'approved':
       if (isChain(view)) return t`Läuft noch: Die Kette hat noch kein Ergebnis.`
+      // Not known before the layer list is there (D3): no refusal in its name.
+      if (layerList() === undefined)
+        return t`Die Layerliste fehlt noch; Übernehmen geht erst danach.`
       if (!canApply(view, layerList()))
         return t`Diese Abfrage lässt sich nicht im Editor darstellen und darum nicht anwenden.`
       break

@@ -130,7 +130,7 @@ const OTHERS = ['strassen', 'gemeinden']
  * A random analysis in the canonical form of ``toAnalysis`` over
  * ``ROUND_TRIP_LAYERS``: complete rows only, no empty value; groups of two or
  * more children; the root a non-negated ``and`` that is not one ``and`` alone;
- * NICHT only on groups, attribute rows and "schneidet" / "enthält" relations
+ * NICHT only on groups, attribute rows, references and "schneidet" / "enthält" relations
  * ("liegt in" and "≤ Distanz" negated are "ausserhalb" and "> Distanz");
  * a relation's filter one attribute row without NICHT; a date range as
  * "zwischen" with ISO dates in order (so no ``ge`` compare on a date, which
@@ -199,7 +199,7 @@ export function canonicalPart(next: () => number): QueryPart {
       return {
         id: id(),
         kind: 'reference',
-        not: false,
+        not: next() < 0.3,
         layer: other,
         fid: int(50),
         label: '',

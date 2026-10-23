@@ -18,7 +18,8 @@ export function PendingProposal() {
   const catalog = useLayers().data
   if (!view) return null
   const draft = proposalDraft(view.query, view.id, catalog)
-  const conditions = conditionCount(draft ? rows(draft.tree).length : 0)
+  // Without the layer list the rows are not known yet (D3): no count rather than 0.
+  const conditions = catalog ? conditionCount(draft ? rows(draft.tree).length : 0) : null
   const count = preview.data ? formatNumber(preview.data.count) : null
   return (
     <div
@@ -29,7 +30,9 @@ export function PendingProposal() {
       <span className="border-accent text-accent-700 self-start rounded-full border border-dashed px-2">
         <Trans>Vorschlag offen</Trans>
       </span>
-      <p>{count === null ? conditions : t`${conditions} · Vorschau ${count}`}</p>
+      {conditions !== null && (
+        <p>{count === null ? conditions : t`${conditions} · Vorschau ${count}`}</p>
+      )}
       <p className="text-muted">
         <Trans>wird erst bei Annehmen übernommen</Trans>
       </p>
