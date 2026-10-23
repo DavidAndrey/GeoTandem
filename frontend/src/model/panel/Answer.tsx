@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { currentAnalysis, useAnalysis } from '../../analysis/store'
 import type { Assumption as AssumptionData, ModelActionView, ModelAnswer } from '../../api/client'
+import { useLayers } from '../../api/queries'
 import { ErrorNotice } from '../../components/ui'
 import { useCounts } from '../../editor/useCounts'
 import { errorText } from '../../i18n/errors'
@@ -19,12 +20,15 @@ import { byHandOnly, classList, needsApproval } from '../approval/governance'
 import { ChainAnswer } from '../chain/Chain'
 import { CompareHost } from '../compare/CompareHost'
 import { CompareMenu } from '../compare/Entry'
+import { useStaleLayer } from '../dialog/reference'
 import { openMyActions } from '../log/dialog'
 import { approachText } from '../log/words'
 import { StatusLabel } from '../status'
-import { dialogueViews, useModel } from '../store'
+import { dialogueViews, OPEN, useModel } from '../store'
 import { FRAME, lineStyle, statusKey } from '../statusKey'
 import { QueryTree } from '../tree'
+import { useCatalog } from './catalog'
+import { CatalogNote } from './CatalogNote'
 import { CHAIN_AVAILABLE } from './chain'
 import { proposalDraft } from './draft'
 import {
@@ -115,6 +119,7 @@ function PromptLine({
 
 /** An earlier answer: its status and what it said, in one line. */
 function Earlier({ view }: { view: ModelActionView }) {
+  const stale = useStaleLayer(view) !== null
   const answer = view.answer
   const said =
     view.status === 'refused'
@@ -124,7 +129,7 @@ function Earlier({ view }: { view: ModelActionView }) {
         : (answer && 'explanation' in answer ? answer.explanation : '') || ''
   return (
     <p className="flex min-w-0 items-baseline gap-2 text-sm">
-      <StatusLabel status={statusKey(view)} />
+      <StatusLabel status={statusKey(view, { stale })} />
       <span className="text-muted min-w-0 truncate" title={said}>
         {said}
       </span>
@@ -133,6 +138,10 @@ function Earlier({ view }: { view: ModelActionView }) {
 }
 
 export function Answer({ view }: { view: ModelActionView }) {
+  const stale = useStaleLayer(view)
+  // An open record keeps its card, so it can still be declined (M11.3).
+  if (stale !== null && !OPEN.includes(view.status) && view.status !== 'refused')
+    return <Stale view={view} layer={stale} />
   switch (view.status) {
     case 'thinking':
       return <Thinking view={view} />
@@ -303,6 +312,42 @@ function Refusal({ view }: { view: ModelActionView }) {
 }
 
 /**
+ * An answer whose layer the catalog no longer has (design M11.3): it can no
+ * longer be applied, opened in the editor or referred to; the prompt can be
+ * sent again as a fresh question.
+ */
+function Stale({ view, layer }: { view: ModelActionView; layer: string }) {
+  return (
+    <article aria-label={t`Antwort`} className={`card flex flex-col gap-2 p-3 ${FRAME.void}`}>
+      <p className="flex flex-wrap items-center justify-between gap-2">
+        <StatusLabel status="stale" />
+        <span className="text-muted text-xs">
+          <Trans>nicht mehr anwendbar</Trans>
+        </span>
+      </p>
+      <p className="text-sm">
+        <Trans>
+          Die Antwort nutzt den Layer „{layer}“, den es nicht mehr gibt. Sie kann nicht mehr
+          angewendet oder im Editor geöffnet werden.
+        </Trans>
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          className="btn"
+          onClick={() => void send(view.prompt, view.approach, null)}
+        >
+          <Trans>Prompt erneut senden</Trans>
+        </button>
+        <button type="button" className="btn" onClick={openMyActions}>
+          <Trans>Protokoll</Trans>
+        </button>
+      </div>
+    </article>
+  )
+}
+
+/**
  * A query answer through its life: waiting for approval (M5), proposal only
  * (M4.1), approved and running (P7), applied (M2.2, M6.1), undone (M2.3,
  * M6.2) or rejected (M5.3).
@@ -349,6 +394,12 @@ function Proposal({ view, answer }: { view: ModelActionView; answer: QueryAnswer
           </ul>
         </section>
       )}
+      {/* M11.2: the analysis was changed by hand since; a follow-up builds on that. */}
+      {applied && view.touched_at && (
+        <p className="text-muted text-xs">
+          <Trans>danach von Hand geändert</Trans>
+        </p>
+      )}
       <QueryTree query={view.query ?? answer.query} line={line} />
       {needsApproval(view) && <Approval view={view} />}
       {view.status === 'approved' && <Approved view={view} />}
@@ -383,8 +434,11 @@ function Proposal({ view, answer }: { view: ModelActionView; answer: QueryAnswer
  */
 function Assumption({ view, assumption }: { view: ModelActionView; assumption: AssumptionData }) {
   const path = assumption.condition
+  const catalog = useLayers().data
   // The analysis decides whether an applied answer's row is still there.
-  const editable = useAnalysis((s) => s.draft === null && !!path && canEditAssumption(view, path))
+  const editable = useAnalysis(
+    (s) => s.draft === null && !!path && canEditAssumption(view, path, catalog),
+  )
   const text = assumption.text
   return (
     <li className="flex items-baseline gap-1.5">
@@ -397,7 +451,7 @@ function Assumption({ view, assumption }: { view: ModelActionView; assumption: A
           type="button"
           className="text-accent-700 text-xs"
           aria-label={t`Annahme ändern: ${text}`}
-          onClick={() => editAssumption(view, path)}
+          onClick={() => editAssumption(view, path, catalog)}
         >
           <Trans>ändern</Trans>
         </button>
@@ -444,8 +498,9 @@ function Actions({ view }: { view: ModelActionView }) {
   const setOpen = useModel((s) => s.setOpen)
   // Applied, its decision not yet reported: "Erneut vermerken", not a second take-over.
   const reporting = useHandover((s) => s.failed?.action === view.id)
-  const representable = proposalDraft(view.query, view.id) !== null
-  const takeable = !reporting && canTakeOver(view)
+  const { catalog, known, failed } = useCatalog()
+  const representable = proposalDraft(view.query, view.id, catalog) !== null
+  const takeable = !reporting && canTakeOver(view, catalog)
   return (
     <div className="flex flex-wrap items-center gap-2">
       {byHandOnly(view) && (
@@ -453,7 +508,7 @@ function Actions({ view }: { view: ModelActionView }) {
           type="button"
           className="btn btn-primary"
           disabled={!takeable || editing}
-          onClick={() => takeOver(view)}
+          onClick={() => takeOver(view, catalog)}
         >
           <Trans>In Editor übernehmen</Trans>
         </button>
@@ -477,11 +532,12 @@ function Actions({ view }: { view: ModelActionView }) {
       </button>
       {/* M10.1: ⋯ *Mit Werkzeugkette wiederholen*, and once compared *Vergleich ansehen*. */}
       <CompareMenu view={view} />
-      {byHandOnly(view) && !representable && (
+      {byHandOnly(view) && known && !representable && (
         <p className="text-muted w-full text-xs">
           <Trans>Diese Abfrage lässt sich nicht im Editor darstellen.</Trans>
         </p>
       )}
+      {byHandOnly(view) && <CatalogNote failed={failed} />}
     </div>
   )
 }

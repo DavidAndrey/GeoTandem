@@ -24,7 +24,7 @@ import type { Group, Restriction } from '../../analysis/model'
 import { canBeResult, resultQuery } from '../../analysis/query'
 import { currentAnalysis, useAnalysis } from '../../analysis/store'
 import { rows } from '../../analysis/tree'
-import { api, type DecideRequest, type ModelActionView } from '../../api/client'
+import { api, type DecideRequest, type LayerInfo, type ModelActionView } from '../../api/client'
 import { useMapView } from '../../map/view'
 import { compactQuery } from '../readable'
 import { needsApproval } from '../approval/governance'
@@ -63,24 +63,31 @@ export const useHandover = create<HandoverState>()(() => ({ open: null, failed: 
 /** No proposal in the editor, no decision to report again (part of ``resetModelState``). */
 export const resetHandover = () => useHandover.setState({ open: null, failed: null })
 
+/** The layer list as the controls know it (``useLayers``): what ``proposalDraft`` reads against. */
+type Catalog = readonly LayerInfo[] | undefined
+
 /**
- * Whether the editor can take the proposal: representable (D3; the server
- * refuses the others), and not already applied with its decision still to be
- * reported (a retry, not a second take-over).
+ * Whether the editor can take the proposal: representable over ``catalog``
+ * (D3; the server refuses the others), and not already applied with its
+ * decision still to be reported (a retry, not a second take-over).
  */
-export const canTakeOver = (view: ModelActionView) =>
+export const canTakeOver = (view: ModelActionView, catalog: Catalog) =>
   view.status === 'proposed' &&
   useHandover.getState().failed?.action !== view.id &&
-  proposalDraft(view.query, view.id) !== null
+  proposalDraft(view.query, view.id, catalog) !== null
 
 /**
  * Opens the proposal in the editor, its rows marked "Modell", ``row`` (an
  * assumption's condition, M12.1) active. Returns whether it could.
  */
-export function takeOver(view: ModelActionView, row: string | null = null): boolean {
-  const draft = proposalDraft(view.query, view.id)
+export function takeOver(
+  view: ModelActionView,
+  catalog: Catalog,
+  row: string | null = null,
+): boolean {
+  const draft = proposalDraft(view.query, view.id, catalog)
   const analysis = useAnalysis.getState()
-  if (!draft || !canTakeOver(view) || analysis.draft !== null) return false
+  if (!draft || !canTakeOver(view, catalog) || analysis.draft !== null) return false
   const shown = analysis.layers.find((l) => l.id === draft.result)
   if (shown && !canBeResult(shown)) return false
   const before = {
@@ -115,9 +122,13 @@ export function takeOver(view: ModelActionView, row: string | null = null): bool
 }
 
 /** The row "ändern" opens (M12.1): in the proposal, or in the analysis once applied. */
-function assumptionTarget(view: ModelActionView, path: readonly number[]): string | null {
+function assumptionTarget(
+  view: ModelActionView,
+  path: readonly number[],
+  catalog: Catalog,
+): string | null {
   if (view.status === 'proposed') {
-    const draft = proposalDraft(view.query, view.id)
+    const draft = proposalDraft(view.query, view.id, catalog)
     return draft && assumptionRow(path, view.id, draft.tree)
   }
   if (view.status !== 'applied') return null
@@ -125,18 +136,27 @@ function assumptionTarget(view: ModelActionView, path: readonly number[]): strin
 }
 
 /** Whether an assumption's "ändern" has a condition to open. */
-export const canEditAssumption = (view: ModelActionView, path: readonly number[]) =>
-  assumptionTarget(view, path) !== null && (view.status !== 'proposed' || canTakeOver(view))
+export const canEditAssumption = (
+  view: ModelActionView,
+  path: readonly number[],
+  catalog: Catalog,
+) =>
+  assumptionTarget(view, path, catalog) !== null &&
+  (view.status !== 'proposed' || canTakeOver(view, catalog))
 
 /**
  * "ändern" next to an assumption (design M12.1): the condition it is about,
  * active in B2 with the focus on it. A proposal opens as the draft, as with
  * "In Editor übernehmen"; an answer already applied opens the analysis.
  */
-export function editAssumption(view: ModelActionView, path: readonly number[]): boolean {
-  const row = assumptionTarget(view, path)
+export function editAssumption(
+  view: ModelActionView,
+  path: readonly number[],
+  catalog: Catalog,
+): boolean {
+  const row = assumptionTarget(view, path, catalog)
   if (row === null) return false
-  if (view.status === 'proposed') return takeOver(view, row)
+  if (view.status === 'proposed') return takeOver(view, catalog, row)
   const analysis = useAnalysis.getState()
   if (analysis.draft !== null) return false
   analysis.edit()
@@ -174,17 +194,17 @@ function decided(query: unknown): unknown {
   return parts
 }
 
+/** Two query objects the editor would write alike (``decided``, in canonical form). */
+export const sameQuery = (a: unknown, b: unknown): boolean =>
+  canonical(decided(a)) === canonical(decided(b))
+
 type AnalysisState = ReturnType<typeof useAnalysis.getState>
 
 /** What "Übernehmen" of the handed-over draft amounts to (see the head of this file). */
 export function decisionFor(handover: Handover, applied: AnalysisState): DecideRequest {
   const query = resultQuery(currentAnalysis(applied))
   const marksKept = rows(handover.proposal).every((row) => applied.origin.marks[row.id])
-  if (
-    !handover.adjust &&
-    marksKept &&
-    canonical(decided(query)) === canonical(decided(handover.query))
-  )
+  if (!handover.adjust && marksKept && sameQuery(query, handover.query))
     return { decision: 'proposal_only', applied_by_hand: true }
   return { decision: 'adjusted', query }
 }

@@ -53,8 +53,10 @@ from geotandem.model.represent import (
     NotRepresentable,
     QueryPart,
     count_conditions,
+    query_layers,
     to_analysis,
     to_query,
+    without_restriction,
 )
 from geotandem.model.result import answer_format, format_text, parse_answer
 from geotandem.model.schemas import (
@@ -852,3 +854,44 @@ def test_only_a_prompt_that_builds_on_nothing_is_called_the_first() -> None:
     )
     assert FIRST not in follow.messages[0].content
     assert [m.content for m in follow.messages[1:]] == ["Frage 1", "Antwort 1", "Frage 2"]
+
+
+VIEW = {"op": "bbox", "bbox": [7.3, 46.8, 7.6, 47.0]}
+ROW = {"op": "compare", "attr": "standorte", "cmp": "gt", "value": 1}
+SHAPE = {
+    "op": "geometry",
+    "predicate": "intersects",
+    "geometry": {"type": "Point", "coordinates": [7.4, 46.9]},
+}
+
+
+@pytest.mark.parametrize(
+    ("where", "kept", "kind"),
+    [
+        (VIEW, None, "view"),
+        ({"op": "and", "args": [ROW, SHAPE]}, ROW, "shape"),
+        ({"op": "and", "args": [ROW, ROW, VIEW]}, {"op": "and", "args": [ROW, ROW, VIEW]}, None),
+        (ROW, ROW, None),
+    ],
+)
+def test_the_restriction_is_split_off_as_the_editor_writes_it(
+    where: dict[str, Any], kept: dict[str, Any] | None, kind: str | None
+) -> None:
+    """WP81: the whole ``where``, or the last of two ``and`` arguments; anything
+    else is the user's tree and stays."""
+    query = QueryObject.model_validate({"source": "schulen", "where": where})
+    rest, found = without_restriction(query)
+    expected = QueryObject.model_validate({"source": "schulen", "where": kept})
+    assert (canonical_json(rest), found) == (canonical_json(expected), kind)
+
+
+def test_the_layers_of_a_query_are_its_names_never_a_symbologys_values() -> None:
+    """WP81: what a follow-up's parent depends on (M11.3), read from the query
+    itself, not from the first error a check happens to find."""
+    query = QueryObject.model_validate(
+        {
+            **case("reference")["answer"]["query"],
+            "symbology": {"kind": "categorized", "attr": "typ", "colors": {"layer": "#aa3300"}},
+        }
+    )
+    assert query_layers(query) == {"schulen", "strassen", "gemeinden_steuern"}

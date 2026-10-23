@@ -89,6 +89,10 @@ start_ollama() {
   for _ in $(seq 1 30); do
     if listed=$(docker exec "$ollama" ollama list 2>/dev/null); then
       if awk 'NR > 1 {print $1}' <<<"$listed" | grep -qxF "$llm_model"; then
+        # Load it now: a cold start reads the whole model from the store (about
+        # 70 s for gemma4:12b), which the connection test's first call would
+        # otherwise spend out of its 120 s.
+        docker exec "$ollama" ollama run --keepalive 30m "$llm_model" "ok" >/dev/null
         return 0
       fi
       echo "$llm_model is not in $models; pull it there first" >&2

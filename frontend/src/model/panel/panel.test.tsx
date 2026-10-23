@@ -18,12 +18,16 @@ import {
   thinking,
   EXTERNAL,
   fakeTimers,
+  heldLayers,
   json,
   llmOptions,
   openPanel,
   promptFlow,
   resetStores,
   tick,
+  expectUnchanged,
+  somethingToLose,
+  workplace,
 } from '../../test/prompt-panel'
 import { strays } from '../../test/pseudo'
 import { renderAt } from '../../test/render'
@@ -48,16 +52,22 @@ const polls = (calls: { key: string }[], id: number) =>
 /** Types the prompt and sends it with Ctrl+Enter. */
 const ask = (user: ReturnType<typeof userEvent.setup>, text = PROMPT) => typeAndSend(user, text)
 
-/** Sends a case's prompt and lets the first poll bring its answer. */
-async function answered(id: CaseId, patch = {}) {
+/**
+ * Sends a case's prompt and lets the first poll bring its answer. ``lose``: the
+ * workplace has something to lose first (WP82); ``before`` is it as the prompt
+ * found it.
+ */
+async function answered(id: CaseId, patch = {}, lose = false) {
   const user = fakeTimers()
   const answer = actionView(id, patch, 'Assistenz')
   const calls = backend(promptFlow(thinkingView(id), answer))
   await openPanel()
+  if (lose) somethingToLose()
+  const before = workplace()
   await ask(user, answer.prompt)
   await thinking()
   await tick()
-  return { user, calls, answer }
+  return { user, calls, answer, before }
 }
 
 const decides = (calls: { key: string; body: unknown }[]) =>
@@ -493,8 +503,9 @@ describe('answer (M2, M4)', () => {
 
 describe('refusal (M3)', () => {
   test('M3.1: reason in words as an alert, code under Details, query viewable but not applicable', async () => {
-    const { user, calls, answer } = await answered('unknown_layer')
+    const { user, calls, answer, before } = await answered('unknown_layer', {}, true)
     const alert = await screen.findByRole('alert')
+    expectUnchanged(before)
     expect(alert).toHaveTextContent('abgewiesen')
     expect(alert).toHaveTextContent('Ein Layer fehlt oder ist nicht sichtbar.')
     expect(alert).not.toHaveTextContent('unknown_layer')
@@ -519,25 +530,28 @@ describe('refusal (M3)', () => {
   })
 
   test('M3.2: the limit names the counts', async () => {
-    await answered('limit_exceeded')
+    const { before } = await answered('limit_exceeded', {}, true)
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Die Abfrage hat 10 Bedingungen; im Modus B sind höchstens 8 möglich.',
     )
+    expectUnchanged(before)
   })
 
   test('M3.3: not representable, with the offer of the chain (E2.5)', async () => {
-    await answered('not_representable')
+    const { before } = await answered('not_representable', {}, true)
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Diese Abfrage lässt sich in den Bedienelementen nicht vollständig darstellen.',
     )
+    expectUnchanged(before)
     expect(screen.getByRole('button', { name: 'Mit Werkzeugkette versuchen ›' })).toBeEnabled()
   })
 })
 
 describe('errors (M14)', () => {
   test('M14.1: unreachable — what happened, state unchanged, retry, switch, admin link', async () => {
-    const { user, calls, answer } = await answered('unreachable')
+    const { user, calls, answer, before } = await answered('unreachable', {}, true)
     const alert = await screen.findByRole('alert')
+    expectUnchanged(before)
     expect(alert).toHaveTextContent('Modell nicht erreichbar')
     expect(alert).toHaveTextContent('Die Anbindung „Lokales Modell“ antwortet nicht.')
     expect(alert).toHaveTextContent('Ihr Stand ist unverändert.')
@@ -552,18 +566,22 @@ describe('errors (M14)', () => {
   })
 
   test('M14.2: a timeout at an external connection keeps the host', async () => {
-    await answered('timeout', {
-      connection: { ...EXTERNAL, locality: 'external' },
-    })
+    const { before } = await answered(
+      'timeout',
+      { connection: { ...EXTERNAL, locality: 'external' } },
+      true,
+    )
     const alert = await screen.findByRole('alert')
+    expectUnchanged(before)
     expect(alert).toHaveTextContent('Zeitüberschreitung')
     expect(alert).toHaveTextContent('Nach 2:00 kam keine Antwort.')
     expect(alert).toHaveTextContent('api.anbieter.example')
   })
 
   test('M14.3: an unreadable answer, its code under Details', async () => {
-    await answered('unreadable')
+    const { before } = await answered('unreadable', {}, true)
     expect(await screen.findByRole('alert')).toHaveTextContent('Antwort nicht lesbar')
+    expectUnchanged(before)
     expect(screen.getByText(/code: model_unreadable/)).toBeInTheDocument()
   })
 
@@ -591,8 +609,11 @@ describe('errors (M14)', () => {
         json({ code: 'quota_exceeded', message: 'limit', details: { limit: 50 } }, 429),
     })
     await openPanel()
+    somethingToLose()
+    const before = workplace()
     await ask(user)
     const alert = await screen.findByRole('alert')
+    expectUnchanged(before)
     expect(alert).toHaveTextContent('Grenzwert erreicht')
     expect(alert).toHaveTextContent('Die 50 Anfragen pro Tag an diese Anbindung sind aufgebraucht.')
     expect(alert).toHaveTextContent('Ihr Stand ist unverändert.')
@@ -615,8 +636,10 @@ describe('errors (M14)', () => {
     await ask(user)
     await tick()
     await screen.findByRole('button', { name: 'In Editor übernehmen' })
+    const before = workplace()
     await ask(user, 'Und die Kitas?')
     expect(await screen.findByRole('alert')).toHaveTextContent('Grenzwert erreicht')
+    expectUnchanged(before)
     // "Ihr Stand ist unverändert" includes the dialogue: the proposal is still takeable.
     expect(screen.getByRole('button', { name: 'In Editor übernehmen' })).toBeEnabled()
     expect(screen.getAllByRole('article', { name: 'Antwort' })).toHaveLength(2)
@@ -745,4 +768,90 @@ test('a running request survives switching to Klassik and back', async () => {
   await tick()
   await act(async () => useModel.getState().setOpen(true))
   expect(await screen.findByRole('article', { name: 'Antwort' })).toHaveTextContent('Vorschlag')
+})
+
+describe('between the modes (WP80, M15.1)', () => {
+  /** B2 or the panel: the column between sidebar and map (design M1, Q3). */
+  const middle = () =>
+    screen.getByRole('complementary', { name: 'Seitenleiste' }).nextElementSibling
+
+  test('Im Editor öffnen: B2 in the panel\'s place, the rows marked "Modell", the dialogue kept', async () => {
+    const { user, calls, editor } = await takenOver()
+    await user.click(within(editor).getByRole('button', { name: 'Übernehmen' }))
+    await waitFor(() => expect(decides(calls)).toHaveLength(1))
+    await user.click(screen.getByRole('tab', { name: 'Prompt' }))
+    const card = await screen.findByRole('article', { name: 'Antwort' })
+    expect(middle()).toBe(screen.getByRole('region', { name: 'Prompt' }))
+
+    await user.click(within(card).getByRole('button', { name: 'Im Editor öffnen' }))
+    // B2 takes the panel's column, Klassik is chosen; the applied rows keep their mark (P3).
+    const opened = await screen.findByRole('region', { name: 'Abfrage-Editor' })
+    expect(screen.queryByRole('region', { name: 'Prompt' })).toBeNull()
+    expect(middle()).toBe(opened)
+    expect(screen.getByRole('tab', { name: 'Klassik' })).toHaveAttribute('aria-selected', 'true')
+    expect(within(opened).getAllByText('Modell')).toHaveLength(3)
+    // Opening is no decision and no hand edit: nothing more is reported.
+    expect(decides(calls)).toHaveLength(1)
+
+    // Back to the prompt: the dialogue is as it was, the answer still applied.
+    await user.click(within(opened).getByRole('button', { name: 'Verwerfen' }))
+    await user.click(screen.getByRole('tab', { name: 'Prompt' }))
+    const again = await screen.findByRole('article', { name: 'Antwort' })
+    expect(within(again).getByRole('status')).toHaveTextContent('von Hand übernommen')
+    expect(useModel.getState().dialogue).toEqual([REFERENCE.id])
+    expect(Object.keys(useAnalysis.getState().origin.marks)).toHaveLength(3)
+  })
+
+  test('Klassik and back to Prompt keeps the text in the field and the answered dialogue', async () => {
+    const { user } = await answered('reference')
+    expect(await screen.findByRole('article', { name: 'Antwort' })).toBeInTheDocument()
+    const field = screen.getByRole('textbox', { name: 'Prompt' })
+    await user.click(field)
+    await user.paste('Welche davon haben mehr als einen Standort?')
+
+    await user.click(screen.getByRole('tab', { name: 'Klassik' }))
+    expect(screen.queryByRole('region', { name: 'Prompt' })).toBeNull()
+    await user.click(screen.getByRole('tab', { name: 'Prompt' }))
+
+    expect(await screen.findByRole('textbox', { name: 'Prompt' })).toHaveValue(
+      'Welche davon haben mehr als einen Standort?',
+    )
+    const card = await screen.findByRole('article', { name: 'Antwort' })
+    expect(within(card).getByRole('button', { name: 'In Editor übernehmen' })).toBeEnabled()
+    expect(useModel.getState().dialogue).toEqual([REFERENCE.id])
+  })
+})
+
+describe('before the layer list (D3)', () => {
+  /** The reference proposal, answered while ``layers`` answers the layer list. */
+  async function proposedWith(layers: object) {
+    const user = fakeTimers()
+    backend({ ...promptFlow(thinkingView('reference'), REFERENCE), ...layers })
+    await openPanel()
+    await ask(user)
+    await thinking()
+    await tick()
+    return screen.findByRole('article', { name: 'Antwort' })
+  }
+
+  test('still loading: the hand-over waits, no refusal is claimed; then it is offered', async () => {
+    const layers = heldLayers()
+    const card = await proposedWith(layers.routes)
+    expect(within(card).getByRole('button', { name: 'In Editor übernehmen' })).toBeDisabled()
+    expect(card).not.toHaveTextContent('nicht im Editor darstellen')
+    expect(card).not.toHaveTextContent('Layerliste')
+    await layers.release()
+    await waitFor(() =>
+      expect(within(card).getByRole('button', { name: 'In Editor übernehmen' })).toBeEnabled(),
+    )
+  })
+
+  test('failed to load: a short note says so, not that the query cannot be shown', async () => {
+    const card = await proposedWith({
+      'GET /api/layers': () => json({ code: 'internal', message: 'kaputt' }, 500),
+    })
+    expect(await within(card).findByText(/Die Layerliste fehlt/)).toBeInTheDocument()
+    expect(within(card).getByRole('button', { name: 'In Editor übernehmen' })).toBeDisabled()
+    expect(card).not.toHaveTextContent('nicht im Editor darstellen')
+  })
 })

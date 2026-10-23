@@ -299,6 +299,51 @@ klassische Bedienung (Modus A) vollständig nutzbar.
   aus den Daten vorschlägt, kommen erst hinein, wenn der Administrator sie im
   Layer bestätigt.
 
+### Modus B im Einsatz
+
+Der Reiter *Prompt* neben *Klassik* öffnet das Eingabefeld; er ist nur
+wählbar, wenn eine Anbindung freigegeben ist. Die Frage geht mit dem
+Layer-Steckbrief des Kontos an das Modell (nur Metadaten, nie Zeileninhalte).
+
+- **Zwei Arbeitsweisen.** Die *Direktabfrage* lässt das Modell ein
+  Abfrageobjekt schreiben, das die Anwendung prüft, bevor irgendetwas läuft:
+  Schema, Layer und Attribute des Kontos, die Grenzen unten, und ob die
+  Bedienelemente es ohne Verlust zeigen können (sonst `not_representable`).
+  Die *Werkzeugkette* plant mehrere Schritte (Puffer, Zählen je Gruppe …),
+  zeigt den Plan vor dem Lauf und führt ihn Schritt für Schritt aus; das
+  Modell sieht je Schritt nur ok/Fehler, leer/nicht leer und die Trefferzahl.
+- **Stufen in der Praxis.** *Assistenz*: Das Modell schlägt vor, der Anwender
+  übernimmt von Hand in den Editor. *Prüfen*: Jede Antwort wartet auf
+  *Annehmen* oder *Ablehnen*, mit Änderungsliste und Vorschau der
+  Trefferzahl. *Automatisch*: Die Antwort wird sofort angewendet, ein Hinweis
+  auf der Karte bietet *Rückgängig*. Gilt eine Klasse als `aus`, bleibt die
+  Antwort ein Vorschlag zum Übernehmen von Hand. Die Regel greift auch an der
+  Oberfläche vorbei: Ausgeführt wird immer nur die gespeicherte Abfrage.
+- **Hin und her.** Eine angewendete Antwort öffnet sich im Editor
+  (*Im Editor öffnen*), ihre Bedingungen tragen die Marke «Modell», bis man sie
+  von Hand ändert. Die nächste Frage bezieht sich auf die letzte Antwort und
+  den aktuellen Stand der Analyse (Marke über dem Feld; × fragt ohne Bezug);
+  wurde der Stand von Hand geändert, erfährt das Modell das. «Nur in» und die
+  Darstellung bleiben Sache des Anwenders. Der Verlauf lebt nur im offenen
+  Arbeitsplatz, nicht in einer gespeicherten Sitzung.
+- **Grenzen.** Höchstens 8 Bedingungen je Abfrage, 8 Schritte je Kette
+  (Neuplanungen eingerechnet, höchstens 2), 120 s je Modellaufruf, 300 s je
+  Kette, die letzten 6 Antworten als Verlauf; dazu die Grenzen von Modus A
+  (10 000 Objekte, 10 s je Abfrage). Je Anbindung kann der Administrator eine
+  Tagesgrenze für Anfragen setzen.
+- **Protokoll.** Jede Anfrage wird mit Prompt, Antwort, Abfrage, Stufe und
+  Entscheid protokolliert. Anwender sehen ihre eigenen Einträge (*Meine
+  Modellaktionen*), Administratoren alle, mit Kennzahlen zur Annahmequote
+  und CSV-Export (*Administration › Modell › Modellprotokoll*). Das Eingabefeld sagt,
+  dass Eingaben protokolliert werden.
+- **Fehler** (Modell nicht erreichbar, Zeitüberschreitung, unlesbare Antwort,
+  Grenzwert) lassen Analyse, Editor und Verlauf unverändert; der Prompt bleibt
+  im Feld. Wer das Fenster schliesst, während eine Werkzeugkette läuft, hält
+  sie an (das letzte vollständige Zwischenergebnis bleibt im Protokoll
+  übernehmbar); eine Direktabfrage, an der das Modell noch denkt, läuft zu
+  Ende, und nach einem Neuladen zeigt sie der Arbeitsplatz, sobald die nächste
+  Frage gesendet wird.
+
 **Ollama aufsetzen** (als Container mit `docker run` oder Compose, mit
 NVIDIA-GPU, oder nativ auf dem Host): [docs/ollama.md](docs/ollama.md).
 

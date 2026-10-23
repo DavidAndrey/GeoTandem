@@ -41,9 +41,7 @@ ANSWER = TypeAdapter[Any](ModelAnswer)
 WITH_ANSWER = [c["id"] for c in cases() if "answer" in c]
 SOURCE = REPO / "backend" / "src" / "geotandem"
 
-PENDING_CODES = {
-    "stale_reference": "WP81",
-}
+PENDING_CODES: dict[str, str] = {}
 """Codes the contract names but no service raises yet, with the WP that must.
 That WP raises the code and removes it here; the etappe gate needs this empty
 for its WPs (plan 5.2), so no code stays declared but never sent."""

@@ -1249,6 +1249,14 @@ msgstr ""
 msgid "Bezug"
 msgstr ""
 
+#: src/model/dialog/ReferenceMark.tsx
+msgid "Bezug: aktuelle Analyse"
+msgstr ""
+
+#: src/model/dialog/ReferenceMark.tsx
+msgid "Bezug: letzte Antwort"
+msgstr ""
+
 #: src/editor/EditorPanel.tsx
 msgid "Bezugslayer"
 msgstr ""
@@ -1335,6 +1343,10 @@ msgstr ""
 
 #: src/i18n/errors.ts
 msgid "Dafür braucht es die Rolle Administrator."
+msgstr ""
+
+#: src/model/panel/Answer.tsx
+msgid "danach von Hand geändert"
 msgstr ""
 
 #: src/admin/ModelActionPage.tsx
@@ -1768,6 +1780,10 @@ msgstr ""
 msgid "Die aktuelle Abfrage hat Änderungen, die in keiner gespeicherten Abfrage stehen. „{name}\" ersetzt sie."
 msgstr ""
 
+#: src/model/panel/Problem.tsx
+msgid "Die aktuelle Analyse lässt sich dem Modell so nicht mitgeben: {text} Fragen Sie ohne Bezug (× über dem Feld)."
+msgstr ""
+
 #: src/session/SessionDialogs.tsx
 msgid "Die Analyse hat Änderungen, die noch nicht gespeichert sind."
 msgstr ""
@@ -1818,6 +1834,10 @@ msgstr ""
 
 #: src/i18n/errors.ts
 msgid "Die Antwort des Modells ist nicht lesbar."
+msgstr ""
+
+#: src/model/panel/Answer.tsx
+msgid "Die Antwort nutzt den Layer „{layer}“, den es nicht mehr gibt. Sie kann nicht mehr angewendet oder im Editor geöffnet werden."
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -1930,6 +1950,14 @@ msgstr ""
 
 #: src/model/chain/Chain.tsx
 msgid "Die Laufzeit ist angehalten, solange die Freigabe offen ist."
+msgstr ""
+
+#: src/model/compare/flow.ts
+msgid "Die Layerliste fehlt noch; Übernehmen geht erst danach."
+msgstr ""
+
+#: src/model/panel/CatalogNote.tsx
+msgid "Die Layerliste fehlt; ob sich die Abfrage im Editor darstellen lässt, ist darum offen."
 msgstr ""
 
 #: src/model/chain/Chain.tsx
@@ -3968,6 +3996,10 @@ msgctxt "model sees"
 msgid "nicht leer"
 msgstr ""
 
+#: src/model/panel/Answer.tsx
+msgid "nicht mehr anwendbar"
+msgstr ""
+
 #: src/model/compare/flow.ts
 msgid "Nicht mehr im Verlauf. Bitte neu fragen."
 msgstr ""
@@ -4135,6 +4167,10 @@ msgstr ""
 msgid "Ohne {conditions}: ihr Layer ist nicht verfügbar."
 msgstr ""
 
+#: src/model/dialog/ReferenceMark.tsx
+msgid "Ohne Bezug fragen"
+msgstr ""
+
 #: src/model/compare/flow.ts
 msgid "Ohne Ergebnis gibt es nichts zu vergleichen."
 msgstr ""
@@ -4230,6 +4266,10 @@ msgstr ""
 
 #: src/model/panel/PromptPanel.tsx
 msgid "Prompt eingeben"
+msgstr ""
+
+#: src/model/panel/Answer.tsx
+msgid "Prompt erneut senden"
 msgstr ""
 
 #: src/model/panel/PromptPanel.tsx
@@ -4473,6 +4513,10 @@ msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
 msgid "Seed"
+msgstr ""
+
+#: src/model/approval/Approval.tsx
+msgid "Seit dem Prompt von Hand geändert: nicht automatisch angewendet. Die Antwort bezieht sich auf den Stand davor."
 msgstr ""
 
 #: src/model/approval/Approval.tsx
@@ -4880,6 +4924,10 @@ msgstr ""
 
 #: src/admin/ImportWizard.tsx
 msgid "Trennzeichen „{delimiter}\""
+msgstr ""
+
+#: src/model/approval/Approval.tsx
+msgid "Trotzdem anwenden"
 msgstr ""
 
 #: src/admin/CatalogPage.tsx

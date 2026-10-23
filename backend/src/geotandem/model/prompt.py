@@ -33,7 +33,7 @@ nothing is cut silently. Without a declared length there is nothing to check.
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any, Final
+from typing import Any, Final, Literal
 
 from geotandem.catalog import CHARS_PER_TOKEN, ModelProfile
 from geotandem.levels import Level
@@ -260,8 +260,11 @@ class FollowUp:
     """What a prompt builds on (P6): the caller loads it, the builder only writes it."""
 
     analysis: QueryObject | None = None
+    """The current analysis, without the map's restriction (``restriction``)."""
     reference: Reference = "none"
     turns: Sequence[Turn] = field(default_factory=tuple)
+    restriction: Literal["view", "shape"] | None = None
+    """"Nur in" on the analysis: the user's, never the model's (D3)."""
 
 
 @dataclass(frozen=True)
@@ -299,6 +302,13 @@ def _assistant(turn: Turn) -> str:
     return "\n".join(lines)
 
 
+RESTRICTIONS: Final[dict[str, str]] = {
+    "view": "den Kartenausschnitt",
+    "shape": "eine gezeichnete Fläche",
+}
+"""The map's restriction in the words of a follow-up (WP81)."""
+
+
 def _note(turn: Turn | None) -> str | None:
     """What became of the last answer, as the application tells it."""
     if turn is None:
@@ -320,7 +330,15 @@ def _user(text: str, previous: Turn | None, follow_up: FollowUp | None = None) -
         parts.append("Aktuelle Analyse als Abfrageobjekt:\n" + canonical_json(follow_up.analysis))
         if follow_up.reference == "hand_edited":
             parts.append(
-                "Der Anwender hat die Analyse seit deiner letzten Antwort von Hand geändert."
+                "Die aktuelle Analyse ist nicht die deiner letzten Antwort: Der Anwender hat "
+                "sie von Hand geändert oder deine Antwort nicht übernommen."
+            )
+        if follow_up.restriction is not None:
+            where = RESTRICTIONS[follow_up.restriction]
+            parts.append(
+                f"Der Anwender hat das Ergebnis zusätzlich auf {where} beschränkt («Nur in»). "
+                "Diese Beschränkung setzt er selbst, sie bleibt bestehen; nimm sie nicht in "
+                "deine Abfrage auf."
             )
     if not parts:
         return text

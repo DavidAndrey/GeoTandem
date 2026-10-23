@@ -199,8 +199,9 @@ export const api = {
     action: (id: number) => request<ModelActionView>(`/api/model/actions/${id}`),
     decide: (id: number, body: DecideRequest) =>
       request<ModelActionView>(`/api/model/actions/${id}/decide`, json('POST', body)),
-    abort: (id: number) =>
-      request<ModelActionView>(`/api/model/actions/${id}/abort`, { method: 'POST' }),
+    /** ``keepalive``: sent even while the page goes away (WP82). */
+    abort: (id: number, keepalive = false) =>
+      request<ModelActionView>(`/api/model/actions/${id}/abort`, { method: 'POST', keepalive }),
     /** The account's own log entries, newest first (D4, design M16.3). */
     myActions: (offset = 0, limit = 50) =>
       request<ModelActionPage>(`/api/model/my-actions${logParams({}, { offset, limit })}`),

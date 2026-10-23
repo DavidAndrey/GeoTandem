@@ -566,8 +566,7 @@ async def test_a_follow_up_is_repeated_with_its_parent(
     client: httpx.AsyncClient, app: FastAPI, model: Model, levels: dict[str, int]
 ) -> None:
     """P6: the repeat of a follow-up follows the same parent, so the model gets
-    the same turns (the clarification it answers). The analysis sent with a
-    follow-up is not stored: carrying it into the repeat is WP81's."""
+    the same turns (the clarification it answers)."""
     clarified = await ask(client, app, model, case("clarification"))
     follow = await ask(client, app, model, REFERENCE, parent_action_id=clarified["id"])
     assert follow["parent_action_id"] == clarified["id"]
@@ -577,6 +576,28 @@ async def test_a_follow_up_is_repeated_with_its_parent(
     *_, follow_call, repeat_call = model.fake.calls
     for call in (follow_call, repeat_call):
         assert question in "\n".join(m.content for m in call.messages)
+
+
+async def test_the_repeat_of_a_follow_up_asks_with_its_analysis(
+    client: httpx.AsyncClient, app: FastAPI, model: Model, levels: dict[str, int]
+) -> None:
+    """P6, E2.6 gate review: changed by hand (500 ⇒ 300 m) before the follow-up,
+    the repeat answers the same question: the same analysis, the same
+    reference, the same note to the model."""
+    edited = case("follow_up_hand_edited")
+    parent = await ask(client, app, model, REFERENCE)
+    follow = await ask(
+        client, app, model, edited, parent_action_id=parent["id"], analysis=edited["analysis"]
+    )
+    assert follow["reference"] == "hand_edited"
+
+    again = await repeat(client, app, model, follow, CHAIN)
+
+    assert (again["parent_action_id"], again["reference"]) == (parent["id"], "hand_edited")
+    *_, follow_call, repeat_call = model.fake.calls
+    for call in (follow_call, repeat_call):
+        question = call.messages[-1].content
+        assert '"distance_m":300' in question and "von Hand geändert" in question
 
 
 # --- taking a side (design: "Diese übernehmen ... gilt als Freigabe") -------------------

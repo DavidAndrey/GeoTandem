@@ -52,10 +52,12 @@ from pydantic import BaseModel, ConfigDict, Field
 from geotandem.catalog import ModelProfile
 from geotandem_query import (
     And,
+    BBox,
     Between,
     Compare,
     Condition,
     GeoJSONGeometry,
+    GeometryFilter,
     InList,
     IsNull,
     NearFeature,
@@ -95,7 +97,9 @@ _TOPOLOGICAL: Final[dict[str, SpatialOperator]] = {
     "intersects": "intersects",
     "contains": "contains",
 }
-_ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+# The whole text, as the frontend's ``/^…$/`` reads it: ``$`` of ``match`` would
+# also take "2020-12-31\n" (case ``date_bound_with_a_line_break``).
+_ISO_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 ALLOWED_FIELDS: Final = ("schema_version", "source", "where", "output")
 """Top-level fields a proposal may set (the controls also write ``symbology``,
@@ -336,6 +340,48 @@ def node_condition(node: Group | Row) -> Json | None:
     return _negate(combined, node.negated)
 
 
+def without_restriction(query: QueryObject) -> tuple[QueryObject, Literal["view", "shape"] | None]:
+    """``query`` without the map's restriction ("Nur in") and the result layer's
+    symbology, and the restriction's kind. The restriction is undone as
+    ``_and(tree, restriction_condition(…))`` writes it: the whole ``where`` or
+    the last of exactly two ``and`` arguments. Both are the user's display
+    choices, not the model's (D3): a follow-up's analysis goes to the check,
+    the comparison with the parent and the model without them (WP81)."""
+    query = query.model_copy(update={"symbology": None})
+    where = query.where
+    kept: Condition | None = None
+    if isinstance(where, And) and len(where.args) == 2:
+        kept, where = where.args
+    if not isinstance(where, BBox | GeometryFilter):
+        return query, None
+    kind: Literal["view", "shape"] = "view" if isinstance(where, BBox) else "shape"
+    return query.model_copy(update={"where": kept}), kind
+
+
+LAYER_KEYS: Final = frozenset({"source", "layer", "by_layer"})
+"""Keys of a query object that name a catalog layer."""
+
+
+def query_layers(query: QueryObject) -> set[str]:
+    """The layers ``query`` names: its source and those of relations, references,
+    joins and aggregations. A symbology's keys are attribute values, never layers."""
+    found: set[str] = set()
+
+    def walk(value: Any) -> None:
+        if isinstance(value, dict):
+            for key, inner in value.items():
+                if key in LAYER_KEYS and isinstance(inner, str):
+                    found.add(inner)
+                else:
+                    walk(inner)
+        elif isinstance(value, list):
+            for inner in value:
+                walk(inner)
+
+    walk(query.model_dump(mode="json", exclude={"symbology"}))
+    return found
+
+
 def restriction_condition(restriction: ViewRestriction | ShapeRestriction | None) -> Json | None:
     if restriction is None:
         return None
@@ -414,7 +460,7 @@ class _Inverse:
             return None
         if not (isinstance(low.value, str) and isinstance(high.value, str)):
             return None
-        if not (_ISO_DATE.match(low.value) and _ISO_DATE.match(high.value)):
+        if not (_ISO_DATE.fullmatch(low.value) and _ISO_DATE.fullmatch(high.value)):
             return None
         if low.value > high.value or self.field_type(layer, low.attr, "compare") != "date":
             return None

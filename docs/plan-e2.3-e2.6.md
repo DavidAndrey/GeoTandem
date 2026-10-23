@@ -1,6 +1,6 @@
 # Plan E2.3–E2.6 — Prompt, enforcement, tool chain, dialogue
 
-> Stand: 2026-10-10 · **bereit zur Umsetzung · Entscheidungen D1–D10 und P1–P6 getroffen, WPs geschnitten (WP62–WP84), Design liegt vor** · Bezug: [anforderungen.md](../anforderungen.md) (F-3.9, F-5.1, F-5.4–F-5.18, F-6.1–F-6.9, F-9.5, F-9.6), [etappen.md 4](../etappen.md), [plan-e2.0-e2.2.md](plan-e2.0-e2.2.md), Design: [design/e2/README.md](../design/e2/README.md) (Bildschirme M1–M16, `fixture/modus-b.json`, `screenshots/`)
+> Stand: 2026-10-23 · **umgesetzt (E2.6: Gate E2.6) · Entscheidungen D1–D10 und P1–P7 getroffen, WPs WP62–WP84** · Bezug: [anforderungen.md](../anforderungen.md) (F-3.9, F-5.1, F-5.4–F-5.18, F-6.1–F-6.9, F-9.5, F-9.6), [etappen.md 4](../etappen.md), [plan-e2.0-e2.2.md](plan-e2.0-e2.2.md), Design: [design/e2/README.md](../design/e2/README.md) (Bildschirme M1–M16, `fixture/modus-b.json`, `screenshots/`)
 >
 > Integration branch **`ep-2.3-6`**: each WP is its own branch from it (`wpNN-…`), merged back with `--no-ff` after its gate and review; `ep-2.3-6` merges into `main` once every WP of this plan is done and the E2.6 gate is green. Continues with WP62 (merged 2026-10-10). Each WP is one branch and one commit series, passes the **WP gate** (section 5) and a **code review** before it merges. Each etappe ends with an **etappe gate** that includes `make gate`, an acceptance test and a review of the integrated diff.
 
@@ -111,7 +111,7 @@ Shared, single-writer files and their rule:
 - `frontend/src/locales/de.po` (and `pseudo.po`): written only by `npm run i18n:extract`, which sorts the whole file (so the earlier "one block per WP" rule cannot hold; changed in the WP66 review). A merge conflict here is resolved by taking either side and re-running the extraction after the merge; `npm run i18n:check` is part of every WP gate.
 - `frontend/src/api/schema.d.ts`, `frontend/openapi.json`, `frontend/error-codes.json`, `schema/`: generated only (`make gen`). A conflict is resolved by re-running `make gen` after the merge, never by hand.
 - `backend/src/geotandem/api/routes.py`, `errors.py`: WP62 registers all routers and all error codes up front (stubs answering 501), so later WPs only fill in bodies.
-- Migrations: **0009** for E2.3 (WP63; frozen with the tag `e2.3`), **0010** for E2.4 (WP70: `touched_at`, added in the WP70 review because 0009 was already tagged), **0011** for E2.5 (WP75: step table), **0012** for the E2.5 gate (security review #43: `model_call`, a chain's re-plans counted for the request limit). No other WP creates a migration; a WP that needs one waits for the integrator to assign the number.
+- Migrations: **0009** for E2.3 (WP63; frozen with the tag `e2.3`), **0010** for E2.4 (WP70: `touched_at`, added in the WP70 review because 0009 was already tagged), **0011** for E2.5 (WP75: step table), **0012** for the E2.5 gate (security review #43: `model_call`, a chain's re-plans counted for the request limit), **0013** for the E2.6 gate (`follow_up_analysis`: a follow-up's analysis as sent, asked with again by a repeat and a re-plan). No other WP creates a migration; a WP that needs one waits for the integrator to assign the number.
 
 ## 4 Work packages
 
@@ -427,6 +427,30 @@ Open from the gate list:
 
 #### Gate E2.6
 See section 5.2. Done-when (etappen.md): a query produced by the model can be edited by hand and the other way round.
+
+**Implemented 2026-10-23** on the integration branch `ep-2.6` (WP80–WP84, each with an independent code review whose findings were fixed before its merge):
+- WP80: `toAnalysis(query, catalog)` in `analysis/query.ts` mirrors `represent.py` on all 53 shared cases and on 3 000 generated queries; a seeded round-trip test (analysis → query → analysis) over 2 000 analyses; "Im Editor öffnen" and the switch between Klassik and Prompt keep the "Modell" marks and the dialogue. Until the layer list has loaded nothing is taken over or applied, and nothing is called "not representable"; an auto answer waits for the list.
+- WP81: a follow-up's analysis is checked like a model's query with the map's restriction and the symbology set aside (both the user's), the reference is derived and stored, a parent whose layer is gone is `stale_reference` (409); the reference mark above the field with ×, "danach von Hand geändert" on an applied answer, stale answers (M11.1–M11.3).
+- WP82: the analysis a prompt is sent with is its baseline: a hand edit while the model works shows in the approval (M5.2), and an auto answer is held back ("Trotzdem anwenden") instead of landing on top; the flow's own changes do not count. Failure tests assert the workplace unchanged with one helper (`expectUnchanged`). Closing the window stops a running chain.
+- WP83: `e2e/tests/acceptance-e2.6.spec.ts`, the design's demonstration and the cases of 5.5.
+- Found on the way: an ordering on a yes/no attribute was a 500 (now `wrong_value_type`, security-review.md); the stub suites ran in parallel workers against shared levels (now one file at a time); the record `touched` returns was dropped, so "danach von Hand geändert" never showed (found by WP83).
+- Etappe review (`/code-review xhigh` on `main...ep-2.6`, by a separate agent), fixed before the gate: a comparison's repeat and a chain's re-plan of a follow-up asked without its analysis, so they answered another question (the record now keeps the analysis as sent, migration **0013**, tests in `test_model_compare.py` and `test_model_chain_flow.py`); a follow-up refused for its analysis now says it is the user's state and points to × (`details.of = "analysis"`, no retry); `stale_reference` reads the layer list again, so the stale answer drops out as the reference; with no result layer the mark and the server agree on `last_answer`.
+
+**Gate E2.6, 2026-10-23** on `ep-2.6` (`510ac95`), Linux host, default workers: `make gate` **passed**: lint clean, backend 1631 passed (1 skipped, 4 deselected), frontend 647 passed, `make audit` clean, image, first start, both Playwright passes 66 passed (E2.1 with a local model skipped), restart. One earlier run failed with "socket hang up" across the whole first pass, smoke tests included; the rerun of the same tree was green (environment, as once in WP83). **Real-model check passed** (`GATE_LLM_MODEL=gemma4:12b make gate`, 67 passed in the first Playwright pass, E2.1 included). It had failed twice on the connection test's first schema answer (`ReadTimeout`): not the GPU, but the cold start of the gate's fresh Ollama container, which reads the whole model from the store (about 70 s for gemma4:12b) within the call's 120 s, the model thinking on top. `scripts/gate.sh` now loads the model before Playwright starts; warm, the same answer takes about 3 s. The design conformance walk (5.2 step 6, M11.1–M11.3, M12.2, M15.1–M15.2) is left to the sign-off.
+
+**Deviations from the design and the WP texts** (deliberate, **signed off 2026-10-23**):
+- M11.3: "veraltet" means a layer the answer names is gone from the account's model catalog (deleted, hidden, or withdrawn from the model), as the server checks it, not "removed from the analysis": a relation's layer need not be on the map at all. An open proposal whose layer is gone keeps its card and controls (so it can be declined); a closed answer shows the stale card.
+- M11.2: the mark says "Bezug: aktuelle Analyse" and the applied answer "danach von Hand geändert"; the design's notice naming the change ("Distanz 500 m → 300 m") is not built.
+- A follow-up whose result layer is derived (buffer, join) is refused `not_representable`, like any model query on the model path; the user asks without reference (×).
+- Window close: only a running chain is stopped (its last complete result stays adoptable). A prompt the model still thinks about runs out, because `pagehide` also fires on a reload and the next prompt after a reload finds and shows it (P7); a record nobody collects is closed by the server as before (`failed`, not `aborted`).
+- A held-back auto answer has "Trotzdem anwenden" but no "Ablehnen"; the next prompt supersedes it.
+
+- A layer deleted meanwhile shows as stale only once the page reads the layer list again (a follow-up refused as `stale_reference`, or anything that loads the list).
+
+**Open:**
+- "Hand edit" counts every change of the committed analysis, a colour or an added layer too: such a change ends undo, shows "danach von Hand geändert" and can hold back an auto answer, while the reference (which ignores display) still says "letzte Antwort". A follow-up sent from an open draft that is then discarded does not hold its auto answer back (review nits).
+- From the E2.5 gate list, still: the real-model run, the run on a Linux host with default workers, the sign-off of the E2.5 design deviations, the D9 count oracle for external connections without data release.
+- Tests: no failure case is asserted with the editor open; the refusal and error tests in `panel.test.tsx` start with an empty dialogue (the follow-up and stale tests cover an earlier answer).
 
 ## 5 Gates and reviews
 

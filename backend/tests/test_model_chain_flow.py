@@ -1116,6 +1116,42 @@ async def test_a_re_plan_asks_only_under_the_level_as_it_was(
     assert ended["error"]["details"] == {"reason": "changed"}
 
 
+async def test_a_re_plan_of_a_follow_up_asks_with_its_analysis(
+    client: httpx.AsyncClient, app: FastAPI, model: Model, levels: dict[str, int]
+) -> None:
+    """P6, E2.6 gate review: the re-plan asks the planning prompt again, the
+    follow-up's analysis and its note included, so its messages start with the
+    plan's exactly."""
+    await choose(client, levels["Automatisch"])
+    model.script(completion(case("clarification")))
+    asked = await client.post(PROMPT, json={"text": case("clarification")["prompt"]})
+    assert asked.status_code == 202, asked.text
+    await settle(app)
+    analysis = {
+        "source": "schulen",
+        "where": {"op": "compare", "attr": "standorte", "cmp": "gt", "value": 1},
+    }
+    model.script(planned(*EMPTY_THEN))
+    response = await client.post(
+        PROMPT,
+        json={
+            "text": "Welche Primarschulen?",
+            "approach": "chain",
+            "parent_action_id": asked.json()["id"],
+            "analysis": analysis,
+        },
+    )
+    assert response.status_code == 202, response.text
+    await settle(app)
+    model.script(planned(MUNICIPALITIES, within(1, 3)))
+    done, _ = await drive(client, app, response.json()["id"])
+
+    assert done["replans"] == 1
+    *_, plan, replan = model.fake.calls
+    assert "Aktuelle Analyse als Abfrageobjekt" in plan.messages[-1].content
+    assert replan.messages[: len(plan.messages)] == plan.messages
+
+
 async def test_a_re_plan_asks_with_the_profile_now_and_records_its_hash(
     client: httpx.AsyncClient, app: FastAPI, model: Model, levels: dict[str, int]
 ) -> None:

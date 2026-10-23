@@ -15,11 +15,15 @@ import { formatNumber } from '../../i18n/locale'
 import { rows } from '../../analysis/tree'
 import { hitsOf } from '../../i18n/phrases'
 import { useActiveModel } from '../panel/active'
+import { useCatalog } from '../panel/catalog'
+import { CatalogNote } from '../panel/CatalogNote'
 import { proposalDraft } from '../panel/draft'
 import { canTakeOver, takeOver } from '../panel/handover'
 import { changeList, type Change } from './changes'
 import {
   accept,
+  applyHeld,
+  editedSinceSent,
   canApply,
   chooseReason,
   escapeRejects,
@@ -81,7 +85,8 @@ export function ChangeLines({ changes }: { changes: Change[] }) {
 function PreviewLine({ view, analysis }: { view: ModelActionView; analysis: Analysis }) {
   const preview = usePreview(view)
   const counts = useCounts(analysis)
-  const source = proposalDraft(view.query, view.id)?.result
+  const catalog = useLayers().data
+  const source = proposalDraft(view.query, view.id, catalog)?.result
   if (preview.isPending)
     return (
       <p className="text-muted text-xs">
@@ -148,18 +153,22 @@ function ClassList({ view }: { view: ModelActionView }) {
  */
 export function Approval({ view }: { view: ModelActionView }) {
   const analysis = useCommitted()
-  const catalog = useLayers().data
+  const { catalog, known, failed } = useCatalog()
   const editing = useAnalysis((s) => s.draft !== null)
-  const draft = proposalDraft(view.query, view.id)
+  const draft = proposalDraft(view.query, view.id, catalog)
   const changes = draft ? changeList(analysis, draft, catalog) : []
   const baseline = useApproval((s) => s.baselines[view.id])
-  const changed = baseline !== undefined && baseline !== fingerprint(analysis)
+  // Since the proposal arrived, or by hand while the model worked (WP82).
+  useApproval((s) => s.edits)
+  const changed =
+    (baseline !== undefined && baseline !== fingerprint(analysis)) ||
+    editedSinceSent(view.id, analysis)
   const busy = useApproval((s) => (s.busy?.action === view.id ? s.busy.step : null))
   const failure = useApproval((s) => (s.failure?.action === view.id ? s.failure.error : null))
   const rejecting = useApproval((s) => (s.rejecting?.action === view.id ? s.rejecting : null))
   const { level } = useActiveModel()
   const acceptButton = useRef<HTMLButtonElement>(null)
-  const applicable = canApply(view)
+  const applicable = canApply(view, catalog)
   const governance = view.governance
   const needs = classList(governance?.needs_approval ?? [])
   const levelName = view.level.name
@@ -206,11 +215,12 @@ export function Approval({ view }: { view: ModelActionView }) {
           {t`Gestellt unter Stufe ${levelName}; dieser Vorschlag folgt weiter ihr und wird nicht automatisch angewendet.`}
         </p>
       )}
-      {!applicable && (
+      {known && !applicable && (
         <p className="text-muted text-xs">
           <Trans>Diese Abfrage lässt sich nicht im Editor darstellen.</Trans>
         </p>
       )}
+      <CatalogNote failed={failed} />
       {rejecting ? (
         <RejectStep view={view} reason={rejecting.reason} busy={busy !== null} />
       ) : (
@@ -227,8 +237,8 @@ export function Approval({ view }: { view: ModelActionView }) {
           <button
             type="button"
             className="btn"
-            disabled={busy !== null || editing || !canTakeOver(view)}
-            onClick={() => takeOver(view)}
+            disabled={busy !== null || editing || !canTakeOver(view, catalog)}
+            onClick={() => takeOver(view, catalog)}
           >
             <Trans>Anpassen …</Trans>
           </button>
@@ -324,8 +334,23 @@ export function Approved({ view }: { view: ModelActionView }) {
     s.failure?.action === view.id && s.failure.step === 'execute' ? s.failure.error : null,
   )
   const parked = useApproval((s) => s.parked[view.id] === 'execute')
+  const held = useApproval((s) => s.held[view.id] === true)
   const editing = useAnalysis((s) => s.draft !== null)
   const waitsForEditor = parked || (editing && autoReady(view))
+  if (held)
+    return (
+      <div className="flex flex-col gap-1">
+        <p role="status" className="text-sm">
+          <Trans>
+            Seit dem Prompt von Hand geändert: nicht automatisch angewendet. Die Antwort bezieht
+            sich auf den Stand davor.
+          </Trans>
+        </p>
+        <button type="button" className="btn self-start" onClick={() => void applyHeld(view)}>
+          <Trans>Trotzdem anwenden</Trans>
+        </button>
+      </div>
+    )
   if (failure)
     return (
       <div className="flex flex-col gap-1">

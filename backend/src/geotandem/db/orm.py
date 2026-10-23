@@ -321,6 +321,9 @@ class ModelAction(Base):
         ForeignKey("model_action.id", ondelete="SET NULL"), index=True
     )
     reference: Mapped[str] = mapped_column(String(16), default="none", server_default="none")
+    follow_up_analysis: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    """The analysis a follow-up was sent with, as sent (P6): a comparison's
+    repeat and a chain's re-plan ask with it again. Never part of a view."""
     compare_of: Mapped[int | None] = mapped_column(
         ForeignKey("model_action.id", ondelete="SET NULL")
     )
