@@ -192,6 +192,45 @@ describe('refused follow-ups (WP82)', () => {
   })
 })
 
+describe('a refused analysis and a stale reference (E2.6 gate review)', () => {
+  /** The reference answered; the next prompt refused with ``body``. */
+  async function refused(body: object, status: number) {
+    let sent = 0
+    const answered_ = await answered(actionView('reference'), {
+      'POST /api/model/prompt': () =>
+        sent++ === 0 ? json(thinkingView('reference'), 202) : json(body, status),
+    })
+    const layerReads = () => answered_.calls.filter((c) => c.key === 'GET /api/layers').length
+    const readsBefore = layerReads()
+    await ask(answered_.user, 'Welche davon haben mehr als einen Standort?')
+    return { ...answered_, layerReads, readsBefore, alert: await screen.findByRole('alert') }
+  }
+
+  test("the analysis sent along is named as the user's, with × as the way out, no retry", async () => {
+    const { alert } = await refused(
+      { code: 'not_representable', message: 'no', details: { part: 'buffer', of: 'analysis' } },
+      400,
+    )
+    expect(alert).toHaveTextContent('Die aktuelle Analyse lässt sich dem Modell so nicht mitgeben')
+    expect(alert).toHaveTextContent('Fragen Sie ohne Bezug (× über dem Feld).')
+    expect(screen.queryByRole('button', { name: 'Erneut versuchen' })).toBeNull()
+  })
+
+  test('stale_reference reads the layer list again', async () => {
+    const { layerReads, readsBefore } = await refused(
+      { code: 'stale_reference', message: 'gone', details: { layer: 'gemeinden_steuern' } },
+      409,
+    )
+    await waitFor(() => expect(layerReads()).toBeGreaterThan(readsBefore))
+  })
+
+  test('without a result layer nothing goes along: the reference is the last answer', () => {
+    const view = actionView('reference')
+    const empty = { ...currentAnalysis(useAnalysis.getState()), result: null }
+    expect(referenceKind(view, empty)).toBe('last_answer')
+  })
+})
+
 describe('D8 the dialogue is not saved', () => {
   test('a saved session holds nothing of the dialogue', async () => {
     const { calls, answer } = await answered(actionView('reference'), {

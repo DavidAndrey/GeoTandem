@@ -332,7 +332,8 @@ def follow_up_of(
     analysis, restriction = without_restriction(analysis)
     checked = check_query(analysis, context, profile)
     if isinstance(checked, Refusal):
-        raise ActionError(checked.code, checked.message, **checked.details)
+        # The user's state, not a model's answer: the client says so and offers "ohne Bezug".
+        raise ActionError(checked.code, checked.message, **checked.details, of="analysis")
     if parent.query is not None:
         same = canonical_json(analysis) == canonical_json(without_restriction(parent.query)[0])
         reference = "last_answer" if same else "hand_edited"
@@ -687,6 +688,11 @@ class PromptFlow:
             profile_hash=profile.hash,
             parent_action_id=request.parent_action_id,
             reference=follow_up.reference if follow_up else "none",
+            analysis=(
+                request.analysis.model_dump(mode="json", exclude_none=True)
+                if follow_up and request.analysis is not None
+                else None
+            ),
             level_prompt=level.system_prompt,
             compare_of=compare_of,
         )
@@ -1210,8 +1216,8 @@ class PromptFlow:
         with a result; none with an ``off`` class (``ready``), whose query is
         not run for the user (P2); ``nothing_to_compare`` for one that ended
         without a query, ``repeat_of_repeat`` for a repeat itself. The repeat
-        follows the same parent (P6); the analysis sent with a follow-up is
-        not stored, so WP81 carries it into the repeat."""
+        follows the same parent with the analysis the follow-up was sent with
+        (P6), so both sides answer the same question."""
         try:
             original = self.store.ready(caller, action_id, "compare", COMPARABLE)
         except ActionError as refused:
@@ -1229,10 +1235,13 @@ class PromptFlow:
             )
         if original.query is None:
             raise _not_runnable(original, "compare", "has no result to compare")
+        # The same question: the same parent and the analysis it was sent with (P6).
+        sent = self.store.sent_analysis(caller, original.id)
         request = PromptRequest(
             text=original.prompt,
             approach="chain" if original.approach == "direct" else "direct",
             parent_action_id=original.parent_action_id,
+            analysis=QueryObject.model_validate(sent) if sent is not None else None,
         )
         view = self._ask_model(caller, request, compare_of=original.id)
         log.info("model action %d: compares %d", view.id, original.id)
@@ -1283,13 +1292,13 @@ class PromptFlow:
     # --- what a chain's re-plan asks with (P4) ------------------------------------
 
     def _chain_prompt(
-        self, caller: Account, chain: Chain, profile: ModelProfile
+        self, caller: Account, chain: Chain, context: ToolContext, profile: ModelProfile
     ) -> tuple[Prompt, Level]:
-        """The planning prompt again, for a re-plan: the record's text and
-        thread, the level as it was (H7: its matrix and its system prompt as
-        the record keeps them, never the level's now), the profile at run time,
-        what the model may see now. No size check here: the re-plan's own
-        (``fit``)."""
+        """The planning prompt again, for a re-plan: the record's text, thread
+        and the analysis a follow-up was sent with, the level as it was (H7:
+        its matrix and its system prompt as the record keeps them, never the
+        level's now), the profile at run time, what the model may see now. No
+        size check here: the re-plan's own (``fit``)."""
         view = chain.view
         level = _snapshot_level(view, chain.level_prompt)
         follow_up = None
@@ -1299,6 +1308,12 @@ class PromptFlow:
             except ActionError:  # the parent is gone: no turns
                 thread = []
             follow_up = FollowUp(turns=turns_of(thread))
+            if thread and chain.analysis is not None:
+                try:
+                    analysis = QueryObject.model_validate(chain.analysis)
+                    follow_up = follow_up_of(thread, analysis, context, profile)
+                except ActionError:  # no longer checks out: the turns alone, as before
+                    pass
         prompt = build_prompt(
             view.prompt, approach="chain", level=level, profile=profile, follow_up=follow_up
         )
@@ -1566,7 +1581,7 @@ class _Runner:
         # The view and the profile as they are now: a step validates at run time.
         view, profile = profile_for(flow.backend, caller)
         context = ToolContext(view, flow.limits, flow.unsupported)
-        prompt, level = flow._chain_prompt(caller, chain, profile)
+        prompt, level = flow._chain_prompt(caller, chain, context, profile)
         answer = chain.view.answer
         assert isinstance(answer, PlanAnswer)  # a chain's record keeps its plan
         steps = chain.steps

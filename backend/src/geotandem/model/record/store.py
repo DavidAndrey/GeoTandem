@@ -138,6 +138,8 @@ class NewAction:
     """The level's system prompt, whose hash ``level`` keeps: a chain's re-plan
     asks with it (H7, WP75)."""
     reference: Reference = "none"
+    analysis: dict[str, Any] | None = None
+    """A follow-up's analysis as sent (P6); asked with again by a repeat or a re-plan."""
     compare_of: int | None = None
     proposal_only: bool = False
     """The model may only propose: the user applies by hand, an overtaken record
@@ -188,6 +190,8 @@ class Chain:
     input with the hash of the profile it was asked with; empty before a re-plan."""
     level_prompt: str
     """The level's system prompt as it was when asked."""
+    analysis: dict[str, Any] | None = None
+    """A follow-up's analysis as sent, or ``None``."""
 
 
 def _chain_step(row: ModelActionStep) -> ChainStep:
@@ -676,7 +680,13 @@ class ModelActionStore:
                 run_ms=row.run_ms,
                 turns=list(row.turns or []),
                 level_prompt=row.level_prompt or "",
+                analysis=row.follow_up_analysis,
             )
+
+    def sent_analysis(self, caller: Account, action_id: int) -> dict[str, Any] | None:
+        """The analysis the caller's record ``action_id`` was sent with (P6), or ``None``."""
+        with Session(reading(self.engine)) as db:
+            return self._own(db, caller, action_id).follow_up_analysis
 
     def thread(self, caller: Account, action_id: int, depth: int) -> list[ModelActionView]:
         """The caller's record ``action_id`` and its parents, at most ``depth``,
@@ -902,6 +912,7 @@ class ModelActionStore:
                 level_matrix={str(k): str(v) for k, v in new.level.matrix.items()},
                 level_prompt_hash=new.level.prompt_hash,
                 level_prompt=new.level_prompt,
+                follow_up_analysis=new.analysis,
                 connection_id=new.connection.id,
                 connection_name=new.connection.name,
                 connection_model=new.connection.model,

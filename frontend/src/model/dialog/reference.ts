@@ -27,6 +27,8 @@ export function referenceKind(view: ModelActionView, analysis: Analysis): Refere
   // An answer without a query (a cannot-answer) leaves nothing to compare (P6).
   if (view.query == null) return 'last_answer'
   const query = resultQuery({ ...analysis, restriction: null })
+  // No result layer: nothing goes along (``analysis: null``), as the server sees it.
+  if (query === null) return 'last_answer'
   return sameQuery(query, view.query) ? 'last_answer' : 'current'
 }
 

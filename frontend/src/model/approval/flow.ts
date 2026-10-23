@@ -459,6 +459,14 @@ function runAuto(model: ModelState) {
   }
 }
 
+/**
+ * Reads the layer list again (``stale_reference``, WP81): the answer whose layer
+ * is gone then shows as stale and is no longer the reference.
+ */
+export function refreshLayers() {
+  void results?.invalidateQueries({ queryKey: keys.layerList })
+}
+
 /** What a prompt is sent with, taken before the request; ``noteSent`` keeps it for its record. */
 export const sentWith = () => ({
   edits: useApproval.getState().edits,

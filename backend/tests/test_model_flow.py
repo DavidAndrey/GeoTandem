@@ -1238,7 +1238,7 @@ async def test_an_analysis_over_the_condition_limit_is_refused_before_the_call(
     assert response.status_code == 400, response.text
     error = response.json()
     assert error["code"] == "limit_exceeded"
-    assert error["details"] == {"limit": "conditions", "value": 9, "max": 8}
+    assert error["details"] == {"limit": "conditions", "value": 9, "max": 8, "of": "analysis"}
     assert model.fake.calls == []
 
 

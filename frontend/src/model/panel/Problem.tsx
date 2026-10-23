@@ -46,8 +46,18 @@ function what(problem: Problem): string {
     const max = minutes(MODEL_CALL_S)
     return t`Nach ${max} kam keine Antwort. Die Anfrage wurde abgebrochen.`
   }
-  return errorText(problem.code, problem.details, problem.message)
+  const text = errorText(problem.code, problem.details, problem.message)
+  // A follow-up's analysis refused (WP81): it is the user's state, × asks without it.
+  if (aboutAnalysis(problem))
+    return t`Die aktuelle Analyse lässt sich dem Modell so nicht mitgeben: ${text} Fragen Sie ohne Bezug (× über dem Feld).`
+  return text
 }
+
+/** A refusal of the analysis a follow-up was sent with, not of the model's answer. */
+const aboutAnalysis = (problem: Problem) => problem.details.of === 'analysis'
+
+/** Trying again changes nothing: a final code, or the analysis sent along. */
+const final = (problem: Problem) => FINAL.includes(problem.code) || aboutAnalysis(problem)
 
 export function ProblemCard({ problem, onRetry }: { problem: Problem; onRetry: () => void }) {
   const me = useMe()
@@ -74,9 +84,9 @@ export function ProblemCard({ problem, onRetry }: { problem: Problem; onRetry: (
           </p>
         )}
       </div>
-      {(!FINAL.includes(code) || SWITCH.includes(code)) && (
+      {(!final(problem) || SWITCH.includes(code)) && (
         <div className="flex flex-wrap gap-2">
-          {!FINAL.includes(code) && (
+          {!final(problem) && (
             <button type="button" className="btn btn-primary" onClick={onRetry}>
               <Trans>Erneut versuchen</Trans>
             </button>

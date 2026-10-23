@@ -6,7 +6,7 @@ import { create } from 'zustand'
 import { resultQuery } from '../../analysis/query'
 import { currentAnalysis, useAnalysis } from '../../analysis/store'
 import { api, ApiRequestError, type ModelActionView, type PromptRequest } from '../../api/client'
-import { noteSent, sentWith } from '../approval/flow'
+import { noteSent, refreshLayers, sentWith } from '../approval/flow'
 import { POLLED, sameGeneration, useModel, type Approach } from '../store'
 
 /** The prompt field, for actions that hand it the focus ("Prompt ändern"). */
@@ -110,6 +110,7 @@ export async function send(text: string, approach: Approach, parent: number | nu
       useModel.getState().resumed(running)
       return
     }
+    if (error instanceof ApiRequestError && error.body?.code === 'stale_reference') refreshLayers()
     usePanel.setState({ sending: false, failure: { prompt, approach, parent, error } })
   }
 }
