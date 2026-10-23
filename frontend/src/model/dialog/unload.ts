@@ -5,8 +5,8 @@
 // button (``persisted``) is not gone: it polls again when it comes back.
 //
 // A prompt the model is still thinking about is left alone: ``pagehide`` fires
-// on a reload too, and a reload picks the prompt up again (P7, ``stillRunning``
-// in panel/state.ts), which an abort would break. It costs at most the model
+// on a reload too, and after a reload the next prompt finds it and shows it
+// (P7, ``stillRunning`` in panel/state.ts), which an abort would break. It costs at most the model
 // call's time (120 s); a record nobody collects is closed by the server
 // (``close_stale``, ``fail_thinking``).
 import { api } from '../../api/client'
