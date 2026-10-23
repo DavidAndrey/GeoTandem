@@ -52,8 +52,9 @@ A follow-up (P6) is linked to its parent, which must be the caller's own
 record (404 otherwise). The model gets the turns of the parent chain, at most
 ``MAX_TURNS`` of the account's own records: so the reply to a clarification
 (M12.2) carries its question. The derived reference, the sent ``analysis``
-and ``stale_reference`` arrive with WP81; until then ``reference`` stays
-``none``.
+(``follow_up_of``) are checked before any model call: a parent whose layer
+is gone is ``stale_reference``, an analysis over the limits is refused, the
+map's restriction is set aside and named to the model as the user's.
 
 Enforcement (WP70): every step after the prompt works on the stored record
 alone, with the level as it was snapshotted (M7.3); the account's level now
@@ -132,9 +133,10 @@ from geotandem.engine import (
     run_query,
     stamp_of,
     stamped_ids,
+    validate_query,
     values_of,
 )
-from geotandem.engine.errors import QueryTimedOut, ResultTooLarge
+from geotandem.engine.errors import QueryTimedOut, ResultTooLarge, UnknownLayer
 from geotandem.levels import CellMode, Level, OpClass, active_level
 from geotandem.llm import ClientFactory, Endpoint, LLMClient, LLMError
 from geotandem.model.chain.ask import (
@@ -171,6 +173,7 @@ from geotandem.model.record import (
     level_snapshot,
     utc_now,
 )
+from geotandem.model.represent import without_restriction
 from geotandem.model.schemas import (
     CHAIN_TIME_LIMIT_S,
     MAX_STEPS,
@@ -195,8 +198,9 @@ from geotandem.model.schemas import (
     StepStatus,
     StopReason,
 )
+from geotandem.model.validate import ModelWorld, check_query
 from geotandem.tools import ToolContext
-from geotandem_query import QueryObject
+from geotandem_query import QueryObject, canonical_json
 
 log = logging.getLogger(__name__)
 
@@ -293,6 +297,49 @@ def turns_of(thread: list[ModelActionView]) -> list[Turn]:
         )
         for view in thread
     ]
+
+
+def follow_up_of(
+    thread: list[ModelActionView],
+    analysis: QueryObject | None,
+    context: ToolContext,
+    profile: ModelProfile,
+) -> FollowUp:
+    """What a follow-up builds on (P6), checked before any model call: a parent
+    whose query uses a layer the caller's model world no longer has is
+    ``stale_reference`` (M11.3); the analysis, without the map's restriction
+    ("Nur in", the user's), is held to the checks of a model's query, the
+    condition limit among them (M3.2). The reference is ``last_answer`` when
+    no analysis came along (a reply to a clarification, a comparison's repeat)
+    or it is the parent's query as written, ``hand_edited`` otherwise (M11.2)."""
+    parent = thread[-1]
+    if parent.query is not None:
+        try:
+            world = ModelWorld(context.backend, profile)
+            validate_query(parent.query, world, context.limits, context.unsupported)
+        except UnknownLayer as exc:
+            layer = exc.details["layer"]
+            raise ActionError(
+                "stale_reference",
+                f"The earlier answer uses the layer '{layer}', which is gone.",
+                http_status=409,
+                layer=layer,
+            ) from None
+        except QueryError:
+            pass  # the parent is context only, never run again; the analysis is checked
+    if analysis is None:
+        return FollowUp(reference="last_answer", turns=turns_of(thread))
+    analysis, restriction = without_restriction(analysis)
+    checked = check_query(analysis, context, profile)
+    if isinstance(checked, Refusal):
+        raise ActionError(checked.code, checked.message, **checked.details)
+    same = parent.query is not None and canonical_json(analysis) == canonical_json(parent.query)
+    return FollowUp(
+        analysis=analysis,
+        reference="last_answer" if same else "hand_edited",
+        turns=turns_of(thread),
+        restriction=restriction,
+    )
 
 
 class ModelCallsBusy(Exception):
@@ -608,9 +655,10 @@ class PromptFlow:
         view, profile = profile_for(self.backend, caller)
         follow_up = None
         if request.parent_action_id is not None:
-            # Own records only, 404 otherwise; reference and analysis arrive with WP81.
+            # Own records only, 404 otherwise.
             thread = self.store.thread(caller, request.parent_action_id, MAX_TURNS)
-            follow_up = FollowUp(turns=turns_of(thread))
+            context = ToolContext(view, self.limits, self.unsupported)
+            follow_up = follow_up_of(thread, request.analysis, context, profile)
         prompt = build_prompt(
             request.text,
             approach=request.approach,
@@ -636,6 +684,7 @@ class PromptFlow:
             connection=connection_snapshot(connection),
             profile_hash=profile.hash,
             parent_action_id=request.parent_action_id,
+            reference=follow_up.reference if follow_up else "none",
             level_prompt=level.system_prompt,
             compare_of=compare_of,
         )

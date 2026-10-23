@@ -52,10 +52,12 @@ from pydantic import BaseModel, ConfigDict, Field
 from geotandem.catalog import ModelProfile
 from geotandem_query import (
     And,
+    BBox,
     Between,
     Compare,
     Condition,
     GeoJSONGeometry,
+    GeometryFilter,
     InList,
     IsNull,
     NearFeature,
@@ -334,6 +336,21 @@ def node_condition(node: Group | Row) -> Json | None:
         return None
     combined = parts[0] if len(parts) == 1 else {"op": node.op, "args": parts}
     return _negate(combined, node.negated)
+
+
+def without_restriction(query: QueryObject) -> tuple[QueryObject, Literal["view", "shape"] | None]:
+    """``query`` without the map's restriction ("Nur in"), and its kind: the
+    inverse of ``_and(tree, restriction_condition(…))``, so the restriction is
+    the whole ``where`` or the last of exactly two ``and`` arguments. A
+    follow-up's analysis goes to the check and the model without it (WP81)."""
+    where = query.where
+    kept: Condition | None = None
+    if isinstance(where, And) and len(where.args) == 2:
+        kept, where = where.args
+    if not isinstance(where, BBox | GeometryFilter):
+        return query, None
+    kind: Literal["view", "shape"] = "view" if isinstance(where, BBox) else "shape"
+    return query.model_copy(update={"where": kept}), kind
 
 
 def restriction_condition(restriction: ViewRestriction | ShapeRestriction | None) -> Json | None:
