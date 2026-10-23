@@ -160,3 +160,17 @@ die Zahlen von Lauf 2 ab. Lesart: [testplan-external-models.md](testplan-externa
 
 Sonnet mit X-10 neu bewertet (Text nach dem JSON-Objekt). Externe Referenzen für
 weitere Läufe: claude-haiku-5-5 und gpt-6-luna (X-11).
+
+## Lauf 4: Platzierung, Phase 2 und 3 (2026-10-22/23)
+
+Zehn Varianten der Platzierung (P1–P6, P8, P9; P7 zu E-7 zurückgestellt) auf
+den vier lokalen Hauptmodellen und den zwei externen Referenzen, Tuning-Satz;
+der einzige Kandidat P9 danach mit Seeds 6–10 und auf dem Held-out-Satz.
+Einzelheiten: [testplan-system-context.md](testplan-system-context.md), 8.2
+und 8.4.
+
+**Ergebnis:** keine Variante schlägt P0 für alle vier lokalen Modelle. P0 bleibt
+die Grundlinie des gemeinsamen Prompts; die Zahlen von Lauf 3 gelten weiter.
+Die besten Varianten sind je Modell verschieden (P5 für gemma4:12b, P6 mit 12
+Beispielen und P9 für Luna: Held-out 336 ⇒ 361/380). Nebenbei behoben: eine
+Ordnung auf einem Ja/Nein-Attribut war ein 500 statt `wrong_value_type`.

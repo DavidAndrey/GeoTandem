@@ -230,7 +230,7 @@ mit E-8 und S3.
 | P6 | Anzahl Beispiele: 3 / 7 / 12 | 3: nur Ort, Nähe, cannot_answer; 12: dazu `in`-Liste, `between`, «ausserhalb», `contains`, Rückfrage, Zählfrage | Wo liegt der Nutzen pro Token? | ✔ `--examples 3`, `--examples 12` | ✔ |
 | P7 | Beispiele auf echten Layern | aus dem Steckbrief des Kontos erzeugt | Helfen echte Namen (Gemeinden, Codes) mehr als erfundene? | `--examples`, Beispielsatz noch zu schreiben | nur je Konto erzeugt (S3) |
 | P8 | Schema nicht als Text | JSON-Schema (8,6 k Zeichen) nur als eingeschränkte Ausgabe, nicht im Prompt | Kostet der grösste Abschnitt mehr Aufmerksamkeit, als er bringt? | ✔ `--variant p8` | ✔ |
-| P9 | Hinweis `FIRST` als eigene Systemnachricht | eine zweite system-Nachricht direkt vor der Frage | Wirkt eine eigene Nachricht wie die Nutzernachricht (2.3), ohne E-8 zu verletzen? | ✔ `--variant p9` | zu prüfen: drei Nachrichten statt zwei, Bypass-Test anpassen |
+| P9 | Hinweis `FIRST` als eigene Systemnachricht | eine zweite system-Nachricht direkt vor der Frage | Wirkt eine eigene Nachricht wie die Nutzernachricht (2.3), ohne E-8 zu verletzen? | ✔ `--variant p9` | ✔ drei Nachrichten erlaubt (E-8, ergänzt 2026-10-23); bei Übernahme den Bypass-Test anpassen |
 
 P9 ist die naheliegende Antwort auf 2.3: Sie hält den Anwendungstext aus der
 Nutzernachricht heraus und rückt ihn trotzdem nahe an die Frage.
@@ -305,7 +305,8 @@ bis eine Variante gewinnt.
    nichts).
 3. **Phase 3, Bestätigung:** Gewinner mit Seeds 6–10. Die 15 Fragen aus
    testplan-initial-llm-run, Abschnitt 9, von Hand in der Anwendung
-   nachprüfen. Erst dann wird eine Variante in `prompt.py` übernommen.
+   nachprüfen. Erst dann wird eine Variante in `prompt.py` übernommen. **Erledigt
+   2026-10-23** (8.4): P9 bestätigt sich nicht; P0 bleibt die Grundlinie.
 4. **Ergebnis** in Abschnitt 8 eintragen. Ein Entscheid, der E-8 oder S3
    berührt, kommt in den Sicherheitsreview.
 
@@ -619,9 +620,10 @@ je Modell verschieden ist (P5, P6 (12)); längerfristig ist ein Prompt je
 Modell oder Modellfamilie wahrscheinlich. Diese Grundlinie ist der Massstab,
 an dem ein solcher Ansatz sich messen muss.
 
-**Weiter mit Phase 3 für P9:** Seeds 6–10 der vier lokalen Modelle,
-Held-out-Satz für alle sechs, `n03` unter P9 bei Luna lesen; vorher klären,
-ob drei Nachrichten mit E-8 vereinbar sind (Bypass-Test, Sicherheitsreview).
+**Phase 3 für P9 (8.4):** nicht übernommen. Geplant war: Seeds 6–10 der vier lokalen Modelle,
+Held-out-Satz für alle sechs, `n03` unter P9 bei Luna lesen. Drei
+Nachrichten sind mit E-8 vereinbar (entschieden 2026-10-23); bei Übernahme
+Bypass-Test und Sicherheitsreview nachführen.
 
 ¹ Früher (Abschnitt 2.3) 138/165 mit nur dem Hinweis `FIRST` in der Nutzernachricht (`t3-v27b`), nicht den
 Beispielen; qwen3:8b damals 89/165 gegen 93/165 (Abschnitt 2.3).
@@ -663,6 +665,45 @@ deshalb in der Prüfung, nicht im Schema. Allgemein: Die eingeschränkte Ausgabe
 zwingt eine Form; sie wählt nicht `cannot_answer`, wenn die Form fehlt.
 Nebenbefund: qwen3:14b gewinnt unter S1 `h18` und `h25` (0 ⇒ 5/5), weil es
 die Gemeindeliste als `in` statt als Gruppe schreibt.
+
+
+### 8.4 Phase 3: P9 bestätigen (2026-10-23)
+
+P9 gegen P0, je zwei Blöcke auf beiden Sätzen (lokal Seeds 1–5 und 6–10;
+Tuning /330, Held-out /380). Gepaart über die Fälle (`compare.py --stats`).
+
+| Modell | Tuning P0 → P9 | Δ (95 %) | Held-out P0 → P9 | Δ (95 %) |
+|---|---:|---|---:|---|
+| gemma4:12b | 272 → 279 (+7) | +2,1 (−2,1 … +7,9) | 322 → 320 (−2) | −0,5 (−8,4 … +6,8) |
+| gemma4:e4b | 252 → 260 (+8) | +2,4 (−0,9 … +6,4) | 287 → 288 (+1) | +0,3 (−2,9 … +3,7) |
+| qwen3:14b | 250 → 244 (−6) | −1,8 (−5,5 … +0,6) | 293 → 286 (−7) | −1,8 (−5,0 … +0,8) |
+| qwen3.5:9b | 225 → 215 (−10) | −3,0 (−7,0 … +0,9) | 270 → 264 (−6) | −1,6 (−5,0 … +1,6) |
+| Haiku 5.5 | 318 → 320 (+2) | +0,6 (+0,0 … +1,5) | 374 → 378 (+4) | +1,1 (−0,3 … +2,6) |
+| **Luna** | 280 → 285 (+5) | +1,5 (−6,7 … +8,8) | **336 → 361 (+25)** | **+6,6 (+1,3 … +13,2)** |
+
+**Entscheid: P9 wird nicht in den gemeinsamen Prompt übernommen; P0 bleibt.**
+Nach 3.4 muss sich ein Gewinn mit Seeds 6–10 bestätigen. Bei den vier lokalen
+Hauptmodellen tut er das nicht: Der Gewinn von gemma4:e4b schrumpft im
+zweiten Block auf +2, auf dem Held-out-Satz ist P9 für alle vier neutral,
+und beide qwen-Modelle liegen auf beiden Sätzen leicht darunter (jedes
+Intervall schliesst 0 ein). Eine Änderung an Anwendung, Bypass-Test und
+Sicherheitsreview ohne belegten Nutzen für die Hauptmodelle lohnt sich nicht.
+Die Prüfung der 15 Fragen von Hand entfällt damit für P9.
+
+**Was P9 zeigt**
+
+1. **Luna gewinnt deutlich** (Held-out +25, Intervall ohne 0): `h18` 1 ⇒
+   10/10, `h25` 3 ⇒ 7, `h26` 6 ⇒ 10, `h34` 6 ⇒ 10. Das ist der erste
+   Kandidat für einen Prompt je Modell (8.2, Einordnung).
+2. **Neue Fehlerbilder:** gemma4:12b fragt bei `h31` («Zeig mir die Schulen
+   in der Nähe») nicht mehr zurück (10 ⇒ 0/10), sondern schreibt
+   `near_feature` auf eine erfundene `fid`; die Anwendung weist alle zehn als
+   `not_representable` ab, sicher. Luna `n03` (8.2, Befund 4) bleibt der
+   einzige still falsche Fall.
+3. **Haiku** bleibt unempfindlich (+2, +4).
+
+Damit ist die Grundlinie für den gemeinsamen Prompt **P0 auf main**, mit den
+Zahlen aus 8.1 und dieser Tabelle als Massstab.
 
 ---
 
