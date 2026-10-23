@@ -128,8 +128,8 @@ menschlicher Kontrolle.
 > ohne Zustandsverlust, Handänderungen während das Modell arbeitet. Abnahme in
 > `e2e/tests/acceptance-e2.6.spec.ts`; Abweichungen und Offenes in
 > [docs/plan-e2.3-e2.6.md](docs/plan-e2.3-e2.6.md), Gate E2.6. Damit ist E2
-> umgesetzt; offen bleibt die Vorführung mit einem echten Modell und die
-> Abnahme der Designabweichungen.
+> umgesetzt; die Abweichungen vom Design sind abgenommen, der Gate-Lauf mit
+> einem echten Modell (gemma4:12b) ist grün.
 
 **Vorführung E2:** Ein Anwender ohne GIS-Vorkenntnisse beantwortet die
 Fragestellung aus E1 per Prompt; ein zweiter Durchlauf zeigt einen Fall, in dem
