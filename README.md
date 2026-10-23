@@ -340,8 +340,9 @@ Layer-Steckbrief des Kontos an das Modell (nur Metadaten, nie Zeileninhalte).
   Grenzwert) lassen Analyse, Editor und Verlauf unverändert; der Prompt bleibt
   im Feld. Wer das Fenster schliesst, während eine Werkzeugkette läuft, hält
   sie an (das letzte vollständige Zwischenergebnis bleibt im Protokoll
-  übernehmbar); eine Direktabfrage, an der das Modell noch denkt, nimmt der
-  Arbeitsplatz nach einem Neuladen wieder auf.
+  übernehmbar); eine Direktabfrage, an der das Modell noch denkt, läuft zu
+  Ende, und nach einem Neuladen zeigt sie der Arbeitsplatz, sobald die nächste
+  Frage gesendet wird.
 
 **Ollama aufsetzen** (als Container mit `docker run` oder Compose, mit
 NVIDIA-GPU, oder nativ auf dem Host): [docs/ollama.md](docs/ollama.md).
