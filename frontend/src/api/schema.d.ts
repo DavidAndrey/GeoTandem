@@ -1438,7 +1438,8 @@ export interface paths {
     }
     /**
      * Export Cases
-     * @description The own cases as a case file (F-3.13, F-10.4); with ``start`` the start set too.
+     * @description The own cases as a case file (F-3.13, F-10.4); with ``start`` the start set
+     *     too. Without ``null`` fields, so export and import are a round trip.
      */
     get: operations['export_cases_api_admin_evaluation_cases_export_get']
     put?: never
@@ -1480,7 +1481,8 @@ export interface paths {
      * Case From Action
      * @description A case prefilled from a logged direct query with decision ``accepted``, or
      *     ``auto`` not undone (F-3.14); nothing is stored until it is saved with
-     *     ``POST /cases``. A hand-corrected action is not offered (decision 2).
+     *     ``POST /cases``. Any other action, a hand-corrected one too (decision 2), is
+     *     ``action_not_eligible``.
      */
     get: operations['case_from_action_api_admin_evaluation_cases_draft_from_action__action_id__get']
     put?: never
@@ -1550,7 +1552,8 @@ export interface paths {
      * Start Run
      * @description Starts the run in the background and answers at once, ``running``; the
      *     client polls ``GET /runs/{id}`` (D8). One run at a time (``run_busy``); an
-     *     external connection not in ``confirm_external`` is ``external_not_confirmed``.
+     *     external connection not in ``confirm_external`` is ``external_not_confirmed``;
+     *     a selection with no runnable case (all filtered out or stale) is ``no_cases``.
      */
     post: operations['start_run_api_admin_evaluation_runs_post']
     delete?: never
@@ -1669,7 +1672,8 @@ export interface paths {
     }
     /**
      * Profile Summary
-     * @description How complete the metadata is that ``account``'s model sees (D11, V8).
+     * @description How complete the metadata is that the model sees (D11, V8): of the sample
+     *     data, or of the live catalog as ``account`` sees it (default: the caller).
      */
     get: operations['profile_summary_api_admin_evaluation_profile_summary_get']
     put?: never
@@ -1845,7 +1849,8 @@ export interface components {
     /**
      * AnswerView
      * @description One answer of one repeat (V7). ``answer`` is the model's answer as read;
-     *     rows never: the result sets are feature ids, capped at ``MAX_IDS``.
+     *     rows never: the result sets are feature ids, capped at ``MAX_IDS``, with
+     *     exact counts.
      */
     AnswerView: {
       /** Case Id */
@@ -1875,12 +1880,19 @@ export interface components {
       /** Completion Tokens */
       completion_tokens: number | null
       /** Answer */
-      answer: {
-        [key: string]: unknown
-      } | null
+      answer:
+        | (
+            | components['schemas']['QueryAnswer']
+            | components['schemas']['Clarification']
+            | components['schemas']['CannotAnswer']
+            | components['schemas']['PlanAnswer']
+          )
+        | null
       refusal?: components['schemas']['Refusal'] | null
       /** Raw */
       raw?: string | null
+      /** Reading */
+      reading?: number | null
       /** Diff */
       diff?: components['schemas']['DiffEntry'][] | null
       /** Hits */
@@ -1893,10 +1905,20 @@ export interface components {
        */
       only_answer: number[]
       /**
+       * Only Answer Count
+       * @default 0
+       */
+      only_answer_count: number
+      /**
        * Only Reference
        * @default []
        */
       only_reference: number[]
+      /**
+       * Only Reference Count
+       * @default 0
+       */
+      only_reference_count: number
     }
     /**
      * Assumption
@@ -2101,8 +2123,77 @@ export interface components {
       }
     }
     /**
+     * CaseDraft
+     * @description A case not yet saved (V2 prefilled from M16.2, V3): no id and no tags yet;
+     *     the administrator adds them and saves it with ``POST /cases``.
+     */
+    CaseDraft: {
+      /** Prompt */
+      prompt: string
+      /**
+       * Data State
+       * @default sample
+       * @enum {string}
+       */
+      data_state: 'sample' | 'live'
+      /** Origin Action */
+      origin_action?: number | null
+      /**
+       * Schema Version
+       * @default 2
+       */
+      schema_version: string
+      /** Gold */
+      gold?: {
+        [key: string]: unknown
+      } | null
+      /** Gold Any */
+      gold_any?:
+        | {
+            [key: string]: unknown
+          }[]
+        | null
+      require?: components['schemas']['Require'] | null
+      /** Expect */
+      expect?: ('query' | 'clarification' | 'cannot_answer') | null
+      /**
+       * Also
+       * @default []
+       */
+      also: ('query' | 'clarification' | 'cannot_answer')[]
+      /**
+       * Forbid
+       * @default []
+       */
+      forbid: string[]
+      /** Other Approach */
+      other_approach?: ('direct' | 'chain') | 'none' | null
+      /**
+       * Note
+       * @default
+       */
+      note: string
+      /**
+       * Layers
+       * @default []
+       */
+      layers: components['schemas']['CaseLayer'][]
+      /**
+       * Split
+       * @default confirm
+       * @enum {string}
+       */
+      split: 'tuning' | 'confirm'
+      /**
+       * Origin
+       * @enum {string}
+       */
+      origin: 'authored' | 'log'
+    }
+    /**
      * CaseFile
-     * @description The start set, an export, an import: the same JSON (F-10.4).
+     * @description The start set, an export, an import: the same JSON (F-10.4), written
+     *     without ``null`` fields.
      */
     CaseFile: {
       /**
@@ -2128,15 +2219,12 @@ export interface components {
     /** CaseFilter */
     CaseFilter: {
       /**
-       * Start
-       * @default true
+       * Origins
+       * @default [
+       *       "start"
+       *     ]
        */
-      start: boolean
-      /**
-       * Own
-       * @default false
-       */
-      own: boolean
+      origins: ('start' | 'authored' | 'import' | 'log')[]
       /** Split */
       split?: ('tuning' | 'confirm') | null
       /**
@@ -2171,10 +2259,15 @@ export interface components {
        * @enum {string}
        */
       status: 'ok' | 'stale' | 'dataset_changed'
+      /**
+       * Status Layers
+       * @default []
+       */
+      status_layers: string[]
       /** Read Only */
       read_only: boolean
       /** Reference Hits */
-      reference_hits?: number | null
+      reference_hits?: number[] | null
       /** Created At */
       created_at?: string | null
       /** Updated At */
@@ -2865,7 +2958,8 @@ export interface components {
     }
     /**
      * DiffEntry
-     * @description One difference of an answer's query to the reference (stage 1, D5).
+     * @description One difference of an answer's query to the reference (stage 1, D5): the
+     *     two condition nodes, never data.
      */
     DiffEntry: {
       /**
@@ -3077,33 +3171,18 @@ export interface components {
      *     expected answer kind. A reference query is stored as the harness writes it,
      *     without ``schema_version`` and ``output``, against ``schema_version``.
      *
-     *     ``other_approach`` counts only when set: present and ``null`` means the
-     *     answer must not offer the other approach (export keeps unset fields out).
+     *     The JSON schema of the file cannot say "exactly one of"; the application
+     *     checks it, the uniqueness of ids and ``origin_action`` on import.
      */
     EvalCase: {
-      /** Id */
-      id: string
       /** Prompt */
       prompt: string
-      /** Tags */
-      tags: string[]
-      /**
-       * Split
-       * @enum {string}
-       */
-      split: 'tuning' | 'confirm'
       /**
        * Data State
        * @default sample
        * @enum {string}
        */
       data_state: 'sample' | 'live'
-      /**
-       * Origin
-       * @default start
-       * @enum {string}
-       */
-      origin: 'start' | 'authored' | 'import' | 'log'
       /** Origin Action */
       origin_action?: number | null
       /**
@@ -3135,7 +3214,7 @@ export interface components {
        */
       forbid: string[]
       /** Other Approach */
-      other_approach?: ('direct' | 'chain') | null
+      other_approach?: ('direct' | 'chain') | 'none' | null
       /**
        * Note
        * @default
@@ -3146,6 +3225,20 @@ export interface components {
        * @default []
        */
       layers: components['schemas']['CaseLayer'][]
+      /** Id */
+      id: string
+      /** Tags */
+      tags: string[]
+      /**
+       * Split
+       * @enum {string}
+       */
+      split: 'tuning' | 'confirm'
+      /**
+       * Origin
+       * @enum {string}
+       */
+      origin: 'start' | 'authored' | 'import' | 'log'
     }
     /**
      * ExecuteResponse
@@ -3556,13 +3649,18 @@ export interface components {
     }
     /**
      * LayerGaps
-     * @description What a layer lacks, in the order of care of Phase 4 (D11).
+     * @description What a layer lacks, in the order of care of Phase 4 (D11), with the totals
+     *     the shares of V8.1 are taken of.
      */
     LayerGaps: {
       /** Layer */
       layer: string
       /** Title */
       title: string
+      /** Attributes */
+      attributes: number
+      /** Text Attributes */
+      text_attributes: number
       /** Unconfirmed Codes */
       unconfirmed_codes: string[]
       /** Unlabelled */
@@ -4316,15 +4414,26 @@ export interface components {
     }
     /**
      * PointFigures
-     * @description Section 2 of the plan, for one measuring point.
+     * @description Section 2 of the plan, for one measuring point; counts are answers (a
+     *     case counts once per repeat).
      */
     PointFigures: {
       /** Passed */
       passed: number
       /** Answers */
       answers: number
+      /** By Split */
+      by_split: {
+        [key: string]: components['schemas']['Tally']
+      }
+      /** By Tag */
+      by_tag: {
+        [key: string]: components['schemas']['Tally']
+      }
       /** Rate Tuning */
       rate_tuning: number | null
+      /** Rate Confirm */
+      rate_confirm: number | null
       /** Silently Wrong */
       silently_wrong: number
       /** Zero Hits */
@@ -4340,8 +4449,8 @@ export interface components {
       }
       /** Behaviour Met */
       behaviour_met: number
-      /** Behaviour Cases */
-      behaviour_cases: number
+      /** Behaviour Answers */
+      behaviour_answers: number
       /** Limited */
       limited: number
       /** Latency Median Ms */
@@ -4374,15 +4483,20 @@ export interface components {
       locality: 'local' | 'external'
       /** Temperature */
       temperature: number
-      /** Reasoning Effort */
-      reasoning_effort: string
+      /**
+       * Reasoning Effort
+       * @enum {string}
+       */
+      reasoning_effort: 'default' | 'none' | 'low' | 'medium' | 'high'
       prompt_profile: components['schemas']['PromptProfile']
+      /** Level Id */
+      level_id: number
       /** Level Name */
       level_name: string
       /** System Prompt Hash */
       system_prompt_hash: string
-      /** System Prompt Edited */
-      system_prompt_edited: boolean
+      /** System Prompt */
+      system_prompt?: string | null
     }
     /** PointView */
     PointView: {
@@ -5000,14 +5114,53 @@ export interface components {
         [key: string]: string | null
       }
     }
+    /**
+     * RunCase
+     * @description A case as the run asked it (H7): the matrix, V7 and the export read it
+     *     here, not from the case store, which may have changed since.
+     */
+    RunCase: {
+      /** Id */
+      id: string
+      /** Prompt */
+      prompt: string
+      /** Tags */
+      tags: string[]
+      /**
+       * Split
+       * @enum {string}
+       */
+      split: 'tuning' | 'confirm'
+      /**
+       * Origin
+       * @enum {string}
+       */
+      origin: 'start' | 'authored' | 'import' | 'log'
+      /**
+       * Readings
+       * @default []
+       */
+      readings: {
+        [key: string]: unknown
+      }[]
+      require?: components['schemas']['Require'] | null
+      /** Expect */
+      expect?: ('query' | 'clarification' | 'cannot_answer') | null
+      /**
+       * Status
+       * @default ok
+       * @enum {string}
+       */
+      status: 'ok' | 'stale' | 'dataset_changed'
+    }
     /** RunComparison */
     RunComparison: {
       /** Run */
       run: number
       /** Against */
       against: number
-      /** Rows */
-      rows: components['schemas']['RunComparisonRow'][]
+      /** Points */
+      points: components['schemas']['RunComparisonRow'][]
     }
     /** RunComparisonRow */
     RunComparisonRow: {
@@ -5060,10 +5213,8 @@ export interface components {
       seeds: number[]
       /** Cases */
       cases: number
-      /** Split */
-      split: ('tuning' | 'confirm') | null
-      /** Tags */
-      tags: string[]
+      /** Case Set Hash */
+      case_set_hash: string
       /**
        * Started At
        * Format: date-time
@@ -5079,7 +5230,11 @@ export interface components {
       /** Total */
       total: number
     }
-    /** RunRequest */
+    /**
+     * RunRequest
+     * @description A run as V4 composes it; the run keeps it (``RunView.request``), so
+     *     "Als vollständigen Lauf wiederholen" opens V4 with it.
+     */
     RunRequest: {
       /** Points */
       points: components['schemas']['MeasuringPoint'][]
@@ -5090,8 +5245,9 @@ export interface components {
       reference: number
       /**
        * @default {
-       *       "start": true,
-       *       "own": false,
+       *       "origins": [
+       *         "start"
+       *       ],
        *       "tags": []
        *     }
        */
@@ -5122,7 +5278,7 @@ export interface components {
        * Status
        * @enum {string}
        */
-      status: 'running' | 'done' | 'aborted' | 'interrupted'
+      status: 'running' | 'done' | 'aborted' | 'interrupted' | 'failed'
       /**
        * Scope
        * @enum {string}
@@ -5142,8 +5298,12 @@ export interface components {
       started_by: string
       /** Points */
       points: number
+      /** Connection Ids */
+      connection_ids: number[]
       /** Cases */
       cases: number
+      /** Case Set Hash */
+      case_set_hash: string
       /** Reference Rate */
       reference_rate: number | null
       /**
@@ -5160,8 +5320,11 @@ export interface components {
        * Status
        * @enum {string}
        */
-      status: 'running' | 'done' | 'aborted' | 'interrupted'
+      status: 'running' | 'done' | 'aborted' | 'interrupted' | 'failed'
+      request: components['schemas']['RunRequest']
       label: components['schemas']['RunLabel']
+      /** Cases */
+      cases: components['schemas']['RunCase'][]
       /** Points */
       points: components['schemas']['PointView'][]
       /** Reference */
@@ -5174,6 +5337,8 @@ export interface components {
       cost_so_far: components['schemas']['Money'][]
       /** Cells */
       cells: components['schemas']['Cell'][]
+      /** Error */
+      error?: string | null
       /** Finished At */
       finished_at?: string | null
     }
@@ -5517,6 +5682,13 @@ export interface components {
       /** Sample Dataset Version */
       sample_dataset_version: string
       capabilities: components['schemas']['Capabilities']
+    }
+    /** Tally */
+    Tally: {
+      /** Passed */
+      passed: number
+      /** Answers */
+      answers: number
     }
     /**
      * TextMatch
@@ -11854,7 +12026,7 @@ export interface operations {
           [name: string]: unknown
         }
         content: {
-          'application/json': components['schemas']['EvalCase']
+          'application/json': components['schemas']['CaseDraft']
         }
       }
       /** @description Bad Request */
@@ -12179,6 +12351,7 @@ export interface operations {
   runs_api_admin_evaluation_runs_get: {
     parameters: {
       query?: {
+        connection_id?: number | null
         limit?: number
         offset?: number
       }
@@ -12655,8 +12828,9 @@ export interface operations {
   }
   profile_summary_api_admin_evaluation_profile_summary_get: {
     parameters: {
-      query: {
-        account: string
+      query?: {
+        data_state?: 'sample' | 'live'
+        account?: string | null
       }
       header?: never
       path?: never

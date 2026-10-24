@@ -3378,6 +3378,10 @@ msgstr ""
 msgid "keiner"
 msgstr ""
 
+#: src/i18n/errors.ts
+msgid "Keiner der gewählten Prüffälle kann laufen: Keiner passt zur Auswahl, oder alle sind veraltet."
+msgstr ""
+
 #: src/operations/OperationDialog.tsx
 msgid "Kennzahl entfernen"
 msgstr ""
@@ -4122,6 +4126,10 @@ msgstr ""
 
 #: src/model/log/MyActionsDialog.tsx
 msgid "Nur eigene Einträge, neueste zuerst."
+msgstr ""
+
+#: src/i18n/errors.ts
+msgid "Nur eine angenommene oder automatisch angewendete, nicht zurückgenommene Direktabfrage wird zum Prüffall."
 msgstr ""
 
 #: src/admin/ModelLogPage.tsx

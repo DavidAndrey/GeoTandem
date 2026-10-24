@@ -109,7 +109,9 @@ def grade(
     if "expect" in case:
         if answer.kind != case["expect"]:
             return f"kind:{answer.kind}"
-        if "other_approach" in case and answer.other_approach != case["other_approach"]:
+        # "none": the answer must not offer the other approach; unset: not checked.
+        want = case.get("other_approach")
+        if want is not None and answer.other_approach != (None if want == "none" else want):
             return f"other_approach:{answer.other_approach}"
         return PASS
     if not isinstance(answer, QueryAnswer):

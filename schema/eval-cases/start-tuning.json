@@ -554,7 +554,7 @@
       "origin": "start",
       "schema_version": "2",
       "expect": "cannot_answer",
-      "other_approach": null
+      "other_approach": "none"
     },
     {
       "id": "n04-grosse-gemeinden",
@@ -856,7 +856,7 @@
       "origin": "start",
       "schema_version": "2",
       "expect": "cannot_answer",
-      "other_approach": null
+      "other_approach": "none"
     },
     {
       "id": "x-ohne-kontext",

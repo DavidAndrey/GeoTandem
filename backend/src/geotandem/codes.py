@@ -84,6 +84,9 @@ CODES: dict[str, str] = {
     "case_id_taken": "A case of that id exists (details.case_id).",
     "case_read_only": "A start case cannot be changed; copy it into an own case.",
     "case_stale": "A layer of the case is gone or hidden (details.layer); edit the case first.",
+    "no_cases": "No case of the selection can run: none matches, or all are stale.",
+    "action_not_eligible": "Only an accepted, or auto and not undone, direct query becomes "
+    "a case (details.decision).",
     "run_busy": "Another evaluation run is running (details.run).",
     "external_not_confirmed": "The run would send to an external connection not confirmed "
     "(details.connection, details.host).",

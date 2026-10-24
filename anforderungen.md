@@ -150,7 +150,11 @@ schliessen die Lücke.*
 - **F-3.18** Vergleichsdarstellung über mehrere Anbindungen mit Einzelansicht je
   Prüffall (erzeugte Abfrage, Referenz, Unterschied, beide Ergebnismengen);
   jeder Lauf ist mit Schemaversion, Datenstand, System-Prompt und
-  Modellparametern beschriftet und bleibt zum Vergleich erhalten.
+  Modellparametern beschriftet und bleibt zum Vergleich erhalten. *Entschieden (E3): Die
+  Beschriftung nennt dazu die Version der Bewertungsregeln, den Stand des
+  Layer-Steckbriefs (D11) und die Fälle, wie sie gefragt wurden; die Matrix
+  vergleicht jede Spalte gepaart je Fall mit einer Vergleichsbasis (D7), zwei
+  vollständige Läufe über dieselben Fälle lassen sich nebeneinanderstellen.*
 
 ## 4 Klassik-Modus
 

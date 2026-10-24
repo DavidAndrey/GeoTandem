@@ -3378,6 +3378,10 @@ msgstr "Keinem Datensatz lässt sich eine Geometrie zuordnen."
 msgid "keiner"
 msgstr "keiner"
 
+#: src/i18n/errors.ts
+msgid "Keiner der gewählten Prüffälle kann laufen: Keiner passt zur Auswahl, oder alle sind veraltet."
+msgstr "Keiner der gewählten Prüffälle kann laufen: Keiner passt zur Auswahl, oder alle sind veraltet."
+
 #: src/operations/OperationDialog.tsx
 msgid "Kennzahl entfernen"
 msgstr "Kennzahl entfernen"
@@ -4123,6 +4127,10 @@ msgstr "Nur der Kartenausschnitt ist geladen: der Layer hat mehr als {maxFeature
 #: src/model/log/MyActionsDialog.tsx
 msgid "Nur eigene Einträge, neueste zuerst."
 msgstr "Nur eigene Einträge, neueste zuerst."
+
+#: src/i18n/errors.ts
+msgid "Nur eine angenommene oder automatisch angewendete, nicht zurückgenommene Direktabfrage wird zum Prüffall."
+msgstr "Nur eine angenommene oder automatisch angewendete, nicht zurückgenommene Direktabfrage wird zum Prüffall."
 
 #: src/admin/ModelLogPage.tsx
 msgid "Nur Einträge von {account}"

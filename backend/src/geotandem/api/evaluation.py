@@ -13,7 +13,9 @@ from fastapi import APIRouter, Depends, Path, Query, Response
 from geotandem.api.auth import require_admin
 from geotandem.api.errors import ErrorBody, Problem
 from geotandem.evaluation.schemas import (
+    MAX_POINTS,
     AnswerView,
+    CaseDraft,
     CaseFile,
     CaseId,
     CasePage,
@@ -31,6 +33,8 @@ from geotandem.evaluation.schemas import (
     RunRequest,
     RunView,
     Split,
+    Tag,
+    Username,
 )
 from geotandem.model.schemas import MAX_ID, MAX_PAGE
 
@@ -62,7 +66,7 @@ class NotBuilt(Problem):
 @router.get("/cases", responses=ERRORS)
 def cases(
     split: Split | None = None,
-    tag: str | None = None,
+    tag: Tag | None = None,
     origin: Origin | None = None,
     data_state: DataState | None = None,
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE)] = MAX_PAGE,
@@ -81,9 +85,10 @@ def create_case(body: EvalCase) -> CaseView:
     raise NotBuilt("WP87")
 
 
-@router.get("/cases/export", responses=ERRORS)
+@router.get("/cases/export", responses=ERRORS, response_model_exclude_none=True)
 def export_cases(start: bool = False) -> CaseFile:
-    """The own cases as a case file (F-3.13, F-10.4); with ``start`` the start set too."""
+    """The own cases as a case file (F-3.13, F-10.4); with ``start`` the start set
+    too. Without ``null`` fields, so export and import are a round trip."""
     raise NotBuilt("WP87")
 
 
@@ -94,10 +99,11 @@ def import_cases(body: CaseFile) -> ImportResult:
 
 
 @router.get("/cases/draft-from-action/{action_id}", responses=ERRORS)
-def case_from_action(action_id: Id) -> EvalCase:
+def case_from_action(action_id: Id) -> CaseDraft:
     """A case prefilled from a logged direct query with decision ``accepted``, or
     ``auto`` not undone (F-3.14); nothing is stored until it is saved with
-    ``POST /cases``. A hand-corrected action is not offered (decision 2)."""
+    ``POST /cases``. Any other action, a hand-corrected one too (decision 2), is
+    ``action_not_eligible``."""
     raise NotBuilt("WP92")
 
 
@@ -131,12 +137,14 @@ def estimate(body: RunRequest) -> CostEstimate:
 def start_run(body: RunRequest) -> RunView:
     """Starts the run in the background and answers at once, ``running``; the
     client polls ``GET /runs/{id}`` (D8). One run at a time (``run_busy``); an
-    external connection not in ``confirm_external`` is ``external_not_confirmed``."""
+    external connection not in ``confirm_external`` is ``external_not_confirmed``;
+    a selection with no runnable case (all filtered out or stale) is ``no_cases``."""
     raise NotBuilt("WP90")
 
 
 @router.get("/runs", responses=ERRORS)
 def runs(
+    connection_id: Annotated[int | None, Query(ge=1, le=MAX_ID)] = None,
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> RunPage:
@@ -159,13 +167,13 @@ def abort_run(run_id: Id) -> RunView:
 def answers(
     run_id: Id,
     case_id: CaseId,
-    point: Annotated[int, Query(ge=0)],
+    point: Annotated[int, Query(ge=0, le=MAX_POINTS - 1)],
 ) -> list[AnswerView]:
     """The repeats of one case at one measuring point (V7)."""
     raise NotBuilt("WP90")
 
 
-@router.get("/runs/{run_id}/export", responses=ERRORS)
+@router.get("/runs/{run_id}/export", responses=ERRORS, response_model_exclude_none=True)
 def export_run(run_id: Id) -> RunExport:
     """The run with every answer, as JSON (V6.2 *Exportieren*)."""
     raise NotBuilt("WP90")
@@ -182,6 +190,9 @@ def compare_runs(body: CompareRequest) -> RunComparison:
 
 
 @router.get("/profile-summary", responses=ERRORS)
-def profile_summary(account: str) -> ProfileSummary:
-    """How complete the metadata is that ``account``'s model sees (D11, V8)."""
+def profile_summary(
+    data_state: DataState = "live", account: Username | None = None
+) -> ProfileSummary:
+    """How complete the metadata is that the model sees (D11, V8): of the sample
+    data, or of the live catalog as ``account`` sees it (default: the caller)."""
     raise NotBuilt("WP94")

@@ -889,7 +889,7 @@
       "origin": "start",
       "schema_version": "2",
       "expect": "cannot_answer",
-      "other_approach": null
+      "other_approach": "none"
     },
     {
       "id": "h37-steueranlage",
@@ -902,7 +902,7 @@
       "origin": "start",
       "schema_version": "2",
       "expect": "cannot_answer",
-      "other_approach": null
+      "other_approach": "none"
     },
     {
       "id": "h38-je-gemeinde",
@@ -916,7 +916,7 @@
       "origin": "start",
       "schema_version": "2",
       "expect": "cannot_answer",
-      "other_approach": null
+      "other_approach": "none"
     }
   ]
 }

@@ -1,6 +1,7 @@
 {
   "$defs": {
     "CaseLayer": {
+      "additionalProperties": false,
       "description": "A layer a live case uses, with its dataset version when the case was made (D3).",
       "properties": {
         "name": {
@@ -28,35 +29,13 @@
     },
     "EvalCase": {
       "additionalProperties": false,
-      "description": "One question with its right answer (F-3.13, D2). Exactly one of ``gold``,\n``gold_any``, ``require`` and ``expect``: a query case has a reference\nquery, several fair readings or required parts; a behaviour case names the\nexpected answer kind. A reference query is stored as the harness writes it,\nwithout ``schema_version`` and ``output``, against ``schema_version``.\n\n``other_approach`` counts only when set: present and ``null`` means the\nanswer must not offer the other approach (export keeps unset fields out).",
+      "description": "One question with its right answer (F-3.13, D2). Exactly one of ``gold``,\n``gold_any``, ``require`` and ``expect``: a query case has a reference\nquery, several fair readings or required parts; a behaviour case names the\nexpected answer kind. A reference query is stored as the harness writes it,\nwithout ``schema_version`` and ``output``, against ``schema_version``.\n\nThe JSON schema of the file cannot say \"exactly one of\"; the application\nchecks it, the uniqueness of ids and ``origin_action`` on import.",
       "properties": {
-        "id": {
-          "pattern": "^[a-z0-9][a-z0-9.-]{0,62}$",
-          "title": "Id",
-          "type": "string"
-        },
         "prompt": {
           "maxLength": 4000,
           "minLength": 1,
+          "pattern": "\\S",
           "title": "Prompt",
-          "type": "string"
-        },
-        "tags": {
-          "items": {
-            "pattern": "^[a-z0-9][a-z0-9:-]{0,31}$",
-            "type": "string"
-          },
-          "maxItems": 8,
-          "minItems": 1,
-          "title": "Tags",
-          "type": "array"
-        },
-        "split": {
-          "enum": [
-            "tuning",
-            "confirm"
-          ],
-          "title": "Split",
           "type": "string"
         },
         "data_state": {
@@ -68,20 +47,11 @@
           "title": "Data State",
           "type": "string"
         },
-        "origin": {
-          "default": "start",
-          "enum": [
-            "start",
-            "authored",
-            "import",
-            "log"
-          ],
-          "title": "Origin",
-          "type": "string"
-        },
         "origin_action": {
           "anyOf": [
             {
+              "maximum": 9223372036854775807,
+              "minimum": 1,
               "type": "integer"
             },
             {
@@ -186,6 +156,10 @@
               "type": "string"
             },
             {
+              "const": "none",
+              "type": "string"
+            },
+            {
               "type": "null"
             }
           ],
@@ -204,13 +178,47 @@
           },
           "title": "Layers",
           "type": "array"
+        },
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9.-]{0,62}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "tags": {
+          "items": {
+            "pattern": "^[a-z0-9][a-z0-9:-]{0,31}$",
+            "type": "string"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Tags",
+          "type": "array"
+        },
+        "split": {
+          "enum": [
+            "tuning",
+            "confirm"
+          ],
+          "title": "Split",
+          "type": "string"
+        },
+        "origin": {
+          "enum": [
+            "start",
+            "authored",
+            "import",
+            "log"
+          ],
+          "title": "Origin",
+          "type": "string"
         }
       },
       "required": [
-        "id",
         "prompt",
+        "id",
         "tags",
-        "split"
+        "split",
+        "origin"
       ],
       "title": "EvalCase",
       "type": "object"
@@ -242,7 +250,7 @@
     }
   },
   "additionalProperties": false,
-  "description": "The start set, an export, an import: the same JSON (F-10.4).",
+  "description": "The start set, an export, an import: the same JSON (F-10.4), written\nwithout ``null`` fields.",
   "properties": {
     "format": {
       "const": "geotandem-eval-cases",

@@ -20,6 +20,7 @@ import type {
   ProfileSummary,
   PromptProfile,
   RunComparison,
+  RunCase,
   RunLabel,
   RunPage,
   RunStatus,
@@ -109,6 +110,7 @@ export function caseView(id: string, overrides: Partial<CaseView> = {}): CaseVie
   return {
     case: found,
     status: own?.status ?? 'ok',
+    status_layers: own && own.status !== 'ok' ? own.case.layers.map((l) => l.name).slice(0, 1) : [],
     read_only: start !== undefined,
     reference_hits: null,
     created_at: own ? '2026-10-20T09:12:00' : null,
@@ -143,9 +145,10 @@ function point(
     temperature: model === 'claude-haiku-5-5' ? 1 : 0.3,
     reasoning_effort: 'none',
     prompt_profile: { ...P0, ...profile },
+    level_id: 2,
     level_name: 'Prüfen',
     system_prompt_hash: 'sha256:41d9',
-    system_prompt_edited: false,
+    system_prompt: null,
   }
 }
 
@@ -167,16 +170,23 @@ function figures(
   p90: number,
   cost: number | null,
 ): PointFigures {
+  const confirm = Math.round(passed * 1.13)
   return {
-    passed,
-    answers: 330,
+    passed: passed + confirm,
+    answers: 330 + 380,
+    by_split: {
+      tuning: { passed, answers: 330 },
+      confirm: { passed: confirm, answers: 380 },
+    },
+    by_tag: { spatial: { passed: Math.round(passed / 3), answers: 110 } },
     rate_tuning: Math.round((passed / 330) * 1000) / 10,
+    rate_confirm: Math.round((confirm / 380) * 1000) / 10,
     silently_wrong: silently,
     zero_hits: Math.round(silently * 0.6),
     unreadable,
     errors: unreadable ? { model_unreadable: unreadable } : {},
     behaviour_met: behaviour,
-    behaviour_cases: 50,
+    behaviour_answers: 50,
     limited: 0,
     latency_median_ms: median,
     latency_p90_ms: p90,
@@ -291,12 +301,27 @@ export const PROFILE_RAW: ProfileSummary = {
     {
       layer: 'schulanlagen',
       title: 'schulanlagen',
+      attributes: 4,
+      text_attributes: 2,
       unconfirmed_codes: ['art', 'traeger'],
       unlabelled: ['art', 'traeger', 'turnhalle', 'baujahr'],
       undescribed: ['', 'art', 'traeger', 'turnhalle', 'baujahr'],
     },
   ],
 }
+
+/** The cases of a run as it asked them (H7): the start set at run time. */
+const RUN_CASES: RunCase[] = START_CASES.map((c) => ({
+  id: c.id,
+  prompt: c.prompt,
+  tags: c.tags,
+  split: c.split,
+  origin: c.origin,
+  readings: c.gold_any ?? (c.gold ? [c.gold] : []),
+  require: c.require ?? null,
+  expect: c.expect ?? null,
+  status: 'ok',
+}))
 
 function label(scope: RunView['label']['scope'] = 'full'): RunLabel {
   return {
@@ -310,8 +335,7 @@ function label(scope: RunView['label']['scope'] = 'full'): RunLabel {
     scope,
     seeds: scope === 'full' ? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] : [1, 2, 3, 4, 5],
     cases: 71,
-    split: null,
-    tags: [],
+    case_set_hash: 'sha256:c71a',
     started_at: STARTED,
     started_by: 'admin',
   }
@@ -329,12 +353,27 @@ export function runView(status: RunStatus = 'done', scope: 'full' | 'quick' = 'f
   return {
     id: status === 'running' ? 14 : scope === 'quick' ? 12 : 13,
     status,
+    request: {
+      points: POINTS.map((p) => ({
+        connection_id: p.connection_id,
+        prompt_profile: p.prompt_profile,
+        level_id: p.level_id,
+        system_prompt: null,
+      })),
+      reference: REFERENCE,
+      cases: { origins: ['start'], split: null, tags: [] },
+      data_state: 'sample',
+      scope,
+      confirm_external: [2, 3],
+    },
     label: label(scope),
+    cases: RUN_CASES,
     points,
     reference: REFERENCE,
     progress: { done: status === 'running' ? 1164 : total, total },
     cost_so_far: [{ amount: status === 'running' ? 0.84 : 2.08, currency: 'USD' }],
     cells: status === 'running' ? cells(10).slice(0, 6) : cells(scope === 'full' ? 10 : 5),
+    error: null,
     finished_at: done ? FINISHED : null,
   }
 }
@@ -354,7 +393,9 @@ export function runPage(): RunPage {
     started_at: STARTED,
     started_by: 'admin',
     points: 4,
+    connection_ids: [1, 2, 3],
     cases: 71,
+    case_set_hash: 'sha256:c71a',
     reference_rate: rate,
     cost: [{ amount: cost, currency: 'USD' }],
   })
@@ -434,6 +475,7 @@ export function answerViews(): AnswerView[] {
     },
     refusal: null,
     raw: null,
+    reading: 0,
     diff: [
       {
         kind: 'missing',
@@ -445,7 +487,9 @@ export function answerViews(): AnswerView[] {
     hits: 102,
     reference_hits: 13,
     only_answer: Array.from({ length: 89 }, (_, i) => i + 14),
+    only_answer_count: 89,
     only_reference: [],
+    only_reference_count: 0,
   })
   const right = (block: number, seed: number): AnswerView => ({
     ...wrong(block, seed),
@@ -454,6 +498,7 @@ export function answerViews(): AnswerView[] {
     diff: [],
     hits: 13,
     only_answer: [],
+    only_answer_count: 0,
   })
   return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((seed) =>
     [2, 3, 5, 7, 8, 10].includes(seed)
@@ -466,7 +511,7 @@ export function answerViews(): AnswerView[] {
 export const RUN_COMPARISON: RunComparison = {
   run: 13,
   against: 8,
-  rows: POINTS.map((p, index) => ({
+  points: POINTS.map((p, index) => ({
     label: p,
     rate: FIGURES[index].rate_tuning,
     rate_against: [81.8, 96.1, 78.2, 87.9][index],

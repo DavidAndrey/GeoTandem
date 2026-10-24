@@ -1,4 +1,5 @@
 {
+  "action_not_eligible": "Only an accepted, or auto and not undone, direct query becomes a case (details.decision).",
   "already_decided": "The action is decided already (details.status).",
   "ambiguous_key_target": "Key values occur more than once in the target layer.",
   "api_key_bound_to_url": "The stored API key goes only to its own address (C8).",
@@ -77,6 +78,7 @@
   "model_unreadable": "The model's answer does not fit the answer schema.",
   "name_clash": "A joined, computed or aggregated attribute takes a used name.",
   "name_taken": "A session or query of that name exists; details.existing is its id.",
+  "no_cases": "No case of the selection can run: none matches, or all are stale.",
   "no_geo_reference_found": "No coordinate columns or area key recognised.",
   "no_geometry": "No record has a geometry.",
   "no_geometry_in_source": "A table needs coordinate columns or an area key.",

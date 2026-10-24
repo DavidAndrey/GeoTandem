@@ -7251,7 +7251,8 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9:-]{0,31}$"
                 },
                 {
                   "type": "null"
@@ -7476,7 +7477,7 @@
           "evaluation"
         ],
         "summary": "Export Cases",
-        "description": "The own cases as a case file (F-3.13, F-10.4); with ``start`` the start set too.",
+        "description": "The own cases as a case file (F-3.13, F-10.4); with ``start`` the start set\ntoo. Without ``null`` fields, so export and import are a round trip.",
         "operationId": "export_cases_api_admin_evaluation_cases_export_get",
         "parameters": [
           {
@@ -7642,7 +7643,7 @@
           "evaluation"
         ],
         "summary": "Case From Action",
-        "description": "A case prefilled from a logged direct query with decision ``accepted``, or\n``auto`` not undone (F-3.14); nothing is stored until it is saved with\n``POST /cases``. A hand-corrected action is not offered (decision 2).",
+        "description": "A case prefilled from a logged direct query with decision ``accepted``, or\n``auto`` not undone (F-3.14); nothing is stored until it is saved with\n``POST /cases``. Any other action, a hand-corrected one too (decision 2), is\n``action_not_eligible``.",
         "operationId": "case_from_action_api_admin_evaluation_cases_draft_from_action__action_id__get",
         "parameters": [
           {
@@ -7663,7 +7664,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/EvalCase"
+                  "$ref": "#/components/schemas/CaseDraft"
                 }
               }
             }
@@ -8059,7 +8060,7 @@
           "evaluation"
         ],
         "summary": "Start Run",
-        "description": "Starts the run in the background and answers at once, ``running``; the\nclient polls ``GET /runs/{id}`` (D8). One run at a time (``run_busy``); an\nexternal connection not in ``confirm_external`` is ``external_not_confirmed``.",
+        "description": "Starts the run in the background and answers at once, ``running``; the\nclient polls ``GET /runs/{id}`` (D8). One run at a time (``run_busy``); an\nexternal connection not in ``confirm_external`` is ``external_not_confirmed``;\na selection with no runnable case (all filtered out or stale) is ``no_cases``.",
         "operationId": "start_run_api_admin_evaluation_runs_post",
         "requestBody": {
           "required": true,
@@ -8141,6 +8142,24 @@
         "summary": "Runs",
         "operationId": "runs_api_admin_evaluation_runs_get",
         "parameters": [
+          {
+            "name": "connection_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 9223372036854775807,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Connection Id"
+            }
+          },
           {
             "name": "limit",
             "in": "query",
@@ -8435,6 +8454,7 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 7,
               "minimum": 0,
               "title": "Point"
             }
@@ -8681,15 +8701,37 @@
           "evaluation"
         ],
         "summary": "Profile Summary",
-        "description": "How complete the metadata is that ``account``'s model sees (D11, V8).",
+        "description": "How complete the metadata is that the model sees (D11, V8): of the sample\ndata, or of the live catalog as ``account`` sees it (default: the caller).",
         "operationId": "profile_summary_api_admin_evaluation_profile_summary_get",
         "parameters": [
           {
+            "name": "data_state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "sample",
+                "live"
+              ],
+              "type": "string",
+              "default": "live",
+              "title": "Data State"
+            }
+          },
+          {
             "name": "account",
             "in": "query",
-            "required": true,
+            "required": false,
             "schema": {
-              "type": "string",
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9._-]{1,62}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
               "title": "Account"
             }
           }
@@ -9309,8 +9351,29 @@
           "answer": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/QueryAnswer"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Clarification"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CannotAnswer"
+                  },
+                  {
+                    "$ref": "#/components/schemas/PlanAnswer"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "kind",
+                  "mapping": {
+                    "cannot_answer": "#/components/schemas/CannotAnswer",
+                    "clarification": "#/components/schemas/Clarification",
+                    "plan": "#/components/schemas/PlanAnswer",
+                    "query": "#/components/schemas/QueryAnswer"
+                  }
+                }
               },
               {
                 "type": "null"
@@ -9338,6 +9401,17 @@
               }
             ],
             "title": "Raw"
+          },
+          "reading": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reading"
           },
           "diff": {
             "anyOf": [
@@ -9380,16 +9454,28 @@
               "type": "integer"
             },
             "type": "array",
+            "maxItems": 200,
             "title": "Only Answer",
             "default": []
+          },
+          "only_answer_count": {
+            "type": "integer",
+            "title": "Only Answer Count",
+            "default": 0
           },
           "only_reference": {
             "items": {
               "type": "integer"
             },
             "type": "array",
+            "maxItems": 200,
             "title": "Only Reference",
             "default": []
+          },
+          "only_reference_count": {
+            "type": "integer",
+            "title": "Only Reference Count",
+            "default": 0
           }
         },
         "type": "object",
@@ -9405,7 +9491,7 @@
           "answer"
         ],
         "title": "AnswerView",
-        "description": "One answer of one repeat (V7). ``answer`` is the model's answer as read;\nrows never: the result sets are feature ids, capped at ``MAX_IDS``."
+        "description": "One answer of one repeat (V7). ``answer`` is the model's answer as read;\nrows never: the result sets are feature ids, capped at ``MAX_IDS``, with\nexact counts."
       },
       "Assumption": {
         "properties": {
@@ -9928,6 +10014,177 @@
         ],
         "title": "Capabilities"
       },
+      "CaseDraft": {
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Prompt"
+          },
+          "data_state": {
+            "type": "string",
+            "enum": [
+              "sample",
+              "live"
+            ],
+            "title": "Data State",
+            "default": "sample"
+          },
+          "origin_action": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 9.223372036854776e+18,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Origin Action"
+          },
+          "schema_version": {
+            "type": "string",
+            "title": "Schema Version",
+            "default": "2"
+          },
+          "gold": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gold"
+          },
+          "gold_any": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array",
+                "maxItems": 4,
+                "minItems": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gold Any"
+          },
+          "require": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Require"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expect": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "query",
+                  "clarification",
+                  "cannot_answer"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expect"
+          },
+          "also": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "query",
+                "clarification",
+                "cannot_answer"
+              ]
+            },
+            "type": "array",
+            "title": "Also",
+            "default": []
+          },
+          "forbid": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Forbid",
+            "default": []
+          },
+          "other_approach": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "direct",
+                  "chain"
+                ]
+              },
+              {
+                "type": "string",
+                "const": "none"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Other Approach"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note",
+            "default": ""
+          },
+          "layers": {
+            "items": {
+              "$ref": "#/components/schemas/CaseLayer"
+            },
+            "type": "array",
+            "title": "Layers",
+            "default": []
+          },
+          "split": {
+            "type": "string",
+            "enum": [
+              "tuning",
+              "confirm"
+            ],
+            "title": "Split",
+            "default": "confirm"
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "authored",
+              "log"
+            ],
+            "title": "Origin"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "prompt",
+          "origin"
+        ],
+        "title": "CaseDraft",
+        "description": "A case not yet saved (V2 prefilled from M16.2, V3): no id and no tags yet;\nthe administrator adds them and saves it with ``POST /cases``."
+      },
       "CaseFile": {
         "properties": {
           "format": {
@@ -9962,19 +10219,26 @@
           "cases"
         ],
         "title": "CaseFile",
-        "description": "The start set, an export, an import: the same JSON (F-10.4)."
+        "description": "The start set, an export, an import: the same JSON (F-10.4), written\nwithout ``null`` fields."
       },
       "CaseFilter": {
         "properties": {
-          "start": {
-            "type": "boolean",
-            "title": "Start",
-            "default": true
-          },
-          "own": {
-            "type": "boolean",
-            "title": "Own",
-            "default": false
+          "origins": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "start",
+                "authored",
+                "import",
+                "log"
+              ]
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Origins",
+            "default": [
+              "start"
+            ]
           },
           "split": {
             "anyOf": [
@@ -9997,6 +10261,7 @@
               "pattern": "^[a-z0-9][a-z0-9:-]{0,31}$"
             },
             "type": "array",
+            "maxItems": 8,
             "title": "Tags",
             "default": []
           }
@@ -10023,6 +10288,7 @@
             "title": "Dataset Version"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "name"
@@ -10066,6 +10332,14 @@
             "title": "Status",
             "default": "ok"
           },
+          "status_layers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Status Layers",
+            "default": []
+          },
           "read_only": {
             "type": "boolean",
             "title": "Read Only"
@@ -10073,7 +10347,10 @@
           "reference_hits": {
             "anyOf": [
               {
-                "type": "integer"
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
               },
               {
                 "type": "null"
@@ -10635,10 +10912,14 @@
         "properties": {
           "run": {
             "type": "integer",
+            "maximum": 9.223372036854776e+18,
+            "minimum": 1.0,
             "title": "Run"
           },
           "against": {
             "type": "integer",
+            "maximum": 9.223372036854776e+18,
+            "minimum": 1.0,
             "title": "Against"
           }
         },
@@ -11838,7 +12119,7 @@
           "path"
         ],
         "title": "DiffEntry",
-        "description": "One difference of an answer's query to the reference (stage 1, D5)."
+        "description": "One difference of an answer's query to the reference (stage 1, D5): the\ntwo condition nodes, never data."
       },
       "DistanceColumn-Input": {
         "properties": {
@@ -12223,34 +12504,12 @@
       },
       "EvalCase": {
         "properties": {
-          "id": {
-            "type": "string",
-            "pattern": "^[a-z0-9][a-z0-9.-]{0,62}$",
-            "title": "Id"
-          },
           "prompt": {
             "type": "string",
             "maxLength": 4000,
             "minLength": 1,
+            "pattern": "\\S",
             "title": "Prompt"
-          },
-          "tags": {
-            "items": {
-              "type": "string",
-              "pattern": "^[a-z0-9][a-z0-9:-]{0,31}$"
-            },
-            "type": "array",
-            "maxItems": 8,
-            "minItems": 1,
-            "title": "Tags"
-          },
-          "split": {
-            "type": "string",
-            "enum": [
-              "tuning",
-              "confirm"
-            ],
-            "title": "Split"
           },
           "data_state": {
             "type": "string",
@@ -12261,21 +12520,12 @@
             "title": "Data State",
             "default": "sample"
           },
-          "origin": {
-            "type": "string",
-            "enum": [
-              "start",
-              "authored",
-              "import",
-              "log"
-            ],
-            "title": "Origin",
-            "default": "start"
-          },
           "origin_action": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "integer",
+                "maximum": 9.223372036854776e+18,
+                "minimum": 1.0
               },
               {
                 "type": "null"
@@ -12374,6 +12624,10 @@
                 ]
               },
               {
+                "type": "string",
+                "const": "none"
+              },
+              {
                 "type": "null"
               }
             ],
@@ -12391,18 +12645,52 @@
             "type": "array",
             "title": "Layers",
             "default": []
+          },
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9.-]{0,62}$",
+            "title": "Id"
+          },
+          "tags": {
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9:-]{0,31}$"
+            },
+            "type": "array",
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Tags"
+          },
+          "split": {
+            "type": "string",
+            "enum": [
+              "tuning",
+              "confirm"
+            ],
+            "title": "Split"
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "start",
+              "authored",
+              "import",
+              "log"
+            ],
+            "title": "Origin"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "id",
           "prompt",
+          "id",
           "tags",
-          "split"
+          "split",
+          "origin"
         ],
         "title": "EvalCase",
-        "description": "One question with its right answer (F-3.13, D2). Exactly one of ``gold``,\n``gold_any``, ``require`` and ``expect``: a query case has a reference\nquery, several fair readings or required parts; a behaviour case names the\nexpected answer kind. A reference query is stored as the harness writes it,\nwithout ``schema_version`` and ``output``, against ``schema_version``.\n\n``other_approach`` counts only when set: present and ``null`` means the\nanswer must not offer the other approach (export keeps unset fields out)."
+        "description": "One question with its right answer (F-3.13, D2). Exactly one of ``gold``,\n``gold_any``, ``require`` and ``expect``: a query case has a reference\nquery, several fair readings or required parts; a behaviour case names the\nexpected answer kind. A reference query is stored as the harness writes it,\nwithout ``schema_version`` and ``output``, against ``schema_version``.\n\nThe JSON schema of the file cannot say \"exactly one of\"; the application\nchecks it, the uniqueness of ids and ``origin_action`` on import."
       },
       "ExecuteResponse": {
         "properties": {
@@ -13424,6 +13712,14 @@
             "type": "string",
             "title": "Title"
           },
+          "attributes": {
+            "type": "integer",
+            "title": "Attributes"
+          },
+          "text_attributes": {
+            "type": "integer",
+            "title": "Text Attributes"
+          },
           "unconfirmed_codes": {
             "items": {
               "type": "string"
@@ -13450,12 +13746,14 @@
         "required": [
           "layer",
           "title",
+          "attributes",
+          "text_attributes",
           "unconfirmed_codes",
           "unlabelled",
           "undescribed"
         ],
         "title": "LayerGaps",
-        "description": "What a layer lacks, in the order of care of Phase 4 (D11)."
+        "description": "What a layer lacks, in the order of care of Phase 4 (D11), with the totals\nthe shares of V8.1 are taken of."
       },
       "LayerInfo": {
         "properties": {
@@ -13852,6 +14150,8 @@
         "properties": {
           "connection_id": {
             "type": "integer",
+            "maximum": 9.223372036854776e+18,
+            "minimum": 1.0,
             "title": "Connection Id"
           },
           "prompt_profile": {
@@ -13866,6 +14166,8 @@
           },
           "level_id": {
             "type": "integer",
+            "maximum": 9.223372036854776e+18,
+            "minimum": 1.0,
             "title": "Level Id"
           },
           "system_prompt": {
@@ -15163,6 +15465,26 @@
             "type": "integer",
             "title": "Answers"
           },
+          "by_split": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Tally"
+            },
+            "propertyNames": {
+              "enum": [
+                "tuning",
+                "confirm"
+              ]
+            },
+            "type": "object",
+            "title": "By Split"
+          },
+          "by_tag": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Tally"
+            },
+            "type": "object",
+            "title": "By Tag"
+          },
           "rate_tuning": {
             "anyOf": [
               {
@@ -15173,6 +15495,17 @@
               }
             ],
             "title": "Rate Tuning"
+          },
+          "rate_confirm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate Confirm"
           },
           "silently_wrong": {
             "type": "integer",
@@ -15198,9 +15531,9 @@
             "type": "integer",
             "title": "Behaviour Met"
           },
-          "behaviour_cases": {
+          "behaviour_answers": {
             "type": "integer",
-            "title": "Behaviour Cases"
+            "title": "Behaviour Answers"
           },
           "limited": {
             "type": "integer",
@@ -15251,12 +15584,15 @@
         "required": [
           "passed",
           "answers",
+          "by_split",
+          "by_tag",
           "rate_tuning",
+          "rate_confirm",
           "silently_wrong",
           "zero_hits",
           "unreadable",
           "behaviour_met",
-          "behaviour_cases",
+          "behaviour_answers",
           "limited",
           "latency_median_ms",
           "latency_p90_ms",
@@ -15265,7 +15601,7 @@
           "cost"
         ],
         "title": "PointFigures",
-        "description": "Section 2 of the plan, for one measuring point."
+        "description": "Section 2 of the plan, for one measuring point; counts are answers (a\ncase counts once per repeat)."
       },
       "PointLabel": {
         "properties": {
@@ -15299,10 +15635,21 @@
           },
           "reasoning_effort": {
             "type": "string",
+            "enum": [
+              "default",
+              "none",
+              "low",
+              "medium",
+              "high"
+            ],
             "title": "Reasoning Effort"
           },
           "prompt_profile": {
             "$ref": "#/components/schemas/PromptProfile"
+          },
+          "level_id": {
+            "type": "integer",
+            "title": "Level Id"
           },
           "level_name": {
             "type": "string",
@@ -15312,9 +15659,16 @@
             "type": "string",
             "title": "System Prompt Hash"
           },
-          "system_prompt_edited": {
-            "type": "boolean",
-            "title": "System Prompt Edited"
+          "system_prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "System Prompt"
           }
         },
         "type": "object",
@@ -15327,9 +15681,9 @@
           "temperature",
           "reasoning_effort",
           "prompt_profile",
+          "level_id",
           "level_name",
-          "system_prompt_hash",
-          "system_prompt_edited"
+          "system_prompt_hash"
         ],
         "title": "PointLabel",
         "description": "A measuring point as it was (H7): later edits change no run."
@@ -16887,6 +17241,98 @@
         "title": "ResultStamp",
         "description": "A result without its features (design \"Ergebnis-Stempel\", F-8.9).\n\nSame query on the same data gives the same stamp; comparing stamps tells\nwhether a saved result still holds, without storing the features."
       },
+      "RunCase": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "prompt": {
+            "type": "string",
+            "title": "Prompt"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "split": {
+            "type": "string",
+            "enum": [
+              "tuning",
+              "confirm"
+            ],
+            "title": "Split"
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "start",
+              "authored",
+              "import",
+              "log"
+            ],
+            "title": "Origin"
+          },
+          "readings": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Readings",
+            "default": []
+          },
+          "require": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Require"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expect": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "query",
+                  "clarification",
+                  "cannot_answer"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expect"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "stale",
+              "dataset_changed"
+            ],
+            "title": "Status",
+            "default": "ok"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "prompt",
+          "tags",
+          "split",
+          "origin"
+        ],
+        "title": "RunCase",
+        "description": "A case as the run asked it (H7): the matrix, V7 and the export read it\nhere, not from the case store, which may have changed since."
+      },
       "RunComparison": {
         "properties": {
           "run": {
@@ -16897,19 +17343,19 @@
             "type": "integer",
             "title": "Against"
           },
-          "rows": {
+          "points": {
             "items": {
               "$ref": "#/components/schemas/RunComparisonRow"
             },
             "type": "array",
-            "title": "Rows"
+            "title": "Points"
           }
         },
         "type": "object",
         "required": [
           "run",
           "against",
-          "rows"
+          "points"
         ],
         "title": "RunComparison"
       },
@@ -17050,27 +17496,9 @@
             "type": "integer",
             "title": "Cases"
           },
-          "split": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "tuning",
-                  "confirm"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Split"
-          },
-          "tags": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Tags"
+          "case_set_hash": {
+            "type": "string",
+            "title": "Case Set Hash"
           },
           "started_at": {
             "type": "string",
@@ -17093,8 +17521,7 @@
           "scope",
           "seeds",
           "cases",
-          "split",
-          "tags",
+          "case_set_hash",
           "started_at",
           "started_by"
         ],
@@ -17141,8 +17568,9 @@
           "cases": {
             "$ref": "#/components/schemas/CaseFilter",
             "default": {
-              "start": true,
-              "own": false,
+              "origins": [
+                "start"
+              ],
               "tags": []
             }
           },
@@ -17166,9 +17594,12 @@
           },
           "confirm_external": {
             "items": {
-              "type": "integer"
+              "type": "integer",
+              "maximum": 9.223372036854776e+18,
+              "minimum": 1.0
             },
             "type": "array",
+            "maxItems": 8,
             "title": "Confirm External",
             "default": []
           }
@@ -17178,7 +17609,8 @@
         "required": [
           "points"
         ],
-        "title": "RunRequest"
+        "title": "RunRequest",
+        "description": "A run as V4 composes it; the run keeps it (``RunView.request``), so\n\"Als vollständigen Lauf wiederholen\" opens V4 with it."
       },
       "RunSummary": {
         "properties": {
@@ -17192,7 +17624,8 @@
               "running",
               "done",
               "aborted",
-              "interrupted"
+              "interrupted",
+              "failed"
             ],
             "title": "Status"
           },
@@ -17225,9 +17658,20 @@
             "type": "integer",
             "title": "Points"
           },
+          "connection_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Connection Ids"
+          },
           "cases": {
             "type": "integer",
             "title": "Cases"
+          },
+          "case_set_hash": {
+            "type": "string",
+            "title": "Case Set Hash"
           },
           "reference_rate": {
             "anyOf": [
@@ -17258,7 +17702,9 @@
           "started_at",
           "started_by",
           "points",
+          "connection_ids",
           "cases",
+          "case_set_hash",
           "reference_rate"
         ],
         "title": "RunSummary"
@@ -17275,12 +17721,23 @@
               "running",
               "done",
               "aborted",
-              "interrupted"
+              "interrupted",
+              "failed"
             ],
             "title": "Status"
           },
+          "request": {
+            "$ref": "#/components/schemas/RunRequest"
+          },
           "label": {
             "$ref": "#/components/schemas/RunLabel"
+          },
+          "cases": {
+            "items": {
+              "$ref": "#/components/schemas/RunCase"
+            },
+            "type": "array",
+            "title": "Cases"
           },
           "points": {
             "items": {
@@ -17311,6 +17768,17 @@
             "type": "array",
             "title": "Cells"
           },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
           "finished_at": {
             "anyOf": [
               {
@@ -17328,7 +17796,9 @@
         "required": [
           "id",
           "status",
+          "request",
           "label",
+          "cases",
           "points",
           "reference",
           "progress",
@@ -18147,6 +18617,24 @@
         ],
         "title": "SystemStatus",
         "description": "What the instance runs on; for administrators only (security review #10)."
+      },
+      "Tally": {
+        "properties": {
+          "passed": {
+            "type": "integer",
+            "title": "Passed"
+          },
+          "answers": {
+            "type": "integer",
+            "title": "Answers"
+          }
+        },
+        "type": "object",
+        "required": [
+          "passed",
+          "answers"
+        ],
+        "title": "Tally"
       },
       "TextMatch": {
         "properties": {

@@ -18,6 +18,7 @@ from pydantic import ValidationError
 
 from geotandem.codes import CODES
 from geotandem.evaluation.schemas import (
+    CaseDraft,
     CaseFile,
     EvalCase,
     EvalErrorCode,
@@ -36,6 +37,8 @@ PENDING_CODES: dict[str, str] = {
     "case_id_taken": "WP87",
     "case_read_only": "WP87",
     "case_stale": "WP87",
+    "no_cases": "WP90",
+    "action_not_eligible": "WP92",
     "run_busy": "WP90",
     "external_not_confirmed": "WP90",
     "runs_not_comparable": "WP90",
@@ -68,7 +71,13 @@ its routes out of the 501 check into its own tests."""
 BUILT: set[tuple[str, str]] = set()
 
 POINT = {"connection_id": 1, "level_id": 1}
-CASE = {"id": "eigene-1", "prompt": "Schulen in Köniz", "tags": ["in"], "split": "confirm"}
+CASE = {
+    "id": "eigene-1",
+    "prompt": "Schulen in Köniz",
+    "tags": ["in"],
+    "split": "confirm",
+    "origin": "authored",
+}
 BODIES: dict[str, Any] = {
     "/api/admin/evaluation/cases": {**CASE, "expect": "clarification"},
     "/api/admin/evaluation/cases/doc1-primar-koeniz": {**CASE, "expect": "clarification"},
@@ -92,12 +101,11 @@ def _readings(case: EvalCase) -> list[dict[str, Any]]:
 
 @pytest.mark.parametrize("split", ["tuning", "confirm"])
 def test_the_start_set_survives_a_round_trip_unchanged(split: str) -> None:
-    """F-3.13: export and import change nothing; unset fields stay out."""
+    """F-3.13: export and import change nothing (as JSON: same keys and values;
+    the key order is the model's); unset fields stay out."""
     text = START[split].read_text("utf-8")
-    again = json.dumps(
-        json.loads(_start(split).model_dump_json(exclude_unset=True)), ensure_ascii=False, indent=2
-    )
-    assert again + "\n" == text
+    again = json.loads(_start(split).model_dump_json(exclude_unset=True))
+    assert again == json.loads(text)
 
 
 @pytest.mark.parametrize("split", ["tuning", "confirm"])
@@ -134,7 +142,7 @@ def test_the_committed_case_file_schema_is_current() -> None:
     [
         {},
         {"expect": "clarification", "gold": {"source": "schulen"}},
-        {"gold_any": [{"source": "schulen"}]},
+        {"expect": "clarification", "require": {"source": "schulen", "conditions": [{}]}},
     ],
 )
 def test_a_case_has_exactly_one_answer(extra: dict[str, Any]) -> None:
@@ -156,6 +164,62 @@ def test_a_live_query_case_names_its_layers() -> None:
     with pytest.raises(ValidationError):
         EvalCase.model_validate(live)
     EvalCase.model_validate({**live, "layers": [{"name": "schulen", "dataset_version": "a1"}]})
+
+
+def test_a_case_means_the_same_after_a_view_dumped_it_with_nulls() -> None:
+    """Review WP85 #1: a view writes every field, ``null`` included; a GET followed
+    by a PUT must not change what the case demands."""
+    for split in START:
+        for case in _start(split).cases:
+            assert EvalCase.model_validate(case.model_dump(mode="json")) == case, case.id
+            again = json.loads(case.model_dump_json(exclude_none=True))
+            assert EvalCase.model_validate(again) == case, case.id
+
+
+def test_no_offer_of_the_other_approach_is_explicit() -> None:
+    """``none`` demands no offer; an unset field checks nothing (D2)."""
+    cases = {c.id: c for split in START for c in _start(split).cases}
+    assert cases["n15-je-gemeinde"].other_approach == "none"
+    assert "other_approach" not in cases["doc1-primar-koeniz"].model_fields_set
+
+
+def test_start_cases_run_on_the_sample_data_only() -> None:
+    with pytest.raises(ValidationError):
+        EvalCase.model_validate(
+            {**CASE, "origin": "start", "data_state": "live", "expect": "clarification"}
+        )
+
+
+@pytest.mark.parametrize("word", ["export", "import", "draft-from-action"])
+def test_route_words_are_no_case_ids(word: str) -> None:
+    with pytest.raises(ValidationError):
+        EvalCase.model_validate({**CASE, "id": word, "expect": "clarification"})
+
+
+def test_a_draft_needs_no_id_and_no_tags_and_defaults_to_confirmation() -> None:
+    draft = CaseDraft.model_validate(
+        {"prompt": "Schulen in Köniz", "origin": "log", "origin_action": 3, "gold": {}}
+    )
+    assert draft.split == "confirm"
+    assert "id" not in CaseDraft.model_fields and "tags" not in CaseDraft.model_fields
+
+
+def test_ids_in_bodies_are_bounded() -> None:
+    """E2 review #38: an id beyond 64 bits would reach SQLite as a 500."""
+    with pytest.raises(ValidationError):
+        RunRequest.model_validate({"points": [{"connection_id": 2**63, "level_id": 1}]})
+    with pytest.raises(ValidationError):
+        EvalCase.model_validate(
+            {**CASE, "origin": "log", "origin_action": 2**63, "expect": "query"}
+        )
+
+
+def test_live_runs_do_not_take_the_start_set() -> None:
+    with pytest.raises(ValidationError):
+        RunRequest.model_validate({"points": [POINT], "data_state": "live"})
+    RunRequest.model_validate(
+        {"points": [POINT], "data_state": "live", "cases": {"origins": ["authored", "log"]}}
+    )
 
 
 def test_a_case_file_has_no_repeated_ids() -> None:
@@ -219,13 +283,38 @@ def test_every_route_of_the_contract_is_described(app: FastAPI) -> None:
     assert described == {(m, _template(p)) for m, p in ROUTES}
 
 
+ROW_LIKE = {"rows", "features", "geometry", "coordinates", "properties", "values", "sample"}
+"""Property names that would carry data contents (F-9.3)."""
+
+
+def _reachable(schema: Any, components: dict[str, Any], seen: set[str]) -> None:
+    if isinstance(schema, dict):
+        ref = schema.get("$ref")
+        if isinstance(ref, str):
+            name = ref.rsplit("/", 1)[-1]
+            if name not in seen:
+                seen.add(name)
+                _reachable(components[name], components, seen)
+        for value in schema.values():
+            _reachable(value, components, seen)
+    elif isinstance(schema, list):
+        for value in schema:
+            _reachable(value, components, seen)
+
+
 def test_no_view_of_the_evaluation_can_carry_rows(app: FastAPI) -> None:
-    """D8, F-9.3: answers carry feature ids, never rows or geometries."""
-    for path, methods in app.openapi()["paths"].items():
+    """D8, F-9.3: answers carry feature ids, never rows or geometries. Walks every
+    schema the evaluation routes reach and fails on a row-like property."""
+    spec = app.openapi()
+    components = spec["components"]["schemas"]
+    seen: set[str] = set()
+    for path, methods in spec["paths"].items():
         if path.startswith("/api/admin/evaluation"):
-            for spec in methods.values():
-                text = json.dumps(spec)
-                assert "ExecuteResponse" not in text and "QueryResult" not in text, path
+            _reachable(methods, components, seen)
+    assert not seen & {"ExecuteResponse", "QueryResult", "FeatureRef"}
+    for name in seen:
+        props = set(components[name].get("properties", {}))
+        assert not props & ROW_LIKE, (name, props & ROW_LIKE)
 
 
 async def _call(client: httpx.AsyncClient, method: str, path: str) -> httpx.Response:
@@ -255,5 +344,14 @@ async def test_routes_not_built_answer_501_naming_their_wp(client: httpx.AsyncCl
 
 
 async def test_ids_beyond_64_bits_are_refused_before_the_route(client: httpx.AsyncClient) -> None:
-    for path in ("/api/admin/evaluation/runs/9223372036854775808", "/api/admin/evaluation/runs/0"):
+    big = 2**63
+    for path in (
+        f"/api/admin/evaluation/runs/{big}",
+        "/api/admin/evaluation/runs/0",
+        f"/api/admin/evaluation/cases/draft-from-action/{big}",
+        f"/api/admin/evaluation/runs?connection_id={big}",
+        "/api/admin/evaluation/runs/1/answers?case_id=doc1-primar-koeniz&point=8",
+    ):
         assert (await client.get(path)).status_code == 422, path
+    body = {"points": [{"connection_id": big, "level_id": 1}]}
+    assert (await client.post("/api/admin/evaluation/runs", json=body)).status_code == 422

@@ -196,7 +196,9 @@ Prüffälle** entstehen im Arbeitsplatz, aus dem Modellprotokoll oder durch Impo
 **Datenstand** (Bewertung, D1) — Wogegen ein Prüffall läuft: *Beispieldaten*,
 eine eigens aufgebaute Kopie des Beispieldatensatzes, immer gleich; oder
 *Betriebsdaten*, die eigenen Layer, so wie der startende Administrator sie
-sieht. Ein Fall auf Betriebsdaten, dessen Layer fehlt, ist **veraltet**.
+sieht. Ein Fall auf Betriebsdaten, dessen Layer fehlt oder nicht sichtbar
+ist, ist **veraltet** und läuft nicht mit, bis er bearbeitet ist; einer, dessen
+Layer seither neu importiert wurde, läuft und trägt **Datenstand geändert**.
 
 **Messpunkt** — Eine Anbindung mit Promptprofil und Stufe, wahlweise mit einem
 nur für den Lauf geänderten System-Prompt: eine Spalte der Vergleichsmatrix.
