@@ -12,6 +12,9 @@ from fastapi import APIRouter, Depends, Path, Query, Response
 
 from geotandem.api.auth import require_admin
 from geotandem.api.errors import ErrorBody, Problem
+from geotandem.api.state import AppState, get_state
+from geotandem.auth.accounts import Account
+from geotandem.evaluation.cases import Cases
 from geotandem.evaluation.schemas import (
     MAX_POINTS,
     AnswerView,
@@ -36,6 +39,7 @@ from geotandem.evaluation.schemas import (
     Tag,
     Username,
 )
+from geotandem.evaluation.store import CaseFilters
 from geotandem.model.schemas import MAX_ID, MAX_PAGE
 
 router = APIRouter(
@@ -45,6 +49,8 @@ router = APIRouter(
 ERRORS: dict[int | str, dict[str, Any]] = {
     status: {"model": ErrorBody} for status in (400, 404, 409, 422, 501)
 }
+
+Admin = Annotated[Account, Depends(require_admin)]
 
 Id = Annotated[int, Path(ge=1, le=MAX_ID)]
 """A run's or a model action's id; beyond a 64-bit integer it is 422 (E2 review #38)."""
@@ -63,8 +69,17 @@ class NotBuilt(Problem):
 # --- cases (WP87, WP92) ----------------------------------------------------------
 
 
+def case_service(state: Annotated[AppState, Depends(get_state)], admin: Admin) -> Cases:
+    """The cases as the calling administrator works on them (D4)."""
+    return Cases(state.settings, state.backend, admin, state.limits, state.unsupported)
+
+
+CaseService = Annotated[Cases, Depends(case_service)]
+
+
 @router.get("/cases", responses=ERRORS)
 def cases(
+    service: CaseService,
     split: Split | None = None,
     tag: Tag | None = None,
     origin: Origin | None = None,
@@ -74,28 +89,36 @@ def cases(
 ) -> CasePage:
     """The start set and the own cases, start cases first (V1.1); each with its
     status (D3). The list leaves ``reference_hits`` out."""
-    raise NotBuilt("WP87")
+    filters = CaseFilters(split=split, tag=tag, origin=origin, data_state=data_state)
+    return service.page(filters, offset=offset, limit=limit)
 
 
 @router.post("/cases", status_code=201, responses=ERRORS)
-def create_case(body: EvalCase) -> CaseView:
+def create_case(body: EvalCase, service: CaseService) -> CaseView:
     """An own case: authored in the workplace (V3), taken from the log (V2 from
     M16.2) or copied from a start case. Its reference passes the checks a model
     query passes (``case_invalid``); an id in use is ``case_id_taken``."""
-    raise NotBuilt("WP87")
+    return service.create(body)
 
 
-@router.get("/cases/export", responses=ERRORS, response_model_exclude_none=True)
-def export_cases(start: bool = False) -> CaseFile:
+# Unset fields stay out too: a case is written with the fields it was given,
+# so the start set exports as its files hold it (same keys, F-3.13).
+@router.get(
+    "/cases/export",
+    responses=ERRORS,
+    response_model_exclude_none=True,
+    response_model_exclude_unset=True,
+)
+def export_cases(service: CaseService, start: bool = False) -> CaseFile:
     """The own cases as a case file (F-3.13, F-10.4); with ``start`` the start set
     too. Without ``null`` fields, so export and import are a round trip."""
-    raise NotBuilt("WP87")
+    return service.export(start=start)
 
 
 @router.post("/cases/import", responses=ERRORS)
-def import_cases(body: CaseFile) -> ImportResult:
+def import_cases(body: CaseFile, service: CaseService) -> ImportResult:
     """All or nothing (V1.3): one invalid case and none is taken."""
-    raise NotBuilt("WP87")
+    return service.import_file(body)
 
 
 @router.get("/cases/draft-from-action/{action_id}", responses=ERRORS)
@@ -108,20 +131,21 @@ def case_from_action(action_id: Id) -> CaseDraft:
 
 
 @router.get("/cases/{case_id}", responses=ERRORS)
-def case(case_id: CaseId) -> CaseView:
+def case(case_id: CaseId, service: CaseService) -> CaseView:
     """One case with the hits of its reference on its data state (V2.1)."""
-    raise NotBuilt("WP87")
+    return service.get(case_id)
 
 
 @router.put("/cases/{case_id}", responses=ERRORS)
-def update_case(case_id: CaseId, body: EvalCase) -> CaseView:
+def update_case(case_id: CaseId, body: EvalCase, service: CaseService) -> CaseView:
     """A start case is ``case_read_only``; editing a stale case makes it run again."""
-    raise NotBuilt("WP87")
+    return service.update(case_id, body)
 
 
 @router.delete("/cases/{case_id}", status_code=204, responses=ERRORS)
-def delete_case(case_id: CaseId) -> Response:
-    raise NotBuilt("WP87")
+def delete_case(case_id: CaseId, service: CaseService) -> Response:
+    service.delete(case_id)
+    return Response(status_code=204)
 
 
 # --- runs (WP90) -------------------------------------------------------------------
