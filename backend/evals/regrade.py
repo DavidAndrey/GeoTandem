@@ -16,6 +16,7 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 
+from casefiles import load_cases
 from compare import newest
 from run import HERE, LIMITS, grade
 
@@ -46,12 +47,7 @@ def main() -> int:
         source = newest(label)
         lines = source.read_text("utf-8").splitlines()
         header = json.loads(lines[0])
-        cases = {
-            c["id"]: c
-            for c in json.loads((HERE / f"{header.get('cases', 'cases')}.json").read_text("utf-8"))[
-                "cases"
-            ]
-        }
+        cases = {c["id"]: c for c in load_cases(header.get("cases") or "cases")}
         out = HERE / "results" / f"{datetime.now():%Y%m%d-%H%M%S}-{label}.jsonl"
         changed = 0
         with out.open("w", encoding="utf-8") as log:

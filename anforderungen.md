@@ -121,19 +121,32 @@ schliessen die Lücke.*
   Artefakt (F-10.4): Fragestellung, Arbeitsweise, Referenzabfrage,
   Referenzergebnis und Toleranzen gegen den Beispieldatensatz (F-10.5), sowie
   Fälle ohne Referenzabfrage mit erwarteter Verhaltensklasse (F-5.13, F-5.14,
-  F-5.18).
+  F-5.18). *Entschieden in E3 (D1–D3): ein Format für Startbestand, Export und
+  Import (`schema/eval-cases/`), je Fall mit Teil (Abstimmung · Bestätigung)
+  und Datenstand (Beispieldaten · Betriebsdaten). Gespeichert wird die
+  Referenzabfrage; das Referenzergebnis entsteht im Lauf aus ihr, Toleranzen
+  gelten erst für Ausgaben mit Kennzahlen — siehe [docs/plan-e3.md](docs/plan-e3.md).*
 - **F-3.14** Übernahme einer protokollierten Modellaktion (F-6.8) in den
-  Prüffallbestand, mit der erzeugten Abfrage als Referenz.
+  Prüffallbestand, mit der erzeugten Abfrage als Referenz. *Entschieden (E3,
+  Entscheid 2): nur angenommene oder automatisch angewendete, nicht
+  zurückgenommene Direktabfragen; von Hand korrigierte vorerst nicht.*
 - **F-3.15** Bewertungslauf über wählbare Anbindungen, Prüffälle, Arbeitsweisen
   und System-Prompts (F-3.6), mit Wiederholung je Fall; ausschliesslich lesend
   (F-9.5) und unter denselben serverseitig durchgesetzten Grenzwerten wie der
-  Betrieb (F-9.6).
+  Betrieb (F-9.6). *Entschieden (D7, D8, D12): zwei Blöcke à fünf
+  Wiederholungen, ein Schnelltest mit einem; ein Lauf zugleich, Messpunkte
+  verschiedener Anbindungen parallel; kein Eintrag im Modellprotokoll;
+  Abschätzung von Anfragen, Tokens, Kosten und Dauer vor dem Start.*
 - **F-3.16** Dreistufige Bewertung je Abfragefall: Formgültigkeit gegen das
   Schema (F-5.5), normalisierter Vergleich mit der Referenzabfrage, Vergleich
-  der ausgeführten Ergebnisse (F-8.9).
+  der ausgeführten Ergebnisse (F-8.9). *Entschieden (D5): Das Urteil fällt der
+  Ergebnisvergleich; der normalisierte Abfragevergleich erklärt die Abweichung,
+  urteilt aber nicht.*
 - **F-3.17** Kennzahlen zu Aufwand und Verhalten je Anbindung: Antwortzeit,
   Schrittzahl der Werkzeugkette, Anteil nicht formgültiger Antworten, Anteil
-  in Grenzwerte gelaufener Läufe, Erfüllung der Verhaltensfälle.
+  in Grenzwerte gelaufener Läufe, Erfüllung der Verhaltensfälle. *In E3 für die
+  Direktabfrage, dazu still falsche Antworten (D6), Tokens und Kosten; die
+  Schrittzahl folgt mit der Bewertung der Werkzeugkette nach E3.*
 - **F-3.18** Vergleichsdarstellung über mehrere Anbindungen mit Einzelansicht je
   Prüffall (erzeugte Abfrage, Referenz, Unterschied, beide Ergebnismengen);
   jeder Lauf ist mit Schemaversion, Datenstand, System-Prompt und
@@ -357,5 +370,4 @@ konfigurierbarer Rahmen je Operationsklasse (F-3.5, F-3.7, F-3.8,
 | F-2.8, F-2.9 | Erforderliche Tiefe der semantischen Metadaten und deren Pflegeprozess |
 | F-3.9, F-9.6 | Konkrete Grenzwerte für Ergebnismenge, Laufzeit und Modellschritte |
 | F-2.14 | Wie weit die Funktionsgleichheit beider Backends trägt — und was geschieht, wo SpatiaLite hinter PostGIS zurückbleibt: Operation streichen, im Anwendungscode nachbilden oder als backend-abhängig kennzeichnen |
-| F-3.13, F-3.16 | Tiefe der Normalisierung beim Abfragevergleich und Toleranzen beim Ergebnisvergleich ([bewertung.md 12](bewertung.md)) |
 | F-2.11, F-3.9 | Ab welcher Datenmenge und Ergebnisgrösse SpatiaLite für die Vorführung nicht mehr trägt und der Umstieg fällig wird |

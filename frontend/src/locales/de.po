@@ -1643,6 +1643,10 @@ msgstr "Der Grund geht ins Protokoll. Die Analyse bleibt unverändert."
 msgid "Der Katalog ist leer."
 msgstr "Der Katalog ist leer."
 
+#: src/i18n/errors.ts
+msgid "Der Lauf würde an {host} senden. Bestätigen Sie das zuerst."
+msgstr "Der Lauf würde an {host} senden. Bestätigen Sie das zuerst."
+
 #: src/model/chain/Chain.tsx
 msgid "Der Lauf wurde unterbrochen: Die Anwendung wurde neu gestartet, oder der Lauf selbst ist fehlgeschlagen."
 msgstr "Der Lauf wurde unterbrochen: Die Anwendung wurde neu gestartet, oder der Lauf selbst ist fehlgeschlagen."
@@ -1690,6 +1694,14 @@ msgstr "Der Name „{attribute}\" ist schon vergeben; bitte einen anderen Namen 
 #: src/model/panel/PromptPanel.tsx
 msgid "Der Prompt-Text verlässt das Haus"
 msgstr "Der Prompt-Text verlässt das Haus"
+
+#: src/i18n/errors.ts
+msgid "Der Prüffall „{id}\" passt nicht: Das Format stimmt nicht, oder seine Referenzabfrage besteht die Prüfung nicht."
+msgstr "Der Prüffall „{id}\" passt nicht: Das Format stimmt nicht, oder seine Referenzabfrage besteht die Prüfung nicht."
+
+#: src/i18n/errors.ts
+msgid "Der Prüffall nutzt den Layer „{layer}\", den es nicht mehr gibt oder den Sie nicht sehen. Bearbeiten Sie den Fall zuerst."
+msgstr "Der Prüffall nutzt den Layer „{layer}\", den es nicht mehr gibt oder den Sie nicht sehen. Bearbeiten Sie den Fall zuerst."
 
 #: src/i18n/errors.ts
 msgid "Der Stand ist zu gross, um gespeichert zu werden."
@@ -2059,6 +2071,10 @@ msgid "Diese Antwort ist schon die Wiederholung mit der anderen Arbeitsweise."
 msgstr "Diese Antwort ist schon die Wiederholung mit der anderen Arbeitsweise."
 
 #: src/i18n/errors.ts
+msgid "Diese Läufe lassen sich nicht gegenüberstellen: Sie haben andere Prüffälle, oder einer ist nicht vollständig."
+msgstr "Diese Läufe lassen sich nicht gegenüberstellen: Sie haben andere Prüffälle, oder einer ist nicht vollständig."
+
+#: src/i18n/errors.ts
 msgid "Diese Operation geht hier nicht."
 msgstr "Diese Operation geht hier nicht."
 
@@ -2190,6 +2206,10 @@ msgstr "Ein Knopf sendet die Antwort sofort; eine eigene Antwort geht über das 
 msgid "Ein Layer fehlt oder ist nicht sichtbar."
 msgstr "Ein Layer fehlt oder ist nicht sichtbar."
 
+#: src/i18n/errors.ts
+msgid "Ein Prüffall passt nicht: Das Format stimmt nicht, oder seine Referenzabfrage besteht die Prüfung nicht."
+msgstr "Ein Prüffall passt nicht: Das Format stimmt nicht, oder seine Referenzabfrage besteht die Prüfung nicht."
+
 #: src/admin/ConnectionsPage.tsx
 msgid "Ein Schlüssel ist gespeichert. Leer lassen, um ihn zu behalten."
 msgstr "Ein Schlüssel ist gespeichert. Leer lassen, um ihn zu behalten."
@@ -2262,6 +2282,10 @@ msgstr "Eine Tabelle braucht Koordinatenspalten oder einen Schlüssel."
 #: src/i18n/errors.ts
 msgid "Einen Layer „{layer}\" gibt es schon."
 msgstr "Einen Layer „{layer}\" gibt es schon."
+
+#: src/i18n/errors.ts
+msgid "Einen Prüffall „{id}\" gibt es schon."
+msgstr "Einen Prüffall „{id}\" gibt es schon."
 
 #: src/model/panel/PromptPanel.tsx
 msgid "Eingabe gesperrt, solange das Modell arbeitet"
@@ -2595,6 +2619,10 @@ msgstr "F"
 #: src/table/TableDock.tsx
 msgid "Fachliche Namen aus dem Datenkatalog · Auswahl wird mit der Sitzung gespeichert"
 msgstr "Fachliche Namen aus dem Datenkatalog · Auswahl wird mit der Sitzung gespeichert"
+
+#: src/i18n/errors.ts
+msgid "Fälle des Startbestands lassen sich nicht ändern. Kopieren Sie den Fall in einen eigenen."
+msgstr "Fälle des Startbestands lassen sich nicht ändern. Kopieren Sie den Fall in einen eigenen."
 
 #: src/model/approval/governance.ts
 msgid "falsch verstanden"
@@ -3490,6 +3518,10 @@ msgstr "Kopie eines Layers mit Daten, Metadaten und Sichtbarkeit"
 #: src/table/TableDock.tsx
 msgid "Lädt …"
 msgstr "Lädt …"
+
+#: src/i18n/errors.ts
+msgid "Lauf #{run} läuft noch. Es läuft höchstens ein Lauf zugleich."
+msgstr "Lauf #{run} läuft noch. Es läuft höchstens ein Lauf zugleich."
 
 #: src/model/chain/Chain.tsx
 msgid "Lauf unterbrochen"

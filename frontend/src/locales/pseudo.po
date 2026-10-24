@@ -1643,6 +1643,10 @@ msgstr ""
 msgid "Der Katalog ist leer."
 msgstr ""
 
+#: src/i18n/errors.ts
+msgid "Der Lauf würde an {host} senden. Bestätigen Sie das zuerst."
+msgstr ""
+
 #: src/model/chain/Chain.tsx
 msgid "Der Lauf wurde unterbrochen: Die Anwendung wurde neu gestartet, oder der Lauf selbst ist fehlgeschlagen."
 msgstr ""
@@ -1689,6 +1693,14 @@ msgstr ""
 
 #: src/model/panel/PromptPanel.tsx
 msgid "Der Prompt-Text verlässt das Haus"
+msgstr ""
+
+#: src/i18n/errors.ts
+msgid "Der Prüffall „{id}\" passt nicht: Das Format stimmt nicht, oder seine Referenzabfrage besteht die Prüfung nicht."
+msgstr ""
+
+#: src/i18n/errors.ts
+msgid "Der Prüffall nutzt den Layer „{layer}\", den es nicht mehr gibt oder den Sie nicht sehen. Bearbeiten Sie den Fall zuerst."
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -2059,6 +2071,10 @@ msgid "Diese Antwort ist schon die Wiederholung mit der anderen Arbeitsweise."
 msgstr ""
 
 #: src/i18n/errors.ts
+msgid "Diese Läufe lassen sich nicht gegenüberstellen: Sie haben andere Prüffälle, oder einer ist nicht vollständig."
+msgstr ""
+
+#: src/i18n/errors.ts
 msgid "Diese Operation geht hier nicht."
 msgstr ""
 
@@ -2190,6 +2206,10 @@ msgstr ""
 msgid "Ein Layer fehlt oder ist nicht sichtbar."
 msgstr ""
 
+#: src/i18n/errors.ts
+msgid "Ein Prüffall passt nicht: Das Format stimmt nicht, oder seine Referenzabfrage besteht die Prüfung nicht."
+msgstr ""
+
 #: src/admin/ConnectionsPage.tsx
 msgid "Ein Schlüssel ist gespeichert. Leer lassen, um ihn zu behalten."
 msgstr ""
@@ -2261,6 +2281,10 @@ msgstr ""
 
 #: src/i18n/errors.ts
 msgid "Einen Layer „{layer}\" gibt es schon."
+msgstr ""
+
+#: src/i18n/errors.ts
+msgid "Einen Prüffall „{id}\" gibt es schon."
 msgstr ""
 
 #: src/model/panel/PromptPanel.tsx
@@ -2594,6 +2618,10 @@ msgstr ""
 
 #: src/table/TableDock.tsx
 msgid "Fachliche Namen aus dem Datenkatalog · Auswahl wird mit der Sitzung gespeichert"
+msgstr ""
+
+#: src/i18n/errors.ts
+msgid "Fälle des Startbestands lassen sich nicht ändern. Kopieren Sie den Fall in einen eigenen."
 msgstr ""
 
 #: src/model/approval/governance.ts
@@ -3489,6 +3517,10 @@ msgstr ""
 #: src/components/ui.tsx
 #: src/table/TableDock.tsx
 msgid "Lädt …"
+msgstr ""
+
+#: src/i18n/errors.ts
+msgid "Lauf #{run} läuft noch. Es läuft höchstens ein Lauf zugleich."
 msgstr ""
 
 #: src/model/chain/Chain.tsx

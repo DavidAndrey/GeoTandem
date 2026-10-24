@@ -1,6 +1,7 @@
 # Model evals
 
-Asks a real model the questions in [cases.json](cases.json) through the
+Asks a real model the questions of the start set
+([schema/eval-cases/](../../schema/eval-cases/), plan E3 D2) through the
 direct query path as production sends it (`direct_prompt`, `DirectQuery.ask`:
 real client, parser and checks), over a fresh sample dataset and the default
 level, and grades each answer. Not part of `make gate`: it needs a running
@@ -79,7 +80,7 @@ unchanged.
 
 | Option | Effect |
 |---|---|
-| `--cases heldout` | [heldout.json](heldout.json) in place of [cases.json](cases.json): questions no prompt change is tuned on |
+| `--cases heldout` | the confirmation split (`start-confirm.json`) in place of the tuning split (`start-tuning.json`, `--cases cases`): questions no prompt change is tuned on |
 | `--no-format` | no constrained output; the schema only as text in the prompt, as every endpoint can take it (H-8) |
 | `--api-key-env NAME` | the endpoint's key from the environment variable `NAME`; the run header names the variable, never the key |
 
@@ -98,8 +99,9 @@ current cases, without asking a model; it changes nothing on unchanged cases.
 A case may list `gold_any`, several fair readings that select different
 features; any one passes. `tags` group the cases; `needs-values` marks one
 that only a model knowing attribute values can pass. A held-out case is never
-a reason to change the prompt: a change is judged on cases.json and
-confirmed on heldout.json.
+a reason to change the prompt: a change is judged on the tuning split and
+confirmed on the confirmation split. Until E3 these were `evals/cases.json`
+and `evals/heldout.json`; the testplans still call them so.
 
 ## Verdicts
 

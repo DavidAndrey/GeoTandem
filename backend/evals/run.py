@@ -1,4 +1,4 @@
-"""Ask a real model the questions of ``cases.json`` and grade its answers.
+"""Ask a real model the questions of the start set and grade its answers.
 
 The direct query as the prompt flow sends it (``direct_prompt``,
 ``DirectQuery.ask``: the real client, parser and checks), over a fresh sample
@@ -23,6 +23,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from casefiles import CASE_FILES, load_cases
 from profiles import PROFILES, strip
 from variants import VARIANTS, load_examples, prompt_hash, with_examples
 
@@ -173,7 +174,8 @@ def main() -> int:
         "--cases",
         default="cases",
         metavar="NAME",
-        help="NAME.json of this directory: cases (tuning set, default) or heldout",
+        choices=list(CASE_FILES),
+        help="cases (the tuning split of schema/eval-cases, default) or heldout (confirmation)",
     )
     parser.add_argument(
         "--no-format",
@@ -219,7 +221,7 @@ def main() -> int:
         if not api_key:
             parser.error(f"--api-key-env: {args.api_key_env} is not set")
 
-    cases = json.loads((HERE / f"{args.cases}.json").read_text("utf-8"))["cases"]
+    cases = load_cases(args.cases)
     if args.only:
         cases = [c for c in cases if c["id"] in args.only.split(",")]
 

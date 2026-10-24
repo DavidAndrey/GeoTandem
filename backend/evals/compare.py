@@ -7,7 +7,7 @@
 Each label names the newest ``results/*-<label>.jsonl``; ``a+b`` joins the
 runs of both into one column (two seed blocks). ``--changed`` keeps only the
 cases whose passes differ between the runs (and the sums). ``--by-tag`` sums
-per tag of the cases (``tags`` in cases.json and heldout.json). ``--stats``
+per tag of the cases (``tags`` of the start set, schema/eval-cases). ``--stats``
 compares every column with the first, case by case: the five answers of a case
 are not independent, so the sample is the cases, not the answers.
 """
@@ -21,8 +21,9 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
+from casefiles import CASE_FILES, load_cases
+
 HERE = Path(__file__).parent
-CASE_FILES = ("cases", "heldout")
 
 
 def newest(label: str) -> Path:
@@ -54,12 +55,7 @@ def passes(column: str) -> tuple[dict[str, tuple[int, int]], int]:
 
 
 def all_cases() -> list[dict[str, Any]]:
-    found: list[dict[str, Any]] = []
-    for name in CASE_FILES:
-        path = HERE / f"{name}.json"
-        if path.exists():
-            found += json.loads(path.read_text("utf-8"))["cases"]
-    return found
+    return [c for name in CASE_FILES for c in load_cases(name)]
 
 
 def sign_test(wins: int, losses: int) -> float:

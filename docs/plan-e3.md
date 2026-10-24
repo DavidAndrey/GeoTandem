@@ -83,7 +83,7 @@ Legend as in plan E2: **Deps**, **Parallel with**, **Done when** beyond the WP g
 
 - Docs: CONTEXT.md — *Prüffall*, *Datenstand*, *Messpunkt*, *Bewertungslauf*, *Promptprofil*, *still falsch*. anforderungen.md F-3.13–F-3.18 annotated with D1–D12 (F-3.13 "Referenzergebnis und Toleranzen" read as D3/D5). bewertung.md 12: the open points marked as settled by this plan.
 - `evaluation/schemas.py`: `EvalCase` (D2), `CaseSet`, `MeasuringPoint` (connection id, prompt profile, level id, optional system prompt), `RunRequest` (points, case filter by split/tag/origin, data state, seed blocks or Schnelltest), `RunView` (status, progress, label, figures of section 2), `AnswerView` (verdict, flags, latency, tokens, answer, query, refusal, stage-1 diff), `Comparison` (D7), `ProfileSummary` (D11), `CostEstimate` (D12). JSON schema of the case file in `schema/eval-cases/`.
-- Routers `api/evaluation.py` under `/api/admin/evaluation/*`, admin only, every route 501 naming its WP; error codes `run_busy`, `case_stale`, `case_invalid`, `nothing_to_compare`.
+- Routers `api/evaluation.py` under `/api/admin/evaluation/*`, admin only, every route 501 naming its WP; error codes `case_invalid`, `case_id_taken`, `case_read_only`, `case_stale`, `run_busy`, `external_not_confirmed`, `runs_not_comparable` (`nothing_to_compare` is taken by E2.5).
 - **Done when:** `make gen` clean, contract test validates the start set against the case schema, every stub route needs an admin session.
 
 #### WP86 — Shared grader and tokens on the record (BE-eval, BE-record)
@@ -199,13 +199,13 @@ Handoff received 2026-10-24 ([design/e3/README.md](../design/e3/README.md)); its
 |---|---|---|
 | `GET/POST /api/admin/evaluation/cases` · `GET/PUT/DELETE …/cases/{id}` | 87 | own cases; start set read-only |
 | `POST …/cases/import` · `GET …/cases/export` | 87 | D2 format |
-| `POST …/cases/from-action/{action_id}` | 92 | accepted or auto-not-undone only |
+| `GET …/cases/draft-from-action/{action_id}` | 92 | a prefilled case, stored only by `POST …/cases` (V2 from M16.2); accepted or auto-not-undone only |
 | `POST …/runs/estimate` · `POST …/runs` (202) | 90 | D12, D8 |
 | `GET …/runs` · `GET …/runs/{id}` · `POST …/runs/{id}/abort` | 90 | polled |
-| `GET …/runs/{id}/answers?case=…&point=…` | 90 | case detail |
+| `GET …/runs/{id}/answers?case_id=…&point=…` | 90 | case detail |
 | `POST …/comparison` | 90 | two columns or two runs, D7 |
 | `GET …/runs/{id}/export` | 90 | answers and figures as JSON |
-| `GET /api/admin/profile/summary` | 94 | D11 |
+| `GET …/profile-summary?account=` | 94 | D11, as `GET /api/admin/llm/profile` for one account |
 | connection: `prompt_profile`, prices | 91 | extends the E2.1 routes |
 
 ## 7 Order and parallelism

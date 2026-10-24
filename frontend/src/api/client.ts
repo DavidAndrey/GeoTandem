@@ -78,6 +78,42 @@ export type DecideRequest = Omit<Schemas['DecideRequest'], 'applied_by_hand'> &
   Partial<Pick<Schemas['DecideRequest'], 'applied_by_hand'>>
 export type Assumption = Schemas['Assumption']
 export type Approach = ModelActionView['approach']
+// Evaluation of model connections (plan E3, frozen in WP85)
+export type PromptProfile = Schemas['PromptProfile']
+export type EvalCase = Schemas['EvalCase']
+export type CaseFile = Schemas['CaseFile']
+export type CaseView = Schemas['CaseView']
+export type CasePage = Schemas['CasePage']
+export type CaseStatus = NonNullable<CaseView['status']>
+export type Split = EvalCase['split']
+export type DataState = NonNullable<EvalCase['data_state']>
+export type CaseOrigin = NonNullable<EvalCase['origin']>
+export type ImportResult = Schemas['ImportResult']
+export type MeasuringPoint = Schemas['MeasuringPoint']
+export type RunRequest = Schemas['RunRequest']
+export type RunScope = NonNullable<RunRequest['scope']>
+export type CostEstimate = Schemas['CostEstimate']
+export type ConnectionEstimate = Schemas['ConnectionEstimate']
+export type Money = Schemas['Money']
+export type RunView = Schemas['RunView']
+export type RunStatus = RunView['status']
+export type RunLabel = Schemas['RunLabel']
+export type RunSummary = Schemas['RunSummary']
+export type RunPage = Schemas['RunPage']
+export type PointView = Schemas['PointView']
+export type PointLabel = Schemas['PointLabel']
+export type PointFigures = Schemas['PointFigures']
+export type PointComparison = Schemas['PointComparison']
+export type ComparisonWord = PointComparison['word']
+export type Cell = Schemas['Cell']
+export type AnswerView = Schemas['AnswerView']
+export type Verdict = AnswerView['verdict']
+export type Flag = NonNullable<AnswerView['flags']>[number]
+export type DiffEntry = Schemas['DiffEntry']
+export type ProfileSummary = Schemas['ProfileSummary']
+export type LayerGaps = Schemas['LayerGaps']
+export type RunComparison = Schemas['RunComparison']
+export type RunExport = Schemas['RunExport']
 /** The filters of the model log (design M16.1); ``from``/``to`` as ISO times. */
 export interface ModelLogFilter {
   from?: string
