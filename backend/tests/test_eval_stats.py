@@ -133,9 +133,8 @@ def test_the_numbers_of_phases_3_and_4(
     base: str, other: str, sums: tuple[int, int], mean: float, low: float, high: float
 ) -> None:
     """testplan-system-context 8.4 and 8.5, as ``compare.py --stats`` printed
-    them from the newest file of each label. A later ``regrade.py`` of a Phase 4
-    label changes them: it checks the answers in the full profile, not the
-    stripped one the run asked with."""
+    them from the newest file of each label (``regrade.py`` checks a Phase 4
+    answer in the profile its run asked with, so a regrade keeps them)."""
     a, b = passes(base), passes(other)
     assert (total(a), total(b)) == sums
     found = compare(a, b)
