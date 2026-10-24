@@ -12,7 +12,7 @@
   "bad_request": "The request is not acceptable as sent.",
   "busy": "Too many requests of this kind at once; try again shortly.",
   "case_id_taken": "A case of that id exists (details.case_id).",
-  "case_invalid": "A case does not fit the case format or its reference fails the checks; details.case_id, details.reason.",
+  "case_invalid": "A case breaks a rule on its data state (its reference fails the checks, its layers, origin or the case limit); details.case_id, details.reason.",
   "case_read_only": "A start case cannot be changed; copy it into an own case.",
   "case_stale": "A layer of the case is gone or hidden (details.layer); edit the case first.",
   "class_not_allowed": "The level does not allow a part of the action (details.part).",

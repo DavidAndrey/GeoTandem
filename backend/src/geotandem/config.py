@@ -134,6 +134,11 @@ class Settings(BaseSettings):
     frontend_dir: Path | None = Field(
         default=None, description="Built frontend to serve at '/'; none in development."
     )
+    eval_cases_dir: Path | None = Field(
+        default=None,
+        description="The start set of the evaluation (plan E3, D2); none: "
+        "schema/eval-cases of the repository the package runs from.",
+    )
 
     @field_validator("setup_token", mode="before")
     @classmethod
