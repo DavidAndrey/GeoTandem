@@ -1,6 +1,6 @@
 # Plan E3 — Evaluation of model connections
 
-> Stand: 2026-10-24 · **Entwurf: Entscheidungen D1–D12 vorgeschlagen, O1–O4, O7, O8 entschieden (8), Design abgeglichen (5.1) · WPs WP85–WP97** · Design: [design/e3/README.md](../design/e3/README.md) (Bildschirme V1–V8, `fixture/bewertung.json`, `screenshots/`), Briefing [design/e3/BRIEF.md](../design/e3/BRIEF.md) · Bezug: [anforderungen.md](../anforderungen.md) (F-3.1, F-3.3, F-3.6, F-3.8, F-3.13–F-3.18, F-9.3–F-9.6, F-10.3–F-10.5), [etappen.md 5](../etappen.md), [bewertung.md](../bewertung.md), [plan-e2.3-e2.6.md](plan-e2.3-e2.6.md), Messungen: [testplan-system-context.md](testplan-system-context.md) (8.1–8.5), [testplan-external-models.md](testplan-external-models.md), [benchmarks.md](benchmarks.md), Harness: [backend/evals/](../backend/evals/README.md)
+> Stand: 2026-10-24 · **Entschieden: D1–D12 und O1–O4, O7, O8 (2026-10-24), Design abgeglichen (5.1) · WPs WP85–WP97** · Design: [design/e3/README.md](../design/e3/README.md) (Bildschirme V1–V8, `fixture/bewertung.json`, `screenshots/`), Briefing [design/e3/BRIEF.md](../design/e3/BRIEF.md) · Bezug: [anforderungen.md](../anforderungen.md) (F-3.1, F-3.3, F-3.6, F-3.8, F-3.13–F-3.18, F-9.3–F-9.6, F-10.3–F-10.5), [etappen.md 5](../etappen.md), [bewertung.md](../bewertung.md), [plan-e2.3-e2.6.md](plan-e2.3-e2.6.md), Messungen: [testplan-system-context.md](testplan-system-context.md) (8.1–8.5), [testplan-external-models.md](testplan-external-models.md), [benchmarks.md](benchmarks.md), Harness: [backend/evals/](../backend/evals/README.md)
 >
 > Integration branch **`ep-3`**: each WP is its own branch from it (`wpNN-…`), merged back with `--no-ff` after its gate and review; `ep-3` merges into `main` once every WP is done and Gate E3 is green. Same rules as E2: WP gate and code review per WP, etappe gates with `make gate`, acceptance test and a review of the integrated diff (section 5).
 
@@ -23,7 +23,7 @@ What the measurements decided for this plan:
 
 Decided before this plan (2026-10-23): E3 delivers **both** the release decision (which connection to approve and preset) **and** prompt profiles per model as production configuration; **no hand-corrected cases and no four-eyes confirmation** yet; **direct query first**, the tool chain later; **`backend/evals` stays** as a developer CLI and shares the grader with the application.
 
-## 1 Decisions (proposed 2026-10-23)
+## 1 Decisions (decided 2026-10-24)
 
 | # | Question | Proposal | Why |
 |---|---|---|---|
