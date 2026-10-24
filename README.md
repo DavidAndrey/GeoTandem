@@ -299,6 +299,24 @@ klassische Bedienung (Modus A) vollständig nutzbar.
   aus den Daten vorschlägt, kommen erst hinein, wenn der Administrator sie im
   Layer bestätigt.
 
+### Externe Modelle
+
+Die beiden externen Referenzmodelle der Auswertung, je als eigene Anbindung
+([docs/testplan-external-models.md](docs/testplan-external-models.md)):
+
+| Feld | Luna | Haiku |
+|---|---|---|
+| Adresse | `https://api.openai.com/v1` | `https://api.anthropic.com/v1` |
+| Modell | `gpt-6-luna` | `claude-haiku-5-5` |
+| API-Schlüssel | OpenAI-Schlüssel | Anthropic-Schlüssel |
+| Temperatur | `0.3` oder `1` | `1` (darunter lehnt Anthropic ab) |
+| Effort | `none` | `default` |
+
+Das Formular schlägt eine lokale Ollama-Adresse und Temperatur `0` vor; beides
+ist zu ändern. Den Header `anthropic-version` setzt die Anwendung selbst. Im
+Verbindungstest sind Erreichbarkeit, Zugang, Modell, JSON-Schema und
+Werkzeugaufruf grün.
+
 ### Modus B im Einsatz
 
 Der Reiter *Prompt* neben *Klassik* öffnet das Eingabefeld; er ist nur
