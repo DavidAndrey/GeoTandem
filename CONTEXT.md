@@ -180,6 +180,41 @@ eines Folgeprompts (höchstens 6 frühere Antworten); der Client schickt nur den
 Bezug und die aktuelle Analyse. Im Arbeitsplatz flüchtig: weder Teil der Sitzung
 noch nach dem Neuladen wieder da; die dauerhafte Spur ist das Protokoll.
 
+**Promptprofil** (`PromptProfile`, plan E3 D9) — Wie die Anwendung den Prompt
+für eine Anbindung schreibt: Beispiele (Standard · 12), Platzierung (P0 · P5 ·
+P9) und Ausgabe (erzwungen · nur Text). Gemessene Vorgaben, kein freier Text;
+die Vorgabe ist der heutige Prompt.
+
+**Prüffall** (`EvalCase`, F-3.13) — Eine Frage, wie ein Anwender sie stellt, mit
+ihrer richtigen Antwort: eine Referenzabfrage, mehrere faire Lesarten oder
+geforderte Teile (*Abfragefall*), oder die erwartete Antwortart (*Verhaltensfall*:
+Rückfrage, nicht beantwortbar). Gehört zu einem **Teil**: *Abstimmung* (daran
+darf man Prompts verbessern) oder *Bestätigung* (nur zum Nachprüfen). Der
+**Startbestand** (71 Fälle, `schema/eval-cases/`) ist nur lesbar; **eigene
+Prüffälle** entstehen im Arbeitsplatz, aus dem Modellprotokoll oder durch Import.
+
+**Datenstand** (Bewertung, D1) — Wogegen ein Prüffall läuft: *Beispieldaten*,
+eine eigens aufgebaute Kopie des Beispieldatensatzes, immer gleich; oder
+*Betriebsdaten*, die eigenen Layer, so wie der startende Administrator sie
+sieht. Ein Fall auf Betriebsdaten, dessen Layer fehlt oder nicht sichtbar
+ist, ist **veraltet** und läuft nicht mit, bis er bearbeitet ist; einer, dessen
+Layer seither neu importiert wurde, läuft und trägt **Datenstand geändert**.
+
+**Messpunkt** — Eine Anbindung mit Promptprofil und Stufe, wahlweise mit einem
+nur für den Lauf geänderten System-Prompt: eine Spalte der Vergleichsmatrix.
+
+**Bewertungslauf** (F-3.15) — Alle gewählten Prüffälle über alle Messpunkte,
+je Fall zweimal fünf Wiederholungen (**Schnelltest**: einmal fünf, ohne
+Vergleichsaussage). Eine Messung, kein Betrieb: Er schreibt keine Modellaktion
+und ändert nichts, ausser der Administrator übernimmt danach ein Promptprofil.
+
+**Urteil** — Was aus einer Antwort im Lauf wurde: richtig (das Ergebnis gleicht
+einer Lesart), falsch, abgewiesen, andere Antwortart, nicht lesbar. **Still
+falsch** heisst falsch und ohne genannte Annahme: Das Modell wirkt sicher und
+liegt daneben. Gegen die Vergleichsbasis sagt der Lauf **besser**,
+**schlechter** oder **nicht belegt**, gepaart je Fall auf den Fällen der
+Bestätigung.
+
 **Sitzung** (`analysis_session`) — Ein benannt gespeicherter Analysezustand
 (F-4.10), ab E1.7: der Zustand als versioniertes JSON (Layer, Bedingungen,
 Rezepte, Tabelle, Kartenausschnitt), dazu das Abfrageobjekt des Ergebnisses und

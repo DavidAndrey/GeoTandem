@@ -156,6 +156,16 @@ dem Verbindungstest. Begründung und Konzept stehen in
 | **E3.4** | Übernahme protokollierter Modellaktionen in den Prüffallbestand | F-3.14, F-6.8 | Eine im Betrieb freigegebene Modellaktion wird aus dem Protokoll heraus zum Prüffall, ohne Abtippen |
 | **E3.5** | Vergleichsdarstellung im Administrationsbereich: Matrix über Anbindungen, Einzelansicht je Fall mit Unterschied und beiden Ergebnismengen, Beschriftung des Laufs | F-3.1, F-3.18 | Der Administrator erkennt nicht nur, *dass* eine Anbindung schlechter abschneidet, sondern woran es liegt |
 
+> **E3 entschieden und geschnitten (2026-10-24):** Plan mit Arbeitspaketen
+> WP85–WP97, Entscheidungen D1–D12, Prüfschritten und Reviews in
+> [docs/plan-e3.md](docs/plan-e3.md), Bildschirme in
+> [design/e3/README.md](design/e3/README.md). Grundlage sind die Messungen von
+> E2 (Harness `backend/evals`, Testpläne): Die Bewertung urteilt über das
+> Ergebnis, misst mit zwei Blöcken und gepaart je Fall, und sie zeigt den
+> Stand des Layer-Steckbriefs, weil die Metadaten auf eigenen Daten so viel
+> ausmachen wie das Modell (Phase 4). Promptprofile je Anbindung werden
+> gemessen und übernommen; die Werkzeugkette folgt nach E3.
+
 **Vorführung E3:** Zwei Modellanbindungen werden über denselben Prüffallbestand
 gefahren; die Vergleichsmatrix trägt die Freigabeentscheidung (F-3.3, F-3.8).
 Ein zweiter Lauf stellt dieselbe Anbindung mit zwei System-Prompts gegenüber —

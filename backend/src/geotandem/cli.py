@@ -14,9 +14,15 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 def _schema_export(args: argparse.Namespace) -> None:
+    import json
+
+    from geotandem.evaluation.schemas import CASE_FILE_VERSION, case_file_schema
     from geotandem_query.export import write
 
     print(write(args.dir))
+    cases = args.dir.parent / "eval-cases" / f"case-file-v{CASE_FILE_VERSION}.schema.json"
+    cases.write_text(json.dumps(case_file_schema(), indent=2, ensure_ascii=False) + "\n", "utf-8")
+    print(cases)
 
 
 def _sample_update(args: argparse.Namespace) -> None:
@@ -145,7 +151,9 @@ def main(argv: list[str] | None = None) -> None:
     migrate.set_defaults(func=_migrate)
 
     schema = commands.add_parser("schema").add_subparsers(required=True)
-    export = schema.add_parser("export", help="write the query-object JSON schema")
+    export = schema.add_parser(
+        "export", help="write the JSON schemas of the query object and the case file"
+    )
     export.add_argument("--dir", type=Path, default=REPO_ROOT / "schema" / "query-object")
     export.set_defaults(func=_schema_export)
 

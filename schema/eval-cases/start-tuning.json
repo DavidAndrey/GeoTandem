@@ -1,5 +1,7 @@
 {
-  "_about": "Questions to a real model over the sample dataset (evals/README.md). A case passes when the model's query is accepted and returns the same feature ids as 'gold'; where a question has more than one fair reading, 'require' names what the query must contain instead (source layer, and per condition op, layer, predicate, attribute, value, and a distance range). 'expect' names a non-query answer kind. Questions are worded as users ask them, not as docs/filters.md titles them; the prompt's examples (model/prompt.py) use invented layers, so no case is answered there. 'also' names further answer kinds that pass; 'other_approach' (with 'expect' cannot_answer) is checked when present, null meaning none offered; 'forbid' fails an answer whose text holds one of the words (the prompt's invented example layers). Cases n01-n15: docs/testplan-initial-llm-run.md, 9. 'gold_any' lists several fair readings that select different features; any one passes (doc1, n06: typ is the highest level, so a school with primarstufe is a Primarschule too). 'tags' group the cases for compare.py --by-tag; 'needs-values' marks a case only a model that knows attribute values can pass (E-7).",
+  "format": "geotandem-eval-cases",
+  "version": 1,
+  "about": "Questions to a real model over the sample dataset (evals/README.md). A case passes when the model's query is accepted and returns the same feature ids as 'gold'; where a question has more than one fair reading, 'require' names what the query must contain instead (source layer, and per condition op, layer, predicate, attribute, value, and a distance range). 'expect' names a non-query answer kind. Questions are worded as users ask them, not as docs/filters.md titles them; the prompt's examples (model/prompt.py) use invented layers, so no case is answered there. 'also' names further answer kinds that pass; 'other_approach' (with 'expect' cannot_answer) is checked when present, null meaning none offered; 'forbid' fails an answer whose text holds one of the words (the prompt's invented example layers). Cases n01-n15: docs/testplan-initial-llm-run.md, 9. 'gold_any' lists several fair readings that select different features; any one passes (doc1, n06: typ is the highest level, so a school with primarstufe is a Primarschule too). 'tags' group the cases for compare.py --by-tag; 'needs-values' marks a case only a model that knows attribute values can pass (E-7).",
   "cases": [
     {
       "id": "doc1-primar-koeniz",
@@ -10,6 +12,10 @@
         "combination",
         "ambiguous"
       ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold_any": [
         {
           "source": "schulen",
@@ -70,6 +76,10 @@
         "combination",
         "in-list"
       ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "haltestellen",
         "where": {
@@ -101,6 +111,10 @@
         "near",
         "negation"
       ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "schulen",
         "where": {
@@ -128,6 +142,10 @@
         "negation",
         "two-layers"
       ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "gemeinden",
         "where": {
@@ -153,6 +171,10 @@
         "spatial",
         "two-layers"
       ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "gemeinden",
         "where": {
@@ -176,6 +198,10 @@
         "nesting",
         "near"
       ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "schulen",
         "where": {
@@ -222,6 +248,10 @@
         "near",
         "ambiguous"
       ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "require": {
         "source": "haltestellen",
         "conditions": [
@@ -245,6 +275,10 @@
         "in",
         "count"
       ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "schulen",
         "where": {
@@ -267,6 +301,10 @@
         "spatial",
         "near"
       ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "schulen",
         "where": {
@@ -284,6 +322,10 @@
         "attribute",
         "code"
       ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "schulen",
         "where": {
@@ -301,6 +343,10 @@
         "attribute",
         "range"
       ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "schulen",
         "where": {
@@ -318,6 +364,10 @@
         "attribute",
         "negation"
       ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "schulen",
         "where": {
@@ -335,6 +385,10 @@
         "attribute",
         "range"
       ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "gemeinden",
         "where": {
@@ -352,6 +406,10 @@
         "attribute",
         "text"
       ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "haltestellen",
         "where": {
@@ -371,6 +429,10 @@
         "in",
         "combination"
       ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "haltestellen",
         "where": {
@@ -405,6 +467,10 @@
         "near",
         "two-layers"
       ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "schulen",
         "where": {
@@ -427,6 +493,10 @@
       "tags": [
         "unknown-layer"
       ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "expect": "cannot_answer"
     },
     {
@@ -435,6 +505,10 @@
       "tags": [
         "count"
       ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "haltestellen",
         "where": {
@@ -452,6 +526,10 @@
         "attribute",
         "in-list"
       ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "haltestellen",
         "where": {
@@ -471,8 +549,12 @@
       "tags": [
         "table"
       ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "expect": "cannot_answer",
-      "other_approach": null
+      "other_approach": "none"
     },
     {
       "id": "n04-grosse-gemeinden",
@@ -481,9 +563,10 @@
         "ambiguous",
         "clarification"
       ],
-      "also": [
-        "clarification"
-      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "require": {
         "source": "gemeinden",
         "conditions": [
@@ -492,7 +575,10 @@
             "attr": "flaeche_km2"
           }
         ]
-      }
+      },
+      "also": [
+        "clarification"
+      ]
     },
     {
       "id": "n05-gemeinde-franz-schule",
@@ -501,6 +587,10 @@
         "spatial",
         "two-layers"
       ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "gemeinden",
         "where": {
@@ -526,6 +616,10 @@
         "combination",
         "ambiguous"
       ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold_any": [
         {
           "source": "schulen",
@@ -587,6 +681,10 @@
       "tags": [
         "chain"
       ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "expect": "cannot_answer"
     },
     {
@@ -595,6 +693,10 @@
       "tags": [
         "attribute"
       ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "schulen",
         "where": {
@@ -612,6 +714,10 @@
         "spatial",
         "outside"
       ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "haltestellen",
         "where": {
@@ -637,6 +743,10 @@
         "spatial",
         "in"
       ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "strassen",
         "where": {
@@ -659,6 +769,10 @@
         "attribute",
         "range"
       ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "haltestellen",
         "where": {
@@ -676,6 +790,10 @@
         "attribute",
         "code"
       ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "haltestellen",
         "where": {
@@ -694,6 +812,10 @@
         "near",
         "needs-values"
       ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "schulen",
         "where": {
@@ -716,6 +838,10 @@
       "tags": [
         "unknown-attribute"
       ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "expect": "cannot_answer"
     },
     {
@@ -725,8 +851,12 @@
         "count",
         "per-group"
       ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "expect": "cannot_answer",
-      "other_approach": null
+      "other_approach": "none"
     },
     {
       "id": "x-ohne-kontext",
@@ -735,6 +865,10 @@
         "context",
         "clarification"
       ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "expect": "clarification",
       "also": [
         "cannot_answer"

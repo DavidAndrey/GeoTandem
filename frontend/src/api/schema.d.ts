@@ -1402,6 +1402,288 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/admin/evaluation/cases': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Cases
+     * @description The start set and the own cases, start cases first (V1.1); each with its
+     *     status (D3). The list leaves ``reference_hits`` out.
+     */
+    get: operations['cases_api_admin_evaluation_cases_get']
+    put?: never
+    /**
+     * Create Case
+     * @description An own case: authored in the workplace (V3), taken from the log (V2 from
+     *     M16.2) or copied from a start case. Its reference passes the checks a model
+     *     query passes (``case_invalid``); an id in use is ``case_id_taken``.
+     */
+    post: operations['create_case_api_admin_evaluation_cases_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/admin/evaluation/cases/export': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Export Cases
+     * @description The own cases as a case file (F-3.13, F-10.4); with ``start`` the start set
+     *     too. Without ``null`` fields, so export and import are a round trip.
+     */
+    get: operations['export_cases_api_admin_evaluation_cases_export_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/admin/evaluation/cases/import': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Import Cases
+     * @description All or nothing (V1.3): one invalid case and none is taken.
+     */
+    post: operations['import_cases_api_admin_evaluation_cases_import_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/admin/evaluation/cases/draft-from-action/{action_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Case From Action
+     * @description A case prefilled from a logged direct query with decision ``accepted``, or
+     *     ``auto`` not undone (F-3.14); nothing is stored until it is saved with
+     *     ``POST /cases``. Any other action, a hand-corrected one too (decision 2), is
+     *     ``action_not_eligible``.
+     */
+    get: operations['case_from_action_api_admin_evaluation_cases_draft_from_action__action_id__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/admin/evaluation/cases/{case_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Case
+     * @description One case with the hits of its reference on its data state (V2.1).
+     */
+    get: operations['case_api_admin_evaluation_cases__case_id__get']
+    /**
+     * Update Case
+     * @description A start case is ``case_read_only``; editing a stale case makes it run again.
+     */
+    put: operations['update_case_api_admin_evaluation_cases__case_id__put']
+    post?: never
+    /** Delete Case */
+    delete: operations['delete_case_api_admin_evaluation_cases__case_id__delete']
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/admin/evaluation/runs/estimate': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Estimate
+     * @description Requests, tokens, cost and duration before the start (D12, V4.1); no model call.
+     */
+    post: operations['estimate_api_admin_evaluation_runs_estimate_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/admin/evaluation/runs': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Runs */
+    get: operations['runs_api_admin_evaluation_runs_get']
+    put?: never
+    /**
+     * Start Run
+     * @description Starts the run in the background and answers at once, ``running``; the
+     *     client polls ``GET /runs/{id}`` (D8). One run at a time (``run_busy``); an
+     *     external connection not in ``confirm_external`` is ``external_not_confirmed``;
+     *     a selection with no runnable case (all filtered out or stale) is ``no_cases``.
+     */
+    post: operations['start_run_api_admin_evaluation_runs_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/admin/evaluation/runs/{run_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Run
+     * @description Polled while the run runs; figures and comparisons once it is done.
+     */
+    get: operations['run_api_admin_evaluation_runs__run_id__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/admin/evaluation/runs/{run_id}/abort': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Abort Run
+     * @description Stops before the next question; the answers so far stay.
+     */
+    post: operations['abort_run_api_admin_evaluation_runs__run_id__abort_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/admin/evaluation/runs/{run_id}/answers': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Answers
+     * @description The repeats of one case at one measuring point (V7).
+     */
+    get: operations['answers_api_admin_evaluation_runs__run_id__answers_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/admin/evaluation/runs/{run_id}/export': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Export Run
+     * @description The run with every answer, as JSON (V6.2 *Exportieren*).
+     */
+    get: operations['export_run_api_admin_evaluation_runs__run_id__export_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/admin/evaluation/comparison': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Compare Runs
+     * @description Two complete runs over the same cases side by side (V6.6, D7);
+     *     otherwise ``runs_not_comparable``.
+     */
+    post: operations['compare_runs_api_admin_evaluation_comparison_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/admin/evaluation/profile-summary': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Profile Summary
+     * @description How complete the metadata is that the model sees (D11, V8): of the sample
+     *     data, or of the live catalog as ``account`` sees it (default: the caller).
+     */
+    get: operations['profile_summary_api_admin_evaluation_profile_summary_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
 }
 export type webhooks = Record<string, never>
 export interface components {
@@ -1563,6 +1845,80 @@ export interface components {
         | components['schemas']['Or-Output']
         | components['schemas']['Not-Output']
       )[]
+    }
+    /**
+     * AnswerView
+     * @description One answer of one repeat (V7). ``answer`` is the model's answer as read;
+     *     rows never: the result sets are feature ids, capped at ``MAX_IDS``, with
+     *     exact counts.
+     */
+    AnswerView: {
+      /** Case Id */
+      case_id: string
+      /** Point */
+      point: number
+      /** Block */
+      block: number
+      /** Seed */
+      seed: number
+      /**
+       * Verdict
+       * @enum {string}
+       */
+      verdict: 'pass' | 'wrong' | 'refused' | 'kind' | 'other_approach' | 'forbidden' | 'error'
+      /** Code */
+      code?: string | null
+      /**
+       * Flags
+       * @default []
+       */
+      flags: ('no_assumption' | 'zero_hits')[]
+      /** Latency Ms */
+      latency_ms: number | null
+      /** Prompt Tokens */
+      prompt_tokens: number | null
+      /** Completion Tokens */
+      completion_tokens: number | null
+      /** Answer */
+      answer:
+        | (
+            | components['schemas']['QueryAnswer']
+            | components['schemas']['Clarification']
+            | components['schemas']['CannotAnswer']
+            | components['schemas']['PlanAnswer']
+          )
+        | null
+      refusal?: components['schemas']['Refusal'] | null
+      /** Raw */
+      raw?: string | null
+      /** Reading */
+      reading?: number | null
+      /** Diff */
+      diff?: components['schemas']['DiffEntry'][] | null
+      /** Hits */
+      hits?: number | null
+      /** Reference Hits */
+      reference_hits?: number | null
+      /**
+       * Only Answer
+       * @default []
+       */
+      only_answer: number[]
+      /**
+       * Only Answer Count
+       * @default 0
+       */
+      only_answer_count: number
+      /**
+       * Only Reference
+       * @default []
+       */
+      only_reference: number[]
+      /**
+       * Only Reference Count
+       * @default 0
+       */
+      only_reference_count: number
     }
     /**
      * Assumption
@@ -1766,6 +2122,157 @@ export interface components {
         [key: string]: string[]
       }
     }
+    /**
+     * CaseDraft
+     * @description A case not yet saved (V2 prefilled from M16.2, V3): no id and no tags yet;
+     *     the administrator adds them and saves it with ``POST /cases``.
+     */
+    CaseDraft: {
+      /** Prompt */
+      prompt: string
+      /**
+       * Data State
+       * @default sample
+       * @enum {string}
+       */
+      data_state: 'sample' | 'live'
+      /** Origin Action */
+      origin_action?: number | null
+      /**
+       * Schema Version
+       * @default 2
+       */
+      schema_version: string
+      /** Gold */
+      gold?: {
+        [key: string]: unknown
+      } | null
+      /** Gold Any */
+      gold_any?:
+        | {
+            [key: string]: unknown
+          }[]
+        | null
+      require?: components['schemas']['Require'] | null
+      /** Expect */
+      expect?: ('query' | 'clarification' | 'cannot_answer') | null
+      /**
+       * Also
+       * @default []
+       */
+      also: ('query' | 'clarification' | 'cannot_answer')[]
+      /**
+       * Forbid
+       * @default []
+       */
+      forbid: string[]
+      /** Other Approach */
+      other_approach?: ('direct' | 'chain') | 'none' | null
+      /**
+       * Note
+       * @default
+       */
+      note: string
+      /**
+       * Layers
+       * @default []
+       */
+      layers: components['schemas']['CaseLayer'][]
+      /**
+       * Split
+       * @default confirm
+       * @enum {string}
+       */
+      split: 'tuning' | 'confirm'
+      /**
+       * Origin
+       * @enum {string}
+       */
+      origin: 'authored' | 'log'
+    }
+    /**
+     * CaseFile
+     * @description The start set, an export, an import: the same JSON (F-10.4), written
+     *     without ``null`` fields.
+     */
+    CaseFile: {
+      /**
+       * Format
+       * @default geotandem-eval-cases
+       * @constant
+       */
+      format: 'geotandem-eval-cases'
+      /**
+       * Version
+       * @default 1
+       * @constant
+       */
+      version: 1
+      /**
+       * About
+       * @default
+       */
+      about: string
+      /** Cases */
+      cases: components['schemas']['EvalCase'][]
+    }
+    /** CaseFilter */
+    CaseFilter: {
+      /**
+       * Origins
+       * @default [
+       *       "start"
+       *     ]
+       */
+      origins: ('start' | 'authored' | 'import' | 'log')[]
+      /** Split */
+      split?: ('tuning' | 'confirm') | null
+      /**
+       * Tags
+       * @default []
+       */
+      tags: string[]
+    }
+    /**
+     * CaseLayer
+     * @description A layer a live case uses, with its dataset version when the case was made (D3).
+     */
+    CaseLayer: {
+      /** Name */
+      name: string
+      /** Dataset Version */
+      dataset_version?: string | null
+    }
+    /** CasePage */
+    CasePage: {
+      /** Items */
+      items: components['schemas']['CaseView'][]
+      /** Total */
+      total: number
+    }
+    /** CaseView */
+    CaseView: {
+      case: components['schemas']['EvalCase']
+      /**
+       * Status
+       * @default ok
+       * @enum {string}
+       */
+      status: 'ok' | 'stale' | 'dataset_changed'
+      /**
+       * Status Layers
+       * @default []
+       */
+      status_layers: string[]
+      /** Read Only */
+      read_only: boolean
+      /** Reference Hits */
+      reference_hits?: number[] | null
+      /** Created At */
+      created_at?: string | null
+      /** Updated At */
+      updated_at?: string | null
+    }
     /** Categorized */
     Categorized: {
       /**
@@ -1785,6 +2292,26 @@ export interface components {
       colors?: {
         [key: string]: string
       }
+    }
+    /**
+     * Cell
+     * @description One case at one measuring point: passes of the repeats and the rest's mix.
+     */
+    Cell: {
+      /** Case Id */
+      case_id: string
+      /** Point */
+      point: number
+      /** Passed */
+      passed: number
+      /** Answers */
+      answers: number
+      /** Verdicts */
+      verdicts: {
+        [key: string]: number
+      }
+      /** Silently Wrong */
+      silently_wrong: number
     }
     /**
      * CellMode
@@ -1985,6 +2512,16 @@ export interface components {
       value: string | number | boolean
     }
     /**
+     * CompareRequest
+     * @description Two complete runs over the same cases, side by side (V6.6, D7).
+     */
+    CompareRequest: {
+      /** Run */
+      run: number
+      /** Against */
+      against: number
+    }
+    /**
      * Comparison
      * @description The two approaches side by side (design M10); the difference is the
      *     application's, computed from feature ids, never the model's.
@@ -2113,6 +2650,29 @@ export interface components {
       marked_external: boolean
       /** Connection Id */
       connection_id?: number | null
+    }
+    /** ConnectionEstimate */
+    ConnectionEstimate: {
+      /** Connection Id */
+      connection_id: number
+      /** Name */
+      name: string
+      /** Host */
+      host: string
+      /**
+       * Locality
+       * @enum {string}
+       */
+      locality: 'local' | 'external'
+      /** Points */
+      points: number
+      /** Requests */
+      requests: number
+      /** Tokens */
+      tokens: number
+      cost: components['schemas']['Money'] | null
+      /** Duration S */
+      duration_s: number
     }
     /** ConnectionInfo */
     ConnectionInfo: {
@@ -2326,6 +2886,27 @@ export interface components {
       request_limit_per_day?: number | null
     }
     /**
+     * CostEstimate
+     * @description What a run will ask before it starts (D12). Connections run in parallel,
+     *     so ``duration_s`` is the longest of them (D8).
+     */
+    CostEstimate: {
+      /** Cases */
+      cases: number
+      /** Connections */
+      connections: components['schemas']['ConnectionEstimate'][]
+      /** Requests */
+      requests: number
+      /** Tokens */
+      tokens: number
+      /** Cost */
+      cost: components['schemas']['Money'][]
+      /** Duration S */
+      duration_s: number
+      /** External Hosts */
+      external_hosts: string[]
+    }
+    /**
      * CountMetric
      * @description Number of source features per area.
      */
@@ -2374,6 +2955,24 @@ export interface components {
        */
       applied_by_hand: boolean
       query?: components['schemas']['QueryObject-Input'] | null
+    }
+    /**
+     * DiffEntry
+     * @description One difference of an answer's query to the reference (stage 1, D5): the
+     *     two condition nodes, never data.
+     */
+    DiffEntry: {
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: 'source' | 'missing' | 'added' | 'changed'
+      /** Path */
+      path: string
+      /** Reference */
+      reference?: unknown
+      /** Answer */
+      answer?: unknown
     }
     /**
      * DistanceColumn
@@ -2563,6 +3162,83 @@ export interface components {
       details: {
         [key: string]: unknown
       }
+    }
+    /**
+     * EvalCase
+     * @description One question with its right answer (F-3.13, D2). Exactly one of ``gold``,
+     *     ``gold_any``, ``require`` and ``expect``: a query case has a reference
+     *     query, several fair readings or required parts; a behaviour case names the
+     *     expected answer kind. A reference query is stored as the harness writes it,
+     *     without ``schema_version`` and ``output``, against ``schema_version``.
+     *
+     *     The JSON schema of the file cannot say "exactly one of"; the application
+     *     checks it, the uniqueness of ids and ``origin_action`` on import.
+     */
+    EvalCase: {
+      /** Prompt */
+      prompt: string
+      /**
+       * Data State
+       * @default sample
+       * @enum {string}
+       */
+      data_state: 'sample' | 'live'
+      /** Origin Action */
+      origin_action?: number | null
+      /**
+       * Schema Version
+       * @default 2
+       */
+      schema_version: string
+      /** Gold */
+      gold?: {
+        [key: string]: unknown
+      } | null
+      /** Gold Any */
+      gold_any?:
+        | {
+            [key: string]: unknown
+          }[]
+        | null
+      require?: components['schemas']['Require'] | null
+      /** Expect */
+      expect?: ('query' | 'clarification' | 'cannot_answer') | null
+      /**
+       * Also
+       * @default []
+       */
+      also: ('query' | 'clarification' | 'cannot_answer')[]
+      /**
+       * Forbid
+       * @default []
+       */
+      forbid: string[]
+      /** Other Approach */
+      other_approach?: ('direct' | 'chain') | 'none' | null
+      /**
+       * Note
+       * @default
+       */
+      note: string
+      /**
+       * Layers
+       * @default []
+       */
+      layers: components['schemas']['CaseLayer'][]
+      /** Id */
+      id: string
+      /** Tags */
+      tags: string[]
+      /**
+       * Split
+       * @enum {string}
+       */
+      split: 'tuning' | 'confirm'
+      /**
+       * Origin
+       * @enum {string}
+       */
+      origin: 'start' | 'authored' | 'import' | 'log'
     }
     /**
      * ExecuteResponse
@@ -2762,6 +3438,28 @@ export interface components {
       /** Fields */
       fields?: components['schemas']['FieldDecision'][] | null
     }
+    /** ImportProblem */
+    ImportProblem: {
+      /** Case Id */
+      case_id: string | null
+      /** Code */
+      code: string
+      /** Message */
+      message: string
+    }
+    /**
+     * ImportResult
+     * @description All or nothing (V1.3): ``imported`` is 0 whenever ``problems`` is not empty.
+     */
+    ImportResult: {
+      /** Imported */
+      imported: number
+      /**
+       * Problems
+       * @default []
+       */
+      problems: components['schemas']['ImportProblem'][]
+    }
     /** ImportRunInfo */
     ImportRunInfo: {
       /** Id */
@@ -2949,6 +3647,27 @@ export interface components {
       /** Active Level Id */
       active_level_id: number
     }
+    /**
+     * LayerGaps
+     * @description What a layer lacks, in the order of care of Phase 4 (D11), with the totals
+     *     the shares of V8.1 are taken of.
+     */
+    LayerGaps: {
+      /** Layer */
+      layer: string
+      /** Title */
+      title: string
+      /** Attributes */
+      attributes: number
+      /** Text Attributes */
+      text_attributes: number
+      /** Unconfirmed Codes */
+      unconfirmed_codes: string[]
+      /** Unlabelled */
+      unlabelled: string[]
+      /** Undescribed */
+      undescribed: string[]
+    }
     /** LayerInfo */
     LayerInfo: {
       /** Name */
@@ -3109,6 +3828,19 @@ export interface components {
       extent_wgs84: number[] | null
       /** Max Features */
       max_features: number
+    }
+    /**
+     * MeasuringPoint
+     * @description A connection, its prompt profile and a level (D9, D10).
+     */
+    MeasuringPoint: {
+      /** Connection Id */
+      connection_id: number
+      prompt_profile?: components['schemas']['PromptProfile'] | null
+      /** Level Id */
+      level_id: number
+      /** System Prompt */
+      system_prompt?: string | null
     }
     /**
      * Message
@@ -3413,6 +4145,13 @@ export interface components {
       /** Count */
       count?: number | null
     }
+    /** Money */
+    Money: {
+      /** Amount */
+      amount: number
+      /** Currency */
+      currency: string
+    }
     /**
      * NearFeature
      * @description Source geometry lies within a distance of one reference feature (F-4.3).
@@ -3645,6 +4384,126 @@ export interface components {
         [key: string]: unknown
       }
     }
+    /**
+     * PointComparison
+     * @description One column against the reference column, paired per case (D7). Taken on
+     *     the ``confirm`` cases; ``None`` in a quick test or without them.
+     */
+    PointComparison: {
+      /** Cases */
+      cases: number
+      /** Better */
+      better: number
+      /** Worse */
+      worse: number
+      /** Same */
+      same: number
+      /** Mean */
+      mean: number
+      /** Low */
+      low: number
+      /** High */
+      high: number
+      /** P Sign */
+      p_sign: number
+      /**
+       * Word
+       * @enum {string}
+       */
+      word: 'better' | 'worse' | 'not_proven'
+    }
+    /**
+     * PointFigures
+     * @description Section 2 of the plan, for one measuring point; counts are answers (a
+     *     case counts once per repeat).
+     */
+    PointFigures: {
+      /** Passed */
+      passed: number
+      /** Answers */
+      answers: number
+      /** By Split */
+      by_split: {
+        [key: string]: components['schemas']['Tally']
+      }
+      /** By Tag */
+      by_tag: {
+        [key: string]: components['schemas']['Tally']
+      }
+      /** Rate Tuning */
+      rate_tuning: number | null
+      /** Rate Confirm */
+      rate_confirm: number | null
+      /** Silently Wrong */
+      silently_wrong: number
+      /** Zero Hits */
+      zero_hits: number
+      /** Unreadable */
+      unreadable: number
+      /**
+       * Errors
+       * @default {}
+       */
+      errors: {
+        [key: string]: number
+      }
+      /** Behaviour Met */
+      behaviour_met: number
+      /** Behaviour Answers */
+      behaviour_answers: number
+      /** Limited */
+      limited: number
+      /** Latency Median Ms */
+      latency_median_ms: number | null
+      /** Latency P90 Ms */
+      latency_p90_ms: number | null
+      /** Prompt Tokens */
+      prompt_tokens: number
+      /** Completion Tokens */
+      completion_tokens: number
+      cost: components['schemas']['Money'] | null
+    }
+    /**
+     * PointLabel
+     * @description A measuring point as it was (H7): later edits change no run.
+     */
+    PointLabel: {
+      /** Connection Id */
+      connection_id: number
+      /** Connection Name */
+      connection_name: string
+      /** Model */
+      model: string
+      /** Host */
+      host: string
+      /**
+       * Locality
+       * @enum {string}
+       */
+      locality: 'local' | 'external'
+      /** Temperature */
+      temperature: number
+      /**
+       * Reasoning Effort
+       * @enum {string}
+       */
+      reasoning_effort: 'default' | 'none' | 'low' | 'medium' | 'high'
+      prompt_profile: components['schemas']['PromptProfile']
+      /** Level Id */
+      level_id: number
+      /** Level Name */
+      level_name: string
+      /** System Prompt Hash */
+      system_prompt_hash: string
+      /** System Prompt */
+      system_prompt?: string | null
+    }
+    /** PointView */
+    PointView: {
+      label: components['schemas']['PointLabel']
+      figures: components['schemas']['PointFigures'] | null
+      comparison: components['schemas']['PointComparison'] | null
+    }
     /** Preview */
     Preview: {
       /**
@@ -3716,6 +4575,61 @@ export interface components {
       budget: components['schemas']['ProfileBudget'] | null
       /** Over Budget */
       over_budget: boolean
+    }
+    /**
+     * ProfileSummary
+     * @description How complete the metadata the model sees is (D11, V8).
+     */
+    ProfileSummary: {
+      /** Profile Hash */
+      profile_hash: string
+      /** Layers */
+      layers: number
+      /** Attributes */
+      attributes: number
+      /** Labelled */
+      labelled: number
+      /** Text Attributes */
+      text_attributes: number
+      /** Text With Codes */
+      text_with_codes: number
+      /** Described */
+      described: number
+      /** Gaps */
+      gaps: components['schemas']['LayerGaps'][]
+    }
+    /** Progress */
+    Progress: {
+      /** Done */
+      done: number
+      /** Total */
+      total: number
+    }
+    /**
+     * PromptProfile
+     * @description How the application writes the prompt for a connection (plan E3, D9):
+     *     measured presets, never free text. The default is today's prompt byte for
+     *     byte; P1, P2, P3, P4 and P8 are not offered (testplan-system-context 8.2).
+     */
+    PromptProfile: {
+      /**
+       * Examples
+       * @default standard
+       * @enum {string}
+       */
+      examples: 'standard' | '12'
+      /**
+       * Placement
+       * @default P0
+       * @enum {string}
+       */
+      placement: 'P0' | 'P5' | 'P9'
+      /**
+       * Output
+       * @default constrained
+       * @enum {string}
+       */
+      output: 'constrained' | 'text'
     }
     /**
      * PromptRequest
@@ -4141,6 +5055,20 @@ export interface components {
        */
       op: 'related'
     }
+    /**
+     * Require
+     * @description What a query must contain where several readings select different
+     *     features (harness ``require``): the source layer, and per condition the keys
+     *     it must match; ``distance_m`` is a ``[low, high]`` range.
+     */
+    Require: {
+      /** Source */
+      source: string
+      /** Conditions */
+      conditions: {
+        [key: string]: unknown
+      }[]
+    }
     /** ResultMeta */
     ResultMeta: {
       /** Schema Version */
@@ -4185,6 +5113,234 @@ export interface components {
       data_versions: {
         [key: string]: string | null
       }
+    }
+    /**
+     * RunCase
+     * @description A case as the run asked it (H7): the matrix, V7 and the export read it
+     *     here, not from the case store, which may have changed since.
+     */
+    RunCase: {
+      /** Id */
+      id: string
+      /** Prompt */
+      prompt: string
+      /** Tags */
+      tags: string[]
+      /**
+       * Split
+       * @enum {string}
+       */
+      split: 'tuning' | 'confirm'
+      /**
+       * Origin
+       * @enum {string}
+       */
+      origin: 'start' | 'authored' | 'import' | 'log'
+      /**
+       * Readings
+       * @default []
+       */
+      readings: {
+        [key: string]: unknown
+      }[]
+      require?: components['schemas']['Require'] | null
+      /** Expect */
+      expect?: ('query' | 'clarification' | 'cannot_answer') | null
+      /**
+       * Status
+       * @default ok
+       * @enum {string}
+       */
+      status: 'ok' | 'stale' | 'dataset_changed'
+    }
+    /** RunComparison */
+    RunComparison: {
+      /** Run */
+      run: number
+      /** Against */
+      against: number
+      /** Points */
+      points: components['schemas']['RunComparisonRow'][]
+    }
+    /** RunComparisonRow */
+    RunComparisonRow: {
+      label: components['schemas']['PointLabel']
+      /** Rate */
+      rate: number | null
+      /** Rate Against */
+      rate_against: number | null
+      comparison: components['schemas']['PointComparison'] | null
+    }
+    /** RunExport */
+    RunExport: {
+      run: components['schemas']['RunView']
+      /** Answers */
+      answers: components['schemas']['AnswerView'][]
+    }
+    /**
+     * RunLabel
+     * @description What a run measured against (F-3.18): without it a figure is worthless
+     *     after the next version change.
+     */
+    RunLabel: {
+      /** Query Schema */
+      query_schema: string
+      /** Grading Version */
+      grading_version: number
+      /**
+       * Data State
+       * @enum {string}
+       */
+      data_state: 'sample' | 'live'
+      /** Sample Version */
+      sample_version: string | null
+      /**
+       * Dataset Versions
+       * @default {}
+       */
+      dataset_versions: {
+        [key: string]: string | null
+      }
+      profile: components['schemas']['ProfileSummary']
+      /** Account */
+      account: string
+      /**
+       * Scope
+       * @enum {string}
+       */
+      scope: 'full' | 'quick'
+      /** Seeds */
+      seeds: number[]
+      /** Cases */
+      cases: number
+      /** Case Set Hash */
+      case_set_hash: string
+      /**
+       * Started At
+       * Format: date-time
+       */
+      started_at: string
+      /** Started By */
+      started_by: string
+    }
+    /** RunPage */
+    RunPage: {
+      /** Items */
+      items: components['schemas']['RunSummary'][]
+      /** Total */
+      total: number
+    }
+    /**
+     * RunRequest
+     * @description A run as V4 composes it; the run keeps it (``RunView.request``), so
+     *     "Als vollständigen Lauf wiederholen" opens V4 with it.
+     */
+    RunRequest: {
+      /** Points */
+      points: components['schemas']['MeasuringPoint'][]
+      /**
+       * Reference
+       * @default 0
+       */
+      reference: number
+      /**
+       * @default {
+       *       "origins": [
+       *         "start"
+       *       ],
+       *       "tags": []
+       *     }
+       */
+      cases: components['schemas']['CaseFilter']
+      /**
+       * Data State
+       * @default sample
+       * @enum {string}
+       */
+      data_state: 'sample' | 'live'
+      /**
+       * Scope
+       * @default full
+       * @enum {string}
+       */
+      scope: 'full' | 'quick'
+      /**
+       * Confirm External
+       * @default []
+       */
+      confirm_external: number[]
+    }
+    /** RunSummary */
+    RunSummary: {
+      /** Id */
+      id: number
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: 'running' | 'done' | 'aborted' | 'interrupted' | 'failed'
+      /**
+       * Scope
+       * @enum {string}
+       */
+      scope: 'full' | 'quick'
+      /**
+       * Data State
+       * @enum {string}
+       */
+      data_state: 'sample' | 'live'
+      /**
+       * Started At
+       * Format: date-time
+       */
+      started_at: string
+      /** Started By */
+      started_by: string
+      /** Points */
+      points: number
+      /** Connection Ids */
+      connection_ids: number[]
+      /** Cases */
+      cases: number
+      /** Case Set Hash */
+      case_set_hash: string
+      /** Reference Rate */
+      reference_rate: number | null
+      /**
+       * Cost
+       * @default []
+       */
+      cost: components['schemas']['Money'][]
+    }
+    /** RunView */
+    RunView: {
+      /** Id */
+      id: number
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: 'running' | 'done' | 'aborted' | 'interrupted' | 'failed'
+      request: components['schemas']['RunRequest']
+      label: components['schemas']['RunLabel']
+      /** Cases */
+      cases: components['schemas']['RunCase'][]
+      /** Points */
+      points: components['schemas']['PointView'][]
+      /** Reference */
+      reference: number
+      progress: components['schemas']['Progress']
+      /**
+       * Cost So Far
+       * @default []
+       */
+      cost_so_far: components['schemas']['Money'][]
+      /** Cells */
+      cells: components['schemas']['Cell'][]
+      /** Error */
+      error?: string | null
+      /** Finished At */
+      finished_at?: string | null
     }
     /** SavedQueryDetail */
     SavedQueryDetail: {
@@ -4526,6 +5682,13 @@ export interface components {
       /** Sample Dataset Version */
       sample_dataset_version: string
       capabilities: components['schemas']['Capabilities']
+    }
+    /** Tally */
+    Tally: {
+      /** Passed */
+      passed: number
+      /** Answers */
+      answers: number
     }
     /**
      * TextMatch
@@ -10520,6 +11683,1168 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['ModelActionView']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  cases_api_admin_evaluation_cases_get: {
+    parameters: {
+      query?: {
+        split?: ('tuning' | 'confirm') | null
+        tag?: string | null
+        origin?: ('start' | 'authored' | 'import' | 'log') | null
+        data_state?: ('sample' | 'live') | null
+        limit?: number
+        offset?: number
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CasePage']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  create_case_api_admin_evaluation_cases_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['EvalCase']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CaseView']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  export_cases_api_admin_evaluation_cases_export_get: {
+    parameters: {
+      query?: {
+        start?: boolean
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CaseFile']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  import_cases_api_admin_evaluation_cases_import_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CaseFile']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ImportResult']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  case_from_action_api_admin_evaluation_cases_draft_from_action__action_id__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        action_id: number
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CaseDraft']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  case_api_admin_evaluation_cases__case_id__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        case_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CaseView']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  update_case_api_admin_evaluation_cases__case_id__put: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        case_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['EvalCase']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CaseView']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  delete_case_api_admin_evaluation_cases__case_id__delete: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        case_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  estimate_api_admin_evaluation_runs_estimate_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['RunRequest']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CostEstimate']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  runs_api_admin_evaluation_runs_get: {
+    parameters: {
+      query?: {
+        connection_id?: number | null
+        limit?: number
+        offset?: number
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['RunPage']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  start_run_api_admin_evaluation_runs_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['RunRequest']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['RunView']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  run_api_admin_evaluation_runs__run_id__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        run_id: number
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['RunView']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  abort_run_api_admin_evaluation_runs__run_id__abort_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        run_id: number
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['RunView']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  answers_api_admin_evaluation_runs__run_id__answers_get: {
+    parameters: {
+      query: {
+        case_id: string
+        point: number
+      }
+      header?: never
+      path: {
+        run_id: number
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AnswerView'][]
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  export_run_api_admin_evaluation_runs__run_id__export_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        run_id: number
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['RunExport']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  compare_runs_api_admin_evaluation_comparison_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CompareRequest']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['RunComparison']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Implemented */
+      501: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  profile_summary_api_admin_evaluation_profile_summary_get: {
+    parameters: {
+      query?: {
+        data_state?: 'sample' | 'live'
+        account?: string | null
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ProfileSummary']
         }
       }
       /** @description Bad Request */

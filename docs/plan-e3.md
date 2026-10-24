@@ -28,7 +28,7 @@ Decided before this plan (2026-10-23): E3 delivers **both** the release decision
 | # | Question | Proposal | Why |
 |---|---|---|---|
 | D1 | Data a case runs against | Two **data states**. *Beispieldaten*: the run builds a fresh, isolated SpatiaLite database from the packaged sample data (as the harness does), so the start set is reproducible whatever the live catalog holds. *Betriebsdaten*: the run uses the live catalog and the visibility of the administrator who starts it (D4). A case names its data state; a run uses one | bewertung.md 2 needs a fixed data state for comparable runs; the customer's question needs their own data. The sample run uses the same engine and checks, only another backend instance, so it is no side path past the engine (bewertung.md 6.3) |
-| D2 | Case format and storage | One format for both: the harness's case (`id`, `prompt`, `tags`, `gold` · `gold_any` · `require` · `expect` with `also`, `forbid`, `other_approach`) plus `schema_version`, `data_state`, `split` (`tuning` · `confirm`), `note`, `origin` (`start` · `authored` · `log:<id>`), and for live cases the layers used with their `dataset_version` at creation. **Start set** = `cases.json` (33, `tuning`) and `heldout.json` (38, `confirm`), moved to `schema/eval-cases/` as the versioned artefact; the harness reads it from there. **Own cases** live in a table and export/import as the same JSON (F-3.13, F-10.4); a new own case defaults to `confirm` (design review 3) | The format has carried 71 cases through four testplans; one format means one grader and one import path |
+| D2 | Case format and storage | One format for both: the harness's case (`id`, `prompt`, `tags`, `gold` · `gold_any` · `require` · `expect` with `also`, `forbid`, `other_approach`) plus `schema_version`, `data_state`, `split` (`tuning` · `confirm`), `note`, `origin` (`start` · `authored` · `import` · `log` with `origin_action`), `other_approach` as `chain` or `none` (unset: not checked), and for live cases the layers used with their `dataset_version` at creation. **Start set** = `cases.json` (33, `tuning`) and `heldout.json` (38, `confirm`), moved to `schema/eval-cases/` as the versioned artefact; the harness reads it from there. **Own cases** live in a table and export/import as the same JSON (F-3.13, F-10.4); a new own case defaults to `confirm` (design review 3) | The format has carried 71 cases through four testplans; one format means one grader and one import path |
 | D3 | Reference result | The reference **query** is stored, the reference **result** is computed at run time from it on the same data state. A live case whose layers are gone or invisible is `stale` (as E2.6 `stale_reference`) and is left out of runs until it is edited; one whose layer's `dataset_version` changed since creation is run but marked "Datenstand geändert" | Live data changes on re-import; a frozen fingerprint would turn every re-import into false failures. Answers "aging of cases" (bewertung.md 12) |
 | D4 | Whose view a run uses | Sample runs: all sample layers. Live runs: the **administrator's own** visibility and profile (E2.2 S3); the run's label records the account. Running as another account is postponed (O3) | The profile is per account; the administrator's view is the simplest that is honest about it |
 | D5 | Stages (F-3.16) | Stage 0 *formgültig*: the answer reads and passes the application's checks (as `DirectQuery.ask`). Stage 2 *ergebnisgleich*: the grader of the harness, unchanged, decides `pass`. Stage 1 *abfragegleich*: canonical form (E2's `canonical_json`, harmless shapes of E-3, `and`/`or` arguments sorted) compared with the reference; shown as a **diff** beside the verdict, never a verdict of its own. Tolerances: feature-id equality only; the `tolerance` field is reserved for aggregate outputs and not implemented in E3 | bewertung.md 4 says stage 2 judges and stage 1 explains; the harness proved that result equality with `gold_any` is enough. No E3 case has an aggregate output yet |
@@ -82,8 +82,8 @@ Legend as in plan E2: **Deps**, **Parallel with**, **Done when** beyond the WP g
 *Deps: design handoff E3 (O1) · Parallel with: none*
 
 - Docs: CONTEXT.md — *Prüffall*, *Datenstand*, *Messpunkt*, *Bewertungslauf*, *Promptprofil*, *still falsch*. anforderungen.md F-3.13–F-3.18 annotated with D1–D12 (F-3.13 "Referenzergebnis und Toleranzen" read as D3/D5). bewertung.md 12: the open points marked as settled by this plan.
-- `evaluation/schemas.py`: `EvalCase` (D2), `CaseSet`, `MeasuringPoint` (connection id, prompt profile, level id, optional system prompt), `RunRequest` (points, case filter by split/tag/origin, data state, seed blocks or Schnelltest), `RunView` (status, progress, label, figures of section 2), `AnswerView` (verdict, flags, latency, tokens, answer, query, refusal, stage-1 diff), `Comparison` (D7), `ProfileSummary` (D11), `CostEstimate` (D12). JSON schema of the case file in `schema/eval-cases/`.
-- Routers `api/evaluation.py` under `/api/admin/evaluation/*`, admin only, every route 501 naming its WP; error codes `run_busy`, `case_stale`, `case_invalid`, `nothing_to_compare`.
+- `evaluation/schemas.py`: `EvalCase` and `CaseDraft` (D2), `CaseFile`, `MeasuringPoint` (connection id, prompt profile, level id, optional system prompt), `RunRequest` (points, case filter by split/tag/origin, data state, seed blocks or Schnelltest), `RunView` (status, progress, label, figures of section 2), `AnswerView` (verdict, flags, latency, tokens, answer, query, refusal, stage-1 diff), `PointComparison` and `RunComparison` (D7), `RunCase` (the cases as the run asked them, H7), `ProfileSummary` (D11), `CostEstimate` (D12). JSON schema of the case file in `schema/eval-cases/`.
+- Routers `api/evaluation.py` under `/api/admin/evaluation/*`, admin only, every route 501 naming its WP; error codes `case_invalid`, `case_id_taken`, `case_read_only`, `case_stale`, `run_busy`, `external_not_confirmed`, `runs_not_comparable` (`nothing_to_compare` is taken by E2.5).
 - **Done when:** `make gen` clean, contract test validates the start set against the case schema, every stub route needs an admin session.
 
 #### WP86 — Shared grader and tokens on the record (BE-eval, BE-record)
@@ -99,7 +99,7 @@ Legend as in plan E2: **Deps**, **Parallel with**, **Done when** beyond the WP g
 - Migration 0015 `eval_case`; `CaseStore` with create, edit, delete, list by split/tag/origin/data state; import and export of the D2 format (round trip unchanged, F-3.13); the start set is read from `schema/eval-cases/` and not editable in the UI (a copy can be made into own cases).
 - Data states (D1): `sample_backend()` builds the isolated sample database once per run; `live` uses the catalog. Staleness (D3) computed on read.
 - Validation: a gold query must pass the application's checks on its data state, `expect` names a known answer kind, at least one tag, a split.
-- **Done when:** round trip of the start set and of a live case is byte-identical; a case on a deleted layer reads `stale`; a re-imported layer marks "Datenstand geändert"; import of a case with an invalid gold query answers `case_invalid` naming the case.
+- **Done when:** round trip of the start set and of a live case leaves the JSON unchanged (same keys and values); a case on a deleted layer reads `stale`; a re-imported layer marks "Datenstand geändert"; import of a case with an invalid gold query answers `case_invalid` naming the case.
 
 #### WP88 — Case pages and "Als Prüffall speichern" (FE-eval, FE-workplace)
 *Deps: WP87, design · Parallel with: WP89*
@@ -140,7 +140,7 @@ Internal (no UI release): WP gates, `make gate`, `/code-review xhigh` of the eta
 #### WP92 — Cases from the log (BE-eval, FE-eval)
 *Deps: WP87 · Parallel with: WP90*
 
-- On the admin's model action page (M16.2): **Als Prüffall übernehmen** for a direct query with decision `accepted`, or `auto` not undone (F-3.14). Hand-corrected answers (`adjusted`, `touched_at`) are not offered (decision 2). It opens the case page (V2) prefilled with the prompt, the stored query as reference, `data_state` live, the layers with their dataset versions and `origin: log:<id>`; the case is stored only when the admin saves it with tags and split.
+- On the admin's model action page (M16.2): **Als Prüffall übernehmen** for a direct query with decision `accepted`, or `auto` not undone (F-3.14). Hand-corrected answers (`adjusted`, `touched_at`) are not offered (decision 2). It opens the case page (V2) prefilled with the prompt, the stored query as reference, `data_state` live, the layers with their dataset versions and `origin: log` with `origin_action`; the case is stored only when the admin saves it with tags and split.
 - **Done when:** a logged, accepted action becomes a case without typing the query; an adjusted one shows no button; the created case passes against itself.
 
 #### WP93 — Run dialog, matrix and case detail (FE-eval)
@@ -199,13 +199,13 @@ Handoff received 2026-10-24 ([design/e3/README.md](../design/e3/README.md)); its
 |---|---|---|
 | `GET/POST /api/admin/evaluation/cases` · `GET/PUT/DELETE …/cases/{id}` | 87 | own cases; start set read-only |
 | `POST …/cases/import` · `GET …/cases/export` | 87 | D2 format |
-| `POST …/cases/from-action/{action_id}` | 92 | accepted or auto-not-undone only |
+| `GET …/cases/draft-from-action/{action_id}` | 92 | a prefilled case, stored only by `POST …/cases` (V2 from M16.2); accepted or auto-not-undone only |
 | `POST …/runs/estimate` · `POST …/runs` (202) | 90 | D12, D8 |
 | `GET …/runs` · `GET …/runs/{id}` · `POST …/runs/{id}/abort` | 90 | polled |
-| `GET …/runs/{id}/answers?case=…&point=…` | 90 | case detail |
-| `POST …/comparison` | 90 | two columns or two runs, D7 |
+| `GET …/runs/{id}/answers?case_id=…&point=…` | 90 | case detail |
+| `POST …/comparison` | 90 | two complete runs over the same cases (V6.6); the columns of one run are compared with its reference column in `RunView`, D7 |
 | `GET …/runs/{id}/export` | 90 | answers and figures as JSON |
-| `GET /api/admin/profile/summary` | 94 | D11 |
+| `GET …/profile-summary?account=` | 94 | D11, as `GET /api/admin/llm/profile` for one account |
 | connection: `prompt_profile`, prices | 91 | extends the E2.1 routes |
 
 ## 7 Order and parallelism

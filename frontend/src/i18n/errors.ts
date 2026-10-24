@@ -172,6 +172,37 @@ const MESSAGES: Record<string, Words> = {
     return t`Die frühere Antwort nutzt den Layer „${layer}", den es nicht mehr gibt.`
   },
   model_unreadable: () => t`Die Antwort des Modells ist nicht lesbar.`,
+  // Evaluation of model connections (plan E3)
+  case_invalid: (d) => {
+    const id = text(d.case_id)
+    return id
+      ? t`Der Prüffall „${id}" passt nicht: Das Format stimmt nicht, oder seine Referenzabfrage besteht die Prüfung nicht.`
+      : t`Ein Prüffall passt nicht: Das Format stimmt nicht, oder seine Referenzabfrage besteht die Prüfung nicht.`
+  },
+  case_id_taken: (d) => {
+    const id = text(d.case_id)
+    return t`Einen Prüffall „${id}" gibt es schon.`
+  },
+  case_read_only: () =>
+    t`Fälle des Startbestands lassen sich nicht ändern. Kopieren Sie den Fall in einen eigenen.`,
+  case_stale: (d) => {
+    const layer = text(d.layer)
+    return t`Der Prüffall nutzt den Layer „${layer}", den es nicht mehr gibt oder den Sie nicht sehen. Bearbeiten Sie den Fall zuerst.`
+  },
+  no_cases: () =>
+    t`Keiner der gewählten Prüffälle kann laufen: Keiner passt zur Auswahl, oder alle sind veraltet.`,
+  action_not_eligible: () =>
+    t`Nur eine angenommene oder automatisch angewendete, nicht zurückgenommene Direktabfrage wird zum Prüffall.`,
+  run_busy: (d) => {
+    const run = number(d.run)
+    return t`Lauf #${run} läuft noch. Es läuft höchstens ein Lauf zugleich.`
+  },
+  external_not_confirmed: (d) => {
+    const host = text(d.host)
+    return t`Der Lauf würde an ${host} senden. Bestätigen Sie das zuerst.`
+  },
+  runs_not_comparable: () =>
+    t`Diese Läufe lassen sich nicht gegenüberstellen: Sie haben andere Prüffälle, oder einer ist nicht vollständig.`,
   model_truncated: () =>
     t`Das Modell hat seine Antwort nicht beendet: Die Länge, die die Anbindung erlaubt, war aufgebraucht. Meist denkt das Modell zu lange, oder der Kontext ist zu klein.`,
   quota_exceeded: (d) => {

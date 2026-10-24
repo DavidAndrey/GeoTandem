@@ -78,6 +78,19 @@ CODES: dict[str, str] = {
     "context_too_large": "Prompt, layer profile and context exceed the context length.",
     "stale_reference": "The earlier answer uses a layer that is gone (details.layer).",
     "model_unreadable": "The model's answer does not fit the answer schema.",
+    # Evaluation of model connections (plan E3)
+    "case_invalid": "A case does not fit the case format or its reference fails the checks; "
+    "details.case_id, details.reason.",
+    "case_id_taken": "A case of that id exists (details.case_id).",
+    "case_read_only": "A start case cannot be changed; copy it into an own case.",
+    "case_stale": "A layer of the case is gone or hidden (details.layer); edit the case first.",
+    "no_cases": "No case of the selection can run: none matches, or all are stale.",
+    "action_not_eligible": "Only an accepted, or auto and not undone, direct query becomes "
+    "a case (details.decision).",
+    "run_busy": "Another evaluation run is running (details.run).",
+    "external_not_confirmed": "The run would send to an external connection not confirmed "
+    "(details.connection, details.host).",
+    "runs_not_comparable": "The runs differ in their cases, or one is not complete.",
     "model_truncated": "The model stopped at its length limit before its answer was complete.",
     "quota_exceeded": "The connection's requests per day are used up (details.limit).",
     "not_approved": "Only an approved action runs; this one is details.status.",
