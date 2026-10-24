@@ -43,7 +43,7 @@ def ask(
     deadline: float | None = None,
 ) -> tuple[Answer, Tokens]:
     """One model call of the chain, with what it cost; ``model_unreadable`` as
-    for the direct query."""
+    for the direct query (an ``AnswerError``, which carries the tokens)."""
     completion = client.complete(messages, schema=schema, deadline=deadline)
     return parse_answer(completion, "chain"), Tokens.of(completion)
 

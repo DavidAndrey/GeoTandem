@@ -3,7 +3,9 @@
 ``eval_answers.json`` holds answers real models gave in the testplans, one per
 kind of outcome, with the tag the harness wrote for them. Each is read, checked
 and graded as ``evals/regrade.py`` does it, over the sample data: the tag must
-come out as recorded, with the contract's verdict, code and flags beside it.
+come out as recorded, with the contract's verdict, code and flags beside it. An
+answer that does not read must fail the parser with the recorded code. The
+``require`` path and its flags are tested on queries written here.
 """
 
 import json
@@ -14,7 +16,9 @@ import pytest
 
 from geotandem.catalog import model_profile
 from geotandem.data import DataBackend, Limits
-from geotandem.evaluation.grade import Graded, conditions, errored, grade, matches
+from geotandem.engine.errors import QueryTimedOut
+from geotandem.evaluation import grade as grade_module
+from geotandem.evaluation.grade import Graded, conditions, errored, grade, matches, query_of
 from geotandem.evaluation.schemas import EvalCase
 from geotandem.llm import Completion
 from geotandem.model.errors import ActionError
@@ -43,15 +47,16 @@ START = start_set()
 
 
 def graded(item: dict[str, Any], backend: DataBackend) -> Graded:
-    """As ``evals/regrade.py``: the answer read again, a query checked in the
-    sample's profile, then graded; an answer that does not read stays an error."""
-    text = json.dumps(item["answer"]) if "answer" in item else item.get("raw")
-    try:
-        answer = parse_answer(Completion(text=text), "direct") if text else None
-    except ActionError:
-        answer = None
-    if answer is None:
-        return errored(item["tag"].removeprefix("error:"))
+    """As ``evals/regrade.py`` (``main``, the loop over the stored records) and
+    ``evals/run.py`` (``errored`` for an ``ActionError``): the answer read
+    again, a query checked in the sample's profile, then graded."""
+    if "answer" not in item:
+        # Never read: the parser must still refuse the verbatim text.
+        completion = Completion(text=item["raw"], finish_reason=item["finish_reason"])
+        with pytest.raises(ActionError) as failed:
+            parse_answer(completion, "direct")
+        return errored(failed.value.code)
+    answer = parse_answer(Completion(text=json.dumps(item["answer"])), "direct")
     query = refusal = None
     if isinstance(answer, QueryAnswer):
         profile = model_profile(backend.engine, backend.layer_names())
@@ -84,11 +89,74 @@ def test_a_recorded_answer_grades_as_the_harness_wrote(
     )
 
 
-def test_the_tag_begins_with_the_verdict_and_carries_the_code() -> None:
-    for item in ANSWERS:
-        assert item["tag"].split(":")[0] == item["verdict"]
-        if item["code"] is not None:
-            assert item["tag"] == f"{item['verdict']}:{item['code']}"
+def test_an_answer_that_never_came_is_an_error_with_its_code() -> None:
+    """``evals/run.py`` grades a transport error (``LLMError``) so."""
+    assert errored("llm_timeout") == Graded("error", "error:llm_timeout", "llm_timeout")
+
+
+# --- the require path (no recorded answer reaches every branch) -------------------
+
+ASSUMED = [{"text": "Gross heisst hier: viele Einwohner."}]
+NONE_OF = {"op": "compare", "attr": "gem_nr", "cmp": "lt", "value": 0}
+ALL_OF = {"op": "compare", "attr": "gem_nr", "cmp": "gt", "value": 0}
+LARGE = {"op": "compare", "attr": "flaeche_km2", "cmp": "gt", "value": 30}
+
+
+def answer_with(query: dict[str, Any], assumptions: list[dict[str, Any]]) -> QueryAnswer:
+    return QueryAnswer.model_validate(
+        {"kind": "query", "explanation": "Gemeinden.", "assumptions": assumptions, "query": query}
+    )
+
+
+@pytest.mark.parametrize(
+    ("query", "assumptions", "tag", "flags"),
+    [
+        (
+            {"source": "gemeinden", "where": NONE_OF},
+            ASSUMED,
+            "wrong:missing compare",
+            ("zero_hits",),
+        ),
+        ({"source": "gemeinden", "where": ALL_OF}, [], "wrong:missing compare", ("no_assumption",)),
+        (
+            {"source": "schulen", "where": {"op": "in", "attr": "typ", "values": ["keine"]}},
+            [],
+            "wrong:source=schulen",
+            ("no_assumption", "zero_hits"),
+        ),
+        ({"source": "gemeinden", "where": LARGE}, [], "pass", ()),
+    ],
+)
+def test_a_require_case_flags_a_wrong_answer_by_its_hits(
+    query: dict[str, Any],
+    assumptions: list[dict[str, Any]],
+    tag: str,
+    flags: tuple[str, ...],
+    sample: DataBackend,
+) -> None:
+    case = START["n04-grosse-gemeinden"]
+    found = grade(case, answer_with(query, assumptions), None, query_of(query), sample, LIMITS)
+    assert (found.verdict, found.tag, found.flags) == (tag.split(":")[0], tag, flags)
+
+
+def test_a_require_case_keeps_its_verdict_when_the_hits_cannot_be_read(
+    sample: DataBackend, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The result set is read for the flags only: an engine error leaves the
+    verdict, and ``zero_hits`` unset (unknown is not zero)."""
+
+    def timed_out(*args: Any) -> list[int]:
+        raise QueryTimedOut("The query took longer than 10 s and was stopped.", timeout_s=10)
+
+    monkeypatch.setattr(grade_module, "ids_query", timed_out)
+    query = {"source": "gemeinden", "where": NONE_OF}
+    case = START["n04-grosse-gemeinden"]
+    found = grade(case, answer_with(query, []), None, query_of(query), sample, LIMITS)
+    assert (found.verdict, found.tag, found.flags) == (
+        "wrong",
+        "wrong:missing compare",
+        ("no_assumption",),
+    )
 
 
 def test_silently_wrong_is_a_wrong_answer_without_an_assumption(sample: DataBackend) -> None:

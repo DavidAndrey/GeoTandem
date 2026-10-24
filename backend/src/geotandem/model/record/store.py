@@ -1230,14 +1230,27 @@ class ModelActionStore:
             lambda _: {"status": "aborted", "decision": "aborted"},
         )
 
-    def fail(self, caller: Account, action_id: int, error: dict[str, Any]) -> ModelActionView:
-        """A model or limit error, ``{code, message, details}`` (design M14)."""
+    def fail(
+        self,
+        caller: Account,
+        action_id: int,
+        error: dict[str, Any],
+        *,
+        tokens: Tokens = NO_TOKENS,
+    ) -> ModelActionView:
+        """A model or limit error, ``{code, message, details}`` (design M14);
+        ``tokens`` of a call that was made but whose answer did not read."""
         return self._move(
             caller,
             action_id,
             "fail",
             ["thinking"],
-            lambda _: {"status": "failed", "decision": "failed", "error": error},
+            lambda _: {
+                "status": "failed",
+                "decision": "failed",
+                "error": error,
+                **_tokens(tokens),
+            },
         )
 
     # from proposed

@@ -377,6 +377,30 @@ async def test_the_record_keeps_the_tokens_the_endpoint_reported(
     assert "tokens" not in view.text
 
 
+@pytest.mark.parametrize(
+    ("reply", "code"),
+    [
+        (Completion(text="Gern: die Schulen.", parse_error="not JSON"), "model_unreadable"),
+        (Completion(text='{"kind": "que', finish_reason="length"), "model_truncated"),
+    ],
+)
+async def test_a_failed_answer_keeps_the_tokens_of_its_call(
+    client: httpx.AsyncClient, model: Model, app: FastAPI, reply: Completion, code: str
+) -> None:
+    """The call was made and cost tokens though its answer does not read."""
+    model.fake.script.append(replace(reply, prompt_tokens=900, completion_tokens=4096))
+    response = await ask(client, "reference")
+    assert response.status_code == 202, response.text
+    await model.settle()
+    view = await client.get(action_url(response.json()["id"]))
+
+    assert (view.json()["status"], view.json()["error"]["code"]) == ("failed", code)
+    with Session(app.state.geotandem.backend.engine) as db:
+        row = db.get(ModelAction, response.json()["id"])
+        assert row is not None
+        assert (row.prompt_tokens, row.completion_tokens) == (900, 4096)
+
+
 async def test_the_call_waits_at_most_the_model_call_limit(
     client: httpx.AsyncClient, model: Model
 ) -> None:

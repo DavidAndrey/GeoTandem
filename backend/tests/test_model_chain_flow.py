@@ -415,6 +415,54 @@ async def test_a_chain_keeps_the_tokens_of_its_planning_call_and_re_plans(
     assert "tokens" not in json.dumps(done)
 
 
+def stored_tokens(app: FastAPI, action_id: int) -> tuple[int | None, int | None]:
+    with Session(app.state.geotandem.backend.engine) as db:
+        row = db.get(ModelAction, action_id)
+        assert row is not None
+        return row.prompt_tokens, row.completion_tokens
+
+
+@pytest.mark.parametrize(
+    ("again", "status"),
+    [
+        (planned(MUNICIPALITIES, within(1, 3), why="Gemeinden statt nichts."), "done"),
+        (Completion(text="Ich plane neu.", parse_error="not JSON"), "limited"),
+    ],
+)
+async def test_a_re_plan_adds_its_tokens_to_a_planning_call_that_reported_none(
+    client: httpx.AsyncClient,
+    app: FastAPI,
+    model: Model,
+    levels: dict[str, int],
+    again: Completion,
+    status: str,
+) -> None:
+    """The re-plan's tokens count from nothing (coalesce), also when its answer
+    does not read (``replan_limit``)."""
+    await choose(client, levels["Automatisch"])
+    approved = await ask_chain(client, app, model, planned(*EMPTY_THEN))
+    assert stored_tokens(app, approved["id"]) == (None, None)
+    model.script(replace(again, prompt_tokens=500, completion_tokens=20))
+    done, _ = await drive(client, app, approved["id"])
+
+    assert done["status"] == status
+    assert stored_tokens(app, approved["id"]) == (500, 20)
+
+
+@pytest.mark.parametrize("case_id", ["step_limit", "clarification"])
+async def test_a_planning_call_that_proposes_nothing_keeps_its_tokens(
+    client: httpx.AsyncClient, app: FastAPI, model: Model, levels: dict[str, int], case_id: str
+) -> None:
+    """A refused plan and a clarification instead of a plan keep the call's tokens."""
+    scripted = completion(case(case_id))
+    assert isinstance(scripted, Completion)
+    first = replace(scripted, prompt_tokens=700, completion_tokens=30)
+    asked = await ask_chain(client, app, model, first)
+
+    assert asked["status"] in ("refused", "answered")
+    assert stored_tokens(app, asked["id"]) == (700, 30)
+
+
 async def test_an_empty_last_step_is_the_result(
     client: httpx.AsyncClient, app: FastAPI, model: Model, levels: dict[str, int]
 ) -> None:

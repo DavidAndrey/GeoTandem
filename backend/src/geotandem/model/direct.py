@@ -19,7 +19,7 @@ from geotandem.catalog import ModelProfile
 from geotandem.levels import CellMode, Level, OpClass, strictest
 from geotandem.llm import LLMClient
 from geotandem.model.prompt import FollowUp, Prompt, build_prompt
-from geotandem.model.result import NO_TOKENS, Tokens, parse_answer
+from geotandem.model.result import Tokens, parse_answer
 from geotandem.model.schemas import (
     CannotAnswer,
     Clarification,
@@ -72,7 +72,7 @@ class DirectAnswer:
     governance: Governance | None
     refusal: Refusal | None
     latency_ms: int
-    tokens: Tokens = NO_TOKENS
+    tokens: Tokens
 
 
 @dataclass(frozen=True)

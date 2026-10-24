@@ -111,7 +111,11 @@ def grade(
     assert query is not None
     if case.gold or case.gold_any:
         # More than one fair reading with different features: any one passes.
-        golds = case.gold_any or ([case.gold] if case.gold else [])
+        if case.gold_any:
+            golds = case.gold_any
+        else:
+            assert case.gold is not None
+            golds = [case.gold]
         got = ids_query(query, backend, limits)
         wants = [ids_query(query_of(gold), backend, limits) for gold in golds]
         if got in wants:
@@ -130,6 +134,8 @@ def grade(
                 break
     if wrong is None:
         return PASS
+    # Only for the flags (D6): the harness keeps the tag and discards them, a run
+    # stores them; this branch needs no result set for its verdict.
     try:
         hits: list[int] | None = ids_query(query, backend, limits)
     except QueryError:  # the verdict stands; only the flag is unknown

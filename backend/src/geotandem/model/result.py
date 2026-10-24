@@ -228,16 +228,25 @@ def truncated(completion: Completion) -> ActionError:
     )
 
 
+class AnswerError(ActionError):
+    """An answer that does not read (``model_unreadable``, ``model_truncated``),
+    with what its call cost: the record keeps the tokens of a failed call too
+    (bewertung.md 10). ``tokens`` is no detail, so no error body shows it."""
+
+    def __init__(self, error: ActionError, tokens: Tokens) -> None:
+        super().__init__(error.code, error.message, http_status=error.status, **error.details)
+        self.tokens = tokens
+
+
 def parse_answer(completion: Completion, approach: Approach) -> Answer:
     """The completion as an answer of ``approach``; ``model_truncated`` when it
     does not read and the model stopped at its length limit, ``model_unreadable``
-    otherwise."""
+    otherwise, each as an ``AnswerError`` with the completion's tokens."""
     try:
         return _parse(completion, approach)
-    except ActionError:
-        if completion.finish_reason == "length":
-            raise truncated(completion) from None
-        raise
+    except ActionError as exc:
+        error = truncated(completion) if completion.finish_reason == "length" else exc
+        raise AnswerError(error, Tokens.of(completion)) from None
 
 
 _FENCE = re.compile(r"\A\s*```(?:json)?[ \t]*\n(.*)\n[ \t]*```\s*\Z", re.DOTALL)

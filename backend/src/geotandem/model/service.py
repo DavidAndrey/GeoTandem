@@ -173,7 +173,7 @@ from geotandem.model.record import (
     utc_now,
 )
 from geotandem.model.represent import query_layers, without_restriction
-from geotandem.model.result import Tokens
+from geotandem.model.result import NO_TOKENS, AnswerError, Tokens
 from geotandem.model.schemas import (
     CHAIN_TIME_LIMIT_S,
     MAX_STEPS,
@@ -848,6 +848,7 @@ class PromptFlow:
     ) -> Callable[[], ModelActionView]:
         """The model's answer, as the write that stores it."""
         found: DirectAnswer | _Planned
+        tokens = NO_TOKENS
         try:
             client = self.client_factory(call.endpoint)
             try:
@@ -862,12 +863,14 @@ class PromptFlow:
             error = _error(exc.code, exc.message, cause=exc.cause)
         except ActionError as exc:  # model_unreadable; its cause names no text
             error = _error(exc.code, exc.message, **exc.details)
+            if isinstance(exc, AnswerError):  # the call was made: it cost tokens
+                tokens = exc.tokens
         except Exception as exc:
             log.error("model action %d: the call failed (%s)", action_id, type(exc).__name__)
             error = _error("internal_error", "The model call stopped unexpectedly.")
         else:
             return partial(self._keep, store, caller, action_id, found)
-        return partial(store.fail, caller, action_id, error)
+        return partial(store.fail, caller, action_id, error, tokens=tokens)
 
     def _plan(self, client: LLMClient, call: _Call) -> _Planned:
         """The chain's planning call (P4): one call, the plan checked whole in the
@@ -1792,6 +1795,8 @@ class _Runner:
                 self.stop("replan_limit", _error(exc.code, exc.message, cause=exc.cause))
             return False
         except ActionError as exc:  # context_too_large, quota_exceeded, model_unreadable
+            if isinstance(exc, AnswerError):  # the re-plan's call was made
+                self.flow.store.add_tokens(self.action_id, exc.tokens)
             self.stop("replan_limit", _error(exc.code, exc.message, **exc.details))
             return False
         if self.cancel.is_set():

@@ -1,29 +1,12 @@
 {
- "note": "Recorded answers of the testplans (backend/evals/results, git-ignored), one per kind of outcome, with the outcome the grader gives them (plan E3, WP86). run: the label of the result file; tag: the verdict string the harness wrote, after evals/regrade.py on the current start set.",
+ "note": "Recorded answers of the testplans (backend/evals/results, git-ignored), one per kind of outcome, with the outcome the grader gives them (plan E3, WP86). run: the label of the result file; tag: the verdict string the harness wrote; finish_reason: as the call reported it, for an answer that does not read, after evals/regrade.py on the current start set.",
  "answers": [
-  {
-   "what": "error:llm_rejected",
-   "case": "doc2-gut-erschlossen",
-   "run": "x-smoke-luna-t1",
-   "tag": "error:llm_rejected",
-   "verdict": "error",
-   "code": "llm_rejected",
-   "flags": []
-  },
-  {
-   "what": "error:llm_timeout",
-   "case": "doc2-gut-erschlossen",
-   "run": "a-raw-luna-s6",
-   "tag": "error:llm_timeout",
-   "verdict": "error",
-   "code": "llm_timeout",
-   "flags": []
-  },
   {
    "what": "error:model_truncated",
    "case": "doc1-primar-koeniz",
    "run": "p0-gpt-oss-low",
    "raw": "",
+   "finish_reason": "length",
    "tag": "error:model_truncated",
    "verdict": "error",
    "code": "model_truncated",
@@ -34,6 +17,7 @@
    "case": "doc3-weit-von-bahn",
    "run": "p0-gpt-oss-low-s6",
    "raw": "",
+   "finish_reason": "stop",
    "tag": "error:model_unreadable",
    "verdict": "error",
    "code": "model_unreadable",
@@ -44,6 +28,7 @@
    "case": "h27-gross-mit-sek",
    "run": "ho-haiku",
    "raw": "{\"kind\":\"query\",\"explanation\":\"Gemeinden mit einer Fläche über 30 km², die mindestens eine Schule mit Sekundarstufe I enthalten.\",\"assumptions\":[{\"text\":\"«Über 30 km²» heisst Fläche strikt grösser als 30 km².\",\"condition\":[0]},{\"text\":\"«Schule mit Sekundarstufe I» heisst Schule mit dem Attribut Sekundarstufe I = ja.\",\"condition\":[1,\"where\"]},{\"text\":\"Eine Schule gehört zu einer Gemeinde, wenn ihr Punkt innerhalb des Gemeindepolygons liegt.\",\"condition\":[1]}],\"query\":{\"source\":\"gemeinden\",\"where\":{\"op\":\"and\",\"args\":[{\"op\":\"compare\",\"attr\":\"flaeche_km2\",\"cmp\":\"gt\",\"value\":30},{\"op\":\"related\",\"layer\":\"schulen\",\"predicate\":\"contains\",\"where\":{\"op\":\"compare\",\"attr\":\"sekundarstufe\",\"cmp\":\"eq\",\"value\":true}}]},\"output\":\"map\"}}",
+   "finish_reason": "stop",
    "tag": "error:model_unreadable",
    "verdict": "error",
    "code": "model_unreadable",
