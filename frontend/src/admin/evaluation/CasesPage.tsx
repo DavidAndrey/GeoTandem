@@ -96,7 +96,7 @@ export function CasesPage() {
     <label className="flex items-center gap-1.5 text-sm">
       <span>{label}</span>
       <select
-        className="input py-0.5"
+        className="input max-w-40 py-0.5"
         value={value ?? ''}
         onChange={(e) => setFilter(key, e.target.value || undefined)}
       >
@@ -261,7 +261,7 @@ function CaseRow({ view }: { view: CaseView }) {
       <td>{tagList(c.tags)}</td>
       <td>{originText(c.origin)}</td>
       <td className="whitespace-nowrap">{dataStateText(c.data_state ?? 'sample')}</td>
-      <td>
+      <td className="whitespace-nowrap">
         <CaseStatusLabel status={view.status ?? 'ok'} />
       </td>
     </tr>
