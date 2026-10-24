@@ -1,9 +1,13 @@
 // Administration frame (design D1): side navigation plus the current page.
 import { Trans } from '@lingui/react/macro'
 import { t } from '@lingui/core/macro'
-import { NavLink, Outlet } from 'react-router'
+import { NavLink, Outlet, useLocation } from 'react-router'
 
-type Group = { title: string; links: { to?: string; label: string; from?: string }[] }
+type Group = {
+  title: string
+  /** ``within``: the link is active anywhere below this path, not only at ``to``. */
+  links: { to?: string; label: string; from?: string; within?: string }[]
+}
 
 const groups = (): Group[] => [
   {
@@ -27,6 +31,8 @@ const groups = (): Group[] => [
       { to: '/admin/stufen', label: t`Stufen` },
       { to: '/admin/steckbrief', label: t`Was das Modell sieht` },
       { to: '/admin/modellprotokoll', label: t`Modellprotokoll` },
+      // Enters on Prüffälle until WP93 builds Läufe, the design's default tab.
+      { to: '/admin/bewertung/faelle', label: t`Bewertung`, within: '/admin/bewertung' },
     ],
   },
   {
@@ -35,20 +41,19 @@ const groups = (): Group[] => [
   },
   {
     title: t`Später`,
-    links: [
-      { label: t`Bewertung`, from: 'E3' },
-      { label: 'MCP', from: 'E4' },
-    ],
+    links: [{ label: 'MCP', from: 'E4' }],
   },
 ]
 
-const link = ({ isActive }: { isActive: boolean }) =>
-  `block border-l-2 py-0.5 pl-2 ${isActive ? 'border-accent text-accent-700' : 'border-transparent hover:text-accent-700'}`
+const link = (active: boolean) =>
+  `block border-l-2 py-0.5 pl-2 ${active ? 'border-accent text-accent-700' : 'border-transparent hover:text-accent-700'}`
 
 /** "ab E2": the stage that brings it. */
 const availableFrom = (stage = '') => t`ab ${stage}`
 
 export function AdminLayout() {
+  const { pathname } = useLocation()
+  const within = (path: string) => pathname === path || pathname.startsWith(`${path}/`)
   return (
     <div className="flex min-h-full gap-6">
       <nav aria-label={t`Administration`} className="w-[170px] shrink-0">
@@ -62,7 +67,12 @@ export function AdminLayout() {
               {group.links.map((item) => (
                 <li key={item.label}>
                   {item.to ? (
-                    <NavLink to={item.to} className={link}>
+                    <NavLink
+                      to={item.to}
+                      className={({ isActive }) =>
+                        link(isActive || (item.within !== undefined && within(item.within)))
+                      }
+                    >
                       {item.label}
                     </NavLink>
                   ) : (

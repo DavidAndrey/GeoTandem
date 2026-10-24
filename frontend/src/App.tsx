@@ -5,6 +5,9 @@ import { NavLink, Navigate, Outlet, Route, Routes, useLocation, useParams } from
 import { AdminLayout } from './admin/AdminLayout'
 import { CatalogPage } from './admin/CatalogPage'
 import { ConnectionsPage } from './admin/ConnectionsPage'
+import { CaseDetailPage } from './admin/evaluation/CaseDetailPage'
+import { CasesPage } from './admin/evaluation/CasesPage'
+import { EvaluationLayout, RunsPlaceholder } from './admin/evaluation/EvaluationLayout'
 import { ImportLogPage } from './admin/ImportLogPage'
 import { ImportRunPage } from './admin/ImportRunPage'
 import { ImportWizard } from './admin/ImportWizard'
@@ -134,6 +137,11 @@ export function App() {
               <Route path="steckbrief" element={<ProfilePage />} />
               <Route path="modellprotokoll" element={<ModelLogPage />} />
               <Route path="modellprotokoll/:id" element={<ModelActionPage />} />
+              <Route path="bewertung" element={<EvaluationLayout />}>
+                <Route index element={<RunsPlaceholder />} />
+                <Route path="faelle" element={<CasesPage />} />
+              </Route>
+              <Route path="bewertung/faelle/:id" element={<CaseDetailPage />} />
               <Route path="system" element={<SystemPage />} />
             </Route>
             <Route path="*" element={<NotFound />} />

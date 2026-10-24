@@ -284,6 +284,26 @@ export const api = {
     comparison: (id: number) =>
       request<Comparison>(`/api/model/actions/${id}/comparison`, { method: 'POST' }),
   },
+  // The evaluation's cases (plan E3, WP87): the start set read-only, own cases
+  // created, edited, deleted, imported all or nothing and exported as one file.
+  evaluation: {
+    /** One page of the list, start cases first (V1.1); without ``reference_hits``. */
+    cases: (offset = 0, limit = 200) =>
+      request<CasePage>(`/api/admin/evaluation/cases?offset=${offset}&limit=${limit}`),
+    /** One case with the hits of each reading on its data state (V2). */
+    case: (id: string) => request<CaseView>(`/api/admin/evaluation/cases/${enc(id)}`),
+    create: (body: EvalCase) =>
+      request<CaseView>('/api/admin/evaluation/cases', json('POST', body)),
+    update: (id: string, body: EvalCase) =>
+      request<CaseView>(`/api/admin/evaluation/cases/${enc(id)}`, json('PUT', body)),
+    remove: (id: string) =>
+      request<undefined>(`/api/admin/evaluation/cases/${enc(id)}`, { method: 'DELETE' }),
+    /** All or nothing (V1.3): ``problems`` name each case that stopped it. */
+    importFile: (file: unknown) =>
+      request<ImportResult>('/api/admin/evaluation/cases/import', json('POST', file)),
+    /** A link, not a request: the browser downloads the own cases as a case file. */
+    exportUrl: '/api/admin/evaluation/cases/export',
+  },
   sampleRows: (layer: string, limit = 50) =>
     request<QueryResult>('/api/query', json('POST', { source: layer, output: 'table', limit })),
 

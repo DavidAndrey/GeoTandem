@@ -82,8 +82,20 @@ export function AnalysisConditions() {
   return <ConditionTree result={result} tree={tree} origin={origin} />
 }
 
-/** A query object as the answer shows it (design M2): result layer, tree, "Technisch". */
-export function QueryTree({ query, line }: { query: unknown; line?: LineStyle }) {
+/**
+ * A query object as the answer shows it (design M2): result layer, tree,
+ * "Technisch". ``counts``: hits per condition by row id (B2; a case's
+ * reference, design V2.1).
+ */
+export function QueryTree({
+  query,
+  line,
+  counts,
+}: {
+  query: unknown
+  line?: LineStyle
+  counts?: Map<string, number>
+}) {
   const read = readQuery(query)
   const catalog = useLayers().data
   const source = read.source
@@ -92,7 +104,12 @@ export function QueryTree({ query, line }: { query: unknown; line?: LineStyle })
   return (
     <div className="flex flex-col gap-1">
       <p className="label-caps">{title ? t`Abfrage · Ergebnis ${title}` : t`Abfrage`}</p>
-      <ConditionTree result={source ? catalogResult(source) : null} tree={read.tree} line={line} />
+      <ConditionTree
+        result={source ? catalogResult(source) : null}
+        tree={read.tree}
+        line={line}
+        counts={counts}
+      />
       {extra && (
         <p className="text-muted text-xs">{t`Ausserdem, nur unter „Technisch“: ${extra}`}</p>
       )}
