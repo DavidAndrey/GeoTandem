@@ -27,7 +27,7 @@ from geotandem.catalog import ModelProfile
 from geotandem.llm import LLMClient, Message
 from geotandem.model.chain.plan import CheckedStep, check_plan
 from geotandem.model.prompt import Prompt, fit
-from geotandem.model.result import Answer, parse_answer
+from geotandem.model.result import Answer, Tokens, parse_answer
 from geotandem.model.schemas import MAX_REPLANS, MAX_STEPS, ModelView, PlanAnswer, Refusal
 from geotandem.tools import ToolContext
 
@@ -41,10 +41,11 @@ def ask(
     messages: Sequence[Message],
     schema: dict[str, Any],
     deadline: float | None = None,
-) -> Answer:
-    """One model call of the chain; ``model_unreadable`` as for the direct query."""
+) -> tuple[Answer, Tokens]:
+    """One model call of the chain, with what it cost; ``model_unreadable`` as
+    for the direct query (an ``AnswerError``, which carries the tokens)."""
     completion = client.complete(messages, schema=schema, deadline=deadline)
-    return parse_answer(completion, "chain")
+    return parse_answer(completion, "chain"), Tokens.of(completion)
 
 
 def said(answer: PlanAnswer) -> str:

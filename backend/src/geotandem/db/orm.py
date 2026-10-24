@@ -347,6 +347,11 @@ class ModelAction(Base):
     replans: Mapped[int] = mapped_column(default=0, server_default="0")
     stamp: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     latency_ms: Mapped[int | None]
+    prompt_tokens: Mapped[int | None]
+    completion_tokens: Mapped[int | None]
+    """As the endpoint reported them (bewertung.md 10): the direct query's
+    call, a chain's planning call and its re-plans added up; ``None`` when the
+    endpoint reported none. Never part of a view."""
     called_at: Mapped[datetime | None]
     """When the model call started; ``None`` for a request aborted before it.
     The request limit counts only requests that reached the call (P5)."""
