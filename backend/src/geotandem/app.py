@@ -40,6 +40,7 @@ from geotandem.config import Settings, get_settings
 from geotandem.connections import Connections
 from geotandem.data.spatialite import SpatiaLiteBackend
 from geotandem.db.bootstrap import bootstrap
+from geotandem.evaluation.cases import check_start_set
 from geotandem.importing import log as import_log
 from geotandem.importing.staging import Staging
 from geotandem.llm.openai_compat import OpenAICompatClient
@@ -67,6 +68,7 @@ def start(settings: Settings) -> AppState:
         log.warning("%d model actions were left open by the last shutdown", len(closed))
     if settings.load_sample_data:
         load_sample(backend)
+    check_start_set(settings, engine)
     staging = Staging(settings.staging_dir)
     staging.cleanup()
     throttle = LoginThrottle(

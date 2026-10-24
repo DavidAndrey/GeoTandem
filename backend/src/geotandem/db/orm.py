@@ -415,6 +415,25 @@ class ModelCall(Base):
     """Naive UTC from the application's clock, like the record's times."""
 
 
+class OwnCase(Base):
+    """An own case of the evaluation (plan E3, D2): authored, imported or taken
+    from the log. The start set stays files (``schema/eval-cases``). ``body`` is
+    the case as the case file writes it, without ``null`` fields; ``split``,
+    ``origin`` and ``data_state`` repeat its fields for the list's filters."""
+
+    __tablename__ = "eval_case"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    case_id: Mapped[str] = mapped_column(String(63), unique=True)
+    split: Mapped[str] = mapped_column(String(16), index=True)
+    origin: Mapped[str] = mapped_column(String(16), index=True)
+    data_state: Mapped[str] = mapped_column(String(16), index=True)
+    body: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime]
+    updated_at: Mapped[datetime]
+    """Naive UTC from the application's clock."""
+
+
 class AppMeta(Base):
     """Instance-wide facts fixed at first start, e.g. the internal CRS."""
 

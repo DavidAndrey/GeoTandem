@@ -34,6 +34,8 @@ RUN uv sync --frozen --no-dev --package geotandem --no-editable \
     && python -c "import sqlite3; c = sqlite3.connect(':memory:'); c.enable_load_extension(True); c.load_extension('mod_spatialite')"
 
 COPY --from=frontend /app/frontend/dist /app/frontend/dist
+# The start set of the evaluation (plan E3, D2): read-only, beside the package.
+COPY schema/eval-cases /app/schema/eval-cases
 
 RUN useradd --uid 10001 --home-dir /data geotandem \
     && mkdir /data && chown geotandem /data
@@ -41,6 +43,7 @@ USER geotandem
 ENV PATH=/opt/venv/bin:$PATH \
     GEOTANDEM_DATA_DIR=/data \
     GEOTANDEM_FRONTEND_DIR=/app/frontend/dist \
+    GEOTANDEM_EVAL_CASES_DIR=/app/schema/eval-cases \
     GEOTANDEM_LOAD_SAMPLE_DATA=true
 VOLUME /data
 EXPOSE 8000

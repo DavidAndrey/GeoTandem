@@ -22,7 +22,7 @@ from pydantic import BaseModel, Field, StringConstraints
 from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session, defer
 
-from geotandem.catalog import list_layers
+from geotandem.catalog import dataset_versions
 from geotandem.data import DataBackend
 from geotandem.db.orm import AnalysisSession
 from geotandem.db.spatialite import reading
@@ -133,8 +133,7 @@ def _check_size(state: dict[str, Any]) -> None:
 
 def _versions(backend: DataBackend) -> dict[str, str | None]:
     """Current dataset version of every layer the account may see."""
-    layers = list_layers(backend.engine, only=backend.layer_names())
-    return {layer.name: layer.dataset_version for layer in layers}
+    return dataset_versions(backend.engine, backend.layer_names())
 
 
 def _stamp(row: AnalysisSession) -> SessionStamp | None:

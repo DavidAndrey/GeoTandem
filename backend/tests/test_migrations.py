@@ -439,3 +439,30 @@ def test_tokens_come_and_go_with_0014_and_keep_the_records(settings: Settings) -
     with engine.connect() as conn:
         assert conn.scalar(text("SELECT count(*) FROM model_action")) == 1
     migrate.upgrade(engine)
+
+
+def test_own_cases_come_and_go_with_0015(settings: Settings) -> None:
+    """Plan E3, WP87: own cases in a table of their own, with the list's indexes
+    and unique ids; a downgrade removes it and leaves the rest as it was."""
+    engine = make_engine(settings)
+    migrate.upgrade(engine, "0014")
+    assert "eval_case" not in inspect(engine).get_table_names()
+
+    migrate.upgrade(engine)
+
+    indexes = {i["name"] for i in inspect(engine).get_indexes("eval_case")}
+    assert indexes >= {"ix_eval_case_split", "ix_eval_case_origin", "ix_eval_case_data_state"}
+    insert = text(
+        "INSERT INTO eval_case (case_id, split, origin, data_state, body, created_at,"
+        " updated_at) VALUES ('eigene-1', 'confirm', 'authored', 'sample', '{}',"
+        " '2026-10-24 08:00:00', '2026-10-24 08:00:00')"
+    )
+    with engine.begin() as conn:
+        conn.execute(insert)
+    with pytest.raises(IntegrityError), engine.begin() as conn:
+        conn.execute(insert)
+
+    migrate.downgrade(engine, "0014")
+    assert "eval_case" not in inspect(engine).get_table_names()
+    assert "model_action" in inspect(engine).get_table_names()
+    migrate.upgrade(engine)
