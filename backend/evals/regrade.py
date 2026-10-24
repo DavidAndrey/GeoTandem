@@ -18,12 +18,13 @@ from pathlib import Path
 
 from casefiles import load_cases
 from compare import newest
-from run import HERE, LIMITS, grade
+from run import HERE, LIMITS
 
 from geotandem.catalog import model_profile
 from geotandem.config import Settings
 from geotandem.data.spatialite import SpatiaLiteBackend
 from geotandem.db.bootstrap import bootstrap
+from geotandem.evaluation.grade import grade
 from geotandem.llm import Completion
 from geotandem.model.errors import ActionError
 from geotandem.model.result import parse_answer
@@ -47,7 +48,7 @@ def main() -> int:
         source = newest(label)
         lines = source.read_text("utf-8").splitlines()
         header = json.loads(lines[0])
-        cases = {c["id"]: c for c in load_cases(header.get("cases") or "cases")}
+        cases = {c.id: c for c in load_cases(header.get("cases") or "cases")}
         out = HERE / "results" / f"{datetime.now():%Y%m%d-%H%M%S}-{label}.jsonl"
         changed = 0
         with out.open("w", encoding="utf-8") as log:
@@ -72,7 +73,8 @@ def main() -> int:
                             query = checked.query
                         else:
                             refusal = checked
-                    verdict = grade(cases[record["case"]], answer, refusal, query, backend)
+                    case = cases[record["case"]]
+                    verdict = grade(case, answer, refusal, query, backend, LIMITS).tag
                     changed += verdict != record["verdict"]
                     record["verdict"] = verdict
                 log.write(json.dumps(record, ensure_ascii=False) + "\n")
