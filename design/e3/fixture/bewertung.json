@@ -1,0 +1,75 @@
+{
+  "_hinweis": "Beispieldaten für die E3-Referenz. Zahlen aus BRIEF §6 (benchmarks.md, Läufe 3–5); Werte mit \"_ergaenzt\": true sind für das Design gesetzt und vor dem Bau zu prüfen.",
+  "begriffe": {
+    "urteile": ["richtig", "falsch", "abgewiesen", "andere Antwortart", "nicht lesbar/Fehler"],
+    "merkmale_falsch": ["ohne Annahme", "0 Treffer"],
+    "still_falsch": "falsch und ohne genannte Annahme",
+    "kurzform_zelle": { "f": "falsch", "a": "abgewiesen", "x": "andere Antwortart", "n": "nicht lesbar/Fehler" },
+    "aussagen": ["besser", "schlechter", "nicht belegt"]
+  },
+  "startbestand": { "anzahl": 71, "abstimmung": 33, "bestaetigung": 38, "datenstand": "Beispieldaten" },
+  "pruefaelle": [
+    { "id": "doc1-primar-koeniz", "frage": "Welche Primarschulen gibt es in Köniz?", "art": "Abfrage", "teil": "Abstimmung", "stichwoerter": ["räumlich", "mehrdeutig"], "herkunft": "Start", "datenstand": "Beispieldaten",
+      "lesarten": [
+        { "name": "A", "ziel": "schulen", "baum": { "op": "UND", "kinder": [ { "typ": "attribut", "feld": "schulart", "op": "=", "wert": "Primarschule" }, { "typ": "raum", "op": "liegt in", "layer": "gemeinden", "filter": { "feld": "name", "op": "=", "wert": "Köniz" } } ] }, "treffer": 14 },
+        { "name": "B", "ziel": "schulen", "baum": { "op": "UND", "kinder": [ { "typ": "attribut", "feld": "schulstufen", "op": "enthält", "wert": "Primar" }, { "typ": "raum", "op": "liegt in", "layer": "gemeinden", "filter": { "feld": "name", "op": "=", "wert": "Köniz" } } ] }, "treffer": 17 }
+      ], "anmerkung": "„Primarschule“ fachlich nicht eindeutig; beide Lesarten und eine Rückfrage gelten." },
+    { "id": "n03-einwohner-tabelle", "frage": "Gemeinden mit mehr als 10 000 Einwohnern", "art": "Abfrage", "teil": "Abstimmung", "stichwoerter": ["Attribut", "Schwelle"], "herkunft": "Start", "datenstand": "Beispieldaten",
+      "lesarten": [ { "ziel": "gemeinden", "baum": { "op": "UND", "kinder": [ { "typ": "attribut", "feld": "einwohner", "op": ">", "wert": 10000 } ] }, "treffer": 13 } ] },
+    { "id": "attr-franzoesisch", "frage": "Welche Schulen unterrichten auf Französisch?", "art": "Abfrage", "teil": "Abstimmung", "stichwoerter": ["Attribut", "Codeliste"], "herkunft": "Start", "datenstand": "Beispieldaten" },
+    { "id": "n13-bahnhof-bern", "frage": "Schulen im Umkreis von 1 km um den Bahnhof Bern", "art": "Abfrage", "teil": "Bestätigung", "stichwoerter": ["räumlich", "Ortsname"], "herkunft": "Start", "datenstand": "Beispieldaten",
+      "lesarten": [ { "ziel": "schulen", "baum": { "op": "UND", "kinder": [ { "typ": "raum", "op": "<= distanz", "layer": "haltestellen", "meter": 1000, "filter": { "feld": "name", "op": "=", "wert": "Bern" } } ] }, "treffer": 23, "_ergaenzt": true } ] },
+    { "id": "n15-je-gemeinde", "frage": "Wie viele Schulen gibt es je Gemeinde?", "art": "Verhalten", "teil": "Abstimmung", "stichwoerter": ["Zählung"], "herkunft": "Start", "datenstand": "Beispieldaten",
+      "erwartet": "nicht beantwortbar", "auch_zulaessig": ["andere Arbeitsweise"] },
+    { "id": "e-turnhalle-ostermundigen", "frage": "Schulanlagen mit Turnhalle in Ostermundigen", "art": "Abfrage", "teil": "Abstimmung", "stichwoerter": ["Attribut", "räumlich"], "herkunft": "Arbeitsplatz", "datenstand": "Betriebsdaten", "treffer": 9, "von": 248, "_ergaenzt": true },
+    { "id": "e-kitas-bahnhof", "frage": "Kitas nahe an Bahnhöfen", "art": "Abfrage", "teil": "Bestätigung", "stichwoerter": ["räumlich"], "herkunft": "Protokoll", "datenstand": "Betriebsdaten", "status": "veraltet", "grund": "Layer Kitas gelöscht oder nicht sichtbar", "_ergaenzt": true },
+    { "id": "e-schulweg-import", "frage": "Schulen mit Schulweg über 2 km", "art": "Abfrage", "teil": "Bestätigung", "stichwoerter": ["Attribut"], "herkunft": "Import", "datenstand": "Betriebsdaten", "status": "Datenstand geändert", "grund": "Schulanlagen neu importiert 21.10.", "_ergaenzt": true }
+  ],
+  "messpunkte": [
+    { "id": "gemma-p0", "anbindung": "gemma4:12b", "host": "lokal", "profil": { "beispiele": "Standard", "platzierung": "P0", "ausgabe": "erzwungen" }, "stufe": "Prüfen", "median_s": 1.4, "p90_s": 3.1, "preis_je_frage_usd": null },
+    { "id": "haiku-p0", "anbindung": "Claude Haiku 5.5", "host": "api.anthropic.com", "profil": { "beispiele": "Standard", "platzierung": "P0", "ausgabe": "nur Text" }, "stufe": "Prüfen", "median_s": 3.2, "p90_s": 5.8, "preis_je_frage_usd": 0.0013 },
+    { "id": "luna-p0", "anbindung": "gpt-6-luna", "host": "api.openai.com", "profil": { "beispiele": "Standard", "platzierung": "P0", "ausgabe": "erzwungen" }, "stufe": "Prüfen", "median_s": 2.0, "p90_s": 3.6, "preis_je_frage_usd": 0.0008, "vergleichsbasis": true, "system_prompt_geaendert": true },
+    { "id": "luna-p9", "anbindung": "gpt-6-luna", "host": "api.openai.com", "profil": { "beispiele": "Standard", "platzierung": "P9", "ausgabe": "erzwungen" }, "stufe": "Prüfen", "median_s": 2.1, "p90_s": 3.9, "preis_je_frage_usd": 0.0008 }
+  ],
+  "laeufe": [
+    { "id": 14, "start": "23.10. 10:02", "konto": "admin", "status": "läuft", "fortschritt": { "antworten": 1164, "von": 2840 }, "kosten_bisher_usd": 0.84, "rest_min": 28 },
+    { "id": 13, "start": "22.10. 15:30", "ende": "22.10. 16:18", "konto": "admin", "status": "fertig", "umfang": "vollständig", "bloecke": 2, "je_block": 5, "faelle": 71, "datenstand": "Beispieldaten", "messpunkte": ["gemma-p0", "haiku-p0", "luna-p0", "luna-p9"],
+      "beschriftung": { "schema": "pruefall v3", "urteilsregeln": "urteil v2", "datenstand_hash": "#b20a", "stufe_hash": "#7c1e", "system_prompt_hash": "#41d9", "system_prompt_luna_p0_hash": "#8e02", "temperatur": 0, "seeds": "1–10" },
+      "ergebnis_abstimmung": {
+        "gemma-p0": { "richtig": 272, "von": 330, "quote": 82.4, "still_falsch": 14, "nicht_lesbar": 6, "verhalten": "44 von 50", "tokens_mio": 1.9, "kosten_usd": null },
+        "haiku-p0": { "richtig": 318, "von": 330, "quote": 96.4, "still_falsch": 2, "nicht_lesbar": 0, "verhalten": "49 von 50", "tokens_mio": 2.3, "kosten_usd": 0.92 },
+        "luna-p0":  { "richtig": 280, "von": 330, "quote": 84.8, "still_falsch": 9, "nicht_lesbar": 1, "verhalten": "46 von 50", "tokens_mio": 2.1, "kosten_usd": 0.57 },
+        "luna-p9":  { "richtig": 291, "von": 330, "quote": 88.2, "still_falsch": 17, "nicht_lesbar": 1, "verhalten": "47 von 50", "tokens_mio": 2.2, "kosten_usd": 0.59, "_ergaenzt": true }
+      },
+      "vergleich_bestaetigung": {
+        "basis": "luna-p0",
+        "gemma-p0": { "aussage": "nicht belegt", "punkte": -3.7, "spanne": [-15.8, 7.6] },
+        "haiku-p0": { "aussage": "besser", "punkte": 13.7, "spanne": [6.1, 21.0], "_ergaenzt": true },
+        "luna-p9":  { "aussage": "besser", "punkte": 6.6, "spanne": [1.3, 13.2] }
+      },
+      "zellen": {
+        "doc1-primar-koeniz":    { "gemma-p0": [9, "1 f"], "haiku-p0": [10, ""], "luna-p0": [8, "2 f"], "luna-p9": [9, "1 f"] },
+        "n13-bahnhof-bern":      { "gemma-p0": [0, "10 f"], "haiku-p0": [0, "9 f · 1 a"], "luna-p0": [0, "10 f"], "luna-p9": [0, "10 f"] },
+        "n03-einwohner-tabelle": { "gemma-p0": [7, "3 f"], "haiku-p0": [10, ""], "luna-p0": [9, "1 f"], "luna-p9": [4, "6 f", { "still_falsch": 6 }] },
+        "attr-franzoesisch":     { "gemma-p0": [10, ""], "haiku-p0": [10, ""], "luna-p0": [10, ""], "luna-p9": [10, ""] },
+        "n15-je-gemeinde":       { "gemma-p0": [8, "2 x"], "haiku-p0": [10, ""], "luna-p0": [6, "4 x"], "luna-p9": [8, "2 x"] }
+      },
+      "fall_im_lauf_n03_luna_p9": {
+        "referenz_treffer": 13, "antwort_treffer": 102, "nur_antwort": 89, "nur_referenz": 0,
+        "unterschied": [ { "art": "fehlende Bedingung", "bedingung": "einwohner > 10000" } ],
+        "erklaerung": "Ich habe Gemeinden mit mehr als 10 000 Einwohnern gewählt.",
+        "annahmen": [], "urteil": "falsch", "merkmale": ["ohne Annahme"]
+      } },
+    { "id": 12, "start": "22.10. 11:05", "status": "fertig", "umfang": "schnelltest", "faelle": 71, "messpunkte": 3, "kosten_usd": 0.51, "basis_quote": 85.1 },
+    { "id": 11, "start": "21.10. 17:20", "status": "fertig", "umfang": "vollständig", "faelle": 3, "datenstand": "Betriebsdaten", "messpunkte": 1, "basis_quote": 54.0, "_hinweis": "gemma4:12b auf importiertem Kunden-Layer: 272 → 142 (BRIEF §6, Phase 4)" },
+    { "id": 10, "start": "21.10. 09:44", "status": "unterbrochen", "kosten_usd": 0.77 },
+    { "id": 9, "start": "20.10. 14:10", "status": "abgebrochen", "kosten_usd": 0.12 },
+    { "id": 8, "start": "19.10. 16:00", "status": "fertig", "umfang": "vollständig", "faelle": 71, "datenstand": "Beispieldaten", "messpunkte": 4, "basis_quote": 78.2, "kosten_usd": 2.01, "_ergaenzt": true }
+  ],
+  "abschaetzung_lauf_13": { "anfragen": 2840, "tokens_mio": 8.5, "kosten_usd": 2.08, "dauer_min": 48, "extern_hosts": ["api.anthropic.com", "api.openai.com"] },
+  "steckbrief": {
+    "beispieldaten": { "beschriftungen": 100, "codelisten": 100, "beschreibungen": 100 },
+    "schulanlagen_import": { "layer": "Schulanlagen (Import 21.10.)", "objekte": 248, "beschriftungen": { "ist": 0, "von": 24 }, "codelisten": { "ist": 0, "von": 6, "beispiele": ["schulstufe", "sprache", "traeger"] }, "beschreibungen": { "ist": 1, "von": 25 } },
+    "betriebsdaten_gesamt": { "beschriftungen": 62, "codelisten": 57, "beschreibungen": 71 }
+  }
+}
