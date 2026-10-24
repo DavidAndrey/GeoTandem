@@ -4,23 +4,34 @@
 The **start set** is the two files of ``schema/eval-cases`` (``Settings.
 eval_cases_dir``), read once per process and never written: a start case is
 read only, a copy of it becomes an own case. **Own cases** are the rows of
-``CaseStore``.
+``CaseStore``; start and own cases together are at most ``MAX_CASES``, so an
+export of both is still one case file. Ids are unique over both: an own case
+cannot take a start id. Should a later start set bring an id an own case
+already has, the start case wins on read and in the list both show; the
+start says so in its log (``check_start_set``), naming the ids to rename.
 
 A case runs on a **data state** (D1), here a ``World``: the backend it reads,
 the layer profile the model gets over it and the checks of the model path.
 
 - ``sample``: an isolated SpatiaLite database built from the packaged sample
-  data, as the harness builds it (``evals/run.py``), once per process and only
-  read, so the start set means the same whatever the live catalog holds;
+  data, as the harness builds it (``evals/run.py``), once per process, then
+  opened read-only, so the start set means the same whatever the live
+  catalog holds;
 - ``live``: the live catalog as the administrator sees it (D4), read-only.
 
 A case is checked on its data state when it is created, edited or imported,
 as a model's query is checked (``validate_model_query``): a reference that
 the application would refuse from a model cannot become the right answer.
-A live case names the layers it uses; one of them gone or outside the
-administrator's model world makes it ``stale`` (D3), so a stale case can
-only become stale, never be created. Its status is computed on every read:
-``stale``, or ``dataset_changed`` when a layer was re-imported since.
+A live case names exactly the layers it uses, and on creation and edit each
+with the dataset version it has now (an imported file keeps its versions).
+A named layer gone or outside the administrator's model world makes it
+``stale`` (D3), so a stale case can only become stale, never be created.
+Its status is computed on every read: ``stale``, or ``dataset_changed`` when
+a layer was re-imported since.
+
+An imported case is ``origin: import``: an ``authored`` or ``log`` case of a
+file becomes one, and its ``origin_action`` is dropped, since an action id of
+another instance names nothing here.
 
 Nothing here logs a case: prompts and references are the administrator's.
 """
@@ -38,19 +49,27 @@ from functools import cache
 from pathlib import Path
 from typing import Any, Final
 
+from pydantic import ValidationError
+from sqlalchemy import Engine, select
+from sqlalchemy.orm import Session
+
 from geotandem.auth.accounts import Account
-from geotandem.catalog import ModelProfile, list_layers, model_profile
+from geotandem.catalog import ModelProfile, dataset_versions, model_profile
 from geotandem.config import Settings
 from geotandem.data import DataBackend, Limits, Op
 from geotandem.data.spatialite import SpatiaLiteBackend
 from geotandem.data.view import LayerView
-from geotandem.db.bootstrap import bootstrap
+from geotandem.db.bootstrap import ConfigurationError, bootstrap
+from geotandem.db.engine import make_engine
+from geotandem.db.orm import ModelAction
+from geotandem.db.spatialite import reading
 from geotandem.engine import QueryError, count_query
 from geotandem.evaluation.schemas import (
     CASE_FILE_FORMAT,
     CASE_FILE_VERSION,
     MAX_CASES,
     CaseFile,
+    CaseLayer,
     CasePage,
     CaseStatus,
     CaseView,
@@ -60,11 +79,18 @@ from geotandem.evaluation.schemas import (
     ImportResult,
     Split,
 )
-from geotandem.evaluation.store import CaseFilters, CaseIdTaken, CaseStore, StoredCase
+from geotandem.evaluation.store import (
+    CaseFilters,
+    CaseIdTaken,
+    CaseStore,
+    StoredCase,
+    TooManyCases,
+    body_of,
+)
 from geotandem.model.represent import query_layers
 from geotandem.model.schemas import Refusal
 from geotandem.model.service import profile_for
-from geotandem.model.validate import Validated, validate_model_query
+from geotandem.model.validate import validate_model_query
 from geotandem.sample.load import load_sample
 from geotandem.tools import ToolContext
 from geotandem_query import QueryObject
@@ -111,8 +137,21 @@ def _not_found(case_id: str) -> CaseError:
     return CaseError(404, "not_found", f"There is no case '{case_id}'.", case_id=case_id)
 
 
-def _taken(case_id: str) -> CaseError:
-    return CaseError(409, "case_id_taken", f"A case '{case_id}' exists already.", case_id=case_id)
+def _taken(case_id: str | None) -> CaseError:
+    if case_id is None:
+        message = "An id of the file was taken meanwhile by another request."
+    else:
+        message = f"A case '{case_id}' exists already."
+    return CaseError(409, "case_id_taken", message, case_id=case_id)
+
+
+def _too_many(held: int, at_most: int) -> CaseError:
+    return _invalid(
+        None,
+        f"An instance keeps at most {at_most} own cases beside the start set; it has {held}.",
+        reason="too_many",
+        max=at_most,
+    )
 
 
 # --- the start set -----------------------------------------------------------------
@@ -124,16 +163,38 @@ def cases_dir(settings: Settings) -> Path:
 
 @cache
 def _start_set(directory: Path) -> tuple[EvalCase, ...]:
-    return tuple(
-        case
-        for name in START_FILES.values()
-        for case in CaseFile.model_validate_json((directory / name).read_text("utf-8")).cases
-    )
+    try:
+        texts = [(directory / name).read_text("utf-8") for name in START_FILES.values()]
+    except OSError as exc:
+        raise ConfigurationError(
+            f"The start set of the evaluation is missing in {directory} "
+            f"(GEOTANDEM_EVAL_CASES_DIR): {exc.strerror}."
+        ) from None
+    try:
+        return tuple(case for text in texts for case in CaseFile.model_validate_json(text).cases)
+    except ValidationError as exc:
+        raise ConfigurationError(
+            f"The start set of the evaluation in {directory} is no valid case file: "
+            f"{exc.error_count()} errors."
+        ) from None
 
 
 def start_cases(settings: Settings) -> tuple[EvalCase, ...]:
-    """Both files of the start set, tuning first, each case as its file writes it."""
+    """Both files of the start set, tuning first, each case as its file writes
+    it; ``ConfigurationError`` if they are missing or invalid."""
     return _start_set(cases_dir(settings).resolve())
+
+
+def check_start_set(settings: Settings, engine: Engine) -> None:
+    """At start: the start set must be readable (the routes need it), and an
+    own case whose id a new start set brings is named in the log."""
+    ids = {case.id for case in start_cases(settings)}
+    if clash := sorted(ids & CaseStore(engine).ids()):
+        log.warning(
+            "own evaluation cases share their id with a start case and are hidden "
+            "behind it until renamed: %s",
+            ", ".join(clash),
+        )
 
 
 # --- data states (D1) -----------------------------------------------------------------
@@ -156,10 +217,17 @@ class World:
         """The layers of the model's world (``ModelWorld``): visible and released."""
         return frozenset(layer.name for layer in self.profile.layers)
 
-    def check(self, reading: dict[str, Any], schema_version: str) -> Validated | Refusal:
+    def attributes(self, layer: str) -> frozenset[str]:
+        """The attributes of ``layer`` the model knows."""
+        return frozenset(
+            a.name for p in self.profile.layers if p.name == layer for a in p.attributes
+        )
+
+    def check(self, reading: dict[str, Any], schema_version: str) -> QueryObject | Refusal:
         """A reference as the harness stores it, checked as a model's query."""
         raw = {"schema_version": schema_version, "output": "map", **reading}
-        return validate_model_query(raw, self.context, self.profile)
+        found = validate_model_query(raw, self.context, self.profile)
+        return found if isinstance(found, Refusal) else found.query
 
     def count(self, query: QueryObject) -> int | None:
         """Features of ``query`` under the operating limits; ``None`` if it cannot run."""
@@ -178,10 +246,7 @@ def _world(
     limits: Limits,
     unsupported: Iterable[Op],
 ) -> World:
-    versions = {
-        info.name: info.dataset_version
-        for info in list_layers(view.engine, only=view.layer_names())
-    }
+    versions = dataset_versions(view.engine, view.layer_names())
     context = ToolContext(view, limits, frozenset(unsupported))
     return World(data_state, context, profile, versions)
 
@@ -190,27 +255,42 @@ _sample_lock = threading.Lock()
 _samples: dict[tuple[int, str], SpatiaLiteBackend] = {}
 
 
+def _build_sample(settings: Settings) -> SpatiaLiteBackend:
+    """A temporary SpatiaLite file, migrated and loaded with the packaged sample,
+    then opened again read-only; removed at exit, or at once if building fails.
+    Its own URL, so a configured ``database_url`` is never touched."""
+    directory = Path(tempfile.mkdtemp(prefix="geotandem-eval-sample-"))
+    path = directory / "sample.sqlite"
+    own = settings.model_copy(update={"data_dir": directory, "database_url": f"sqlite:///{path}"})
+    engine: Engine | None = None
+    try:
+        engine = bootstrap(own)
+        load_sample(SpatiaLiteBackend(engine, own.internal_crs))
+        engine.dispose()
+        read_only = own.model_copy(
+            update={"database_url": f"sqlite:///file:{path}?mode=ro&uri=true"}
+        )
+        engine = reading(make_engine(read_only))
+        backend = SpatiaLiteBackend(engine, own.internal_crs)
+        backend.layer_names()  # fails here, not in the first request, if it cannot be read
+    except BaseException:
+        if engine is not None:
+            engine.dispose()
+        shutil.rmtree(directory, ignore_errors=True)
+        raise
+    atexit.register(shutil.rmtree, directory, ignore_errors=True)
+    log.info("sample data state built for the evaluation")
+    return backend
+
+
 def sample_backend(settings: Settings) -> DataBackend:
     """The isolated sample database (D1), built on first use and kept for the
-    process: a temporary SpatiaLite file, migrated and loaded with the packaged
-    sample, removed at exit. Only ever read, through a ``LayerView``. Its own
-    URL, so a configured ``database_url`` is never touched."""
+    process; read through a ``LayerView`` over a read-only connection."""
     key = (settings.internal_crs, settings.spatialite_library)
     with _sample_lock:
-        backend = _samples.get(key)
-        if backend is None:
-            directory = Path(tempfile.mkdtemp(prefix="geotandem-eval-sample-"))
-            atexit.register(shutil.rmtree, directory, ignore_errors=True)
-            own = Settings(
-                data_dir=directory,
-                database_url=f"sqlite:///{directory / 'sample.sqlite'}",
-                spatialite_library=settings.spatialite_library,
-                internal_crs=settings.internal_crs,
-            )
-            backend = SpatiaLiteBackend(bootstrap(own), own.internal_crs)
-            load_sample(backend)
-            _samples[key] = backend
-            log.info("sample data state built for the evaluation")
+        if key not in _samples:
+            _samples[key] = _build_sample(settings)
+        backend = _samples[key]
     return LayerView(backend, backend.layer_names())
 
 
@@ -257,13 +337,44 @@ def status_of(case: EvalCase, world: World) -> tuple[CaseStatus, list[str]]:
     return "ok", []
 
 
-def check_case(case: EvalCase, world: World) -> list[QueryObject]:
-    """The rules an own case meets before it is stored; its readings as checked.
+def _check_require(case: EvalCase, world: World) -> set[str]:
+    """The layers a ``require`` names, each in the model's world, and every
+    attribute a condition names on one of them; the conditions are a flat list,
+    so an attribute may belong to the source or to a layer a condition names."""
+    if case.require is None:
+        return set()
+    named = {case.require.source} | {
+        c["layer"] for c in case.require.conditions if isinstance(c.get("layer"), str)
+    }
+    for layer in sorted(named):
+        if layer not in world.known:
+            raise _invalid(
+                case.id,
+                f"The case '{case.id}' requires the layer '{layer}', which it cannot use.",
+                reason="unknown_layer",
+                layer=layer,
+            )
+    attributes = frozenset().union(*(world.attributes(layer) for layer in named))
+    for condition in case.require.conditions:
+        attr = condition.get("attr")
+        if attr is not None and attr not in attributes:
+            raise _invalid(
+                case.id,
+                f"The case '{case.id}' requires the attribute '{attr}', which it cannot use.",
+                reason="unknown_attribute",
+                attribute=attr,
+            )
+    return named
+
+
+def check_case(case: EvalCase, world: World, *, stamp: bool) -> EvalCase:
+    """The rules an own case meets before it is stored; the case as stored.
 
     ``case_invalid``: a start case's origin, a reading the model path would
-    refuse (the refusal's code is the reason), a layer the reference uses that
-    a live case does not name; ``case_stale``: a layer the case names is not
-    in the model's world."""
+    refuse (the refusal's code is the reason), a required layer or attribute
+    the model does not know, a live case whose named layers are not the layers
+    it uses; ``case_stale``: a named layer is not in the model's world. With
+    ``stamp``, a live case's layers get their dataset versions of now."""
     if case.origin == "start":
         raise _invalid(case.id, "Only the start set says origin 'start'.", reason="origin_start")
     status, layers = status_of(case, world)
@@ -276,10 +387,9 @@ def check_case(case: EvalCase, world: World) -> list[QueryObject]:
             layer=layers[0],
             layers=layers,
         )
-    listed = {layer.name for layer in case.layers}
-    checked: list[QueryObject] = []
-    for index, reading in enumerate(readings(case)):
-        found = world.check(reading, case.schema_version)
+    used: set[str] = set()
+    for index, doc in enumerate(readings(case)):
+        found = world.check(doc, case.schema_version)
         if isinstance(found, Refusal):
             raise _invalid(
                 case.id,
@@ -287,44 +397,58 @@ def check_case(case: EvalCase, world: World) -> list[QueryObject]:
                 reason=found.code,
                 reading=index,
             )
-        checked.append(found.query)
-        if case.data_state == "live":
-            unlisted = sorted(query_layers(found.query) - listed)
-            if unlisted:
-                raise _invalid(
-                    case.id,
-                    f"The case '{case.id}' uses the layer '{unlisted[0]}' without naming it.",
-                    reason="layer_not_listed",
-                    reading=index,
-                    layer=unlisted[0],
-                )
-    if case.require is not None:
-        source = case.require.source
-        if source not in world.known or (case.data_state == "live" and source not in listed):
-            raise _invalid(
-                case.id,
-                f"The case '{case.id}' requires the source '{source}', which it cannot use.",
-                reason="unknown_layer",
-                layer=source,
-            )
-    return checked
+        used |= query_layers(found)
+    used |= _check_require(case, world)
+    if case.data_state != "live":
+        return case
+    listed = {layer.name for layer in case.layers}
+    if unlisted := sorted(used - listed):
+        raise _invalid(
+            case.id,
+            f"The case '{case.id}' uses the layer '{unlisted[0]}' without naming it.",
+            reason="layer_not_listed",
+            layer=unlisted[0],
+        )
+    if unused := sorted(listed - used):
+        raise _invalid(
+            case.id,
+            f"The case '{case.id}' names the layer '{unused[0]}', which it does not use.",
+            reason="layer_not_used",
+            layer=unused[0],
+        )
+    if not stamp:
+        return case
+    current = [
+        CaseLayer(name=layer.name, dataset_version=world.versions[layer.name])
+        for layer in case.layers
+    ]
+    return case.model_copy(update={"layers": current})
 
 
 def reference_hits(case: EvalCase, world: World) -> list[int] | None:
     """Features of each reading on the case's data state (V2.3); ``None`` for a
-    case without readings, a stale one, or one whose reading no longer runs."""
+    case without readings, a stale one, or one whose reading no longer passes
+    the checks or no longer runs."""
     if not readings(case) or status_of(case, world)[0] == "stale":
         return None
     hits = []
-    for reading in readings(case):
-        found = world.check(reading, case.schema_version)
-        if isinstance(found, Refusal):
-            return None
-        count = world.count(found.query)
+    for doc in readings(case):
+        found = world.check(doc, case.schema_version)
+        count = None if isinstance(found, Refusal) else world.count(found)
         if count is None:
             return None
         hits.append(count)
     return hits
+
+
+def as_imported(case: EvalCase) -> EvalCase:
+    """A file's ``authored`` or ``log`` case as this instance keeps it: ``import``,
+    without the action id of another instance. Other fields stay as written."""
+    if case.origin not in ("authored", "log"):
+        return case
+    body = body_of(case)
+    body.pop("origin_action", None)
+    return EvalCase.model_validate({**body, "origin": "import"})
 
 
 # --- the cases of one administrator's request ----------------------------------
@@ -352,6 +476,11 @@ class Cases:
         self.start = start_cases(settings)
         self._start_ids = {case.id: case for case in self.start}
         self._worlds: dict[DataState, World] = {}
+
+    @property
+    def room(self) -> int:
+        """Own cases the instance may hold: start and own fit one case file."""
+        return MAX_CASES - len(self.start)
 
     def world(self, data_state: DataState) -> World:
         if data_state not in self._worlds:
@@ -389,7 +518,7 @@ class Cases:
         """Start cases first, then the own ones oldest first (V1.1); each with
         its status, none with its hits."""
         start: list[StoredCase | EvalCase] = [c for c in self.start if filters.admits(c)]
-        chosen = start + list(self.store.cases(filters))
+        chosen = start + self.store.cases(filters)
         return CasePage(
             items=[self._view(c, hits=False) for c in chosen[offset : offset + limit]],
             total=len(chosen),
@@ -403,28 +532,33 @@ class Cases:
             raise _not_found(case_id)
         return self._view(stored, hits=True)
 
-    def _check_id(self, case_id: str) -> None:
-        if case_id in self._start_ids:
-            raise _taken(case_id)
-
-    def _room(self, adding: int) -> None:
-        held = self.store.count()
-        if held + adding > MAX_CASES:
+    def _check_origin(self, case: EvalCase) -> None:
+        """A ``log`` case names a model action of this instance (F-3.14)."""
+        if case.origin != "log":
+            return
+        with Session(reading(self.backend.engine)) as db:
+            known = db.scalar(select(ModelAction.id).where(ModelAction.id == case.origin_action))
+        if known is None:
             raise _invalid(
-                None,
-                f"An instance keeps at most {MAX_CASES} own cases; it has {held}.",
-                reason="too_many",
-                max=MAX_CASES,
+                case.id,
+                f"The case '{case.id}' names the model action {case.origin_action}, "
+                "which does not exist.",
+                reason="origin_action",
+                origin_action=case.origin_action,
             )
+        # WP92 adds here that the action is eligible (accepted, or auto not undone).
 
     def create(self, case: EvalCase) -> CaseView:
-        self._check_id(case.id)
-        check_case(case, self.world(case.data_state))
-        self._room(1)
+        if case.id in self._start_ids:
+            raise _taken(case.id)
+        self._check_origin(case)
+        case = check_case(case, self.world(case.data_state), stamp=True)
         try:
-            (stored,) = self.store.add([case])
+            (stored,) = self.store.add([case], at_most=self.room)
         except CaseIdTaken:
             raise _taken(case.id) from None
+        except TooManyCases as exc:
+            raise _too_many(*exc.args) from None
         return self._view(stored, hits=True)
 
     def update(self, case_id: str, case: EvalCase) -> CaseView:
@@ -434,9 +568,10 @@ class Cases:
             raise _read_only(case_id)
         if self.store.get(case_id) is None:
             raise _not_found(case_id)
-        if case.id != case_id:
-            self._check_id(case.id)
-        check_case(case, self.world(case.data_state))
+        if case.id != case_id and case.id in self._start_ids:
+            raise _taken(case.id)
+        self._check_origin(case)
+        case = check_case(case, self.world(case.data_state), stamp=True)
         try:
             stored = self.store.replace(case_id, case)
         except CaseIdTaken:
@@ -463,35 +598,27 @@ class Cases:
         )
 
     def import_file(self, file: CaseFile) -> ImportResult:
-        """All or nothing (V1.3): every case is checked as on creation, and one
-        problem stores none. Cases keep their origin as the file writes it."""
+        """All or nothing (V1.3): every case is checked as on creation, but keeps
+        the dataset versions the file gives; one problem stores none."""
         problems: list[ImportProblem] = []
         own = self.store.ids()
+        taken: list[EvalCase] = []
         for case in file.cases:
             try:
                 if case.id in self._start_ids or case.id in own:
                     raise _taken(case.id)
-                check_case(case, self.world(case.data_state))
+                check_case(case, self.world(case.data_state), stamp=False)
+                taken.append(as_imported(case))
             except CaseError as exc:
                 problems.append(ImportProblem(case_id=case.id, code=exc.code, message=exc.message))
-        if not problems:
-            try:
-                self._room(len(file.cases))
-            except CaseError as exc:
-                problems.append(ImportProblem(case_id=None, code=exc.code, message=exc.message))
         if problems:
             return ImportResult(imported=0, problems=problems)
         try:
-            stored = self.store.add(file.cases)
-        except CaseIdTaken as exc:
-            # Another request stored one of the ids in the meantime.
-            problem = _taken(str(exc.args[0]))
-            return ImportResult(
-                imported=0,
-                problems=[
-                    ImportProblem(
-                        case_id=str(exc.args[0]) or None, code=problem.code, message=problem.message
-                    )
-                ],
+            stored = self.store.add(taken, at_most=self.room)
+        except (CaseIdTaken, TooManyCases) as exc:
+            error = _taken(exc.args[0]) if isinstance(exc, CaseIdTaken) else _too_many(*exc.args)
+            problem = ImportProblem(
+                case_id=error.details["case_id"], code=error.code, message=error.message
             )
+            return ImportResult(imported=0, problems=[problem])
         return ImportResult(imported=len(stored))

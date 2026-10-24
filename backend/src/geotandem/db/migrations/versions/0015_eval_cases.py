@@ -20,6 +20,9 @@ down_revision: str | None = "0014"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
+COLUMNS = ("split", "origin", "data_state")
+"""The list's filters, each with its index."""
+
 
 def upgrade() -> None:
     op.create_table(
@@ -35,7 +38,11 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("case_id"),
     )
+    for column in COLUMNS:
+        op.create_index(f"ix_eval_case_{column}", "eval_case", [column])
 
 
 def downgrade() -> None:
+    for column in COLUMNS:
+        op.drop_index(f"ix_eval_case_{column}", table_name="eval_case")
     op.drop_table("eval_case")

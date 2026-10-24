@@ -79,8 +79,8 @@ CODES: dict[str, str] = {
     "stale_reference": "The earlier answer uses a layer that is gone (details.layer).",
     "model_unreadable": "The model's answer does not fit the answer schema.",
     # Evaluation of model connections (plan E3)
-    "case_invalid": "A case does not fit the case format or its reference fails the checks; "
-    "details.case_id, details.reason.",
+    "case_invalid": "A case breaks a rule on its data state (its reference fails the checks, "
+    "its layers, origin or the case limit); details.case_id, details.reason.",
     "case_id_taken": "A case of that id exists (details.case_id).",
     "case_read_only": "A start case cannot be changed; copy it into an own case.",
     "case_stale": "A layer of the case is gone or hidden (details.layer); edit the case first.",

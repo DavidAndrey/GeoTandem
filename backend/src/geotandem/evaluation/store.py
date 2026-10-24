@@ -4,14 +4,16 @@ One row per case (``eval_case``); the start set is never stored, it stays the
 files of ``schema/eval-cases`` (``evaluation/cases.py``). A case is kept as
 the case file writes it: the fields it was given, without ``null``, so an
 export gives back what was stored (F-3.13). The rules a case must meet are
-checked before it gets here (``cases.py``); the store only keeps ids unique.
+checked before it gets here (``cases.py``); the store keeps ids unique and
+the number of cases within the limit it is given, both inside the transaction
+that stores them, so two requests at once cannot pass either together.
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import Engine, delete, func, select
@@ -21,11 +23,7 @@ from sqlalchemy.orm import Session
 from geotandem.db.orm import OwnCase
 from geotandem.db.spatialite import reading
 from geotandem.evaluation.schemas import DataState, EvalCase, Origin, Split
-
-
-def utc_now() -> datetime:
-    """Naive UTC, as the data core keeps its times."""
-    return datetime.now(UTC).replace(tzinfo=None)
+from geotandem.model.record.store import utc_now
 
 
 @dataclass(frozen=True)
@@ -54,7 +52,12 @@ class CaseFilters:
 
 
 class CaseIdTaken(Exception):
-    """Another own case has the id (``args[0]``)."""
+    """Another own case has the id (``args[0]``; ``None`` when a request in
+    between took one of several)."""
+
+
+class TooManyCases(Exception):
+    """Storing would hold more own cases than allowed; ``args``: held, allowed."""
 
 
 def body_of(case: EvalCase) -> dict[str, Any]:
@@ -100,12 +103,10 @@ class CaseStore:
         with Session(reading(self.engine)) as db:
             return set(db.scalars(select(OwnCase.case_id)))
 
-    def count(self) -> int:
-        with Session(reading(self.engine)) as db:
-            return db.scalar(select(func.count()).select_from(OwnCase)) or 0
-
-    def add(self, cases: Iterable[EvalCase]) -> list[StoredCase]:
-        """All in one transaction: one id in use and none is stored (``CaseIdTaken``)."""
+    def add(self, cases: Iterable[EvalCase], *, at_most: int) -> list[StoredCase]:
+        """All in one transaction: one id in use and none is stored
+        (``CaseIdTaken``), nor any when more than ``at_most`` own cases would
+        be held (``TooManyCases``)."""
         now = self.clock()
         rows = [
             OwnCase(
@@ -121,6 +122,9 @@ class CaseStore:
         ]
         try:
             with Session(self.engine) as db, db.begin():
+                held = db.scalar(select(func.count()).select_from(OwnCase)) or 0
+                if held + len(rows) > at_most:
+                    raise TooManyCases(held, at_most)
                 taken = db.scalar(
                     select(OwnCase.case_id).where(OwnCase.case_id.in_([r.case_id for r in rows]))
                 )
@@ -131,7 +135,7 @@ class CaseStore:
                 return [_stored(row) for row in rows]
         except IntegrityError:
             # Another request stored the id between the check and the insert.
-            raise CaseIdTaken(rows[0].case_id if len(rows) == 1 else "") from None
+            raise CaseIdTaken(rows[0].case_id if len(rows) == 1 else None) from None
 
     def replace(self, case_id: str, case: EvalCase) -> StoredCase | None:
         """The case ``case_id`` becomes ``case``, its id too; ``None`` if there is

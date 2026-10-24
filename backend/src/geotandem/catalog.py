@@ -67,6 +67,14 @@ def list_layers(engine: Engine, only: Collection[str] | None = None) -> list[Lay
         return [_info(layer) for layer in session.scalars(stmt)]
 
 
+def dataset_versions(engine: Engine, only: Collection[str]) -> dict[str, str | None]:
+    """The current dataset version of each layer named in ``only`` that exists
+    (an account's layers): what a saved state or a case was made against."""
+    stmt = select(Layer.name, Layer.dataset_version).where(Layer.name.in_(list(only)))
+    with Session(reading(engine)) as session:
+        return {name: version for name, version in session.execute(stmt)}
+
+
 def get_layer(engine: Engine, name: str) -> LayerInfo | None:
     with Session(reading(engine)) as session:
         layer = session.scalar(

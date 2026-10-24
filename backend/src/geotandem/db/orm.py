@@ -420,9 +420,9 @@ class OwnCase(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     case_id: Mapped[str] = mapped_column(String(63), unique=True)
-    split: Mapped[str] = mapped_column(String(16))
-    origin: Mapped[str] = mapped_column(String(16))
-    data_state: Mapped[str] = mapped_column(String(16))
+    split: Mapped[str] = mapped_column(String(16), index=True)
+    origin: Mapped[str] = mapped_column(String(16), index=True)
+    data_state: Mapped[str] = mapped_column(String(16), index=True)
     body: Mapped[dict[str, Any]] = mapped_column(JSON)
     created_at: Mapped[datetime]
     updated_at: Mapped[datetime]

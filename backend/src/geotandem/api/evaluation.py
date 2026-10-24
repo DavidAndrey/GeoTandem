@@ -118,6 +118,8 @@ def export_cases(service: CaseService, start: bool = False) -> CaseFile:
 @router.post("/cases/import", responses=ERRORS)
 def import_cases(body: CaseFile, service: CaseService) -> ImportResult:
     """All or nothing (V1.3): one invalid case and none is taken."""
+    # The body is held to ``max_request_mb`` (2 MiB by default) like any request;
+    # a file of ``MAX_CASES`` long cases may exceed it and is then split in two.
     return service.import_file(body)
 
 

@@ -11,20 +11,27 @@ each reading's features on the case's data state.
 """
 
 import json
+import logging
 from pathlib import Path
 from typing import Any
 
 import httpx
 import pytest
 from fastapi import FastAPI
+from import_files import make_files
 from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from geotandem.catalog import get_layer
 from geotandem.config import Settings
+from geotandem.data import DataBackend
+from geotandem.db.bootstrap import ConfigurationError
 from geotandem.db.orm import Layer
 from geotandem.engine import count_query
 from geotandem.evaluation import cases as case_module
+from geotandem.evaluation.schemas import EvalCase
+from geotandem.evaluation.store import CaseStore
+from geotandem.importing.run import ImportDecisions, run_import
 from geotandem_query import QueryObject
 
 REPO = Path(__file__).resolve().parents[2]
@@ -293,6 +300,68 @@ async def test_a_live_case_names_every_layer_its_reference_uses(
     assert (details["reason"], details["layer"]) == ("layer_not_listed", "gemeinden")
 
 
+async def test_a_live_case_names_no_layer_it_does_not_use(
+    client: httpx.AsyncClient, app: FastAPI
+) -> None:
+    layers = [{"name": "schulen"}, {"name": "gemeinden"}]
+    body = await refused(client, live(app, layers=layers), 400, "case_invalid")
+    details = body["details"]
+    assert (details["reason"], details["layer"]) == ("layer_not_used", "gemeinden")
+
+
+@pytest.mark.parametrize(
+    "given", [{"name": "schulen"}, {"name": "schulen", "dataset_version": "x"}]
+)
+async def test_the_server_stamps_the_dataset_versions_of_a_live_case(
+    client: httpx.AsyncClient, app: FastAPI, given: dict[str, Any]
+) -> None:
+    """D3: the version a case is compared with is the one of its creation, as
+    the server reads it, whatever the client sent."""
+    view = await created(client, live(app, layers=[given]))
+    current = {"name": "schulen", "dataset_version": version_of(app, "schulen")}
+    assert view["case"]["layers"] == [current]
+    assert view["status"] == "ok"
+    edited = await client.put(f"{CASES}/live-primar", json=live(app, layers=[given]))
+    assert edited.json()["case"]["layers"] == [current]
+
+
+async def test_a_live_require_case_names_its_layers(
+    client: httpx.AsyncClient, app: FastAPI
+) -> None:
+    near = {"op": "related", "layer": "haltestellen", "predicate": "dwithin"}
+    require = {"source": "schulen", "conditions": [near]}
+    case = live(app, gold=None, require=require)
+    body = await refused(client, case, 400, "case_invalid")
+    details = body["details"]
+    assert (details["reason"], details["layer"]) == ("layer_not_listed", "haltestellen")
+    layers = [{"name": "schulen"}, {"name": "haltestellen"}]
+    await created(client, {**case, "layers": layers})
+
+
+async def test_a_required_attribute_must_exist(client: httpx.AsyncClient) -> None:
+    wrong = {"op": "compare", "attr": "erfunden"}
+    case = {**OWN, "gold": None, "require": {"source": "schulen", "conditions": [wrong]}}
+    body = await refused(client, case, 400, "case_invalid")
+    assert (body["details"]["reason"], body["details"]["attribute"]) == (
+        "unknown_attribute",
+        "erfunden",
+    )
+
+
+async def test_a_log_case_names_an_action_of_this_instance(client: httpx.AsyncClient) -> None:
+    body = await refused(client, {**OWN, "origin": "log", "origin_action": 7}, 400, "case_invalid")
+    assert body["details"]["reason"] == "origin_action"
+
+
+async def test_an_edit_onto_a_missing_layer_is_stale(
+    client: httpx.AsyncClient, app: FastAPI
+) -> None:
+    await created(client, live(app))
+    gone = live(app, layers=[{"name": "verschwunden"}], gold={"source": "verschwunden"})
+    put = await client.put(f"{CASES}/live-primar", json=gone)
+    assert (put.status_code, put.json()["code"]) == (409, "case_stale")
+
+
 async def test_a_layer_not_released_for_the_model_is_out_of_the_live_world(
     client: httpx.AsyncClient, app: FastAPI
 ) -> None:
@@ -302,13 +371,25 @@ async def test_a_layer_not_released_for_the_model_is_out_of_the_live_world(
     await refused(client, live(app), 409, "case_stale")
 
 
-async def test_the_number_of_own_cases_is_bounded(
+async def test_start_and_own_cases_fit_one_case_file(
     client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(case_module, "MAX_CASES", 1)
+    """Start set plus own cases are at most ``MAX_CASES``: the export of both is
+    one valid case file; creation and import beyond are ``too_many``."""
+    monkeypatch.setattr(case_module, "MAX_CASES", 73)
     await created(client, OWN)
-    body = await refused(client, {**OWN, "id": "eigene-2"}, 400, "case_invalid")
-    assert body["details"]["reason"] == "too_many"
+    await created(client, {**OWN, "id": "eigene-2"})
+    body = await refused(client, {**OWN, "id": "eigene-3"}, 400, "case_invalid")
+    assert (body["details"]["reason"], body["details"]["max"]) == ("too_many", 2)
+
+    exported = await client.get(f"{CASES}/export", params={"start": True})
+    assert exported.status_code == 200, exported.text
+    assert len(exported.json()["cases"]) == 73
+
+    file = {"cases": [{**OWN, "id": "eigene-4"}]}
+    result = (await client.post(f"{CASES}/import", json=file)).json()
+    assert result["imported"] == 0
+    assert [(p["case_id"], p["code"]) for p in result["problems"]] == [(None, "case_invalid")]
 
 
 # --- export and import -------------------------------------------------------------
@@ -334,7 +415,42 @@ async def test_a_live_case_survives_export_and_import_unchanged(
     assert (await client.delete(f"{CASES}/live-primar")).status_code == 204
     result = await client.post(f"{CASES}/import", json=exported)
     assert result.json() == {"imported": 1, "problems": []}
-    assert (await client.get(f"{CASES}/export")).json() == exported
+    again = (await client.get(f"{CASES}/export")).json()
+    assert again["cases"] == [{**case, "origin": "import"}]
+
+
+async def test_an_imported_log_case_drops_the_action_of_its_instance(
+    client: httpx.AsyncClient,
+) -> None:
+    """An action id of another instance names nothing here."""
+    case = {**OWN, "origin": "log", "origin_action": 7}
+    result = (await client.post(f"{CASES}/import", json={"cases": [case]})).json()
+    assert result == {"imported": 1, "problems": []}
+    (stored,) = (await client.get(f"{CASES}/export")).json()["cases"]
+    assert stored["origin"] == "import" and "origin_action" not in stored
+
+
+async def test_an_import_keeps_the_dataset_versions_of_its_file(
+    client: httpx.AsyncClient, app: FastAPI
+) -> None:
+    case = live(app, layers=[{"name": "schulen", "dataset_version": "anderswo"}])
+    result = (await client.post(f"{CASES}/import", json={"cases": [case]})).json()
+    assert result == {"imported": 1, "problems": []}
+    view = (await client.get(f"{CASES}/live-primar")).json()
+    assert view["case"]["layers"] == [{"name": "schulen", "dataset_version": "anderswo"}]
+    assert view["status"] == "dataset_changed"
+
+
+async def test_an_import_over_the_limit_takes_nothing(
+    client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(case_module, "MAX_CASES", 72)
+    file = {"cases": [OWN, {**OWN, "id": "eigene-2"}]}
+    result = (await client.post(f"{CASES}/import", json=file)).json()
+    assert result["imported"] == 0
+    assert result["problems"][0]["code"] == "case_invalid"
+    assert "at most 1 own cases" in result["problems"][0]["message"]
+    assert (await client.get(CASES, params={"origin": "import"})).json()["total"] == 0
 
 
 async def test_an_import_is_all_or_nothing(client: httpx.AsyncClient) -> None:
@@ -436,6 +552,42 @@ async def test_a_changed_dataset_version_marks_the_case(
     assert view["reference_hits"] == [hits(app, SCHULEN)]
 
 
+async def test_a_re_imported_layer_marks_the_case(
+    client: httpx.AsyncClient, app: FastAPI, tmp_path: Path
+) -> None:
+    """D3 through a real import that replaces the layer: a new dataset version."""
+    whole = {"source": "schulen"}
+    await created(client, live(app, gold=whole))
+    files = make_files(tmp_path / "import")
+    backend = app.state.geotandem.backend
+    run = run_import(
+        files["schulen.geojson"],
+        "schulen.geojson",
+        ImportDecisions(replace="schulen"),
+        backend,
+        actor="admin",
+    )
+    assert run.status in ("ok", "warning"), run
+
+    view = (await client.get(f"{CASES}/live-primar")).json()
+    assert (view["status"], view["status_layers"]) == ("dataset_changed", ["schulen"])
+    assert view["reference_hits"] == [hits(app, whole)]
+
+
+async def test_a_reading_that_no_longer_passes_has_no_hits(
+    client: httpx.AsyncClient, app: FastAPI
+) -> None:
+    """The attribute of the reference is withdrawn from the model after creation."""
+    await created(client, live(app))
+    withdrawn = await client.patch(
+        "/api/admin/layers/schulen/attributes/typ", json={"for_model": False}
+    )
+    assert withdrawn.status_code == 200, withdrawn.text
+    view = (await client.get(f"{CASES}/live-primar")).json()
+    assert view["status"] == "ok"
+    assert view["reference_hits"] is None
+
+
 async def test_sample_cases_run_on_their_own_copy_of_the_sample(
     client: httpx.AsyncClient, app: FastAPI
 ) -> None:
@@ -454,3 +606,36 @@ def test_the_sample_backend_is_built_once_and_only_read(tmp_path: Path) -> None:
     assert first.engine.url.database != settings.sqlalchemy_url
     with pytest.raises(PermissionError):
         first.drop_layer("schulen")
+
+
+def test_the_sample_never_touches_a_configured_database(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """D1: even with ``GEOTANDEM_DATABASE_URL`` set, the sample has a file of its own,
+    opened read-only."""
+    configured = tmp_path / "betrieb.sqlite"
+    monkeypatch.setenv("GEOTANDEM_DATABASE_URL", f"sqlite:///{configured}")
+    monkeypatch.setattr(case_module, "_samples", {})
+    settings = Settings(data_dir=tmp_path)
+    assert settings.database_url == f"sqlite:///{configured}"
+    sample = case_module.sample_backend(settings)
+    assert str(configured) not in str(sample.engine.url)
+    assert "mode=ro" in str(sample.engine.url)
+    assert not configured.exists()
+    assert "schulen" in sample.layer_names()
+
+
+def test_a_missing_start_set_stops_the_start(tmp_path: Path) -> None:
+    with pytest.raises(ConfigurationError, match="start set of the evaluation is missing"):
+        case_module.start_cases(Settings(data_dir=tmp_path, eval_cases_dir=tmp_path / "leer"))
+
+
+def test_an_own_case_behind_a_start_id_is_named_at_start(
+    backend: DataBackend, settings: Settings, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A later start set may bring an id an own case has: the start log names it."""
+    clash = EvalCase.model_validate({**OWN, "id": "doc1-primar-koeniz"})
+    CaseStore(backend.engine).add([clash], at_most=10)
+    with caplog.at_level(logging.WARNING, logger=case_module.log.name):
+        case_module.check_start_set(settings, backend.engine)
+    assert "doc1-primar-koeniz" in caplog.text
