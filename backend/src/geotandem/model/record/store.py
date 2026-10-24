@@ -38,6 +38,7 @@ from geotandem.levels import CellMode, Level, OpClass
 from geotandem.model.chain.plan import one_approval
 from geotandem.model.chain.view import restored
 from geotandem.model.errors import ActionError
+from geotandem.model.result import NO_TOKENS, Tokens
 from geotandem.model.schemas import (
     MAX_PAGE,
     MAX_STEPS,
@@ -353,6 +354,10 @@ def utc_now() -> datetime:
 
 def _json(model: Any) -> Any:
     return None if model is None else model.model_dump(mode="json", by_alias=True)
+
+
+def _tokens(tokens: Tokens) -> dict[str, int | None]:
+    return {"prompt_tokens": tokens.prompt, "completion_tokens": tokens.completion}
 
 
 def _too_large(value: Any) -> bool:
@@ -1133,6 +1138,7 @@ class ModelActionStore:
         *,
         answer: AnyAnswer | None = None,
         latency_ms: int | None = None,
+        tokens: Tokens = NO_TOKENS,
     ) -> ModelActionView:
         """The application refused the answer (D1, D3); the answer stays for
         inspection (design M3). Not a decision."""
@@ -1146,6 +1152,7 @@ class ModelActionStore:
                 "refusal": _json(refusal),
                 "answer": _bounded(answer),
                 "latency_ms": latency_ms,
+                **_tokens(tokens),
             },
         )
 
@@ -1156,6 +1163,7 @@ class ModelActionStore:
         answer: Clarification | CannotAnswer,
         *,
         latency_ms: int | None = None,
+        tokens: Tokens = NO_TOKENS,
     ) -> ModelActionView:
         """A clarification or a cannot-answer: nothing proposed, nothing to decide."""
         return self._move(
@@ -1163,7 +1171,12 @@ class ModelActionStore:
             action_id,
             "answer",
             ["thinking"],
-            lambda _: {"status": "answered", "answer": _json(answer), "latency_ms": latency_ms},
+            lambda _: {
+                "status": "answered",
+                "answer": _json(answer),
+                "latency_ms": latency_ms,
+                **_tokens(tokens),
+            },
         )
 
     def propose(
@@ -1175,6 +1188,7 @@ class ModelActionStore:
         query: QueryObject | None,
         governance: Governance,
         latency_ms: int | None = None,
+        tokens: Tokens = NO_TOKENS,
         steps: Sequence[ChainStep] = (),
     ) -> ModelActionView:
         """A query or a plan the application accepted: ``approved`` without a
@@ -1196,6 +1210,7 @@ class ModelActionStore:
                 "query": _query_json(query),
                 "governance": _json(governance),
                 "latency_ms": latency_ms,
+                **_tokens(tokens),
                 "turns": None,
             }
 
@@ -1584,6 +1599,21 @@ class ModelActionStore:
             db.add(
                 ModelCall(action_id=action_id, connection_id=connection_id, called_at=self.clock())
             )
+
+    def add_tokens(self, action_id: int, tokens: Tokens) -> None:
+        """A re-plan's tokens, added to the chain's (bewertung.md 10). One
+        update, so it never overwrites another change of the record."""
+        values = {
+            column: func.coalesce(column, 0) + value
+            for column, value in [
+                (ModelAction.prompt_tokens, tokens.prompt),
+                (ModelAction.completion_tokens, tokens.completion),
+            ]
+            if value is not None
+        }
+        if values:
+            with Session(self.engine) as db, db.begin():
+                db.execute(update(ModelAction).where(ModelAction.id == action_id).values(values))
 
     def stop(
         self,

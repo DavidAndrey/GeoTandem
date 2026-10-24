@@ -173,6 +173,7 @@ from geotandem.model.record import (
     utc_now,
 )
 from geotandem.model.represent import query_layers, without_restriction
+from geotandem.model.result import Tokens
 from geotandem.model.schemas import (
     CHAIN_TIME_LIMIT_S,
     MAX_STEPS,
@@ -529,6 +530,7 @@ class _Planned:
 
     answer: PlanAnswer | Clarification | CannotAnswer
     latency_ms: int
+    tokens: Tokens
     steps: list[ChainStep] | None = None
     governance: Governance | None = None
     refusal: Refusal | None = None
@@ -872,24 +874,26 @@ class PromptFlow:
         model's world (``check_plan``); never run here. Its time counts towards
         the request's (``CHAIN_TIME_LIMIT_S``), on the flow's clock."""
         started = self.monotonic()
-        answer = ask(client, call.prompt.messages, call.prompt.schema, call.deadline)
+        answer, tokens = ask(client, call.prompt.messages, call.prompt.schema, call.deadline)
         latency = round((self.monotonic() - started) * 1000)
         if not isinstance(answer, PlanAnswer):
             assert not isinstance(answer, QueryAnswer)  # parse_answer took the chain's kinds only
-            return _Planned(answer, latency)
+            return _Planned(answer, latency, tokens)
         checked = check_plan(answer.steps, call.context, call.profile)
         if isinstance(checked, Refusal):
-            return _Planned(answer, latency, refusal=checked)
+            return _Planned(answer, latency, tokens, refusal=checked)
         steps = [new_step(call.level, step) for step in checked]
-        return _Planned(answer, latency, steps, chain_governance(call.level, checked))
+        return _Planned(answer, latency, tokens, steps, chain_governance(call.level, checked))
 
     @staticmethod
     def _keep(
         store: ModelActionStore, caller: Account, action_id: int, found: DirectAnswer | _Planned
     ) -> ModelActionView:
-        answer, latency = found.answer, found.latency_ms
+        answer, latency, tokens = found.answer, found.latency_ms, found.tokens
         if found.refusal is not None:
-            return store.refuse(caller, action_id, found.refusal, answer=answer, latency_ms=latency)
+            return store.refuse(
+                caller, action_id, found.refusal, answer=answer, latency_ms=latency, tokens=tokens
+            )
         if isinstance(found, _Planned) and isinstance(answer, PlanAnswer):
             assert found.governance is not None and found.steps is not None
             return store.propose(
@@ -899,6 +903,7 @@ class PromptFlow:
                 query=None,
                 governance=found.governance,
                 latency_ms=latency,
+                tokens=tokens,
                 steps=found.steps,
             )
         if isinstance(answer, QueryAnswer) and isinstance(found, DirectAnswer):
@@ -910,9 +915,10 @@ class PromptFlow:
                 query=found.query,
                 governance=found.governance,
                 latency_ms=latency,
+                tokens=tokens,
             )
         assert isinstance(answer, Clarification | CannotAnswer)
-        return store.answer(caller, action_id, answer, latency_ms=latency)
+        return store.answer(caller, action_id, answer, latency_ms=latency, tokens=tokens)
 
     @staticmethod
     def _settle(action_id: int, write: Callable[[], ModelActionView]) -> None:
@@ -1775,9 +1781,10 @@ class _Runner:
             deadline = min(self.deadline, self.flow.monotonic() + timeout_s)
             client = self.flow.client_factory(replace(endpoint, timeout_s=timeout_s))
             try:
-                answer = ask(client, messages, state.prompt.schema, deadline)
+                answer, tokens = ask(client, messages, state.prompt.schema, deadline)
             finally:
                 client.close()
+            self.flow.store.add_tokens(self.action_id, tokens)
         except LLMError as exc:
             if self.late():
                 self.stop("time_limit", self.too_late(state.last + 1))

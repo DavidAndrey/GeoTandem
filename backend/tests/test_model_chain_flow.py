@@ -395,6 +395,26 @@ async def test_an_empty_step_before_the_last_is_re_planned(
     assert "ab Schritt 3" in seen.content and "Die Schritte 1 bis 2 bleiben" in seen.content
 
 
+async def test_a_chain_keeps_the_tokens_of_its_planning_call_and_re_plans(
+    client: httpx.AsyncClient, app: FastAPI, model: Model, levels: dict[str, int]
+) -> None:
+    """bewertung.md 10 (WP86): the planning call's tokens, the re-plan's added;
+    a call that reported none adds nothing. In the store, never in a view."""
+    await choose(client, levels["Automatisch"])
+    first = replace(planned(*EMPTY_THEN), prompt_tokens=1000, completion_tokens=80)
+    approved = await ask_chain(client, app, model, first)
+    replanned = planned(MUNICIPALITIES, within(1, 3), why="Gemeinden statt nichts.")
+    model.script(replace(replanned, prompt_tokens=1300))
+    done, _ = await drive(client, app, approved["id"])
+
+    assert (done["status"], done["replans"]) == ("done", 1)
+    with Session(app.state.geotandem.backend.engine) as db:
+        row = db.get(ModelAction, approved["id"])
+        assert row is not None
+        assert (row.prompt_tokens, row.completion_tokens) == (2300, 80)
+    assert "tokens" not in json.dumps(done)
+
+
 async def test_an_empty_last_step_is_the_result(
     client: httpx.AsyncClient, app: FastAPI, model: Model, levels: dict[str, int]
 ) -> None:

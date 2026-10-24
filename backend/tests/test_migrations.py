@@ -407,3 +407,35 @@ def test_re_plan_calls_come_and_go_with_0012(settings: Settings) -> None:
     migrate.downgrade(engine, "0011")
     assert "model_call" not in inspect(engine).get_table_names()
     migrate.upgrade(engine)
+
+
+def test_tokens_come_and_go_with_0014_and_keep_the_records(settings: Settings) -> None:
+    """WP86: the tokens of a model action are two nullable columns; existing
+    records have none."""
+    engine = make_engine(settings)
+    migrate.upgrade(engine, "0013")
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO model_action (id, account, created_at, prompt, prompt_hash,"
+                " approach, status, level_id, level_name, level_matrix, level_prompt_hash,"
+                " connection_id, connection_name, connection_model, connection_host,"
+                " connection_locality, profile_hash, latency_ms) VALUES (1, 'anna',"
+                " '2026-10-24 08:00:00', 'p', 'h', 'direct', 'proposed', 1, 'Prüfen', '{}',"
+                " 'h', 1, 'Lokal', 'm', 'localhost', 'local', 'h', 900)"
+            )
+        )
+
+    migrate.upgrade(engine)
+
+    tokens = "SELECT latency_ms, prompt_tokens, completion_tokens FROM model_action"
+    with engine.begin() as conn:
+        assert tuple(conn.execute(text(tokens)).one()) == (900, None, None)
+        conn.execute(text("UPDATE model_action SET prompt_tokens = 10, completion_tokens = 2"))
+
+    migrate.downgrade(engine, "0013")
+    columns = {c["name"] for c in inspect(engine).get_columns("model_action")}
+    assert "latency_ms" in columns and not {"prompt_tokens", "completion_tokens"} & columns
+    with engine.connect() as conn:
+        assert conn.scalar(text("SELECT count(*) FROM model_action")) == 1
+    migrate.upgrade(engine)

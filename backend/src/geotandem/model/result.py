@@ -15,6 +15,7 @@ the log keeps it (C15).
 import copy
 import json
 import re
+from dataclasses import dataclass
 from functools import cache
 from typing import Any, Final
 
@@ -46,6 +47,23 @@ NOT_IN_CONTROLS: Final = ("BBox", "GeometryFilter")
 _ANSWER = TypeAdapter[Any](ModelAnswer)
 
 Answer = QueryAnswer | Clarification | CannotAnswer | PlanAnswer
+
+
+@dataclass(frozen=True)
+class Tokens:
+    """What a model call cost as the endpoint reported it (bewertung.md 10);
+    ``None`` where it reported nothing. The record keeps them, never a view."""
+
+    prompt: int | None = None
+    completion: int | None = None
+
+    @classmethod
+    def of(cls, completion: Completion) -> "Tokens":
+        return cls(completion.prompt_tokens, completion.completion_tokens)
+
+
+NO_TOKENS: Final = Tokens()
+"""No call made, or none reported."""
 
 
 def answer_format(approach: Approach) -> dict[str, Any]:
