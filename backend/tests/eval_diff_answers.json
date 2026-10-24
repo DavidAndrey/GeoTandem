@@ -1,0 +1,312 @@
+{
+ "note": "Recorded answers of the testplans (backend/evals/results, git-ignored) for stage 1, the diff (plan E3, WP89): queries worded otherwise that pass, similar ones that are wrong, and the readings of a gold_any case. run and seed: the result file's label and the repeat; tag: what the grader gives on the current start set (gold_any-second was wrong:8≠4 when doc1 had one reading).",
+ "answers": [
+  {
+   "what": "pass-reordered",
+   "case": "doc6-verschachtelt",
+   "run": "x-p0-luna",
+   "seed": 5,
+   "answer": {
+    "kind": "query",
+    "explanation": "Zeigt deutschsprachige Schulen, die höchstens 300 m von mindestens einer Haltestelle entfernt sind. Die Haltestellenbedingung ist als «Sekundarstufe I oder mehr als ein Schulhaus» verstanden.",
+    "assumptions": [
+     {
+      "text": "«Sekundarstufe I» meint Schulen, die Sekundarstufe I anbieten; «mehr als ein Schulhaus» bedeutet mindestens 2 Standorte.",
+      "condition": [
+       0,
+       0
+      ]
+     }
+    ],
+    "query": {
+     "schema_version": "2",
+     "source": "schulen",
+     "where": {
+      "op": "and",
+      "args": [
+       {
+        "op": "compare",
+        "attr": "sprache",
+        "cmp": "eq",
+        "value": "de"
+       },
+       {
+        "op": "related",
+        "layer": "haltestellen",
+        "predicate": "dwithin",
+        "distance_m": 300,
+        "where": null
+       },
+       {
+        "op": "or",
+        "args": [
+         {
+          "op": "compare",
+          "attr": "sekundarstufe",
+          "cmp": "eq",
+          "value": true
+         },
+         {
+          "op": "compare",
+          "attr": "standorte",
+          "cmp": "gt",
+          "value": 1
+         }
+        ]
+       }
+      ]
+     },
+     "output": "map"
+    }
+   },
+   "tag": "pass"
+  },
+  {
+   "what": "pass-reworded",
+   "case": "h25-ausserhalb-bern-koeniz",
+   "run": "p9ho-luna",
+   "seed": 3,
+   "answer": {
+    "kind": "query",
+    "explanation": "Haltestellen, die weder innerhalb der Gemeinde Bern noch innerhalb der Gemeinde Köniz liegen.",
+    "assumptions": [],
+    "query": {
+     "schema_version": "2",
+     "source": "haltestellen",
+     "where": {
+      "op": "and",
+      "args": [
+       {
+        "op": "not",
+        "arg": {
+         "op": "related",
+         "layer": "gemeinden",
+         "predicate": "within",
+         "where": {
+          "op": "compare",
+          "attr": "name",
+          "cmp": "eq",
+          "value": "Bern"
+         }
+        }
+       },
+       {
+        "op": "not",
+        "arg": {
+         "op": "related",
+         "layer": "gemeinden",
+         "predicate": "within",
+         "where": {
+          "op": "compare",
+          "attr": "name",
+          "cmp": "eq",
+          "value": "Köniz"
+         }
+        }
+       }
+      ]
+     },
+     "output": "map"
+    }
+   },
+   "tag": "pass"
+  },
+  {
+   "what": "pass-predicate",
+   "case": "h16-schulen-muensingen-2",
+   "run": "p9ho-luna",
+   "seed": 5,
+   "answer": {
+    "kind": "query",
+    "explanation": "Ich verstehe die Frage als öffentliche Volksschulen, deren Schulgemeinde die Gemeinde Münsingen ist.",
+    "assumptions": [],
+    "query": {
+     "schema_version": "2",
+     "source": "schulen",
+     "where": {
+      "op": "related",
+      "layer": "gemeinden",
+      "predicate": "intersects",
+      "where": {
+       "op": "compare",
+       "attr": "name",
+       "cmp": "eq",
+       "value": "Münsingen"
+      }
+     },
+     "output": "map"
+    }
+   },
+   "tag": "pass"
+  },
+  {
+   "what": "wrong-distance",
+   "case": "n13-bahnhof-bern",
+   "run": "p0-qwen3.5_9b-s6",
+   "seed": 7,
+   "answer": {
+    "kind": "query",
+    "explanation": "Ich suche Schulen in der Nähe des Bahnhofs Bern. Da ich keine spezifische ID (fid) für den Bahnhof kenne, muss ich eine Annahme treffen: Ich verwende die Bedingung 'nahe' mit einer angenommenen Distanz von 300 Metern und filtere nach dem Namen 'Bern'.",
+    "assumptions": [
+     {
+      "text": "Ich nehme an, dass 'Bahnhof Bern' eine Haltestelle mit dem Namen 'Bern' ist und die Distanz 'nahe' 300 m entspricht.",
+      "condition": []
+     }
+    ],
+    "query": {
+     "source": "schulen",
+     "where": {
+      "op": "related",
+      "layer": "haltestellen",
+      "predicate": "dwithin",
+      "distance_m": 300,
+      "where": {
+       "op": "text_match",
+       "attr": "name",
+       "text": "Bern",
+       "mode": "contains"
+      }
+     }
+    }
+   },
+   "tag": "wrong:31≠4"
+  },
+  {
+   "what": "wrong-missing-filter",
+   "case": "in-gemeinde-bahn",
+   "run": "p0-qwen3_14b",
+   "seed": 1,
+   "answer": {
+    "kind": "query",
+    "explanation": "Bahnhaltestellen in der Gemeinde Ostermundigen.",
+    "assumptions": [],
+    "query": {
+     "source": "haltestellen",
+     "where": {
+      "op": "related",
+      "layer": "gemeinden",
+      "predicate": "within",
+      "where": {
+       "op": "compare",
+       "attr": "name",
+       "cmp": "eq",
+       "value": "Ostermundigen"
+      }
+     },
+     "output": "map"
+    }
+   },
+   "tag": "wrong:18≠1"
+  },
+  {
+   "what": "wrong-source",
+   "case": "doc5-aare",
+   "run": "a-raw-gemma4_e4b",
+   "seed": 2,
+   "answer": {
+    "kind": "query",
+    "explanation": "Ich suche nach den Gemeinden, durch welche das Gewässer 'Aare' fließt. Dies wird durch die räumliche Beziehung 'intersects' zwischen dem Gewässer und den Gemeinden ermittelt.",
+    "assumptions": [
+     {
+      "text": "Ich nehme an, dass 'Aare' ein eindeutiger Name für ein Gewässer in der Layer 'gewaesser' ist.",
+      "condition": null
+     }
+    ],
+    "query": {
+     "source": "gewaesser",
+     "where": {
+      "op": "related",
+      "layer": "gemeinden",
+      "predicate": "intersects",
+      "where": {
+       "op": "compare",
+       "attr": "name",
+       "cmp": "eq",
+       "value": "Aare"
+      }
+     },
+     "output": "map"
+    }
+   },
+   "tag": "wrong:0≠19"
+  },
+  {
+   "what": "gold_any-second",
+   "case": "doc1-primar-koeniz",
+   "run": "x-p0-luna",
+   "seed": 1,
+   "answer": {
+    "kind": "query",
+    "explanation": "Zeigt Schulen in der Gemeinde Köniz, die Primarstufe anbieten.",
+    "assumptions": [],
+    "query": {
+     "schema_version": "2",
+     "source": "schulen",
+     "where": {
+      "op": "and",
+      "args": [
+       {
+        "op": "compare",
+        "attr": "primarstufe",
+        "cmp": "eq",
+        "value": true
+       },
+       {
+        "op": "related",
+        "layer": "gemeinden",
+        "predicate": "within",
+        "where": {
+         "op": "compare",
+         "attr": "name",
+         "cmp": "eq",
+         "value": "Köniz"
+        }
+       }
+      ]
+     },
+     "output": "map"
+    }
+   },
+   "tag": "pass"
+  },
+  {
+   "what": "gold_any-nearest",
+   "case": "doc1-primar-koeniz",
+   "run": "x-p0-luna",
+   "seed": 2,
+   "answer": {
+    "kind": "query",
+    "explanation": "Zeigt Schulen in der Gemeinde Köniz, die Primarstufe anbieten.",
+    "assumptions": [],
+    "query": {
+     "schema_version": "2",
+     "source": "schulen",
+     "where": {
+      "op": "and",
+      "args": [
+       {
+        "op": "compare",
+        "attr": "primarstufe",
+        "cmp": "eq",
+        "value": true
+       },
+       {
+        "op": "related",
+        "layer": "gemeinden",
+        "predicate": "contains",
+        "where": {
+         "op": "compare",
+         "attr": "name",
+         "cmp": "eq",
+         "value": "Köniz"
+        }
+       }
+      ]
+     },
+     "output": "map"
+    }
+   },
+   "tag": "wrong:0≠4"
+  }
+ ]
+}
