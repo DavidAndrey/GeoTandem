@@ -195,7 +195,9 @@ const MESSAGES: Record<string, Words> = {
     // ``touched`` and ``adjusted``: hand-corrected answers are not taken yet (decision 2).
     d.reason === 'touched' || d.decision === 'adjusted'
       ? t`Diese Antwort wurde von Hand korrigiert. Von Hand korrigierte Antworten werden vorerst nicht zum Prüffall.`
-      : t`Nur eine angenommene oder automatisch angewendete, nicht zurückgenommene Direktabfrage wird zum Prüffall.`,
+      : d.reason === 'follow_up'
+        ? t`Eine Folgefrage wird nicht zum Prüffall: Sie hängt von der vorigen Antwort ab, die ein Prüffall nicht mitführt.`
+        : t`Nur eine angenommene oder automatisch angewendete, nicht zurückgenommene Direktabfrage wird zum Prüffall.`,
   run_busy: (d) => {
     const run = number(d.run)
     return t`Lauf #${run} läuft noch. Es läuft höchstens ein Lauf zugleich.`

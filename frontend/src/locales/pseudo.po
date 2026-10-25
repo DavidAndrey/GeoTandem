@@ -1206,7 +1206,7 @@ msgid "Aus Analyse entfernen"
 msgstr ""
 
 #: src/admin/evaluation/CaseDetailPage.tsx
-msgid "Aus dem Modellprotokoll übernommen: Frage und Referenz stammen aus der Modellaktion. Der Prüffall wird erst gespeichert, wenn Sie Kennung, Stichwörter und Teil gewählt haben."
+msgid "Aus dem Modellprotokoll übernommen: Frage und Referenz stammen aus der Modellaktion. Der Prüffall wird erst gespeichert, wenn Sie Kennung und Stichwörter gewählt haben."
 msgstr ""
 
 #: src/admin/evaluation/CaseDetailPage.tsx
@@ -2556,6 +2556,10 @@ msgstr ""
 
 #: src/workplace/QueryPanel.tsx
 msgid "Eine Fläche auf der Karte zeichnen"
+msgstr ""
+
+#: src/i18n/errors.ts
+msgid "Eine Folgefrage wird nicht zum Prüffall: Sie hängt von der vorigen Antwort ab, die ein Prüffall nicht mitführt."
 msgstr ""
 
 #: src/model/chain/Chain.tsx

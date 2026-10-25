@@ -537,6 +537,9 @@ def not_eligible(action: ModelActionView) -> str | None:
     The first reason that holds, in this order:
 
     - ``approach``: a chain (the direct query first, plan E3 section 0);
+    - ``follow_up``: a follow-up (``parent_action_id``): its prompt depends on
+      the earlier answer or analysis, which a case does not carry, and one on
+      a hand-edited analysis is the hand-corrected lineage decision 2 excludes;
     - ``decision``: neither ``accepted`` nor ``auto``: refused, answered, open,
       rejected, superseded, proposal only, or ``adjusted`` (the user applied
       another query than the model's);
@@ -548,6 +551,8 @@ def not_eligible(action: ModelActionView) -> str | None:
     """
     if action.approach != "direct":
         return "approach"
+    if action.parent_action_id is not None:
+        return "follow_up"
     if action.decision not in LOG_DECISIONS:
         return "decision"
     if action.undone_at is not None:

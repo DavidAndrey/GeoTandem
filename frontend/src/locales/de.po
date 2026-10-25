@@ -1206,8 +1206,8 @@ msgid "Aus Analyse entfernen"
 msgstr "Aus Analyse entfernen"
 
 #: src/admin/evaluation/CaseDetailPage.tsx
-msgid "Aus dem Modellprotokoll übernommen: Frage und Referenz stammen aus der Modellaktion. Der Prüffall wird erst gespeichert, wenn Sie Kennung, Stichwörter und Teil gewählt haben."
-msgstr "Aus dem Modellprotokoll übernommen: Frage und Referenz stammen aus der Modellaktion. Der Prüffall wird erst gespeichert, wenn Sie Kennung, Stichwörter und Teil gewählt haben."
+msgid "Aus dem Modellprotokoll übernommen: Frage und Referenz stammen aus der Modellaktion. Der Prüffall wird erst gespeichert, wenn Sie Kennung und Stichwörter gewählt haben."
+msgstr "Aus dem Modellprotokoll übernommen: Frage und Referenz stammen aus der Modellaktion. Der Prüffall wird erst gespeichert, wenn Sie Kennung und Stichwörter gewählt haben."
 
 #: src/admin/evaluation/CaseDetailPage.tsx
 #: src/admin/evaluation/SaveCaseDialog.tsx
@@ -2557,6 +2557,10 @@ msgstr "Eine entfernte Stufe gilt für niemanden mehr: Wer sie gewählt hatte, a
 #: src/workplace/QueryPanel.tsx
 msgid "Eine Fläche auf der Karte zeichnen"
 msgstr "Eine Fläche auf der Karte zeichnen"
+
+#: src/i18n/errors.ts
+msgid "Eine Folgefrage wird nicht zum Prüffall: Sie hängt von der vorigen Antwort ab, die ein Prüffall nicht mitführt."
+msgstr "Eine Folgefrage wird nicht zum Prüffall: Sie hängt von der vorigen Antwort ab, die ein Prüffall nicht mitführt."
 
 #: src/model/chain/Chain.tsx
 msgid "Eine Freigabe für die ganze Kette; danach läuft sie ohne weitere Halte durch."

@@ -9,7 +9,15 @@
 import { Trans } from '@lingui/react/macro'
 import { t } from '@lingui/core/macro'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useRef, useState, type FormEvent, type RefObject } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type FormEvent,
+  type RefObject,
+  type SetStateAction,
+} from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { useShallow } from 'zustand/react/shallow'
 import { canonicalQuery } from '../../analysis/query'
@@ -77,7 +85,8 @@ export function CaseFromLogPage() {
   // Only digits name an entry, as on the model action page.
   const actionId = /^\d+$/.test(action) ? Number(action) : null
   const draft = useQuery({
-    queryKey: ['eval-cases', 'draft', actionId],
+    // Outside ``caseKeys.all``: creating a case must not refetch (and so reset) the draft.
+    queryKey: ['eval-case-draft', actionId],
     queryFn: () => api.evaluation.draftFromAction(actionId ?? 0),
     enabled: actionId !== null,
     // A draft is a snapshot to edit: refetching would reset the form.
@@ -115,6 +124,40 @@ function draftView(draft: CaseDraft): CaseView {
 
 const LIST = '/admin/bewertung/faelle'
 
+/**
+ * While ``dirty``: a click on any link of this application asks first
+ * (``ask`` holds where to go), and closing or reloading the tab asks the browser's question.
+ * The router is a ``BrowserRouter``, which has no ``useBlocker``; links of the
+ * page and of the navigation are caught in the capture phase, before the
+ * router follows them. The browser's back button is not caught.
+ */
+function useAskBeforeLeaving(dirty: boolean, ask: Dispatch<SetStateAction<(() => void) | null>>) {
+  const navigate = useNavigate()
+  useEffect(() => {
+    if (!dirty) return
+    const click = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0) return
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+      const target = event.target instanceof Element ? event.target : null
+      const anchor = target?.closest('a[href]')
+      if (!(anchor instanceof HTMLAnchorElement) || anchor.target === '_blank') return
+      const url = new URL(anchor.href, window.location.href)
+      if (url.origin !== window.location.origin) return
+      event.preventDefault()
+      event.stopPropagation()
+      const go = () => navigate(url.pathname + url.search + url.hash)
+      ask(() => go)
+    }
+    const unload = (event: BeforeUnloadEvent) => event.preventDefault()
+    document.addEventListener('click', click, true)
+    window.addEventListener('beforeunload', unload)
+    return () => {
+      document.removeEventListener('click', click, true)
+      window.removeEventListener('beforeunload', unload)
+    }
+  }, [dirty, ask, navigate])
+}
+
 /** "Bewertung › Prüffälle ›"; ``guard`` asks before leaving unsaved edits. */
 function Breadcrumb({ guard }: { guard?: (go: () => void) => void }) {
   const navigate = useNavigate()
@@ -135,6 +178,9 @@ function Breadcrumb({ guard }: { guard?: (go: () => void) => void }) {
     </p>
   )
 }
+
+/** The hint that holds back Speichern of a new case (V2 from the log). */
+const TAGS_NEEDED = 'case-tags-needed'
 
 function CaseForm({
   view,
@@ -161,6 +207,12 @@ function CaseForm({
   const readingsChanged = JSON.stringify(readings(form)) !== JSON.stringify(readings(original))
   /** Leaves at once, or asks first while the case has unsaved edits. */
   const guard = (go: () => void) => (dirty ? setLeaving(() => go) : go())
+  useAskBeforeLeaving(dirty, setLeaving)
+  // A draft from the log: the page's heading takes the focus once it is there.
+  const heading = useRef<HTMLHeadingElement>(null)
+  useEffect(() => {
+    if (fresh) heading.current?.focus()
+  }, [fresh])
   const client = useQueryClient()
   const save = useCaseChange(updateCase)
   const create = useCaseChange(createCase)
@@ -218,7 +270,12 @@ function CaseForm({
       <Breadcrumb guard={guard} />
       <form onSubmit={submit} aria-labelledby="case-title">
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <h2 id="case-title" className={`mr-auto text-xl ${fresh ? '' : 'font-mono'}`}>
+          <h2
+            id="case-title"
+            ref={heading}
+            tabIndex={fresh ? -1 : undefined}
+            className={`mr-auto text-xl outline-none ${fresh ? '' : 'font-mono'}`}
+          >
             {title}
           </h2>
           <CaseStatusLabel status={view.status ?? 'ok'} />
@@ -242,6 +299,7 @@ function CaseForm({
                 type="submit"
                 className="btn btn-primary"
                 disabled={!ready || create.isPending}
+                aria-describedby={form.tags.length === 0 ? TAGS_NEEDED : undefined}
               >
                 <Trans>Speichern</Trans>
               </button>
@@ -282,8 +340,7 @@ function CaseForm({
           <p className="text-muted mb-2 max-w-3xl text-sm">
             <Trans>
               Aus dem Modellprotokoll übernommen: Frage und Referenz stammen aus der Modellaktion.
-              Der Prüffall wird erst gespeichert, wenn Sie Kennung, Stichwörter und Teil gewählt
-              haben.
+              Der Prüffall wird erst gespeichert, wenn Sie Kennung und Stichwörter gewählt haben.
             </Trans>
           </p>
         )}
@@ -416,7 +473,7 @@ function CaseForm({
               <>
                 <TagEditor tags={form.tags} known={known} onChange={(tags) => patch({ tags })} />
                 {fresh && form.tags.length === 0 && (
-                  <span className="text-muted text-xs">
+                  <span id={TAGS_NEEDED} className="text-muted text-xs">
                     <Trans>Mindestens ein Stichwort.</Trans>
                   </span>
                 )}
@@ -437,7 +494,7 @@ function CaseForm({
             )}
           </Field>
           <Field label={t`Herkunft`}>
-            <Origin view={view} />
+            <Origin view={view} guard={guard} />
           </Field>
           <Field label={t`Datenstand`}>
             <DataStateText c={form} />
@@ -610,7 +667,8 @@ function Behaviour({
 }
 
 /** "Arbeitsplatz · 22.10.2026 16:40", "Protokoll · Eintrag 412", "Start". */
-function Origin({ view }: { view: CaseView }) {
+function Origin({ view, guard }: { view: CaseView; guard: (go: () => void) => void }) {
+  const navigate = useNavigate()
   const c = view.case
   const when = view.created_at ? formatDateTime(view.created_at) : null
   const action = c.origin_action
@@ -620,7 +678,15 @@ function Origin({ view }: { view: CaseView }) {
       {action != null && (
         <>
           {' · '}
-          <Link to={`/admin/modellprotokoll/${action}`} className="text-accent-700">
+          <Link
+            to={`/admin/modellprotokoll/${action}`}
+            className="text-accent-700"
+            onClick={(event) => {
+              // Asks before unsaved edits are left behind, as the breadcrumb does.
+              event.preventDefault()
+              guard(() => navigate(`/admin/modellprotokoll/${action}`))
+            }}
+          >
             <Trans>Eintrag {action}</Trans>
           </Link>
         </>

@@ -2,8 +2,8 @@
 
 A logged direct query the user accepted, or that ran unasked and was not
 taken back, becomes the draft of a case without typing its query; a chain, a
-refused or open action, an adjusted one, an undone one and one whose analysis
-was edited by hand afterwards do not. ``POST /cases`` with ``origin: log``
+follow-up, a refused, answered or open action, an adjusted one, an undone one
+and one whose analysis was edited by hand afterwards do not. ``POST /cases`` with ``origin: log``
 holds the same rule, so a corrected answer cannot become a case by hand. The
 saved case passes against itself: its reference counts what the action's
 query counts, and the action's answer grades ``pass``.
@@ -15,11 +15,14 @@ import httpx
 import pytest
 from api_helpers import USER_PASSWORD
 from fastapi import FastAPI
+from sqlalchemy import update
+from sqlalchemy.orm import Session
 from test_model_log import account, store_of
-from test_model_record import ANSWER, APPROVE, PROMPT, STAMP, build, new
+from test_model_record import ANSWER, APPROVE, CLARIFICATION, PROMPT, STAMP, build, new
 
 from geotandem.auth import accounts
 from geotandem.auth.accounts import Account
+from geotandem.db.orm import ModelAction
 from geotandem.engine import count_query
 from geotandem.evaluation.grade import grade
 from geotandem.evaluation.schemas import EvalCase
@@ -127,7 +130,33 @@ def touched(app: FastAPI) -> int:
     return action_id
 
 
+def answered(app: FastAPI) -> int:
+    """A clarification: nothing proposed, no decision."""
+    store, admin = admin_store(app)
+    action_id = new(store, admin, supersede=False).id
+    store.answer(admin, action_id, CLARIFICATION)
+    return action_id
+
+
+def without_query(app: FastAPI) -> int:
+    """Accepted, but the record holds no query (a state the flow does not
+    reach; the rule must not lean on that)."""
+    action_id = action(app, "accepted")
+    with Session(app.state.geotandem.backend.engine) as db, db.begin():
+        db.execute(update(ModelAction).where(ModelAction.id == action_id).values(query=None))
+    return action_id
+
+
+def follow_up(app: FastAPI) -> int:
+    """An accepted follow-up of an accepted direct query."""
+    parent = action(app, "accepted")
+    return action(app, "accepted", parent_action_id=parent)
+
+
 INELIGIBLE: dict[str, tuple[Any, str, str | None]] = {
+    "follow-up": (follow_up, "follow_up", "accepted"),
+    "answered": (answered, "decision", None),
+    "no query": (without_query, "no_query", "accepted"),
     "adjusted": (lambda app: action(app, "adjusted"), "decision", "adjusted"),
     "auto undone": (lambda app: action(app, "auto_undone"), "undone", "auto"),
     "accepted undone": (lambda app: action(app, "accepted_undone"), "undone", "accepted"),
@@ -194,7 +223,7 @@ async def test_the_draft_saved_becomes_a_case_that_passes_against_itself(
     assert graded.verdict == "pass"
 
 
-@pytest.mark.parametrize("kind", ["adjusted", "auto undone", "chain", "touched"])
+@pytest.mark.parametrize("kind", ["adjusted", "auto undone", "chain", "touched", "follow-up"])
 async def test_a_log_case_of_an_ineligible_action_is_refused_by_hand(
     client: httpx.AsyncClient, app: FastAPI, kind: str
 ) -> None:
@@ -226,3 +255,18 @@ async def test_an_edit_may_not_move_a_case_to_an_ineligible_action(
     moved = await client.put(f"{CASES}/aus-protokoll", json=as_case(draft, origin_action=other))
     assert moved.status_code == 409, moved.text
     assert moved.json()["code"] == "action_not_eligible"
+
+
+async def test_an_edit_may_not_turn_an_authored_case_into_one_of_an_ineligible_action(
+    client: httpx.AsyncClient, app: FastAPI
+) -> None:
+    draft = (await client.get(f"{DRAFT}/{accepted(app, NEAR)[0]}")).json()
+    authored = as_case(draft, origin="authored", origin_action=None)
+    assert (await client.post(CASES, json=authored)).status_code == 201
+
+    other = action(app, "auto_undone")
+    response = await client.put(
+        f"{CASES}/aus-protokoll", json={**authored, "origin": "log", "origin_action": other}
+    )
+    assert response.status_code == 409, response.text
+    assert response.json()["details"]["reason"] == "undone"

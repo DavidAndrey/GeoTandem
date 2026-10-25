@@ -1,5 +1,5 @@
 {
-  "action_not_eligible": "Only an accepted, or auto, direct query not undone and not changed by hand becomes a case (details.decision, details.reason).",
+  "action_not_eligible": "Only an accepted, or auto, direct query, not a follow-up, not undone and not changed by hand becomes a case (details.decision, details.reason).",
   "already_decided": "The action is decided already (details.status).",
   "ambiguous_key_target": "Key values occur more than once in the target layer.",
   "api_key_bound_to_url": "The stored API key goes only to its own address (C8).",

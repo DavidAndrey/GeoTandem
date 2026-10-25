@@ -6,7 +6,7 @@
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import { Route, Routes } from 'react-router'
+import { Link, Route, Routes } from 'react-router'
 import { useAnalysis } from '../../analysis/store'
 import type { CaseDraft, CaseView, EvalCase, ModelActionView } from '../../api/client'
 import { casePage } from '../../test/eval-mocks'
@@ -91,6 +91,7 @@ function renderEntry(id = ID) {
   return renderAt(
     `/admin/modellprotokoll/${id}`,
     <Routes>
+      <Route path="/admin/bewertung/faelle" element={<p>Liste der Prüffälle</p>} />
       <Route path="/admin/modellprotokoll/:id" element={<ModelActionPage />} />
       <Route path="/admin/bewertung/faelle/:id" element={<CaseDetailPage />} />
       <Route path="/admin/bewertung/faelle/aus-protokoll/:action" element={<CaseFromLogPage />} />
@@ -100,7 +101,7 @@ function renderEntry(id = ID) {
 
 const OFFER = 'Als Prüffall übernehmen'
 
-test('the rule mirrors the server: accepted or auto, direct, not undone, not touched, with a query', () => {
+test('the rule mirrors the server: accepted or auto, direct, no follow-up, not undone, not touched, with a query', () => {
   expect(fromLog(accepted())).toBe(true)
   expect(fromLog(accepted({ decision: 'auto' }))).toBe(true)
   expect(fromLog(accepted({ decision: 'adjusted' }))).toBe(false)
@@ -109,6 +110,9 @@ test('the rule mirrors the server: accepted or auto, direct, not undone, not tou
   expect(fromLog(accepted({ approach: 'chain' }))).toBe(false)
   expect(fromLog(accepted({ decision: null, status: 'refused' }))).toBe(false)
   expect(fromLog(accepted({ query: null }))).toBe(false)
+  expect(fromLog(accepted({ status: 'undone', undone_at: '2026-10-10T14:06:00' }))).toBe(false)
+  expect(fromLog(accepted({ decision: null, status: 'answered' }))).toBe(false)
+  expect(fromLog(accepted({ parent_action_id: 101 }))).toBe(false)
 })
 
 test.each([
@@ -116,6 +120,7 @@ test.each([
   ['auto, undone', { decision: 'auto', status: 'undone', undone_at: '2026-10-10T14:06:00' }],
   ['changed by hand afterwards', { touched_at: '2026-10-10T14:07:00' }],
   ['a chain', { approach: 'chain' }],
+  ['a follow-up', { parent_action_id: 101 }],
 ] as const)('M16.2: no offer for an entry %s', async (_, patch) => {
   server(accepted(patch as Partial<ModelActionView>))
   renderEntry()
@@ -209,4 +214,77 @@ test('an id that names no entry is not asked for', async () => {
   )
   expect(await screen.findByRole('alert')).toHaveTextContent('Das Gesuchte gibt es nicht (mehr).')
   expect(calls.some((c) => c.key.includes('draft-from-action'))).toBe(false)
+})
+
+test('a draft the server refuses shows the reason in words and no form', async () => {
+  const refusal = new Response(
+    JSON.stringify({
+      code: 'action_not_eligible',
+      message: 'English text.',
+      details: { decision: 'auto', reason: 'undone' },
+    }),
+    { status: 409 },
+  )
+  server(accepted(), { [`GET /api/admin/evaluation/cases/draft-from-action/${ID}`]: refusal })
+  renderAt(
+    `/admin/bewertung/faelle/aus-protokoll/${ID}`,
+    <Routes>
+      <Route path="/admin/bewertung/faelle/aus-protokoll/:action" element={<CaseFromLogPage />} />
+    </Routes>,
+  )
+  expect(
+    await screen.findByText(/Nur eine angenommene oder automatisch angewendete/),
+  ).toBeInTheDocument()
+  expect(screen.queryByRole('textbox', { name: 'Frage' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Speichern' })).toBeNull()
+})
+
+test('the new case takes the focus, and Speichern says why it waits', async () => {
+  server(accepted())
+  renderAt(
+    `/admin/bewertung/faelle/aus-protokoll/${ID}`,
+    <Routes>
+      <Route path="/admin/bewertung/faelle/aus-protokoll/:action" element={<CaseFromLogPage />} />
+    </Routes>,
+  )
+  const heading = await screen.findByRole('heading', { name: 'Neuer Prüffall' })
+  expect(heading).toHaveFocus()
+  const save = screen.getByRole('button', { name: 'Speichern' })
+  expect(save).toBeDisabled()
+  expect(save).toHaveAccessibleDescription('Mindestens ein Stichwort.')
+})
+
+test('leaving the new case with unsaved input asks, by its links and by any other', async () => {
+  server(accepted())
+  renderAt(
+    `/admin/bewertung/faelle/aus-protokoll/${ID}`,
+    <>
+      <nav>
+        <Link to="/admin/bewertung/faelle">Prüffälle</Link>
+      </nav>
+      <Routes>
+        <Route path="/admin/bewertung/faelle/aus-protokoll/:action" element={<CaseFromLogPage />} />
+        <Route path="/admin/modellprotokoll/:id" element={<p>Eintrag im Protokoll</p>} />
+        <Route path="/admin/bewertung/faelle" element={<p>Liste der Prüffälle</p>} />
+      </Routes>
+    </>,
+  )
+  const question = await screen.findByRole('textbox', { name: 'Frage' })
+  await userEvent.type(question, ' heute')
+
+  // The origin's link asks; Abbrechen in the question stays on the page.
+  await userEvent.click(screen.getByRole('link', { name: `Eintrag ${ID}` }))
+  const ask = await screen.findByRole('alertdialog', {
+    name: 'Ungespeicherte Änderungen am Prüffall verwerfen?',
+  })
+  await userEvent.click(within(ask).getByRole('button', { name: 'Abbrechen' }))
+  expect(screen.getByRole('textbox', { name: 'Frage' })).toHaveValue(`${accepted().prompt} heute`)
+
+  // A link outside the form asks too, and goes once the edits are dropped.
+  await userEvent.click(screen.getByRole('link', { name: 'Prüffälle' }))
+  const again = await screen.findByRole('alertdialog', {
+    name: 'Ungespeicherte Änderungen am Prüffall verwerfen?',
+  })
+  await userEvent.click(within(again).getByRole('button', { name: 'Verwerfen' }))
+  expect(await screen.findByText('Liste der Prüffälle')).toBeInTheDocument()
 })
