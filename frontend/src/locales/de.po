@@ -563,6 +563,10 @@ msgstr "≤ {distance} zu {layer}"
 msgid "≤ Distanz zu"
 msgstr "≤ Distanz zu"
 
+#: src/admin/promptProfile.ts
+msgid "12 Beispiele"
+msgstr "12 Beispiele"
+
 #. Badge: attribute condition
 #. Short level cell: auto
 #: src/editor/CompactTree.tsx
@@ -1209,6 +1213,14 @@ msgstr "Aus der Frage vorgeschlagen; eindeutig unter allen Prüffällen."
 msgid "aus Raumfilter"
 msgstr "aus Raumfilter"
 
+#: src/admin/ConnectionsPage.tsx
+msgid "Ausgabe"
+msgstr "Ausgabe"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Ausgabe je Mio. Tokens"
+msgstr "Ausgabe je Mio. Tokens"
+
 #: src/workplace/QueryPanel.tsx
 msgid "Ausschnitt"
 msgstr "Ausschnitt"
@@ -1316,6 +1328,10 @@ msgstr "Beispieldatensatz"
 #: src/auth/SetupPage.tsx
 msgid "Beispieldatensatz „Bern-Mittelland\" laden"
 msgstr "Beispieldatensatz „Bern-Mittelland\" laden"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Beispiele"
+msgstr "Beispiele"
 
 #: src/model/panel/PromptPanel.tsx
 msgid "Beispiele aus den sichtbaren Layern"
@@ -2449,6 +2465,10 @@ msgstr "Distanz {title}"
 msgid "Distanz in Metern"
 msgstr "Distanz in Metern"
 
+#: src/admin/ConnectionsPage.tsx
+msgid "Drei Buchstaben, z. B. CHF, EUR, USD."
+msgstr "Drei Buchstaben, z. B. CHF, EUR, USD."
+
 #: src/admin/CatalogPage.tsx
 #: src/admin/DuplicateLayerDialog.tsx
 #: src/queries/ManageQueriesDialog.tsx
@@ -2491,6 +2511,10 @@ msgstr "Ein Layer der Referenz fehlt oder ist für Sie nicht sichtbar"
 #: src/i18n/errors.ts
 msgid "Ein Layer fehlt oder ist nicht sichtbar."
 msgstr "Ein Layer fehlt oder ist nicht sichtbar."
+
+#: src/i18n/errors.ts
+msgid "Ein Preis braucht beide Beträge (Eingabe und Ausgabe) und die Währung, oder keinen davon."
+msgstr "Ein Preis braucht beide Beträge (Eingabe und Ausgabe) und die Währung, oder keinen davon."
 
 #: src/i18n/errors.ts
 msgid "Ein Prüffall passt nicht: Das Format stimmt nicht, oder seine Referenzabfrage besteht die Prüfung nicht."
@@ -2580,6 +2604,10 @@ msgstr "Einen Prüffall „{id}\" gibt es schon."
 #: src/model/panel/PromptPanel.tsx
 msgid "Eingabe gesperrt, solange das Modell arbeitet"
 msgstr "Eingabe gesperrt, solange das Modell arbeitet"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Eingabe je Mio. Tokens"
+msgstr "Eingabe je Mio. Tokens"
 
 #: src/admin/SystemPage.tsx
 msgid "Eingeschränkt"
@@ -2860,6 +2888,14 @@ msgstr "Ersteinrichtung"
 #: src/admin/evaluation/CaseDetailPage.tsx
 msgid "Erwartet"
 msgstr "Erwartet"
+
+#: src/admin/promptProfile.ts
+msgid "erzwungen"
+msgstr "erzwungen"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Erzwungen: das Antwortschema geht auch als eingeschränkte Ausgabe mit. Nur Text: das Schema steht nur im Prompt."
+msgstr "Erzwungen: das Antwortschema geht auch als eingeschränkte Ausgabe mit. Nur Text: das Schema steht nur im Prompt."
 
 #: src/i18n/errors.ts
 msgid "Es braucht mindestens {min} und höchstens {max} Stufen."
@@ -3183,6 +3219,10 @@ msgstr "Gebietslayer"
 #: src/map/MapSearch.tsx
 msgid "Gemeinde, Haltestelle, Schule …"
 msgstr "Gemeinde, Haltestelle, Schule …"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Gemessene Varianten des Prompts der Direktabfrage; die Werkzeugkette nutzt immer den Standard. Welche Variante einem Modell hilft, zeigt ein Bewertungslauf."
+msgstr "Gemessene Varianten des Prompts der Direktabfrage; die Werkzeugkette nutzt immer den Standard. Welche Variante einem Modell hilft, zeigt ein Bewertungslauf."
 
 #: src/i18n/errors.ts
 msgid "Genau eine Stufe muss voreingestellt sein."
@@ -4630,6 +4670,10 @@ msgstr "Nur in:"
 msgid "nur Metadaten"
 msgstr "nur Metadaten"
 
+#: src/admin/promptProfile.ts
+msgid "nur Text"
+msgstr "nur Text"
+
 #: src/model/log/words.ts
 msgid "nur Vorschlag"
 msgstr "nur Vorschlag"
@@ -4730,6 +4774,22 @@ msgstr "Operation nicht möglich"
 msgid "Operator"
 msgstr "Operator"
 
+#: src/admin/ConnectionsPage.tsx
+msgid "Optional, je Million Tokens: Damit zeigt die Bewertung Schätzung und Kosten in Geld, sonst in Tokens. Beide Beträge und die Währung, oder keines davon."
+msgstr "Optional, je Million Tokens: Damit zeigt die Bewertung Schätzung und Kosten in Geld, sonst in Tokens. Beide Beträge und die Währung, oder keines davon."
+
+#: src/admin/promptProfile.ts
+msgid "P0 (wie bisher)"
+msgstr "P0 (wie bisher)"
+
+#: src/admin/promptProfile.ts
+msgid "P5 (Beispiele vor dem Steckbrief)"
+msgstr "P5 (Beispiele vor dem Steckbrief)"
+
+#: src/admin/promptProfile.ts
+msgid "P9 (Hinweis „erste Frage\" als eigene Systemnachricht)"
+msgstr "P9 (Hinweis „erste Frage\" als eigene Systemnachricht)"
+
 #: src/auth/LoginPage.tsx
 #: src/auth/SetupPage.tsx
 msgid "Passwort"
@@ -4755,6 +4815,14 @@ msgstr "Passwort zurücksetzen"
 #: src/model/chain/PlanEditor.tsx
 msgid "Plan anpassen"
 msgstr "Plan anpassen"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Platzierung"
+msgstr "Platzierung"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Preise"
+msgstr "Preise"
 
 #: src/admin/ModelActionPage.tsx
 #: src/admin/ModelLogPage.tsx
@@ -4789,6 +4857,10 @@ msgstr "Prompt nicht verfügbar: keine Modellanbindung aktiv. Klassik ist voll n
 #: src/admin/ModelActionPage.tsx
 msgid "Prompt-Hash"
 msgstr "Prompt-Hash"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Promptprofil"
+msgstr "Promptprofil"
 
 #: src/admin/evaluation/words.ts
 #: src/model/chain/Chain.tsx
@@ -5224,6 +5296,10 @@ msgstr "Stand hat sich seit dem Vorschlag geändert"
 #: src/admin/ModelActionPage.tsx
 msgid "Stand von Hand geändert"
 msgstr "Stand von Hand geändert"
+
+#: src/admin/promptProfile.ts
+msgid "Standard"
+msgstr "Standard"
 
 #: src/admin/evaluation/words.ts
 msgid "Start"
@@ -5853,6 +5929,10 @@ msgstr "Vorschlag offen"
 #: src/model/log/words.ts
 msgid "Vorschläge"
 msgstr "Vorschläge"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Währung"
+msgstr "Währung"
 
 #: src/model/approval/Approval.tsx
 msgid "war angewendet · {hits} Treffer"

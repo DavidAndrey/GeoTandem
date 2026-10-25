@@ -111,6 +111,8 @@ CODES: dict[str, str] = {
     "credentials_unreadable": "A stored API key cannot be opened with this secret.key.",
     "api_key_bound_to_url": "The stored API key goes only to its own address (C8).",
     "request_limit_required": "A request limit that is on needs its number per day (P5).",
+    "price_incomplete": "A price needs input, output and currency, or none of them "
+    "(details.missing).",
     # Model connections: why a call brought no answer (details.cause, verbatim)
     "llm_invalid_url": "The base URL is not http(s) with a host, or carries credentials.",
     "llm_unreachable": "The model endpoint could not be reached.",

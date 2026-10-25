@@ -76,6 +76,7 @@ from geotandem.llm import Completion, Endpoint, Message, ModelInfo, ToolSpec, ho
 from geotandem.llm.fake import FakeLLMClient
 from geotandem.model import service
 from geotandem.model.direct import DirectQuery, governance
+from geotandem.model.prompt import FIRST
 from geotandem.model.record import (
     ModelActionStore,
     NewAction,
@@ -812,6 +813,7 @@ INJECTIONS = [
 ]
 
 
+@pytest.mark.parametrize("placement", ["P0", "P9"])
 @pytest.mark.parametrize("text", INJECTIONS, ids=["ignore", "fake-system", "fake-format"])
 async def test_a_prompt_cannot_change_format_level_or_tools(
     client: httpx.AsyncClient,
@@ -820,19 +822,33 @@ async def test_a_prompt_cannot_change_format_level_or_tools(
     levels: dict[str, int],
     ran: list[str],
     text: str,
+    placement: str,
 ) -> None:
     """The prompt text is the user message and nothing else: the system message
     (level prompt, layer profile, answer format), the answer schema and the
     tools (none) are byte for byte those of a harmless prompt, the record is
     governed by the account's level (*Prüfen*), and a model that obeys gets
-    no further than its answer's checks."""
+    no further than its answer's checks. Under the prompt profile's P9 (plan
+    E3, D9; E-8 extended 2026-10-23) the first-question note is a system
+    message of its own before the user message, which stays the prompt text."""
+    [connection] = (await client.get(CONNECTIONS)).json()
+    profile = {"examples": "standard", "placement": placement, "output": "constrained"}
+    patched = await client.patch(
+        f"{CONNECTIONS}/{connection['id']}", json={"prompt_profile": profile}
+    )
+    assert patched.status_code == 200, patched.text
     plain = await ask(client, app, model, PLAIN, text="Primarschulen bitte")
     obeyed = await ask(client, app, model, PLAIN, text=text)
     [harmless, injected] = model.fake.calls[-2:]
 
     assert injected.messages[:-1] == harmless.messages[:-1]
     assert injected.messages[-1] == Message("user", text)
-    assert len(injected.messages) == 2
+    assert [m.role for m in injected.messages] == (
+        ["system", "system", "user"] if placement == "P9" else ["system", "user"]
+    )
+    assert all(text not in m.content for m in injected.messages[:-1])
+    if placement == "P9":
+        assert injected.messages[1] == Message("system", FIRST)
     assert injected.schema == harmless.schema and injected.tools == harmless.tools == ()
     assert obeyed["level"] == plain["level"] and obeyed["connection"] == plain["connection"]
     assert (obeyed["status"], obeyed["governance"]["cell"]) == ("proposed", "approve")

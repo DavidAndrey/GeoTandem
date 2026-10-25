@@ -12,7 +12,7 @@ from fastapi import FastAPI
 from sqlalchemy import select, text, update
 from sqlalchemy.orm import Session
 
-from geotandem.connections import Connections
+from geotandem.connections import PRICES, ConnectionInfo, Connections, price_of
 from geotandem.db.orm import LLMConnection, User
 from geotandem.llm import Endpoint
 from geotandem.vault import KEY_FILE, CredentialsUnreadable, Vault
@@ -292,6 +292,68 @@ async def test_a_disabled_choice_falls_back_and_returns(
     assert chosen is None
 
 
+# --- prompt profile and prices (plan E3, D9, O4) ---------------------------------
+
+P0 = {"examples": "standard", "placement": "P0", "output": "constrained"}
+
+
+async def test_a_connection_starts_with_todays_prompt_and_no_price(
+    client: httpx.AsyncClient,
+) -> None:
+    created = await create(client, "Ollama")
+    assert created["prompt_profile"] == P0
+    assert [created[f] for f in PRICES] == [None, None, None]
+    assert price_of(state_info(created)) is None
+
+
+async def test_the_prompt_profile_is_set_and_changed_from_the_presets(
+    client: httpx.AsyncClient,
+) -> None:
+    luna = {"examples": "12", "placement": "P9", "output": "text"}
+    created = await create(client, "Luna", prompt_profile=luna)
+    assert created["prompt_profile"] == luna
+    changed = await patch(client, created["id"], prompt_profile={"placement": "P5"})
+    assert changed.json()["prompt_profile"] == {**P0, "placement": "P5"}
+    # Only the measured presets, never free text (D9): P1-P4 and P8 are not offered.
+    for wrong in ({"placement": "P2"}, {"examples": "3"}, {"output": "json"}, {"text": "…"}):
+        response = await patch(client, created["id"], prompt_profile=wrong)
+        await refused(response, "schema_violation", 422)
+    assert (await connections(client))["Luna"]["prompt_profile"] == {**P0, "placement": "P5"}
+
+
+async def test_prices_come_all_three_or_none(client: httpx.AsyncClient) -> None:
+    half = await client.post(URL, json={"name": "Cloud", **EXTERNAL, "price_input_per_mtok": 1.0})
+    await refused(half, "price_incomplete")
+    assert half.json()["details"]["missing"] == ["price_output_per_mtok", "price_currency"]
+    priced = {"price_input_per_mtok": 0.8, "price_output_per_mtok": 4, "price_currency": "USD"}
+    cloud = await create(client, "Cloud", **EXTERNAL, **priced)
+    assert [cloud[f] for f in PRICES] == [0.8, 4.0, "USD"]
+    await refused(await patch(client, cloud["id"], price_currency=None), "price_incomplete")
+    changed = await patch(client, cloud["id"], price_currency="CHF", price_input_per_mtok=1)
+    assert [changed.json()[f] for f in PRICES] == [1.0, 4.0, "CHF"]
+    removed = await patch(client, cloud["id"], **dict.fromkeys(PRICES))
+    assert [removed.json()[f] for f in PRICES] == [None, None, None]
+    for wrong in (
+        {"price_currency": "usd"},
+        {"price_currency": "US"},
+        {"price_input_per_mtok": -1},
+    ):
+        await refused(await patch(client, cloud["id"], **wrong), "schema_violation", 422)
+
+
+async def test_price_of_reads_the_prices_in_one_place(client: httpx.AsyncClient) -> None:
+    priced = {"price_input_per_mtok": 0.8, "price_output_per_mtok": 4, "price_currency": "USD"}
+    price = price_of(state_info(await create(client, "Cloud", **EXTERNAL, **priced)))
+    assert price is not None
+    assert (price.input.amount, price.output.amount, price.input.currency) == (0.8, 4.0, "USD")
+    cost = price.cost(prompt_tokens=10_000, completion_tokens=500)
+    assert (round(cost.amount, 6), cost.currency) == (0.01, "USD")
+
+
+def state_info(body: Body) -> ConnectionInfo:
+    return ConnectionInfo.model_validate(body)
+
+
 # --- audit and access (C16) ------------------------------------------------------
 
 
@@ -300,11 +362,19 @@ async def test_every_change_is_audited_by_field_names(
 ) -> None:
     created = await create(client, "Ollama", api_key=KEY)
     await patch(client, created["id"], model="gemma3:4b", temperature=0.0)
+    # Applying a prompt profile is a configuration change, in the audit log (O8).
+    await patch(client, created["id"], prompt_profile={"placement": "P9"})
+    await patch(client, created["id"], prompt_profile={"placement": "P9"})
+    priced = {"price_input_per_mtok": 1, "price_output_per_mtok": 2, "price_currency": "CHF"}
+    await patch(client, created["id"], **priced)
     await client.delete(f"{URL}/{created['id']}")
     logged = [e for e in events if e["event"] == "llm_connection_changed"]
     assert [(e["action"], e.get("fields")) for e in logged] == [
         ("created", ["api_key", "base_url", "model", "name"]),
         ("updated", ["model"]),
+        ("updated", ["prompt_profile"]),
+        ("updated", []),
+        ("updated", sorted(priced)),
         ("deleted", None),
     ]
     assert all(e["username"] == "admin" and e["id"] == created["id"] for e in logged)

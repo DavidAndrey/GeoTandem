@@ -608,7 +608,7 @@ class KeyFigures(BaseModel):
 
 ExampleSet = Literal["standard", "12"]
 """The worked examples of the prompt: today's set, or the twelve of
-``evals/examples/12.txt`` (testplan-system-context, P6)."""
+``model/examples/12.txt`` (testplan-system-context, P6)."""
 
 Placement = Literal["P0", "P5", "P9"]
 """Where the prompt puts its parts (testplan-system-context, 5): ``P0`` as

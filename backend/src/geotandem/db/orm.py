@@ -243,6 +243,10 @@ class LevelPermission(Base):
     mode: Mapped[str] = mapped_column(String(16))
 
 
+DEFAULT_PROMPT_PROFILE = '{"examples": "standard", "placement": "P0", "output": "constrained"}'
+"""``PromptProfile()`` as JSON, for the rows that were there before it (0017)."""
+
+
 class LLMConnection(Base):
     """A model behind an OpenAI-compatible endpoint (F-3.2, plan E2.1, C4)."""
 
@@ -278,6 +282,24 @@ class LLMConnection(Base):
         )
     )
     """The cap; required and positive while the limit is on."""
+    prompt_profile: Mapped[dict[str, Any]] = mapped_column(
+        JSON, server_default=DEFAULT_PROMPT_PROFILE
+    )
+    """How the direct query's prompt is written (plan E3, D9), as
+    ``PromptProfile`` dumps it; the default is today's prompt."""
+    price_input_per_mtok: Mapped[float | None]
+    """Price per million input tokens (plan E3, O4); with the other two or not at all."""
+    price_output_per_mtok: Mapped[float | None]
+    price_currency: Mapped[str | None] = mapped_column(
+        String(3),
+        CheckConstraint(
+            "(price_input_per_mtok IS NULL AND price_output_per_mtok IS NULL"
+            " AND price_currency IS NULL) OR (price_input_per_mtok IS NOT NULL"
+            " AND price_output_per_mtok IS NOT NULL AND price_currency IS NOT NULL)",
+            name="ck_llm_connection_price",
+        ),
+    )
+    """ISO 4217, upper case."""
     created_at: Mapped[datetime] = mapped_column(server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(server_default=func.current_timestamp())
 

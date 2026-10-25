@@ -159,7 +159,7 @@ from geotandem.model.chain.view import restored
 from geotandem.model.compare import name_attribute, reason, result_layer
 from geotandem.model.direct import DirectAnswer, DirectQuery, governance
 from geotandem.model.errors import ActionError
-from geotandem.model.prompt import FollowUp, Prompt, Turn, build_prompt
+from geotandem.model.prompt import DEFAULT_PROMPT_PROFILE, FollowUp, Prompt, Turn, build_prompt
 from geotandem.model.record import (
     COMPLETE,
     RAN,
@@ -671,6 +671,13 @@ class PromptFlow:
             profile=profile,
             follow_up=follow_up,
             context_length=connection.context_length,
+            # The connection's for the direct query (plan E3, D9); the chain
+            # keeps today's until it is evaluated (plan E3, 9).
+            prompt_profile=(
+                connection.prompt_profile
+                if request.approach == "direct"
+                else DEFAULT_PROMPT_PROFILE
+            ),
         )
         timeout_s = min(endpoint.timeout_s, MODEL_CALL_S)
         call = _Call(

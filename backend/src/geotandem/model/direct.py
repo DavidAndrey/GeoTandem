@@ -4,7 +4,8 @@ level and connection, builds the client and the account's layer profile
 (``catalog.model_profile`` over the account's view), records the profile's hash
 on the ``thinking`` record, and maps errors.
 
-``direct_prompt`` builds the messages (``context_too_large`` before any call);
+``direct_prompt`` builds the messages after the connection's prompt profile
+(plan E3, D9; ``context_too_large`` before any call);
 ``DirectQuery.ask`` sends them and returns a ``DirectAnswer``: the parsed
 answer, and for a ``query`` answer either the validated query with its
 governance or the refusal. It raises ``ActionError`` (``model_unreadable``)
@@ -18,13 +19,14 @@ from dataclasses import dataclass
 from geotandem.catalog import ModelProfile
 from geotandem.levels import CellMode, Level, OpClass, strictest
 from geotandem.llm import LLMClient
-from geotandem.model.prompt import FollowUp, Prompt, build_prompt
+from geotandem.model.prompt import DEFAULT_PROMPT_PROFILE, FollowUp, Prompt, build_prompt
 from geotandem.model.result import Tokens, parse_answer
 from geotandem.model.schemas import (
     CannotAnswer,
     Clarification,
     Governance,
     PlanAnswer,
+    PromptProfile,
     QueryAnswer,
     Refusal,
 )
@@ -51,8 +53,10 @@ def direct_prompt(
     profile: ModelProfile,
     follow_up: FollowUp | None = None,
     context_length: int | None = None,
+    prompt_profile: PromptProfile = DEFAULT_PROMPT_PROFILE,
 ) -> Prompt:
-    """The messages of a direct query; ``context_too_large`` before any call."""
+    """The messages of a direct query written after ``prompt_profile``, the
+    connection's or a run's (D9); ``context_too_large`` before any call."""
     return build_prompt(
         text,
         approach="direct",
@@ -60,6 +64,7 @@ def direct_prompt(
         profile=profile,
         follow_up=follow_up,
         context_length=context_length,
+        prompt_profile=prompt_profile,
     )
 
 
@@ -90,8 +95,11 @@ class DirectQuery:
         account's layer profile: the model sees exactly it, and its answer is
         checked in its world. The prompt flow builds the prompt while the
         request is checked, the call follows (P7) and ends by ``deadline``
-        (``time.monotonic()``)."""
-        completion = self.client.complete(prompt.messages, schema=prompt.schema, deadline=deadline)
+        (``time.monotonic()``). The schema goes as constrained output only
+        when the prompt's profile asks for it (``Prompt.constrained``)."""
+        completion = self.client.complete(
+            prompt.messages, schema=prompt.constrained, deadline=deadline
+        )
         answer = parse_answer(completion, "direct")
         assert not isinstance(answer, PlanAnswer)  # parse_answer took the direct kinds only
         query = refusal = rules = None

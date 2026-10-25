@@ -563,6 +563,10 @@ msgstr ""
 msgid "≤ Distanz zu"
 msgstr ""
 
+#: src/admin/promptProfile.ts
+msgid "12 Beispiele"
+msgstr ""
+
 #. Badge: attribute condition
 #. Short level cell: auto
 #: src/editor/CompactTree.tsx
@@ -1209,6 +1213,14 @@ msgstr ""
 msgid "aus Raumfilter"
 msgstr ""
 
+#: src/admin/ConnectionsPage.tsx
+msgid "Ausgabe"
+msgstr ""
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Ausgabe je Mio. Tokens"
+msgstr ""
+
 #: src/workplace/QueryPanel.tsx
 msgid "Ausschnitt"
 msgstr ""
@@ -1315,6 +1327,10 @@ msgstr ""
 
 #: src/auth/SetupPage.tsx
 msgid "Beispieldatensatz „Bern-Mittelland\" laden"
+msgstr ""
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Beispiele"
 msgstr ""
 
 #: src/model/panel/PromptPanel.tsx
@@ -2449,6 +2465,10 @@ msgstr ""
 msgid "Distanz in Metern"
 msgstr ""
 
+#: src/admin/ConnectionsPage.tsx
+msgid "Drei Buchstaben, z. B. CHF, EUR, USD."
+msgstr ""
+
 #: src/admin/CatalogPage.tsx
 #: src/admin/DuplicateLayerDialog.tsx
 #: src/queries/ManageQueriesDialog.tsx
@@ -2490,6 +2510,10 @@ msgstr ""
 
 #: src/i18n/errors.ts
 msgid "Ein Layer fehlt oder ist nicht sichtbar."
+msgstr ""
+
+#: src/i18n/errors.ts
+msgid "Ein Preis braucht beide Beträge (Eingabe und Ausgabe) und die Währung, oder keinen davon."
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -2579,6 +2603,10 @@ msgstr ""
 
 #: src/model/panel/PromptPanel.tsx
 msgid "Eingabe gesperrt, solange das Modell arbeitet"
+msgstr ""
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Eingabe je Mio. Tokens"
 msgstr ""
 
 #: src/admin/SystemPage.tsx
@@ -2859,6 +2887,14 @@ msgstr ""
 
 #: src/admin/evaluation/CaseDetailPage.tsx
 msgid "Erwartet"
+msgstr ""
+
+#: src/admin/promptProfile.ts
+msgid "erzwungen"
+msgstr ""
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Erzwungen: das Antwortschema geht auch als eingeschränkte Ausgabe mit. Nur Text: das Schema steht nur im Prompt."
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -3182,6 +3218,10 @@ msgstr ""
 
 #: src/map/MapSearch.tsx
 msgid "Gemeinde, Haltestelle, Schule …"
+msgstr ""
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Gemessene Varianten des Prompts der Direktabfrage; die Werkzeugkette nutzt immer den Standard. Welche Variante einem Modell hilft, zeigt ein Bewertungslauf."
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -4630,6 +4670,10 @@ msgstr ""
 msgid "nur Metadaten"
 msgstr ""
 
+#: src/admin/promptProfile.ts
+msgid "nur Text"
+msgstr ""
+
 #: src/model/log/words.ts
 msgid "nur Vorschlag"
 msgstr ""
@@ -4730,6 +4774,22 @@ msgstr ""
 msgid "Operator"
 msgstr ""
 
+#: src/admin/ConnectionsPage.tsx
+msgid "Optional, je Million Tokens: Damit zeigt die Bewertung Schätzung und Kosten in Geld, sonst in Tokens. Beide Beträge und die Währung, oder keines davon."
+msgstr ""
+
+#: src/admin/promptProfile.ts
+msgid "P0 (wie bisher)"
+msgstr ""
+
+#: src/admin/promptProfile.ts
+msgid "P5 (Beispiele vor dem Steckbrief)"
+msgstr ""
+
+#: src/admin/promptProfile.ts
+msgid "P9 (Hinweis „erste Frage\" als eigene Systemnachricht)"
+msgstr ""
+
 #: src/auth/LoginPage.tsx
 #: src/auth/SetupPage.tsx
 msgid "Passwort"
@@ -4754,6 +4814,14 @@ msgstr ""
 
 #: src/model/chain/PlanEditor.tsx
 msgid "Plan anpassen"
+msgstr ""
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Platzierung"
+msgstr ""
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Preise"
 msgstr ""
 
 #: src/admin/ModelActionPage.tsx
@@ -4788,6 +4856,10 @@ msgstr ""
 
 #: src/admin/ModelActionPage.tsx
 msgid "Prompt-Hash"
+msgstr ""
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Promptprofil"
 msgstr ""
 
 #: src/admin/evaluation/words.ts
@@ -5223,6 +5295,10 @@ msgstr ""
 
 #: src/admin/ModelActionPage.tsx
 msgid "Stand von Hand geändert"
+msgstr ""
+
+#: src/admin/promptProfile.ts
+msgid "Standard"
 msgstr ""
 
 #: src/admin/evaluation/words.ts
@@ -5852,6 +5928,10 @@ msgstr ""
 
 #: src/model/log/words.ts
 msgid "Vorschläge"
+msgstr ""
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Währung"
 msgstr ""
 
 #: src/model/approval/Approval.tsx

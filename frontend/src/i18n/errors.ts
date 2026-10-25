@@ -244,6 +244,8 @@ const MESSAGES: Record<string, Words> = {
     t`Der gespeicherte Zugangsschlüssel geht nur an die bisherige Adresse. Für eine neue Adresse bitte den Schlüssel neu eintragen oder entfernen.`,
   request_limit_required: () =>
     t`Ist die Begrenzung eingeschaltet, braucht es die Zahl der Anfragen pro Tag.`,
+  price_incomplete: () =>
+    t`Ein Preis braucht beide Beträge (Eingabe und Ausgabe) und die Währung, oder keinen davon.`,
   credentials_unreadable: () =>
     t`Der gespeicherte Zugangsschlüssel lässt sich nicht mehr öffnen (secret.key fehlt oder wurde ersetzt). Bitte neu eintragen.`,
   llm_invalid_url: () =>

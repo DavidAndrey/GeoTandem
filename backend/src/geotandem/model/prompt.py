@@ -24,15 +24,34 @@ A prompt with neither turns nor an analysis ends its system message with
 ``FIRST``: without it, models took the worked examples for earlier queries of
 the conversation (testplan V-3).
 
+The direct query is written after the connection's **prompt profile** (plan
+E3, D9), measured presets of ``evals/`` (testplan-system-context 5, 8.2):
+
+- *examples* ``standard`` (``_EXAMPLES``) or ``12`` (``examples/12.txt``, P6);
+- *placement* ``P0`` as above; ``P5`` the examples right after the level's
+  system prompt, before the layer profile; ``P9`` ``FIRST`` as a system
+  message of its own right before the question (three messages, not two). The
+  user message stays the prompt text and nothing else (E-8, extended
+  2026-10-23);
+- *output* ``constrained`` sends the schema as constrained output as well as
+  text, ``text`` only as text in the prompt (``Prompt.constrained``, H-8).
+
+``DEFAULT_PROMPT_PROFILE`` is the prompt above byte for byte; the chain keeps it
+until the chain is evaluated (plan E3, 9).
+
 The size is estimated as the layer profile is (S5, ``CHARS_PER_TOKEN``, erring
 high) over every message, plus ``ANSWER_TOKENS`` for the answer. Over the
 connection's declared context length ⇒ ``context_too_large`` before any call;
 nothing is cut silently. Without a declared length there is nothing to check.
 """
 
+import hashlib
+import json
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from functools import cache
+from importlib.resources import files
 from typing import Any, Final, Literal
 
 from geotandem.catalog import CHARS_PER_TOKEN, ModelProfile
@@ -49,7 +68,10 @@ from geotandem.model.schemas import (
     CannotAnswer,
     Clarification,
     Decision,
+    ExampleSet,
+    OutputMode,
     PlanAnswer,
+    PromptProfile,
     QueryAnswer,
     Reference,
     RefusalCode,
@@ -215,6 +237,25 @@ _EXAMPLES: Final[dict[Approach, str]] = {
 layers, so they fit any data core and name no layer an account may not see
 (S3); the harness in ``evals/`` measures what they change."""
 
+DEFAULT_PROMPT_PROFILE: Final = PromptProfile()
+"""Today's prompt (D9): standard examples, P0, constrained output."""
+
+EXAMPLES_HEADING: Final = "# Beispiele"
+
+
+@cache
+def examples_section(examples: ExampleSet) -> str:
+    """The ``# Beispiele`` section of a direct query for the profile's example
+    set: ``_EXAMPLES`` or ``examples/<name>.txt`` of this package, invented
+    layers alike (S3). Every worked answer of a set is a valid answer (tested)."""
+    if examples == "standard":
+        return _EXAMPLES["direct"]
+    text = files("geotandem.model").joinpath(f"examples/{examples}.txt")
+    section = text.read_text(encoding="utf-8").strip()
+    if not section.startswith(EXAMPLES_HEADING + "\n"):
+        raise ValueError(f"examples/{examples}.txt must start with {EXAMPLES_HEADING!r}")
+    return section
+
 
 @dataclass(frozen=True)
 class Turn:
@@ -271,15 +312,43 @@ class FollowUp:
 class Prompt:
     messages: tuple[Message, ...]
     schema: dict[str, Any]
-    """The answer format, also sent as constrained output."""
+    """The answer format; always in the system message as text."""
     profile_hash: str
     tokens_estimate: int
+    output: OutputMode = "constrained"
+    """Whether ``schema`` also goes as constrained output (D9)."""
+
+    @property
+    def constrained(self) -> dict[str, Any] | None:
+        """What the client is asked to constrain the answer to; ``None``: the
+        schema only as text, as for an endpoint that ignores it (H-8)."""
+        return self.schema if self.output == "constrained" else None
 
 
-def system_message(level: Level, profile: ModelProfile, approach: Approach) -> str:
+def prompt_hash(messages: Sequence[Message], schema: object) -> str:
+    """Over every message and the schema, as sent: the same hash, the same
+    prompt. The harness's ``prompt_sha256`` (H-5); the output mode is not in it."""
+    sent = [{"role": m.role, "content": m.content} for m in messages]
+    blob = json.dumps({"messages": sent, "schema": schema}, ensure_ascii=False, sort_keys=True)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
+
+def system_message(
+    level: Level,
+    profile: ModelProfile,
+    approach: Approach,
+    prompt_profile: PromptProfile = DEFAULT_PROMPT_PROFILE,
+) -> str:
+    """The first system message, without ``FIRST``; ``prompt_profile`` chooses
+    the examples and, for ``P5``, puts them before the layer profile."""
     if not profile.text:
         raise ValueError("the profile carries its text only from catalog.model_profile")
+    if approach != "direct" and prompt_profile != DEFAULT_PROMPT_PROFILE:
+        raise ValueError("a prompt profile other than the default is for the direct query only")
     sections = [level.system_prompt.strip()] if level.system_prompt.strip() else []
+    examples = [examples_section(prompt_profile.examples)] if approach == "direct" else []
+    if prompt_profile.placement == "P5":
+        sections += examples
     sections.append(
         "# Layer-Steckbrief\n"
         "Die Layer, die du kennst: nur ihre Metadaten, nie ihre Inhalte.\n" + profile.text
@@ -290,8 +359,8 @@ def system_message(level: Level, profile: ModelProfile, approach: Approach) -> s
         + "\nJSON-Schema der Antwort:\n"
         + format_text(approach)
     )
-    if approach in _EXAMPLES:
-        sections.append(_EXAMPLES[approach])
+    if prompt_profile.placement != "P5":
+        sections += examples
     return "\n\n".join(sections)
 
 
@@ -359,10 +428,14 @@ def build_prompt(
     profile: ModelProfile,
     follow_up: FollowUp | None = None,
     context_length: int | None = None,
+    prompt_profile: PromptProfile = DEFAULT_PROMPT_PROFILE,
 ) -> Prompt:
-    """The messages for ``text``; ``context_too_large`` if they do not fit."""
-    system = system_message(level, profile, approach)
-    if not (follow_up and (follow_up.turns or follow_up.analysis is not None)):
+    """The messages for ``text``; ``context_too_large`` if they do not fit. A
+    prompt profile other than the default is for the direct query only."""
+    system = system_message(level, profile, approach, prompt_profile)
+    first = not (follow_up and (follow_up.turns or follow_up.analysis is not None))
+    apart = prompt_profile.placement == "P9"
+    if first and not apart:
         system += "\n\n" + FIRST
     messages = [Message("system", system)]
     previous: Turn | None = None
@@ -370,12 +443,15 @@ def build_prompt(
         messages.append(Message("user", _user(turn.prompt, previous)))
         messages.append(Message("assistant", _assistant(turn)))
         previous = turn
+    if first and apart:
+        messages.append(Message("system", FIRST))
     messages.append(Message("user", _user(text, previous, follow_up)))
     return Prompt(
         messages=tuple(messages),
         schema=answer_format(approach),
         profile_hash=profile.hash,
         tokens_estimate=fit(messages, context_length),
+        output=prompt_profile.output,
     )
 
 

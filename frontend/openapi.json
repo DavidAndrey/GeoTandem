@@ -11492,6 +11492,47 @@
               }
             ],
             "title": "Request Limit Per Day"
+          },
+          "prompt_profile": {
+            "$ref": "#/components/schemas/PromptProfile",
+            "default": {
+              "examples": "standard",
+              "placement": "P0",
+              "output": "constrained"
+            }
+          },
+          "price_input_per_mtok": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Input Per Mtok"
+          },
+          "price_output_per_mtok": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Output Per Mtok"
+          },
+          "price_currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Currency"
           }
         },
         "type": "object",
@@ -11758,6 +11799,54 @@
               }
             ],
             "title": "Request Limit Per Day"
+          },
+          "prompt_profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PromptProfile"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "price_input_per_mtok": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Input Per Mtok"
+          },
+          "price_output_per_mtok": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Output Per Mtok"
+          },
+          "price_currency": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Z]{3}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Currency"
           }
         },
         "additionalProperties": false,
@@ -11953,6 +12042,49 @@
             ],
             "title": "Request Limit Per Day",
             "description": "The cap; required while request_limit_enabled (P5)."
+          },
+          "prompt_profile": {
+            "$ref": "#/components/schemas/PromptProfile",
+            "description": "How the direct query's prompt is written (plan E3, D9). Unset: today's."
+          },
+          "price_input_per_mtok": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Input Per Mtok"
+          },
+          "price_output_per_mtok": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Output Per Mtok"
+          },
+          "price_currency": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[A-Z]{3}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Currency",
+            "description": "With both prices or none of them (O4)."
           }
         },
         "additionalProperties": false,

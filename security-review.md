@@ -742,3 +742,46 @@ Scope: `engine/compile.py`, `_check_ordered`.
   8.2). Now refused as `wrong_value_type` before the expression is built;
   tested for `compare` and `between`. No data was exposed: the error was
   raised before any SQL ran.
+
+## Prompt profiles and prices, WP91 (plan E3, D9, O4; 2026-10-25)
+
+Scope: `model/prompt.py`, `model/direct.py`, `model/service.py` (the direct
+query's prompt), `connections.py`, migration **0017**, the connection form.
+
+- **P9 adds a system message; the user message stays the prompt text (E-8,
+  extended 2026-10-23).** A connection's prompt profile may place the
+  first-question note `FIRST` as a second system message right before the
+  question: three messages instead of two. The note is the fixed text of
+  `prompt.py`, the same for every prompt; nothing of the request, the
+  profile or the data goes into it. The user message is still the prompt text
+  and nothing else. The bypass test `test_a_prompt_cannot_change_format_level_or_tools`
+  now runs every injection under P0 and P9: the messages before the user's
+  are byte for byte those of a harmless prompt, the second one is exactly
+  `FIRST`, the injected text appears in no system message, and a model that
+  obeys still gets no further than its answer's checks.
+- **Presets, never free text (D9).** `PromptProfile` takes three closed
+  choices (`standard`·`12`, `P0`·`P5`·`P9`, `constrained`·`text`) and refuses
+  any other field (`extra="forbid"`, 422); the measurement-only variants
+  P1–P4 and P8 cannot be set. The example set `12` is a packaged file of
+  invented layers, like the standard set: it names no layer an account may
+  not see (S3), and a test checks every worked answer against the answer and
+  query schemas. The chain keeps the default profile (the builder refuses
+  another for the chain), so a profile cannot change the chain's tools or
+  schema.
+- **Output `text` drops only the grammar.** The schema stays in the system
+  message; the client is asked without `response_format`, as the adapter
+  already does for an endpoint that refuses it (X-8). The answer is checked
+  by `parse_answer` and the query by `validate_model_query` as before.
+- **Changes are audited (O8).** A change of the profile or the prices is an
+  ordinary connection update: admin-only routes, audited as
+  `llm_connection_changed` with the changed field names (never values), in
+  the audit log, not the model log. Setting the same profile again lists no
+  field.
+- **Prices leak nothing.** Three plain columns (two numbers, an ISO currency),
+  all three or none (`price_incomplete`, also a table check); shown to
+  administrators only with the connection. No key is near them; the error
+  details name the connection and the missing field names only.
+- **Not recorded on the model action:** which profile a direct query used is
+  not part of the record's connection snapshot (the contract is frozen); the
+  connection's current profile and the audit log of its changes say it.
+  Accepted until the record is extended.
