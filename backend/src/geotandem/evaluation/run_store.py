@@ -12,17 +12,18 @@ data: answers carry feature ids and counts.
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Engine, func, select, update
+from sqlalchemy import Engine, and_, func, or_, select, update
 from sqlalchemy.orm import Session
 
+from geotandem.connections import Price
 from geotandem.db.orm import EvalAnswer, EvalRun
 from geotandem.db.spatialite import reading
-from geotandem.evaluation.figures import Price, Scored
+from geotandem.evaluation.figures import Scored
 from geotandem.evaluation.schemas import (
     AnswerView,
     PointView,
@@ -33,6 +34,9 @@ from geotandem.evaluation.schemas import (
     RunStatus,
 )
 from geotandem.model.record.store import utc_now
+
+EXPORT_BATCH = 500
+"""Answers the export reads at a time (security review #46)."""
 
 
 @dataclass(frozen=True)
@@ -66,16 +70,6 @@ class NewRun:
 
 def _price(data: dict[str, Any] | None) -> Price | None:
     return None if data is None else Price(**data)
-
-
-def _price_json(price: Price | None) -> dict[str, Any] | None:
-    if price is None:
-        return None
-    return {
-        "input_per_million": price.input_per_million,
-        "output_per_million": price.output_per_million,
-        "currency": price.currency,
-    }
 
 
 def _stored(row: EvalRun) -> StoredRun:
@@ -143,7 +137,7 @@ class RunStore:
             label=new.label.model_dump(mode="json"),
             cases=_dump(new.cases),
             points=_dump(new.points),
-            prices=[_price_json(p) for p in new.prices],
+            prices=[None if p is None else p.as_json() for p in new.prices],
             connection_ids="," + ",".join(map(str, connections)) + ",",
             case_set_hash=new.label.case_set_hash,
             reference=new.request.reference,
@@ -260,6 +254,31 @@ class RunStore:
         stmt = stmt.order_by(EvalAnswer.point, EvalAnswer.id)
         with Session(reading(self.engine)) as db:
             return [_answer_view(row) for row in db.scalars(stmt)]
+
+    def answer_batches(self, run_id: int, size: int = EXPORT_BATCH) -> Iterator[list[AnswerView]]:
+        """Every answer of the run, ``size`` at a time in the order of
+        ``answers``, each batch read on its own (the export streams them)."""
+        after = (-1, 0)
+        while True:
+            stmt = (
+                select(EvalAnswer)
+                .where(
+                    EvalAnswer.run_id == run_id,
+                    or_(
+                        EvalAnswer.point > after[0],
+                        and_(EvalAnswer.point == after[0], EvalAnswer.id > after[1]),
+                    ),
+                )
+                .order_by(EvalAnswer.point, EvalAnswer.id)
+                .limit(size)
+            )
+            with Session(reading(self.engine)) as db:
+                rows = list(db.scalars(stmt))
+                batch = [_answer_view(row) for row in rows]
+            if not batch:
+                return
+            yield batch
+            after = (rows[-1].point, rows[-1].id)
 
     def scored(self, run_id: int) -> list[Scored]:
         """What the figures and cells need of every answer of the run."""

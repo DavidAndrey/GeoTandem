@@ -380,6 +380,7 @@ export function runView(status: RunStatus = 'done', scope: 'full' | 'quick' = 'f
       data_state: 'sample',
       scope,
       confirm_external: [2, 3],
+      confirm_external_hosts: ['api.anthropic.com', 'api.openai.com'],
     },
     label: label(scope),
     cases: RUN_CASES,
@@ -389,6 +390,7 @@ export function runView(status: RunStatus = 'done', scope: 'full' | 'quick' = 'f
     cost_so_far: [{ amount: status === 'running' ? 0.84 : 2.08, currency: 'USD' }],
     cells: status === 'running' ? cells(10).slice(0, 6) : cells(scope === 'full' ? 10 : 5),
     error: null,
+    stopped: [],
     finished_at: done ? FINISHED : null,
   }
 }
@@ -412,6 +414,7 @@ export function runPage(): RunPage {
     cases: 71,
     case_set_hash: 'c71ac71ac71ac71ac71ac71ac71ac71ac71ac71ac71ac71ac71ac71ac71ac71a',
     reference_rate: rate,
+    reference_split: rate === null ? null : ('tuning' as const),
     cost: [{ amount: cost, currency: 'USD' }],
   })
   const items = [
@@ -438,6 +441,7 @@ export const COST_ESTIMATE: CostEstimate = {
       tokens: 1_900_000,
       cost: null,
       duration_s: 17 * 60,
+      duration_measured: true,
     },
     {
       connection_id: 2,
@@ -449,6 +453,7 @@ export const COST_ESTIMATE: CostEstimate = {
       tokens: 2_300_000,
       cost: { amount: 0.92, currency: 'USD' },
       duration_s: 38 * 60,
+      duration_measured: true,
     },
     {
       connection_id: 3,
@@ -460,6 +465,7 @@ export const COST_ESTIMATE: CostEstimate = {
       tokens: 4_300_000,
       cost: { amount: 1.16, currency: 'USD' },
       duration_s: 48 * 60,
+      duration_measured: true,
     },
   ],
   requests: 2840,
@@ -718,6 +724,8 @@ export const RUN_COMPARISON: RunComparison = {
   against: 8,
   points: POINTS.map((p, index) => ({
     label: p,
+    point: index,
+    point_against: index,
     rate: FIGURES[index].rate_tuning,
     rate_against: [81.8, 96.1, 78.2, 87.9][index],
     comparison: comparison(

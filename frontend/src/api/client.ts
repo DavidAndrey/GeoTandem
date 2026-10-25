@@ -116,6 +116,7 @@ export type DiffEntry = Schemas['DiffEntry']
 export type ProfileSummary = Schemas['ProfileSummary']
 export type LayerGaps = Schemas['LayerGaps']
 export type RunComparison = Schemas['RunComparison']
+export type RunComparisonRow = Schemas['RunComparisonRow']
 export type RunExport = Schemas['RunExport']
 /** The filters of the model log (design M16.1); ``from``/``to`` as ISO times. */
 export interface ModelLogFilter {

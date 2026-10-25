@@ -6,8 +6,8 @@ seeds of one or two blocks, and grades each answer with the shared grader
 and does not count against a connection's daily request limit (D8, D12).
 
 **Before the start**, in the request (``Evaluation.start``): one run at a time
-for the instance (``run_busy``), every external connection confirmed in this
-request (``external_not_confirmed``, F-9.4), the cases selected on the data
+for the instance (``run_busy``), every external connection and its current
+host confirmed in this request (``external_not_confirmed``, F-9.4), the cases selected on the data
 state of the request (D1) with their status (D3): stale and invalid ones are
 listed in the run but not asked; none left is ``no_cases``. The run's label
 (F-3.18) and its points (H7) are written once; a later edit of a connection,
@@ -28,10 +28,13 @@ through ``LLMClient`` with the connection's endpoint and temperature, its
 timeout capped at ``MODEL_CALL_S`` as in operation, and the repeat's seed
 when the connection sends seeds at all; read and checked as
 ``DirectQuery.ask`` does, graded under the operating limits while holding one
-of at most ``RUN_SLOTS`` of the instance's query slots (security review #42).
-After ``BREAKER_AFTER`` answers in a row that failed for the key, the
-provider's limits or the host, a queue stops and the run ends ``failed``
-with that code. An abort stops before the next question; an answer that
+of at most ``RUN_SLOTS`` of the instance's query slots (security review #42),
+and stored as the record keeps an answer (``bounded``: a query beyond 64 kB is
+omitted, security review #45).
+After ``BREAKER_AFTER`` answers in a row of one queue that failed for the
+key, the provider's limits or the host, the whole run stops at once (no
+queue asks further) and ends ``failed`` with that code; ``RunView.stopped``
+names the host and its connections. An abort stops before the next question; an answer that
 arrives after it is dropped. Once every question is answered the run is
 ``done`` and its figures are computed (``figures.py``, none while it runs:
 design review 5). Writes are retried when the database is busy for a moment;
@@ -41,7 +44,9 @@ A ``running`` run found at start-up has no thread left: it ends
 ``interrupted``, its answers kept (``close_interrupted``). A shutdown stops the
 thread before its next question and leaves the run to that check.
 
-Logs carry ids and codes only, never a prompt, an answer or a key (C15).
+Logs carry ids and codes only, never a prompt, an answer or a key (C15). A
+start and an abort are security events (``evaluation_run_started``,
+``evaluation_run_aborted``, security review #50), without any prompt text.
 
 A point's prompt profile is the connection's (``prompt_profile_of``) unless
 the point names one (D9); its prices are the connection's
@@ -71,14 +76,20 @@ from typing import Any, Final
 from sqlalchemy import Engine
 from sqlalchemy.exc import OperationalError
 
+from geotandem import audit
 from geotandem.auth.accounts import Account
 from geotandem.config import Settings
-from geotandem.connections import ConnectionInfo, ConnectionProblem, Connections, price_of
+from geotandem.connections import (
+    ConnectionInfo,
+    ConnectionProblem,
+    Connections,
+    Price,
+    price_of,
+)
 from geotandem.data import DataBackend, Limits, Op
 from geotandem.engine import QueryError
 from geotandem.evaluation.cases import Cases, World, assess_case, sample_version
 from geotandem.evaluation.figures import (
-    Price,
     Scored,
     by_currency,
     cells,
@@ -100,18 +111,20 @@ from geotandem.evaluation.schemas import (
     EvalCase,
     MeasuringPoint,
     Money,
+    PointFigures,
     PointLabel,
     PointView,
+    QueueStop,
     RunCase,
     RunComparison,
     RunComparisonRow,
-    RunExport,
     RunLabel,
     RunPage,
     RunRequest,
     RunStatus,
     RunSummary,
     RunView,
+    Split,
 )
 from geotandem.evaluation.stages import Assessment, assess, unanswered
 from geotandem.evaluation.stats import compare
@@ -129,7 +142,7 @@ from geotandem.llm import (
 from geotandem.model.direct import DirectAnswer, DirectQuery, direct_prompt
 from geotandem.model.errors import ActionError
 from geotandem.model.prompt import ANSWER_TOKENS, Prompt
-from geotandem.model.record.store import text_hash, utc_now
+from geotandem.model.record.store import bounded, text_hash, utc_now
 from geotandem.model.schemas import PromptProfile
 from geotandem.model.service import MODEL_CALL_S, QueryGate
 from geotandem_query import SCHEMA_VERSION
@@ -138,9 +151,11 @@ log = logging.getLogger(__name__)
 
 RUNNABLE: Final = frozenset({"ok", "dataset_changed"})
 """Case statuses a run asks (D3); ``stale`` and ``invalid`` are left out."""
-DEFAULT_LATENCY_S: Final = 10
+DEFAULT_LATENCY_S: Final = 3
 """The duration estimate's latency per request for a connection that has
-neither a run nor a connection test with a latency (D12)."""
+neither a run nor a connection test with a latency (D12): measured, a local
+gemma4:12b answers in about 1.1 to 1.4 s, an external model in 2 to 3 s
+(plan E3, WP95). The estimate marks it (``duration_measured``)."""
 ANSWER_ESTIMATE: Final = 100
 """Tokens of one answer for the estimate: the testplans' direct answers run at
 about 40 to 100 (the prompt's own estimate reserves ``ANSWER_TOKENS`` as room,
@@ -149,15 +164,16 @@ MAX_RAW: Final = 20_000
 """Characters kept of the verbatim text of an unreadable answer (V7.4)."""
 SHUTDOWN_WAIT_S: Final = 5
 RUN_SLOTS: Final = 2
-"""Query slots of the instance one run holds at most at once (review C2)."""
+"""Query slots of the instance one run holds at most at once (security review #42)."""
 SLOT_POLL_S: Final = 0.2
 BREAKER_CODES: Final = frozenset(
     {"llm_unauthorized", "llm_rate_limited", "llm_unreachable", "llm_quota_exhausted"}
 )
 """Transport codes no further question mends: the key, the provider's limits,
-the host (security review S1)."""
+the host (security-review.md, Gate E3)."""
 BREAKER_AFTER: Final = 5
-"""Answers in a row with one of ``BREAKER_CODES`` after which a queue stops."""
+"""Answers in a row of one queue with one of ``BREAKER_CODES`` after which the
+run stops."""
 WRITE_ATTEMPTS: Final = 3
 WRITE_PAUSE_S: Final = 0.2
 LOGGED_FRAMES: Final = 8
@@ -228,7 +244,7 @@ class Runs:
     A run whose closing write failed even after its retries stays held here
     (``hold``): the instance stays busy with it, and each later start tries to
     close its row again first, so no second run starts over a row left
-    ``running`` (review C3)."""
+    ``running`` (plan E3, D8)."""
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
@@ -482,22 +498,23 @@ class Evaluation:
 
     # --- the estimate (D12) --------------------------------------------------------
 
-    def _latency_ms(self, connection: ConnectionInfo) -> float:
+    def _latency_ms(self, connection: ConnectionInfo) -> tuple[float, bool]:
         """The median latency of the connection's last run, else of its
-        connection test's answer, else ``DEFAULT_LATENCY_S``."""
+        connection test's answer, else ``DEFAULT_LATENCY_S``; and whether it
+        was measured."""
         if latencies := self.store.last_latencies(connection.id):
-            return float(statistics.median(latencies))
+            return float(statistics.median(latencies)), True
         test = connection.last_test
         for step in test.steps if test else ():
             latency = step.details.get("latency_ms")
             if step.name == "json_schema" and isinstance(latency, int | float):
-                return float(latency)
-        return DEFAULT_LATENCY_S * 1000
+                return float(latency), True
+        return DEFAULT_LATENCY_S * 1000, False
 
     def estimate(self, request: RunRequest) -> CostEstimate:
         """Requests, tokens, cost and duration per connection before the start;
-        no model call. Points on one connection run one after another, the
-        connections at the same time (D8)."""
+        no model call. As the run asks (D8, ``queue_of``): the connections of
+        one model host one after another, the hosts at the same time."""
         per: dict[int, list[Point]] = defaultdict(list)
         for point in self._points(request, endpoints=False):
             per[point.connection.id].append(point)
@@ -505,6 +522,7 @@ class Evaluation:
         asked = [rc.case for rc in run_cases if rc.status in RUNNABLE]
         repeats = len(seeds_of(request))
         estimates = []
+        by_host: dict[str, int] = defaultdict(int)
         for points in per.values():
             connection = points[0].connection
             # A question too large for the connection's context is never sent.
@@ -512,6 +530,7 @@ class Evaluation:
             requests = repeats * sum(size is not None for size in sizes)
             prompt_tokens = repeats * sum(size or 0 for size in sizes)
             answer_tokens = requests * ANSWER_ESTIMATE
+            latency_ms, measured = self._latency_ms(connection)
             estimates.append(
                 ConnectionEstimate(
                     connection_id=connection.id,
@@ -522,16 +541,18 @@ class Evaluation:
                     requests=requests,
                     tokens=prompt_tokens + answer_tokens,
                     cost=cost(points[0].price, prompt_tokens, answer_tokens),
-                    duration_s=math.ceil(requests * self._latency_ms(connection) / 1000),
+                    duration_s=math.ceil(requests * latency_ms / 1000),
+                    duration_measured=measured,
                 )
             )
+            by_host[queue_of(points[0])] += estimates[-1].duration_s
         return CostEstimate(
             cases=len(asked),
             connections=estimates,
             requests=sum(e.requests for e in estimates),
             tokens=sum(e.tokens for e in estimates),
             cost=by_currency(e.cost for e in estimates),
-            duration_s=max(e.duration_s for e in estimates),
+            duration_s=max(by_host.values()),
             external_hosts=sorted({e.host for e in estimates if e.locality == "external"}),
         )
 
@@ -572,18 +593,7 @@ class Evaluation:
                 raise RunError(409, "run_busy", message, run=run_id, reason=reason)
             points = self._points(request, endpoints=True)
             for point in points:
-                connection = point.connection
-                if connection.locality == "external" and connection.id not in set(
-                    request.confirm_external
-                ):
-                    raise RunError(
-                        400,
-                        "external_not_confirmed",
-                        f"The run would send to '{connection.host}' without confirmation.",
-                        connection=connection.name,
-                        connection_id=connection.id,
-                        host=connection.host,
-                    )
+                _confirmed(point.connection, request)
             run_cases, world = self._run_cases(request)
             now = self.clock()
             label = self._label(request, run_cases, world, now)
@@ -607,6 +617,18 @@ class Evaluation:
             request.data_state,
             request.scope,
         )
+        audit.event(
+            "evaluation_run_started",
+            username=self.admin.username,
+            run=run_id,
+            connection_ids=sorted({p.connection.id for p in points}),
+            external_hosts=sorted(
+                {p.connection.host for p in points if p.connection.locality == "external"}
+            ),
+            requests=new.total,
+            data_state=request.data_state,
+            scope=request.scope,
+        )
         return self.view(run_id)
 
     def abort(self, run_id: int) -> RunView:
@@ -616,6 +638,7 @@ class Evaluation:
             raise _not_found(run_id)
         if self.store.finish(run_id, "aborted"):
             log.info("evaluation run %d aborted", run_id)
+            audit.event("evaluation_run_aborted", username=self.admin.username, run=run_id)
         self.runs.cancel(run_id)
         return self.view(run_id)
 
@@ -651,6 +674,7 @@ class Evaluation:
             cost_so_far=self._cost(stored, tokens),
             cells=cells(scored, [rc.case.id for rc in stored.cases]),
             error=stored.error,
+            stopped=_stops(stored, scored),
             finished_at=stored.finished_at,
         )
 
@@ -659,7 +683,7 @@ class Evaluation:
         tokens = self.store.tokens([s.id for s in found])
         items = []
         for stored in found:
-            figures = stored.points[stored.reference].figures
+            rate, split = _headline(stored.points[stored.reference].figures)
             items.append(
                 RunSummary(
                     id=stored.id,
@@ -672,7 +696,8 @@ class Evaluation:
                     connection_ids=stored.connection_ids,
                     cases=stored.label.cases,
                     case_set_hash=stored.label.case_set_hash,
-                    reference_rate=figures.rate_tuning if figures else None,
+                    reference_rate=rate,
+                    reference_split=split,
                     cost=self._cost(stored, tokens.get(stored.id, {})),
                 )
             )
@@ -690,15 +715,20 @@ class Evaluation:
             raise RunError(404, "not_found", f"The run {run_id} has no point {point}.", point=point)
         return self.store.answers(run_id, case_id, point)
 
-    def export(self, run_id: int) -> RunExport:
-        """The run with every answer (V6.2 *Exportieren*)."""
-        return RunExport(run=self.view(run_id), answers=self.store.answers(run_id))
+    def export(self, run_id: int) -> Iterator[bytes]:
+        """The run with every answer (V6.2 *Exportieren*) as the JSON of
+        ``RunExport``, in chunks: the answers are read ``EXPORT_BATCH`` at a time
+        and written as they come, so a run of any size is never held whole
+        (security review #46). An unknown run is ``not_found`` before anything
+        is written."""
+        view = self.view(run_id)
+        return _export_chunks(view, self.store.answer_batches(run_id))
 
     def compare(self, body: CompareRequest) -> RunComparison:
         """``run`` against ``against`` (V6.6): both ``done``, the same cases
-        (``case_set_hash``), else ``runs_not_comparable``. Points are matched by
-        connection, prompt profile, level and system prompt; the comparison
-        words only when both are full runs with confirmation cases (D7)."""
+        (``case_set_hash``), else ``runs_not_comparable``. Points are matched on
+        their whole snapshot (``_same_point``); the comparison words only when
+        both are full runs with confirmation cases (D7)."""
         run, against = self._get(body.run), self._get(body.against)
         if (
             run.status != "done"
@@ -736,6 +766,8 @@ class Evaluation:
             rows.append(
                 RunComparisonRow(
                     label=point.label,
+                    point=index,
+                    point_against=other,
                     rate=figures.rate_tuning if figures else None,
                     rate_against=figures_against.rate_tuning if figures_against else None,
                     comparison=comparison,
@@ -744,13 +776,91 @@ class Evaluation:
         return RunComparison(run=run.id, against=against.id, points=rows)
 
 
-def _same_point(a: PointLabel, b: PointLabel) -> bool:
-    return (a.connection_id, a.prompt_profile, a.level_id, a.system_prompt_hash) == (
-        b.connection_id,
-        b.prompt_profile,
-        b.level_id,
-        b.system_prompt_hash,
+def _snapshot(label: PointLabel) -> tuple[Any, ...]:
+    """What makes two runs' points the same measurement (section 2's connection
+    snapshot): a connection edited between the runs (model, host,
+    temperature, effort) is another point, as is another profile, level or
+    system prompt. Names do not count."""
+    return (
+        label.connection_id,
+        label.model,
+        label.host,
+        label.temperature,
+        label.reasoning_effort,
+        label.prompt_profile,
+        label.level_id,
+        label.system_prompt_hash,
     )
+
+
+def _export_chunks(view: RunView, batches: Iterable[list[AnswerView]]) -> Iterator[bytes]:
+    yield b'{"run":' + view.model_dump_json().encode() + b',"answers":['
+    first = True
+    for batch in batches:
+        text = ",".join(answer.model_dump_json() for answer in batch)
+        yield text.encode() if first else b"," + text.encode()
+        first = False
+    yield b"]}"
+
+
+def _same_point(a: PointLabel, b: PointLabel) -> bool:
+    return _snapshot(a) == _snapshot(b)
+
+
+def _headline(figures: PointFigures | None) -> tuple[float | None, Split | None]:
+    """A point's headline rate and its split: on Abstimmung, or on Bestätigung
+    for a run without tuning cases (design review 1)."""
+    if figures is None:
+        return None, None
+    if figures.rate_tuning is not None:
+        return figures.rate_tuning, "tuning"
+    if figures.rate_confirm is not None:
+        return figures.rate_confirm, "confirm"
+    return None, None
+
+
+def _confirmed(connection: ConnectionInfo, request: RunRequest) -> None:
+    """An external connection runs only when this request confirmed it and the
+    host it sends to now (F-9.4, security review #49): a connection edited to
+    another host after the estimate is refused, ``reason: changed``."""
+    if connection.locality != "external":
+        return
+    if connection.id not in request.confirm_external:
+        reason = "missing"
+    elif connection.host not in request.confirm_external_hosts:
+        reason = "changed"
+    else:
+        return
+    raise RunError(
+        400,
+        "external_not_confirmed",
+        f"The run would send to '{connection.host}' without confirmation.",
+        connection=connection.name,
+        connection_id=connection.id,
+        host=connection.host,
+        reason=reason,
+    )
+
+
+def _stops(stored: StoredRun, scored: Sequence[Scored]) -> list[QueueStop]:
+    """The queues whose last ``BREAKER_AFTER`` answers tripped the circuit
+    breaker, read from the answers in the order they were stored (one thread
+    per queue writes its answers in turn); only for a run that ended with a
+    breaker's code."""
+    if stored.status != "failed" or stored.error not in BREAKER_CODES:
+        return []
+    hosts = [p.label.host for p in stored.points]
+    last: dict[str, list[str | None]] = defaultdict(list)
+    for answer in scored:
+        if answer.point < len(hosts):
+            last[hosts[answer.point]].append(answer.code)
+    found = []
+    for host, codes in last.items():
+        tail = codes[-BREAKER_AFTER:]
+        if len(tail) == BREAKER_AFTER and all(code in BREAKER_CODES for code in tail):
+            ids = sorted({p.label.connection_id for p in stored.points if p.label.host == host})
+            found.append(QueueStop(host=host, connection_ids=ids, code=str(tail[-1])))
+    return found
 
 
 def _by_point(scored: Iterable[Scored]) -> dict[int, list[Scored]]:
@@ -786,7 +896,7 @@ def _frames(exc: BaseException) -> str:
 
 
 def _retried[T](write: Callable[[], T], what: str) -> T:
-    """A write retried on a database that is busy for a moment (review C3)."""
+    """A write retried on a database that is busy for a moment (plan E3, D8)."""
     for attempt in range(1, WRITE_ATTEMPTS + 1):
         try:
             return write()
@@ -799,7 +909,7 @@ def _retried[T](write: Callable[[], T], what: str) -> T:
 
 
 def queue_of(point: Point) -> str:
-    """The queue a point waits in (D8, review C4): one per model host. Points
+    """The queue a point waits in (plan E3, D8): one per model host. Points
     whose connections share a host run one after another, as one Ollama serves
     one model at a time; points on different hosts run at the same time."""
     return point.connection.host
@@ -821,9 +931,9 @@ class _Work:
     slots: threading.BoundedSemaphore = field(
         default_factory=lambda: threading.BoundedSemaphore(RUN_SLOTS)
     )
-    """The query slots this run may hold at once, of the instance's (review C2)."""
+    """The query slots this run may hold at once, of the instance's (security review #42)."""
     stopped: list[str] = field(default_factory=list)
-    """Codes after which a queue's points were stopped (circuit breaker)."""
+    """Codes after which the run was stopped (circuit breaker)."""
 
     @property
     def store(self) -> RunStore:
@@ -854,11 +964,11 @@ class _Work:
                 thread.join()
             if errors:
                 raise errors[0]
-            if cancel.is_set():
-                return  # aborted (the route closed it) or stopping (the start-up check will)
             if self.stopped:
                 self._close("failed", error=self.stopped[0])
                 return
+            if cancel.is_set():
+                return  # aborted (the route closed it) or stopping (the start-up check will)
             self._finish()
         except Exception as exc:
             log.error(
@@ -874,7 +984,7 @@ class _Work:
         error: str | None = None,
     ) -> None:
         """Leave ``running``; if even the retries fail, the instance stays busy
-        with the run until a later start closes it (review C3)."""
+        with the run until a later start closes it (plan E3, D8)."""
 
         def close() -> bool:
             if self.store.finish(self.run_id, status, points=points, error=error):
@@ -969,8 +1079,8 @@ class _Work:
         """Case by case, each at every point of the queue, so an aborted run has
         its cases at the points paired. After ``BREAKER_AFTER`` answers in a row
         that failed for a reason no further question will mend (the endpoint
-        refuses the key, limits the requests, cannot be reached), the queue
-        stops (security review S1)."""
+        refuses the key, limits the requests, cannot be reached), the whole run
+        stops: no queue asks a further question, so nothing more is spent."""
         streak = 0
         for run_case in self.cases:
             if run_case.case.id not in self.readings:
@@ -990,13 +1100,14 @@ class _Work:
                     if streak >= BREAKER_AFTER:
                         assert view.code is not None
                         log.warning(
-                            "evaluation run %d: queue %s stopped after %d answers %s",
+                            "evaluation run %d: stopped, queue %s had %d answers %s in a row",
                             self.run_id,
                             queue_of(point),
                             streak,
                             view.code,
                         )
                         self.stopped.append(view.code)
+                        cancel.set()
                         return
 
     def _answer(
@@ -1059,7 +1170,7 @@ class _Work:
         return _view(
             base,
             assessment,
-            answer=found.answer.model_dump(mode="json"),
+            answer=bounded(found.answer),
             refusal=found.refusal.model_dump(mode="json") if found.refusal else None,
             latency_ms=found.latency_ms,
             tokens=(found.tokens.prompt, found.tokens.completion),

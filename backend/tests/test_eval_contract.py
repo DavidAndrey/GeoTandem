@@ -3,7 +3,7 @@
 The start set is a valid case file and survives a round trip unchanged, the
 committed case-file schema is the one the code writes, the case rules of D2
 hold, every code is registered, no view can carry rows, and every route exists
-for administrators only and answers 501 until its work package lands.
+for administrators only; every work package landed, so none answers 501.
 """
 
 import json
@@ -18,11 +18,13 @@ from pydantic import BaseModel, ValidationError
 
 from geotandem.codes import CODES
 from geotandem.evaluation.schemas import (
+    MAX_VALUE,
     CaseDraft,
     CaseFile,
     ConditionOp,
     EvalCase,
     EvalErrorCode,
+    RequiredCondition,
     RunRequest,
     case_file_schema,
 )
@@ -32,10 +34,6 @@ REPO = Path(__file__).resolve().parents[2]
 CASES = REPO / "schema" / "eval-cases"
 START = {"tuning": CASES / "start-tuning.json", "confirm": CASES / "start-confirm.json"}
 SOURCE = REPO / "backend" / "src" / "geotandem"
-
-PENDING_CODES: dict[str, str] = {}
-"""Codes the contract names but no route raises yet, with the WP that must. That
-WP raises the code and removes it here; Gate E3 needs this empty."""
 
 ROUTES: dict[tuple[str, str], str] = {
     ("GET", "/api/admin/evaluation/cases"): "WP87",
@@ -56,15 +54,9 @@ ROUTES: dict[tuple[str, str], str] = {
     ("POST", "/api/admin/evaluation/comparison"): "WP90",
     ("GET", "/api/admin/evaluation/profile-summary?account=admin"): "WP94",
 }
-"""Every route of section 6 with the WP that builds it. A WP that lands moves
-its routes out of the 501 check into its own tests."""
-
-BUILT: set[tuple[str, str]] = {
-    route for route, wp in ROUTES.items() if wp in ("WP87", "WP90", "WP92", "WP94")
-}
-"""Routes whose WP has landed; their behaviour is tested in the WP's own tests
-(WP87: ``test_eval_cases.py``, WP90: ``test_eval_runs.py``, WP92:
-``test_eval_from_log.py``, WP94: ``test_eval_summary.py``)."""
+"""Every route of section 6 with the WP that built it; its behaviour is tested
+in the WP's own tests (WP87: ``test_eval_cases.py``, WP90: ``test_eval_runs.py``,
+WP92: ``test_eval_from_log.py``, WP94: ``test_eval_summary.py``)."""
 
 POINT = {"connection_id": 1, "level_id": 1}
 CASE = {
@@ -187,13 +179,39 @@ def test_a_behaviour_case_may_let_a_query_pass() -> None:
         {"data_state": "live", "layers": [{"name": f"l{n}"} for n in range(33)]},
         {"data_state": "live", "layers": [{"name": "x" * 64}]},
         {"data_state": "live", "layers": [{"name": "schulen", "dataset_version": "v" * 65}]},
+        {"schema_version": "2" * 5},
+        {"schema_version": "x" * 100_000},
+        {"schema_version": "2; alles"},
     ],
-    ids=["note", "word", "words", "layers", "layer-name", "dataset-version"],
+    ids=[
+        "note",
+        "word",
+        "words",
+        "layers",
+        "layer-name",
+        "dataset-version",
+        "schema-version-long",
+        "schema-version-text",
+        "schema-version-words",
+    ],
 )
 def test_the_fields_of_a_case_are_bounded(extra: dict[str, Any]) -> None:
-    """S1: no field of a case grows without bound."""
+    """S1, security review #48: no field of a case grows without bound."""
     with pytest.raises(ValidationError):
         EvalCase.model_validate({**CASE, "expect": "clarification", **extra})
+
+
+def test_a_required_conditions_text_value_is_bounded() -> None:
+    """Security review #48: ``require`` is the one place a case holds a value."""
+    condition = {"op": "compare", "attr": "name", "cmp": "eq"}
+    for value in ("x" * MAX_VALUE, 10**12, True):
+        conditions = [{**condition, "value": value}]
+        found = EvalCase.model_validate(
+            {**CASE, "require": {"source": "schulen", "conditions": conditions}}
+        )
+        assert found.require is not None and found.require.conditions[0].value == value
+    with pytest.raises(ValidationError):
+        RequiredCondition.model_validate({**condition, "value": "x" * (MAX_VALUE + 1)})
 
 
 def test_the_about_of_a_case_file_is_bounded() -> None:
@@ -293,6 +311,16 @@ def test_a_case_file_has_no_repeated_ids() -> None:
         CaseFile.model_validate({"cases": [case, case]})
 
 
+def test_a_live_run_cannot_take_the_start_set() -> None:
+    """D1: the start set runs on the sample data; one data state per run."""
+    with pytest.raises(ValidationError, match="start set runs on the sample data"):
+        RunRequest.model_validate({"points": [POINT], "data_state": "live"})
+    live = RunRequest.model_validate(
+        {"points": [POINT], "data_state": "live", "cases": {"origins": ["authored", "log"]}}
+    )
+    assert live.data_state == "live"
+
+
 def test_a_run_compares_with_one_of_its_points() -> None:
     with pytest.raises(ValidationError):
         RunRequest.model_validate({"points": [POINT], "reference": 1})
@@ -303,21 +331,15 @@ def test_a_run_compares_with_one_of_its_points() -> None:
 # --- codes ---------------------------------------------------------------------
 
 
-def test_every_evaluation_code_is_registered_and_pending() -> None:
+def test_every_evaluation_code_is_registered_and_raised() -> None:
     assert set(get_args(EvalErrorCode)) <= set(CODES)
-    assert set(PENDING_CODES) <= set(get_args(EvalErrorCode))
-
-
-def test_pending_codes_are_declared_but_not_yet_raised() -> None:
-    """A WP that raises one of these removes it from ``PENDING_CODES``."""
-    sources = {
-        p: p.read_text(encoding="utf-8")
+    sources = [
+        p.read_text(encoding="utf-8")
         for p in SOURCE.rglob("*.py")
         if p.name not in ("codes.py", "schemas.py")
-    }
-    for code in PENDING_CODES:
-        users = [p.name for p, text in sources.items() if f'"{code}"' in text]
-        assert users == [], f"{code} is raised in {users}: drop it from PENDING_CODES"
+    ]
+    for code in get_args(EvalErrorCode):
+        assert any(f'"{code}"' in text for text in sources), f"{code} is raised nowhere"
 
 
 # --- the routes ----------------------------------------------------------------
@@ -399,13 +421,16 @@ async def test_every_route_is_for_administrators(client: httpx.AsyncClient) -> N
         assert (await _call(client, method, path)).status_code == 403, (method, path)
 
 
-async def test_routes_not_built_answer_501_naming_their_wp(client: httpx.AsyncClient) -> None:
-    for (method, path), wp in ROUTES.items():
-        if (method, path) in BUILT:
-            continue
+async def test_no_route_answers_501(client: httpx.AsyncClient, app: FastAPI) -> None:
+    """Gate E3: every work package landed; none of the routes is a stub left."""
+    for method, path in ROUTES:
         response = await _call(client, method, path)
-        assert response.status_code == 501, (method, path, response.text)
-        assert response.json()["details"] == {"wp": wp}, (method, path)
+        assert response.status_code != 501, (method, path, response.text)
+    paths = app.openapi()["paths"]
+    for path, methods in paths.items():
+        if path.startswith("/api/admin/evaluation"):
+            for method, operation in methods.items():
+                assert "501" not in operation["responses"], (method, path)
 
 
 async def test_ids_beyond_64_bits_are_refused_before_the_route(client: httpx.AsyncClient) -> None:

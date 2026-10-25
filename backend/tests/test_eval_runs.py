@@ -21,19 +21,23 @@ from typing import Any
 
 import httpx
 import pytest
+from api_helpers import Events
 from fastapi import FastAPI
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 from test_profile import SENTINELS, sentinel_csv
 
+from geotandem.api.auth import require_admin
 from geotandem.app import start
+from geotandem.auth.accounts import list_accounts
 from geotandem.catalog import get_layer
-from geotandem.db.orm import EvalRun, ModelAction
+from geotandem.connections import Price
+from geotandem.db.orm import EvalAnswer, EvalRun, Layer, LayerVisibility, ModelAction
 from geotandem.evaluation import run as run_module
-from geotandem.evaluation.figures import Price, by_currency, cost
+from geotandem.evaluation.figures import by_currency, cost
 from geotandem.evaluation.grade import ReadingRefused
 from geotandem.evaluation.run_store import RunStore
-from geotandem.evaluation.schemas import EvalCase
+from geotandem.evaluation.schemas import EvalCase, RunExport
 from geotandem.evaluation.store import CaseStore
 from geotandem.importing.run import ImportDecisions, XYReference, run_import
 from geotandem.levels import load_levels
@@ -44,6 +48,7 @@ from geotandem.model.schemas import Refusal
 RUNS = "/api/admin/evaluation/runs"
 CASES = "/api/admin/evaluation/cases"
 CONNECTIONS = "/api/admin/llm/connections"
+EVALUATION = "/api/admin/evaluation"
 
 Body = dict[str, Any]
 Answer = Callable[[int], Body | str | LLMError]
@@ -522,8 +527,30 @@ async def test_an_external_connection_needs_the_confirmation_of_this_request(
     assert refused.status_code == 400, refused.text
     assert refused.json()["code"] == "external_not_confirmed"
     assert refused.json()["details"]["host"] == "api.example.com"
+    assert refused.json()["details"]["reason"] == "missing"
+    # Security review #49: the confirmation names the host it was given for.
+    confirmed = {
+        **body,
+        "confirm_external": [cloud],
+        "confirm_external_hosts": estimate["external_hosts"],
+    }
+    edited = await client.patch(
+        f"{CONNECTIONS}/{cloud}", json={"base_url": "https://anderswo.example.org/v1"}
+    )
+    assert edited.status_code == 200, edited.text
+    moved = await client.post(RUNS, json=confirmed)
+    assert moved.status_code == 400, moved.text
+    assert moved.json()["code"] == "external_not_confirmed"
+    assert moved.json()["details"]["reason"] == "changed"
+    assert moved.json()["details"]["host"] == "anderswo.example.org"
+    ids_only = await client.post(RUNS, json={**body, "confirm_external": [cloud]})
+    assert ids_only.json()["details"]["reason"] == "changed"
     assert model.calls == []
-    view = await run_to_end(client, app, {**body, "confirm_external": [cloud]})
+    back = await client.patch(
+        f"{CONNECTIONS}/{cloud}", json={"base_url": "https://api.example.com/v1"}
+    )
+    assert back.status_code == 200, back.text
+    view = await run_to_end(client, app, confirmed)
     assert view["status"] == "done"
 
 
@@ -743,8 +770,45 @@ async def test_the_export_holds_the_run_and_every_answer(
     assert exported.status_code == 200, exported.text
     body = exported.json()
     assert body["run"]["id"] == view["id"] and len(body["answers"]) == 40
-    assert "null" not in json.dumps(body)
+    # Every key of the schema, the required nullable ones too (``RunExport``).
+    RunExport.model_validate(body)
+    assert all("latency_ms" in a and "answer" in a for a in body["answers"])
+    assert "error" in body["run"] and body["run"]["error"] is None
+    assert body["answers"] == [
+        a
+        for point in range(2)
+        for case_id in PROMPTS
+        for a in (
+            await client.get(
+                f"{RUNS}/{view['id']}/answers", params={"case_id": case_id, "point": point}
+            )
+        ).json()
+    ]
     assert (await client.get(f"{RUNS}/999/export")).status_code == 404
+
+
+async def test_the_export_is_read_and_written_in_batches(
+    client: httpx.AsyncClient,
+    app: FastAPI,
+    model: Model,
+    two: Body,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Security review #46: a few answers at a time, never the whole run at once."""
+    view = await run_to_end(client, app, {**two, "scope": "quick"})
+    seen: list[int] = []
+    real = RunStore.answer_batches
+
+    def counted(self: RunStore, run_id: int, size: int = 7) -> Any:
+        for batch in real(self, run_id, 7):
+            seen.append(len(batch))
+            yield batch
+
+    monkeypatch.setattr(RunStore, "answer_batches", counted)
+    exported = await client.get(f"{RUNS}/{view['id']}/export")
+    assert exported.status_code == 200, exported.text
+    assert len(exported.json()["answers"]) == 40
+    assert seen == [7] * 5 + [5]
 
 
 async def test_the_list_of_runs_and_a_connections_runs(
@@ -825,9 +889,11 @@ async def test_the_estimate_counts_requests_tokens_and_time_per_connection(
         40,
     )
     assert by_id[weak["connection_id"]]["requests"] == 80
-    # No run and no test yet: the default latency per request.
+    # No run and no test yet: the default latency per request, marked so.
     assert by_id[weak["connection_id"]]["duration_s"] == 80 * run_module.DEFAULT_LATENCY_S
-    assert first["duration_s"] == 80 * run_module.DEFAULT_LATENCY_S
+    assert not any(e["duration_measured"] for e in first["connections"])
+    # Both connections are on 127.0.0.1: one queue, so their times add up (D8).
+    assert first["duration_s"] == 120 * run_module.DEFAULT_LATENCY_S
     assert all(e["cost"] is None for e in first["connections"]) and first["cost"] == []
     assert first["external_hosts"] == []
     assert by_id[good["connection_id"]]["tokens"] > 40 * run_module.ANSWER_ESTIMATE
@@ -839,7 +905,17 @@ async def test_the_estimate_counts_requests_tokens_and_time_per_connection(
     after = (await client.post(f"{RUNS}/estimate", json=body)).json()
     by_id = {e["connection_id"]: e for e in after["connections"]}
     assert by_id[good["connection_id"]]["duration_s"] == 12
+    assert by_id[good["connection_id"]]["duration_measured"] is True
     assert by_id[weak["connection_id"]]["duration_s"] == 80 * run_module.DEFAULT_LATENCY_S
+    assert by_id[weak["connection_id"]]["duration_measured"] is False
+    assert after["duration_s"] == 12 + 80 * run_module.DEFAULT_LATENCY_S
+    # On another host the weak connection runs at the same time: the longer one counts.
+    patched = await client.patch(
+        f"{CONNECTIONS}/{weak['connection_id']}", json={"base_url": "http://localhost:11434/v1"}
+    )
+    assert patched.status_code == 200, patched.text
+    apart = (await client.post(f"{RUNS}/estimate", json=body)).json()
+    assert apart["duration_s"] == 80 * run_module.DEFAULT_LATENCY_S
 
 
 async def test_the_key_goes_to_the_call_and_nowhere_else(
@@ -937,3 +1013,228 @@ def test_figures_cost_money_with_a_price() -> None:
     assert found is not None and found.amount == 1.2
     assert cost(None, 1, 1) is None
     assert by_currency([found, found, None])[0].amount == 2.4
+
+
+# --- Gate E3 -----------------------------------------------------------------------
+
+
+async def test_a_start_and_an_abort_are_security_events(
+    client: httpx.AsyncClient, app: FastAPI, model: Model, two: Body, events: Events
+) -> None:
+    """Security review #50: which connections, which external hosts were
+    confirmed, how many requests, on which data; never a prompt."""
+    cloud = await connect(client, "Cloud", "gut", base_url="https://api.example.com/v1")
+    point = {"connection_id": cloud, "level_id": level_id(app)}
+    body = {
+        **two,
+        "points": [two["points"][0], point],
+        "scope": "quick",
+        "confirm_external": [cloud],
+        "confirm_external_hosts": ["api.example.com"],
+    }
+    events.clear()
+    model.hold_from = 3
+    model.released.clear()
+    started = await client.post(RUNS, json=body)
+    assert started.status_code == 202, started.text
+    run_id = started.json()["id"]
+    assert await asyncio.to_thread(model.asked.wait, 10)
+    assert (await client.post(f"{RUNS}/{run_id}/abort")).status_code == 200
+    assert (await client.post(f"{RUNS}/{run_id}/abort")).status_code == 200  # once is logged
+    model.released.set()
+    await finished(app)
+    found = [e for e in events if e["event"].startswith("evaluation_run")]
+    assert [e["event"] for e in found] == ["evaluation_run_started", "evaluation_run_aborted"]
+    begun, aborted = found
+    assert {k: begun[k] for k in begun if k not in ("address", "method", "path")} == {
+        "event": "evaluation_run_started",
+        "username": "admin",
+        "run": run_id,
+        "connection_ids": sorted([two["points"][0]["connection_id"], cloud]),
+        "external_hosts": ["api.example.com"],
+        "requests": 40,
+        "data_state": "sample",
+        "scope": "quick",
+    }
+    assert (aborted["run"], aborted["username"]) == (run_id, "admin")
+    logged = json.dumps(events)
+    assert all(prompt not in logged for prompt in PROMPTS.values())
+
+
+async def test_a_case_whose_dataset_changed_runs_and_is_marked(
+    client: httpx.AsyncClient, app: FastAPI, model: Model, two: Body
+) -> None:
+    """D3: run, marked ``dataset_changed``, its layer's version as it is now in the label."""
+    engine = app.state.geotandem.backend.engine
+    info = get_layer(engine, "haltestellen")
+    assert info is not None
+    live = {
+        **GOLD_OWN,
+        "id": "live-bern",
+        "data_state": "live",
+        "layers": [{"name": "haltestellen", "dataset_version": info.dataset_version}],
+    }
+    assert (await client.post(CASES, json=live)).status_code == 201
+    with Session(engine) as db, db.begin():
+        db.execute(update(Layer).where(Layer.name == "haltestellen").values(dataset_version="neu"))
+    body = {**two, "cases": {"origins": ["authored"]}, "data_state": "live", "scope": "quick"}
+    view = await run_to_end(client, app, body)
+    assert view["status"] == "done"
+    assert [(rc["case"]["id"], rc["status"]) for rc in view["cases"]] == [
+        ("live-bern", "dataset_changed")
+    ]
+    assert view["label"]["cases"] == 1
+    assert cell_of(view, "live-bern", 0)["answers"] == 5
+    assert view["label"]["dataset_versions"] == {"haltestellen": "neu"}
+
+
+async def test_the_labels_profile_is_the_summary_of_its_data_state(
+    client: httpx.AsyncClient, app: FastAPI, model: Model, two: Body
+) -> None:
+    """D11: the run records what ``GET /profile-summary`` shows for the same data state."""
+    sample = await run_to_end(client, app, {**two, "scope": "quick"})
+    summary = await client.get(f"{EVALUATION}/profile-summary", params={"data_state": "sample"})
+    assert sample["label"]["profile"] == summary.json()
+    info = get_layer(app.state.geotandem.backend.engine, "haltestellen")
+    assert info is not None
+    live = {
+        **GOLD_OWN,
+        "id": "live-bern",
+        "data_state": "live",
+        "layers": [{"name": "haltestellen", "dataset_version": info.dataset_version}],
+    }
+    assert (await client.post(CASES, json=live)).status_code == 201
+    body = {**two, "cases": {"origins": ["authored"]}, "data_state": "live", "scope": "quick"}
+    ran = await run_to_end(client, app, body)
+    summary = await client.get(f"{EVALUATION}/profile-summary", params={"data_state": "live"})
+    assert ran["label"]["profile"] == summary.json()
+
+
+async def test_a_live_run_uses_the_view_of_the_account_that_starts_it(
+    client: httpx.AsyncClient, app: FastAPI, model: Model, two: Body
+) -> None:
+    """D4: an account whose role does not see ``haltestellen`` finds its case
+    stale and its profile without the layer; the label names the account."""
+    engine = app.state.geotandem.backend.engine
+    created = await client.post("/api/admin/users", json={"username": "m.keller", "role": "user"})
+    assert created.status_code == 201, created.text
+    info, schulen = get_layer(engine, "haltestellen"), get_layer(engine, "schulen")
+    assert info is not None and schulen is not None
+    stops = {
+        **GOLD_OWN,
+        "id": "live-bern",
+        "data_state": "live",
+        "layers": [{"name": "haltestellen", "dataset_version": info.dataset_version}],
+    }
+    schools = {
+        **GOLD_OWN,
+        "id": "live-schulen",
+        "prompt": PROMPTS["n15-je-gemeinde"],
+        "data_state": "live",
+        "gold": {"source": "schulen"},
+        "layers": [{"name": "schulen", "dataset_version": schulen.dataset_version}],
+    }
+    for case in (stops, schools):
+        assert (await client.post(CASES, json=case)).status_code == 201
+    with Session(engine) as db, db.begin():
+        layer = db.scalar(select(Layer.id).where(Layer.name == "haltestellen"))
+        db.execute(
+            delete(LayerVisibility).where(
+                LayerVisibility.layer_id == layer, LayerVisibility.role == "user"
+            )
+        )
+    keller = next(a for a in list_accounts(engine) if a.username == "m.keller")
+    restricted = await client.get(
+        f"{EVALUATION}/profile-summary", params={"data_state": "live", "account": "m.keller"}
+    )
+    own = await client.get(f"{EVALUATION}/profile-summary", params={"data_state": "live"})
+    assert restricted.json()["layers"] < own.json()["layers"]
+    app.dependency_overrides[require_admin] = lambda: keller
+    try:
+        body = {**two, "cases": {"origins": ["authored"]}, "data_state": "live", "scope": "quick"}
+        view = await run_to_end(client, app, body)
+    finally:
+        del app.dependency_overrides[require_admin]
+    assert view["status"] == "done", view
+    statuses = {rc["case"]["id"]: rc["status"] for rc in view["cases"]}
+    assert statuses == {"live-bern": "stale", "live-schulen": "ok"}
+    assert (view["label"]["account"], view["label"]["started_by"]) == ("m.keller", "m.keller")
+    assert view["label"]["profile"] == restricted.json()
+    assert "# haltestellen" not in model.sent() and "haltestellen" not in model.sent()
+
+
+async def test_a_large_refused_query_is_stored_bounded(
+    client: httpx.AsyncClient, app: FastAPI, model: Model, two: Body
+) -> None:
+    """Security review #45: a run keeps an answer as the record does; a refused
+    query of 1 MB is kept as ``{"omitted": "too large"}``."""
+    huge = {
+        "source": "haltestellen",
+        "where": {"op": "text_match", "attr": "fehlt", "text": "x" * 1_000_000, "mode": "contains"},
+    }
+    model.scripts["gut"] = {**GOOD, "h10-name-bahnhof": lambda seed: query(huge)}
+    view = await run_to_end(client, app, {**two, "points": two["points"][:1], "scope": "quick"})
+    assert view["status"] == "done"
+    found = await client.get(
+        f"{RUNS}/{view['id']}/answers", params={"case_id": "h10-name-bahnhof", "point": 0}
+    )
+    first = found.json()[0]
+    assert first["verdict"] == "refused", first["verdict"]
+    assert first["answer"]["query"] == {"omitted": "too large"}
+    with Session(app.state.geotandem.backend.engine) as db:
+        longest = db.scalar(select(func.max(func.length(EvalAnswer.answer))))
+        assert longest is not None and longest < 64 * 1024
+
+
+async def test_points_are_matched_on_their_whole_snapshot(
+    client: httpx.AsyncClient, app: FastAPI, model: Model, two: Body
+) -> None:
+    """Section 2: a connection edited between two runs (here its temperature) is
+    another measuring point; its rates are not put side by side."""
+    good, weak = two["points"]
+    before = await run_to_end(client, app, {**two, "points": [weak, good]})
+    patched = await client.patch(
+        f"{CONNECTIONS}/{weak['connection_id']}", json={"temperature": 0.5}
+    )
+    assert patched.status_code == 200, patched.text
+    after = await run_to_end(client, app, {**two, "points": [good, weak]})
+    compared = await client.post(
+        f"{EVALUATION}/comparison", json={"run": after["id"], "against": before["id"]}
+    )
+    assert compared.status_code == 200, compared.text
+    rows = compared.json()["points"]
+    assert [(r["label"]["connection_name"], r["point"], r["point_against"]) for r in rows] == [
+        ("Gut", 0, 1)
+    ]
+
+
+async def test_a_quick_test_against_a_full_run_has_no_words(
+    client: httpx.AsyncClient, app: FastAPI, model: Model, two: Body
+) -> None:
+    """D7, O2: one block is no sample for the comparison words."""
+    weak = two["points"][1]
+    full = await run_to_end(client, app, {**two, "points": [weak]})
+    quick = await run_to_end(client, app, {**two, "points": [weak], "scope": "quick"})
+    for run, against in ((full, quick), (quick, full)):
+        compared = await client.post(
+            f"{EVALUATION}/comparison", json={"run": run["id"], "against": against["id"]}
+        )
+        assert compared.status_code == 200, compared.text
+        [row] = compared.json()["points"]
+        assert row["comparison"] is None and row["rate"] is not None
+
+
+async def test_a_run_without_tuning_cases_heads_with_its_confirmation_rate(
+    client: httpx.AsyncClient, app: FastAPI, model: Model, two: Body
+) -> None:
+    """The list shows the reference point's rate on Bestätigung, named so."""
+    body = {**two, "cases": {**TEXT, "split": "confirm"}, "scope": "quick"}
+    view = await run_to_end(client, app, body)
+    figures = view["points"][0]["figures"]
+    assert figures["rate_tuning"] is None and figures["rate_confirm"] == 100.0
+    [summary] = (await client.get(RUNS)).json()["items"]
+    assert (summary["reference_rate"], summary["reference_split"]) == (100.0, "confirm")
+    full = await run_to_end(client, app, {**two, "scope": "quick"})
+    newest = (await client.get(RUNS)).json()["items"][0]
+    assert newest["id"] == full["id"]
+    assert (newest["reference_rate"], newest["reference_split"]) == (90.0, "tuning")

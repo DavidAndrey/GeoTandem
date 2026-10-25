@@ -12,9 +12,9 @@ from fastapi import FastAPI
 from sqlalchemy import select, text, update
 from sqlalchemy.orm import Session
 
-from geotandem.connections import PRICES, ConnectionInfo, Connections, price_of
+from geotandem.connections import PRICES, ConnectionInfo, Connections, Price, price_of
 from geotandem.db.orm import LLMConnection, User
-from geotandem.evaluation.figures import Price, cost
+from geotandem.evaluation.figures import cost
 from geotandem.llm import Endpoint
 from geotandem.vault import KEY_FILE, CredentialsUnreadable, Vault
 

@@ -19,11 +19,13 @@ from typing import Any
 
 import httpx
 import pytest
+from api_helpers import Events
 from fastapi import FastAPI
 from import_files import make_files
 from sqlalchemy import update
 from sqlalchemy.orm import Session
 
+from geotandem.api.slots import QuerySlots
 from geotandem.catalog import get_layer
 from geotandem.config import Settings
 from geotandem.data import DataBackend, Limits
@@ -782,3 +784,46 @@ def test_a_sample_case_whose_reference_fails_the_checks_reads_invalid(tmp_path: 
     status, layers, found = case_module.assess_case(fine, world, count=True)
     assert (status, layers) == ("ok", [])
     assert found is not None and found[0] > 0
+
+
+# --- security review #47, #50 ---------------------------------------------------------
+
+
+async def test_the_routes_that_run_a_reference_hold_a_query_slot(
+    client: httpx.AsyncClient, app: FastAPI
+) -> None:
+    """#47: reading, creating and editing a case run its reference; with the
+    account's slots taken they answer ``busy``, as a query does."""
+    await created(client, OWN)
+    state = app.state.geotandem
+    state.query_slots = QuerySlots(per_account=1, total=8, wait_s=0.05)
+    me = (await client.get("/api/auth/me")).json()["id"]
+    async with state.query_slots.hold(me):
+        for method, path, body in [
+            ("GET", f"{CASES}/eigene-primar", None),
+            ("POST", CASES, {**OWN, "id": "eigene-2"}),
+            ("PUT", f"{CASES}/eigene-primar", OWN),
+        ]:
+            busy = await client.request(method, path, json=body)
+            assert (busy.status_code, busy.json()["code"]) == (503, "busy"), (method, path)
+        assert (await client.get(CASES)).status_code == 200  # the list counts nothing
+    assert (await client.get(f"{CASES}/eigene-primar")).status_code == 200
+
+
+async def test_an_import_and_a_deletion_of_cases_are_security_events(
+    client: httpx.AsyncClient, events: Events
+) -> None:
+    """#50: how many came, which went; never a prompt."""
+    events.clear()
+    file = {"cases": [OWN, {**OWN, "id": "eigene-2"}]}
+    assert (await client.post(f"{CASES}/import", json=file)).json()["imported"] == 2
+    bad = {"cases": [{**OWN, "id": "kaputt", "gold": {"source": "geheim"}}]}
+    assert (await client.post(f"{CASES}/import", json=bad)).json()["imported"] == 0
+    assert (await client.delete(f"{CASES}/eigene-2")).status_code == 204
+    found = [e for e in events if e["event"].startswith("evaluation_")]
+    assert [(e["event"], e.get("count"), e.get("case")) for e in found] == [
+        ("evaluation_cases_imported", 2, None),
+        ("evaluation_case_deleted", None, "eigene-2"),
+    ]
+    assert all(e["username"] == "admin" for e in found)
+    assert OWN["prompt"] not in json.dumps(events)

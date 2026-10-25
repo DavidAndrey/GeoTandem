@@ -1,18 +1,22 @@
 """The evaluation of model connections over HTTP (plan E3, section 6).
 
-Frozen in WP85 with every route, its guard and its answer; each body answered
-501 ``not_implemented`` until its work package filled it in (WP87, WP90, WP92,
-WP94, all landed). Administrators only (F-3.1): a user gets 403 on every
-route. A run is a measurement, not use (D8): no route here writes a model
-action.
+Frozen in WP85 with every route, its guard and its answer; every work package
+behind them has landed (WP87, WP90, WP92, WP94). Administrators only (F-3.1):
+a user gets 403 on every route. A run is a measurement, not use (D8): no
+route here writes a model action. A route that runs a case's reference holds
+one of the instance's query slots (``QuerySlot``, security review #47); an
+import and a deletion of cases are security events (#50).
 """
 
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Path, Query, Response
+from fastapi.responses import StreamingResponse
 
+from geotandem import audit
 from geotandem.api.auth import require_admin
-from geotandem.api.errors import ErrorBody, NotFound, Problem
+from geotandem.api.errors import ErrorBody, NotFound
+from geotandem.api.routes import QuerySlot
 from geotandem.api.state import AppState, get_state
 from geotandem.auth import accounts
 from geotandem.auth.accounts import Account
@@ -53,23 +57,13 @@ router = APIRouter(
 )
 
 ERRORS: dict[int | str, dict[str, Any]] = {
-    status: {"model": ErrorBody} for status in (400, 404, 409, 422, 501)
+    status: {"model": ErrorBody} for status in (400, 404, 409, 422)
 }
 
 Admin = Annotated[Account, Depends(require_admin)]
 
 Id = Annotated[int, Path(ge=1, le=MAX_ID)]
 """A run's or a model action's id; beyond a 64-bit integer it is 422 (E2 review #38)."""
-
-
-class NotBuilt(Problem):
-    """A route of the frozen contract whose work package has not landed yet."""
-
-    status = 501
-    code = "not_implemented"
-
-    def __init__(self, wp: str) -> None:
-        super().__init__(f"Not built yet ({wp}).", wp=wp)
 
 
 # --- cases (WP87, WP92) ----------------------------------------------------------
@@ -101,7 +95,7 @@ def cases(
     return service.page(filters, offset=offset, limit=limit)
 
 
-@router.post("/cases", status_code=201, responses=ERRORS)
+@router.post("/cases", status_code=201, responses=ERRORS, dependencies=[QuerySlot])
 def create_case(body: EvalCase, service: CaseService) -> CaseView:
     """An own case: authored in the workplace (V3), taken from the log (V2 from
     M16.2) or copied from a start case. Its reference passes the checks a model
@@ -125,11 +119,14 @@ def export_cases(service: CaseService, start: bool = False) -> CaseFile:
 
 
 @router.post("/cases/import", responses=ERRORS)
-def import_cases(body: CaseFile, service: CaseService) -> ImportResult:
+def import_cases(body: CaseFile, service: CaseService, admin: Admin) -> ImportResult:
     """All or nothing (V1.3): one invalid case and none is taken."""
     # The body is held to ``max_request_mb`` (2 MiB by default) like any request;
     # a file of ``MAX_CASES`` long cases may exceed it and is then split in two.
-    return service.import_file(body)
+    result = service.import_file(body)
+    if result.imported:
+        audit.event("evaluation_cases_imported", username=admin.username, count=result.imported)
+    return result
 
 
 @router.get("/cases/draft-from-action/{action_id}", responses=ERRORS)
@@ -141,13 +138,13 @@ def case_from_action(action_id: Id, service: CaseService) -> CaseDraft:
     return service.draft(action_id)
 
 
-@router.get("/cases/{case_id}", responses=ERRORS)
+@router.get("/cases/{case_id}", responses=ERRORS, dependencies=[QuerySlot])
 def case(case_id: CaseId, service: CaseService) -> CaseView:
     """One case with the hits of its reference on its data state (V2.1)."""
     return service.get(case_id)
 
 
-@router.put("/cases/{case_id}", responses=ERRORS)
+@router.put("/cases/{case_id}", responses=ERRORS, dependencies=[QuerySlot])
 def update_case(case_id: CaseId, body: EvalCase, service: CaseService) -> CaseView:
     """A start case is ``case_read_only``; editing a stale or invalid case makes
     it run again. An own case behind a start id (a later start set brought it)
@@ -156,9 +153,10 @@ def update_case(case_id: CaseId, body: EvalCase, service: CaseService) -> CaseVi
 
 
 @router.delete("/cases/{case_id}", status_code=204, responses=ERRORS)
-def delete_case(case_id: CaseId, service: CaseService) -> Response:
+def delete_case(case_id: CaseId, service: CaseService, admin: Admin) -> Response:
     """A start case is ``case_read_only``; an own case behind a start id is deleted."""
     service.delete(case_id)
+    audit.event("evaluation_case_deleted", username=admin.username, case=case_id)
     return Response(status_code=204)
 
 
@@ -196,7 +194,9 @@ def estimate(body: RunRequest, service: RunService) -> CostEstimate:
 def start_run(body: RunRequest, service: RunService) -> RunView:
     """Starts the run in the background and answers at once, ``running``; the
     client polls ``GET /runs/{id}`` (D8). One run at a time (``run_busy``); an
-    external connection not in ``confirm_external`` is ``external_not_confirmed``;
+    external connection not in ``confirm_external``, or whose host is not in
+    ``confirm_external_hosts`` (changed since the estimate), is
+    ``external_not_confirmed``;
     a selection with no runnable case (all filtered out, stale or invalid) is
     refused before the start, 400 ``no_cases``. ``RunView.error`` is for what
     fails while the run runs."""
@@ -237,10 +237,13 @@ def answers(
     return service.answers(run_id, case_id, point)
 
 
-@router.get("/runs/{run_id}/export", responses=ERRORS, response_model_exclude_none=True)
-def export_run(run_id: Id, service: RunService) -> RunExport:
-    """The run with every answer, as JSON (V6.2 *Exportieren*)."""
-    return service.export(run_id)
+@router.get("/runs/{run_id}/export", responses=ERRORS, response_model=RunExport)
+def export_run(run_id: Id, service: RunService) -> StreamingResponse:
+    """The run with every answer, as JSON (V6.2 *Exportieren*): written as it is
+    read, the answers a batch at a time, so a large run is never held whole
+    (security review #46). Every key of the schema is present, ``null`` ones
+    too."""
+    return StreamingResponse(service.export(run_id), media_type="application/json")
 
 
 @router.post("/comparison", responses=ERRORS)

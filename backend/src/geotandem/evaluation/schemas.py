@@ -70,6 +70,10 @@ MAX_POINTS = 8
 """Measuring points of one run."""
 MAX_IDS = 200
 """Feature ids an answer view lists per difference set; the counts are exact."""
+MAX_VALUE = 500
+"""A required condition's text value: as long as a reference query would write one."""
+MAX_HOST = 253
+"""A host name as DNS allows it."""
 BLOCK = 5
 """Repeats of one seed block; a full run has two blocks, a quick test one (D7, O2)."""
 
@@ -182,7 +186,9 @@ class RequiredCondition(BaseModel):
     op: ConditionOp
     attr: Identifier | None = None
     cmp: Literal["eq", "ne", "lt", "le", "gt", "ge"] | None = None
-    value: str | int | float | bool | None = None
+    value: Annotated[str, StringConstraints(max_length=MAX_VALUE)] | int | float | bool | None = (
+        None
+    )
     layer: Identifier | None = None
     predicate: Literal["intersects", "within", "contains", "dwithin"] | None = None
     distance_m: tuple[float, float] | None = None
@@ -222,7 +228,9 @@ class _CaseBody(BaseModel):
     data_state: DataState = "sample"
     origin_action: Id | None = None
     """The model action a ``log`` case was taken from (F-3.14)."""
-    schema_version: str = SCHEMA_VERSION
+    schema_version: Annotated[str, StringConstraints(pattern=r"^[0-9]{1,4}$")] = SCHEMA_VERSION
+    """The query schema's version the references are written against (``"2"``);
+    digits only, so a case file cannot carry text here (security review #48)."""
     gold: dict[str, Any] | None = None
     gold_any: list[dict[str, Any]] | None = Field(
         default=None, min_length=2, max_length=MAX_READINGS
@@ -395,6 +403,12 @@ class RunRequest(BaseModel):
     confirm_external: list[Id] = Field(default=[], max_length=MAX_POINTS)
     """Ids of the external connections the administrator confirmed sending to
     (F-9.4, D12); a run with an external connection not listed is refused."""
+    confirm_external_hosts: list[Annotated[str, StringConstraints(max_length=MAX_HOST)]] = Field(
+        default=[], max_length=MAX_POINTS
+    )
+    """The hosts the confirmation was given for, as the estimate listed them
+    (``CostEstimate.external_hosts``): a start whose external connection now
+    sends to another host is refused, ``reason: changed`` (security review #49)."""
 
     @model_validator(mode="after")
     def _consistent(self) -> Self:
@@ -421,12 +435,17 @@ class ConnectionEstimate(BaseModel):
     cost: Money | None
     """``None`` without a price on the connection (O4)."""
     duration_s: int
-    """From the median latency of the connection's last run, else its connection test."""
+    """From the median latency of the connection's last run, else its connection
+    test, else a default per request (``DEFAULT_LATENCY_S``)."""
+    duration_measured: bool = True
+    """``False``: neither a run nor a connection test measured the connection,
+    so ``duration_s`` rests on the default (*geschätzt, noch ohne Messung*)."""
 
 
 class CostEstimate(BaseModel):
-    """What a run will ask before it starts (D12). Connections run in parallel,
-    so ``duration_s`` is the longest of them (D8)."""
+    """What a run will ask before it starts (D12). Points run in one queue per
+    model host (D8): the connections of one host one after another, the hosts
+    at the same time, so ``duration_s`` is the longest of the hosts' sums."""
 
     cases: int
     connections: list[ConnectionEstimate]
@@ -603,6 +622,16 @@ class Progress(BaseModel):
     total: int
 
 
+class QueueStop(BaseModel):
+    """A model host whose queue tripped the circuit breaker: ``BREAKER_AFTER``
+    answers in a row with ``code``, after which the whole run stopped."""
+
+    host: str
+    connection_ids: list[int]
+    """The connections of the run on that host."""
+    code: str
+
+
 class RunView(BaseModel):
     id: int
     status: RunStatus
@@ -616,10 +645,12 @@ class RunView(BaseModel):
     cells: list[Cell]
     error: str | None = None
     """Why a ``failed`` run stopped while running, as a code: ``internal_error``,
-    a transport code (``llm_unauthorized``, ...) after which a connection's
-    points were stopped, or ``no_cases`` when every reading failed at run
-    time. A selection without a runnable case never starts: ``POST /runs``
-    refuses it with ``no_cases``."""
+    a transport code (``llm_unauthorized``, ...) after which the run was
+    stopped (``stopped`` names the host), or ``no_cases`` when every reading
+    failed at run time. A selection without a runnable case never starts:
+    ``POST /runs`` refuses it with ``no_cases``."""
+    stopped: list[QueueStop] = []
+    """For a run the circuit breaker stopped: the hosts whose answers tripped it."""
     finished_at: datetime | None = None
 
 
@@ -636,6 +667,10 @@ class RunSummary(BaseModel):
     cases: int
     case_set_hash: str
     reference_rate: float | None
+    """The reference point's headline rate: on Abstimmung, or on Bestätigung for
+    a run without tuning cases (``reference_split``)."""
+    reference_split: Split | None = None
+    """The split ``reference_rate`` is taken on; ``None`` without a rate."""
     cost: list[Money] = []
 
 
@@ -705,6 +740,10 @@ class CompareRequest(BaseModel):
 
 class RunComparisonRow(BaseModel):
     label: PointLabel
+    point: int
+    """The point's index in ``run``."""
+    point_against: int
+    """The same point's index in ``against``."""
     rate: float | None
     rate_against: float | None
     comparison: PointComparison | None
@@ -714,8 +753,9 @@ class RunComparison(BaseModel):
     run: int
     against: int
     points: list[RunComparisonRow]
-    """Measuring points present in both runs, matched by connection, prompt
-    profile, level and system prompt hash."""
+    """Measuring points present in both runs, matched on the whole snapshot of
+    their label: connection, model, host, temperature, reasoning effort,
+    prompt profile, level and system prompt hash."""
 
 
 class RunExport(BaseModel):

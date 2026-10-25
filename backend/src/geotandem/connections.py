@@ -14,7 +14,7 @@ optional prices per million tokens (O4): all three price fields or none
 
 import logging
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from typing import Annotated, Any
 
@@ -25,7 +25,6 @@ from sqlalchemy.orm import Session
 from geotandem.connection_check import CheckResult
 from geotandem.db.orm import LLMConnection, User
 from geotandem.db.spatialite import reading
-from geotandem.evaluation.figures import Price
 from geotandem.llm import Effort, Endpoint, LLMError, Locality, classify_host, host_of
 from geotandem.model.schemas import PromptProfile
 from geotandem.vault import CredentialsUnreadable, Vault
@@ -45,6 +44,19 @@ PricePerMtok = Annotated[float, Field(ge=0, le=1_000_000)]
 """Per million tokens (O4), in ``price_currency``."""
 Currency = Annotated[str, StringConstraints(pattern=r"^[A-Z]{3}$")]
 """ISO 4217, upper case (``CHF``, ``USD``, ``EUR``)."""
+
+
+@dataclass(frozen=True)
+class Price:
+    """What a connection costs per million tokens (plan E3, D12, O4)."""
+
+    input_per_million: float
+    output_per_million: float
+    currency: str
+
+    def as_json(self) -> dict[str, Any]:
+        """As a run stores it (``eval_run.prices``); ``Price(**data)`` reads it back."""
+        return asdict(self)
 
 
 class ConnectionProblem(Exception):
