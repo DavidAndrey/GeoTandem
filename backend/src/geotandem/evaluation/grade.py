@@ -15,7 +15,7 @@ outcome in the contract's words.
 """
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from geotandem.data import DataBackend, Limits
@@ -37,6 +37,9 @@ class Graded:
     """For ``refused`` and ``error``: the code; for ``kind``: the kind given."""
     flags: tuple[Flag, ...] = ()
     """Only on ``wrong``: ``no_assumption``, ``zero_hits``, in that order."""
+    hits: list[int] | None = field(default=None, compare=False, repr=False)
+    """The answer's feature ids where grading read them, for the answer view
+    (``stages.assess``); not part of the outcome."""
 
 
 PASS = Graded("pass", "pass")
@@ -47,6 +50,14 @@ def errored(code: str) -> Graded:
     code (``llm_timeout``, ``model_unreadable``, ...). The harness and a run
     find it, the grader has no answer to look at."""
     return Graded("error", f"error:{code}", code)
+
+
+def reading_ids(case: EvalCase, backend: DataBackend, limits: Limits) -> list[list[int]] | None:
+    """The feature ids of the reference or each fair reading, in order; ``None``
+    for a case without readings. A ``QueryError`` here is the case's problem,
+    not an answer's: a run marks or skips the case."""
+    golds = case.gold_any or ([case.gold] if case.gold else [])
+    return [ids_query(query_of(gold), backend, limits) for gold in golds] or None
 
 
 def query_of(doc: dict[str, Any]) -> QueryObject:
@@ -85,10 +96,14 @@ def grade(
     query: QueryObject | None,
     backend: DataBackend,
     limits: Limits,
+    readings: list[list[int]] | None = None,
 ) -> Graded:
     """``pass``, or the first thing that went wrong. ``query`` is the checked
     query of a query answer, ``refusal`` the application's refusal of it; the
-    result sets are read from ``backend`` within ``limits``."""
+    result sets are read from ``backend`` within ``limits``. ``readings`` are
+    the feature ids of the reference or each fair reading when the caller has
+    them already (``reading_ids``, a run reads them once per case); without
+    them they are read here."""
     said = json.dumps(answer.model_dump(mode="json"), ensure_ascii=False).casefold()
     for word in case.forbid:
         if word.casefold() in said:
@@ -117,10 +132,12 @@ def grade(
             assert case.gold is not None
             golds = [case.gold]
         got = ids_query(query, backend, limits)
-        wants = [ids_query(query_of(gold), backend, limits) for gold in golds]
-        if got in wants:
-            return PASS
-        return _wrong(f"wrong:{len(got)}≠{len(wants[0])}", answer, got)
+        if readings is None:
+            readings = [ids_query(query_of(gold), backend, limits) for gold in golds]
+        assert len(readings) == len(golds)
+        if got in readings:
+            return replace(PASS, hits=got)
+        return _wrong(f"wrong:{len(got)}≠{len(readings[0])}", answer, got)
     assert case.require is not None
     need = case.require
     wrong = None
@@ -151,4 +168,4 @@ def _wrong(tag: str, answer: QueryAnswer, hits: list[int] | None) -> Graded:
         flags.append("no_assumption")
     if hits == []:
         flags.append("zero_hits")
-    return Graded("wrong", tag, flags=tuple(flags))
+    return Graded("wrong", tag, flags=tuple(flags), hits=hits)
