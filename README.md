@@ -395,7 +395,9 @@ und setzt ihre Sicherheits-Header (CSP, HSTS über HTTPS, `nosniff`,
 `unknown_user`, `wrong_password`, `account_locked`), gebremste Anmeldungen,
 Passwortwechsel, Konto-, Katalog-, Sichtbarkeits-, Stufen- und Importänderungen,
 Änderungen und Tests von Modellanbindungen (nur Feldnamen, nie Schlüssel) samt
-handelndem Konto sowie die Abweisungen der Schutzschicht stehen als je eine
+handelndem Konto, Start und Abbruch eines Bewertungslaufs (Anbindungen,
+bestätigte externe Hosts, Anfragen, Datenstand, Umfang; nie Fragetext), Import
+und Löschen von Prüffällen sowie die Abweisungen der Schutzschicht stehen als je eine
 JSON-Zeile mit `"event"` auf stderr, also in `docker logs`. Passwörter und
 Sitzungstoken stehen nie darin. Auswerten etwa mit
 `docker logs <container> 2>&1 | grep '^{' | jq 'select(.event == "sign_in_failed")'`.
@@ -480,11 +482,18 @@ Sie hat zwei Reiter: *Läufe* und *Prüffälle*.
      erscheinen, wenn an der Anbindung Preise stehen (*Preise*: je Mio. Tokens
      für Ein- und Ausgabe, mit Währung); ohne Preise bleibt es bei Tokens. Die
      Dauer schätzt die Anwendung aus der mittleren Antwortzeit des letzten
-     Laufs der Anbindung, sonst aus ihrem Verbindungstest. Bei einer externen
-     Anbindung steht da, an welchen Host Steckbrief und Fragen gehen, und
-     dass keine Geodaten-Inhalte mitgehen. Ohne den Haken *Verstanden, extern
-     senden* bleibt *Lauf starten* gesperrt, und auch der Server lehnt den
-     Lauf ab (`external_not_confirmed`).
+     Laufs der Anbindung, sonst aus ihrem Verbindungstest, sonst mit 3 s je
+     Anfrage (gemessen: ein lokales gemma4:12b antwortet in 1,1–1,4 s, ein
+     externes Modell in 2–3 s); dann steht *geschätzt, noch ohne Messung*
+     daneben. Die Anbindungen eines Modell-Hosts zählen nacheinander, die
+     Hosts gleichzeitig (*parallel je Modell-Host*), wie der Lauf sie fragt.
+     Bei einer externen Anbindung steht da, an welchen Host Steckbrief und
+     Fragen gehen, und dass keine Geodaten-Inhalte mitgehen. Ohne den Haken
+     *Verstanden, extern senden* bleibt *Lauf starten* gesperrt, und auch der
+     Server lehnt den Lauf ab (`external_not_confirmed`). Die Bestätigung gilt
+     dem genannten Host: Sendet die Anbindung beim Start an einen anderen
+     (inzwischen geändert), lehnt der Server ab, bis die neue Abschätzung
+     bestätigt ist.
 
   Der Lauf läuft im Hintergrund, auch wenn die Seite geschlossen wird; die
   Matrix füllt sich, während er läuft. *Lauf abbrechen* hält vor der nächsten
@@ -502,7 +511,8 @@ Sie hat zwei Reiter: *Läufe* und *Prüffälle*.
   *Still falsch* heisst falsch ohne genannte Annahme: Das Modell wirkt sicher
   und liegt daneben. Solche Zellen haben einen gestrichelten Rahmen, ein «!»
   und das Wort. Die Spaltenköpfe erscheinen erst, wenn der Lauf fertig ist:
-  die *Quote Abstimmung* (auf den Fällen der Abstimmung), still falsch, nicht
+  die *Quote Abstimmung* (auf den Fällen der Abstimmung; ein Lauf ohne solche
+  zeigt die *Quote Bestätigung*), still falsch, nicht
   lesbar, Verhaltensfälle, Zeit (Median und oberes Zehntel), Tokens und
   Kosten. Dazu kommt die Aussage gegenüber der Vergleichsbasis auf den Fällen
   der *Bestätigung*: *besser*, *schlechter* oder *nicht belegt*, mit dem
@@ -523,8 +533,12 @@ Sie hat zwei Reiter: *Läufe* und *Prüffälle*.
   Zwei fertige Läufe über dieselben Fälle lassen sich nebeneinander stellen:
   in der Liste zwei markieren und *Gegenüberstellen*, oder aus der Matrix
   *Lauf gegen anderen stellen*. Eine Vergleichsaussage gibt es dabei nur,
-  wenn beide Läufe vollständig sind (kein Schnelltest). Die Messpunkte werden dabei nach
-  Anbindung, Promptprofil, Stufe und System-Prompt zugeordnet. *Exportieren*
+  wenn beide Läufe vollständig sind (kein Schnelltest). Die Messpunkte werden
+  dabei nach der ganzen Momentaufnahme zugeordnet: Anbindung mit Modell,
+  Host, Temperatur und Denkaufwand, Promptprofil, Stufe und System-Prompt;
+  eine dazwischen geänderte Anbindung ist ein anderer Messpunkt. Haben die
+  beiden Läufe einen anderen Steckbrief oder Datenstand, sagt es der Kopf der
+  Gegenüberstellung (*Steckbrief anders*, *Datenstand anders*). *Exportieren*
   liefert den Lauf mit allen Antworten als JSON.
 - **Der Fall im Lauf** (Klick oder Enter auf eine Zelle). Links stehen Frage
   und Referenz, rechts jede Antwort mit Urteil, Erklärung, Annahmen und Zeit.
@@ -580,8 +594,9 @@ Sie hat zwei Reiter: *Läufe* und *Prüffälle*.
   - jede Abfrage unter den Grenzen des Betriebs (10 000 Objekte, 10 s).
 
   Scheitern an einem Host 5 Antworten in Folge an Schlüssel, Anbieterlimit
-  oder Erreichbarkeit, hält die Anwendung dessen Messpunkte an, und der Lauf
-  endet als *fehlgeschlagen*.
+  oder Erreichbarkeit, hält die Anwendung den ganzen Lauf sofort an (keine
+  weitere Frage, an keinen Host), und er endet als *fehlgeschlagen*; die
+  Seite nennt Host und Anbindungen.
 - **Was ein Lauf nicht tut.** Ein Lauf ist eine Messung, kein Betrieb:
   - Er schreibt keine Modellaktion; Modellprotokoll und Annahmequote bleiben
     die Spur der echten Benutzung.
