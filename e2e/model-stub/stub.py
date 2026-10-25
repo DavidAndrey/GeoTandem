@@ -54,11 +54,13 @@ A case added with a ``model`` (E3, the evaluation's runs) answers every
 request for that model (the request's ``model``, the connection's) whose
 question is its ``prompt``, or every question when it has none; such cases
 come before the fixture's, the newest first. ``GET /v1/models`` lists their
-models too, so their connections test green. Two more fields, for any case:
-``seeds``, answers by the request's ``seed`` (a run sends the repeat's seed,
-1 to 10) in place of ``answer``; ``hold_s``, the seconds every answer of the
-case is held, or until ``POST /_release`` (a run kept ``running`` to abort
-it).
+models too, so their connections test green. Three more fields, for any
+case: ``seeds``, answers by the request's ``seed`` (a run sends the repeat's
+seed, 1 to 10) in place of ``answer``; ``hold_s``, the seconds every answer of
+the case is held, or until ``POST /_release`` (a run kept ``running`` to abort
+it); ``marked``, ``{"text": ..., "answer": ...}``, answers with its ``answer``
+whenever a system message holds its ``text`` (a run's edited system prompt,
+D10, so two system prompts on one connection measure apart).
 
     python stub.py [--port 8080] [--cases /cases/v1.json]
 """
@@ -145,6 +147,14 @@ def question_of(messages: list[dict[str, Any]]) -> str:
 def continues(messages: list[dict[str, Any]]) -> bool:
     """Whether the request goes on from an answer of the model's (a re-plan)."""
     return any(m.get("role") == "assistant" for m in messages)
+
+
+def marked_answer(case: dict[str, Any], messages: list[dict[str, Any]]) -> Any:
+    """The case's ``marked`` answer when a system message holds its ``text``."""
+    marked = case.get("marked") or {}
+    text = marked.get("text")
+    systems = (str(m.get("content", "")) for m in messages if m.get("role") == "system")
+    return marked.get("answer") if text and any(text in c for c in systems) else None
 
 
 def is_schema_probe(body: dict[str, Any]) -> bool:
@@ -290,7 +300,9 @@ class Handler(BaseHTTPRequestHandler):
             return
         replan = case.get("replan") if continues(messages) else None
         by_seed = (case.get("seeds") or {}).get(str(body.get("seed")))
-        answer = replan or by_seed or case.get("answer") or NO_ANSWER
+        answer = (
+            replan or marked_answer(case, messages) or by_seed or case.get("answer") or NO_ANSWER
+        )
         self._send(200, completion(json.dumps(answer, ensure_ascii=False)))
 
 
