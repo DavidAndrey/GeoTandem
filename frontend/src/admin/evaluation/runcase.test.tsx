@@ -148,3 +148,33 @@ test('V7: the neighbours of a cell, by case and by point', async () => {
   expect(within(nav).queryByRole('link', { name: 'Nächster Messpunkt' })).toBeNull()
   expect(within(nav).getByRole('link', { name: 'Nächster Fall' })).toBeInTheDocument()
 })
+
+test("V7: ‹ › follow the matrix's order within the part it was opened from", async () => {
+  runBackend({ [ANSWERS]: answerViews() })
+  renderAt('/admin/bewertung/lauf/13/fall/doc1-primar-koeniz?punkt=0&teil=tuning', <App />)
+  const nav = await screen.findByRole('navigation', { name: 'Weitere Zellen' })
+  // The first row of the first group (räumlich): none before; the next spatial case after.
+  expect(within(nav).queryByRole('link', { name: 'Voriger Fall' })).toBeNull()
+  expect(within(nav).getByRole('link', { name: 'Nächster Fall' })).toHaveAttribute(
+    'href',
+    '/admin/bewertung/lauf/13/fall/doc3-weit-von-bahn?punkt=0&teil=tuning',
+  )
+})
+
+test('V7.2: an answer the workplace cannot show says why its button is disabled', async () => {
+  const [first] = answerViews()
+  runBackend({
+    [ANSWERS]: [
+      { ...first, answer: { ...first.answer, query: { source: 'kitas' } } } as typeof first,
+    ],
+  })
+  const user = userEvent.setup()
+  renderAt('/admin/bewertung/lauf/13/fall/n13-bahnhof-bern?punkt=3', <App />)
+  await user.click(await screen.findByRole('button', { name: 'Antwort 1.1' }))
+  const button = screen.getByRole('button', { name: 'Antwort im Arbeitsplatz' })
+  expect(button).toBeDisabled()
+  expect(button).toHaveAttribute('title', expect.stringMatching(/nicht darstellen/))
+  expect(screen.getAllByText(/lässt sich im Arbeitsplatz nicht darstellen/).length).toBeGreaterThan(
+    0,
+  )
+})

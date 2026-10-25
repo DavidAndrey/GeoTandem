@@ -1,10 +1,40 @@
 // The runs from the server (plan E3, WP90): the list, one run polled while it
 // runs (D8), the answers of a cell, the comparison of two runs.
 import { useQuery } from '@tanstack/react-query'
-import { api, type RunView } from '../../api/client'
+import { api, type RunPage, type RunView } from '../../api/client'
 
 /** How often a running run is asked again; tests shorten it. */
 export const poll = { ms: 2000 }
+
+/** Failed polls in a row (each after its retry) after which polling stops. */
+const GIVE_UP = 3
+
+/** The query's error count at its last success, to count the failures since. */
+const errorsAtSuccess = new Map<string, number>()
+
+interface Polled<T> {
+  queryHash: string
+  state: {
+    status: string
+    data: T | undefined
+    dataUpdatedAt: number
+    errorUpdatedAt: number
+    errorUpdateCount: number
+  }
+}
+
+/**
+ * Polling goes on while ``active``; a failed poll keeps the data and polling,
+ * failures in a row stop it (the page shows the error above what it read).
+ */
+function every<T>(query: Polled<T>, active: (data: T | undefined) => boolean) {
+  const s = query.state
+  if (s.status !== 'error' || s.errorUpdatedAt < s.dataUpdatedAt)
+    errorsAtSuccess.set(query.queryHash, s.errorUpdateCount)
+  const failures = s.errorUpdateCount - (errorsAtSuccess.get(query.queryHash) ?? 0)
+  if (failures >= GIVE_UP) return false
+  return active(s.data) ? poll.ms : false
+}
 
 export const runKeys = {
   all: ['eval-runs'] as const,
@@ -23,7 +53,7 @@ export const useRuns = (refresh = false) =>
     queryFn: () => api.evaluation.runs(),
     // While one runs, the list follows it (status and percent).
     refetchInterval: (query) =>
-      refresh || query.state.data?.items.some((r) => r.status === 'running') ? poll.ms : false,
+      every<RunPage>(query, (data) => refresh || !!data?.items.some((r) => r.status === 'running')),
   })
 
 const running = (run: RunView | undefined) => run?.status === 'running'
@@ -34,7 +64,7 @@ export const useRun = (id: number, enabled = true) =>
     queryKey: runKeys.one(id),
     queryFn: () => api.evaluation.run(id),
     enabled: enabled && Number.isInteger(id) && id > 0,
-    refetchInterval: (query) => (running(query.state.data) ? poll.ms : false),
+    refetchInterval: (query) => every<RunView>(query, running),
   })
 
 export const useAnswers = (id: number, caseId: string, point: number, enabled = true) =>

@@ -9,7 +9,7 @@ import { Trans } from '@lingui/react/macro'
 import { t } from '@lingui/core/macro'
 import { Fragment, useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router'
-import type { AnswerView, EvalCase, RunView } from '../../api/client'
+import type { AnswerView, EvalCase, RunView, Split } from '../../api/client'
 import { useLayers } from '../../api/queries'
 import { ErrorNotice, Loading } from '../../components/ui'
 import { labelsFor } from '../../editor/fields'
@@ -19,7 +19,7 @@ import { technical } from '../../model/panel/problems'
 import { catalogLayer } from '../../model/approval/changes'
 import { StatusLabel } from '../../model/status'
 import { compactQuery } from '../../model/readable'
-import { partOf } from './reference'
+import { notOpenable, partOf } from './reference'
 import { useOpenInWorkplace } from './openInWorkplace'
 import { Reference } from './Reference'
 import { useAnswers, useRun } from './runs'
@@ -35,6 +35,7 @@ import {
   idsText,
   isSilentlyWrong,
   latencyText,
+  matrixOrder,
   repeatNames,
 } from './runWords'
 import { isBehaviour, kindText, readingName, readings } from './words'
@@ -86,8 +87,10 @@ function Technical({ answer }: { answer: AnswerView }) {
 /** The stage-1 difference, both result sets and the differing objects (V7.2, V7.3). */
 function Difference({ answer, words }: { answer: AnswerView; words: Words }) {
   const changes = (answer.diff ?? []).map((entry) => diffChange(entry, words))
-  const reference = answer.reference_hits
-  const hits = answer.hits
+  const referenceHits = answer.reference_hits
+  const answerHits = answer.hits
+  const reference = formatNumber(referenceHits ?? 0)
+  const hits = formatNumber(answerHits ?? 0)
   const onlyAnswer = formatNumber(answer.only_answer_count)
   const onlyReference = formatNumber(answer.only_reference_count)
   const answerIds = idsText(answer.only_answer, answer.only_answer_count)
@@ -105,7 +108,7 @@ function Difference({ answer, words }: { answer: AnswerView; words: Words }) {
           )}
         </div>
       )}
-      {reference != null && hits != null && (
+      {referenceHits != null && answerHits != null && (
         <p className="tabular-nums">
           <Trans>
             Referenz <strong>{reference}</strong> · Antwort <strong>{hits}</strong> · nur in Antwort{' '}
@@ -164,6 +167,7 @@ function AnswerDetail({
               type="button"
               className="btn btn-primary"
               disabled={!answerPart}
+              title={answerPart ? undefined : notOpenable()}
               onClick={() => answerPart && open(answerPart, true)}
             >
               <Trans>Antwort im Arbeitsplatz</Trans>
@@ -173,6 +177,7 @@ function AnswerDetail({
                 type="button"
                 className="btn"
                 disabled={!referencePart}
+                title={referencePart ? undefined : notOpenable()}
                 onClick={() => referencePart && open(referencePart)}
               >
                 <Trans>Referenz im Arbeitsplatz</Trans>
@@ -181,6 +186,9 @@ function AnswerDetail({
           </span>
         )}
       </div>
+      {query && (!answerPart || (referenceDoc && !referencePart)) && (
+        <p className="text-muted text-xs">{notOpenable()}</p>
+      )}
       {v === 'refused' && (
         <div role="alert" className="flex flex-col gap-1 text-sm">
           <StatusLabel status="refused" detail={t`· nicht anwendbar`} />
@@ -254,10 +262,19 @@ function AnswerDetail({
   )
 }
 
-function Neighbours({ run, caseId, point }: { run: RunView; caseId: string; point: number }) {
-  const ids = run.cases
-    .filter((rc) => rc.status !== 'stale' && rc.status !== 'invalid')
-    .map((rc) => rc.case.id)
+function Neighbours({
+  run,
+  caseId,
+  point,
+  split,
+}: {
+  run: RunView
+  caseId: string
+  point: number
+  /** The matrix's part the cell was opened from: ‹ › stay in it. */
+  split: Split | null
+}) {
+  const ids = matrixOrder(run.cases, split)
   const at = ids.indexOf(caseId)
   const prev = at > 0 ? ids[at - 1] : null
   const next = at >= 0 && at < ids.length - 1 ? ids[at + 1] : null
@@ -267,7 +284,11 @@ function Neighbours({ run, caseId, point }: { run: RunView; caseId: string; poin
   return (
     <nav aria-label={t`Weitere Zellen`} className="ml-auto flex items-center gap-1 text-sm">
       {prev ? (
-        <Link to={casePath(run.id, prev, point)} className={link} aria-label={t`Voriger Fall`}>
+        <Link
+          to={casePath(run.id, prev, point, split)}
+          className={link}
+          aria-label={t`Voriger Fall`}
+        >
           ‹
         </Link>
       ) : (
@@ -275,7 +296,11 @@ function Neighbours({ run, caseId, point }: { run: RunView; caseId: string; poin
       )}
       <Trans>Fall</Trans>
       {next ? (
-        <Link to={casePath(run.id, next, point)} className={link} aria-label={t`Nächster Fall`}>
+        <Link
+          to={casePath(run.id, next, point, split)}
+          className={link}
+          aria-label={t`Nächster Fall`}
+        >
           ›
         </Link>
       ) : (
@@ -284,7 +309,7 @@ function Neighbours({ run, caseId, point }: { run: RunView; caseId: string; poin
       <span aria-hidden>·</span>
       {point > 0 ? (
         <Link
-          to={casePath(run.id, caseId, point - 1)}
+          to={casePath(run.id, caseId, point - 1, split)}
           className={link}
           aria-label={t`Voriger Messpunkt`}
         >
@@ -296,7 +321,7 @@ function Neighbours({ run, caseId, point }: { run: RunView; caseId: string; poin
       <Trans>Messpunkt</Trans>
       {point < points - 1 ? (
         <Link
-          to={casePath(run.id, caseId, point + 1)}
+          to={casePath(run.id, caseId, point + 1, split)}
           className={link}
           aria-label={t`Nächster Messpunkt`}
         >
@@ -402,7 +427,17 @@ function Answers({
   )
 }
 
-function CaseInRun({ run, caseId, point }: { run: RunView; caseId: string; point: number }) {
+function CaseInRun({
+  run,
+  caseId,
+  point,
+  split,
+}: {
+  run: RunView
+  caseId: string
+  point: number
+  split: Split | null
+}) {
   const rc = run.cases.find((x) => x.case.id === caseId)
   const view = run.points[point]
   const answers = useAnswers(run.id, caseId, point, rc !== undefined && view !== undefined)
@@ -446,7 +481,7 @@ function CaseInRun({ run, caseId, point }: { run: RunView; caseId: string; point
             Lauf #{id} › <code className="font-mono text-xl">{caseId}</code> › {name}
           </Trans>
         </h2>
-        <Neighbours run={run} caseId={caseId} point={point} />
+        <Neighbours run={run} caseId={caseId} point={point} split={split} />
       </div>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
         <section aria-label={t`Prüffall`} className="flex flex-col gap-2">
@@ -500,7 +535,13 @@ export function RunCasePage() {
   const [search] = useSearchParams()
   const run = useRun(Number(params.id))
   const point = Number(search.get('punkt') ?? 0)
-  if (run.error) return <ErrorNotice error={run.error} />
-  if (!run.data) return <Loading />
-  return <CaseInRun run={run.data} caseId={params.fall ?? ''} point={point} />
+  const part = search.get('teil')
+  const split = part === 'tuning' || part === 'confirm' ? part : null
+  if (!run.data) return run.error ? <ErrorNotice error={run.error} /> : <Loading />
+  return (
+    <>
+      <ErrorNotice error={run.error} />
+      <CaseInRun run={run.data} caseId={params.fall ?? ''} point={point} split={split} />
+    </>
+  )
 }

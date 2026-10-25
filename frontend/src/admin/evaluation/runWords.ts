@@ -24,7 +24,8 @@ import { dateTimeFormat, formatNumber, parseTimestamp } from '../../i18n/locale'
 import type { Change } from '../../model/approval/changes'
 import { conditionText, type Words } from '../../model/compare/words'
 import type { StatusKey } from '../../model/statusKey'
-import { examplesText, outputText, placementText } from './profileOptions'
+import { examplesLabel, outputLabel } from '../promptProfile'
+import { placementText } from './profileOptions'
 import { isBehaviour, kindText, notRun, tagText, type AnswerKind } from './words'
 
 /** Repeats of a case per measuring point: two seed blocks of five, or one (D7, O2). */
@@ -36,38 +37,54 @@ export const repeats = (scope: RunScope) => (scope === 'full' ? 2 * BLOCK : BLOC
 export const RUNS = '/admin/bewertung'
 export const runPath = (id: number) => `/admin/bewertung/lauf/${id}`
 export const NEW_RUN = '/admin/bewertung/lauf/neu'
-export const casePath = (run: number, caseId: string, point: number) =>
-  `${runPath(run)}/fall/${encodeURIComponent(caseId)}?punkt=${point}`
+/** A cell's case in a run (V7); ``split`` keeps the matrix's part for ‹ ›. */
+export const casePath = (run: number, caseId: string, point: number, split?: Split | null) =>
+  `${runPath(run)}/fall/${encodeURIComponent(caseId)}?punkt=${point}` +
+  (split ? `&teil=${split}` : '')
+
+/** The parts of a profile other than the default examples and output: "nur Text". */
+function profileExtras(p: PointLabel['prompt_profile']): string[] {
+  const parts: string[] = []
+  if (p.examples !== 'standard') parts.push(examplesLabel(p.examples))
+  if (p.output !== 'constrained') parts.push(outputLabel(p.output))
+  return parts
+}
 
 /** "gpt-6-luna P9", "Claude Haiku 5.5 P0 · nur Text": a column by connection and profile. */
 export function pointName(label: PointLabel): string {
   const p = label.prompt_profile
-  const parts = [`${label.connection_name} ${placementText(p.placement)}`]
-  if (p.examples !== 'standard') parts.push(examplesText(p.examples))
-  if (p.output !== 'constrained') parts.push(outputText(p.output))
+  return [`${label.connection_name} ${placementText(p.placement)}`, ...profileExtras(p)].join(' · ')
+}
+
+/** "lokal · P0", "api.anthropic.com · P0 · nur Text": the line under a column's name. */
+export function pointSub(label: PointLabel): string {
+  const where = label.locality === 'local' ? t`lokal` : label.host
+  const parts = [where, placementText(label.prompt_profile.placement)]
+  parts.push(...profileExtras(label.prompt_profile))
+  if (label.system_prompt != null) parts.push(t`System-Prompt geändert`)
   return parts.join(' · ')
 }
 
 // --- numbers ----------------------------------------------------------------------
 
-/** "82,4 %". */
+/** "82.4 %" (numbers as in Switzerland, ``formatNumber``). */
 export const rateText = (rate: number | null | undefined) => {
   if (rate === null || rate === undefined) return '–'
   const value = formatNumber(rate, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
   return t`${value} %`
 }
 
-/** "0,92 USD"; the currency code is the price's own (O4). */
+/** "0.92 USD"; the currency code is the price's own (O4). */
 export const moneyText = (m: Money) => {
   const amount = formatNumber(m.amount, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   return `${amount} ${m.currency}`
 }
 
-/** "2,06 USD · 0,40 EUR"; ``null`` for no priced cost. */
+/** "2.06 USD · 0.40 EUR"; ``null`` for no priced cost. */
 export const moniesText = (list: readonly Money[] | undefined) =>
   list?.length ? list.map(moneyText).join(' · ') : null
 
-/** "1,9 Mio", "850 000". */
+/** "1.9 Mio", "850'000". */
 export const tokensText = (n: number) => {
   if (n < 1_000_000) return formatNumber(n)
   const value = formatNumber(n / 1_000_000, { maximumFractionDigits: 1 })
@@ -84,7 +101,7 @@ export const durationText = (seconds: number) => {
   return t`≈ ${m} min`
 }
 
-/** "1,4 s". */
+/** "1.4 s". */
 export const latencyText = (ms: number | null | undefined) => {
   if (ms === null || ms === undefined) return '–'
   const value = formatNumber(ms / 1000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
@@ -98,7 +115,7 @@ export const ofText = (part: number, whole: number) => {
   return t`${a} von ${b}`
 }
 
-/** "+6,6 Punkte (1,3 … 13,2)": the mean difference and its 95 % interval (D7). */
+/** "+6.6 Punkte (+1.3 … +13.2)": the mean difference and its 95 % interval (D7). */
 export function differenceText(c: Pick<PointComparison, 'mean' | 'low' | 'high'>): string {
   const signed = (x: number) =>
     formatNumber(x, {
@@ -286,6 +303,17 @@ export function groupCases(cases: readonly RunCase[], split: Split | null): Grou
 export const groupTitle = (g: Group) =>
   plural(g.cases.length, { one: `${g.title} · # Fall`, other: `${g.title} · # Fälle` })
 
+/** The key of a cell in ``cellMap``. */
+export const cellKey = (caseId: string, point: number) => `${caseId}:${point}`
+
+/** The cells by case and point, built once per render. */
+export const cellMap = (cells: readonly Cell[]) =>
+  new Map(cells.map((c) => [cellKey(c.case_id, c.point), c]))
+
+/** The case ids in the matrix's order (groups, then their rows) for ‹ › of V7. */
+export const matrixOrder = (cases: readonly RunCase[], split: Split | null) =>
+  groupCases(cases, split).flatMap((g) => g.cases.map((rc) => rc.case.id))
+
 /** The cells of one point summed over cases: "86 von 110". */
 export function sumCells(cells: readonly Cell[], caseIds: ReadonlySet<string>, point: number) {
   let passed = 0
@@ -302,14 +330,36 @@ export function sumCells(cells: readonly Cell[], caseIds: ReadonlySet<string>, p
 
 const json = (value: unknown) => JSON.stringify(value)
 
+/** The parts of a query besides ``where`` that decide its features (``diff.PARTS``). */
+const PART_LABELS: Record<string, MessageDescriptor> = {
+  attribute_join: msg`Verknüpfung`,
+  buffer: msg`Puffer`,
+  spatial_relation: msg`Räumliche Beziehung`,
+  aggregate: msg`Zusammenfassung`,
+  columns: msg`Berechnete Spalten`,
+  order_by: msg`Sortierung`,
+  limit: msg`Begrenzung`,
+}
+const partText = (path: string) => (PART_LABELS[path] ? i18n._(PART_LABELS[path]) : path)
+
+/** "Begrenzung fehlt: 10", "Puffer zusätzlich: …", "Sortierung geändert: … → …". */
+function partChange(entry: DiffEntry): Change {
+  const part = partText(entry.path)
+  const before = json(entry.reference)
+  const after = json(entry.answer)
+  if (entry.kind === 'missing') return { sign: '−', text: t`${part} fehlt: ${before}` }
+  if (entry.kind === 'added') return { sign: '+', text: t`${part} zusätzlich: ${after}` }
+  return { sign: '~', text: t`${part} geändert: ${before} → ${after}` }
+}
+
 /**
  * One difference of stage 1 (D5) as a line of the change list (+ − ~, as the
  * approval's): a condition in the editor's words, another part of the query
  * by its name with its JSON.
  */
 export function diffChange(entry: DiffEntry, words: Words): Change {
-  const said = (node: unknown) =>
-    entry.path.startsWith('where') ? conditionText(node, words) : json(node)
+  if (entry.kind !== 'source' && !entry.path.startsWith('where')) return partChange(entry)
+  const said = (node: unknown) => conditionText(node, words)
   switch (entry.kind) {
     case 'source': {
       const reference = words.labels.layer(String(entry.reference))
@@ -325,12 +375,6 @@ export function diffChange(entry: DiffEntry, words: Words): Change {
       return { sign: '+', text: t`zusätzliche Bedingung: ${text}` }
     }
     case 'changed': {
-      if (!entry.path.startsWith('where')) {
-        const part = entry.path
-        const before = json(entry.reference)
-        const after = json(entry.answer)
-        return { sign: '~', text: t`${part}: ${before} → ${after}` }
-      }
       const before = said(entry.reference)
       const after = said(entry.answer)
       return { sign: '~', text: t`Bedingung „${before}“ als „${after}“` }

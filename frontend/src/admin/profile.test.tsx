@@ -328,7 +328,48 @@ test('V8.1: a gap names what the newest complete run measured on the layer', asy
   const gaps = await screen.findByRole('region', { name: 'Lücken in Haltestellen' })
   expect(
     await within(gaps).findByText(
-      /^Gemessen: gpt-6-luna P0 hatte auf diesem Layer .* \(Lauf #13, /,
+      /^Gemessen: gpt-6-luna P0 hatte auf diesem Layer .* \(Lauf #13, .*\)\. Steckbrief damals #b20a, heute anders\.$/,
     ),
   ).toBeInTheDocument()
+})
+
+test("V8.1 live: a full run (never a quick test) that saw the chosen account's view", async () => {
+  const haltestellen = { ...withGaps.gaps[0], layer: 'haltestellen', title: 'Haltestellen' }
+  const done = runView('done')
+  const live = (id: number, account: string, scope: 'full' | 'quick' = 'full') => ({
+    ...done,
+    id,
+    label: { ...done.label, data_state: 'live' as const, account, scope },
+  })
+  const summary = (id: number, scope: 'full' | 'quick' = 'full') => ({
+    ...runPage().items[1],
+    id,
+    scope,
+    data_state: 'live' as const,
+  })
+  const asked: string[] = []
+  fakeApi({
+    ...signedIn(),
+    'GET /api/admin/users': [account(), account({ id: 2, username: 'm.keller', role: 'user' })],
+    'GET /api/admin/llm/profile': profile,
+    ...summaryRoute([], {
+      ...withGaps,
+      profile_hash: done.label.profile.profile_hash,
+      gaps: [haltestellen],
+    }),
+    'GET /api/admin/evaluation/runs': {
+      items: [summary(31, 'quick'), summary(30), summary(29)],
+      total: 3,
+    },
+    'GET /api/admin/evaluation/runs/31': () => (asked.push('31'), live(31, 'm.keller', 'quick')),
+    'GET /api/admin/evaluation/runs/30': () => (asked.push('30'), live(30, 'admin')),
+    'GET /api/admin/evaluation/runs/29': () => (asked.push('29'), live(29, 'm.keller')),
+  })
+  renderAt('/admin/steckbrief', <App />)
+  await screen.findByRole('option', { name: 'm.keller' })
+  await userEvent.selectOptions(screen.getByLabelText('Konto'), 'm.keller')
+  const gaps = await screen.findByRole('region', { name: 'Lücken in Haltestellen' })
+  // #31 is a quick test, #30 saw admin's view: #29. The same profile: no note.
+  expect(await within(gaps).findByText(/^Gemessen: .* \(Lauf #29, [^)]*\)\.$/)).toBeInTheDocument()
+  expect(asked).not.toContain('31')
 })

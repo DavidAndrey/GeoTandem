@@ -13,7 +13,7 @@ import { useCounts } from '../../editor/useCounts'
 import { hitsOf } from '../../i18n/phrases'
 import { QueryTree } from '../../model/tree'
 import { useOpenInWorkplace } from './openInWorkplace'
-import { analysisOf, partOf } from './reference'
+import { analysisOf, notOpenable, partOf } from './reference'
 import { dataStateText, hitsText, readingName } from './words'
 
 /** One reading: its tree with the hits per condition where they can be counted, and its hits. */
@@ -101,7 +101,7 @@ export function Reference({
   const { open, dialog } = useOpenInWorkplace()
   const several = docs.length > 1
   const openable = parts.some((p) => p !== null)
-  const why = t`Die Referenz lässt sich im Arbeitsplatz nicht darstellen: Ein Layer fehlt dort, oder sie nutzt mehr, als die Bedienelemente zeigen.`
+  const why = notOpenable()
   return (
     <div className="flex flex-col gap-3">
       {docs.map((doc, i) => (

@@ -491,3 +491,16 @@ test('"zuletzt bewertet": the newest run that measured a connection, with a link
   const asked = calls.filter((c) => c.key === 'GET /api/admin/evaluation/runs')
   expect(asked).toHaveLength(2)
 })
+
+test('"Zur Anbindung" of a run: the connection named in the address is focused and marked', async () => {
+  fakeApi({
+    ...signedIn(),
+    [`GET ${URL}`]: [connection(), cloud],
+    'GET /api/admin/evaluation/runs': { items: [], total: 0 },
+  })
+  renderAt('/admin/modelle#anbindung-2', <App />)
+  const row = (await screen.findByText('Cloud')).closest('tr')
+  await vi.waitFor(() => expect(row).toHaveFocus())
+  expect(row).toHaveAttribute('aria-current', 'location')
+  expect(screen.getByText('Ollama').closest('tr')).not.toHaveAttribute('aria-current')
+})

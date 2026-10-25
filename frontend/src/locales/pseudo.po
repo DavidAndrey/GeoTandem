@@ -388,6 +388,10 @@ msgstr ""
 msgid "{layer}: {objects} → {read} in der Datei. Felder: {changes}"
 msgstr ""
 
+#: src/admin/evaluation/ComparisonPage.tsx
+msgid "{left} Messpunkte kommen nur in einem der Läufe vor (andere Anbindung, Promptprofil, Stufe oder System-Prompt) und fehlen hier."
+msgstr ""
+
 #: src/model/compare/words.ts
 msgid "{left} nur links, {right} nur rechts"
 msgstr ""
@@ -517,12 +521,23 @@ msgstr ""
 msgid "{others} weitere Layer sind vollständig."
 msgstr ""
 
+#: src/admin/evaluation/runWords.ts
+msgid "{part} fehlt: {before}"
+msgstr ""
+
+#: src/admin/evaluation/runWords.ts
+msgid "{part} geändert: {before} → {after}"
+msgstr ""
+
+#: src/admin/evaluation/runWords.ts
+msgid "{part} zusätzlich: {after}"
+msgstr ""
+
 #: src/admin/evaluation/RunPage.tsx
 msgid "{part}: {after} (unverändert)"
 msgstr ""
 
 #: src/admin/evaluation/RunPage.tsx
-#: src/admin/evaluation/runWords.ts
 msgid "{part}: {before} → {after}"
 msgstr ""
 
@@ -531,7 +546,7 @@ msgid "{points} Messpunkte · {cases} Fälle · {state} · {scope}"
 msgstr ""
 
 #: src/admin/evaluation/RunPage.tsx
-msgid "{question} bei {name}: {result}"
+msgid "{question} bei {name}:"
 msgstr ""
 
 #: src/model/compare/CompareDialog.tsx
@@ -576,6 +591,10 @@ msgstr ""
 
 #: src/admin/evaluation/CaseDetailPage.tsx
 msgid "{state} · fest"
+msgstr ""
+
+#: src/admin/evaluation/RunPage.tsx
+msgid "{step} % der Antworten"
 msgstr ""
 
 #: src/map/Measurement.tsx
@@ -648,6 +667,14 @@ msgstr ""
 
 #: src/admin/evaluation/runWords.ts
 msgid "#{id} ist nicht vollständig; Gegenüberstellen nur bei vollständigen Läufen."
+msgstr ""
+
+#: src/admin/evaluation/ComparisonPage.tsx
+msgid "#{id}: System-Prompt geändert bei {names}"
+msgstr ""
+
+#: src/admin/evaluation/ComparisonPage.tsx
+msgid "#{id}: System-Prompt wie im Betrieb"
 msgstr ""
 
 #: src/admin/ImportWizard.tsx
@@ -1613,6 +1640,10 @@ msgstr ""
 msgid "beginnt mit"
 msgstr ""
 
+#: src/admin/evaluation/runWords.ts
+msgid "Begrenzung"
+msgstr ""
+
 #: src/model/chain/Chain.tsx
 msgid "Begrenzung erreicht"
 msgstr ""
@@ -1684,6 +1715,10 @@ msgstr ""
 
 #: src/table/TableDock.tsx
 msgid "berechnet"
+msgstr ""
+
+#: src/admin/evaluation/runWords.ts
+msgid "Berechnete Spalten"
 msgstr ""
 
 #: src/admin/evaluation/words.ts
@@ -2372,6 +2407,10 @@ msgstr ""
 msgid "Details"
 msgstr ""
 
+#: src/admin/evaluation/ComparisonPage.tsx
+msgid "Details je Messpunkt"
+msgstr ""
+
 #: src/admin/format.ts
 msgid "Details zu {field}"
 msgstr ""
@@ -2418,6 +2457,10 @@ msgstr ""
 
 #: src/i18n/errors.ts
 msgid "Die Abfrage kann so nicht ausgeführt werden."
+msgstr ""
+
+#: src/admin/evaluation/reference.ts
+msgid "Die Abfrage lässt sich im Arbeitsplatz nicht darstellen: Ein Layer fehlt dort, oder sie nutzt mehr, als die Bedienelemente zeigen."
 msgstr ""
 
 #: src/queries/ManageQueriesDialog.tsx
@@ -2670,10 +2713,6 @@ msgstr ""
 
 #: src/model/chain/Chain.tsx
 msgid "Die Neuplanung brachte keinen brauchbaren Plan: {reason}"
-msgstr ""
-
-#: src/admin/evaluation/Reference.tsx
-msgid "Die Referenz lässt sich im Arbeitsplatz nicht darstellen: Ein Layer fehlt dort, oder sie nutzt mehr, als die Bedienelemente zeigen."
 msgstr ""
 
 #: src/admin/evaluation/words.ts
@@ -3952,7 +3991,7 @@ msgid "Gruppe entfernen"
 msgstr ""
 
 #: src/admin/evaluation/RunPage.tsx
-msgid "gruppiert nach Stichwort"
+msgid "gruppiert nach erstem Stichwort"
 msgstr ""
 
 #: src/App.tsx
@@ -4552,6 +4591,14 @@ msgstr ""
 msgid "Kosten"
 msgstr ""
 
+#: src/admin/evaluation/ComparisonPage.tsx
+msgid "Kosten #{a}"
+msgstr ""
+
+#: src/admin/evaluation/ComparisonPage.tsx
+msgid "Kosten #{b}"
+msgstr ""
+
 #: src/admin/evaluation/NewRunPage.tsx
 msgid "Kosten geschätzt"
 msgstr ""
@@ -4812,6 +4859,7 @@ msgstr ""
 
 #: src/admin/evaluation/RunPage.tsx
 #: src/admin/evaluation/RunsPage.tsx
+#: src/admin/evaluation/runWords.ts
 #: src/components/LocalityBadge.tsx
 msgid "lokal"
 msgstr ""
@@ -5722,6 +5770,7 @@ msgstr ""
 msgid "Prüfsumme"
 msgstr ""
 
+#: src/admin/evaluation/runWords.ts
 #: src/operations/OperationDialog.tsx
 msgid "Puffer"
 msgstr ""
@@ -5780,6 +5829,10 @@ msgstr ""
 
 #: src/admin/evaluation/words.ts
 msgid "räumlich"
+msgstr ""
+
+#: src/admin/evaluation/runWords.ts
+msgid "Räumliche Beziehung"
 msgstr ""
 
 #: src/admin/LevelsPage.tsx
@@ -6107,6 +6160,10 @@ msgstr ""
 msgid "Sortieren: ↓ / ↑ / aus · Umschalt für zweite Sortierung"
 msgstr ""
 
+#: src/admin/evaluation/runWords.ts
+msgid "Sortierung"
+msgstr ""
+
 #: src/admin/ImportWizard.tsx
 msgid "Spalte"
 msgstr ""
@@ -6237,6 +6294,10 @@ msgstr ""
 msgid "Steckbrief"
 msgstr ""
 
+#: src/admin/evaluation/measured.ts
+msgid "Steckbrief damals {short}, heute anders."
+msgstr ""
+
 #: src/admin/LayerPage.tsx
 msgid "Steckbrief für das Modell (F-2.9)"
 msgstr ""
@@ -6283,6 +6344,14 @@ msgstr ""
 
 #: src/admin/evaluation/RunPage.tsx
 msgid "still falsch {silently} · nicht lesbar {unreadable}"
+msgstr ""
+
+#: src/admin/evaluation/ComparisonPage.tsx
+msgid "still falsch #{a}"
+msgstr ""
+
+#: src/admin/evaluation/ComparisonPage.tsx
+msgid "still falsch #{b}"
 msgstr ""
 
 #: src/map/Measurement.tsx
@@ -6418,6 +6487,7 @@ msgstr ""
 
 #: src/admin/evaluation/NewRunPage.tsx
 #: src/admin/evaluation/RunPage.tsx
+#: src/admin/evaluation/runWords.ts
 msgid "System-Prompt geändert"
 msgstr ""
 
@@ -6821,6 +6891,7 @@ msgstr ""
 msgid "Verhaltensfall"
 msgstr ""
 
+#: src/admin/evaluation/runWords.ts
 #: src/editor/EditorPanel.tsx
 msgid "Verknüpfung"
 msgstr ""
@@ -7263,6 +7334,14 @@ msgstr ""
 msgid "Zeit"
 msgstr ""
 
+#: src/admin/evaluation/ComparisonPage.tsx
+msgid "Zeit Median · oberes Zehntel #{a}"
+msgstr ""
+
+#: src/admin/evaluation/ComparisonPage.tsx
+msgid "Zeit Median · oberes Zehntel #{b}"
+msgstr ""
+
 #: src/admin/ConnectionsPage.tsx
 msgid "Zeitlimit (s)"
 msgstr ""
@@ -7405,6 +7484,10 @@ msgstr ""
 
 #: src/admin/evaluation/NewRunPage.tsx
 msgid "Zusammen"
+msgstr ""
+
+#: src/admin/evaluation/runWords.ts
+msgid "Zusammenfassung"
 msgstr ""
 
 #: src/admin/evaluation/runWords.ts

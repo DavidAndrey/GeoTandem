@@ -23,6 +23,7 @@ import {
   type Level,
   type PromptProfile,
   type RunRequest,
+  type RunView,
   type RunScope,
   type Split,
 } from '../../api/client'
@@ -30,15 +31,14 @@ import { useConnections, useLevels } from '../../api/queries'
 import { ErrorNotice, Loading } from '../../components/ui'
 import { formatNumber } from '../../i18n/locale'
 import {
-  connectionProfile,
-  EXAMPLES,
-  examplesText,
-  OUTPUTS,
-  outputText,
+  EXAMPLE_SETS,
+  examplesLabel,
+  OUTPUT_MODES,
+  outputLabel,
   PLACEMENTS,
-  placementText,
   sameProfile,
-} from './profileOptions'
+} from '../promptProfile'
+import { connectionProfile, placementText } from './profileOptions'
 import { useCases } from './queries'
 import { runKeys, useRun, useRuns } from './runs'
 import { Choice } from './runParts'
@@ -56,8 +56,10 @@ import {
 } from './runWords'
 import { dataStateText, notRun, splitText, tagText } from './words'
 
-/** At most this many measuring points (``MAX_POINTS``). */
+/** At most this many measuring points (``MAX_POINTS`` of ``evaluation/schemas.py``). */
 const MAX_POINTS = 8
+/** The longest system prompt (``MAX_SYSTEM_PROMPT`` of ``levels/model.py``). */
+const MAX_SYSTEM_PROMPT = 8000
 const OWN: CaseOrigin[] = ['authored', 'import', 'log']
 /** The estimate waits this long after the last change before it asks. */
 const DEBOUNCE_MS = 250
@@ -99,13 +101,18 @@ function newPoint(connections: ConnectionInfo[], levels: Level[]): PointForm {
   }
 }
 
-/** The form from a run's request ("Als vollständigen Lauf wiederholen"), always full. */
-function formOf(request: RunRequest): RunForm {
+/**
+ * The form from a run ("Als vollständigen Lauf wiederholen"), always full;
+ * each point with the prompt profile it measured (its label), not the
+ * request's ``null``, which would follow a connection changed since.
+ */
+function formOf(run: RunView): RunForm {
+  const request = run.request
   const origins = request.cases?.origins ?? ['start']
   return {
-    points: request.points.map((p) => ({
+    points: request.points.map((p, i) => ({
       connectionId: p.connection_id,
-      profile: p.prompt_profile ?? null,
+      profile: run.points[i]?.label.prompt_profile ?? p.prompt_profile ?? null,
       levelId: p.level_id,
       systemPrompt: p.system_prompt ?? null,
     })),
@@ -252,9 +259,9 @@ function PointRow({
             value={profile.examples}
             onChange={(e) => setProfile({ examples: e.target.value as PromptProfile['examples'] })}
           >
-            {EXAMPLES.map((v) => (
+            {EXAMPLE_SETS.map((v) => (
               <option key={v} value={v}>
-                {examplesText(v)}
+                {examplesLabel(v)}
               </option>
             ))}
           </select>
@@ -278,9 +285,9 @@ function PointRow({
             value={profile.output}
             onChange={(e) => setProfile({ output: e.target.value as PromptProfile['output'] })}
           >
-            {OUTPUTS.map((v) => (
+            {OUTPUT_MODES.map((v) => (
               <option key={v} value={v}>
-                {outputText(v)}
+                {outputLabel(v)}
               </option>
             ))}
           </select>
@@ -384,7 +391,7 @@ function SystemPromptCopy({
       <textarea
         id={id}
         className="input h-28 w-full font-mono text-xs"
-        maxLength={8000}
+        maxLength={MAX_SYSTEM_PROMPT}
         value={point.systemPrompt}
         onChange={(e) => change(e.target.value)}
       />
@@ -560,7 +567,7 @@ function RunFormView({
   const tags = [...new Set(cases.flatMap((v) => v.case.tags))].sort()
   const state = dataStateText(dataStateOf(form))
   const count = current && settled ? current.cases : chosen.length
-  const problem = estimate.error ? estimate.error.message : null
+  const problem = request && estimate.error ? estimate.error.message : null
   const canStart =
     request !== null &&
     settled &&
@@ -813,12 +820,12 @@ function RunFormView({
           </p>
         )}
         {!problem && !current && request && <Loading />}
-        {current && !problem && (
+        {request && current && !problem && (
           <div aria-busy={!settled} className={settled ? '' : 'opacity-60'}>
             <Estimate estimate={current} />
           </div>
         )}
-        {current && !problem && hosts.length > 0 && (
+        {request && current && !problem && hosts.length > 0 && (
           <div className="card border-ink max-w-3xl p-3 text-sm">
             <p className="mb-1">
               <Trans>
@@ -873,7 +880,7 @@ export function NewRunPage() {
     )
   const levelList = levels.data.levels.filter((l) => l.id != null)
   const initial = source.data
-    ? formOf(source.data.request)
+    ? formOf(source.data)
     : freshForm(connections.data, levelList, quick ? 'quick' : 'full')
   return (
     <RunFormView

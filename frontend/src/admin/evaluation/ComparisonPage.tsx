@@ -5,10 +5,15 @@
 import { Trans } from '@lingui/react/macro'
 import { t } from '@lingui/core/macro'
 import { Link, useNavigate, useParams } from 'react-router'
+import type { PointLabel, PointView, RunView } from '../../api/client'
 import { ErrorNotice, Loading } from '../../components/ui'
+import { formatNumber } from '../../i18n/locale'
+import { sameProfile } from '../promptProfile'
 import { useComparison, useRun } from './runs'
 import {
   differenceText,
+  latencyText,
+  moneyText,
   pointName,
   rateText,
   RUNS,
@@ -17,6 +22,92 @@ import {
   wordText,
 } from './runWords'
 import { dataStateText } from './words'
+
+/** The same measuring point as the server matches it (``_same_point`` of ``evaluation/run.py``). */
+const samePoint = (a: PointLabel, b: PointLabel) =>
+  a.connection_id === b.connection_id &&
+  a.level_id === b.level_id &&
+  a.system_prompt_hash === b.system_prompt_hash &&
+  sameProfile(a.prompt_profile, b.prompt_profile)
+
+const pointIn = (run: RunView | undefined, label: PointLabel): PointView | undefined =>
+  run?.points.find((p) => samePoint(p.label, label))
+
+/** "#13: System-Prompt geändert bei gpt-6-luna P0" or "… wie im Betrieb". */
+function systemPromptNote(run: RunView): string {
+  const id = run.id
+  const edited = run.points
+    .filter((p) => p.label.system_prompt != null)
+    .map((p) => pointName(p.label))
+  if (!edited.length) return t`#${id}: System-Prompt wie im Betrieb`
+  const names = edited.join(', ')
+  return t`#${id}: System-Prompt geändert bei ${names}`
+}
+
+/** Still falsch, time and cost of one point in both runs ("Details je Messpunkt"). */
+function Details({
+  labels,
+  mine,
+  theirs,
+}: {
+  labels: PointLabel[]
+  mine: RunView
+  theirs: RunView
+}) {
+  const a = mine.id
+  const b = theirs.id
+  const cost = (p: PointView | undefined) => {
+    const c = p?.figures?.cost
+    return c ? moneyText(c) : '–'
+  }
+  const silently = (p: PointView | undefined) =>
+    p?.figures ? formatNumber(p.figures.silently_wrong) : '–'
+  const time = (p: PointView | undefined) =>
+    p?.figures
+      ? `${latencyText(p.figures.latency_median_ms)} · ${latencyText(p.figures.latency_p90_ms)}`
+      : '–'
+  return (
+    <details className="mt-3 text-sm">
+      <summary className="text-muted cursor-pointer">
+        <Trans>Details je Messpunkt</Trans>
+      </summary>
+      <table className="data-table mt-1" aria-label={t`Details je Messpunkt`}>
+        <thead>
+          <tr>
+            <th scope="col">
+              <Trans>Messpunkt</Trans>
+            </th>
+            <th scope="col">{t`still falsch #${a}`}</th>
+            <th scope="col">{t`still falsch #${b}`}</th>
+            <th scope="col">{t`Zeit Median · oberes Zehntel #${a}`}</th>
+            <th scope="col">{t`Zeit Median · oberes Zehntel #${b}`}</th>
+            <th scope="col">{t`Kosten #${a}`}</th>
+            <th scope="col">{t`Kosten #${b}`}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {labels.map((label, i) => {
+            const left = pointIn(mine, label)
+            const right = pointIn(theirs, label)
+            return (
+              <tr key={i}>
+                <th scope="row" className="border-divider font-normal">
+                  {pointName(label)}
+                </th>
+                <td className="tabular-nums">{silently(left)}</td>
+                <td className="tabular-nums">{silently(right)}</td>
+                <td className="tabular-nums whitespace-nowrap">{time(left)}</td>
+                <td className="tabular-nums whitespace-nowrap">{time(right)}</td>
+                <td className="tabular-nums">{cost(left)}</td>
+                <td className="tabular-nums">{cost(right)}</td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </details>
+  )
+}
 
 export function ComparisonPage() {
   const params = useParams()
@@ -32,6 +123,8 @@ export function ComparisonPage() {
   const both = mine && theirs && mine.label.scope === theirs.label.scope
   const scope = mine ? scopeShort(mine.label.scope) : ''
   const scopes = both ? t`beide ${scope}` : ''
+  const shown = comparison.data?.points.length ?? 0
+  const left = mine && theirs ? mine.points.length + theirs.points.length - 2 * shown : 0
   return (
     <div className="max-w-5xl">
       <p className="text-muted mb-1 text-sm">
@@ -60,6 +153,12 @@ export function ComparisonPage() {
       {mine && (
         <p className="text-muted mb-3 text-sm">
           {[t`Gleiche ${cases} Fälle`, state, scopes].filter(Boolean).join(' · ')}
+          {theirs && ` · ${systemPromptNote(mine)} · ${systemPromptNote(theirs)}`}
+        </p>
+      )}
+      {comparison.data && left > 0 && (
+        <p className="text-muted mb-2 text-xs">
+          {t`${left} Messpunkte kommen nur in einem der Läufe vor (andere Anbindung, Promptprofil, Stufe oder System-Prompt) und fehlen hier.`}
         </p>
       )}
       {comparison.isPending && <Loading />}
@@ -123,6 +222,9 @@ export function ComparisonPage() {
               Schnelltest).
             </Trans>
           </p>
+          {mine && theirs && (
+            <Details labels={data.points.map((r) => r.label)} mine={mine} theirs={theirs} />
+          )}
         </>
       )}
     </div>

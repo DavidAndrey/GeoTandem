@@ -92,10 +92,27 @@ test('the stage-1 diff in words: + − ~, other parts by name with their JSON', 
       words,
     ).text,
   ).toMatch(/^zusätzliche Bedingung: Schulstufe/)
+  // Parts besides where, by their name.
   expect(diffChange({ kind: 'changed', path: 'limit', reference: 10, answer: 20 }, words)).toEqual({
     sign: '~',
-    text: 'limit: 10 → 20',
+    text: 'Begrenzung geändert: 10 → 20',
   })
+  expect(
+    diffChange({ kind: 'missing', path: 'limit', reference: 10, answer: null }, words),
+  ).toEqual({ sign: '−', text: 'Begrenzung fehlt: 10' })
+  expect(
+    diffChange({ kind: 'added', path: 'buffer', reference: null, answer: { m: 50 } }, words),
+  ).toEqual({ sign: '+', text: 'Puffer zusätzlich: {"m":50}' })
+  expect(
+    diffChange(
+      { kind: 'changed', path: 'order_by', reference: [{ attr: 'a' }], answer: [{ attr: 'b' }] },
+      words,
+    ).text,
+  ).toBe('Sortierung geändert: [{"attr":"a"}] → [{"attr":"b"}]')
+  for (const path of ['aggregate', 'columns', 'attribute_join', 'spatial_relation'])
+    expect(
+      diffChange({ kind: 'missing', path, reference: {}, answer: null }, words).text,
+    ).not.toMatch(new RegExp(`^${path}`))
 })
 
 test('ids: twelve named, the rest counted against the exact total', () => {
@@ -110,6 +127,11 @@ test('V8.1 "Gemessen": the reference column on the cases that use a layer', () =
     /^Gemessen: gpt-6-luna P0 hatte auf diesem Layer \d+ von \d+ Antworten richtig \(Lauf #13, \d+ Fälle?\)\.$/,
   )
   expect(measuredText(run, 'kitas')).toBeNull()
+  // Another profile shown than the run had: said, with the run's hash.
+  expect(measuredText(run, 'haltestellen', run.label.profile.profile_hash)).not.toMatch(/damals/)
+  expect(measuredText(run, 'haltestellen', 'ff'.repeat(32))).toMatch(
+    / Steckbrief damals #b20a, heute anders\.$/,
+  )
 })
 
 test('a column by connection and the parts of its profile that differ from the default', () => {

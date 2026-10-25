@@ -16,34 +16,35 @@ import {
   api,
   type Cell,
   type ConnectionInfo,
-  type PointLabel,
   type PointView,
   type RunView,
   type Split,
 } from '../../api/client'
 import { useConnections } from '../../api/queries'
 import { ConfirmDialog, ErrorNotice, Loading, Modal } from '../../components/ui'
+import { errorText } from '../../i18n/errors'
 import { formatNumber } from '../../i18n/locale'
-import { formatDateTime } from '../format'
+import { formatDateTime, percent } from '../format'
 import { ProfileCompleteness } from '../ProfileCompleteness'
-import { percent } from '../format'
+import { examplesLabel, outputLabel, sameProfile } from '../promptProfile'
 import {
   applyProfile,
   connectionProfile,
-  examplesText,
-  outputText,
+  isOwnProfile,
   placementText,
   profileText,
-  sameProfile,
 } from './profileOptions'
 import { runKeys, useRun, useRuns } from './runs'
 import { RunStatusLabel } from './RunsPage'
 import { Choice, StillWrong } from './runParts'
 import {
   casePath,
+  cellKey,
+  cellMap,
   clock,
   NEW_RUN,
   pointName,
+  pointSub,
   RUNS,
   runPath,
   differenceText,
@@ -72,17 +73,6 @@ import { dataStateText, splitText } from './words'
 
 /** Rows of a group shown before "▸ n weitere". */
 const SHOWN = 2
-
-/** "lokal · P0", "api.anthropic.com · P0 · nur Text". */
-function pointSub(label: PointLabel): string {
-  const where = label.locality === 'local' ? t`lokal` : label.host
-  const p = label.prompt_profile
-  const parts = [where, placementText(p.placement)]
-  if (p.examples !== 'standard') parts.push(examplesText(p.examples))
-  if (p.output !== 'constrained') parts.push(outputText(p.output))
-  if (label.system_prompt != null) parts.push(t`System-Prompt geändert`)
-  return parts.join(' · ')
-}
 
 // --- column heads -------------------------------------------------------------------
 
@@ -128,9 +118,13 @@ function PointHead({ view, index, run }: { view: PointView; index: number; run: 
           )}
           {Object.keys(f.errors ?? {}).length > 0 && (
             <span className="text-muted block font-mono">
-              {Object.entries(f.errors ?? {})
-                .map(([code, n]) => `${code} ${formatNumber(n)}`)
-                .join(' · ')}
+              {Object.entries(f.errors ?? {}).map(([code, n], i) => (
+                <span key={code} title={errorText(code)}>
+                  {i > 0 && ' · '}
+                  {code} {formatNumber(n)}
+                  <span className="sr-only"> ({errorText(code)})</span>
+                </span>
+              ))}
             </span>
           )}
           {f.limited > 0 && (
@@ -170,28 +164,28 @@ function CellView({
   caseId,
   question,
   point,
+  split,
 }: {
   cell: Cell | undefined
   run: RunView
   caseId: string
   question: string
   point: PointView
-  index: number
+  split: Split
 }) {
   const expected = repeats(run.label.scope)
   if (!cell || cell.answers === 0)
     return <span className="text-muted">{run.status === 'running' ? '·' : '–'}</span>
   const name = pointName(point.label)
-  const result = ofText(cell.passed, cell.answers)
   const mix = mixText(cell)
   const unfinished = run.status === 'running' && cell.answers < expected
   const answers = formatNumber(cell.answers)
   return (
     <Link
-      to={casePath(run.id, caseId, cell.point)}
-      aria-label={t`${question} bei ${name}: ${result}`}
+      to={casePath(run.id, caseId, cell.point, split)}
       className={`hover:text-accent-700 block tabular-nums whitespace-nowrap ${cell.silently_wrong ? 'border-ink border border-dashed p-0.5' : ''}`}
     >
+      <span className="sr-only">{t`${question} bei ${name}:`}</span>{' '}
       <strong>{formatNumber(cell.passed)}</strong>{' '}
       <span className="text-muted">
         {t`von ${answers}`}
@@ -207,7 +201,17 @@ function CellView({
   )
 }
 
-function GroupRows({ group, run }: { group: Group; run: RunView }) {
+function GroupRows({
+  group,
+  run,
+  cells,
+  split,
+}: {
+  group: Group
+  run: RunView
+  cells: Map<string, Cell>
+  split: Split
+}) {
   const [open, setOpen] = useState(false)
   const ids = new Set(group.cases.map((rc) => rc.case.id))
   const shown = open ? group.cases : group.cases.slice(0, SHOWN)
@@ -242,12 +246,12 @@ function GroupRows({ group, run }: { group: Group; run: RunView }) {
           {run.points.map((p, point) => (
             <td key={point}>
               <CellView
-                cell={run.cells.find((c) => c.case_id === rc.case.id && c.point === point)}
+                cell={cells.get(cellKey(rc.case.id, point))}
                 run={run}
                 caseId={rc.case.id}
                 question={rc.case.prompt}
                 point={p}
-                index={point}
+                split={split}
               />
             </td>
           ))}
@@ -271,8 +275,9 @@ function GroupRows({ group, run }: { group: Group; run: RunView }) {
   )
 }
 
-function Matrix({ run, split }: { run: RunView; split: Split | null }) {
+function Matrix({ run, split }: { run: RunView; split: Split }) {
   const groups = groupCases(run.cases, split)
+  const cells = cellMap(run.cells)
   return (
     <div className="overflow-x-auto">
       <table className="data-table" aria-label={t`Matrix: Prüffälle × Messpunkte`}>
@@ -281,7 +286,7 @@ function Matrix({ run, split }: { run: RunView; split: Split | null }) {
             <th scope="col" className="align-bottom">
               <Trans>Prüffall</Trans>
               <span className="text-muted block text-xs font-normal">
-                <Trans>gruppiert nach Stichwort</Trans>
+                <Trans>gruppiert nach erstem Stichwort</Trans>
               </span>
             </th>
             {run.points.map((p, i) => (
@@ -290,7 +295,7 @@ function Matrix({ run, split }: { run: RunView; split: Split | null }) {
           </tr>
         </thead>
         {groups.map((g) => (
-          <GroupRows key={g.key} group={g} run={run} />
+          <GroupRows key={g.key} group={g} run={run} cells={cells} split={split} />
         ))}
       </table>
       {groups.length === 0 && (
@@ -329,6 +334,7 @@ function Progress({ run }: { run: RunView }) {
   const done = formatNumber(run.progress.done)
   const total = formatNumber(run.progress.total)
   const share = progressPercent(run.progress.done, run.progress.total)
+  const step = Math.floor(share / 10) * 10
   const since = clock(run.label.started_at)
   const left = remainingSeconds(run.label.started_at, run.progress.done, run.progress.total, now)
   const cost = moniesText(run.cost_so_far)
@@ -337,7 +343,7 @@ function Progress({ run }: { run: RunView }) {
   return (
     <div className="card mb-3 p-3">
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <p role="status" className="tabular-nums">
+        <p className="tabular-nums">
           <strong>{t`${done} von ${total} Antworten`}</strong> · {share} % · {t`seit ${since}`}
           {left !== null && ` · ${t`noch ${remaining}`}`}
           {cost && ` · ${t`bisher ${cost}`}`}
@@ -346,6 +352,10 @@ function Progress({ run }: { run: RunView }) {
           <Trans>Abbrechen</Trans>
         </button>
       </div>
+      {/* Announced in steps of a tenth, not at every answer; the end by the status label. */}
+      <p role="status" className="sr-only">
+        {t`${step} % der Antworten`}
+      </p>
       <div aria-hidden className="mt-2 h-1 w-full bg-neutral-300">
         <div className="bg-accent h-full" style={{ width: `${share}%` }} />
       </div>
@@ -511,11 +521,13 @@ function ApplyProfileDialog({
   const c = point.comparison
   const lines = [
     [t`Platzierung`, placementText(now.placement), placementText(next.placement)],
-    [t`Beispiele`, examplesText(now.examples), examplesText(next.examples)],
-    [t`Ausgabe`, outputText(now.output), outputText(next.output)],
+    [t`Beispiele`, examplesLabel(now.examples), examplesLabel(next.examples)],
+    [t`Ausgabe`, outputLabel(now.output), outputLabel(next.output)],
   ]
-  const silently = point.figures?.silently_wrong ?? 0
-  const refSilently = reference.figures?.silently_wrong ?? 0
+  const silentlyCount = point.figures?.silently_wrong ?? 0
+  const refCount = reference.figures?.silently_wrong ?? 0
+  const silently = formatNumber(silentlyCount)
+  const refSilently = formatNumber(refCount)
   const word = c ? wordText(c.word) : ''
   const diff = c ? differenceText(c) : ''
   return (
@@ -545,7 +557,7 @@ function ApplyProfileDialog({
           <Trans>
             Gemessen in Lauf #{id}: <strong>{word}</strong> als {refName}, {diff} auf Bestätigung.
           </Trans>
-          {silently > refSilently && (
+          {silentlyCount > refCount && (
             <>
               {' '}
               <Trans>
@@ -606,10 +618,10 @@ function ColumnActions({ run }: { run: RunView }) {
           <DropdownMenu.Portal>
             <DropdownMenu.Content align="start" className={menu}>
               {run.points.map((p, i) => {
-                const own = connectionProfile(
+                const same = isOwnProfile(
                   connections?.find((c) => c.id === p.label.connection_id),
+                  p.label.prompt_profile,
                 )
-                const same = sameProfile(own, p.label.prompt_profile)
                 return (
                   <DropdownMenu.Item
                     key={i}
@@ -817,7 +829,12 @@ function RunBody({ run }: { run: RunView }) {
 export function RunPage() {
   const { id } = useParams()
   const run = useRun(Number(id))
-  if (run.error) return <ErrorNotice error={run.error} />
-  if (!run.data) return <Loading />
-  return <RunBody run={run.data} />
+  if (!run.data) return run.error ? <ErrorNotice error={run.error} /> : <Loading />
+  return (
+    <>
+      {/* A failed poll keeps what was read; polling stops after repeated failures. */}
+      <ErrorNotice error={run.error} />
+      <RunBody run={run.data} />
+    </>
+  )
 }

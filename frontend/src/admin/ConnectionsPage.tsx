@@ -4,8 +4,8 @@
 import { Trans } from '@lingui/react/macro'
 import { plural, t } from '@lingui/core/macro'
 import { Check, Minus, Plus, X } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
-import { Link } from 'react-router'
+import { useEffect, useState, type ReactNode } from 'react'
+import { Link, useLocation } from 'react-router'
 import {
   api,
   type CheckResult,
@@ -740,8 +740,24 @@ function LastRun({ connection }: { connection: ConnectionInfo }) {
   )
 }
 
+/**
+ * "Zur Anbindung" of a run (design review 6) links to ``#anbindung-N``: once
+ * the list is there, that row is scrolled to, focused and marked.
+ */
+function useTargetRow(loaded: boolean) {
+  const { hash } = useLocation()
+  useEffect(() => {
+    if (!loaded || !hash.startsWith('#anbindung-')) return
+    const row = document.getElementById(hash.slice(1))
+    row?.scrollIntoView?.({ block: 'center' })
+    row?.focus()
+  }, [hash, loaded])
+  return hash
+}
+
 export function ConnectionsPage() {
   const connections = useConnections()
+  const target = useTargetRow(connections.data !== undefined)
   const [editing, setEditing] = useState<ConnectionInfo | 'new'>()
   const [deleting, setDeleting] = useState<ConnectionInfo>()
   const [tested, setTested] = useState<{ name: string; result: CheckResult }>()
@@ -820,7 +836,15 @@ export function ConnectionsPage() {
           </thead>
           <tbody>
             {connections.data.map((c) => (
-              <tr key={c.id} id={`anbindung-${c.id}`}>
+              <tr
+                key={c.id}
+                id={`anbindung-${c.id}`}
+                tabIndex={-1}
+                aria-current={target === `#anbindung-${c.id}` ? 'location' : undefined}
+                className={
+                  target === `#anbindung-${c.id}` ? 'outline-accent bg-neutral-200 outline' : ''
+                }
+              >
                 <td>
                   {c.name}
                   {c.is_default && (

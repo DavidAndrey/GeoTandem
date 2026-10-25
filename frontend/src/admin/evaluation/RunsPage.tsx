@@ -10,7 +10,7 @@ import type { ConnectionInfo, RunStatus, RunSummary } from '../../api/client'
 import { useConnections } from '../../api/queries'
 import { ErrorNotice, Loading } from '../../components/ui'
 import { formatDateTime } from '../format'
-import { statusText } from '../../model/statusKey'
+import { StatusLabel } from '../../model/status'
 import { useRun, useRuns } from './runs'
 import {
   comparable,
@@ -39,36 +39,15 @@ export function RunStatusLabel({
   let detail: string | undefined
   if (status === 'running' && percent !== undefined) detail = `· ${percent} %`
   else if (status === 'done' && quick) detail = t`· Schnelltest`
-  const line = RUN_LINE[status]
+  // A finished run is solid (design V5); every other state as E2 draws it.
   return (
-    <span
-      role={live ? (status === 'failed' ? 'alert' : 'status') : undefined}
-      data-status={status}
-      data-line={line}
-      className={`inline-flex items-center gap-1 rounded-full border px-2 text-xs whitespace-nowrap ${LINE_CLASS[line]}`}
-    >
-      <span>{statusText(runStatusKey(status))}</span>
-      {detail && <span className="tabular-nums">{detail}</span>}
-    </span>
+    <StatusLabel
+      status={runStatusKey(status)}
+      detail={detail}
+      live={live}
+      line={status === 'done' ? 'applied' : undefined}
+    />
   )
-}
-
-/**
- * The status language of E2 for a run (design V5): running dashed, done solid,
- * aborted and interrupted grey with the label struck through, failed black.
- */
-const RUN_LINE: Record<RunStatus, 'dashed' | 'solid' | 'void' | 'message'> = {
-  running: 'dashed',
-  done: 'solid',
-  aborted: 'void',
-  interrupted: 'void',
-  failed: 'message',
-}
-const LINE_CLASS = {
-  dashed: 'border-dashed border-accent text-accent-700',
-  solid: 'border-accent text-accent-700',
-  void: 'border-neutral-400 text-muted line-through',
-  message: 'border-ink text-ink',
 }
 
 /** The running run's label follows its progress. */

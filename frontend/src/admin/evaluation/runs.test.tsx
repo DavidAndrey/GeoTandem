@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { App } from '../../App'
 import type { RunPage, RunRequest } from '../../api/client'
-import { CONNECTIONS, runPage, runView } from '../../test/eval-mocks'
+import { CONNECTIONS, COST_ESTIMATE, runPage, runView } from '../../test/eval-mocks'
 import { formatNumber } from '../../i18n/locale'
 import { renderAt } from '../../test/render'
 import { refused, runBackend, RUNS_URL } from '../../test/run-api'
@@ -42,7 +42,7 @@ test('V5.1: the runs with status, the reference rate and the cost', async () => 
   if (!row13) throw new Error('no row')
   expect(within(row13).getByText('fertig').closest('[data-line]')).toHaveAttribute(
     'data-line',
-    'solid',
+    'applied',
   )
   expect(within(row13).getByText('84.8 %')).toBeInTheDocument()
   expect(within(row13).getByText('2.08 USD')).toBeInTheDocument()
@@ -279,4 +279,65 @@ test('"Als vollständigen Lauf wiederholen" opens V4 with the quick test\'s requ
     placement: 'P0',
     output: 'text',
   })
+})
+
+test('repeating sends the profile each point measured, even if the connection changed since', async () => {
+  const p9 = { examples: 'standard', placement: 'P9', output: 'constrained' } as const
+  const connections = CONNECTIONS.map((c) => (c.id === 3 ? { ...c, prompt_profile: p9 } : c))
+  const calls = runBackend({
+    [`GET ${RUNS_URL}`]: idle(),
+    'GET /api/admin/llm/connections': connections,
+  })
+  renderAt('/admin/bewertung/lauf/neu?von=12', <App />)
+  await waitFor(() => expect(estimates(calls).length).toBeGreaterThan(0))
+  const points = estimates(calls).at(-1)?.points ?? []
+  // Luna P0 was measured; the connection is on P9 now: P0 is sent, not null.
+  expect(points[2].prompt_profile).toEqual({ ...p9, placement: 'P0' })
+  // Luna P9 is the connection's own now: null.
+  expect(points[3].prompt_profile).toBeNull()
+})
+
+test('the estimate waits for the changes to settle: several changes, one request', async () => {
+  const calls = runBackend({ [`GET ${RUNS_URL}`]: idle() })
+  const u = user()
+  renderAt('/admin/bewertung/lauf/neu', <App />)
+  await waitFor(() => expect(estimates(calls)).toHaveLength(1))
+  await u.click(screen.getByRole('button', { name: 'Schnelltest · 1 × 5' }))
+  await u.click(screen.getByRole('button', { name: 'Abstimmung' }))
+  await u.click(screen.getByRole('button', { name: 'Bestätigung' }))
+  await waitFor(() => expect(estimates(calls)).toHaveLength(2))
+  expect(estimates(calls)[1]).toMatchObject({ scope: 'quick', cases: { split: 'confirm' } })
+  await new Promise((resolve) => setTimeout(resolve, 400))
+  expect(estimates(calls)).toHaveLength(2)
+})
+
+test('another set of external hosts asks for the confirmation again', async () => {
+  runBackend({
+    [`GET ${RUNS_URL}`]: idle(),
+    [`POST ${RUNS_URL}/estimate`]: (init: RequestInit | undefined) => {
+      const body = JSON.parse(String(init?.body)) as RunRequest
+      return body.points.length > 1
+        ? { ...COST_ESTIMATE, external_hosts: ['api.anthropic.com', 'api.openai.com', 'x.ai'] }
+        : COST_ESTIMATE
+    },
+  })
+  const u = user()
+  renderAt('/admin/bewertung/lauf/neu', <App />)
+  const box = await screen.findByRole('checkbox', { name: 'Verstanden, extern senden' })
+  await u.click(box)
+  await waitFor(() => expect(startButtons()).toBeEnabled())
+  await u.click(screen.getByRole('button', { name: '+ Messpunkt' }))
+  expect(await screen.findByText(/x\.ai/)).toBeInTheDocument()
+  expect(screen.getByRole('checkbox', { name: 'Verstanden, extern senden' })).not.toBeChecked()
+  expect(startButtons()).toBeDisabled()
+})
+
+test('without a case origin no stale estimate is shown', async () => {
+  runBackend({ [`GET ${RUNS_URL}`]: idle() })
+  const u = user()
+  renderAt('/admin/bewertung/lauf/neu', <App />)
+  await screen.findByRole('table', { name: 'Abschätzung' })
+  await u.click(screen.getByRole('checkbox', { name: 'Startbestand (71)' }))
+  expect(screen.queryByRole('table', { name: 'Abschätzung' })).toBeNull()
+  expect(screen.queryByText(/Steckbrief und Fragen gehen an/)).toBeNull()
 })

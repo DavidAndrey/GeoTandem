@@ -25,9 +25,11 @@ const heads = async () => (await within(await matrix()).findAllByRole('columnhea
 test('V6.1: while running, progress as status, cells fill, no column figures yet', async () => {
   runBackend()
   renderAt('/admin/bewertung/lauf/14', <App />)
-  const status = await screen.findByText(/von .* Antworten/)
-  expect(status.closest('[role="status"]')).not.toBeNull()
-  expect(status.closest('[role="status"]')).toHaveTextContent(/41 % · seit .* · bisher 0.84 USD/)
+  const numbers = await screen.findByText(/von .* Antworten/)
+  // The numbers change silently; the live region announces steps of a tenth.
+  expect(numbers.closest('[role="status"]')).toBeNull()
+  expect(numbers.closest('p')).toHaveTextContent(/41 % · seit .* · bisher 0.84 USD/)
+  expect(screen.getByText('40 % der Antworten')).toHaveAttribute('role', 'status')
   const columns = await heads()
   expect(columns).toHaveLength(4)
   for (const head of columns) {
@@ -107,8 +109,9 @@ test('V6.2: rows grouped by tag with sums; still falsch as dashed frame, "!" and
   const spatial = groups.find((g) => g.textContent === 'räumlich · 14 Fälle')?.closest('tbody')
   if (!spatial) throw new Error('no group')
   await user.click(within(spatial).getByRole('button', { name: '▸ 12 weitere' }))
+  // The cell's name is its content: question and point, the verdict mix and still falsch.
   const cell = within(spatial).getByRole('link', {
-    name: 'Schulen im Umkreis von 1 km um den Bahnhof Bern bei gpt-6-luna P9: 4 von 10',
+    name: /^Schulen im Umkreis von 1 km um den Bahnhof Bern bei gpt-6-luna P9: 4 von 10 · 6 f.*6 still falsch$/,
   })
   expect(cell).toHaveTextContent('4 von 10 · 6 f')
   const mark = within(cell).getByText('6 still falsch').closest('[data-mark]')
@@ -221,7 +224,7 @@ test('keyboard: the matrix is a table with row and column heads; Enter on a cell
   expect(within(table).getAllByRole('columnheader')[0]).toHaveTextContent('Prüffall')
   expect(within(table).getAllByRole('rowheader').length).toBeGreaterThan(4)
   const cell = within(table).getByRole('link', {
-    name: 'Welche Primarschulen gibt es in Köniz? bei gemma4:12b P0: 9 von 10',
+    name: /^Welche Primarschulen gibt es in Köniz\? bei gemma4:12b P0: 9 von 10 · 1 f$/,
   })
   // Reached with the keyboard: Tab until the cell has the focus.
   for (let i = 0; i < 60 && document.activeElement !== cell; i++) await user.tab()
@@ -246,7 +249,8 @@ test('V6.6: two runs side by side', async () => {
     run: 13,
     against: 12,
   })
-  const row = (await screen.findByRole('rowheader', { name: 'gpt-6-luna P0' })).closest('tr')
+  const rates = await screen.findByRole('table', { name: '' })
+  const row = within(rates).getByRole('rowheader', { name: 'gpt-6-luna P0' }).closest('tr')
   if (!row) throw new Error('no row')
   expect(row).toHaveTextContent('84.8 %')
   expect(row).toHaveTextContent('78.2 %')
@@ -266,4 +270,97 @@ test('V6.6: runs that are not comparable are refused in words', async () => {
   expect(await screen.findByRole('alert')).toHaveTextContent(
     'Diese Läufe lassen sich nicht gegenüberstellen',
   )
+})
+
+test('V6.6: details per point and the system prompts of both runs', async () => {
+  runBackend({ 'POST /api/admin/evaluation/comparison': RUN_COMPARISON })
+  const user = userEvent.setup()
+  renderAt('/admin/bewertung/lauf/13/gegen/12', <App />)
+  expect(
+    await screen.findByText(
+      /#13: System-Prompt wie im Betrieb · #12: System-Prompt wie im Betrieb/,
+    ),
+  ).toBeInTheDocument()
+  await user.click(screen.getByText('Details je Messpunkt'))
+  const details = screen.getByRole('table', { name: 'Details je Messpunkt' })
+  const row = within(details).getByRole('rowheader', { name: 'gpt-6-luna P9' }).closest('tr')
+  expect(row).toHaveTextContent('17')
+  expect(row).toHaveTextContent('2.1 s · 3.9 s')
+  expect(row).toHaveTextContent('0.59 USD')
+})
+
+// --- polling ----------------------------------------------------------------------
+
+const asked = (calls: { key: string }[], id: number) =>
+  calls.filter((c) => c.key === `GET ${RUNS_URL}/${id}`).length
+
+/** Waits a few poll intervals: polling that stopped asks no more. */
+const quiet = () => new Promise((resolve) => setTimeout(resolve, poll.ms * 8))
+
+test('a failed poll keeps the matrix and says so above it; polling goes on', async () => {
+  let n = 0
+  const calls = runBackend({
+    [`GET ${RUNS_URL}/14`]: () => {
+      n += 1
+      return n === 2 ? refused(503, 'internal_error') : runView('running')
+    },
+  })
+  renderAt('/admin/bewertung/lauf/14', <App />)
+  expect(await screen.findByText('Der Vorgang wurde unerwartet abgebrochen.')).toBeInTheDocument()
+  expect(screen.getByRole('table', { name: 'Matrix: Prüffälle × Messpunkte' })).toBeInTheDocument()
+  await waitFor(() => expect(asked(calls, 14)).toBeGreaterThan(3))
+})
+
+test('polling stops when the server keeps failing', async () => {
+  let n = 0
+  const calls = runBackend({
+    [`GET ${RUNS_URL}/14`]: () => {
+      n += 1
+      return n === 1 ? runView('running') : refused(503, 'internal_error')
+    },
+  })
+  renderAt('/admin/bewertung/lauf/14', <App />)
+  await screen.findByText('Der Vorgang wurde unerwartet abgebrochen.')
+  await waitFor(() => expect(asked(calls, 14)).toBeGreaterThanOrEqual(4))
+  const after = asked(calls, 14)
+  await quiet()
+  expect(asked(calls, 14)).toBe(after)
+  // What was read stays.
+  expect(screen.getByRole('table', { name: 'Matrix: Prüffälle × Messpunkte' })).toBeInTheDocument()
+})
+
+test.each(['failed', 'aborted', 'interrupted'] as const)(
+  'polling stops once the run is %s',
+  async (status) => {
+    let n = 0
+    const calls = runBackend({
+      [`GET ${RUNS_URL}/14`]: () => {
+        n += 1
+        return n < 3 ? runView('running') : { ...runView('running'), status }
+      },
+    })
+    renderAt('/admin/bewertung/lauf/14', <App />)
+    await waitFor(() => expect(asked(calls, 14)).toBe(3))
+    await quiet()
+    expect(asked(calls, 14)).toBe(3)
+  },
+)
+
+test('a full run without confirmation cases shows no comparison words', async () => {
+  const run = runView('done')
+  runBackend({
+    [`GET ${RUNS_URL}/13`]: { ...run, points: run.points.map((p) => ({ ...p, comparison: null })) },
+  })
+  renderAt('/admin/bewertung/lauf/13', <App />)
+  const [gemma] = await heads()
+  expect(gemma).toHaveTextContent('Vergleich: keine Bestätigungsfälle')
+  expect(screen.queryByText('besser')).toBeNull()
+})
+
+test('a column head names its error codes in words', async () => {
+  runBackend()
+  renderAt('/admin/bewertung/lauf/13', <App />)
+  const [gemma] = await heads()
+  const code = within(gemma).getByTitle('Die Antwort des Modells ist nicht lesbar.')
+  expect(code).toHaveTextContent('model_unreadable 6')
 })
