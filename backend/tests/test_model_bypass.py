@@ -813,7 +813,16 @@ INJECTIONS = [
 ]
 
 
-@pytest.mark.parametrize("placement", ["P0", "P9"])
+PRESETS = [
+    {"examples": examples, "placement": placement, "output": output}
+    for examples in ("standard", "12")
+    for placement in ("P0", "P5", "P9")
+    for output in ("constrained", "text")
+]
+"""Every prompt profile a connection can be set to (D9): 2 × 3 × 2 presets."""
+
+
+@pytest.mark.parametrize("profile", PRESETS, ids=lambda p: "-".join(p.values()))
 @pytest.mark.parametrize("text", INJECTIONS, ids=["ignore", "fake-system", "fake-format"])
 async def test_a_prompt_cannot_change_format_level_or_tools(
     client: httpx.AsyncClient,
@@ -822,7 +831,7 @@ async def test_a_prompt_cannot_change_format_level_or_tools(
     levels: dict[str, int],
     ran: list[str],
     text: str,
-    placement: str,
+    profile: dict[str, str],
 ) -> None:
     """The prompt text is the user message and nothing else: the system message
     (level prompt, layer profile, answer format), the answer schema and the
@@ -830,9 +839,10 @@ async def test_a_prompt_cannot_change_format_level_or_tools(
     governed by the account's level (*Prüfen*), and a model that obeys gets
     no further than its answer's checks. Under the prompt profile's P9 (plan
     E3, D9; E-8 extended 2026-10-23) the first-question note is a system
-    message of its own before the user message, which stays the prompt text."""
+    message of its own before the user message, which stays the prompt text.
+    Under every one of the twelve presets (security review #52)."""
     [connection] = (await client.get(CONNECTIONS)).json()
-    profile = {"examples": "standard", "placement": placement, "output": "constrained"}
+    placement = profile["placement"]
     patched = await client.patch(
         f"{CONNECTIONS}/{connection['id']}", json={"prompt_profile": profile}
     )

@@ -531,3 +531,53 @@ def test_prompt_profile_and_prices_come_and_go_with_0017(settings: Settings) -> 
         assert conn.scalar(text("SELECT count(*) FROM llm_connection")) == 1
         assert conn.scalar(text("SELECT count(*) FROM model_action")) == 1
     migrate.upgrade(engine)
+
+
+def test_runs_and_answers_come_and_go_with_0016(settings: Settings) -> None:
+    """Plan E3, WP90: a run and its answers in two tables, one answer per case,
+    point and seed; a downgrade removes both and keeps the own cases."""
+    engine = make_engine(settings)
+    migrate.upgrade(engine, "0015")
+    assert not {"eval_run", "eval_answer"} & set(inspect(engine).get_table_names())
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO eval_case (case_id, split, origin, data_state, body, created_at,"
+                " updated_at) VALUES ('eigene-1', 'confirm', 'authored', 'sample', '{}',"
+                " '2026-10-24 08:00:00', '2026-10-24 08:00:00')"
+            )
+        )
+
+    migrate.upgrade(engine, "0016")
+
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO eval_run (id, status, scope, data_state, request, label, cases,"
+                " points, prices, connection_ids, case_set_hash, reference, progress_total,"
+                " started_by, started_at) VALUES (1, 'done', 'quick', 'sample', '{}', '{}',"
+                " '[]', '[]', '[null]', ',1,', 'h', 0, 5, 'admin', '2026-10-25 08:00:00')"
+            )
+        )
+    answer = text(
+        "INSERT INTO eval_answer (run_id, case_id, point, connection_id, block, seed,"
+        " verdict, flags, only_answer, only_reference) VALUES (1, 'eigene-1', 0, 1, 1, 1,"
+        " 'pass', '[]', '[]', '[]')"
+    )
+    with engine.begin() as conn:
+        conn.execute(answer)
+    with pytest.raises(IntegrityError), engine.begin() as conn:
+        conn.execute(answer)
+    with engine.connect() as conn:
+        progress, silently = conn.execute(
+            text("SELECT progress_done, silently_wrong FROM eval_run, eval_answer")
+        ).one()
+    assert (progress, silently) == (0, 0)  # the server defaults
+    indexes = {i["name"] for i in inspect(engine).get_indexes("eval_run")}
+    assert "ix_eval_run_status" in indexes
+
+    migrate.downgrade(engine, "0015")
+    assert not {"eval_run", "eval_answer"} & set(inspect(engine).get_table_names())
+    with engine.connect() as conn:
+        assert conn.scalar(text("SELECT case_id FROM eval_case")) == "eigene-1"
+    migrate.upgrade(engine)
