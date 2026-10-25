@@ -869,6 +869,10 @@ msgstr ""
 msgid "Als Prüffall speichern"
 msgstr ""
 
+#: src/admin/ModelActionPage.tsx
+msgid "Als Prüffall übernehmen"
+msgstr ""
+
 #: src/admin/ModelLogPage.tsx
 msgid "Ältere"
 msgstr ""
@@ -1201,6 +1205,11 @@ msgstr ""
 msgid "Aus Analyse entfernen"
 msgstr ""
 
+#: src/admin/evaluation/CaseDetailPage.tsx
+msgid "Aus dem Modellprotokoll übernommen: Frage und Referenz stammen aus der Modellaktion. Der Prüffall wird erst gespeichert, wenn Sie Kennung, Stichwörter und Teil gewählt haben."
+msgstr ""
+
+#: src/admin/evaluation/CaseDetailPage.tsx
 #: src/admin/evaluation/SaveCaseDialog.tsx
 msgid "Aus der Frage vorgeschlagen; eindeutig unter allen Prüffällen."
 msgstr ""
@@ -2342,6 +2351,10 @@ msgstr ""
 
 #: src/model/compare/flow.ts
 msgid "Diese Antwort ist schon die Wiederholung mit der anderen Arbeitsweise."
+msgstr ""
+
+#: src/i18n/errors.ts
+msgid "Diese Antwort wurde von Hand korrigiert. Von Hand korrigierte Antworten werden vorerst nicht zum Prüffall."
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -4188,6 +4201,7 @@ msgstr ""
 msgid "Mindestens {MIN_PASSWORD_LENGTH} Zeichen, Sonderzeichen sind nicht nötig. Ein Satz aus mehreren Wörtern ist sicher und gut zu merken."
 msgstr ""
 
+#: src/admin/evaluation/CaseDetailPage.tsx
 #: src/admin/evaluation/SaveCaseDialog.tsx
 msgid "Mindestens ein Stichwort."
 msgstr ""
@@ -4413,6 +4427,10 @@ msgstr ""
 #: src/queries/ManageQueriesDialog.tsx
 #: src/session/SessionsDialog.tsx
 msgid "Neuer Name"
+msgstr ""
+
+#: src/admin/evaluation/CaseDetailPage.tsx
+msgid "Neuer Prüffall"
 msgstr ""
 
 #: src/admin/ModelLogPage.tsx

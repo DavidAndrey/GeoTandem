@@ -127,12 +127,12 @@ def import_cases(body: CaseFile, service: CaseService) -> ImportResult:
 
 
 @router.get("/cases/draft-from-action/{action_id}", responses=ERRORS)
-def case_from_action(action_id: Id) -> CaseDraft:
+def case_from_action(action_id: Id, service: CaseService) -> CaseDraft:
     """A case prefilled from a logged direct query with decision ``accepted``, or
     ``auto`` not undone (F-3.14); nothing is stored until it is saved with
     ``POST /cases``. Any other action, a hand-corrected one too (decision 2), is
     ``action_not_eligible``."""
-    raise NotBuilt("WP92")
+    return service.draft(action_id)
 
 
 @router.get("/cases/{case_id}", responses=ERRORS)

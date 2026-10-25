@@ -34,6 +34,12 @@ every read: ``stale``; ``invalid`` when its reference no longer passes the
 checks or no longer runs (the list checks, the detail also counts);
 ``dataset_changed`` when a layer was re-imported since.
 
+A case **from the log** (F-3.14, decision 2) is taken only from a model
+action that ``not_eligible`` lets through: a direct query whose stored query
+is what the user kept (see there). The draft route builds it (``Cases.draft``)
+and ``POST`` and ``PUT`` with ``origin: log`` check the same rule, so a case
+cannot be taken from a corrected answer by hand.
+
 An imported case is ``origin: import``: an ``authored`` or ``log`` case of a
 file becomes one, and its ``origin_action`` is dropped, since an action id of
 another instance names nothing here.
@@ -55,8 +61,7 @@ from pathlib import Path
 from typing import Any, Final
 
 from pydantic import ValidationError
-from sqlalchemy import Engine, select
-from sqlalchemy.orm import Session
+from sqlalchemy import Engine
 
 from geotandem.auth.accounts import Account
 from geotandem.catalog import ModelProfile, dataset_versions, model_profile
@@ -66,7 +71,6 @@ from geotandem.data.spatialite import SpatiaLiteBackend
 from geotandem.data.view import LayerView
 from geotandem.db.bootstrap import ConfigurationError
 from geotandem.db.engine import make_engine
-from geotandem.db.orm import ModelAction
 from geotandem.db.spatialite import reading
 from geotandem.engine import QueryError, count_query
 from geotandem.evaluation.diff import canonical
@@ -76,6 +80,7 @@ from geotandem.evaluation.schemas import (
     CASE_FILE_FORMAT,
     CASE_FILE_VERSION,
     MAX_CASES,
+    CaseDraft,
     CaseFile,
     CaseLayer,
     CasePage,
@@ -95,12 +100,14 @@ from geotandem.evaluation.store import (
     TooManyCases,
     body_of,
 )
+from geotandem.model.errors import ActionError
+from geotandem.model.record import ModelActionStore
 from geotandem.model.represent import query_layers
-from geotandem.model.schemas import Refusal
+from geotandem.model.schemas import ModelActionView, Refusal
 from geotandem.model.service import profile_for
 from geotandem.sample.load import dataset_version
 from geotandem.tools import ToolContext
-from geotandem_query import QueryObject
+from geotandem_query import QueryObject, compact
 
 log = logging.getLogger(__name__)
 
@@ -515,6 +522,79 @@ def as_imported(case: EvalCase) -> EvalCase:
     return EvalCase.model_validate({**body, "origin": "import"})
 
 
+# --- a case from the log (F-3.14) ------------------------------------------------
+
+LOG_DECISIONS: Final = frozenset({"accepted", "auto"})
+"""The decisions of a model action a case may be taken from: the user approved
+the model's query, or the level let it run unasked."""
+RENDER_HINTS: Final = ("schema_version", "output", "symbology")
+"""Keys of a query object a case's reference leaves out: the case names the
+schema version beside it, the others only draw (as the harness writes it)."""
+
+
+def not_eligible(action: ModelActionView) -> str | None:
+    """Why ``action`` cannot become a case, or ``None`` if it can (decision 2).
+    The first reason that holds, in this order:
+
+    - ``approach``: a chain (the direct query first, plan E3 section 0);
+    - ``decision``: neither ``accepted`` nor ``auto``: refused, answered, open,
+      rejected, superseded, proposal only, or ``adjusted`` (the user applied
+      another query than the model's);
+    - ``undone``: taken back (``undone_at``; the decision stays for the log);
+    - ``touched``: the analysis was edited by hand after the action was
+      applied (``touched_at``), so what the user kept is no longer only the
+      model's query;
+    - ``no_query``: no stored query to be the reference.
+    """
+    if action.approach != "direct":
+        return "approach"
+    if action.decision not in LOG_DECISIONS:
+        return "decision"
+    if action.undone_at is not None:
+        return "undone"
+    if action.touched_at is not None:
+        return "touched"
+    if action.query is None:
+        return "no_query"
+    return None
+
+
+def _check_eligible(action: ModelActionView, case_id: str | None = None) -> None:
+    """``action_not_eligible`` (409, as the other refusals of a state) unless
+    ``not_eligible`` lets ``action`` through."""
+    if (reason := not_eligible(action)) is None:
+        return
+    raise CaseError(
+        409,
+        "action_not_eligible",
+        f"The model action {action.id} cannot become a case ({reason}).",
+        case_id=case_id,
+        action_id=action.id,
+        decision=action.decision,
+        reason=reason,
+    )
+
+
+def draft_of(action: ModelActionView) -> CaseDraft:
+    """The case ``action`` gives, for the administrator to complete (V2
+    prefilled): its prompt, its stored query as the reference as a case stores
+    it, on the live data with the layers it uses; the save stamps their dataset
+    versions (D3). ``action_not_eligible`` unless ``not_eligible`` lets it through."""
+    _check_eligible(action)
+    query = action.query
+    assert query is not None
+    doc = {k: v for k, v in compact(query).items() if k not in RENDER_HINTS}
+    return CaseDraft(
+        prompt=action.prompt,
+        data_state="live",
+        origin="log",
+        origin_action=action.id,
+        schema_version=query.schema_version,
+        gold=doc,
+        layers=[CaseLayer(name=name) for name in sorted(query_layers(query))],
+    )
+
+
 # --- the cases of one administrator's request ----------------------------------
 
 
@@ -589,13 +669,34 @@ class Cases:
             raise _not_found(case_id)
         return self._view(stored, hits=True)
 
-    def _check_origin(self, case: EvalCase) -> None:
-        """A ``log`` case names a model action of this instance (F-3.14)."""
-        if case.origin != "log":
+    def _action(self, action_id: int) -> ModelActionView | None:
+        """The model action as this administrator reads it (any account's), or ``None``."""
+        try:
+            return ModelActionStore(self.backend.engine).get(self.account, action_id)
+        except ActionError:
+            return None
+
+    def draft(self, action_id: int) -> CaseDraft:
+        """A case from a model action, not stored (F-3.14): ``not_found`` for an
+        unknown action, ``action_not_eligible`` for one ``not_eligible`` stops."""
+        action = self._action(action_id)
+        if action is None:
+            raise CaseError(
+                404, "not_found", f"There is no model action {action_id}.", action_id=action_id
+            )
+        return draft_of(action)
+
+    def _check_origin(self, case: EvalCase, before: EvalCase | None = None) -> None:
+        """A ``log`` case names a model action of this instance (F-3.14) that may
+        become a case (``not_eligible``). An edit that keeps the stored case's
+        action is not checked again: what became of the action after the case
+        was taken (an undo, a later hand edit) does not lock the case."""
+        if case.origin != "log" or case.origin_action is None:
             return
-        with Session(reading(self.backend.engine)) as db:
-            known = db.scalar(select(ModelAction.id).where(ModelAction.id == case.origin_action))
-        if known is None:
+        if before is not None and before.origin_action == case.origin_action:
+            return
+        action = self._action(case.origin_action)
+        if action is None:
             raise _invalid(
                 case.id,
                 f"The case '{case.id}' names the model action {case.origin_action}, "
@@ -603,7 +704,7 @@ class Cases:
                 reason="origin_action",
                 origin_action=case.origin_action,
             )
-        # WP92 adds here that the action is eligible (accepted, or auto not undone).
+        _check_eligible(action, case.id)
 
     def create(self, case: EvalCase) -> CaseView:
         if case.id in self._start_ids:
@@ -629,7 +730,7 @@ class Cases:
             raise _read_only(case_id) if case_id in self._start_ids else _not_found(case_id)
         if case.id != case_id and case.id in self._start_ids:
             raise _taken(case.id)
-        self._check_origin(case)
+        self._check_origin(case, old.case)
         restamp = reference_changed(old.case, case)
         case = check_case(case, self.world(case.data_state), stamp=restamp)
         if not restamp and case.data_state == "live":

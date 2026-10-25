@@ -3,18 +3,21 @@
 // is edited here, except its reference, which changes over the workplace
 // (V2.1: "Im Arbeitsplatz öffnen", "Weitere Lesart hinzufügen"); a behaviour
 // case names the expected answer (V2.2); a start case is read only and can
-// be copied into an own case (V2.3).
+// be copied into an own case (V2.3). A case taken from the model log (M16.2
+// "Als Prüffall übernehmen", F-3.14) opens here prefilled from its draft and
+// is stored only when the administrator saves it with an id and tags.
 import { Trans } from '@lingui/react/macro'
 import { t } from '@lingui/core/macro'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState, type FormEvent, type RefObject } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { useShallow } from 'zustand/react/shallow'
 import { canonicalQuery } from '../../analysis/query'
 import { useAnalysis } from '../../analysis/store'
-import { api, type CaseView, type EvalCase } from '../../api/client'
+import { api, type CaseDraft, type CaseView, type EvalCase } from '../../api/client'
 import { useLayers } from '../../api/queries'
 import { ConfirmDialog, ErrorNotice, Loading, Modal } from '../../components/ui'
+import { errorText } from '../../i18n/errors'
 import { formatDateTime } from '../format'
 import { CaseStatusLabel, Field, SplitChoice, TagEditor } from './parts'
 import { caseKeys, createCase, updateCase, useCase, useCaseChange, useCases } from './queries'
@@ -26,6 +29,7 @@ import {
   caseErrorText,
   caseKindText,
   dataStateText,
+  idFrom,
   idProblem,
   isBehaviour,
   kindText,
@@ -63,6 +67,52 @@ export function CaseDetailPage() {
   )
 }
 
+/**
+ * A case from a model action of the log (V2 prefilled from M16.2): the draft
+ * the server builds (``draft-from-action``) in the form of an own case, with
+ * an id proposed from the question and no tags yet; saving creates it.
+ */
+export function CaseFromLogPage() {
+  const { action = '' } = useParams()
+  // Only digits name an entry, as on the model action page.
+  const actionId = /^\d+$/.test(action) ? Number(action) : null
+  const draft = useQuery({
+    queryKey: ['eval-cases', 'draft', actionId],
+    queryFn: () => api.evaluation.draftFromAction(actionId ?? 0),
+    enabled: actionId !== null,
+    // A draft is a snapshot to edit: refetching would reset the form.
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    retry: false,
+  })
+  return (
+    <section aria-labelledby="case-title">
+      {!draft.data && <Breadcrumb />}
+      {actionId === null && (
+        <p role="alert" className="text-danger my-2 text-sm">
+          {errorText('not_found')}
+        </p>
+      )}
+      {actionId !== null && draft.isPending && <Loading />}
+      <ErrorNotice error={draft.error} />
+      {draft.data && (
+        <CaseForm view={draftView(draft.data)} saved={false} onSaved={() => undefined} fresh />
+      )}
+    </section>
+  )
+}
+
+/** A draft as the form edits a case: an id proposed from its question, no tags yet. */
+function draftView(draft: CaseDraft): CaseView {
+  return {
+    case: { ...draft, id: idFrom(draft.prompt), tags: [] },
+    status: 'ok',
+    status_layers: [],
+    read_only: false,
+    reference_hits: null,
+  }
+}
+
 const LIST = '/admin/bewertung/faelle'
 
 /** "Bewertung › Prüffälle ›"; ``guard`` asks before leaving unsaved edits. */
@@ -90,11 +140,14 @@ function CaseForm({
   view,
   saved,
   onSaved,
+  fresh = false,
 }: {
   view: CaseView
   /** This version was just saved here. */
   saved: boolean
   onSaved: (version: string | null) => void
+  /** A draft not stored yet (from the log): saving creates it, its id and tags are asked. */
+  fresh?: boolean
 }) {
   const original = view.case
   const [form, setForm] = useState<EvalCase>(original)
@@ -110,6 +163,12 @@ function CaseForm({
   const guard = (go: () => void) => (dirty ? setLeaving(() => go) : go())
   const client = useQueryClient()
   const save = useCaseChange(updateCase)
+  const create = useCaseChange(createCase)
+  const change = fresh ? create : save
+  const idWrong = fresh ? idProblem(form.id) : null
+  const ready = fresh
+    ? !idWrong && form.tags.length > 0 && form.prompt.trim() !== ''
+    : dirty && !readOnly
   // The deleted case leaves the cache before the page does, so nothing asks for it again (404).
   const remove = useMutation({
     mutationFn: (caseId: string) => api.evaluation.remove(caseId),
@@ -125,7 +184,16 @@ function CaseForm({
 
   const submit = (event: FormEvent) => {
     event.preventDefault()
-    if (!dirty || readOnly) return
+    if (!ready) return
+    if (fresh) {
+      create.mutate(form, {
+        onSuccess: (next) => {
+          client.setQueryData(caseKeys.one(next.case.id), next)
+          navigate(`${LIST}/${next.case.id}`, { replace: true })
+        },
+      })
+      return
+    }
     save.mutate(
       { id: original.id, body: form },
       {
@@ -141,7 +209,7 @@ function CaseForm({
   const questionId = 'case-question'
   const noteId = 'case-note'
   const help = 'case-question-help'
-  const title = original.id
+  const title = fresh ? t`Neuer Prüffall` : original.id
   const kind = caseKindText(form)
   const count = docs.length
 
@@ -150,7 +218,7 @@ function CaseForm({
       <Breadcrumb guard={guard} />
       <form onSubmit={submit} aria-labelledby="case-title">
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <h2 id="case-title" className="mr-auto font-mono text-xl">
+          <h2 id="case-title" className={`mr-auto text-xl ${fresh ? '' : 'font-mono'}`}>
             {title}
           </h2>
           <CaseStatusLabel status={view.status ?? 'ok'} />
@@ -166,6 +234,25 @@ function CaseForm({
                 onClick={() => setCopying(true)}
               >
                 <Trans>Als eigenen Fall kopieren</Trans>
+              </button>
+            </>
+          ) : fresh ? (
+            <>
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={!ready || create.isPending}
+              >
+                <Trans>Speichern</Trans>
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={() =>
+                  guard(() => navigate(`/admin/modellprotokoll/${original.origin_action}`))
+                }
+              >
+                <Trans>Abbrechen</Trans>
               </button>
             </>
           ) : (
@@ -191,9 +278,18 @@ function CaseForm({
           )}
         </div>
         <StatusHint view={view} />
-        {save.isError && (
+        {fresh && (
+          <p className="text-muted mb-2 max-w-3xl text-sm">
+            <Trans>
+              Aus dem Modellprotokoll übernommen: Frage und Referenz stammen aus der Modellaktion.
+              Der Prüffall wird erst gespeichert, wenn Sie Kennung, Stichwörter und Teil gewählt
+              haben.
+            </Trans>
+          </p>
+        )}
+        {change.isError && (
           <p role="alert" className="text-danger my-2 text-sm">
-            {caseErrorText(save.error, docs.length)}
+            {caseErrorText(change.error, docs.length)}
           </p>
         )}
         {saved && !dirty && (
@@ -202,6 +298,24 @@ function CaseForm({
           </p>
         )}
         <dl className="max-w-4xl text-sm">
+          {fresh && (
+            <Field label={t`Kennung`} id="case-id">
+              <input
+                id="case-id"
+                className="input w-full max-w-xl font-mono"
+                value={form.id}
+                required
+                aria-invalid={idWrong !== null}
+                aria-describedby="case-id-help"
+                onChange={(e) => patch({ id: e.target.value })}
+              />
+              <p id="case-id-help" className="text-muted mt-0.5 text-xs">
+                {idWrong ?? (
+                  <Trans>Aus der Frage vorgeschlagen; eindeutig unter allen Prüffällen.</Trans>
+                )}
+              </p>
+            </Field>
+          )}
           <Field label={t`Frage`} id={readOnly ? undefined : questionId}>
             {readOnly ? (
               <p>{form.prompt}</p>
@@ -239,7 +353,7 @@ function CaseForm({
               <Reference
                 docs={docs}
                 hits={view.reference_hits}
-                pending={readingsChanged}
+                pending={fresh || readingsChanged}
                 guard={guard}
                 dataState={form.data_state ?? 'sample'}
                 onRemove={
@@ -299,7 +413,14 @@ function CaseForm({
                 ))}
               </ul>
             ) : (
-              <TagEditor tags={form.tags} known={known} onChange={(tags) => patch({ tags })} />
+              <>
+                <TagEditor tags={form.tags} known={known} onChange={(tags) => patch({ tags })} />
+                {fresh && form.tags.length === 0 && (
+                  <span className="text-muted text-xs">
+                    <Trans>Mindestens ein Stichwort.</Trans>
+                  </span>
+                )}
+              </>
             )}
           </Field>
           <Field label={t`Anmerkung`} id={readOnly ? undefined : noteId}>

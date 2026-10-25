@@ -8,6 +8,7 @@ import {
   type CaseStatus,
   type DataState,
   type EvalCase,
+  type ModelActionView,
   type Split,
 } from '../../api/client'
 import { errorText, KNOWN_CODES } from '../../i18n/errors'
@@ -337,3 +338,18 @@ export function importProblemText(code: string, details: Details = {}): string {
       return errorText(code, details)
   }
 }
+
+/**
+ * Whether a model action of the log may become a case (F-3.14, decision 2),
+ * as ``not_eligible`` of ``evaluation/cases.py`` decides it: a direct query,
+ * accepted or applied unasked, not undone, the analysis not edited by hand
+ * afterwards, with a stored query. Only whether to offer it; the server decides.
+ */
+export const fromLog = (
+  v: Pick<ModelActionView, 'approach' | 'decision' | 'undone_at' | 'touched_at' | 'query'>,
+) =>
+  v.approach === 'direct' &&
+  (v.decision === 'accepted' || v.decision === 'auto') &&
+  !v.undone_at &&
+  !v.touched_at &&
+  v.query != null
