@@ -63,35 +63,49 @@ def assess(
     query: QueryObject | None,
     backend: DataBackend,
     limits: Limits,
+    readings: list[list[int]] | None,
 ) -> Assessment:
     """Grade ``answer`` (stage 2) and explain it (stage 1). ``query`` and
-    ``refusal`` are as ``DirectAnswer`` has them. A query the engine cannot run
-    within ``limits``, the answer's or a reading's, is an ``error`` with the
-    engine's code (``query_timeout``, ...)."""
+    ``refusal`` are as ``DirectAnswer`` has them; ``readings`` are the case's
+    ``reading_ids``, read once per case by the caller, who treats a reading
+    that cannot be read as a problem of the case (a run marks or skips it), not
+    of an answer.
+
+    Only the grader decides the verdict: an answer query the engine cannot run
+    within ``limits`` while grading is an ``error`` with the engine's code
+    (``query_timeout``, ...). Reading it afterwards for the view (a ``require``
+    case that passed) never changes the verdict; when that fails, hits, diff
+    and reading stay ``None``."""
     try:
-        graded = grade(case, answer, refusal, query, backend, limits)
-        if query is None:
-            return _graded(graded)
-        hits = ids_query(query, backend, limits)
-        readings = case.gold_any or ([case.gold] if case.gold else [])
-        if not readings:  # a ``require`` case: the answer's hits only
-            return _graded(graded, hits=len(hits))
-        wants = [ids_query(query_of(r), backend, limits) for r in readings]
+        graded = grade(case, answer, refusal, query, backend, limits, readings)
     except QueryError as exc:
         return unanswered(exc.code)
-    diffs = [diff(query_of(r), query) for r in readings]
+    if query is None:
+        return _graded(graded)
+    hits = graded.hits
+    if hits is None:
+        try:
+            hits = ids_query(query, backend, limits)
+        except QueryError:
+            return _graded(graded)
+    if not readings:  # a ``require`` case: the answer's hits only
+        return _graded(graded, hits=len(hits))
+    golds = case.gold_any or ([case.gold] if case.gold else [])
+    diffs = [diff(query_of(gold), query) for gold in golds]
     reading = (
-        wants.index(hits)
-        if hits in wants
+        readings.index(hits)
+        if hits in readings
         else min(range(len(diffs)), key=lambda i: (len(diffs[i]), i))
     )
-    got, want = set(hits), set(wants[reading])
+    got, want = set(hits), set(readings[reading])
     only_answer, only_reference = sorted(got - want), sorted(want - got)
     return _graded(
         graded,
         reading=reading,
         diff=diffs[reading],
         hits=len(hits),
+        # The reading referred to, the nearest for a wrong answer; the
+        # harness's tag (``wrong:3≠5``) counts the first reading.
         reference_hits=len(want),
         only_answer=only_answer[:MAX_IDS],
         only_answer_count=len(only_answer),

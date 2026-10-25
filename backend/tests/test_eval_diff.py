@@ -19,10 +19,12 @@ from test_eval_grade import ANSWERS, LIMITS, START
 
 from geotandem.catalog import model_profile
 from geotandem.data import DataBackend
+from geotandem.engine import ids_query
 from geotandem.engine.errors import QueryTimedOut
+from geotandem.evaluation import grade as grade_module
 from geotandem.evaluation import stages as stages_module
 from geotandem.evaluation.diff import canonical, diff
-from geotandem.evaluation.grade import query_of
+from geotandem.evaluation.grade import query_of, reading_ids
 from geotandem.evaluation.schemas import MAX_IDS, AnswerView, DiffEntry
 from geotandem.evaluation.stages import Assessment, assess, unanswered
 from geotandem.llm import Completion
@@ -52,7 +54,8 @@ def assessed(item: dict[str, Any], backend: DataBackend) -> Assessment:
             query = checked.query
         else:
             refusal = checked
-    return assess(START[item["case"]], answer, refusal, query, backend, LIMITS)
+    case = START[item["case"]]
+    return assess(case, answer, refusal, query, backend, LIMITS, reading_ids(case, backend, LIMITS))
 
 
 def entries(found: Assessment) -> list[tuple[str, str]]:
@@ -66,7 +69,13 @@ def q(where: dict[str, Any] | None, source: str = "schulen", **rest: Any) -> Que
 
 PRIMAR = {"op": "compare", "attr": "typ", "cmp": "eq", "value": "primar"}
 DE = {"op": "compare", "attr": "sprache", "cmp": "eq", "value": "de"}
-TRAM = {
+MUNSINGEN = {
+    "op": "related",
+    "layer": "gemeinden",
+    "predicate": "within",
+    "where": {"op": "compare", "attr": "name", "cmp": "eq", "value": "Münsingen"},
+}
+TRAM: dict[str, Any] = {
     "op": "related",
     "layer": "haltestellen",
     "predicate": "dwithin",
@@ -241,7 +250,7 @@ def test_the_id_lists_are_capped_and_the_counts_exact(sample: DataBackend) -> No
             "query": {"source": "haltestellen"},
         }
     )
-    found = assess(case, answer, None, every, sample, LIMITS)
+    found = assess(case, answer, None, every, sample, LIMITS, reading_ids(case, sample, LIMITS))
     assert found.verdict == "wrong"
     assert found.hits is not None and found.reference_hits is not None
     assert found.only_answer_count == found.hits - found.reference_hits > MAX_IDS
@@ -254,12 +263,55 @@ def test_the_id_lists_are_capped_and_the_counts_exact(sample: DataBackend) -> No
 def test_a_query_the_engine_cannot_run_is_an_error_with_its_code(
     sample: DataBackend, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    def timed_out(*args: Any) -> list[int]:
-        raise QueryTimedOut("The query took longer than 10 s and was stopped.", timeout_s=10)
-
-    monkeypatch.setattr(stages_module, "grade", timed_out)
+    monkeypatch.setattr(stages_module, "grade", _fails)
     found = assessed(RECORDED["pass-reordered"], sample)
     assert (found.verdict, found.code, found.diff) == ("error", "query_timeout", None)
+
+
+def _fails(*args: Any) -> list[int]:
+    raise QueryTimedOut("The query took longer than 10 s and was stopped.", timeout_s=10)
+
+
+def test_reading_the_hits_after_grading_never_changes_the_verdict(
+    sample: DataBackend, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A ``require`` case that passed: the grader read no hits, the view's
+    reading fails; the verdict stays, the view's fields stay empty."""
+    [item] = [i for i in ANSWERS if i["what"] == "pass-require"]
+    monkeypatch.setattr(stages_module, "ids_query", _fails)
+    found = assessed(item, sample)
+    assert (found.verdict, found.hits, found.diff, found.reading) == ("pass", None, None, None)
+
+
+@pytest.mark.parametrize("what", ["pass-reordered", "wrong-distance"])
+def test_a_gold_case_takes_the_answers_hits_from_the_grader(
+    what: str, sample: DataBackend, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The answer's query runs once, in the grader; the readings not at all,
+    they come from the caller (``reading_ids``, once per case)."""
+    item = RECORDED[what]
+    case = START[item["case"]]
+    readings = reading_ids(case, sample, LIMITS)
+    calls: list[QueryObject] = []
+    real = ids_query
+
+    def counted(query: QueryObject, *args: Any) -> list[int]:
+        calls.append(query)
+        return real(query, *args)
+
+    monkeypatch.setattr(grade_module, "ids_query", counted)
+    monkeypatch.setattr(stages_module, "ids_query", _fails)
+    answer = parse_answer(Completion(text=json.dumps(item["answer"])), "direct")
+    assert isinstance(answer, QueryAnswer)
+    profile = model_profile(sample.engine, sample.layer_names())
+    checked = validate_model_query(
+        answer.query, ToolContext(backend=sample, limits=LIMITS), profile
+    )
+    assert isinstance(checked, Validated)
+    found = assess(case, answer, None, checked.query, sample, LIMITS, readings)
+    assert found.verdict == item["tag"].split(":")[0]
+    assert found.hits is not None and found.diff is not None
+    assert len(calls) == 1
 
 
 # --- normalisation and matching ------------------------------------------------------
@@ -305,7 +357,7 @@ def test_defaults_written_out_or_left_away_are_equal() -> None:
 def test_a_condition_on_another_attribute_is_missing_and_added() -> None:
     found = diff(q({"op": "and", "args": [PRIMAR, DE]}), q({"op": "and", "args": [PRIMAR, TRAM]}))
     assert [(e.kind, e.path) for e in found] == [
-        ("missing", "where.args[0]"),
+        ("missing", "where.args[1]"),
         ("added", "where.args[1]"),
     ]
 
@@ -318,7 +370,7 @@ def test_the_same_attribute_with_another_operator_is_changed() -> None:
     )
     assert (entry.kind, entry.path, entry.reference, entry.answer) == (
         "changed",
-        "where.args[0]",
+        "where.args[1]",
         greater,
         between,
     )
@@ -341,7 +393,6 @@ def test_paths_point_into_the_reference_and_added_into_the_answer() -> None:
     reference = q({"op": "and", "args": [PRIMAR, TRAM]})
     answer = q({"op": "and", "args": [DE, PRIMAR, {**TRAM, "where": None}]})
     found = diff(reference, answer)
-    # canonical order: the answer's arguments are DE (sprache), PRIMAR, TRAM
     assert [(e.kind, e.path) for e in found] == [
         ("missing", "where.args[1].where"),
         ("added", "where.args[0]"),
@@ -355,15 +406,104 @@ def test_parts_beside_where_are_compared_whole() -> None:
     assert [(e.kind, e.path) for e in found] == [("added", "buffer"), ("missing", "limit")]
 
 
+def test_computed_columns_are_compared(sample: DataBackend) -> None:
+    """The nearest five schools to a tram stop or to a road: same source and
+    filter, other features, because ``order_by`` and ``limit`` read the column."""
+
+    def nearest(layer: str) -> QueryObject:
+        column = {"fn": "distance_to", "name": "abstand", "layer": layer}
+        return q(None, columns=[column], order_by=[{"attr": "abstand"}], limit=5)
+
+    [entry] = diff(nearest("haltestellen"), nearest("strassen"))
+    assert (entry.kind, entry.path) == ("changed", "columns")
+    assert (entry.reference[0]["layer"], entry.answer[0]["layer"]) == ("haltestellen", "strassen")
+
+
+def test_values_compare_as_json_true_is_not_one() -> None:
+    yes = {"op": "compare", "attr": "sekundarstufe", "cmp": "eq", "value": True}
+    one = {**yes, "value": 1}
+    assert [e.kind for e in diff(q(yes), q(one))] == ["changed"]
+    within = {"op": "in", "attr": "standorte", "values": [True]}
+    assert [e.kind for e in diff(q(within), q({**within, "values": [1]}))] == ["changed"]
+    assert diff(q({**within, "values": [1, True]}), q({**within, "values": [True, 1, 1]})) == []
+
+
+def test_repeats_are_dropped_and_named_results_may_differ() -> None:
+    assert (
+        diff(q({"op": "and", "args": [PRIMAR, DE]}), q({"op": "and", "args": [DE, PRIMAR, DE]}))
+        == []
+    )
+    aggregate = {"by_layer": "gemeinden", "metrics": [{"fn": "count", "as": "anzahl"}]}
+    renamed = {**aggregate, "metrics": [{"fn": "count", "as": "schulen"}]}
+    assert diff(q(None, aggregate=aggregate), q(None, aggregate=renamed)) == []
+    counted = {**aggregate, "predicate": "intersects"}
+    assert [e.path for e in diff(q(None, aggregate=aggregate), q(None, aggregate=counted))] == [
+        "aggregate"
+    ]
+
+
+def test_the_filter_of_a_spatial_relation_is_normalised() -> None:
+    def relation(where: dict[str, Any]) -> QueryObject:
+        rel = {"layer": "gemeinden", "predicate": "within", "where": where}
+        return q(None, spatial_relation=rel)
+
+    names = [{"op": "compare", "attr": "name", "cmp": "eq", "value": v} for v in ("Bern", "Köniz")]
+    assert (
+        diff(
+            relation({"op": "or", "args": names}),
+            relation({"op": "or", "args": [{"op": "or", "args": names[::-1]}]}),
+        )
+        == []
+    )
+
+
+def test_a_not_pairs_by_what_it_negates() -> None:
+    near = {"op": "not", "arg": TRAM}
+    other = {"op": "not", "arg": DE}
+    farther = {"op": "not", "arg": {**TRAM, "distance_m": 800}}
+    found = diff(
+        q({"op": "and", "args": [other, near]}), q({"op": "and", "args": [farther, other]})
+    )
+    assert [(e.kind, e.path) for e in found] == [("changed", "where.args[1].arg")]
+    assert (found[0].reference["distance_m"], found[0].answer["distance_m"]) == (400, 800)
+    found = diff(q(near), q(TRAM))
+    assert [(e.kind, e.path) for e in found] == [("missing", "where"), ("added", "where")]
+
+
+def test_a_path_addresses_the_node_in_the_stored_reference() -> None:
+    """Paths follow the stored trees, not the sorted canonical form, as the
+    interface shows the stored query."""
+    stored = {"op": "and", "args": [TRAM, {"op": "and", "args": [DE, PRIMAR]}]}
+    answer = {"op": "and", "args": [PRIMAR, {**TRAM, "distance_m": 300}, MUNSINGEN]}
+    found = diff(q(stored), q(answer))
+    assert [(e.kind, e.path) for e in found] == [
+        ("changed", "where.args[0]"),
+        ("missing", "where.args[1].args[0]"),
+        ("added", "where.args[2]"),
+    ]
+    for entry in found:
+        side = stored if entry.kind != "added" else answer
+        node = _at({"where": side}, entry.path)
+        shown = entry.reference if entry.kind != "added" else entry.answer
+        assert {k: v for k, v in node.items() if k != "where"} == {
+            k: v for k, v in shown.items() if k != "where"
+        }
+
+
+def _at(tree: Any, path: str) -> Any:
+    for part in path.replace("]", "").replace("[", ".").split("."):
+        tree = tree[int(part)] if part.isdigit() else tree[part]
+    return tree
+
+
 def test_a_diff_holds_only_the_queries_own_values(sample: DataBackend) -> None:
     """The security list of the WP gate: no data value beyond the queries'
     own conditions, no row content."""
     for item in RECORDED.values():
         case = START[item["case"]]
-        readings = case.gold_any or [case.gold]
+        readings = case.gold_any or ([case.gold] if case.gold else [])
         answer = QueryObject.model_validate(item["answer"]["query"])
         for reading in readings:
-            assert reading is not None
             own = _scalars(canonical(query_of(reading))) | _scalars(canonical(answer))
             for entry in diff(query_of(reading), answer):
                 assert _scalars(entry.reference) | _scalars(entry.answer) <= own
