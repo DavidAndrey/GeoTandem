@@ -578,12 +578,25 @@ def llm_connection(connection_id: int, state: State) -> ConnectionInfo:
     return info
 
 
+def _profile_values(info: ConnectionInfo, fields: list[str]) -> dict[str, Any]:
+    """The prompt profile's values when it was set or changed (plan E3, O8):
+    closed presets, never secret, so the audit log says what operation uses."""
+    return (
+        {"prompt_profile": info.prompt_profile.model_dump()} if "prompt_profile" in fields else {}
+    )
+
+
 @router.post("/llm/connections", status_code=201, responses=ERRORS)
 def create_llm_connection(body: ConnectionWrite, state: State, user: Actor) -> ConnectionInfo:
     info = state.connections.create(body)
     fields = sorted(body.model_fields_set - {"confirm_data_release"})
     audit.event(
-        "llm_connection_changed", username=user, action="created", id=info.id, fields=fields
+        "llm_connection_changed",
+        username=user,
+        action="created",
+        id=info.id,
+        fields=fields,
+        **_profile_values(info, fields),
     )
     return info
 
@@ -594,7 +607,12 @@ def update_llm_connection(
 ) -> ConnectionInfo:
     info, changed = state.connections.update(connection_id, body)
     audit.event(
-        "llm_connection_changed", username=user, action="updated", id=info.id, fields=changed
+        "llm_connection_changed",
+        username=user,
+        action="updated",
+        id=info.id,
+        fields=changed,
+        **_profile_values(info, changed),
     )
     return info
 

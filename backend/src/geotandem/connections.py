@@ -6,22 +6,31 @@ The API key is write-only: stored encrypted (C8), reported as
 ``has_api_key``, decrypted only to build an ``Endpoint`` for a call. It is
 bound to the address it was saved with: no test and no edit sends it to
 another one, else the key would be readable at a host of the admin's choice.
+
+A connection carries the prompt profile of its direct query (plan E3, D9) and
+optional prices per million tokens (O4): all three price fields or none
+(``price_incomplete``); ``price_of`` reads them for a run's cost (D12).
 """
 
+import logging
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Annotated, Any
 
-from pydantic import BaseModel, ConfigDict, Field, SecretStr, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, StringConstraints, ValidationError
 from sqlalchemy import Engine, select, update
 from sqlalchemy.orm import Session
 
 from geotandem.connection_check import CheckResult
 from geotandem.db.orm import LLMConnection, User
 from geotandem.db.spatialite import reading
+from geotandem.evaluation.figures import Price
 from geotandem.llm import Effort, Endpoint, LLMError, Locality, classify_host, host_of
+from geotandem.model.schemas import PromptProfile
 from geotandem.vault import CredentialsUnreadable, Vault
+
+log = logging.getLogger(__name__)
 
 Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=60)]
 BaseUrl = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
@@ -32,6 +41,10 @@ Timeout = Annotated[float, Field(gt=0, le=600)]
 ContextLength = Annotated[int, Field(ge=256, le=10_000_000)]
 RequestLimit = Annotated[int, Field(gt=0, le=1_000_000)]
 """Requests per day over all accounts (P5); positive, required while the limit is on."""
+PricePerMtok = Annotated[float, Field(ge=0, le=1_000_000)]
+"""Per million tokens (O4), in ``price_currency``."""
+Currency = Annotated[str, StringConstraints(pattern=r"^[A-Z]{3}$")]
+"""ISO 4217, upper case (``CHF``, ``USD``, ``EUR``)."""
 
 
 class ConnectionProblem(Exception):
@@ -88,6 +101,15 @@ class ConnectionWrite(CallParameters):
     request_limit_per_day: RequestLimit | None = Field(
         default=None, description="The cap; required while request_limit_enabled (P5)."
     )
+    prompt_profile: PromptProfile = Field(
+        default_factory=PromptProfile,
+        description="How the direct query's prompt is written (plan E3, D9). Unset: today's.",
+    )
+    price_input_per_mtok: PricePerMtok | None = None
+    price_output_per_mtok: PricePerMtok | None = None
+    price_currency: Currency | None = Field(
+        default=None, description="With both prices or none of them (O4)."
+    )
 
 
 class ConnectionPatch(BaseModel):
@@ -112,9 +134,17 @@ class ConnectionPatch(BaseModel):
     request_limit_enabled: bool | None = None
     request_limit_per_day: RequestLimit | None = None
     """``null`` removes the cap, allowed only while the limit is off."""
+    prompt_profile: PromptProfile | None = None
+    """Replaced whole: a field left out takes its default, not its stored value."""
+    price_input_per_mtok: PricePerMtok | None = None
+    price_output_per_mtok: PricePerMtok | None = None
+    price_currency: Currency | None = None
+    """``null`` on all three removes the price; one alone is ``price_incomplete``."""
 
 
-NULLABLE = frozenset({"api_key", "seed", "context_length", "request_limit_per_day"})
+PRICES = ("price_input_per_mtok", "price_output_per_mtok", "price_currency")
+
+NULLABLE = frozenset({"api_key", "seed", "context_length", "request_limit_per_day", *PRICES})
 """Patch fields where ``null`` is a value, not "unchanged"."""
 
 
@@ -155,6 +185,39 @@ class ConnectionInfo(BaseModel):
     """Requests per day are capped, over all accounts (P5)."""
     request_limit_per_day: int | None = None
     """The cap; kept while the limit is off, so switching it on again restores it."""
+    prompt_profile: PromptProfile = PromptProfile()
+    """How the direct query's prompt is written in operation (plan E3, D9)."""
+    price_input_per_mtok: float | None = None
+    """Per million input tokens in ``price_currency`` (O4); all three or none."""
+    price_output_per_mtok: float | None = None
+    price_currency: str | None = None
+
+
+def stored_prompt_profile(value: Any, where: str) -> PromptProfile:
+    """A stored prompt profile, read leniently: one a later version no longer
+    knows is read as the default, with a log line, rather than failing every
+    read of the connection list or the record."""
+    try:
+        return PromptProfile.model_validate(value)
+    except ValidationError:
+        log.warning("%s: unknown prompt profile, read as the default", where)
+        return PromptProfile()
+
+
+def price_of(connection: ConnectionInfo) -> Price | None:
+    """The connection's prices, ``None`` without them: a run's estimate and
+    cost then show in tokens only (D12); ``figures.cost`` turns tokens into money."""
+    if (
+        connection.price_input_per_mtok is None
+        or connection.price_output_per_mtok is None
+        or connection.price_currency is None
+    ):
+        return None
+    return Price(
+        input_per_million=connection.price_input_per_mtok,
+        output_per_million=connection.price_output_per_mtok,
+        currency=connection.price_currency,
+    )
 
 
 class ConnectionOption(BaseModel):
@@ -238,6 +301,10 @@ class Connections:
             updated_at=row.updated_at,
             request_limit_enabled=row.request_limit_enabled,
             request_limit_per_day=row.request_limit_per_day,
+            prompt_profile=stored_prompt_profile(row.prompt_profile, f"connection {row.id}"),
+            price_input_per_mtok=row.price_input_per_mtok,
+            price_output_per_mtok=row.price_output_per_mtok,
+            price_currency=row.price_currency,
         )
 
     def all(self) -> list[ConnectionInfo]:
@@ -355,6 +422,19 @@ class Connections:
             )
 
     @staticmethod
+    def _check_price(row: LLMConnection) -> None:
+        """Both prices and their currency, or none of them (O4)."""
+        values = [getattr(row, name) for name in PRICES]
+        if any(v is None for v in values) and any(v is not None for v in values):
+            raise ConnectionProblem(
+                400,
+                "price_incomplete",
+                "A price needs input, output and currency, or none of them.",
+                name=row.name,
+                missing=[name for name, v in zip(PRICES, values, strict=True) if v is None],
+            )
+
+    @staticmethod
     def _settle_default(
         session: Session, made_default: LLMConnection | None, had_default: bool
     ) -> None:
@@ -414,8 +494,13 @@ class Connections:
             marked_external=body.marked_external,
             request_limit_enabled=bool(body.request_limit_enabled),
             request_limit_per_day=body.request_limit_per_day,
+            prompt_profile=body.prompt_profile.model_dump(),
+            price_input_per_mtok=body.price_input_per_mtok,
+            price_output_per_mtok=body.price_output_per_mtok,
+            price_currency=body.price_currency,
         )
         self._check_request_limit(row)
+        self._check_price(row)
         self._check_release(row, released_before=False, confirmed=body.confirm_data_release)
         with Session(self.engine) as session, session.begin():
             had_default = self._had_default(session)
@@ -447,10 +532,13 @@ class Connections:
                     continue
                 if name == "base_url":
                     self._check_url(value)
+                if name == "prompt_profile":
+                    value = value.model_dump()
                 if getattr(row, name) != value:
                     setattr(row, name, value)
                     changed.append(name)
             self._check_request_limit(row)
+            self._check_price(row)
             self._check_release(row, released_before, patch.confirm_data_release)
             self._check_name(session, row.name, row.id)
             made_default = row if "is_default" in changed and row.is_default else None

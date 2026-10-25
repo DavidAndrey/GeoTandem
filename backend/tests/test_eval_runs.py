@@ -38,6 +38,7 @@ from geotandem.evaluation.store import CaseStore
 from geotandem.importing.run import ImportDecisions, XYReference, run_import
 from geotandem.levels import load_levels
 from geotandem.llm import Completion, Endpoint, LLMError, Message, ModelInfo, ToolSpec
+from geotandem.model.prompt import FIRST
 from geotandem.model.schemas import Refusal
 
 RUNS = "/api/admin/evaluation/runs"
@@ -130,6 +131,8 @@ class Model:
         self.scripts = scripts
         self.lock = threading.Lock()
         self.calls: list[tuple[str, int, tuple[Message, ...]]] = []
+        self.schemas: list[dict[str, Any] | None] = []
+        """The constrained output each call asked for (D9: none for output text)."""
         self.endpoints: list[Endpoint] = []
         self.released = threading.Event()
         self.released.set()
@@ -202,6 +205,8 @@ class Client:
         tools: Sequence[ToolSpec] = (),
         deadline: float | None = None,
     ) -> Completion:
+        with self.model.lock:
+            self.model.schemas.append(schema)
         return self.model.answer(self.endpoint, messages, deadline)
 
     def models(self) -> list[ModelInfo]:
@@ -861,14 +866,69 @@ async def test_the_key_goes_to_the_call_and_nowhere_else(
     assert PROMPTS["h10-name-bahnhof"] not in caplog.text  # nor a question (C15)
 
 
-async def test_a_prompt_profile_the_builder_does_not_know_yet_is_refused(
+# --- prompt profiles and prices (D9, D12, O4; WP91) ---------------------------------
+
+
+async def test_a_point_sends_its_prompt_profile(
     client: httpx.AsyncClient, app: FastAPI, model: Model, two: Body
 ) -> None:
-    """Until WP91: a label must not claim a profile the prompt did not use."""
-    point = {**two["points"][0], "prompt_profile": {"placement": "P9"}}
-    refused = await client.post(RUNS, json={**two, "points": [point]})
-    assert refused.status_code == 400, refused.text
-    assert refused.json()["code"] == "bad_request"
+    """A point's own profile is measured without changing the connection: P9
+    sends three messages, the user message the question alone; output text
+    sends no constrained output."""
+    own = {"examples": "12", "placement": "P9", "output": "text"}
+    point = {**two["points"][0], "prompt_profile": own}
+    view = await run_to_end(client, app, {**two, "points": [point], "scope": "quick"})
+    assert view["status"] == "done", view
+    assert view["points"][0]["label"]["prompt_profile"] == own
+    assert model.calls and all(
+        [m.role for m in messages] == ["system", "system", "user"]
+        and messages[1] == Message("system", FIRST)
+        and messages[2].content in PROMPTS.values()
+        for _, _, messages in model.calls
+    )
+    assert set(map(json.dumps, model.schemas)) == {"null"}
+    connection = (await client.get(f"{CONNECTIONS}/{point['connection_id']}")).json()
+    assert connection["prompt_profile"]["placement"] == "P0"  # the connection is unchanged
+
+
+async def test_a_point_without_a_profile_takes_the_connections(
+    client: httpx.AsyncClient, app: FastAPI, model: Model, two: Body
+) -> None:
+    good = two["points"][0]
+    own = {"examples": "standard", "placement": "P5", "output": "constrained"}
+    patched = await client.patch(
+        f"{CONNECTIONS}/{good['connection_id']}", json={"prompt_profile": own}
+    )
+    assert patched.status_code == 200, patched.text
+    view = await run_to_end(client, app, {**two, "points": [good], "scope": "quick"})
+    assert view["points"][0]["label"]["prompt_profile"] == own
+    for _, _, messages in model.calls:
+        system = messages[0].content
+        assert system.index("# Beispiele") < system.index("# Layer-Steckbrief")
+    assert model.schemas and all(s is not None for s in model.schemas)
+
+
+async def test_cost_and_estimate_in_money_from_the_connections_prices(
+    client: httpx.AsyncClient, app: FastAPI, model: Model, two: Body
+) -> None:
+    """The scripted answers report 1000 tokens in and 50 out: at 1 and 2 CHF
+    per million each costs 0.0011 CHF."""
+    good = two["points"][0]
+    priced = {"price_input_per_mtok": 1, "price_output_per_mtok": 2, "price_currency": "CHF"}
+    patched = await client.patch(f"{CONNECTIONS}/{good['connection_id']}", json=priced)
+    assert patched.status_code == 200, patched.text
+    body = {**two, "points": [good], "scope": "quick"}
+    estimate = (await client.post(f"{RUNS}/estimate", json=body)).json()
+    [connection] = estimate["connections"]
+    assert connection["cost"]["currency"] == "CHF" and connection["cost"]["amount"] > 0
+    assert estimate["cost"] == [connection["cost"]]
+
+    view = await run_to_end(client, app, body)
+    answers = view["points"][0]["figures"]["answers"]
+    assert view["points"][0]["figures"]["cost"] == {
+        "amount": round(answers * 0.0011, 4),
+        "currency": "CHF",
+    }
 
 
 def test_figures_cost_money_with_a_price() -> None:

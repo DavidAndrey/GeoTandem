@@ -33,6 +33,10 @@ const connection = (patch: Partial<ConnectionInfo> = {}): ConnectionInfo => ({
   updated_at: '2026-10-08T10:00:00',
   request_limit_enabled: false,
   request_limit_per_day: null,
+  prompt_profile: { examples: 'standard', placement: 'P0', output: 'constrained' },
+  price_input_per_mtok: null,
+  price_output_per_mtok: null,
+  price_currency: null,
   ...patch,
 })
 
@@ -202,6 +206,166 @@ test('switching the limit off sends the switch alone: the backend keeps the thre
   await userEvent.click(within(form).getByRole('button', { name: 'Speichern' }))
   await vi.waitFor(() => expect(bodiesOf(calls, `PATCH ${URL}/2`)).toHaveLength(1))
   expect(bodiesOf(calls, `PATCH ${URL}/2`)[0]).toEqual({ request_limit_enabled: false })
+})
+
+// Plan E3, D9 and O4: the prompt profile from measured presets, optional prices.
+test('a new connection leaves out today’s prompt and an empty price', async () => {
+  const calls = fakeApi({
+    ...signedIn(),
+    [`GET ${URL}`]: [],
+    [`POST ${URL}`]: connection(),
+  })
+  renderAt('/admin/modelle', <App />)
+  await userEvent.click(await screen.findByRole('button', { name: 'Anbindung' }))
+  const form = screen.getByRole('form', { name: 'Neue Anbindung' })
+  expect(within(form).getByLabelText('Beispiele')).toHaveDisplayValue('Standard')
+  expect(within(form).getByLabelText('Platzierung')).toHaveDisplayValue('P0 (wie bisher)')
+  expect(within(form).getByLabelText('Ausgabeformat')).toHaveDisplayValue('erzwungen')
+  await userEvent.type(within(form).getByLabelText('Name'), 'Ollama')
+  await userEvent.type(within(form).getByLabelText('Modell'), 'qwen3:8b')
+  await userEvent.click(within(form).getByRole('button', { name: 'Speichern' }))
+
+  await vi.waitFor(() => expect(bodiesOf(calls, `POST ${URL}`)).toHaveLength(1))
+  // The back end's defaults: only what was set is sent, so the audit lists it.
+  const [body] = bodiesOf(calls, `POST ${URL}`) as Record<string, unknown>[]
+  for (const key of [
+    'prompt_profile',
+    'price_input_per_mtok',
+    'price_output_per_mtok',
+    'price_currency',
+  ])
+    expect(body).not.toHaveProperty(key)
+})
+
+test('a chosen profile and a price are sent with a new connection', async () => {
+  const calls = fakeApi({
+    ...signedIn(),
+    [`GET ${URL}`]: [],
+    [`POST ${URL}`]: connection(),
+  })
+  renderAt('/admin/modelle', <App />)
+  await userEvent.click(await screen.findByRole('button', { name: 'Anbindung' }))
+  const form = screen.getByRole('form', { name: 'Neue Anbindung' })
+  await userEvent.type(within(form).getByLabelText('Name'), 'Luna')
+  await userEvent.type(within(form).getByLabelText('Modell'), 'gpt-6-luna')
+  await userEvent.selectOptions(
+    within(form).getByLabelText('Platzierung'),
+    'P5 (Beispiele vor dem Steckbrief)',
+  )
+  await userEvent.type(within(form).getByLabelText('Eingabe je Mio. Tokens'), '0.5')
+  await userEvent.type(within(form).getByLabelText('Ausgabe je Mio. Tokens'), '2')
+  await userEvent.type(within(form).getByLabelText('Währung'), 'eur')
+  await userEvent.click(within(form).getByRole('button', { name: 'Speichern' }))
+
+  await vi.waitFor(() => expect(bodiesOf(calls, `POST ${URL}`)).toHaveLength(1))
+  expect(bodiesOf(calls, `POST ${URL}`)[0]).toMatchObject({
+    prompt_profile: { examples: 'standard', placement: 'P5', output: 'constrained' },
+    price_input_per_mtok: 0.5,
+    price_output_per_mtok: 2,
+    price_currency: 'EUR',
+  })
+})
+
+test('an invalid currency or a negative price is not sent', async () => {
+  const calls = fakeApi({
+    ...signedIn(),
+    [`GET ${URL}`]: [cloud],
+    [`PATCH ${URL}/2`]: cloud,
+  })
+  renderAt('/admin/modelle', <App />)
+  await openMenu('Cloud')
+  await userEvent.click(screen.getByRole('menuitem', { name: 'Bearbeiten' }))
+  const form = screen.getByRole('form', { name: 'Anbindung bearbeiten' })
+  const input = within(form).getByLabelText('Eingabe je Mio. Tokens')
+  const currency = within(form).getByLabelText('Währung')
+  await userEvent.type(input, '1')
+  await userEvent.type(within(form).getByLabelText('Ausgabe je Mio. Tokens'), '2')
+  await userEvent.type(currency, 'u5')
+  expect(currency).toBeInvalid()
+  await userEvent.click(within(form).getByRole('button', { name: 'Speichern' }))
+  expect(bodiesOf(calls, `PATCH ${URL}/2`)).toEqual([])
+
+  await userEvent.clear(currency)
+  await userEvent.type(currency, 'chf')
+  expect(currency).toBeValid()
+  await userEvent.clear(input)
+  await userEvent.type(input, '-1')
+  expect(input).toBeInvalid()
+  await userEvent.click(within(form).getByRole('button', { name: 'Speichern' }))
+  expect(bodiesOf(calls, `PATCH ${URL}/2`)).toEqual([])
+})
+
+test('the three selects and the prices send only what changed', async () => {
+  const calls = fakeApi({
+    ...signedIn(),
+    [`GET ${URL}`]: [cloud],
+    [`PATCH ${URL}/2`]: cloud,
+  })
+  renderAt('/admin/modelle', <App />)
+  await openMenu('Cloud')
+  await userEvent.click(screen.getByRole('menuitem', { name: 'Bearbeiten' }))
+  const form = screen.getByRole('form', { name: 'Anbindung bearbeiten' })
+  // Only the measured presets are offered (D9).
+  const placement = within(form).getByLabelText('Platzierung')
+  expect(
+    within(placement)
+      .getAllByRole('option')
+      .map((o) => o.textContent),
+  ).toEqual([
+    'P0 (wie bisher)',
+    'P5 (Beispiele vor dem Steckbrief)',
+    'P9 (Hinweis „erste Frage" als eigene Systemnachricht)',
+  ])
+  await userEvent.selectOptions(within(form).getByLabelText('Beispiele'), '12 Beispiele')
+  await userEvent.selectOptions(placement, 'P9 (Hinweis „erste Frage" als eigene Systemnachricht)')
+  await userEvent.selectOptions(within(form).getByLabelText('Ausgabeformat'), 'nur Text')
+  await userEvent.type(within(form).getByLabelText('Eingabe je Mio. Tokens'), '0.8')
+  await userEvent.type(within(form).getByLabelText('Ausgabe je Mio. Tokens'), '4')
+  await userEvent.type(within(form).getByLabelText('Währung'), 'usd')
+  await userEvent.click(within(form).getByRole('button', { name: 'Speichern' }))
+
+  await vi.waitFor(() => expect(bodiesOf(calls, `PATCH ${URL}/2`)).toHaveLength(1))
+  expect(bodiesOf(calls, `PATCH ${URL}/2`)[0]).toEqual({
+    prompt_profile: { examples: '12', placement: 'P9', output: 'text' },
+    price_input_per_mtok: 0.8,
+    price_output_per_mtok: 4,
+    price_currency: 'USD',
+  })
+})
+
+test('a half price is refused by the back end and worded by its code', async () => {
+  const priced = connection({
+    price_input_per_mtok: 1,
+    price_output_per_mtok: 2,
+    price_currency: 'CHF',
+  })
+  const calls = fakeApi({
+    ...signedIn(),
+    [`GET ${URL}`]: [priced],
+    [`PATCH ${URL}/1`]: () =>
+      new Response(
+        JSON.stringify({
+          code: 'price_incomplete',
+          message: 'A price needs input, output and currency, or none of them.',
+          details: { name: 'Ollama', missing: ['price_currency'] },
+        }),
+        { status: 400 },
+      ),
+  })
+  renderAt('/admin/modelle', <App />)
+  await openMenu('Ollama')
+  await userEvent.click(screen.getByRole('menuitem', { name: 'Bearbeiten' }))
+  const form = screen.getByRole('form', { name: 'Anbindung bearbeiten' })
+  expect(within(form).getByLabelText('Eingabe je Mio. Tokens')).toHaveValue(1)
+  await userEvent.clear(within(form).getByLabelText('Währung'))
+  await userEvent.click(within(form).getByRole('button', { name: 'Speichern' }))
+
+  expect(
+    await within(form).findByText(
+      'Ein Preis braucht beide Beträge (Eingabe und Ausgabe) und die Währung, oder keinen davon.',
+    ),
+  ).toBeInTheDocument()
+  expect(bodiesOf(calls, `PATCH ${URL}/1`)[0]).toEqual({ price_currency: null })
 })
 
 test('data release to an external connection asks for confirmation naming the host', async () => {

@@ -34,9 +34,12 @@ that differ.
 ## Prompt variants
 
 The placement runs of [docs/testplan-system-context.md](../../docs/testplan-system-context.md)
-(section 5) rebuild the messages `direct_prompt` wrote before they are sent,
-so the application stays as it is until a variant wins
-([variants.py](variants.py)):
+(section 5). The presets the application offers as a connection's prompt
+profile (plan E3, D9: `--variant p0|p5|p9`, `--examples 12`, `--no-format`)
+are written by its builder (`direct_prompt` with a `PromptProfile`), so a run
+here and a run in the application send the same prompt, hash for hash. The
+measurement-only variants rebuild the messages the builder wrote under P0
+before they are sent ([variants.py](variants.py)):
 
 | Option | Effect |
 |---|---|
@@ -45,10 +48,10 @@ so the application stays as it is until a variant wins
 | `--variant p2` | the worked examples as user/assistant turns (measurement only, E-8) |
 | `--variant p3` | examples, rules and the first-question note in the user message (measurement only, E-8) |
 | `--variant p4` | worked examples without the rules |
-| `--variant p5` | examples before the layer profile |
+| `--variant p5` | examples before the layer profile (builder) |
 | `--variant p8` | the JSON schema only as constrained output, not as text |
-| `--variant p9` | the first-question note as a system message of its own |
-| `--examples NAME` | [examples/NAME.txt](examples/) in place of the examples section (P6: `3`, `12`), applied before the variant |
+| `--variant p9` | the first-question note as a system message of its own (builder) |
+| `--examples NAME` | an example set in place of the examples section (P6): `12` is the application's ([model/examples/12.txt](../src/geotandem/model/examples/12.txt), builder), any other [examples/NAME.txt](examples/) (`3`), applied before the variant |
 | `--show` | print the messages of the first case as they would be sent, and stop |
 
 An example set is a whole `# Beispiele` section: intro with the invented layer
@@ -84,7 +87,7 @@ unchanged.
 | Option | Effect |
 |---|---|
 | `--cases heldout` | the confirmation split (`start-confirm.json`) in place of the tuning split (`start-tuning.json`, `--cases cases`): questions no prompt change is tuned on |
-| `--no-format` | no constrained output; the schema only as text in the prompt, as every endpoint can take it (H-8) |
+| `--no-format` | no constrained output; the schema only as text in the prompt, as every endpoint can take it (H-8; the profile's output `text`) |
 | `--api-key-env NAME` | the endpoint's key from the environment variable `NAME`; the run header names the variable, never the key |
 
 `compare.py` joins seed blocks with `+`, sums per case tag with `--by-tag`,
