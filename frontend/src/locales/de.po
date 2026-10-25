@@ -2543,6 +2543,10 @@ msgstr "Die Analyse wurde seither von Hand geändert; die Modelländerung lässt
 msgid "Die Anbindung „{name}“ antwortet nicht."
 msgstr "Die Anbindung „{name}“ antwortet nicht."
 
+#: src/i18n/errors.ts
+msgid "Die Anbindung sendet inzwischen an {host}, nicht an den bestätigten Host. Prüfen Sie die neue Abschätzung und bestätigen Sie erneut."
+msgstr "Die Anbindung sendet inzwischen an {host}, nicht an den bestätigten Host. Prüfen Sie die neue Abschätzung und bestätigen Sie erneut."
+
 #: src/admin/evaluation/CaseDetailPage.tsx
 msgid "Die Änderungen an diesem Prüffall sind nicht gespeichert und gehen verloren."
 msgstr "Die Änderungen an diesem Prüffall sind nicht gespeichert und gehen verloren."

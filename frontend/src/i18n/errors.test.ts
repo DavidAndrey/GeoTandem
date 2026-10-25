@@ -26,6 +26,10 @@ test('a refusal reads in German, from its code and details', () => {
   expect(refused('connection_not_available', { id: 3 }).message).toBe(
     'Diese Anbindung steht nicht zur Wahl.',
   )
+  // An external host confirmed, then changed (security review #49).
+  expect(
+    refused('external_not_confirmed', { host: 'api.example.org', reason: 'changed' }).message,
+  ).toMatch(/^Die Anbindung sendet inzwischen an api\.example\.org/)
   // A run of the evaluation is named by its number.
   expect(refused('not_found', { run: 12 }).message).toBe('Lauf #12 gibt es nicht (mehr).')
   expect(refused('not_found', { layer: 'schulen' }).message).toBe('„schulen" gibt es nicht (mehr).')

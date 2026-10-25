@@ -7,9 +7,10 @@ and does not count against a connection's daily request limit (D8, D12).
 
 **Before the start**, in the request (``Evaluation.start``): one run at a time
 for the instance (``run_busy``), every external connection and its current
-host confirmed in this request (``external_not_confirmed``, F-9.4), the cases selected on the data
-state of the request (D1) with their status (D3): stale and invalid ones are
-listed in the run but not asked; none left is ``no_cases``. The run's label
+host confirmed in this request (``external_not_confirmed``, F-9.4), the cases
+selected on the data state of the request (D1) with their status (D3):
+stale and invalid ones are listed in the run but not asked; none left is
+``no_cases``. The run's label
 (F-3.18) and its points (H7) are written once; a later edit of a connection,
 a level or a case changes no run.
 
@@ -30,15 +31,15 @@ when the connection sends seeds at all; read and checked as
 ``DirectQuery.ask`` does, graded under the operating limits while holding one
 of at most ``RUN_SLOTS`` of the instance's query slots (security review #42),
 and stored as the record keeps an answer (``bounded``: a query beyond 64 kB is
-omitted, security review #45).
-After ``BREAKER_AFTER`` answers in a row of one queue that failed for the
-key, the provider's limits or the host, the whole run stops at once (no
-queue asks further) and ends ``failed`` with that code; ``RunView.stopped``
-names the host and its connections. An abort stops before the next question; an answer that
-arrives after it is dropped. Once every question is answered the run is
-``done`` and its figures are computed (``figures.py``, none while it runs:
-design review 5). Writes are retried when the database is busy for a moment;
-a run whose row cannot be closed keeps the instance busy (``Runs.hold``).
+omitted, security review #45). After ``BREAKER_AFTER`` answers in a row of
+one queue that failed for the key, the provider's limits or the host, the
+whole run stops at once (no queue asks further) and ends ``failed`` with that
+code; ``RunView.stopped`` names the host and its connections. An abort stops
+before the next question; an answer that arrives after it is dropped. Once
+every question is answered the run is ``done`` and its figures are computed
+(``figures.py``, none while it runs: design review 5). Writes are retried
+when the database is busy for a moment; a run whose row cannot be closed
+keeps the instance busy (``Runs.hold``).
 
 A ``running`` run found at start-up has no thread left: it ends
 ``interrupted``, its answers kept (``close_interrupted``). A shutdown stops the

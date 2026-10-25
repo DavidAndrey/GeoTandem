@@ -211,7 +211,10 @@ const MESSAGES: Record<string, Words> = {
   },
   external_not_confirmed: (d) => {
     const host = text(d.host)
-    return t`Der Lauf würde an ${host} senden. Bestätigen Sie das zuerst.`
+    // ``changed``: the connection was edited to another host since the estimate.
+    return d.reason === 'changed'
+      ? t`Die Anbindung sendet inzwischen an ${host}, nicht an den bestätigten Host. Prüfen Sie die neue Abschätzung und bestätigen Sie erneut.`
+      : t`Der Lauf würde an ${host} senden. Bestätigen Sie das zuerst.`
   },
   runs_not_comparable: () =>
     t`Diese Läufe lassen sich nicht gegenüberstellen: Sie haben andere Prüffälle, oder einer ist nicht fertig.`,
