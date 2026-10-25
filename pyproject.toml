@@ -34,7 +34,7 @@ select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
 [tool.ruff.lint.per-file-ignores]
 "**/migrations/versions/*.py" = ["E501"]
 # pytest fixtures imported from chain_fixtures.py: a test's parameter names them.
-"backend/tests/test_model_{chain_flow,chain_gate,compare}.py" = ["F811"]
+"backend/tests/test_{model_chain_flow,model_chain_gate,model_compare,eval_chain}.py" = ["F811"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["geotandem", "geotandem_query"]

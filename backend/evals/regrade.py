@@ -51,6 +51,9 @@ def main() -> int:
         source = newest(label)
         lines = source.read_text("utf-8").splitlines()
         header = json.loads(lines[0])
+        if header.get("approach", "direct") != "direct":
+            # A chain's answer is graded on its steps' result: that means running it again.
+            raise SystemExit(f"{label}: regrade knows the direct path only; run the chain again")
         backend, profile, context = world(header.get("profile") or "full")
         cases = {c.id: c for c in load_cases(header.get("cases") or "cases")}
         # Checked and read once per case, as a run does.

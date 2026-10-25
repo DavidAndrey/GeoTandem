@@ -120,6 +120,9 @@ START_FILES: Final[dict[Split, str]] = {
 REPO_CASES: Final = Path(__file__).resolve().parents[4] / "schema" / "eval-cases"
 """Where the start set lies in the repository; the image names its copy
 (``GEOTANDEM_EVAL_CASES_DIR``)."""
+CHAIN_FILE: Final = "chain-cases.json"
+"""The chain's cases (docs/plan-chain-eval.md, 4): beside the start set, not
+part of it; the harness reads them (``chain_set``), the application not yet."""
 
 
 class CaseError(Exception):
@@ -201,6 +204,13 @@ def start_set(directory: Path = REPO_CASES) -> tuple[EvalCase, ...]:
             f"The start set of the evaluation in {directory} is no valid case file: "
             f"{exc.error_count()} errors."
         ) from None
+
+
+@cache
+def chain_set(directory: Path = REPO_CASES) -> tuple[EvalCase, ...]:
+    """The chain's cases of ``directory`` (``CHAIN_FILE``), read once per process."""
+    text = (directory / CHAIN_FILE).read_text("utf-8")
+    return tuple(CaseFile.model_validate_json(text).cases)
 
 
 def start_cases(settings: Settings) -> tuple[EvalCase, ...]:

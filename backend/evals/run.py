@@ -2,22 +2,26 @@
 
 The direct query as the prompt flow sends it (``direct_prompt``,
 ``DirectQuery.ask``: the real client, parser and checks), over a fresh sample
-dataset and the default level; only the grading is the harness's own. See
+dataset and the default level; only the grading is the harness's own. With
+``--approach chain`` the tool chain instead, planned, run and re-planned as
+the application runs it at *Automatisch* (``evaluation.chain.drive``). See
 ``evals/README.md``.
 
     uv run python evals/run.py --model qwen3:8b --label baseline
     uv run python evals/run.py --model qwen3:8b --variant p9 --label p9-qwen3
+    uv run python evals/run.py --model qwen3:8b --approach chain --cases chain --label k-qwen3
 """
 
 import argparse
+import hashlib
 import json
 import os
 import statistics
 import sys
 import time
 from collections import Counter
-from collections.abc import Sequence
-from dataclasses import replace
+from collections.abc import Iterable, Sequence
+from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -32,19 +36,24 @@ from variants import (
     with_examples,
 )
 
-from geotandem.catalog import model_profile
+from geotandem.catalog import ModelProfile, model_profile
 from geotandem.config import Settings
 from geotandem.data import Limits
-from geotandem.evaluation.grade import PASS, errored, grade, reading_ids
+from geotandem.evaluation.chain import drive, graded
+from geotandem.evaluation.grade import PASS, Graded, errored, grade, reading_ids
 from geotandem.evaluation.profiles import PROFILES
 from geotandem.evaluation.sample import build_sample
+from geotandem.evaluation.schemas import EvalCase
+from geotandem.levels import Level
 from geotandem.levels.store import load_levels
 from geotandem.llm import Completion, Endpoint, LLMError, Message
 from geotandem.llm.hosts import host_of
 from geotandem.llm.openai_compat import OpenAICompatClient
+from geotandem.model.chain.ask import replan_message
 from geotandem.model.direct import DirectQuery, direct_prompt
 from geotandem.model.errors import ActionError
-from geotandem.model.prompt import Prompt
+from geotandem.model.prompt import Prompt, build_prompt
+from geotandem.model.schemas import ModelView
 from geotandem.tools import ToolContext
 
 HERE = Path(__file__).parent
@@ -52,15 +61,107 @@ LIMITS = Limits(max_features=10_000, timeout_s=10)
 
 
 class Recording(OpenAICompatClient):
-    """The real client, keeping its last completion: tokens for every answer
-    (H-3), the verbatim text when the answer does not read (H-4)."""
+    """The real client, keeping its completions: tokens for every answer
+    (H-3), the verbatim text when the answer does not read (H-4); a chain's
+    re-plans each add one."""
 
     last: Completion | None = None
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.completions: list[Completion] = []
 
     def complete(self, messages: Sequence[Message], **kwargs: Any) -> Completion:
         self.last = None
         self.last = super().complete(messages, **kwargs)
+        self.completions.append(self.last)
         return self.last
+
+
+def replan_hash() -> str:
+    """Over the re-plan's input for a placeholder step: two chain runs with the
+    same hash told the model the same after a step (``ask.replan_message``)."""
+    seen = [(1, "filter", ModelView(outcome="ok", empty=True, count=0))]
+    text = replan_message(seen, kept=[1], first=2)
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+@dataclass(frozen=True)
+class World:
+    """What every question of a run is asked and graded in."""
+
+    context: ToolContext
+    profile: ModelProfile
+    level: Level
+
+
+Readings = list[list[int]] | None
+
+
+def ask_direct(
+    client: Recording, prompt: Prompt, case: EvalCase, world: World, readings: Readings
+) -> tuple[Graded, dict[str, Any]]:
+    """One direct query, graded; what the record keeps of it."""
+    found = DirectQuery(client, world.context, world.level).ask(prompt, profile=world.profile)
+    backend = world.context.backend
+    verdict = grade(case, found.answer, found.refusal, found.query, backend, LIMITS, readings)
+    return verdict, {
+        "answer": found.answer.model_dump(mode="json"),
+        "refusal": found.refusal.model_dump(mode="json") if found.refusal else None,
+        "latency_ms": found.latency_ms,
+    }
+
+
+def ask_chain(
+    client: Recording, prompt: Prompt, case: EvalCase, world: World, readings: Readings
+) -> tuple[Graded, dict[str, Any]]:
+    """One chain to its end, graded; what the record keeps of it: every call
+    and every step (plan-chain-eval 3, item 2)."""
+    started = time.monotonic()
+    chain = drive(client, prompt, world.context, world.profile)
+    latency = round((time.monotonic() - started) * 1000)
+    verdict = graded(case, chain, world.context.backend, LIMITS, readings)
+    return verdict, {
+        "answer": chain.answer.model_dump(mode="json"),
+        "refusal": chain.refusal.model_dump(mode="json") if chain.refusal else None,
+        "end": chain.end,
+        "error": chain.error,
+        "replans": chain.replans,
+        "count": chain.count,
+        "latency_ms": latency,
+        "calls": [
+            {
+                "replan": c.replan,
+                "latency_ms": c.latency_ms,
+                "prompt_tokens": c.tokens.prompt,
+                "completion_tokens": c.tokens.completion,
+                "outcome": c.outcome,
+            }
+            for c in chain.calls
+        ],
+        "steps": [
+            {
+                "position": s.position,
+                "tool": s.tool,
+                "arguments": s.arguments,
+                "status": s.status,
+                "count": s.count,
+                "code": s.code,
+                "duration_ms": s.duration_ms,
+                "replan": s.replan,
+            }
+            for s in chain.steps
+        ],
+    }
+
+
+ASK = {"direct": ask_direct, "chain": ask_chain}
+
+
+def total(values: Iterable[int | None]) -> int | None:
+    """The values added up; ``None`` when none was reported."""
+    known = [v for v in values if v is not None]
+    return sum(known) if known else None
 
 
 def cost(records: list[dict[str, Any]]) -> list[str]:
@@ -105,7 +206,15 @@ def main() -> int:
         default="cases",
         metavar="NAME",
         choices=list(CASE_FILES),
-        help="cases (the tuning split of schema/eval-cases, default) or heldout (confirmation)",
+        help="cases (the tuning split of schema/eval-cases, default) or heldout (confirmation); "
+        "chain or chain-heldout for the chain's cases (chain-cases.json)",
+    )
+    parser.add_argument(
+        "--approach",
+        default="direct",
+        choices=list(ASK),
+        help="direct (default) or chain: the tool chain, run to its end as at Automatisch "
+        "(docs/plan-chain-eval.md)",
     )
     parser.add_argument(
         "--no-format",
@@ -146,6 +255,10 @@ def main() -> int:
     args = parser.parse_args()
     if args.no_examples and (args.examples or args.variant != "p0"):
         parser.error("--no-examples takes neither --examples nor a variant")
+    chain = args.approach == "chain"
+    if chain and (args.no_examples or args.examples or args.variant != "p0" or args.no_format):
+        # The chain keeps the default prompt until it is evaluated (plan E3, 9).
+        parser.error("--approach chain takes no prompt variant, examples or --no-format yet")
     in_app = args.examples in APP_EXAMPLES
     examples = (
         ""
@@ -166,6 +279,11 @@ def main() -> int:
     cases = load_cases(args.cases)
     if args.only:
         cases = [c for c in cases if c.id in args.only.split(",")]
+    # A case that wants this approach offered as the other one says nothing of it.
+    left_out = [c.id for c in cases if c.other_approach == args.approach]
+    cases = [c for c in cases if c.id not in left_out]
+    if left_out:
+        print(f"left out, they offer {args.approach} as the other approach: {', '.join(left_out)}")
 
     built = build_sample(Settings(), prefix="geotandem-eval-", profile=args.profile)
     engine, backend = built.engine, built.backend
@@ -176,7 +294,9 @@ def main() -> int:
     def build(text: str) -> Prompt:
         """The prompt of ``text`` as this run sends it: the builder's after the
         prompt profile, then an example set of this directory, then a
-        measurement-only variant."""
+        measurement-only variant. The chain's as the application writes it."""
+        if chain:
+            return build_prompt(text, approach="chain", level=level, profile=profile)
         prompt = direct_prompt(text, level=level, profile=profile, prompt_profile=written)
         messages = variant(with_examples(list(prompt.messages), examples))
         return replace(prompt, messages=tuple(messages))
@@ -212,8 +332,12 @@ def main() -> int:
             "temperature": args.temperature,
             "seeds": [args.seed_start, args.seed_start + args.repeat - 1],
             "level": level.name,
+            "approach": args.approach,
         }
+        if chain:
+            header["replan_sha256"] = replan_hash()
         log.write(json.dumps(header) + "\n")
+        world = World(context, profile, level)
         for case in cases:
             tally[case.id] = Counter()
             # Checked and read once per case, as a run of the application does.
@@ -232,16 +356,11 @@ def main() -> int:
                 record: dict[str, Any] = {"case": case.id, "seed": seed}
                 client = Recording(endpoint)
                 try:
-                    found = DirectQuery(client, context, level).ask(prompt, profile=profile)
-                    verdict = grade(
-                        case, found.answer, found.refusal, found.query, backend, LIMITS, readings
-                    ).tag
-
-                    record |= {
-                        "answer": found.answer.model_dump(mode="json"),
-                        "refusal": found.refusal.model_dump(mode="json") if found.refusal else None,
-                        "latency_ms": found.latency_ms,
-                    }
+                    graded_as, kept = ASK[args.approach](client, prompt, case, world, readings)
+                    verdict = graded_as.tag
+                    record |= kept
+                    if graded_as.flags:
+                        record["flags"] = list(graded_as.flags)
                 except LLMError as exc:
                     verdict = errored(exc.code).tag
                     record |= {"cause": exc.cause, "retries": exc.retries}
@@ -251,9 +370,10 @@ def main() -> int:
                 finally:
                     client.close()
                 if (completion := client.last) is not None:
+                    # A chain's tokens are its calls' together (``calls`` has each).
                     record |= {
-                        "prompt_tokens": completion.prompt_tokens,
-                        "completion_tokens": completion.completion_tokens,
+                        "prompt_tokens": total(c.prompt_tokens for c in client.completions),
+                        "completion_tokens": total(c.completion_tokens for c in client.completions),
                         "finish_reason": completion.finish_reason,
                     }
                     if verdict.startswith("error:"):
@@ -267,8 +387,8 @@ def main() -> int:
     runs = sum(sum(c.values()) for c in tally.values())
     passed = sum(c[PASS.tag] for c in tally.values())
     print(
-        f"\n{args.label} · {args.model} · effort {args.effort} · {args.variant} · "
-        f"{passed}/{runs} passed · {time.monotonic() - started:.0f} s · {out}"
+        f"\n{args.label} · {args.model} · effort {args.effort} · {args.approach} · "
+        f"{args.variant} · {passed}/{runs} passed · {time.monotonic() - started:.0f} s · {out}"
     )
     print("  " + " · ".join(cost(records)))
     for case_id, counts in tally.items():

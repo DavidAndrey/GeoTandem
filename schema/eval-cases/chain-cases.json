@@ -1,0 +1,1584 @@
+{
+  "format": "geotandem-eval-cases",
+  "version": 1,
+  "about": "Chain cases (docs/plan-chain-eval.md, 4): group B (kb, chain-native) and group C (ks, stress), over the sample dataset. Each reference is a query a direct answer may also write, so both approaches are graded on the same case. The reference plans that reach them, and the plans the chain refuses, are in backend/tests/eval_chain_plans.json.",
+  "cases": [
+    {
+      "id": "kb01-sek-nahe-bahn",
+      "prompt": "Schulen mit Sekundarstufe I höchstens 500 m von einer Bahnhaltestelle",
+      "tags": [
+        "chain-native",
+        "near",
+        "two-layers"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "schulen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "sekundarstufe",
+              "cmp": "eq",
+              "value": true
+            },
+            {
+              "op": "related",
+              "layer": "haltestellen",
+              "predicate": "dwithin",
+              "distance_m": 500,
+              "where": {
+                "op": "compare",
+                "attr": "verkehrsmittel",
+                "cmp": "eq",
+                "value": "bahn"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "kb02-puffer-tram-schulen",
+      "prompt": "Lege um alle Tramhaltestellen einen Puffer von 300 m und zeige die Schulen, die darin liegen.",
+      "tags": [
+        "chain-native",
+        "buffer",
+        "within"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "schulen",
+        "where": {
+          "op": "related",
+          "layer": "haltestellen",
+          "predicate": "dwithin",
+          "distance_m": 300,
+          "where": {
+            "op": "compare",
+            "attr": "verkehrsmittel",
+            "cmp": "eq",
+            "value": "tram"
+          }
+        }
+      },
+      "note": "Ein Puffer, in dem Punkte liegen: in der Abfrage ein dwithin."
+    },
+    {
+      "id": "kb03-primar-dann-standorte",
+      "prompt": "Zuerst alle Schulen mit Primarstufe, davon nur die mit mehr als drei Schulhäusern.",
+      "tags": [
+        "chain-native",
+        "filter-of-step"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "schulen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "primarstufe",
+              "cmp": "eq",
+              "value": true
+            },
+            {
+              "op": "compare",
+              "attr": "standorte",
+              "cmp": "gt",
+              "value": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "kb04-koeniz-nahe-bus",
+      "prompt": "Schulen in Köniz, die höchstens 300 m von einer Bushaltestelle entfernt sind",
+      "tags": [
+        "chain-native",
+        "two-relations",
+        "near",
+        "in"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "schulen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "related",
+              "layer": "gemeinden",
+              "predicate": "within",
+              "where": {
+                "op": "compare",
+                "attr": "name",
+                "cmp": "eq",
+                "value": "Köniz"
+              }
+            },
+            {
+              "op": "related",
+              "layer": "haltestellen",
+              "predicate": "dwithin",
+              "distance_m": 300,
+              "where": {
+                "op": "compare",
+                "attr": "verkehrsmittel",
+                "cmp": "eq",
+                "value": "bus"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "kb05-aare-und-bahn",
+      "prompt": "Gemeinden, die von der Aare durchflossen werden und mindestens eine Bahnhaltestelle haben",
+      "tags": [
+        "chain-native",
+        "two-relations"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "gemeinden",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "related",
+              "layer": "gewaesser",
+              "predicate": "intersects",
+              "where": {
+                "op": "compare",
+                "attr": "name",
+                "cmp": "eq",
+                "value": "Aare"
+              }
+            },
+            {
+              "op": "related",
+              "layer": "haltestellen",
+              "predicate": "contains",
+              "where": {
+                "op": "compare",
+                "attr": "verkehrsmittel",
+                "cmp": "eq",
+                "value": "bahn"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "kb06-strassen-puffer-aare",
+      "prompt": "Strassen, die durch einen 200-m-Puffer um die Aare führen",
+      "tags": [
+        "chain-native",
+        "buffer",
+        "intersects"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "strassen",
+        "where": {
+          "op": "related",
+          "layer": "gewaesser",
+          "predicate": "dwithin",
+          "distance_m": 200,
+          "where": {
+            "op": "compare",
+            "attr": "name",
+            "cmp": "eq",
+            "value": "Aare"
+          }
+        }
+      }
+    },
+    {
+      "id": "kb07-primar-ausserhalb-bern",
+      "prompt": "Primarschulen ausserhalb der Gemeinde Bern",
+      "tags": [
+        "chain-native",
+        "outside",
+        "negation",
+        "ambiguous"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold_any": [
+        {
+          "source": "schulen",
+          "where": {
+            "op": "and",
+            "args": [
+              {
+                "op": "compare",
+                "attr": "primarstufe",
+                "cmp": "eq",
+                "value": true
+              },
+              {
+                "op": "not",
+                "arg": {
+                  "op": "related",
+                  "layer": "gemeinden",
+                  "predicate": "within",
+                  "where": {
+                    "op": "compare",
+                    "attr": "name",
+                    "cmp": "eq",
+                    "value": "Bern"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "source": "schulen",
+          "where": {
+            "op": "and",
+            "args": [
+              {
+                "op": "compare",
+                "attr": "typ",
+                "cmp": "eq",
+                "value": "primar"
+              },
+              {
+                "op": "not",
+                "arg": {
+                  "op": "related",
+                  "layer": "gemeinden",
+                  "predicate": "within",
+                  "where": {
+                    "op": "compare",
+                    "attr": "name",
+                    "cmp": "eq",
+                    "value": "Bern"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "kb08-weit-weg-von-bahn",
+      "prompt": "Schulen, die weiter als 1 km von jeder Bahnhaltestelle entfernt sind",
+      "tags": [
+        "chain-native",
+        "buffer",
+        "outside",
+        "negation"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "schulen",
+        "where": {
+          "op": "not",
+          "arg": {
+            "op": "related",
+            "layer": "haltestellen",
+            "predicate": "dwithin",
+            "distance_m": 1000,
+            "where": {
+              "op": "compare",
+              "attr": "verkehrsmittel",
+              "cmp": "eq",
+              "value": "bahn"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "kb09-bus-ii-grosse-gemeinden",
+      "prompt": "Bushaltestellen der Kategorie II in Gemeinden mit mehr als 20 km² Fläche",
+      "tags": [
+        "chain-native",
+        "in",
+        "combination"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "haltestellen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "verkehrsmittel",
+              "cmp": "eq",
+              "value": "bus"
+            },
+            {
+              "op": "compare",
+              "attr": "kategorie",
+              "cmp": "eq",
+              "value": "II"
+            },
+            {
+              "op": "related",
+              "layer": "gemeinden",
+              "predicate": "within",
+              "where": {
+                "op": "compare",
+                "attr": "flaeche_km2",
+                "cmp": "gt",
+                "value": 20
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "kb10-nationalstrassen-nahe-sek",
+      "prompt": "Nationalstrassen im Umkreis von 1 km um Schulen mit Sekundarstufe I",
+      "tags": [
+        "chain-native",
+        "near",
+        "lines"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "strassen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "klasse",
+              "cmp": "eq",
+              "value": "nationalstrasse"
+            },
+            {
+              "op": "related",
+              "layer": "schulen",
+              "predicate": "dwithin",
+              "distance_m": 1000,
+              "where": {
+                "op": "compare",
+                "attr": "sekundarstufe",
+                "cmp": "eq",
+                "value": true
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "kb11-tram-nahe-aare",
+      "prompt": "Welche Tramhaltestellen liegen höchstens 500 m von der Aare?",
+      "tags": [
+        "chain-native",
+        "near"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "haltestellen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "verkehrsmittel",
+              "cmp": "eq",
+              "value": "tram"
+            },
+            {
+              "op": "related",
+              "layer": "gewaesser",
+              "predicate": "dwithin",
+              "distance_m": 500,
+              "where": {
+                "op": "compare",
+                "attr": "name",
+                "cmp": "eq",
+                "value": "Aare"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "kb12-rand-von-bern",
+      "prompt": "Haltestellen im Umkreis von 500 m um die Gemeinde Bern, aber ausserhalb von Bern",
+      "tags": [
+        "chain-native",
+        "two-relations",
+        "outside",
+        "near"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "haltestellen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "related",
+              "layer": "gemeinden",
+              "predicate": "dwithin",
+              "distance_m": 500,
+              "where": {
+                "op": "compare",
+                "attr": "name",
+                "cmp": "eq",
+                "value": "Bern"
+              }
+            },
+            {
+              "op": "not",
+              "arg": {
+                "op": "related",
+                "layer": "gemeinden",
+                "predicate": "within",
+                "where": {
+                  "op": "compare",
+                  "attr": "name",
+                  "cmp": "eq",
+                  "value": "Bern"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "kb13-kindergarten-kat-i",
+      "prompt": "Schulen mit Kindergarten höchstens 800 m von einer Haltestelle der Kategorie I",
+      "tags": [
+        "chain-native",
+        "near",
+        "code"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "schulen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "kindergarten",
+              "cmp": "eq",
+              "value": true
+            },
+            {
+              "op": "related",
+              "layer": "haltestellen",
+              "predicate": "dwithin",
+              "distance_m": 800,
+              "where": {
+                "op": "compare",
+                "attr": "kategorie",
+                "cmp": "eq",
+                "value": "I"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "kb14-kantonsstrassen-muensingen",
+      "prompt": "Kantonsstrassen der Kategorie A oder B, die durch Münsingen führen",
+      "tags": [
+        "chain-native",
+        "intersects",
+        "in-list",
+        "lines"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "strassen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "in",
+              "attr": "klasse",
+              "values": [
+                "kantonsstrasse_a",
+                "kantonsstrasse_b"
+              ]
+            },
+            {
+              "op": "related",
+              "layer": "gemeinden",
+              "predicate": "intersects",
+              "where": {
+                "op": "compare",
+                "attr": "name",
+                "cmp": "eq",
+                "value": "Münsingen"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "kb15-seilbahn-nahe-schule",
+      "prompt": "Zeige alle Seilbahnstationen und davon jene, die höchstens 1 km von einer Schule liegen.",
+      "tags": [
+        "chain-native",
+        "near"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "haltestellen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "verkehrsmittel",
+              "cmp": "eq",
+              "value": "seilbahn"
+            },
+            {
+              "op": "related",
+              "layer": "schulen",
+              "predicate": "dwithin",
+              "distance_m": 1000
+            }
+          ]
+        }
+      },
+      "note": "Alle Schulen als Bezug: ein Schritt, auf den sich ein räumlicher Schritt bezieht, braucht eine unverneinte Bedingung, die alle trifft; «not is_null» weist die Kette ab (Befund F3)."
+    },
+    {
+      "id": "kb16-schulen-puffer-national",
+      "prompt": "Schulen im 500-m-Puffer um Nationalstrassen",
+      "tags": [
+        "chain-native",
+        "buffer",
+        "within",
+        "lines"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "schulen",
+        "where": {
+          "op": "related",
+          "layer": "strassen",
+          "predicate": "dwithin",
+          "distance_m": 500,
+          "where": {
+            "op": "compare",
+            "attr": "klasse",
+            "cmp": "eq",
+            "value": "nationalstrasse"
+          }
+        }
+      }
+    },
+    {
+      "id": "kb17-lange-gewaesser-koeniz",
+      "prompt": "Gewässer, die durch Köniz fliessen und länger als 10 km sind",
+      "tags": [
+        "chain-native",
+        "intersects",
+        "lines",
+        "range"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "gewaesser",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "laenge_km",
+              "cmp": "gt",
+              "value": 10
+            },
+            {
+              "op": "related",
+              "layer": "gemeinden",
+              "predicate": "intersects",
+              "where": {
+                "op": "compare",
+                "attr": "name",
+                "cmp": "eq",
+                "value": "Köniz"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "kb18-sek-um-bahnhof-bern",
+      "prompt": "Schulen mit Sekundarstufe I im Umkreis von 2 km um den Bahnhof Bern",
+      "tags": [
+        "chain-native",
+        "near",
+        "name"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "schulen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "sekundarstufe",
+              "cmp": "eq",
+              "value": true
+            },
+            {
+              "op": "related",
+              "layer": "haltestellen",
+              "predicate": "dwithin",
+              "distance_m": 2000,
+              "where": {
+                "op": "compare",
+                "attr": "name",
+                "cmp": "eq",
+                "value": "Bern"
+              }
+            }
+          ]
+        }
+      },
+      "note": "«Bahnhof Bern» ist die Haltestelle mit dem Namen «Bern»; ein Filter nur auf den Namen reicht, er trifft nur die Bahnhaltestelle."
+    },
+    {
+      "id": "kb19-tram-und-bus",
+      "prompt": "Schulen, die höchstens 400 m von einer Tramhaltestelle und höchstens 400 m von einer Bushaltestelle entfernt sind",
+      "tags": [
+        "chain-native",
+        "two-relations",
+        "near"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "schulen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "related",
+              "layer": "haltestellen",
+              "predicate": "dwithin",
+              "distance_m": 400,
+              "where": {
+                "op": "compare",
+                "attr": "verkehrsmittel",
+                "cmp": "eq",
+                "value": "tram"
+              }
+            },
+            {
+              "op": "related",
+              "layer": "haltestellen",
+              "predicate": "dwithin",
+              "distance_m": 400,
+              "where": {
+                "op": "compare",
+                "attr": "verkehrsmittel",
+                "cmp": "eq",
+                "value": "bus"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "kb20-einzugsgebiet-ostermundigen",
+      "prompt": "Haltestellen mit über 2000 Einwohnern im Einzugsgebiet, die in Ostermundigen liegen",
+      "tags": [
+        "chain-native",
+        "in",
+        "range"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "haltestellen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "einwohner",
+              "cmp": "gt",
+              "value": 2000
+            },
+            {
+              "op": "related",
+              "layer": "gemeinden",
+              "predicate": "within",
+              "where": {
+                "op": "compare",
+                "attr": "name",
+                "cmp": "eq",
+                "value": "Ostermundigen"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "kb21-primar-worb-vechigen",
+      "prompt": "Primarschulen in Worb oder Vechigen",
+      "tags": [
+        "chain-native",
+        "in",
+        "in-list",
+        "ambiguous"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold_any": [
+        {
+          "source": "schulen",
+          "where": {
+            "op": "and",
+            "args": [
+              {
+                "op": "compare",
+                "attr": "primarstufe",
+                "cmp": "eq",
+                "value": true
+              },
+              {
+                "op": "related",
+                "layer": "gemeinden",
+                "predicate": "within",
+                "where": {
+                  "op": "in",
+                  "attr": "name",
+                  "values": [
+                    "Worb",
+                    "Vechigen"
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "source": "schulen",
+          "where": {
+            "op": "and",
+            "args": [
+              {
+                "op": "compare",
+                "attr": "typ",
+                "cmp": "eq",
+                "value": "primar"
+              },
+              {
+                "op": "related",
+                "layer": "gemeinden",
+                "predicate": "within",
+                "where": {
+                  "op": "in",
+                  "attr": "name",
+                  "values": [
+                    "Worb",
+                    "Vechigen"
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "kb22-bus-puffer-kantonsstrasse-c",
+      "prompt": "Bushaltestellen im 250-m-Puffer um Kantonsstrassen der Kategorie C",
+      "tags": [
+        "chain-native",
+        "buffer",
+        "within",
+        "lines"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "haltestellen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "verkehrsmittel",
+              "cmp": "eq",
+              "value": "bus"
+            },
+            {
+              "op": "related",
+              "layer": "strassen",
+              "predicate": "dwithin",
+              "distance_m": 250,
+              "where": {
+                "op": "compare",
+                "attr": "klasse",
+                "cmp": "eq",
+                "value": "kantonsstrasse_c"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "kb23-bern-ohne-tram",
+      "prompt": "Welche Schulen in der Gemeinde Bern liegen weiter als 800 m von jeder Tramhaltestelle?",
+      "tags": [
+        "chain-native",
+        "buffer",
+        "outside",
+        "two-relations"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "schulen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "related",
+              "layer": "gemeinden",
+              "predicate": "within",
+              "where": {
+                "op": "compare",
+                "attr": "name",
+                "cmp": "eq",
+                "value": "Bern"
+              }
+            },
+            {
+              "op": "not",
+              "arg": {
+                "op": "related",
+                "layer": "haltestellen",
+                "predicate": "dwithin",
+                "distance_m": 800,
+                "where": {
+                  "op": "compare",
+                  "attr": "verkehrsmittel",
+                  "cmp": "eq",
+                  "value": "tram"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "kb24-sek-klein-nahe-bus",
+      "prompt": "Schulen mit Sekundarstufe I in Gemeinden unter 5 km², höchstens 300 m von einer Bushaltestelle",
+      "tags": [
+        "chain-native",
+        "two-relations",
+        "three-layers"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "schulen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "sekundarstufe",
+              "cmp": "eq",
+              "value": true
+            },
+            {
+              "op": "related",
+              "layer": "gemeinden",
+              "predicate": "within",
+              "where": {
+                "op": "compare",
+                "attr": "flaeche_km2",
+                "cmp": "lt",
+                "value": 5
+              }
+            },
+            {
+              "op": "related",
+              "layer": "haltestellen",
+              "predicate": "dwithin",
+              "distance_m": 300,
+              "where": {
+                "op": "compare",
+                "attr": "verkehrsmittel",
+                "cmp": "eq",
+                "value": "bus"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "kb25-aare-und-guerbe",
+      "prompt": "Gemeinden, durch die sowohl die Aare als auch die Gürbe fliessen",
+      "tags": [
+        "chain-native",
+        "two-relations",
+        "intersects",
+        "lines"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "gemeinden",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "related",
+              "layer": "gewaesser",
+              "predicate": "intersects",
+              "where": {
+                "op": "compare",
+                "attr": "name",
+                "cmp": "eq",
+                "value": "Aare"
+              }
+            },
+            {
+              "op": "related",
+              "layer": "gewaesser",
+              "predicate": "intersects",
+              "where": {
+                "op": "compare",
+                "attr": "name",
+                "cmp": "eq",
+                "value": "Gürbe"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "kb26-gemeinden-puffer-bahn",
+      "prompt": "Nimm die Bahnhaltestellen, puffere sie um 1 km und zeige die Gemeinden, die den Puffer berühren.",
+      "tags": [
+        "chain-native",
+        "buffer",
+        "intersects"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "gemeinden",
+        "where": {
+          "op": "related",
+          "layer": "haltestellen",
+          "predicate": "dwithin",
+          "distance_m": 1000,
+          "where": {
+            "op": "compare",
+            "attr": "verkehrsmittel",
+            "cmp": "eq",
+            "value": "bahn"
+          }
+        }
+      }
+    },
+    {
+      "id": "kb27-gurtenbahn",
+      "prompt": "Schulen im Umkreis von 800 m um die Haltestelle Wabern (Gurtenbahn)",
+      "tags": [
+        "chain-native",
+        "near",
+        "name"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "schulen",
+        "where": {
+          "op": "related",
+          "layer": "haltestellen",
+          "predicate": "dwithin",
+          "distance_m": 800,
+          "where": {
+            "op": "compare",
+            "attr": "name",
+            "cmp": "eq",
+            "value": "Wabern (Gurtenbahn)"
+          }
+        }
+      }
+    },
+    {
+      "id": "kb28-nebengewaesser-koeniz",
+      "prompt": "Nebengewässer, die durch die Gemeinde Köniz fliessen",
+      "tags": [
+        "chain-native",
+        "intersects",
+        "code",
+        "lines"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "gewaesser",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "typ",
+              "cmp": "eq",
+              "value": "neben"
+            },
+            {
+              "op": "related",
+              "layer": "gemeinden",
+              "predicate": "intersects",
+              "where": {
+                "op": "compare",
+                "attr": "name",
+                "cmp": "eq",
+                "value": "Köniz"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "kb29-strassen-nahe-tram",
+      "prompt": "Strassen innerhalb von 100 m um Tramhaltestellen, ohne Nationalstrassen",
+      "tags": [
+        "chain-native",
+        "near",
+        "negation",
+        "lines"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "strassen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "klasse",
+              "cmp": "ne",
+              "value": "nationalstrasse"
+            },
+            {
+              "op": "related",
+              "layer": "haltestellen",
+              "predicate": "dwithin",
+              "distance_m": 100,
+              "where": {
+                "op": "compare",
+                "attr": "verkehrsmittel",
+                "cmp": "eq",
+                "value": "tram"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "kb30-franz-schule-umgebung",
+      "prompt": "Bahnhaltestellen höchstens 3 km von einer französischsprachigen Schule",
+      "tags": [
+        "chain-native",
+        "near",
+        "code"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "haltestellen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "verkehrsmittel",
+              "cmp": "eq",
+              "value": "bahn"
+            },
+            {
+              "op": "related",
+              "layer": "schulen",
+              "predicate": "dwithin",
+              "distance_m": 3000,
+              "where": {
+                "op": "compare",
+                "attr": "sprache",
+                "cmp": "eq",
+                "value": "fr"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ks01-zwei-bedingungen-bezug",
+      "prompt": "Primarschulen höchstens 200 m von einer Bushaltestelle der Kategorie III",
+      "tags": [
+        "chain-stress",
+        "not-representable"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "expect": "cannot_answer",
+      "other_approach": "none",
+      "note": "Weder die Direktabfrage noch die Werkzeugkette kann zwei Bedingungen auf den Bezugslayer legen; der Direkt-Prompt verspricht es der Kette trotzdem (plan-chain-eval, Befund F1)."
+    },
+    {
+      "id": "ks02-puffer-zeichnen",
+      "prompt": "Zeichne einen Puffer von 200 m um alle Bahnhaltestellen.",
+      "tags": [
+        "chain-stress",
+        "buffer",
+        "not-representable"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "expect": "cannot_answer",
+      "other_approach": "none",
+      "note": "Eine Kette endet nie in einem Puffer (D3); h33 erwartet von der Direktabfrage dennoch das Angebot der Kette (Befund F2)."
+    },
+    {
+      "id": "ks03-ganz-im-puffer",
+      "prompt": "Gemeinden, die ganz innerhalb von 2 km um die Aare liegen",
+      "tags": [
+        "chain-stress",
+        "buffer",
+        "not-representable"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "expect": "cannot_answer",
+      "other_approach": "none",
+      "note": "«Liegt im Puffer» ist nur für Punkte ein Abstand; für Flächen weist die Kette es ab."
+    },
+    {
+      "id": "ks04-bezug-auf-bezug",
+      "prompt": "Schulen in Gemeinden, die von der Gürbe durchflossen werden",
+      "tags": [
+        "chain-stress",
+        "not-representable",
+        "three-layers"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "expect": "cannot_answer",
+      "other_approach": "none",
+      "note": "Der Schritt, auf den sich ein räumlicher Schritt bezieht, trägt nur Attributbedingungen: ein Bezug auf einen Bezug geht in keinem Ansatz."
+    },
+    {
+      "id": "ks05-ohne-hauptgewaesser",
+      "prompt": "Gemeinden über 15 km², durch die kein Hauptgewässer fliesst",
+      "tags": [
+        "chain-stress",
+        "chain-gap",
+        "negation"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "gemeinden",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "flaeche_km2",
+              "cmp": "gt",
+              "value": 15
+            },
+            {
+              "op": "not",
+              "arg": {
+                "op": "related",
+                "layer": "gewaesser",
+                "predicate": "intersects",
+                "where": {
+                  "op": "compare",
+                  "attr": "typ",
+                  "cmp": "eq",
+                  "value": "haupt"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "note": "Die Direktabfrage kann es (not related intersects), die Kette nicht: «outside» heisst «liegt in keinem», für Flächen gegen Linien also nie. Misst die Lücke der Kette; die Probe zeigt die Falle (alle grossen Gemeinden)."
+    },
+    {
+      "id": "ks06-muri",
+      "prompt": "Haltestellen in Muri",
+      "tags": [
+        "chain-stress",
+        "replan",
+        "name"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "haltestellen",
+        "where": {
+          "op": "related",
+          "layer": "gemeinden",
+          "predicate": "within",
+          "where": {
+            "op": "compare",
+            "attr": "name",
+            "cmp": "eq",
+            "value": "Muri bei Bern"
+          }
+        }
+      },
+      "note": "Die Gemeinde heisst «Muri bei Bern»: «Muri» trifft nichts, der erste Schritt ist leer, ein Re-Plan ist fällig (Q4). Die Direktabfrage bekommt keine Rückmeldung."
+    },
+    {
+      "id": "ks07-wohlen",
+      "prompt": "Schulen in Wohlen",
+      "tags": [
+        "chain-stress",
+        "replan",
+        "name"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "schulen",
+        "where": {
+          "op": "related",
+          "layer": "gemeinden",
+          "predicate": "within",
+          "where": {
+            "op": "compare",
+            "attr": "name",
+            "cmp": "eq",
+            "value": "Wohlen bei Bern"
+          }
+        }
+      },
+      "note": "Wie ks06: «Wohlen bei Bern»."
+    },
+    {
+      "id": "ks08-drei-umkreise",
+      "prompt": "Schulen mit Sekundarstufe I, die höchstens 300 m von einer Bushaltestelle, höchstens 600 m von einer Tramhaltestelle und höchstens 1 km von einer Bahnhaltestelle liegen",
+      "tags": [
+        "chain-stress",
+        "step-limit",
+        "three-relations"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "schulen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "sekundarstufe",
+              "cmp": "eq",
+              "value": true
+            },
+            {
+              "op": "related",
+              "layer": "haltestellen",
+              "predicate": "dwithin",
+              "distance_m": 300,
+              "where": {
+                "op": "compare",
+                "attr": "verkehrsmittel",
+                "cmp": "eq",
+                "value": "bus"
+              }
+            },
+            {
+              "op": "related",
+              "layer": "haltestellen",
+              "predicate": "dwithin",
+              "distance_m": 600,
+              "where": {
+                "op": "compare",
+                "attr": "verkehrsmittel",
+                "cmp": "eq",
+                "value": "tram"
+              }
+            },
+            {
+              "op": "related",
+              "layer": "haltestellen",
+              "predicate": "dwithin",
+              "distance_m": 1000,
+              "where": {
+                "op": "compare",
+                "attr": "verkehrsmittel",
+                "cmp": "eq",
+                "value": "bahn"
+              }
+            }
+          ]
+        }
+      },
+      "note": "Sieben Schritte bei bestem Plan; ein Zwischenschritt mehr pro Bezug überschreitet die acht (step_limit)."
+    },
+    {
+      "id": "ks09-spital",
+      "prompt": "Schulen höchstens 500 m von einem Spital",
+      "tags": [
+        "chain-stress",
+        "unknown-layer"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "expect": "cannot_answer",
+      "other_approach": "none"
+    },
+    {
+      "id": "ks10-einwohner-join",
+      "prompt": "Schulen in Gemeinden mit mehr als 10 000 Einwohnern",
+      "tags": [
+        "chain-stress",
+        "table"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "expect": "cannot_answer",
+      "other_approach": "none",
+      "note": "Die Einwohner stehen in einer Tabelle; keine Kette verknüpft sie. Die Einwohner im Einzugsgebiet der Haltestellen sind etwas anderes."
+    },
+    {
+      "id": "ks11-nahe-aare-ohne-zahl",
+      "prompt": "Schulen nahe der Aare",
+      "tags": [
+        "chain-stress",
+        "ambiguous",
+        "near"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "require": {
+        "source": "schulen",
+        "conditions": [
+          {
+            "op": "related",
+            "layer": "gewaesser",
+            "predicate": "dwithin",
+            "distance_m": [
+              200,
+              500
+            ]
+          }
+        ]
+      },
+      "note": "Ohne Zahl: der Direkt-Prompt nimmt 300 m an, der Ketten-Prompt sagt dazu nichts."
+    },
+    {
+      "id": "ks12-nicht-bus",
+      "prompt": "Primarschulen höchstens 300 m von einer Haltestelle, die keine Bushaltestelle ist",
+      "tags": [
+        "chain-stress",
+        "negation",
+        "rewrite",
+        "ambiguous"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold_any": [
+        {
+          "source": "schulen",
+          "where": {
+            "op": "and",
+            "args": [
+              {
+                "op": "compare",
+                "attr": "primarstufe",
+                "cmp": "eq",
+                "value": true
+              },
+              {
+                "op": "related",
+                "layer": "haltestellen",
+                "predicate": "dwithin",
+                "distance_m": 300,
+                "where": {
+                  "op": "in",
+                  "attr": "verkehrsmittel",
+                  "values": [
+                    "bahn",
+                    "tram",
+                    "seilbahn",
+                    "schiff"
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "source": "schulen",
+          "where": {
+            "op": "and",
+            "args": [
+              {
+                "op": "compare",
+                "attr": "typ",
+                "cmp": "eq",
+                "value": "primar"
+              },
+              {
+                "op": "related",
+                "layer": "haltestellen",
+                "predicate": "dwithin",
+                "distance_m": 300,
+                "where": {
+                  "op": "in",
+                  "attr": "verkehrsmittel",
+                  "values": [
+                    "bahn",
+                    "tram",
+                    "seilbahn",
+                    "schiff"
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "note": "Auf dem Bezugslayer geht «ne» oder «in» mit den übrigen Codes; ein «not» weist die Kette ab."
+    }
+  ]
+}

@@ -119,6 +119,57 @@ a reason to change the prompt: a change is judged on the tuning split and
 confirmed on the confirmation split. Until E3 these were `evals/cases.json`
 and `evals/heldout.json`; the testplans still call them so.
 
+## The tool chain (docs/plan-chain-eval.md)
+
+`--approach chain` asks the tool chain instead. The application's driver,
+`geotandem.evaluation.chain.drive`, runs it as the application runs it at
+*Automatisch*: one planning call, the steps counted in the model's world, a
+re-plan after an error or an empty step before the last, to the end.
+`tests/test_eval_chain.py` holds that driver to the application's run.
+The chain's prompt is the application's default; it takes no prompt variant
+yet.
+
+```sh
+uv run python evals/run.py --model gemma4:12b --approach chain --cases chain --label k-gemma4_12b
+uv run python evals/run.py --model gemma4:12b --approach chain --cases heldout --label kh-gemma4_12b
+```
+
+| Option | Effect |
+|---|---|
+| `--cases chain` | the tuning split of the chain's cases (`schema/eval-cases/chain-cases.json`: `kb*` chain-native, `ks*` stress) |
+| `--cases chain-heldout` | their confirmation split |
+
+The start set's splits (`cases`, `heldout`) take the chain too, for the paired
+comparison with the direct path. A case that wants the chain offered as the
+other approach (h32, h33) says nothing of the chain and is left out of a chain
+run, as a case wanting `direct` offered is left out of a direct run.
+
+A chain is graded on the result the application would offer to adopt (the
+grader takes the plan as a query answer). Its verdicts are those below, with
+two meanings added:
+- `refused:<code>` is also a plan the application refused, for example
+  `refused:not_representable`.
+- `refused:<reason>` is a chain that stopped before its end: `replan_limit`,
+  `step_limit`, `time_limit` or `result_too_large`.
+
+A chain record has these fields besides the direct ones:
+
+| Field | Content |
+|---|---|
+| `end` | `done`, `answered`, `refused` or the stop reason |
+| `error` | why a re-plan failed |
+| `replans` | how many re-plans were asked |
+| `count` | the result's hits |
+| `calls` | per model call: re-plan number, latency, tokens, outcome |
+| `steps` | per step that ran: position, tool, arguments, status, count, error code, duration, which plan it came with |
+
+`prompt_tokens` and `completion_tokens` are the calls' sums. The header adds
+`approach` and `replan_sha256`, a hash over the re-plan message. `flags`
+(`no_assumption`, `zero_hits`) is written for every `wrong` answer of either
+approach: `wrong` with `no_assumption` is *silently wrong*. `regrade.py`
+refuses chain runs, since grading a chain again means running its steps
+again.
+
 ## Verdicts
 
 

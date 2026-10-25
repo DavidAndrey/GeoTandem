@@ -7,6 +7,10 @@ passes when it holds the required parts (``require``). A behaviour case
 (``expect``) passes on the expected answer kind, or a further one it accepts
 (``also``). Every check is deterministic: no judge model (bewertung.md 11).
 
+A tool chain's plan (``PlanAnswer``) is graded as a query answer, on the
+chain's result (``evaluation.chain.graded``): its kind counts as ``query``
+where a case names kinds (``also``), its tag still says ``plan``.
+
 The harness (``backend/evals``) and the application's runs grade with this one
 function, so a verdict means the same in both. ``Graded.tag`` is the short
 string the harness writes and the testplans quote (``pass``, ``wrong:3≠5``,
@@ -23,7 +27,7 @@ from geotandem.data import DataBackend, Limits
 from geotandem.engine import QueryError, ids_query
 from geotandem.evaluation.schemas import EvalCase, Flag, Verdict
 from geotandem.model.result import Answer
-from geotandem.model.schemas import QueryAnswer, Refusal
+from geotandem.model.schemas import PlanAnswer, QueryAnswer, Refusal
 from geotandem.model.validate import validate_model_query
 from geotandem.tools import ToolContext
 from geotandem_query import QueryObject
@@ -144,10 +148,11 @@ def grade(
     for word in case.forbid:
         if word.casefold() in said:
             return Graded("forbidden", f"forbidden:{word}")
-    if answer.kind in case.also:
+    kind = "query" if isinstance(answer, PlanAnswer) else answer.kind
+    if kind in case.also:
         return PASS
     if case.expect is not None:
-        if answer.kind != case.expect:
+        if kind != case.expect:
             return Graded("kind", f"kind:{answer.kind}", answer.kind)
         # "none": the answer must not offer the other approach; unset: not checked.
         want = case.other_approach
@@ -155,7 +160,7 @@ def grade(
         if want is not None and offered != (None if want == "none" else want):
             return Graded("other_approach", f"other_approach:{offered}")
         return PASS
-    if not isinstance(answer, QueryAnswer):
+    if not isinstance(answer, QueryAnswer | PlanAnswer):
         return Graded("kind", f"kind:{answer.kind}", answer.kind)
     if refusal is not None:
         return Graded("refused", f"refused:{refusal.code}", refusal.code)
@@ -195,7 +200,7 @@ def grade(
     return _wrong(wrong, answer, hits)
 
 
-def _wrong(tag: str, answer: QueryAnswer, hits: list[int] | None) -> Graded:
+def _wrong(tag: str, answer: QueryAnswer | PlanAnswer, hits: list[int] | None) -> Graded:
     """A ``wrong`` verdict with its flags (D6); ``hits`` are the answer's
     features, ``None`` when they could not be read."""
     flags: list[Flag] = []

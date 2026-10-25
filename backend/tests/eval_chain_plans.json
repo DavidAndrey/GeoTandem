@@ -1,0 +1,1960 @@
+{
+ "kb01-sek-nahe-bahn": {
+  "script": [
+   [
+    [
+     "filter",
+     {
+      "layer": "schulen",
+      "where": {
+       "op": "compare",
+       "attr": "sekundarstufe",
+       "cmp": "eq",
+       "value": true
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "haltestellen",
+      "where": {
+       "op": "compare",
+       "attr": "verkehrsmittel",
+       "cmp": "eq",
+       "value": "bahn"
+      }
+     }
+    ],
+    [
+     "near",
+     {
+      "of": 1,
+      "to": 2,
+      "distance_m": 500
+     }
+    ]
+   ]
+  ],
+  "verdict": "pass"
+ },
+ "kb02-puffer-tram-schulen": {
+  "script": [
+   [
+    [
+     "buffer",
+     {
+      "layer": "haltestellen",
+      "distance_m": 300,
+      "where": {
+       "op": "compare",
+       "attr": "verkehrsmittel",
+       "cmp": "eq",
+       "value": "tram"
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "schulen",
+      "where": {
+       "op": "not",
+       "arg": {
+        "op": "is_null",
+        "attr": "name"
+       }
+      }
+     }
+    ],
+    [
+     "within",
+     {
+      "of": 2,
+      "in": 1
+     }
+    ]
+   ]
+  ],
+  "verdict": "pass"
+ },
+ "kb03-primar-dann-standorte": {
+  "script": [
+   [
+    [
+     "filter",
+     {
+      "layer": "schulen",
+      "where": {
+       "op": "compare",
+       "attr": "primarstufe",
+       "cmp": "eq",
+       "value": true
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "of": 1,
+      "where": {
+       "op": "compare",
+       "attr": "standorte",
+       "cmp": "gt",
+       "value": 3
+      }
+     }
+    ]
+   ]
+  ],
+  "verdict": "pass"
+ },
+ "kb04-koeniz-nahe-bus": {
+  "script": [
+   [
+    [
+     "filter",
+     {
+      "layer": "gemeinden",
+      "where": {
+       "op": "compare",
+       "attr": "name",
+       "cmp": "eq",
+       "value": "Köniz"
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "haltestellen",
+      "where": {
+       "op": "compare",
+       "attr": "verkehrsmittel",
+       "cmp": "eq",
+       "value": "bus"
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "schulen",
+      "where": {
+       "op": "not",
+       "arg": {
+        "op": "is_null",
+        "attr": "name"
+       }
+      }
+     }
+    ],
+    [
+     "within",
+     {
+      "of": 3,
+      "in": 1
+     }
+    ],
+    [
+     "near",
+     {
+      "of": 4,
+      "to": 2,
+      "distance_m": 300
+     }
+    ]
+   ]
+  ],
+  "verdict": "pass"
+ },
+ "kb05-aare-und-bahn": {
+  "script": [
+   [
+    [
+     "filter",
+     {
+      "layer": "gewaesser",
+      "where": {
+       "op": "compare",
+       "attr": "name",
+       "cmp": "eq",
+       "value": "Aare"
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "haltestellen",
+      "where": {
+       "op": "compare",
+       "attr": "verkehrsmittel",
+       "cmp": "eq",
+       "value": "bahn"
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "gemeinden",
+      "where": {
+       "op": "not",
+       "arg": {
+        "op": "is_null",
+        "attr": "name"
+       }
+      }
+     }
+    ],
+    [
+     "intersects",
+     {
+      "of": 3,
+      "with": 1
+     }
+    ],
+    [
+     "intersects",
+     {
+      "of": 4,
+      "with": 2
+     }
+    ]
+   ]
+  ],
+  "verdict": "pass"
+ },
+ "kb06-strassen-puffer-aare": {
+  "script": [
+   [
+    [
+     "buffer",
+     {
+      "layer": "gewaesser",
+      "distance_m": 200,
+      "where": {
+       "op": "compare",
+       "attr": "name",
+       "cmp": "eq",
+       "value": "Aare"
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "strassen",
+      "where": {
+       "op": "not",
+       "arg": {
+        "op": "is_null",
+        "attr": "name"
+       }
+      }
+     }
+    ],
+    [
+     "intersects",
+     {
+      "of": 2,
+      "with": 1
+     }
+    ]
+   ]
+  ],
+  "verdict": "pass"
+ },
+ "kb07-primar-ausserhalb-bern": {
+  "script": [
+   [
+    [
+     "filter",
+     {
+      "layer": "gemeinden",
+      "where": {
+       "op": "compare",
+       "attr": "name",
+       "cmp": "eq",
+       "value": "Bern"
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "schulen",
+      "where": {
+       "op": "compare",
+       "attr": "primarstufe",
+       "cmp": "eq",
+       "value": true
+      }
+     }
+    ],
+    [
+     "outside",
+     {
+      "of": 2,
+      "in": 1
+     }
+    ]
+   ]
+  ],
+  "verdict": "pass"
+ },
+ "kb08-weit-weg-von-bahn": {
+  "script": [
+   [
+    [
+     "buffer",
+     {
+      "layer": "haltestellen",
+      "distance_m": 1000,
+      "where": {
+       "op": "compare",
+       "attr": "verkehrsmittel",
+       "cmp": "eq",
+       "value": "bahn"
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "schulen",
+      "where": {
+       "op": "not",
+       "arg": {
+        "op": "is_null",
+        "attr": "name"
+       }
+      }
+     }
+    ],
+    [
+     "outside",
+     {
+      "of": 2,
+      "in": 1
+     }
+    ]
+   ]
+  ],
+  "verdict": "pass"
+ },
+ "kb09-bus-ii-grosse-gemeinden": {
+  "script": [
+   [
+    [
+     "filter",
+     {
+      "layer": "gemeinden",
+      "where": {
+       "op": "compare",
+       "attr": "flaeche_km2",
+       "cmp": "gt",
+       "value": 20
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "haltestellen",
+      "where": {
+       "op": "and",
+       "args": [
+        {
+         "op": "compare",
+         "attr": "verkehrsmittel",
+         "cmp": "eq",
+         "value": "bus"
+        },
+        {
+         "op": "compare",
+         "attr": "kategorie",
+         "cmp": "eq",
+         "value": "II"
+        }
+       ]
+      }
+     }
+    ],
+    [
+     "within",
+     {
+      "of": 2,
+      "in": 1
+     }
+    ]
+   ]
+  ],
+  "verdict": "pass"
+ },
+ "kb10-nationalstrassen-nahe-sek": {
+  "script": [
+   [
+    [
+     "filter",
+     {
+      "layer": "schulen",
+      "where": {
+       "op": "compare",
+       "attr": "sekundarstufe",
+       "cmp": "eq",
+       "value": true
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "strassen",
+      "where": {
+       "op": "compare",
+       "attr": "klasse",
+       "cmp": "eq",
+       "value": "nationalstrasse"
+      }
+     }
+    ],
+    [
+     "near",
+     {
+      "of": 2,
+      "to": 1,
+      "distance_m": 1000
+     }
+    ]
+   ]
+  ],
+  "verdict": "pass"
+ },
+ "kb11-tram-nahe-aare": {
+  "script": [
+   [
+    [
+     "filter",
+     {
+      "layer": "gewaesser",
+      "where": {
+       "op": "compare",
+       "attr": "name",
+       "cmp": "eq",
+       "value": "Aare"
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "haltestellen",
+      "where": {
+       "op": "compare",
+       "attr": "verkehrsmittel",
+       "cmp": "eq",
+       "value": "tram"
+      }
+     }
+    ],
+    [
+     "near",
+     {
+      "of": 2,
+      "to": 1,
+      "distance_m": 500
+     }
+    ]
+   ]
+  ],
+  "verdict": "pass"
+ },
+ "kb12-rand-von-bern": {
+  "script": [
+   [
+    [
+     "filter",
+     {
+      "layer": "gemeinden",
+      "where": {
+       "op": "compare",
+       "attr": "name",
+       "cmp": "eq",
+       "value": "Bern"
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "haltestellen",
+      "where": {
+       "op": "not",
+       "arg": {
+        "op": "is_null",
+        "attr": "name"
+       }
+      }
+     }
+    ],
+    [
+     "near",
+     {
+      "of": 2,
+      "to": 1,
+      "distance_m": 500
+     }
+    ],
+    [
+     "outside",
+     {
+      "of": 3,
+      "in": 1
+     }
+    ]
+   ]
+  ],
+  "verdict": "pass"
+ },
+ "kb13-kindergarten-kat-i": {
+  "script": [
+   [
+    [
+     "filter",
+     {
+      "layer": "haltestellen",
+      "where": {
+       "op": "compare",
+       "attr": "kategorie",
+       "cmp": "eq",
+       "value": "I"
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "schulen",
+      "where": {
+       "op": "compare",
+       "attr": "kindergarten",
+       "cmp": "eq",
+       "value": true
+      }
+     }
+    ],
+    [
+     "near",
+     {
+      "of": 2,
+      "to": 1,
+      "distance_m": 800
+     }
+    ]
+   ]
+  ],
+  "verdict": "pass"
+ },
+ "kb14-kantonsstrassen-muensingen": {
+  "script": [
+   [
+    [
+     "filter",
+     {
+      "layer": "gemeinden",
+      "where": {
+       "op": "compare",
+       "attr": "name",
+       "cmp": "eq",
+       "value": "Münsingen"
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "strassen",
+      "where": {
+       "op": "in",
+       "attr": "klasse",
+       "values": [
+        "kantonsstrasse_a",
+        "kantonsstrasse_b"
+       ]
+      }
+     }
+    ],
+    [
+     "intersects",
+     {
+      "of": 2,
+      "with": 1
+     }
+    ]
+   ]
+  ],
+  "verdict": "pass"
+ },
+ "kb15-seilbahn-nahe-schule": {
+  "script": [
+   [
+    [
+     "filter",
+     {
+      "layer": "haltestellen",
+      "where": {
+       "op": "compare",
+       "attr": "verkehrsmittel",
+       "cmp": "eq",
+       "value": "seilbahn"
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "schulen",
+      "where": {
+       "op": "compare",
+       "attr": "standorte",
+       "cmp": "ge",
+       "value": 0
+      }
+     }
+    ],
+    [
+     "near",
+     {
+      "of": 1,
+      "to": 2,
+      "distance_m": 1000
+     }
+    ]
+   ]
+  ],
+  "verdict": "pass",
+  "probe": {
+   "steps": [
+    [
+     "filter",
+     {
+      "layer": "haltestellen",
+      "where": {
+       "op": "compare",
+       "attr": "verkehrsmittel",
+       "cmp": "eq",
+       "value": "seilbahn"
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "schulen",
+      "where": {
+       "op": "not",
+       "arg": {
+        "op": "is_null",
+        "attr": "name"
+       }
+      }
+     }
+    ],
+    [
+     "near",
+     {
+      "of": 1,
+      "to": 2,
+      "distance_m": 1000
+     }
+    ]
+   ],
+   "refused": "not_representable"
+  }
+ },
+ "kb16-schulen-puffer-national": {
+  "script": [
+   [
+    [
+     "buffer",
+     {
+      "layer": "strassen",
+      "distance_m": 500,
+      "where": {
+       "op": "compare",
+       "attr": "klasse",
+       "cmp": "eq",
+       "value": "nationalstrasse"
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "schulen",
+      "where": {
+       "op": "not",
+       "arg": {
+        "op": "is_null",
+        "attr": "name"
+       }
+      }
+     }
+    ],
+    [
+     "within",
+     {
+      "of": 2,
+      "in": 1
+     }
+    ]
+   ]
+  ],
+  "verdict": "pass"
+ },
+ "kb17-lange-gewaesser-koeniz": {
+  "script": [
+   [
+    [
+     "filter",
+     {
+      "layer": "gemeinden",
+      "where": {
+       "op": "compare",
+       "attr": "name",
+       "cmp": "eq",
+       "value": "Köniz"
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "gewaesser",
+      "where": {
+       "op": "compare",
+       "attr": "laenge_km",
+       "cmp": "gt",
+       "value": 10
+      }
+     }
+    ],
+    [
+     "intersects",
+     {
+      "of": 2,
+      "with": 1
+     }
+    ]
+   ]
+  ],
+  "verdict": "pass"
+ },
+ "kb18-sek-um-bahnhof-bern": {
+  "script": [
+   [
+    [
+     "filter",
+     {
+      "layer": "haltestellen",
+      "where": {
+       "op": "compare",
+       "attr": "name",
+       "cmp": "eq",
+       "value": "Bern"
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "schulen",
+      "where": {
+       "op": "compare",
+       "attr": "sekundarstufe",
+       "cmp": "eq",
+       "value": true
+      }
+     }
+    ],
+    [
+     "near",
+     {
+      "of": 2,
+      "to": 1,
+      "distance_m": 2000
+     }
+    ]
+   ]
+  ],
+  "verdict": "pass"
+ },
+ "kb19-tram-und-bus": {
+  "script": [
+   [
+    [
+     "filter",
+     {
+      "layer": "haltestellen",
+      "where": {
+       "op": "compare",
+       "attr": "verkehrsmittel",
+       "cmp": "eq",
+       "value": "tram"
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "haltestellen",
+      "where": {
+       "op": "compare",
+       "attr": "verkehrsmittel",
+       "cmp": "eq",
+       "value": "bus"
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "schulen",
+      "where": {
+       "op": "not",
+       "arg": {
+        "op": "is_null",
+        "attr": "name"
+       }
+      }
+     }
+    ],
+    [
+     "near",
+     {
+      "of": 3,
+      "to": 1,
+      "distance_m": 400
+     }
+    ],
+    [
+     "near",
+     {
+      "of": 4,
+      "to": 2,
+      "distance_m": 400
+     }
+    ]
+   ]
+  ],
+  "verdict": "pass"
+ },
+ "kb20-einzugsgebiet-ostermundigen": {
+  "script": [
+   [
+    [
+     "filter",
+     {
+      "layer": "gemeinden",
+      "where": {
+       "op": "compare",
+       "attr": "name",
+       "cmp": "eq",
+       "value": "Ostermundigen"
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "haltestellen",
+      "where": {
+       "op": "compare",
+       "attr": "einwohner",
+       "cmp": "gt",
+       "value": 2000
+      }
+     }
+    ],
+    [
+     "within",
+     {
+      "of": 2,
+      "in": 1
+     }
+    ]
+   ]
+  ],
+  "verdict": "pass"
+ },
+ "kb21-primar-worb-vechigen": {
+  "script": [
+   [
+    [
+     "filter",
+     {
+      "layer": "gemeinden",
+      "where": {
+       "op": "in",
+       "attr": "name",
+       "values": [
+        "Worb",
+        "Vechigen"
+       ]
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "schulen",
+      "where": {
+       "op": "compare",
+       "attr": "primarstufe",
+       "cmp": "eq",
+       "value": true
+      }
+     }
+    ],
+    [
+     "within",
+     {
+      "of": 2,
+      "in": 1
+     }
+    ]
+   ]
+  ],
+  "verdict": "pass"
+ },
+ "kb22-bus-puffer-kantonsstrasse-c": {
+  "script": [
+   [
+    [
+     "buffer",
+     {
+      "layer": "strassen",
+      "distance_m": 250,
+      "where": {
+       "op": "compare",
+       "attr": "klasse",
+       "cmp": "eq",
+       "value": "kantonsstrasse_c"
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "haltestellen",
+      "where": {
+       "op": "compare",
+       "attr": "verkehrsmittel",
+       "cmp": "eq",
+       "value": "bus"
+      }
+     }
+    ],
+    [
+     "within",
+     {
+      "of": 2,
+      "in": 1
+     }
+    ]
+   ]
+  ],
+  "verdict": "pass"
+ },
+ "kb23-bern-ohne-tram": {
+  "script": [
+   [
+    [
+     "filter",
+     {
+      "layer": "gemeinden",
+      "where": {
+       "op": "compare",
+       "attr": "name",
+       "cmp": "eq",
+       "value": "Bern"
+      }
+     }
+    ],
+    [
+     "buffer",
+     {
+      "layer": "haltestellen",
+      "distance_m": 800,
+      "where": {
+       "op": "compare",
+       "attr": "verkehrsmittel",
+       "cmp": "eq",
+       "value": "tram"
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "schulen",
+      "where": {
+       "op": "not",
+       "arg": {
+        "op": "is_null",
+        "attr": "name"
+       }
+      }
+     }
+    ],
+    [
+     "within",
+     {
+      "of": 3,
+      "in": 1
+     }
+    ],
+    [
+     "outside",
+     {
+      "of": 4,
+      "in": 2
+     }
+    ]
+   ]
+  ],
+  "verdict": "pass"
+ },
+ "kb24-sek-klein-nahe-bus": {
+  "script": [
+   [
+    [
+     "filter",
+     {
+      "layer": "gemeinden",
+      "where": {
+       "op": "compare",
+       "attr": "flaeche_km2",
+       "cmp": "lt",
+       "value": 5
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "haltestellen",
+      "where": {
+       "op": "compare",
+       "attr": "verkehrsmittel",
+       "cmp": "eq",
+       "value": "bus"
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "schulen",
+      "where": {
+       "op": "compare",
+       "attr": "sekundarstufe",
+       "cmp": "eq",
+       "value": true
+      }
+     }
+    ],
+    [
+     "within",
+     {
+      "of": 3,
+      "in": 1
+     }
+    ],
+    [
+     "near",
+     {
+      "of": 4,
+      "to": 2,
+      "distance_m": 300
+     }
+    ]
+   ]
+  ],
+  "verdict": "pass"
+ },
+ "kb25-aare-und-guerbe": {
+  "script": [
+   [
+    [
+     "filter",
+     {
+      "layer": "gewaesser",
+      "where": {
+       "op": "compare",
+       "attr": "name",
+       "cmp": "eq",
+       "value": "Aare"
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "gewaesser",
+      "where": {
+       "op": "compare",
+       "attr": "name",
+       "cmp": "eq",
+       "value": "Gürbe"
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "gemeinden",
+      "where": {
+       "op": "not",
+       "arg": {
+        "op": "is_null",
+        "attr": "name"
+       }
+      }
+     }
+    ],
+    [
+     "intersects",
+     {
+      "of": 3,
+      "with": 1
+     }
+    ],
+    [
+     "intersects",
+     {
+      "of": 4,
+      "with": 2
+     }
+    ]
+   ]
+  ],
+  "verdict": "pass"
+ },
+ "kb26-gemeinden-puffer-bahn": {
+  "script": [
+   [
+    [
+     "buffer",
+     {
+      "layer": "haltestellen",
+      "distance_m": 1000,
+      "where": {
+       "op": "compare",
+       "attr": "verkehrsmittel",
+       "cmp": "eq",
+       "value": "bahn"
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "gemeinden",
+      "where": {
+       "op": "not",
+       "arg": {
+        "op": "is_null",
+        "attr": "name"
+       }
+      }
+     }
+    ],
+    [
+     "intersects",
+     {
+      "of": 2,
+      "with": 1
+     }
+    ]
+   ]
+  ],
+  "verdict": "pass"
+ },
+ "kb27-gurtenbahn": {
+  "script": [
+   [
+    [
+     "filter",
+     {
+      "layer": "haltestellen",
+      "where": {
+       "op": "compare",
+       "attr": "name",
+       "cmp": "eq",
+       "value": "Wabern (Gurtenbahn)"
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "schulen",
+      "where": {
+       "op": "not",
+       "arg": {
+        "op": "is_null",
+        "attr": "name"
+       }
+      }
+     }
+    ],
+    [
+     "near",
+     {
+      "of": 2,
+      "to": 1,
+      "distance_m": 800
+     }
+    ]
+   ]
+  ],
+  "verdict": "pass"
+ },
+ "kb28-nebengewaesser-koeniz": {
+  "script": [
+   [
+    [
+     "filter",
+     {
+      "layer": "gemeinden",
+      "where": {
+       "op": "compare",
+       "attr": "name",
+       "cmp": "eq",
+       "value": "Köniz"
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "gewaesser",
+      "where": {
+       "op": "compare",
+       "attr": "typ",
+       "cmp": "eq",
+       "value": "neben"
+      }
+     }
+    ],
+    [
+     "intersects",
+     {
+      "of": 2,
+      "with": 1
+     }
+    ]
+   ]
+  ],
+  "verdict": "pass"
+ },
+ "kb29-strassen-nahe-tram": {
+  "script": [
+   [
+    [
+     "filter",
+     {
+      "layer": "haltestellen",
+      "where": {
+       "op": "compare",
+       "attr": "verkehrsmittel",
+       "cmp": "eq",
+       "value": "tram"
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "strassen",
+      "where": {
+       "op": "compare",
+       "attr": "klasse",
+       "cmp": "ne",
+       "value": "nationalstrasse"
+      }
+     }
+    ],
+    [
+     "near",
+     {
+      "of": 2,
+      "to": 1,
+      "distance_m": 100
+     }
+    ]
+   ]
+  ],
+  "verdict": "pass"
+ },
+ "kb30-franz-schule-umgebung": {
+  "script": [
+   [
+    [
+     "filter",
+     {
+      "layer": "schulen",
+      "where": {
+       "op": "compare",
+       "attr": "sprache",
+       "cmp": "eq",
+       "value": "fr"
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "haltestellen",
+      "where": {
+       "op": "compare",
+       "attr": "verkehrsmittel",
+       "cmp": "eq",
+       "value": "bahn"
+      }
+     }
+    ],
+    [
+     "near",
+     {
+      "of": 2,
+      "to": 1,
+      "distance_m": 3000
+     }
+    ]
+   ]
+  ],
+  "verdict": "pass"
+ },
+ "ks01-zwei-bedingungen-bezug": {
+  "script": [
+   {
+    "answer": {
+     "kind": "cannot_answer",
+     "explanation": "Das geht nicht.",
+     "missing": [
+      "Zwei Bedingungen auf dem Bezugslayer"
+     ]
+    }
+   }
+  ],
+  "verdict": "pass",
+  "probe": {
+   "steps": [
+    [
+     "filter",
+     {
+      "layer": "haltestellen",
+      "where": {
+       "op": "and",
+       "args": [
+        {
+         "op": "compare",
+         "attr": "verkehrsmittel",
+         "cmp": "eq",
+         "value": "bus"
+        },
+        {
+         "op": "compare",
+         "attr": "kategorie",
+         "cmp": "eq",
+         "value": "III"
+        }
+       ]
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "schulen",
+      "where": {
+       "op": "compare",
+       "attr": "primarstufe",
+       "cmp": "eq",
+       "value": true
+      }
+     }
+    ],
+    [
+     "near",
+     {
+      "of": 2,
+      "to": 1,
+      "distance_m": 200
+     }
+    ]
+   ],
+   "refused": "not_representable"
+  }
+ },
+ "ks02-puffer-zeichnen": {
+  "script": [
+   {
+    "answer": {
+     "kind": "cannot_answer",
+     "explanation": "Das geht nicht.",
+     "missing": [
+      "Ein Puffer als Ergebnis"
+     ]
+    }
+   }
+  ],
+  "verdict": "pass",
+  "probe": {
+   "steps": [
+    [
+     "buffer",
+     {
+      "layer": "haltestellen",
+      "distance_m": 200,
+      "where": {
+       "op": "compare",
+       "attr": "verkehrsmittel",
+       "cmp": "eq",
+       "value": "bahn"
+      }
+     }
+    ]
+   ],
+   "refused": "not_representable"
+  }
+ },
+ "ks03-ganz-im-puffer": {
+  "script": [
+   {
+    "answer": {
+     "kind": "cannot_answer",
+     "explanation": "Das geht nicht.",
+     "missing": [
+      "Flächen ganz in einem Puffer"
+     ]
+    }
+   }
+  ],
+  "verdict": "pass",
+  "probe": {
+   "steps": [
+    [
+     "buffer",
+     {
+      "layer": "gewaesser",
+      "distance_m": 2000,
+      "where": {
+       "op": "compare",
+       "attr": "name",
+       "cmp": "eq",
+       "value": "Aare"
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "gemeinden",
+      "where": {
+       "op": "not",
+       "arg": {
+        "op": "is_null",
+        "attr": "name"
+       }
+      }
+     }
+    ],
+    [
+     "within",
+     {
+      "of": 2,
+      "in": 1
+     }
+    ]
+   ],
+   "refused": "not_representable"
+  }
+ },
+ "ks04-bezug-auf-bezug": {
+  "script": [
+   {
+    "answer": {
+     "kind": "cannot_answer",
+     "explanation": "Das geht nicht.",
+     "missing": [
+      "Ein Bezug auf einen Bezug"
+     ]
+    }
+   }
+  ],
+  "verdict": "pass",
+  "probe": {
+   "steps": [
+    [
+     "filter",
+     {
+      "layer": "gewaesser",
+      "where": {
+       "op": "compare",
+       "attr": "name",
+       "cmp": "eq",
+       "value": "Gürbe"
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "gemeinden",
+      "where": {
+       "op": "not",
+       "arg": {
+        "op": "is_null",
+        "attr": "name"
+       }
+      }
+     }
+    ],
+    [
+     "intersects",
+     {
+      "of": 2,
+      "with": 1
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "schulen",
+      "where": {
+       "op": "not",
+       "arg": {
+        "op": "is_null",
+        "attr": "name"
+       }
+      }
+     }
+    ],
+    [
+     "within",
+     {
+      "of": 4,
+      "in": 3
+     }
+    ]
+   ],
+   "refused": "not_representable"
+  }
+ },
+ "ks05-ohne-hauptgewaesser": {
+  "script": [
+   {
+    "answer": {
+     "kind": "cannot_answer",
+     "explanation": "Das geht nicht.",
+     "missing": [
+      "Kein Werkzeug für «schneidet nicht»"
+     ],
+     "other_approach": "direct"
+    }
+   }
+  ],
+  "verdict": "kind:cannot_answer",
+  "probe": {
+   "steps": [
+    [
+     "filter",
+     {
+      "layer": "gewaesser",
+      "where": {
+       "op": "compare",
+       "attr": "typ",
+       "cmp": "eq",
+       "value": "haupt"
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "gemeinden",
+      "where": {
+       "op": "compare",
+       "attr": "flaeche_km2",
+       "cmp": "gt",
+       "value": 15
+      }
+     }
+    ],
+    [
+     "outside",
+     {
+      "of": 2,
+      "in": 1
+     }
+    ]
+   ],
+   "refused": null
+  }
+ },
+ "ks06-muri": {
+  "script": [
+   [
+    [
+     "filter",
+     {
+      "layer": "haltestellen",
+      "where": {
+       "op": "not",
+       "arg": {
+        "op": "is_null",
+        "attr": "name"
+       }
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "gemeinden",
+      "where": {
+       "op": "compare",
+       "attr": "name",
+       "cmp": "eq",
+       "value": "Muri"
+      }
+     }
+    ],
+    [
+     "within",
+     {
+      "of": 1,
+      "in": 2
+     }
+    ]
+   ],
+   [
+    [
+     "filter",
+     {
+      "layer": "gemeinden",
+      "where": {
+       "op": "compare",
+       "attr": "name",
+       "cmp": "eq",
+       "value": "Muri bei Bern"
+      }
+     }
+    ],
+    [
+     "within",
+     {
+      "of": 1,
+      "in": 3
+     }
+    ]
+   ]
+  ],
+  "verdict": "pass"
+ },
+ "ks07-wohlen": {
+  "script": [
+   [
+    [
+     "filter",
+     {
+      "layer": "schulen",
+      "where": {
+       "op": "not",
+       "arg": {
+        "op": "is_null",
+        "attr": "name"
+       }
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "gemeinden",
+      "where": {
+       "op": "compare",
+       "attr": "name",
+       "cmp": "eq",
+       "value": "Wohlen"
+      }
+     }
+    ],
+    [
+     "within",
+     {
+      "of": 1,
+      "in": 2
+     }
+    ]
+   ],
+   [
+    [
+     "filter",
+     {
+      "layer": "gemeinden",
+      "where": {
+       "op": "text_match",
+       "attr": "name",
+       "mode": "starts_with",
+       "text": "Wohlen"
+      }
+     }
+    ],
+    [
+     "within",
+     {
+      "of": 1,
+      "in": 3
+     }
+    ]
+   ]
+  ],
+  "verdict": "pass"
+ },
+ "ks08-drei-umkreise": {
+  "script": [
+   [
+    [
+     "filter",
+     {
+      "layer": "schulen",
+      "where": {
+       "op": "compare",
+       "attr": "sekundarstufe",
+       "cmp": "eq",
+       "value": true
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "haltestellen",
+      "where": {
+       "op": "compare",
+       "attr": "verkehrsmittel",
+       "cmp": "eq",
+       "value": "bus"
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "haltestellen",
+      "where": {
+       "op": "compare",
+       "attr": "verkehrsmittel",
+       "cmp": "eq",
+       "value": "tram"
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "haltestellen",
+      "where": {
+       "op": "compare",
+       "attr": "verkehrsmittel",
+       "cmp": "eq",
+       "value": "bahn"
+      }
+     }
+    ],
+    [
+     "near",
+     {
+      "of": 1,
+      "to": 2,
+      "distance_m": 300
+     }
+    ],
+    [
+     "near",
+     {
+      "of": 5,
+      "to": 3,
+      "distance_m": 600
+     }
+    ],
+    [
+     "near",
+     {
+      "of": 6,
+      "to": 4,
+      "distance_m": 1000
+     }
+    ]
+   ]
+  ],
+  "verdict": "pass"
+ },
+ "ks09-spital": {
+  "script": [
+   {
+    "answer": {
+     "kind": "cannot_answer",
+     "explanation": "Das geht nicht.",
+     "missing": [
+      "Ein Layer mit Spitälern"
+     ]
+    }
+   }
+  ],
+  "verdict": "pass"
+ },
+ "ks10-einwohner-join": {
+  "script": [
+   {
+    "answer": {
+     "kind": "cannot_answer",
+     "explanation": "Das geht nicht.",
+     "missing": [
+      "Einwohnerzahl der Gemeinden (nur als Tabelle)"
+     ]
+    }
+   }
+  ],
+  "verdict": "pass"
+ },
+ "ks11-nahe-aare-ohne-zahl": {
+  "script": [
+   [
+    [
+     "filter",
+     {
+      "layer": "gewaesser",
+      "where": {
+       "op": "compare",
+       "attr": "name",
+       "cmp": "eq",
+       "value": "Aare"
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "schulen",
+      "where": {
+       "op": "not",
+       "arg": {
+        "op": "is_null",
+        "attr": "name"
+       }
+      }
+     }
+    ],
+    [
+     "near",
+     {
+      "of": 2,
+      "to": 1,
+      "distance_m": 300
+     }
+    ]
+   ]
+  ],
+  "verdict": "pass"
+ },
+ "ks12-nicht-bus": {
+  "script": [
+   [
+    [
+     "filter",
+     {
+      "layer": "haltestellen",
+      "where": {
+       "op": "in",
+       "attr": "verkehrsmittel",
+       "values": [
+        "bahn",
+        "tram",
+        "seilbahn",
+        "schiff"
+       ]
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "schulen",
+      "where": {
+       "op": "compare",
+       "attr": "primarstufe",
+       "cmp": "eq",
+       "value": true
+      }
+     }
+    ],
+    [
+     "near",
+     {
+      "of": 2,
+      "to": 1,
+      "distance_m": 300
+     }
+    ]
+   ]
+  ],
+  "verdict": "pass",
+  "probe": {
+   "steps": [
+    [
+     "filter",
+     {
+      "layer": "haltestellen",
+      "where": {
+       "op": "not",
+       "arg": {
+        "op": "compare",
+        "attr": "verkehrsmittel",
+        "cmp": "eq",
+        "value": "bus"
+       }
+      }
+     }
+    ],
+    [
+     "filter",
+     {
+      "layer": "schulen",
+      "where": {
+       "op": "compare",
+       "attr": "primarstufe",
+       "cmp": "eq",
+       "value": true
+      }
+     }
+    ],
+    [
+     "near",
+     {
+      "of": 2,
+      "to": 1,
+      "distance_m": 300
+     }
+    ]
+   ],
+   "refused": "not_representable"
+  }
+ }
+}
