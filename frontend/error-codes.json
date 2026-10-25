@@ -101,6 +101,7 @@
   "password_too_long": "The password is longer than the maximum.",
   "password_too_short": "The password is shorter than the minimum.",
   "password_unchanged": "The new password is the old one.",
+  "price_incomplete": "A price needs input, output and currency, or none of them (details.missing).",
   "query_timeout": "The query ran longer than query_timeout_s.",
   "query_too_complex": "The query exceeds the complexity limits.",
   "quota_exceeded": "The connection's requests per day are used up (details.limit).",

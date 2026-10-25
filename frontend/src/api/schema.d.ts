@@ -2750,6 +2750,20 @@ export interface components {
       request_limit_enabled: boolean
       /** Request Limit Per Day */
       request_limit_per_day?: number | null
+      /**
+       * @default {
+       *       "examples": "standard",
+       *       "placement": "P0",
+       *       "output": "constrained"
+       *     }
+       */
+      prompt_profile: components['schemas']['PromptProfile']
+      /** Price Input Per Mtok */
+      price_input_per_mtok?: number | null
+      /** Price Output Per Mtok */
+      price_output_per_mtok?: number | null
+      /** Price Currency */
+      price_currency?: string | null
     }
     /**
      * ConnectionOption
@@ -2812,6 +2826,13 @@ export interface components {
       request_limit_enabled?: boolean | null
       /** Request Limit Per Day */
       request_limit_per_day?: number | null
+      prompt_profile?: components['schemas']['PromptProfile'] | null
+      /** Price Input Per Mtok */
+      price_input_per_mtok?: number | null
+      /** Price Output Per Mtok */
+      price_output_per_mtok?: number | null
+      /** Price Currency */
+      price_currency?: string | null
     }
     /** ConnectionSnapshot */
     ConnectionSnapshot: {
@@ -2828,6 +2849,7 @@ export interface components {
        * @enum {string}
        */
       locality: 'local' | 'external'
+      prompt_profile?: components['schemas']['PromptProfile'] | null
     }
     /**
      * ConnectionWrite
@@ -2900,6 +2922,17 @@ export interface components {
        * @description The cap; required while request_limit_enabled (P5).
        */
       request_limit_per_day?: number | null
+      /** @description How the direct query's prompt is written (plan E3, D9). Unset: today's. */
+      prompt_profile?: components['schemas']['PromptProfile']
+      /** Price Input Per Mtok */
+      price_input_per_mtok?: number | null
+      /** Price Output Per Mtok */
+      price_output_per_mtok?: number | null
+      /**
+       * Price Currency
+       * @description With both prices or none of them (O4).
+       */
+      price_currency?: string | null
     }
     /**
      * CostEstimate

@@ -43,10 +43,10 @@ thread before its next question and leaves the run to that check.
 
 Logs carry ids and codes only, never a prompt, an answer or a key (C15).
 
-Hooks for the work packages built beside this one: ``prompt_profile_of`` and
-``_prompt_for`` (WP91, the connection's prompt profile and the builder's
-options), ``price_of`` (WP91, prices on the connection). The label's
-completeness summary is WP94's ``summary.profile_summary``.
+A point's prompt profile is the connection's (``prompt_profile_of``) unless
+the point names one (D9); its prices are the connection's
+(``connections.price_of``, O4). The label's completeness summary is WP94's
+``summary.profile_summary``.
 """
 
 from __future__ import annotations
@@ -73,7 +73,7 @@ from sqlalchemy.exc import OperationalError
 
 from geotandem.auth.accounts import Account
 from geotandem.config import Settings
-from geotandem.connections import ConnectionInfo, ConnectionProblem, Connections
+from geotandem.connections import ConnectionInfo, ConnectionProblem, Connections, price_of
 from geotandem.data import DataBackend, Limits, Op
 from geotandem.engine import QueryError
 from geotandem.evaluation.cases import Cases, World, assess_case, sample_version
@@ -182,15 +182,10 @@ def _not_found(run_id: int) -> RunError:
 
 
 def prompt_profile_of(connection: ConnectionInfo) -> PromptProfile:
-    """The connection's own prompt profile (D9). Until WP91 stores one on the
-    connection, every connection has today's prompt."""
-    return PromptProfile()
-
-
-def price_of(connection: ConnectionInfo) -> Price | None:
-    """The connection's prices per million tokens (D12, O4); ``None`` until
-    WP91 adds them to the connection."""
-    return None
+    """The connection's own prompt profile (D9), as operation writes its
+    direct query; a point names another to measure it without changing the
+    connection."""
+    return connection.prompt_profile
 
 
 @dataclass(frozen=True)
@@ -212,26 +207,15 @@ def _prompt_for(point: Point, case: EvalCase, world: World) -> Prompt:
     """The question of ``case`` as operation would send it at ``point`` (the
     one place a run builds a prompt): the level and its system prompt, the
     layer profile of the data state, the connection's context length
-    (``context_too_large``). WP91 adds ``point.label.prompt_profile``."""
+    (``context_too_large``) and the point's prompt profile (D9); its output
+    mode reaches the client through ``DirectQuery.ask`` (``Prompt.constrained``)."""
     return direct_prompt(
         case.prompt,
         level=point.level,
         profile=world.profile,
         context_length=point.connection.context_length,
+        prompt_profile=point.label.prompt_profile,
     )
-
-
-def _check_prompt_profile(point: Point) -> None:
-    """Until the builder knows prompt profiles (WP91), a point measures today's
-    prompt only: a label naming another profile would claim what was not sent.
-    WP91 removes this check when ``_prompt_for`` passes the profile on."""
-    if point.label.prompt_profile != PromptProfile():
-        raise RunError(
-            400,
-            "bad_request",
-            "Prompt profiles other than the default are not built yet (WP91).",
-            point=point.index,
-        )
 
 
 # --- the run's background thread -------------------------------------------------
@@ -466,9 +450,7 @@ class Evaluation:
                         connection_id=connection.id,
                         connection=connection.name,
                     )
-            point = self._point(index, wanted, connection, level, endpoint)
-            _check_prompt_profile(point)
-            found.append(point)
+            found.append(self._point(index, wanted, connection, level, endpoint))
         return found
 
     @staticmethod

@@ -23,7 +23,14 @@ from pathlib import Path
 from typing import Any
 
 from casefiles import CASE_FILES, load_cases
-from variants import VARIANTS, load_examples, prompt_hash, with_examples
+from variants import (
+    APP_EXAMPLES,
+    VARIANTS,
+    load_examples,
+    prompt_hash,
+    prompt_profile,
+    with_examples,
+)
 
 from geotandem.catalog import model_profile
 from geotandem.config import Settings
@@ -46,17 +53,12 @@ LIMITS = Limits(max_features=10_000, timeout_s=10)
 
 class Recording(OpenAICompatClient):
     """The real client, keeping its last completion: tokens for every answer
-    (H-3), the verbatim text when the answer does not read (H-4). With
-    ``text_only`` the schema is not sent as constrained output; the prompt
-    still holds it as text, as for an endpoint that ignores it (H-8)."""
+    (H-3), the verbatim text when the answer does not read (H-4)."""
 
     last: Completion | None = None
-    text_only = False
 
     def complete(self, messages: Sequence[Message], **kwargs: Any) -> Completion:
         self.last = None
-        if self.text_only:
-            kwargs["schema"] = None
         self.last = super().complete(messages, **kwargs)
         return self.last
 
@@ -108,7 +110,8 @@ def main() -> int:
     parser.add_argument(
         "--no-format",
         action="store_true",
-        help="no constrained output; the schema only as text in the prompt (H-8)",
+        help="no constrained output; the schema only as text in the prompt (H-8; "
+        "the prompt profile's output 'text')",
     )
     parser.add_argument("--label", default="run")
     parser.add_argument(
@@ -120,12 +123,14 @@ def main() -> int:
         "--variant",
         default="p0",
         choices=sorted(VARIANTS),
-        help="how the messages are rebuilt (docs/testplan-system-context.md, 5)",
+        help="how the messages are written (docs/testplan-system-context.md, 5): p0, p5 and "
+        "p9 by the application's builder, the others rebuilt from p0 (measurement only)",
     )
     parser.add_argument(
         "--examples",
         metavar="NAME",
-        help="examples/NAME.txt in place of the prompt's examples section",
+        help="an example set in place of the prompt's examples section: 12 the "
+        "application's (builder), any other examples/NAME.txt",
     )
     parser.add_argument(
         "--profile",
@@ -141,8 +146,17 @@ def main() -> int:
     args = parser.parse_args()
     if args.no_examples and (args.examples or args.variant != "p0"):
         parser.error("--no-examples takes neither --examples nor a variant")
-    examples = "" if args.no_examples else load_examples(args.examples) if args.examples else None
+    in_app = args.examples in APP_EXAMPLES
+    examples = (
+        ""
+        if args.no_examples
+        else load_examples(args.examples)
+        if args.examples and not in_app
+        else None
+    )
     variant = VARIANTS[args.variant]
+    # What the application's builder writes (plan E3, D9): same options, same prompt.
+    written = prompt_profile(args.variant, args.examples, args.no_format)
     api_key = None
     if args.api_key_env:
         api_key = os.environ.get(args.api_key_env)
@@ -160,8 +174,10 @@ def main() -> int:
     context = ToolContext(backend=backend, limits=LIMITS)
 
     def build(text: str) -> Prompt:
-        """The prompt of ``text`` as this run sends it: examples, then variant."""
-        prompt = direct_prompt(text, level=level, profile=profile)
+        """The prompt of ``text`` as this run sends it: the builder's after the
+        prompt profile, then an example set of this directory, then a
+        measurement-only variant."""
+        prompt = direct_prompt(text, level=level, profile=profile, prompt_profile=written)
         messages = variant(with_examples(list(prompt.messages), examples))
         return replace(prompt, messages=tuple(messages))
 
@@ -215,7 +231,6 @@ def main() -> int:
                 prompt = build(case.prompt)
                 record: dict[str, Any] = {"case": case.id, "seed": seed}
                 client = Recording(endpoint)
-                client.text_only = args.no_format
                 try:
                     found = DirectQuery(client, context, level).ask(prompt, profile=profile)
                     verdict = grade(

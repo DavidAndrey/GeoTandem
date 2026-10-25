@@ -750,7 +750,7 @@ msgstr ""
 msgid "1 · Messpunkte"
 msgstr ""
 
-#: src/admin/evaluation/profileOptions.ts
+#: src/admin/promptProfile.ts
 msgid "12 Beispiele"
 msgstr ""
 
@@ -1182,10 +1182,6 @@ msgstr ""
 msgid "Andere Arbeitsweise vorschlagen (Werkzeugkette)"
 msgstr ""
 
-#: src/admin/evaluation/NewRunPage.tsx
-msgid "Andere Promptprofile als Standard · P0 · erzwungen lassen sich in dieser Version noch nicht messen. Wählen Sie für jeden Messpunkt Standard · P0 · erzwungen."
-msgstr ""
-
 #: src/queries/SavedQueries.tsx
 msgid "Andere Ziel-Layer"
 msgstr ""
@@ -1514,8 +1510,16 @@ msgstr ""
 msgid "Ausgabe"
 msgstr ""
 
+#: src/admin/ConnectionsPage.tsx
+msgid "Ausgabe je Mio. Tokens"
+msgstr ""
+
 #: src/admin/evaluation/NewRunPage.tsx
 msgid "Ausgabe von Messpunkt {n}"
+msgstr ""
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Ausgabeformat"
 msgstr ""
 
 #: src/admin/evaluation/ComparisonPage.tsx
@@ -1647,6 +1651,7 @@ msgstr ""
 msgid "Beispieldatensatz „Bern-Mittelland\" laden"
 msgstr ""
 
+#: src/admin/ConnectionsPage.tsx
 #: src/admin/evaluation/RunPage.tsx
 msgid "Beispiele"
 msgstr ""
@@ -2878,6 +2883,14 @@ msgstr ""
 msgid "Distanz in Metern"
 msgstr ""
 
+#: src/admin/ConnectionsPage.tsx
+msgid "Drei Buchstaben, z. B. CHF, EUR, USD."
+msgstr ""
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Drei Grossbuchstaben, z. B. CHF"
+msgstr ""
+
 #: src/admin/CatalogPage.tsx
 #: src/admin/DuplicateLayerDialog.tsx
 #: src/queries/ManageQueriesDialog.tsx
@@ -2951,6 +2964,10 @@ msgstr ""
 
 #: src/i18n/errors.ts
 msgid "Ein Layer fehlt oder ist nicht sichtbar."
+msgstr ""
+
+#: src/i18n/errors.ts
+msgid "Ein Preis braucht beide Beträge (Eingabe und Ausgabe) und die Währung, oder keinen davon."
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -3048,6 +3065,10 @@ msgstr ""
 
 #: src/model/panel/PromptPanel.tsx
 msgid "Eingabe gesperrt, solange das Modell arbeitet"
+msgstr ""
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Eingabe je Mio. Tokens"
 msgstr ""
 
 #: src/admin/SystemPage.tsx
@@ -3340,8 +3361,12 @@ msgstr ""
 msgid "Erwartet"
 msgstr ""
 
-#: src/admin/evaluation/profileOptions.ts
+#: src/admin/promptProfile.ts
 msgid "erzwungen"
+msgstr ""
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Erzwungen: das Antwortschema geht auch als eingeschränkte Ausgabe mit. Nur Text: das Schema steht nur im Prompt."
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -3730,6 +3755,10 @@ msgstr ""
 msgid "Gemessen: {point} hatte auf diesem Layer {right} von {total} Antworten richtig (Lauf #{id}, {cases})."
 msgstr ""
 
+#: src/admin/ConnectionsPage.tsx
+msgid "Gemessene Varianten des Prompts der Direktabfrage; die Werkzeugkette nutzt immer den Standard. Welche Variante einem Modell hilft, zeigt ein Bewertungslauf."
+msgstr ""
+
 #: src/i18n/errors.ts
 msgid "Genau eine Stufe muss voreingestellt sein."
 msgstr ""
@@ -4092,10 +4121,6 @@ msgstr ""
 #: src/admin/AdminLayout.tsx
 #: src/admin/ImportLogPage.tsx
 msgid "Importprotokoll"
-msgstr ""
-
-#: src/admin/evaluation/RunPage.tsx
-msgid "In dieser Version speichert die Anbindung noch kein Promptprofil; Übernehmen ist noch nicht möglich."
 msgstr ""
 
 #: src/model/panel/Answer.tsx
@@ -5413,7 +5438,7 @@ msgstr ""
 msgid "nur Metadaten"
 msgstr ""
 
-#: src/admin/evaluation/profileOptions.ts
+#: src/admin/promptProfile.ts
 msgid "nur Text"
 msgstr ""
 
@@ -5537,16 +5562,32 @@ msgstr ""
 msgid "Operator"
 msgstr ""
 
+#: src/admin/ConnectionsPage.tsx
+msgid "Optional, je Million Tokens: Damit zeigt die Bewertung Schätzung und Kosten in Geld, sonst in Tokens. Beide Beträge und die Währung, oder keines davon."
+msgstr ""
+
 #: src/admin/evaluation/profileOptions.ts
 msgid "P0"
+msgstr ""
+
+#: src/admin/promptProfile.ts
+msgid "P0 (wie bisher)"
 msgstr ""
 
 #: src/admin/evaluation/profileOptions.ts
 msgid "P5"
 msgstr ""
 
+#: src/admin/promptProfile.ts
+msgid "P5 (Beispiele vor dem Steckbrief)"
+msgstr ""
+
 #: src/admin/evaluation/profileOptions.ts
 msgid "P9"
+msgstr ""
+
+#: src/admin/promptProfile.ts
+msgid "P9 (Hinweis „erste Frage\" als eigene Systemnachricht)"
 msgstr ""
 
 #: src/auth/LoginPage.tsx
@@ -5575,12 +5616,17 @@ msgstr ""
 msgid "Plan anpassen"
 msgstr ""
 
+#: src/admin/ConnectionsPage.tsx
 #: src/admin/evaluation/RunPage.tsx
 msgid "Platzierung"
 msgstr ""
 
 #: src/admin/evaluation/NewRunPage.tsx
 msgid "Platzierung von Messpunkt {n}"
+msgstr ""
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Preise"
 msgstr ""
 
 #: src/admin/ModelActionPage.tsx
@@ -5617,6 +5663,10 @@ msgstr ""
 msgid "Prompt-Hash"
 msgstr ""
 
+#: src/admin/ConnectionsPage.tsx
+msgid "Promptprofil"
+msgstr ""
+
 #: src/admin/evaluation/NewRunPage.tsx
 msgid "Promptprofil · Beispiele · Platzierung · Ausgabe"
 msgstr ""
@@ -5627,6 +5677,10 @@ msgstr ""
 
 #: src/admin/evaluation/RunPage.tsx
 msgid "Promptprofil übernehmen?"
+msgstr ""
+
+#: src/admin/ModelActionPage.tsx
+msgid "Promptprofil: {written}"
 msgstr ""
 
 #: src/admin/evaluation/words.ts
@@ -6131,7 +6185,7 @@ msgstr ""
 msgid "Stand von Hand geändert"
 msgstr ""
 
-#: src/admin/evaluation/profileOptions.ts
+#: src/admin/promptProfile.ts
 msgid "Standard"
 msgstr ""
 
@@ -6958,6 +7012,10 @@ msgstr ""
 
 #: src/admin/evaluation/NewRunPage.tsx
 msgid "Wählen Sie Startbestand oder eigene Fälle."
+msgstr ""
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Währung"
 msgstr ""
 
 #: src/admin/evaluation/RunsPage.tsx

@@ -1,31 +1,40 @@
 """Prompt variants for the placement runs (docs/testplan-system-context.md, 5, 6).
 
-A variant rebuilds the messages ``direct_prompt`` wrote, before they are sent:
-the application stays as it is until a variant wins (H-1). The system message
-is cut into its sections at their headings (``# …``); the first section, the
-level's system prompt, has none and is keyed ``""``. An example set
-(``examples/<name>.txt``, H-2) replaces the ``# Beispiele`` section first.
+The presets the application offers as a connection's prompt profile (plan E3,
+D9) are written by its builder (``direct_prompt`` with a ``PromptProfile``):
+``--variant p0|p5|p9``, ``--examples 12`` and ``--no-format`` choose the
+profile (``prompt_profile``), so harness and application send the same prompt.
+
+The measurement-only variants (P1-P4, P8), which the application does not
+offer, rebuild the messages the builder wrote, before they are sent (H-1).
+The system message is cut into its sections at their headings (``# …``); the
+first section, the level's system prompt, has none and is keyed ``""``. An
+example set of this directory (``examples/<name>.txt``, H-2) replaces the
+``# Beispiele`` section first.
 
     uv run python evals/run.py --model gemma4:12b --variant p5 --label p5-gemma4
     uv run python evals/run.py --model gemma4:12b --examples 3 --label p6-3-gemma4
 """
 
-import hashlib
 import json
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import cast, get_args
 
 from geotandem.llm import Completion, Message
+from geotandem.model.prompt import prompt_hash
 from geotandem.model.result import parse_answer
-from geotandem.model.schemas import QueryAnswer
+from geotandem.model.schemas import ExampleSet as AppExamples
+from geotandem.model.schemas import Placement, PromptProfile, QueryAnswer
 from geotandem_query import QueryObject
+
+__all__ = ["prompt_hash"]  # the application's, as the run header names it (H-5)
 
 HERE = Path(__file__).parent
 EXAMPLES_DIR = HERE / "examples"
 
-STECKBRIEF = "# Layer-Steckbrief"
 FORMAT = "# Antwortformat"
 EXAMPLES = "# Beispiele"
 TALK = "# Gespräch"
@@ -81,13 +90,34 @@ class ExampleSet:
         return "\n\n".join(parts)
 
 
+APP_EXAMPLES: frozenset[str] = frozenset(get_args(AppExamples)) - {"standard"}
+"""Example sets the application offers (``--examples 12``): its builder writes them."""
+
+PLACEMENTS: dict[str, Placement] = {"p0": "P0", "p5": "P5", "p9": "P9"}
+"""``--variant`` names of the placements the application offers."""
+
+
+def prompt_profile(variant: str, examples: str | None, text_only: bool) -> PromptProfile:
+    """The application's prompt profile for these options: ``P0`` for a
+    measurement-only variant, which then rebuilds what the builder wrote."""
+    return PromptProfile(
+        examples=cast(AppExamples, examples) if examples in APP_EXAMPLES else "standard",
+        placement=PLACEMENTS.get(variant, "P0"),
+        output="text" if text_only else "constrained",
+    )
+
+
 def load_examples(name: str) -> str:
     """``examples/<name>.txt``, every worked answer checked against the answer
-    schema: a set the model could not have written measures nothing."""
+    schema: a set the model could not have written measures nothing. The sets
+    the application offers live with it (``APP_EXAMPLES``)."""
     path = EXAMPLES_DIR / f"{name}.txt"
     if not path.is_file():
         known = ", ".join(sorted(p.stem for p in EXAMPLES_DIR.glob("*.txt")))
-        raise SystemExit(f"no example set {name!r} in {EXAMPLES_DIR} (known: {known})")
+        raise SystemExit(
+            f"no example set {name!r} in {EXAMPLES_DIR} (known: {known}; "
+            f"the application's: {', '.join(sorted(APP_EXAMPLES))})"
+        )
     text = path.read_text("utf-8").strip()
     if not text.startswith(EXAMPLES + "\n"):
         raise SystemExit(f"{path} must start with the line {EXAMPLES!r}")
@@ -102,7 +132,8 @@ def load_examples(name: str) -> str:
 
 
 Variant = Callable[[list[Message]], list[Message]]
-"""Takes the messages of a first question (system, user) and returns what is sent."""
+"""Takes the messages of a first question (system, user) as the builder wrote
+them under ``P0`` and returns what is sent."""
 
 
 def _system(messages: list[Message]) -> tuple[Sections, Message]:
@@ -116,7 +147,7 @@ def _sent(sections: Sections, *rest: Message) -> list[Message]:
 
 
 def p0(messages: list[Message]) -> list[Message]:
-    """Reference: as the application sends it."""
+    """As the builder wrote it, the placements P0, P5 and P9 included."""
     return messages
 
 
@@ -154,15 +185,6 @@ def p4(messages: list[Message]) -> list[Message]:
     return _sent(sections, user)
 
 
-def p5(messages: list[Message]) -> list[Message]:
-    """Order: system prompt, examples, layer profile, answer format (with the
-    schema), conversation note."""
-    sections, user = _system(messages)
-    order = ["", EXAMPLES, STECKBRIEF, FORMAT, TALK]
-    assert set(order) >= set(sections), f"unexpected sections {set(sections) - set(order)}"
-    return _sent({h: sections[h] for h in order if h in sections}, user)
-
-
 def p8(messages: list[Message]) -> list[Message]:
     """The JSON schema only as constrained output, not as text in the prompt."""
     sections, user = _system(messages)
@@ -172,40 +194,27 @@ def p8(messages: list[Message]) -> list[Message]:
     return _sent(sections, user)
 
 
-def p9(messages: list[Message]) -> list[Message]:
-    """The first-question note as a system message of its own, right before
-    the question: three messages, not two."""
-    sections, user = _system(messages)
-    note = sections.pop(TALK)
-    return _sent(sections, Message("system", note), user)
-
-
 VARIANTS: dict[str, Variant] = {
-    "p0": p0,
+    **dict.fromkeys(PLACEMENTS, p0),
     "p1": p1,
     "p2": p2,
     "p3": p3,
     "p4": p4,
-    "p5": p5,
     "p8": p8,
-    "p9": p9,
 }
-"""P6 is ``--examples``, P7 an example set on real layers (``--examples``)."""
+"""P0, P5 and P9 are the builder's (``PLACEMENTS``); P6 is ``--examples``, P7
+an example set on real layers (``--examples``)."""
 
 
 def with_examples(messages: list[Message], examples: str | None) -> list[Message]:
-    """The ``# Beispiele`` section replaced by ``examples``, or dropped for ``""``."""
+    """The ``# Beispiele`` section of the first system message replaced by
+    ``examples``, or dropped for ``""``; the messages after it stay."""
     if examples is None:
         return messages
-    sections, user = _system(messages)
+    system, *rest = messages
+    assert system.role == "system", "a prompt starts with its system message"
+    sections = split(system.content)
     if EXAMPLES not in sections:
         raise ValueError("the system message has no examples section to replace")
     sections[EXAMPLES] = examples
-    return _sent(sections, user)
-
-
-def prompt_hash(messages: list[Message], schema: object) -> str:
-    """Over every message and the schema, as sent: the same hash, the same prompt."""
-    sent = [{"role": m.role, "content": m.content} for m in messages]
-    blob = json.dumps({"messages": sent, "schema": schema}, ensure_ascii=False, sort_keys=True)
-    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+    return _sent(sections, *rest)

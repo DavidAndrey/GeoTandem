@@ -68,12 +68,13 @@ from geotandem.data import DataBackend, Limits
 from geotandem.data import spatialite as spatialite_module
 from geotandem.db.orm import ModelAction
 from geotandem.engine.errors import ResultTooLarge
-from geotandem.llm import Completion
+from geotandem.llm import Completion, Message
 from geotandem.model import service
 from geotandem.model.chain import run as chain_run
 from geotandem.model.chain.plan import check_plan
 from geotandem.model.chain.run import run_step
 from geotandem.model.chain.tools import tool_list
+from geotandem.model.prompt import FIRST, examples_section
 from geotandem.model.record import ModelActionStore
 from geotandem.model.result import answer_format
 from geotandem.model.schemas import (
@@ -235,6 +236,44 @@ async def test_the_reference_question_as_a_chain_finds_10_of_137(
     assert (again.status_code, again.json()["code"]) == (409, "already_decided")
     # Undo for the log: the adopted chain is the account's last model change.
     assert (await client.post(url(done["id"], "undo"))).status_code == 200
+
+
+async def test_the_connections_prompt_profile_writes_the_direct_query_not_the_chain(
+    client: httpx.AsyncClient, app: FastAPI, model: Model, levels: dict[str, int]
+) -> None:
+    """Plan E3, D9: the connection's prompt profile writes the direct query; the
+    chain keeps the default until it is evaluated (plan E3, 9)."""
+    [connection] = (await client.get("/api/admin/llm/connections")).json()
+    own = {"examples": "12", "placement": "P9", "output": "text"}
+    patched = await client.patch(
+        f"/api/admin/llm/connections/{connection['id']}", json={"prompt_profile": own}
+    )
+    assert patched.status_code == 200, patched.text
+    planned = await ask_chain(client, app, model, reference_plan())
+    model.script(completion(case("clarification")))
+    response = await client.post(PROMPT, json={"text": "Welche Schulen?"})
+    assert response.status_code == 202, response.text
+    await settle(app)
+
+    # The record keeps the profile it was written with (F-6.8, H7), whatever
+    # the connection's is later.
+    back = {"examples": "standard", "placement": "P0", "output": "constrained"}
+    reset = await client.patch(
+        f"/api/admin/llm/connections/{connection['id']}", json={"prompt_profile": back}
+    )
+    assert reset.status_code == 200, reset.text
+    asked = await record(client, response.json()["id"])
+    assert asked["connection"]["prompt_profile"] == own
+    assert (await record(client, planned["id"]))["connection"]["prompt_profile"] == back
+
+    chain, direct = model.fake.calls
+    assert [m.role for m in chain.messages] == ["system", "user"]
+    assert chain.messages[0].content.endswith(FIRST)
+    assert chain.schema == answer_format("chain")
+    assert [m.role for m in direct.messages] == ["system", "system", "user"]
+    assert direct.messages[1:] == (Message("system", FIRST), Message("user", "Welche Schulen?"))
+    assert examples_section("12") in direct.messages[0].content
+    assert direct.schema is None  # output "text": the schema only in the prompt
 
 
 async def test_teilautonom_halts_before_the_buffer(

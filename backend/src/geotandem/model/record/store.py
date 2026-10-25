@@ -30,7 +30,7 @@ from sqlalchemy.orm import Session, object_session
 
 from geotandem import audit
 from geotandem.auth.accounts import Account
-from geotandem.connections import ConnectionInfo
+from geotandem.connections import ConnectionInfo, stored_prompt_profile
 from geotandem.db.orm import ModelAction, ModelActionStep, ModelCall
 from geotandem.db.spatialite import reading
 from geotandem.engine import ResultStamp
@@ -56,6 +56,7 @@ from geotandem.model.schemas import (
     ModelActionView,
     NotCounted,
     PlanAnswer,
+    PromptProfile,
     QueryAnswer,
     Reference,
     Refusal,
@@ -341,9 +342,18 @@ def level_snapshot(level: Level) -> LevelSnapshot:
     )
 
 
-def connection_snapshot(info: ConnectionInfo) -> ConnectionSnapshot:
+def connection_snapshot(
+    info: ConnectionInfo, prompt_profile: PromptProfile | None = None
+) -> ConnectionSnapshot:
+    """The connection as it was; ``prompt_profile`` the one the prompt was
+    written with (the connection's for a direct query, the default for a chain)."""
     return ConnectionSnapshot(
-        id=info.id, name=info.name, model=info.model, host=info.host, locality=info.locality
+        id=info.id,
+        name=info.name,
+        model=info.model,
+        host=info.host,
+        locality=info.locality,
+        prompt_profile=prompt_profile,
     )
 
 
@@ -468,6 +478,11 @@ def to_view(
                 "model": row.connection_model,
                 "host": row.connection_host,
                 "locality": row.connection_locality,
+                "prompt_profile": (
+                    None
+                    if row.prompt_profile is None
+                    else stored_prompt_profile(row.prompt_profile, f"model action {row.id}")
+                ),
             },
             "profile_hash": row.profile_hash,
             "prompt_hash": row.prompt_hash,
@@ -923,6 +938,11 @@ class ModelActionStore:
                 connection_model=new.connection.model,
                 connection_host=new.connection.host,
                 connection_locality=new.connection.locality,
+                prompt_profile=(
+                    new.connection.prompt_profile.model_dump()
+                    if new.connection.prompt_profile is not None
+                    else None
+                ),
                 profile_hash=new.profile_hash,
             )
             db.add(row)
