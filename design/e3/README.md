@@ -54,7 +54,7 @@ Einstiege von aussen: Arbeitsplatz (nur Admin) **Als Prüffall speichern** → V
 6. „Zur Anbindung“ führt auf die bestehende Seite Modellanbindungen; freigeben und als Standard setzen dort.
 
 ## Offener Punkt (geklärt 2026-10-24)
-- `attr-franzoesisch` hat in Wirklichkeit 10 von 10 bei allen vier Messpunkten (Läufe `p0-*`, `x-p0-*`, `p9-luna`). „0 von 10“ in BRIEF §6 galt nur *ohne* bestätigte Codelisten (Phase 4, Modus `no-domains`). Der Steckbrief der Beispieldaten ist vollständig, V8.2 zeigt für sie 100 %. Fixture berichtigt (Zellen, Teil = Abstimmung, da der Fall aus `cases.json` stammt).
+- `attr-franzoesisch` hat in Wirklichkeit 10 von 10 bei allen vier Messpunkten (Läufe `p0-*`, `x-p0-*`, `p9-luna`). „0 von 10“ in BRIEF §6 galt nur *ohne* bestätigte Codelisten (Phase 4, Modus `no-domains`). Der Steckbrief der Beispieldaten ist vollständig in den Codelisten (6 von 6 bestätigt), nicht in den Beschriftungen und Beschreibungen: 6 von 27 Beschriftungen wiederholen den Spaltennamen (Gross-/Kleinschreibung zählt nicht, z. B. «Einwohner» über `einwohner`), 22 von 27 Attributen haben keine Beschreibung. V8.2 erscheint für sie also nicht (berichtigt in WP94, 2026-10-25; die Zahlen von `steckbrief.beispieldaten` in der Fixture sind nicht gezählt). Fixture berichtigt (Zellen, Teil = Abstimmung, da der Fall aus `cases.json` stammt).
 
 ## Daten
 `fixture/bewertung.json`: Prüffälle (inkl. Lesarten, Verhaltensfall, eigene mit Status), Messpunkte, Läufe #8–#14 mit Beschriftung, Ergebnissen, Vergleich, Zellen der Referenzfälle, Fall-im-Lauf n03 × luna P9, Abschätzung und Steckbrief. Werte aus BRIEF §6; ergänzte Werte sind mit `"_ergaenzt": true` markiert (u. a. luna P9 Abstimmung 291, Haiku-Vergleich, Kosten, Läufe #8–#12, eigene Fälle).

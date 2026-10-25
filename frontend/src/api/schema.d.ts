@@ -1536,7 +1536,9 @@ export interface paths {
     put?: never
     /**
      * Estimate
-     * @description Requests, tokens, cost and duration before the start (D12, V4.1); no model call.
+     * @description Requests, tokens, cost and duration before the start (D12, V4.1); no
+     *     model call. A selection without a runnable case is ``no_cases``, as at the
+     *     start.
      */
     post: operations['estimate_api_admin_evaluation_runs_estimate_post']
     delete?: never
@@ -1552,7 +1554,10 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** Runs */
+    /**
+     * Runs
+     * @description Newest first; with ``connection_id`` the runs that measured it (O7).
+     */
     get: operations['runs_api_admin_evaluation_runs_get']
     put?: never
     /**
@@ -1683,6 +1688,8 @@ export interface paths {
      * Profile Summary
      * @description How complete the metadata is that the model sees (D11, V8): of the sample
      *     data, or of the live catalog as ``account`` sees it (default: the caller).
+     *     An unknown ``account`` is 404, as on ``GET /api/admin/llm/profile``; the
+     *     sample is the same for every account (D4).
      */
     get: operations['profile_summary_api_admin_evaluation_profile_summary_get']
     put?: never

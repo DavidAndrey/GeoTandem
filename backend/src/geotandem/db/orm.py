@@ -459,6 +459,73 @@ class OwnCase(Base):
     """Naive UTC from the application's clock."""
 
 
+class EvalRun(Base):
+    """A run of the evaluation (plan E3, D7, D8): a measurement, not use, so
+    never a model action. ``request`` is the request as V4 composed it,
+    ``label`` the ``RunLabel``, ``cases`` the ``RunCase`` list as the run asked
+    them (H7), ``points`` the ``PointView`` list (figures once done), ``prices``
+    each point's price as it was at the start (``None`` without one).
+    ``connection_ids`` is ``,1,3,``, for the filter of a connection's runs."""
+
+    __tablename__ = "eval_run"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    status: Mapped[str] = mapped_column(String(16), index=True)
+    scope: Mapped[str] = mapped_column(String(16))
+    data_state: Mapped[str] = mapped_column(String(16))
+    request: Mapped[dict[str, Any]] = mapped_column(JSON)
+    label: Mapped[dict[str, Any]] = mapped_column(JSON)
+    cases: Mapped[list[Any]] = mapped_column(JSON)
+    points: Mapped[list[Any]] = mapped_column(JSON)
+    prices: Mapped[list[Any]] = mapped_column(JSON)
+    connection_ids: Mapped[str] = mapped_column(String(200))
+    case_set_hash: Mapped[str] = mapped_column(String(80))
+    reference: Mapped[int]
+    progress_done: Mapped[int] = mapped_column(default=0, server_default="0")
+    progress_total: Mapped[int]
+    error: Mapped[str | None] = mapped_column(String(64))
+    started_by: Mapped[str] = mapped_column(String(63))
+    started_at: Mapped[datetime]
+    finished_at: Mapped[datetime | None]
+    """Naive UTC from the application's clock."""
+
+
+class EvalAnswer(Base):
+    """One answer of one repeat of a run (``AnswerView``): the grading fields,
+    latency, tokens, the answer as read, the verbatim text of one that did not
+    read. Result sets are feature ids, never rows."""
+
+    __tablename__ = "eval_answer"
+    __table_args__ = (UniqueConstraint("run_id", "case_id", "point", "seed"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    run_id: Mapped[int] = mapped_column(ForeignKey("eval_run.id", ondelete="CASCADE"))
+    case_id: Mapped[str] = mapped_column(String(63))
+    point: Mapped[int]
+    connection_id: Mapped[int] = mapped_column(index=True)
+    """The point's connection, for the duration estimate of its next run (D12)."""
+    block: Mapped[int]
+    seed: Mapped[int]
+    verdict: Mapped[str] = mapped_column(String(16))
+    code: Mapped[str | None] = mapped_column(String(64))
+    flags: Mapped[list[str]] = mapped_column(JSON)
+    silently_wrong: Mapped[bool] = mapped_column(default=False, server_default=false())
+    latency_ms: Mapped[int | None]
+    prompt_tokens: Mapped[int | None]
+    completion_tokens: Mapped[int | None]
+    answer: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    refusal: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    raw: Mapped[str | None]
+    reading: Mapped[int | None]
+    diff: Mapped[list[Any] | None] = mapped_column(JSON)
+    hits: Mapped[int | None]
+    reference_hits: Mapped[int | None]
+    only_answer: Mapped[list[int]] = mapped_column(JSON)
+    only_answer_count: Mapped[int] = mapped_column(default=0, server_default="0")
+    only_reference: Mapped[list[int]] = mapped_column(JSON)
+    only_reference_count: Mapped[int] = mapped_column(default=0, server_default="0")
+
+
 class AppMeta(Base):
     """Instance-wide facts fixed at first start, e.g. the internal CRS."""
 

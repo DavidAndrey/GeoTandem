@@ -450,7 +450,7 @@ class LayerGaps(BaseModel):
     unconfirmed_codes: list[str]
     """Text attributes with a proposed code list not yet confirmed: the largest effect."""
     unlabelled: list[str]
-    """Attributes whose label is their column name."""
+    """Attributes whose label is their column name, case ignored."""
     undescribed: list[str]
     """Attributes without a description; ``""`` stands for the layer itself."""
 
@@ -463,9 +463,12 @@ class ProfileSummary(BaseModel):
     attributes: int
     labelled: int
     text_attributes: int
+    """Text attributes with a code list, confirmed or proposed; free text and a
+    column the import proposed no list for are not counted."""
     text_with_codes: int
     described: int
-    """Layers and attributes with a description, out of ``layers + attributes``."""
+    """Layers and attributes with a description, out of ``layers + attributes``:
+    the third and lowest step of care (Phase 4)."""
     gaps: list[LayerGaps]
     """Layers with something missing; empty when complete."""
 
@@ -517,8 +520,12 @@ class RunLabel(BaseModel):
     seeds: list[int]
     cases: int
     case_set_hash: str
-    """Over the ids and references of the cases: two runs with the same hash
-    asked the same questions (V5.1 *Gegenüberstellen*)."""
+    """SHA-256 (64 hex digits) over every field of each case the run asked
+    except its tags and note (id, prompt, references, ``require``, ``expect``,
+    split, data state, ...), in the order of their ids: two runs with the same
+    hash asked the same questions (V5.1 *Gegenüberstellen*). A case left out
+    when its reading fails at run time is left out of the hash and of
+    ``cases`` too."""
     started_at: datetime
     started_by: str
 
@@ -608,9 +615,11 @@ class RunView(BaseModel):
     cost_so_far: list[Money] = []
     cells: list[Cell]
     error: str | None = None
-    """Why a ``failed`` run stopped while running, as a code (the sample copy
-    could not be built, a transport code). A selection without a runnable case
-    never starts: ``POST /runs`` refuses it with ``no_cases``."""
+    """Why a ``failed`` run stopped while running, as a code: ``internal_error``,
+    a transport code (``llm_unauthorized``, ...) after which a connection's
+    points were stopped, or ``no_cases`` when every reading failed at run
+    time. A selection without a runnable case never starts: ``POST /runs``
+    refuses it with ``no_cases``."""
     finished_at: datetime | None = None
 
 

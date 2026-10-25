@@ -25,7 +25,7 @@ from sqlalchemy.orm import Session
 from geotandem.connection_check import CheckResult
 from geotandem.db.orm import LLMConnection, User
 from geotandem.db.spatialite import reading
-from geotandem.evaluation.schemas import Money
+from geotandem.evaluation.figures import Price
 from geotandem.llm import Effort, Endpoint, LLMError, Locality, classify_host, host_of
 from geotandem.model.schemas import PromptProfile
 from geotandem.vault import CredentialsUnreadable, Vault
@@ -204,34 +204,19 @@ def stored_prompt_profile(value: Any, where: str) -> PromptProfile:
         return PromptProfile()
 
 
-@dataclass(frozen=True)
-class Price:
-    """A connection's prices per million tokens (O4)."""
-
-    input: Money
-    output: Money
-
-    def cost(self, prompt_tokens: int, completion_tokens: int) -> Money:
-        """What ``prompt_tokens`` in and ``completion_tokens`` out cost (D12)."""
-        amount = (
-            prompt_tokens * self.input.amount + completion_tokens * self.output.amount
-        ) / 1_000_000
-        return Money(amount=amount, currency=self.input.currency)
-
-
 def price_of(connection: ConnectionInfo) -> Price | None:
     """The connection's prices, ``None`` without them: a run's estimate and
-    cost then show in tokens only (D12)."""
+    cost then show in tokens only (D12); ``figures.cost`` turns tokens into money."""
     if (
         connection.price_input_per_mtok is None
         or connection.price_output_per_mtok is None
         or connection.price_currency is None
     ):
         return None
-    currency = connection.price_currency
     return Price(
-        input=Money(amount=connection.price_input_per_mtok, currency=currency),
-        output=Money(amount=connection.price_output_per_mtok, currency=currency),
+        input_per_million=connection.price_input_per_mtok,
+        output_per_million=connection.price_output_per_mtok,
+        currency=connection.price_currency,
     )
 
 

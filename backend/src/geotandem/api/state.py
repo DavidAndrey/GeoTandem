@@ -8,6 +8,7 @@ from geotandem.auth.throttle import LoginThrottle
 from geotandem.config import Settings
 from geotandem.connections import Connections
 from geotandem.data import DataBackend, Limits, Op
+from geotandem.evaluation.run import Runs
 from geotandem.importing.isolation import ReadLimits
 from geotandem.importing.staging import Staging
 from geotandem.llm import ClientFactory
@@ -32,6 +33,8 @@ class AppState:
     """Builds a model client for an endpoint; a stub in tests."""
     model_calls: ModelCalls
     """The model calls in flight, in threads of their own (WP65)."""
+    runs: Runs
+    """The evaluation run in flight, at most one (plan E3, D8)."""
     setup_token: str | None = None
     """While no account exists: what setup asks for (auth.setup_token)."""
 

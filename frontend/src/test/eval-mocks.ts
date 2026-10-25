@@ -169,7 +169,7 @@ function point(
     prompt_profile: { ...P0, ...profile },
     level_id: 2,
     level_name: 'Prüfen',
-    system_prompt_hash: 'sha256:41d9',
+    system_prompt_hash: '41d941d941d941d941d941d941d941d941d941d941d941d941d941d941d941d9',
     system_prompt: null,
   }
 }
@@ -300,7 +300,7 @@ function cells(answers: number): Cell[] {
 }
 
 export const PROFILE_COMPLETE: ProfileSummary = {
-  profile_hash: 'sha256:b20a',
+  profile_hash: 'b20ab20ab20ab20ab20ab20ab20ab20ab20ab20ab20ab20ab20ab20ab20ab20a',
   layers: 6,
   attributes: 27,
   labelled: 27,
@@ -312,7 +312,7 @@ export const PROFILE_COMPLETE: ProfileSummary = {
 
 /** A customer layer after a plain import (Phase 4, mode ``raw``): what V8.1 lists. */
 export const PROFILE_RAW: ProfileSummary = {
-  profile_hash: 'sha256:da58',
+  profile_hash: 'da58da58da58da58da58da58da58da58da58da58da58da58da58da58da58da58',
   layers: 7,
   attributes: 31,
   labelled: 27,
@@ -347,7 +347,7 @@ function label(scope: RunView['label']['scope'] = 'full'): RunLabel {
     scope,
     seeds: scope === 'full' ? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] : [1, 2, 3, 4, 5],
     cases: 71,
-    case_set_hash: 'sha256:c71a',
+    case_set_hash: 'c71ac71ac71ac71ac71ac71ac71ac71ac71ac71ac71ac71ac71ac71ac71ac71a',
     started_at: STARTED,
     started_by: 'admin',
   }
@@ -407,7 +407,7 @@ export function runPage(): RunPage {
     points: 4,
     connection_ids: [1, 2, 3],
     cases: 71,
-    case_set_hash: 'sha256:c71a',
+    case_set_hash: 'c71ac71ac71ac71ac71ac71ac71ac71ac71ac71ac71ac71ac71ac71ac71ac71a',
     reference_rate: rate,
     cost: [{ amount: cost, currency: 'USD' }],
   })

@@ -182,8 +182,16 @@ msgstr ""
 msgid "{attributeRows, plural, one {Eine Attribut-Bedingung bezieht sich auf die Felder des bisherigen Layers und fällt weg. Räumliche Bedingungen bleiben.} other {# Attribut-Bedingungen beziehen sich auf die Felder des bisherigen Layers und fallen weg. Räumliche Bedingungen bleiben.}}"
 msgstr ""
 
+#: src/admin/ProfileCompleteness.tsx
+msgid "{attributes, plural, one {{attributeCount} Attribut} other {{attributeCount} Attributen}}"
+msgstr ""
+
 #: src/model/chain/Chain.tsx
 msgid "{classes} · {cell}"
+msgstr ""
+
+#: src/admin/ProfileCompleteness.tsx
+msgid "{codesDone} von {ofTexts}: {names}"
 msgstr ""
 
 #: src/table/TableDock.tsx
@@ -225,6 +233,10 @@ msgstr ""
 
 #: src/admin/ModelActionPage.tsx
 msgid "{decision} {decided}"
+msgstr ""
+
+#: src/admin/ProfileCompleteness.tsx
+msgid "{describedDone} von {partCount} (fehlt: {names})"
 msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
@@ -297,6 +309,10 @@ msgstr ""
 
 #: src/components/ui.tsx
 msgid "{label}: {value} von {max}"
+msgstr ""
+
+#: src/admin/ProfileCompleteness.tsx
+msgid "{labelsDone} von {ofAttributes} (z. B. {names})"
 msgstr ""
 
 #: src/admin/VisibilityPage.tsx
@@ -424,6 +440,10 @@ msgstr ""
 msgid "{op} {layer}"
 msgstr ""
 
+#: src/admin/ProfileCompleteness.tsx
+msgid "{others} weitere Layer sind vollständig."
+msgstr ""
+
 #: src/model/compare/CompareDialog.tsx
 msgid "{run} + {plan} Planung"
 msgstr ""
@@ -437,6 +457,10 @@ msgstr ""
 #: src/model/chain/Chain.tsx
 #: src/model/panel/Answer.tsx
 msgid "{shown} / max. {max}"
+msgstr ""
+
+#: src/admin/ProfileCompleteness.tsx
+msgid "{shown} %"
 msgstr ""
 
 #: src/model/compare/words.ts
@@ -461,6 +485,10 @@ msgstr ""
 
 #: src/map/Measurement.tsx
 msgid "{surface} · Umfang {length}"
+msgstr ""
+
+#: src/admin/ProfileCompleteness.tsx
+msgid "{texts, plural, one {{textCount} Textattribut mit Codeliste (bestätigt oder vorgeschlagen)} other {{textCount} Textattributen mit Codeliste (bestätigt oder vorgeschlagen)}}"
 msgstr ""
 
 #: src/workplace/Workplace.tsx
@@ -811,6 +839,10 @@ msgstr ""
 msgid "Alle ({allShown})"
 msgstr ""
 
+#: src/admin/ProfileCompleteness.tsx
+msgid "Alle Attribute beschriftet, alle Codelisten bestätigt, alle Beschreibungen vorhanden."
+msgstr ""
+
 #: src/editor/EditorPanel.tsx
 msgid "alle folgenden"
 msgstr ""
@@ -1139,6 +1171,10 @@ msgstr ""
 msgid "Attribut"
 msgstr ""
 
+#: src/admin/ProfileCompleteness.tsx
+msgid "Attribute mit Beschriftung"
+msgstr ""
+
 #: src/table/TableDock.tsx
 msgid "Attribute von {title}"
 msgstr ""
@@ -1327,6 +1363,7 @@ msgstr ""
 
 #: src/admin/evaluation/words.ts
 #: src/admin/format.ts
+#: src/admin/ProfilePage.tsx
 msgid "Beispieldaten"
 msgstr ""
 
@@ -1385,6 +1422,14 @@ msgstr ""
 msgid "Beschreibung für Mensch und Modell"
 msgstr ""
 
+#: src/admin/ProfileCompleteness.tsx
+msgid "Beschreibungen, die die Bedeutung nennen"
+msgstr ""
+
+#: src/admin/ProfileCompleteness.tsx
+msgid "Beschriftungen"
+msgstr ""
+
 #: src/admin/ConnectionsPage.tsx
 msgid "bestanden"
 msgstr ""
@@ -1398,6 +1443,7 @@ msgid "Betrieb"
 msgstr ""
 
 #: src/admin/evaluation/words.ts
+#: src/admin/ProfilePage.tsx
 msgid "Betriebsdaten"
 msgstr ""
 
@@ -1518,6 +1564,10 @@ msgstr ""
 
 #: src/admin/LayerPage.tsx
 msgid "Codeliste (je Zeile „Code = Bedeutung\")"
+msgstr ""
+
+#: src/admin/ProfileCompleteness.tsx
+msgid "Codelisten bestätigen"
 msgstr ""
 
 #: src/admin/ModelLogPage.tsx
@@ -1952,6 +2002,10 @@ msgstr ""
 
 #: src/i18n/errors.ts
 msgid "Der Stand ist zu gross, um gespeichert zu werden."
+msgstr ""
+
+#: src/admin/ProfileCompleteness.tsx
+msgid "Der Steckbrief enthält keinen Layer."
 msgstr ""
 
 #: src/admin/ProfilePage.tsx
@@ -2553,6 +2607,10 @@ msgstr ""
 msgid "Ein Vorschlag wartet noch auf Freigabe. Er bleibt an die Stufe {bound} gebunden, unter der er gestellt wurde, und wird nicht automatisch angewendet."
 msgstr ""
 
+#: src/admin/ProfileCompleteness.tsx
+msgid "Ein weiterer Layer ist vollständig."
+msgstr ""
+
 #: src/model/compare/CompareDialog.tsx
 msgid "eine Abfrage, {count}"
 msgstr ""
@@ -3071,12 +3129,20 @@ msgstr ""
 msgid "Felder"
 msgstr ""
 
+#: src/admin/ProfileCompleteness.tsx
+msgid "Felder ›"
+msgstr ""
+
 #: src/operations/OperationDialog.tsx
 msgid "Felder aus {rightTitle}"
 msgstr ""
 
 #: src/admin/ImportWizard.tsx
 msgid "Felder beschreiben"
+msgstr ""
+
+#: src/admin/ProfileCompleteness.tsx
+msgid "Felder von {title}"
 msgstr ""
 
 #: src/admin/ImportWizard.tsx
@@ -3278,8 +3344,16 @@ msgstr ""
 msgid "Geplante Schritte · {n} von höchstens {max}"
 msgstr ""
 
+#: src/admin/ProfileCompleteness.tsx
+msgid "gerade importiert"
+msgstr ""
+
 #: src/i18n/errors.ts
 msgid "Gerade sind zu viele Anfragen gleichzeitig unterwegs. Bitte gleich nochmals versuchen."
+msgstr ""
+
+#: src/admin/ProfileCompleteness.tsx
+msgid "Gesamt"
 msgstr ""
 
 #: src/model/log/words.ts
@@ -3993,6 +4067,10 @@ msgid "Lädt …"
 msgstr ""
 
 #: src/i18n/errors.ts
+msgid "Lauf #{run} ist abgebrochen und wartet noch auf die letzte Antwort des Modells. Versuchen Sie es gleich nochmals."
+msgstr ""
+
+#: src/i18n/errors.ts
 msgid "Lauf #{run} läuft noch. Es läuft höchstens ein Lauf zugleich."
 msgstr ""
 
@@ -4036,6 +4114,7 @@ msgstr ""
 
 #: src/admin/CatalogPage.tsx
 #: src/admin/ImportLogPage.tsx
+#: src/admin/ProfileCompleteness.tsx
 #: src/admin/ProfilePage.tsx
 #: src/admin/VisibilityPage.tsx
 #: src/workplace/AddLayers.tsx
@@ -4100,6 +4179,10 @@ msgstr ""
 msgid "Layer suchen"
 msgstr ""
 
+#: src/admin/ProfileCompleteness.tsx
+msgid "Layer und Attribute mit Beschreibung"
+msgstr ""
+
 #: src/admin/ImportRunPage.tsx
 msgid "Layer und Raumindex angelegt"
 msgstr ""
@@ -4110,6 +4193,10 @@ msgstr ""
 
 #: src/admin/ModelActionPage.tsx
 msgid "Layer-Steckbrief"
+msgstr ""
+
+#: src/admin/ProfileCompleteness.tsx
+msgid "Layerbeschreibung"
 msgstr ""
 
 #: src/admin/evaluation/words.ts
@@ -4194,6 +4281,14 @@ msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
 msgid "low"
+msgstr ""
+
+#: src/admin/ProfileCompleteness.tsx
+msgid "Lücken in {title}"
+msgstr ""
+
+#: src/admin/ProfileCompleteness.tsx
+msgid "Lücken in {title} · in dieser Reihenfolge pflegen"
 msgstr ""
 
 #: src/operations/OperationDialog.tsx
@@ -4533,6 +4628,10 @@ msgstr ""
 
 #: src/model/log/words.ts
 msgid "nicht darstellbar"
+msgstr ""
+
+#: src/admin/ProfileCompleteness.tsx
+msgid "nicht den Verbund"
 msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
@@ -5331,6 +5430,10 @@ msgstr ""
 msgid "Standard"
 msgstr ""
 
+#: src/admin/ProfileCompleteness.tsx
+msgid "stärkste Wirkung"
+msgstr ""
+
 #: src/admin/evaluation/words.ts
 msgid "Start"
 msgstr ""
@@ -5575,6 +5678,10 @@ msgstr ""
 #: src/admin/format.ts
 #: src/model/chain/PlanEditor.tsx
 msgid "Text"
+msgstr ""
+
+#: src/admin/ProfileCompleteness.tsx
+msgid "Textattribute mit bestätigter Codeliste"
 msgstr ""
 
 #: src/admin/DuplicateLayerDialog.tsx
@@ -5882,6 +5989,26 @@ msgstr ""
 msgid "Verwerfen und schliessen"
 msgstr ""
 
+#: src/admin/ProfileCompleteness.tsx
+msgid "vollständig"
+msgstr ""
+
+#: src/admin/ProfileCompleteness.tsx
+msgid "Vollständigkeit"
+msgstr ""
+
+#: src/admin/ProfilePage.tsx
+msgid "Vollständigkeit · Beispieldaten"
+msgstr ""
+
+#: src/admin/ProfilePage.tsx
+msgid "Vollständigkeit · Betriebsdaten"
+msgstr ""
+
+#: src/admin/ProfilePage.tsx
+msgid "Vollständigkeit von"
+msgstr ""
+
 #: src/editor/CompactTree.tsx
 msgid "Vom Modell gesetzt; die Marke fällt weg, sobald Sie Feld, Operator oder Wert ändern."
 msgstr ""
@@ -5894,6 +6021,10 @@ msgstr ""
 #: src/admin/ImportLogPage.tsx
 #: src/admin/ImportRunPage.tsx
 msgid "Von"
+msgstr ""
+
+#: src/admin/ProfileCompleteness.tsx
+msgid "von denen mit Codeliste (bestätigt oder vorgeschlagen)"
 msgstr ""
 
 #: src/model/approval/Approval.tsx
@@ -5993,6 +6124,10 @@ msgstr ""
 #: src/admin/AdminLayout.tsx
 #: src/admin/ProfilePage.tsx
 msgid "Was das Modell sieht"
+msgstr ""
+
+#: src/admin/ImportWizard.tsx
+msgid "Was dem Modell an diesem Layer noch fehlt, zeigt <0>der Stand des Steckbriefs</0>: zuerst Codelisten bestätigen, dann Beschriftungen, dann Beschreibungen."
 msgstr ""
 
 #: src/admin/ModelActionPage.tsx
@@ -6275,6 +6410,14 @@ msgstr ""
 
 #: src/session/SessionMenu.tsx
 msgid "Zuletzt"
+msgstr ""
+
+#: src/admin/ProfileCompleteness.tsx
+msgid "zuletzt pflegen"
+msgstr ""
+
+#: src/admin/ProfileCompleteness.tsx
+msgid "zuletzt: im Mittel ohne messbare Wirkung"
 msgstr ""
 
 #: src/admin/ImportWizard.tsx

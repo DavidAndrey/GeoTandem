@@ -95,6 +95,10 @@ test('the wizard walks a CSV with coordinates to a committed import', async () =
   await userEvent.click(screen.getByRole('button', { name: 'Übernehmen' }))
 
   expect(await screen.findByText('Import abgeschlossen')).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'der Stand des Steckbriefs' })).toHaveAttribute(
+    'href',
+    '/admin/steckbrief?layer=messstellen',
+  )
   const commit = calls.find((c) => c.key === 'POST /api/admin/imports/abc/commit')
   expect(commit?.body).toMatchObject({
     title: 'Messstellen',

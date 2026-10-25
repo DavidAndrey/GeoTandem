@@ -809,6 +809,18 @@ function Finished({ run }: { run: ImportRunInfo }) {
           <Trans>Zum Katalog</Trans>
         </Link>
       </div>
+      <p className="text-muted text-sm">
+        <Trans>
+          Was dem Modell an diesem Layer noch fehlt, zeigt{' '}
+          <Link
+            to={`/admin/steckbrief?layer=${encodeURIComponent(run.layer_name ?? '')}`}
+            className="text-accent-700"
+          >
+            der Stand des Steckbriefs
+          </Link>
+          : zuerst Codelisten bestätigen, dann Beschriftungen, dann Beschreibungen.
+        </Trans>
+      </p>
     </div>
   )
 }

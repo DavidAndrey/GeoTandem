@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from geotandem.connections import PRICES, ConnectionInfo, Connections, price_of
 from geotandem.db.orm import LLMConnection, User
+from geotandem.evaluation.figures import Price, cost
 from geotandem.llm import Endpoint
 from geotandem.vault import KEY_FILE, CredentialsUnreadable, Vault
 
@@ -344,10 +345,9 @@ async def test_prices_come_all_three_or_none(client: httpx.AsyncClient) -> None:
 async def test_price_of_reads_the_prices_in_one_place(client: httpx.AsyncClient) -> None:
     priced = {"price_input_per_mtok": 0.8, "price_output_per_mtok": 4, "price_currency": "USD"}
     price = price_of(state_info(await create(client, "Cloud", **EXTERNAL, **priced)))
-    assert price is not None
-    assert (price.input.amount, price.output.amount, price.input.currency) == (0.8, 4.0, "USD")
-    cost = price.cost(prompt_tokens=10_000, completion_tokens=500)
-    assert (round(cost.amount, 6), cost.currency) == (0.01, "USD")
+    assert price == Price(input_per_million=0.8, output_per_million=4.0, currency="USD")
+    found = cost(price, prompt_tokens=10_000, completion_tokens=500)
+    assert found is not None and (found.amount, found.currency) == (0.01, "USD")
 
 
 async def test_an_obsolete_stored_profile_reads_as_the_default(
