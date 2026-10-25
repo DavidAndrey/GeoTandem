@@ -166,7 +166,7 @@ dem Verbindungstest. Begründung und Konzept stehen in
 > ausmachen wie das Modell (Phase 4). Promptprofile je Anbindung werden
 > gemessen und übernommen; die Werkzeugkette folgt nach E3.
 
-> **E3 umgesetzt (WP85–WP96); Gate E3: offen.** Prüffälle in einem Format
+> **E3 umgesetzt (WP85–WP97); Gate E3 bestanden (2026-10-25).** Prüffälle in einem Format
 > für Startbestand, Export und Import (71 Startfälle in
 > `schema/eval-cases/`). Eigene Fälle entstehen im Arbeitsplatz, aus dem
 > Modellprotokoll oder durch Import; jeder Fall läuft auf Beispiel- oder

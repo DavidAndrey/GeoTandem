@@ -6,7 +6,7 @@ in welcher Reihenfolge in [etappen.md](etappen.md), womit in
 [tech-stack.md](tech-stack.md). Die Begriffe stehen in [CONTEXT.md](CONTEXT.md).
 
 Stand: **Etappen E1 und E2 abgeschlossen** (Modus A ohne LLM, Modus B mit
-LLM); E3, die Bewertung der Modellanbindungen, ist umgesetzt (Gate E3: offen).
+LLM); E3, die Bewertung der Modellanbindungen, ist umgesetzt (Gate E3 bestanden, 2026-10-25).
 Die Anwendung kann:
 
 - Vektordaten und Tabellen importieren, Layer verwalten, Metadaten pflegen

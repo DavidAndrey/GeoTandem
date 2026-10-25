@@ -1,6 +1,6 @@
 # Plan E3 — Evaluation of model connections
 
-> Stand: 2026-10-25 · **Entschieden: D1–D12 und O1–O4, O7, O8 (2026-10-24), Design abgeglichen (5.1) · WPs WP85–WP97 · in `ep-3` gemergt: WP85–WP89 (E3.1–E3.2), Gate E3.2 bestanden (2026-10-25, Tag `e3.2`); WP90–WP97 (E3.3–E3.5, 2026-10-25); Gate E3: Reviews entschieden (section 8), Fixes auf `ge3-fixes`** · Design: [design/e3/README.md](../design/e3/README.md) (Bildschirme V1–V8, `fixture/bewertung.json`, `screenshots/`), Briefing [design/e3/BRIEF.md](../design/e3/BRIEF.md) · Bezug: [anforderungen.md](../anforderungen.md) (F-3.1, F-3.3, F-3.6, F-3.8, F-3.13–F-3.18, F-9.3–F-9.6, F-10.3–F-10.5), [etappen.md 5](../etappen.md), [bewertung.md](../bewertung.md), [plan-e2.3-e2.6.md](plan-e2.3-e2.6.md), Messungen: [testplan-system-context.md](testplan-system-context.md) (8.1–8.5), [testplan-external-models.md](testplan-external-models.md), [benchmarks.md](benchmarks.md), Harness: [backend/evals/](../backend/evals/README.md)
+> Stand: 2026-10-25 · **Entschieden: D1–D12 und O1–O4, O7, O8 (2026-10-24), Design abgeglichen (5.1) · WPs WP85–WP97 · in `ep-3` gemergt: WP85–WP89 (E3.1–E3.2), Gate E3.2 bestanden (2026-10-25, Tag `e3.2`); WP90–WP97 (E3.3–E3.5, 2026-10-25); Gate E3 bestanden (2026-10-25, Tag `e3`), Fixes auf `ge3-fixes`** · Design: [design/e3/README.md](../design/e3/README.md) (Bildschirme V1–V8, `fixture/bewertung.json`, `screenshots/`), Briefing [design/e3/BRIEF.md](../design/e3/BRIEF.md) · Bezug: [anforderungen.md](../anforderungen.md) (F-3.1, F-3.3, F-3.6, F-3.8, F-3.13–F-3.18, F-9.3–F-9.6, F-10.3–F-10.5), [etappen.md 5](../etappen.md), [bewertung.md](../bewertung.md), [plan-e2.3-e2.6.md](plan-e2.3-e2.6.md), Messungen: [testplan-system-context.md](testplan-system-context.md) (8.1–8.5), [testplan-external-models.md](testplan-external-models.md), [benchmarks.md](benchmarks.md), Harness: [backend/evals/](../backend/evals/README.md)
 >
 > Integration branch **`ep-3`**: each WP is its own branch from it (`wpNN-…`), merged back with `--no-ff` after its gate and review; `ep-3` merges into `main` once every WP is done and Gate E3 is green. Same rules as E2: WP gate and code review per WP, etappe gates with `make gate`, acceptance test and a review of the integrated diff (section 5).
 
@@ -188,6 +188,16 @@ Open for E3.3–E3.5: WP92 adds the eligibility check also on `POST /cases` with
 #### Gate E3
 As 5.2 of plan E2, plus: the real-model check WP95 (recorded), the security review (section 5) and the regrade identity of WP86.
 
+**Passed 2026-10-25** on `ep-3` (tag `e3`):
+
+- WP gates and independent reviews of WP90–WP97, every finding fixed or answered in the merge commits.
+- Review of the integrated diff (`git diff e3.2...ep-3`, effort xhigh) and the security review (section 5, findings #45–#53 in security-review.md): fixed on `ge3-fixes` (decisions in section 8).
+- Real-model check WP95: 272/330 with gemma4:12b in the application, equal to the harness, same prompt hash.
+- Regrade identity: held at Gate E3.2 and in WP89 (0 changed verdicts); the grader is unchanged since.
+- Risk R1 (crash of the app container) traced and fixed, R3 recorded open (section 8).
+- `make gate` on the final state (`7599241`): five runs, four green (2057 backend tests, 827 frontend tests, Playwright 73 passed on both passes, restart included; the only skip is E2.1 without `GATE_LLM_MODEL`), one failed a single E1 test without a crash (R3).
+- Design: each WP compared its states with `design/e3/screenshots/` by eye (WP88, WP92, WP93, WP94; deviations recorded in their merge commits and section 5.1).
+
 ## 5 Gates and reviews
 
 As plan E2, section 5: WP gate (lint, tests, `make gen`, security list, `/code-review high`, `/simplify`), etappe gate on main (`make gate` with two Playwright passes and restart, audit, `/code-review xhigh` of the integrated diff, design walk, docs). Review effort `medium` for WP85's docs, WP96 and WP97.
@@ -266,8 +276,9 @@ Known risks and gaps (recorded 2026-10-25, WP97):
 
 | # | What | State | Next step |
 |---|---|---|---|
-| R1 | The app container crashed with a segmentation fault during concurrent GDAL imports in the Playwright gate | Seen 3 of 3 times on one intermediate WP91 commit (`ea7d21d`); not reproduced in three later gate runs on `ep-3` (`130b48e`) | R1: fix on branch crash-import-reads (ab82037), merged at Gate E3 if its gate runs are clean (serialised import reads, `PYTHONFAULTHANDLER=1` in the app container); the final word is the integrator's |
+| R1 | The app container crashed (exit 139, `double free or corruption`) in the Playwright gate under bursts of concurrent requests | **Resolved at Gate E3.** The fault handler (`PYTHONFAULTHANDLER=1`, kept in the image) and the gate's new dump of the app container on a failed pass traced it to `QueuePool._do_return_conn` → `do_close`: two request threads closing SpatiaLite connections at once. Fix `41b7895`: connections come from a `sqlite3.Connection` subclass that closes under a process-wide lock, and SpatiaLite's set-up on connect holds the same lock (`db/spatialite.py`, `test_spatialite_threads.py`); costs about 80 ms for 15 cold connections at once. The first guess, serialised import reads (`ab82037`), was taken back. Five gate runs after the fix: no crash | If it recurs, the gate prints the app's exit state and log with the fault handler's trace |
 | R2 | The unsaved-changes guard of a case (V2) does not catch the browser's back button | Known gap: links of the page and the navigation ask first, closing or reloading the tab asks the browser's question, but the declarative `BrowserRouter` has no `useBlocker`, so back leaves without asking (`CaseDetailPage.tsx`, `useAskBeforeLeaving`) | A data router (`createBrowserRouter`) would give `useBlocker`; not in E3 |
+| R3 | After an administrator creates an account, the users list (E1, `UsersPage`) did not show it within 5 s once, in the second pass of one gate run out of about twenty (`access.spec.ts:56`); the container was healthy | Open; seen once (the refetch after the create did not arrive in time; the list on screen was fetched before the create) | Make the list take the created account from the create's answer (or await the refetch) and add a test; watch the gate |
 
 Decided at Gate E3 (2026-10-25), from the integrated review and the security review (fixed on `ge3-fixes`):
 
