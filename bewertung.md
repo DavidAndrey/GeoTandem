@@ -342,17 +342,19 @@ Voraussetzung bei E3.
 ## 12 Offene Punkte
 
 Jeder Punkt nennt das Paket, bis zu dem er spätestens entschieden sein muss
-([etappen.md 5](etappen.md)). Alle sind mit dem Plan für E3 entschieden.
+([etappen.md 5](etappen.md)). Alle sind mit dem Plan für E3 entschieden, bis auf die
+versuchten Verstösse gegen Werkzeug-Freigaben: sie sind mit der Bewertung der
+Werkzeugkette verschoben.
 
 | Offen | Fällig | Anmerkung | Entschieden in [docs/plan-e3.md](docs/plan-e3.md) (2026-10-24) |
 |---|---|---|---|
 | Umfang des Startbestands | E3.1 | Wie viele Prüffälle ein belastbares Urteil tragen | 71 Fälle aus den Testplänen von E2: 33 zur Abstimmung, 38 zur Bestätigung (D2); belastbar sind Unterschiede, deren gepaartes Intervall 0 ausschliesst (D7) |
-| Alterung der Prüffälle | E3.1 | Referenzabfragen hängen an der Schemaversion (F-10.3) | Jeder Fall nennt seine Schemaversion; gespeichert wird die Referenzabfrage, das Ergebnis entsteht im Lauf; ein Fall mit fehlendem Layer ist veraltet, einer mit neu importiertem Layer markiert (D3). Eine Migration der Fälle bei einem Schemawechsel folgt mit diesem |
+| Alterung der Prüffälle | E3.1 | Referenzabfragen hängen an der Schemaversion (F-10.3) | Jeder Fall nennt seine Schemaversion; gespeichert wird die Referenzabfrage, das Ergebnis entsteht im Lauf; ein Fall mit fehlendem Layer ist veraltet, einer, dessen Referenz die Prüfungen nicht mehr besteht, ungültig, einer mit neu importiertem Layer markiert (D3). Eine Migration der Fälle bei einem Schemawechsel folgt mit diesem |
 | Tiefe der Normalisierung in Stufe 1 | E3.2 | Je mehr normalisiert wird, desto aussagekräftiger die Stufe | Kanonische Form, harmlose Formen (E-3) und sortierte UND/ODER-Argumente; Stufe 1 urteilt nicht, sie erklärt (D5) |
 | Toleranzen in Stufe 2 | E3.2 | Gleitkommawerte weichen zwischen den Backends ab | Gleichheit der Objektkennungen; Toleranzen erst für Ausgaben mit Kennzahlen (D5) |
 | Maschinelle Auswertbarkeit der Verhaltensfälle | E3.2 | Ob sich „hat sinnvoll nachgefragt" automatisch einstufen lässt | Automatisch über die Antwortart (Rückfrage, nicht beantwortbar, andere Arbeitsweise), wie im Harness bewährt |
 | Zahl der Wiederholungen je Fall | E3.3 | Und ab welcher Streuung ein Ergebnis als unbrauchbar gilt | Zwei Blöcke à fünf; ein Schnelltest mit einem Block ohne Vergleichsaussage (D7, O2) |
-| Versuchte Verstösse gegen Werkzeug-Freigaben | E3.3 | Ob der Anteil abgewiesener Werkzeugaufrufe aufgenommen wird | Mit der Bewertung der Werkzeugkette nach E3 |
+| Versuchte Verstösse gegen Werkzeug-Freigaben | E3.3 | Ob der Anteil abgewiesener Werkzeugaufrufe aufgenommen wird | Verschoben: mit der Bewertung der Werkzeugkette nach E3 |
 | Kosten bei externen Anbindungen | E3.3 | Ob der Lauf eine Kostenschätzung vorab anzeigt | Ja: Anfragen, Tokens, Dauer und, mit Preis an der Anbindung, Kosten (D12, O4) |
 
 ## 13 Bezug zu den Anforderungen

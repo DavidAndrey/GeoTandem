@@ -735,7 +735,7 @@ Zahlen aus 8.1 und dieser Tabelle als Massstab.
 ### 8.5 Phase 4: Metadaten des Steckbriefs (2026-10-23)
 
 Je Modus fehlt dem Modell ein Teil der kuratierten Metadaten der Beispieldaten
-(`--profile`, [evals/profiles.py](../backend/evals/profiles.py)); Abfrage,
+(`--profile`, [evaluation/profiles.py](../backend/src/geotandem/evaluation/profiles.py)); Abfrage,
 Prüfung und Daten bleiben gleich. Tuning-Satz, je zwei Blöcke (/330); Referenz
 P0 (`full`, Prompt-Hash `55e708badb92` wie in Phase 1 bis 3). Labels
 `a-<modus>-<modell>[-s6]`, 60 Läufe; Kosten extern geschätzt ≈ 3,5 USD.
