@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, expect, test, vi } from 'vitest'
 import { App } from '../App'
 import type { LayerGaps, ProfilePreview, ProfileSummary } from '../api/client'
+import { runPage, runView } from '../test/eval-mocks'
 import { account, attribute, signedIn } from '../test/fixtures'
 import { fakeApi, renderAt } from '../test/render'
 import { AttributeRows } from './LayerPage'
@@ -311,4 +312,23 @@ test('a share is never rounded up to 100 while something is missing', () => {
   expect(percent(199, 200)).toBe(99)
   expect(percent(0, 0)).toBeNull()
   expect(percent(3, 3)).toBe(100)
+})
+
+test('V8.1: a gap names what the newest complete run measured on the layer', async () => {
+  const haltestellen = { ...withGaps.gaps[0], layer: 'haltestellen', title: 'Haltestellen' }
+  fakeApi({
+    ...signedIn(),
+    'GET /api/admin/users': [account()],
+    ...summaryRoute([], { ...withGaps, gaps: [haltestellen] }),
+    'GET /api/admin/evaluation/runs': runPage(),
+    'GET /api/admin/evaluation/runs/13': runView('done'),
+  })
+  renderAt('/admin/steckbrief', <App />)
+  await userEvent.click(await screen.findByRole('radio', { name: 'Beispieldaten' }))
+  const gaps = await screen.findByRole('region', { name: 'Lücken in Haltestellen' })
+  expect(
+    await within(gaps).findByText(
+      /^Gemessen: gpt-6-luna P0 hatte auf diesem Layer .* \(Lauf #13, /,
+    ),
+  ).toBeInTheDocument()
 })

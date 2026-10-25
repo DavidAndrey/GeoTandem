@@ -13,6 +13,7 @@ import type { DataState, ProfilePreview } from '../api/client'
 import { useModelProfile, useProfileSummary, useUsers } from '../api/queries'
 import { ErrorNotice, Loading } from '../components/ui'
 import { formatNumber } from '../i18n/locale'
+import { useMeasured } from './evaluation/measured'
 import { typeLabel } from './format'
 import { ProfileCompleteness } from './ProfileCompleteness'
 
@@ -39,6 +40,7 @@ export function ProfilePage() {
   const imported = dataState === 'live' ? (params.get('layer') ?? undefined) : undefined
   const profile = useModelProfile(account)
   const summary = useProfileSummary(dataState, account)
+  const measured = useMeasured(dataState)
   const data = profile.data
   const size = data ? formatNumber(data.size_chars) : ''
   const tokens = data ? formatNumber(data.tokens_estimate) : ''
@@ -98,6 +100,7 @@ export function ProfilePage() {
         <ProfileCompleteness
           summary={summary.data}
           imported={imported}
+          measured={measured}
           heading={
             dataState === 'sample'
               ? t`Vollständigkeit · Beispieldaten`

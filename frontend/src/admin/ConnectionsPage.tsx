@@ -5,6 +5,7 @@ import { Trans } from '@lingui/react/macro'
 import { plural, t } from '@lingui/core/macro'
 import { Check, Minus, Plus, X } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
+import { Link } from 'react-router'
 import {
   api,
   type CheckResult,
@@ -21,7 +22,9 @@ import { ConfirmDialog, ErrorNotice, Loading, Menu, MenuItem } from '../componen
 import { errorText } from '../i18n/errors'
 import { formatNumber } from '../i18n/locale'
 import { actionsFor } from '../i18n/phrases'
-import { formatDateTime } from './format'
+import { useLastRun } from './evaluation/runs'
+import { RunStatusLabel } from './evaluation/RunsPage'
+import { formatDate, formatDateTime } from './format'
 
 const EFFORTS: Effort[] = ['default', 'none', 'low', 'medium', 'high']
 
@@ -574,6 +577,26 @@ function LastTest({ connection }: { connection: ConnectionInfo }) {
   )
 }
 
+/** "zuletzt bewertet" (O7, design review 6): the newest run that measured it, with a link. */
+function LastRun({ connection }: { connection: ConnectionInfo }) {
+  const last = useLastRun(connection.id)
+  if (last.isPending) return <span className="text-muted">…</span>
+  if (last.isError) return <span className="text-muted">–</span>
+  if (!last.data) return <span className="text-muted">{t`noch nie`}</span>
+  const run = last.data
+  const id = run.id
+  const when = formatDate(run.started_at)
+  return (
+    <span className="flex flex-wrap items-center gap-1">
+      <Link to={`/admin/bewertung/lauf/${id}`} className="text-accent-700 tabular-nums">
+        {t`Lauf #${id}`}
+      </Link>
+      <span className="text-muted text-xs">{when}</span>
+      {run.status !== 'done' && <RunStatusLabel status={run.status} />}
+    </span>
+  )
+}
+
 export function ConnectionsPage() {
   const connections = useConnections()
   const [editing, setEditing] = useState<ConnectionInfo | 'new'>()
@@ -643,6 +666,9 @@ export function ConnectionsPage() {
                 <Trans>Letzter Test</Trans>
               </th>
               <th>
+                <Trans>Zuletzt bewertet</Trans>
+              </th>
+              <th>
                 <span className="sr-only">
                   <Trans>Aktionen</Trans>
                 </span>
@@ -651,7 +677,7 @@ export function ConnectionsPage() {
           </thead>
           <tbody>
             {connections.data.map((c) => (
-              <tr key={c.id}>
+              <tr key={c.id} id={`anbindung-${c.id}`}>
                 <td>
                   {c.name}
                   {c.is_default && (
@@ -671,6 +697,9 @@ export function ConnectionsPage() {
                 <td>{c.may_receive_data ? t`erlaubt` : t`nur Metadaten`}</td>
                 <td>
                   <LastTest connection={c} />
+                </td>
+                <td>
+                  <LastRun connection={c} />
                 </td>
                 <td className="text-right">
                   <Menu label={actionsFor(c.name)}>

@@ -43,7 +43,16 @@ function byCare(gaps: LayerGaps[], first?: string): LayerGaps[] {
   return [...gaps].sort((a, b) => rank(a) - rank(b))
 }
 
-function Gaps({ gaps, imported }: { gaps: LayerGaps; imported: boolean }) {
+function Gaps({
+  gaps,
+  imported,
+  measured,
+}: {
+  gaps: LayerGaps
+  imported: boolean
+  /** The line to the measured result (V8.1 "Gemessen: …"), if a run asked about the layer. */
+  measured?: string | null
+}) {
   const title = gaps.title
   const texts = gaps.text_attributes
   const attributes = gaps.attributes
@@ -145,6 +154,7 @@ function Gaps({ gaps, imported }: { gaps: LayerGaps; imported: boolean }) {
           </li>
         )}
       </ol>
+      {measured && <p className="text-muted mt-1 text-xs">{measured}</p>}
     </section>
   )
 }
@@ -153,9 +163,12 @@ export function ProfileCompleteness({
   summary,
   heading,
   imported,
+  measured,
 }: {
   summary: ProfileSummary
   heading: string
+  /** Per layer the line to a run's result (V8.1), from the newest complete run. */
+  measured?: (layer: string) => string | null
   /** A layer just imported: its gaps come first, marked (the import wizard's link). */
   imported?: string
 }) {
@@ -255,7 +268,14 @@ export function ProfileCompleteness({
               </Trans>
             </p>
           ) : (
-            ordered.map((g) => <Gaps key={g.layer} gaps={g} imported={g.layer === imported} />)
+            ordered.map((g) => (
+              <Gaps
+                key={g.layer}
+                gaps={g}
+                imported={g.layer === imported}
+                measured={measured?.(g.layer)}
+              />
+            ))
           )}
         </>
       )}

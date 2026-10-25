@@ -313,6 +313,35 @@ export const api = {
         `/api/admin/evaluation/profile-summary?data_state=${dataState}` +
           (account ? `&account=${enc(account)}` : ''),
       ),
+    // Runs (plan E3, WP90): estimated, started in the background (202) and
+    // polled; one at a time for the instance (``run_busy``).
+    /** Requests, tokens, cost and duration before the start (D12); no model call. */
+    estimate: (body: RunRequest) =>
+      request<CostEstimate>('/api/admin/evaluation/runs/estimate', json('POST', body)),
+    /** 202 with the run ``running``: the client polls it (D8). */
+    start: (body: RunRequest) => request<RunView>('/api/admin/evaluation/runs', json('POST', body)),
+    /** Newest first; with ``connectionId`` the runs that measured it (O7). */
+    runs: (filter: { connectionId?: number; offset?: number; limit?: number } = {}) => {
+      const params = new URLSearchParams()
+      if (filter.connectionId !== undefined)
+        params.set('connection_id', String(filter.connectionId))
+      params.set('offset', String(filter.offset ?? 0))
+      params.set('limit', String(filter.limit ?? 50))
+      return request<RunPage>(`/api/admin/evaluation/runs?${params}`)
+    },
+    run: (id: number) => request<RunView>(`/api/admin/evaluation/runs/${id}`),
+    abort: (id: number) =>
+      request<RunView>(`/api/admin/evaluation/runs/${id}/abort`, { method: 'POST' }),
+    /** The repeats of one case at one measuring point (V7). */
+    answers: (id: number, caseId: string, point: number) =>
+      request<AnswerView[]>(
+        `/api/admin/evaluation/runs/${id}/answers?case_id=${enc(caseId)}&point=${point}`,
+      ),
+    /** A link, not a request: the browser downloads the run with every answer as JSON. */
+    exportRunUrl: (id: number) => `/api/admin/evaluation/runs/${id}/export`,
+    /** Two complete runs over the same cases (V6.6), else ``runs_not_comparable``. */
+    compare: (run: number, against: number) =>
+      request<RunComparison>('/api/admin/evaluation/comparison', json('POST', { run, against })),
   },
   sampleRows: (layer: string, limit = 50) =>
     request<QueryResult>('/api/query', json('POST', { source: layer, output: 'table', limit })),

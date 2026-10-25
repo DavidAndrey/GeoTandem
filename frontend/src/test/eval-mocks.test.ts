@@ -5,6 +5,11 @@ import { expect, test } from 'vitest'
 import openapi from '../../openapi.json'
 import {
   answerViews,
+  behaviourAnswer,
+  CONNECTIONS,
+  LEVELS,
+  refusedAnswers,
+  rightOtherwise,
   casePage,
   caseView,
   COST_ESTIMATE,
@@ -90,13 +95,16 @@ test('figures wait for the end, comparisons for a full run (design review 5, D7)
 
 test('estimate, answers, comparison and profile summaries are valid', () => {
   valid('CostEstimate', COST_ESTIMATE)
-  for (const answer of answerViews()) valid('AnswerView', answer)
+  for (const answer of [...answerViews(), rightOtherwise(), ...refusedAnswers(), behaviourAnswer()])
+    valid('AnswerView', answer)
+  for (const connection of CONNECTIONS) valid('ConnectionInfo', connection)
+  valid('LevelSet', LEVELS)
   valid('RunComparison', RUN_COMPARISON)
   valid('ProfileSummary', PROFILE_COMPLETE)
   valid('ProfileSummary', PROFILE_RAW)
 })
 
-test('the silently wrong answers of n03 have no assumption', () => {
+test('the silently wrong answers of n13 have no assumption', () => {
   const wrong = answerViews().filter((a) => a.verdict === 'wrong')
   expect(wrong).toHaveLength(6)
   expect(wrong.every((a) => a.flags?.includes('no_assumption'))).toBe(true)
