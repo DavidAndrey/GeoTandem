@@ -263,6 +263,32 @@ async def test_a_reference_passes_the_checks_of_a_model_query(
     assert body["details"]["reading"] == 0
 
 
+async def test_a_failing_reading_names_what_failed(client: httpx.AsyncClient) -> None:
+    """The refusal's details come along, so the interface can word the reason (WP88)."""
+    gold = {
+        "source": "schulen",
+        "where": {"op": "compare", "attr": "becken_m", "cmp": "gt", "value": 2},
+    }
+    body = await refused(client, {**OWN, "gold": gold}, 400, "case_invalid")
+    assert body["details"]["reason"] == "unknown_attribute"
+    assert body["details"]["attribute"] == "becken_m"
+    assert body["details"]["case_id"] == "eigene-primar"
+    assert body["details"]["reading"] == 0
+
+
+async def test_an_import_problem_carries_the_details(client: httpx.AsyncClient) -> None:
+    gold = {
+        "source": "schulen",
+        "where": {"op": "compare", "attr": "becken_m", "cmp": "gt", "value": 2},
+    }
+    file = {"cases": [{**OWN, "id": "kaputt", "gold": gold}]}
+    result = (await client.post(f"{CASES}/import", json=file)).json()
+    (problem,) = result["problems"]
+    assert problem["details"]["reason"] == "unknown_attribute"
+    assert problem["details"]["attribute"] == "becken_m"
+    assert "case_id" not in problem["details"]
+
+
 async def test_every_fair_reading_is_checked(client: httpx.AsyncClient) -> None:
     case = {**OWN, "gold": None, "gold_any": [SCHULEN, {"source": "geheim"}]}
     body = await refused(client, case, 400, "case_invalid")
@@ -450,6 +476,7 @@ async def test_an_import_over_the_limit_takes_nothing(
     assert result["imported"] == 0
     assert result["problems"][0]["code"] == "case_invalid"
     assert "at most 1 own cases" in result["problems"][0]["message"]
+    assert result["problems"][0]["details"] == {"reason": "too_many", "max": 1}
     assert (await client.get(CASES, params={"origin": "import"})).json()["total"] == 0
 
 
@@ -495,6 +522,7 @@ async def test_an_import_with_a_stale_live_case_names_it(
             "code": "case_stale",
             "message": "The case 'live-primar' uses the layer 'verschwunden', "
             "which is gone or hidden.",
+            "details": {"layer": "verschwunden", "layers": ["verschwunden"]},
         }
     ]
 

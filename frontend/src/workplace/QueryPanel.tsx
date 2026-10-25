@@ -17,6 +17,7 @@ import { labelsFor } from '../editor/fields'
 import { useMapView } from '../map/view'
 import { isMarked } from '../model/origin'
 import { ResultSelect } from './ResultSelect'
+import { SaveAsCase } from '../admin/evaluation/SaveCaseDialog'
 
 export function QueryPanel() {
   const analysis = useAnalysis(useShallow(currentAnalysis))
@@ -90,6 +91,8 @@ export function QueryPanel() {
           )}
         </div>
       )}
+      {/* Administrators only (design V3): the analysis as the reference of a new case. */}
+      {result && !draft && <SaveAsCase />}
       {result && (
         <div
           className="mt-2 flex flex-wrap items-center gap-1.5 text-xs"
