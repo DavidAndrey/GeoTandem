@@ -5,6 +5,7 @@ import { t } from '@lingui/core/macro'
 import { useId, useState, type KeyboardEvent, type ReactNode } from 'react'
 import type { CaseStatus, Split } from '../../api/client'
 import { StatusLabel } from '../../model/status'
+import { OWN_ESCAPE } from './escape'
 import { MAX_TAGS, SPLITS, splitText, tagProblem, tagText } from './words'
 
 /**
@@ -89,8 +90,7 @@ export function TagEditor({
       event.preventDefault()
       add()
     } else if (event.key === 'Escape') {
-      // Only the field closes, not a dialog around it.
-      event.stopPropagation()
+      // Only the field closes; a dialog around it keeps open (``keepEscapeInField``).
       setText('')
       setProblem(null)
       setAdding(false)
@@ -118,6 +118,7 @@ export function TagEditor({
         <li>
           {adding ? (
             <input
+              {...OWN_ESCAPE}
               className="input w-40 py-0 text-xs"
               aria-label={t`Neues Stichwort`}
               list={list}

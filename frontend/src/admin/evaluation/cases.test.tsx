@@ -60,7 +60,9 @@ test('the Läufe tab holds a placeholder until WP93', async () => {
   expect(within(tabs).getByRole('link', { name: 'Läufe' })).toHaveAttribute('aria-current', 'page')
   // The group entry stays marked on every tab of Bewertung.
   const nav = screen.getByRole('navigation', { name: 'Administration' })
-  expect(within(nav).getByRole('link', { name: 'Bewertung' }).className).toMatch(/border-accent/)
+  const entry = within(nav).getByRole('link', { name: 'Bewertung' })
+  expect(entry.className).toMatch(/border-accent/)
+  expect(entry).toHaveAttribute('aria-current', 'page')
 })
 
 test('V1.1: start cases first, five of them until expanded, own cases below', async () => {
@@ -97,8 +99,15 @@ test('V1.1: start cases first, five of them until expanded, own cases below', as
     'href',
     '/admin/bewertung/faelle/doc1-primar-koeniz',
   )
-  await userEvent.click(screen.getByRole('button', { name: '… 66 weitere Startfälle' }))
+  const more = screen.getByRole('button', { name: '… 66 weitere Startfälle' })
+  expect(more).toHaveAttribute('aria-expanded', 'false')
+  await userEvent.click(more)
   expect(rowIds()).toHaveLength(74)
+  // A real toggle: the same button folds them again.
+  expect(more).toHaveAttribute('aria-expanded', 'true')
+  expect(more).toHaveFocus()
+  await userEvent.click(more)
+  expect(rowIds()).toHaveLength(8)
 })
 
 test('V1.1: filters by origin, split, kind and question, kept in the address', async () => {
@@ -190,15 +199,24 @@ test('V1.3: an import with faulty cases takes nothing and names each case with i
     'POST /api/admin/evaluation/cases/import': {
       imported: 0,
       problems: [
+        // As ``cases.import_file`` writes them (WP88 review: with the details).
         {
           case_id: 'e-hallenbad',
           code: 'case_invalid',
           message: "Reading 0 of the case 'e-hallenbad' fails the checks: no attribute becken_m.",
+          details: {
+            reason: 'unknown_attribute',
+            reading: 0,
+            layer: 'schulanlagen',
+            attribute: 'becken_m',
+            available: ['name'],
+          },
         },
         {
           case_id: 'e-kita-2',
           code: 'case_id_taken',
           message: "A case 'e-kita-2' exists already.",
+          details: {},
         },
       ],
     },
@@ -212,7 +230,7 @@ test('V1.3: an import with faulty cases takes nothing and names each case with i
   )
   const rows = within(dialog).getAllByRole('row').slice(1)
   expect(rows.map((r) => r.textContent)).toEqual([
-    'e-hallenbadReferenzabfrage ungültig oder Fall unvollständig',
+    'e-hallenbadDas Feld „becken_m" gibt es im Layer „schulanlagen" nicht, oder das Modell kennt es nicht.',
     'e-kita-2Kennung doppelt (schon vorhanden)',
   ])
   // The server's own words only under "Technisch".
@@ -220,7 +238,7 @@ test('V1.3: an import with faulty cases takes nothing and names each case with i
   expect(calls.find((c) => c.key === 'POST /api/admin/evaluation/cases/import')?.body).toEqual(
     caseFile,
   )
-  // Esc closes the dialog; the list is unchanged.
+  // Esc closes the dialog, the focus goes back to Importieren; the list is unchanged.
   await userEvent.keyboard('{Escape}')
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   expect(calls.filter((c) => c.key === 'GET /api/admin/evaluation/cases')).toHaveLength(1)
@@ -309,4 +327,49 @@ test('keyboard: the filters, import and export are reached in reading order', as
     'Exportieren',
     'doc1-primar-koeniz',
   ])
+})
+
+test('V1.3: an import over the limit of own cases says so', async () => {
+  backend(casePage(), {
+    'POST /api/admin/evaluation/cases/import': {
+      imported: 0,
+      problems: [
+        {
+          case_id: null,
+          code: 'case_invalid',
+          message: 'An instance keeps at most 429 own cases beside the start set; it has 3.',
+          details: { reason: 'too_many', max: 429 },
+        },
+      ],
+    },
+  })
+  renderAt('/admin/bewertung/faelle', <App />)
+  await screen.findByText('doc1-primar-koeniz')
+  const button = screen.getByRole('button', { name: 'Importieren' })
+  await userEvent.click(button)
+  await userEvent.upload(chooseFile(), file(caseFile))
+  const dialog = await screen.findByRole('dialog', { name: 'Import nicht übernommen' })
+  expect(within(dialog).getByText(/höchstens 429 eigene Prüffälle/)).toBeInTheDocument()
+  expect(within(dialog).getByText('Datei')).toBeInTheDocument()
+  await userEvent.click(within(dialog).getByRole('button', { name: 'Schliessen' }))
+  await waitFor(() => expect(button).toHaveFocus())
+})
+
+test('V1.4: an import from the hint keeps its message when the hint goes away', async () => {
+  let imported = false
+  backend(onlyStart(), {
+    'GET /api/admin/evaluation/cases': () => (imported ? casePage() : onlyStart()),
+    'POST /api/admin/evaluation/cases/import': () => {
+      imported = true
+      return { imported: 3, problems: [] }
+    },
+  })
+  renderAt('/admin/bewertung/faelle', <App />)
+  const hint = must((await screen.findByText('Noch keine eigenen Prüffälle')).parentElement)
+  await userEvent.click(within(hint).getByRole('button', { name: 'importieren' }))
+  await userEvent.upload(chooseFile(), file(caseFile))
+  expect(await screen.findByRole('status')).toHaveTextContent('3 Prüffälle übernommen.')
+  await waitFor(() => expect(screen.queryByText('Noch keine eigenen Prüffälle')).toBeNull())
+  expect(screen.getByRole('status')).toHaveTextContent('3 Prüffälle übernommen.')
+  expect(screen.getByText('e-schulweg-import')).toBeInTheDocument()
 })

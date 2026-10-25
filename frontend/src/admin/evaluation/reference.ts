@@ -30,6 +30,21 @@ export function analysisOf(part: QueryPart | null): Analysis {
   return { layers: [layer], result: layer.id, tree: part.tree, restriction: null }
 }
 
+interface Found {
+  gold: Record<string, unknown>
+  /** The query's schema version, which the case names beside its reference. */
+  schemaVersion: string
+  problem: null
+}
+
+/** The analysis as the map shows it: the applied tree, never an open draft of the editor. */
+export const appliedAnalysis = (s: Analysis & { tree: Analysis['tree'] }): Analysis => ({
+  layers: s.layers,
+  result: s.result,
+  tree: s.tree,
+  restriction: s.restriction,
+})
+
 /**
  * The reference a case would get from ``analysis``, or why it cannot be one
  * (V3.2): what the controls can tell before the server checks it as a model's
@@ -39,7 +54,7 @@ export function analysisOf(part: QueryPart | null): Analysis {
 export function referenceFor(
   analysis: Analysis,
   catalog: readonly LayerInfo[] | undefined,
-): { gold: Record<string, unknown>; problem: null } | { gold: null; problem: string } {
+): Found | { gold: null; problem: string } {
   const layer = resultLayer(analysis)
   const query = resultQuery(analysis)
   if (!layer || !query) return { gold: null, problem: t`Die Analyse hat keinen Ergebnis-Layer.` }
@@ -57,5 +72,5 @@ export function referenceFor(
     }
   const gold = referenceOf(query)
   if (!partOf(gold, catalog)) return { gold: null, problem: errorText('not_representable') }
-  return { gold, problem: null }
+  return { gold, schemaVersion: query.schema_version ?? '2', problem: null }
 }

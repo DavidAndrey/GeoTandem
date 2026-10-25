@@ -160,20 +160,12 @@ test('V3.2: a restriction "Nur in" cannot be part of a case', async () => {
   expect(within(dialog).getByRole('alert')).toHaveTextContent('Die Einschränkung „Nur in"')
 })
 
-test('V3.2: the refusal of the server in words, the form stays', async () => {
-  backend({
-    'POST /api/admin/evaluation/cases': () =>
-      new Response(
-        JSON.stringify({
-          code: 'case_invalid',
-          message: "Reading 0 of the case 'e-x' fails the checks.",
-          details: { case_id: 'e-x', reason: 'unknown_layer', layer: 'schulen', reading: 0 },
-        }),
-        { status: 400 },
-      ),
-  })
-  analysis([primary])
-  renderAt('/', <QueryPanel />)
+/** An error body as the backend writes it (api/errors.py). */
+const refusal = (status: number, code: string, details: Record<string, unknown>) => () =>
+  new Response(JSON.stringify({ code, message: 'English text.', details }), { status })
+
+/** Question and one tag, then Speichern; the dialog. */
+async function fillAndSave() {
   const dialog = await open()
   await userEvent.type(within(dialog).getByRole('textbox', { name: 'Frage' }), 'Primarschulen')
   await userEvent.click(within(dialog).getByRole('button', { name: '+ Stichwort' }))
@@ -182,10 +174,80 @@ test('V3.2: the refusal of the server in words, the form stays', async () => {
     'attribute{Enter}',
   )
   await userEvent.click(within(dialog).getByRole('button', { name: 'Speichern' }))
-  const refusal = await within(dialog).findByRole('alert')
-  expect(refusal).toHaveTextContent('Nicht speicherbar')
-  expect(refusal).toHaveTextContent('Den Layer „schulen" gibt es nicht oder er ist nicht sichtbar.')
+  return dialog
+}
+
+test.each([
+  [
+    'a reading the check refuses',
+    refusal(400, 'case_invalid', {
+      case_id: 'e-primarschulen',
+      reason: 'unknown_layer',
+      reading: 0,
+      layer: 'schulen',
+    }),
+    'Den Layer „schulen" gibt es nicht, er ist nicht sichtbar oder nicht für das Modell freigegeben.',
+  ],
+  [
+    'an id in use',
+    refusal(409, 'case_id_taken', { case_id: 'e-primarschulen' }),
+    'Einen Prüffall „e-primarschulen" gibt es schon.',
+  ],
+  [
+    'the limit of own cases',
+    refusal(400, 'case_invalid', { case_id: null, reason: 'too_many', max: 429 }),
+    'höchstens 429 eigene Prüffälle',
+  ],
+  [
+    'a body the format refuses',
+    refusal(422, 'schema_violation', {
+      errors: [{ loc: ['body', 'tags', 0], msg: 'String should match pattern', type: 'x' }],
+    }),
+    'Die Anfrage hat nicht die erwartete Form.',
+  ],
+])('V3.2: the refusal of the server in words (%s), the form stays', async (_, answer, words) => {
+  backend({ 'POST /api/admin/evaluation/cases': answer })
+  analysis([primary])
+  renderAt('/', <QueryPanel />)
+  const dialog = await fillAndSave()
+  const shown = await within(dialog).findByRole('alert')
+  expect(shown).toHaveTextContent('Nicht speicherbar')
+  expect(shown).toHaveTextContent(words)
   expect(within(dialog).getByRole('textbox', { name: 'Frage' })).toHaveValue('Primarschulen')
+})
+
+test('V3.2: a derived layer as the result cannot be a reference', async () => {
+  backend()
+  const s = useAnalysis.getState()
+  const id = s.addDerived('Puffer Schulen', {
+    op: 'buffer',
+    layer: 'schulen',
+    distance_m: 100,
+    onlyFiltered: false,
+  })
+  s.setResult(id)
+  renderAt('/', <QueryPanel />)
+  const dialog = await open()
+  expect(within(dialog).getByRole('alert')).toHaveTextContent('abgeleiteter Layer')
+})
+
+test('Esc in the new tag ends the tag, not the dialog; Esc again closes it', async () => {
+  backend()
+  analysis([primary])
+  renderAt('/', <QueryPanel />)
+  const entry = await screen.findByRole('button', { name: 'Als Prüffall speichern' })
+  const dialog = await open()
+  await userEvent.type(within(dialog).getByRole('textbox', { name: 'Frage' }), 'Primarschulen')
+  await userEvent.click(within(dialog).getByRole('button', { name: '+ Stichwort' }))
+  await userEvent.type(within(dialog).getByRole('combobox', { name: 'Neues Stichwort' }), 'raum')
+  await userEvent.keyboard('{Escape}')
+  expect(screen.getByRole('dialog')).toBe(dialog)
+  expect(within(dialog).queryByRole('combobox', { name: 'Neues Stichwort' })).toBeNull()
+  expect(within(dialog).getByRole('textbox', { name: 'Frage' })).toHaveValue('Primarschulen')
+  await userEvent.keyboard('{Escape}')
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  // The focus goes back to the entry that opened it.
+  expect(entry).toHaveFocus()
 })
 
 test('keyboard: the dialog keeps the focus inside, Esc closes it', async () => {

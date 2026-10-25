@@ -528,7 +528,15 @@ msgid "<0>{word}</0> ({id}): {layers} wurde seit dem Anlegen des Falls neu impor
 msgstr ""
 
 #: src/admin/evaluation/CasesPage.tsx
-msgid "<0>{word}</0> ({id}): Layer {layers} ist gelöscht oder für {me} nicht mehr sichtbar. Der Fall wird in keinem Lauf verwendet, bis er bearbeitet ist."
+msgid "<0>{word}</0> ({id}): {layers} wurden seit dem Anlegen des Falls neu importiert. Die Referenz gilt weiter; die Trefferzahl wird beim nächsten Lauf neu bestimmt."
+msgstr ""
+
+#: src/admin/evaluation/CasesPage.tsx
+msgid "<0>{word}</0> ({id}): Der Layer {layers} ist gelöscht oder für {me} nicht mehr sichtbar. Der Fall wird in keinem Lauf verwendet, bis er bearbeitet ist."
+msgstr ""
+
+#: src/admin/evaluation/CasesPage.tsx
+msgid "<0>{word}</0> ({id}): Die Layer {layers} sind gelöscht oder für {me} nicht mehr sichtbar. Der Fall wird in keinem Lauf verwendet, bis er bearbeitet ist."
 msgstr ""
 
 #: src/editor/describe.ts
@@ -1554,6 +1562,14 @@ msgstr ""
 msgid "Das Feld „{attribute}\" erwartet ein Datum."
 msgstr ""
 
+#: src/admin/evaluation/words.ts
+msgid "Das Feld „{attribute}\" gibt es im Layer „{layer}\" nicht, oder das Modell kennt es nicht."
+msgstr ""
+
+#: src/admin/evaluation/words.ts
+msgid "Das Feld „{attribute}\" gibt es nicht, oder das Modell kennt es nicht."
+msgstr ""
+
 #: src/i18n/errors.ts
 msgid "Das Feld „{attribute}\" gibt es nicht."
 msgstr ""
@@ -1736,6 +1752,10 @@ msgstr ""
 msgid "Datenstand geändert: {layers} wurde seit dem Anlegen des Falls neu importiert. Die Referenz gilt weiter; die Trefferzahl wird beim nächsten Lauf neu bestimmt."
 msgstr ""
 
+#: src/admin/evaluation/CaseDetailPage.tsx
+msgid "Datenstand geändert: {layers} wurden seit dem Anlegen des Falls neu importiert. Die Referenz gilt weiter; die Trefferzahl wird beim nächsten Lauf neu bestimmt."
+msgstr ""
+
 #: src/admin/format.ts
 msgid "Datum"
 msgstr ""
@@ -1761,12 +1781,20 @@ msgstr ""
 msgid "default (nichts senden)"
 msgstr ""
 
+#: src/admin/evaluation/words.ts
+msgid "Den Eintrag {action} im Modellprotokoll gibt es nicht."
+msgstr ""
+
 #: src/i18n/errors.ts
 msgid "Den Feldnamen „{name}\" gibt es zweimal."
 msgstr ""
 
 #: src/i18n/errors.ts
 msgid "Den Layer „{layer}\" gibt es nicht oder er ist nicht sichtbar."
+msgstr ""
+
+#: src/admin/evaluation/words.ts
+msgid "Den Layer „{layer}\" gibt es nicht, er ist nicht sichtbar oder nicht für das Modell freigegeben."
 msgstr ""
 
 #: src/admin/evaluation/CaseDetailPage.tsx
@@ -1803,6 +1831,10 @@ msgstr ""
 
 #: src/i18n/errors.ts
 msgid "Der Export umfasst mehr als {max} Einträge. Bitte den Zeitraum oder die Filter enger wählen."
+msgstr ""
+
+#: src/admin/evaluation/words.ts
+msgid "Der Fall nennt den Layer „{layer}\", die Referenz nutzt ihn aber nicht."
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -1939,7 +1971,7 @@ msgid "Die Abfrage hat {value} Bedingungen; im Modus B sind höchstens {max} mö
 msgstr ""
 
 #: src/admin/evaluation/words.ts
-msgid "Die Abfrage hat mehr als {max} Bedingungen. Ein Prüffall darf höchstens {max} haben, wie jede Modellantwort."
+msgid "Die Abfrage hat {value} Bedingungen. Ein Prüffall darf höchstens {max} haben, wie jede Modellantwort."
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -1995,7 +2027,7 @@ msgid "Die aktuelle Analyse lässt sich dem Modell so nicht mitgeben: {text} Fra
 msgstr ""
 
 #: src/admin/evaluation/words.ts
-msgid "Die Analyse hat {count} Bedingungen. Ein Prüffall darf höchstens {max} haben, wie jede Modellantwort."
+msgid "Die Analyse hat {n} Bedingungen. Ein Prüffall darf höchstens {max} haben, wie jede Modellantwort."
 msgstr ""
 
 #: src/session/SessionDialogs.tsx
@@ -2024,6 +2056,10 @@ msgstr ""
 
 #: src/model/panel/Problem.tsx
 msgid "Die Anbindung „{name}“ antwortet nicht."
+msgstr ""
+
+#: src/admin/evaluation/CaseDetailPage.tsx
+msgid "Die Änderungen an diesem Prüffall sind nicht gespeichert und gehen verloren."
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -2210,6 +2246,10 @@ msgstr ""
 msgid "Die Referenz lässt sich im Arbeitsplatz nicht darstellen: Ein Layer fehlt dort, oder sie nutzt mehr, als die Bedienelemente zeigen."
 msgstr ""
 
+#: src/admin/evaluation/words.ts
+msgid "Die Referenz nutzt den Layer „{layer}\", der Fall nennt ihn aber nicht unter seinen Layern."
+msgstr ""
+
 #: src/session/SessionMenu.tsx
 msgid "Die Sitzung wird endgültig gelöscht; der Arbeitsplatz beginnt danach leer."
 msgstr ""
@@ -2240,10 +2280,6 @@ msgstr ""
 
 #: src/model/compare/words.ts
 msgid "Die Treffer sind Objekte verschiedener Layer: {leftSide} liefert „{left}“, {rightSide} „{right}“."
-msgstr ""
-
-#: src/admin/evaluation/CaseDetailPage.tsx
-msgid "Die Trefferzahlen werden nach dem Speichern neu bestimmt."
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -2306,6 +2342,10 @@ msgstr ""
 
 #: src/i18n/errors.ts
 msgid "Diese Läufe lassen sich nicht gegenüberstellen: Sie haben andere Prüffälle, oder einer ist nicht vollständig."
+msgstr ""
+
+#: src/admin/evaluation/CaseDetailPage.tsx
+msgid "Diese Lesart hat der Fall schon."
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -2481,7 +2521,7 @@ msgid "Eine Anfrage läuft noch. Wiederholen geht, sobald sie beantwortet ist."
 msgstr ""
 
 #: src/admin/evaluation/CasesPage.tsx
-msgid "Eine Datei <0/> (Format wie Export)"
+msgid "Eine Datei <0>importieren</0> (Format wie Export)"
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -3438,10 +3478,6 @@ msgstr ""
 msgid "Im Arbeitsplatz öffnen ▾"
 msgstr ""
 
-#: src/admin/evaluation/CaseDetailPage.tsx
-msgid "Im Arbeitsplatz zuerst die andere Lesart als Analyse bauen."
-msgstr ""
-
 #: src/admin/ImportRunPage.tsx
 msgid "Im Assistenten abgebrochen."
 msgstr ""
@@ -3476,10 +3512,6 @@ msgstr ""
 
 #: src/admin/ImportWizard.tsx
 msgid "Importdatei"
-msgstr ""
-
-#: src/admin/evaluation/CasesPage.tsx
-msgid "importieren"
 msgstr ""
 
 #: src/admin/CatalogPage.tsx
@@ -3880,6 +3912,10 @@ msgstr ""
 
 #: src/admin/DuplicateLayerDialog.tsx
 msgid "Kopie eines Layers mit Daten, Metadaten und Sichtbarkeit"
+msgstr ""
+
+#: src/admin/evaluation/CaseDetailPage.tsx
+msgid "Kopie von {from}."
 msgstr ""
 
 #: src/admin/evaluation/CaseDetailPage.tsx
@@ -4320,6 +4356,10 @@ msgstr ""
 msgid "Namenskonflikt"
 msgstr ""
 
+#: src/admin/evaluation/words.ts
+msgid "Neben dem Startbestand sind höchstens {max} eigene Prüffälle möglich; mit diesen wären es mehr. Bitte zuerst Fälle löschen."
+msgstr ""
+
 #: src/admin/CatalogPage.tsx
 #: src/editor/describe.ts
 #: src/editor/EditorPanel.tsx
@@ -4556,6 +4596,10 @@ msgstr ""
 
 #: src/admin/ModelLogPage.tsx
 msgid "Nur Einträge von {account}"
+msgstr ""
+
+#: src/admin/evaluation/words.ts
+msgid "Nur Fälle des Startbestands haben die Herkunft „Start\"."
 msgstr ""
 
 #: src/operations/OperationDialog.tsx
@@ -5185,6 +5229,10 @@ msgstr ""
 msgid "Startfall · nur lesbar"
 msgstr ""
 
+#: src/admin/evaluation/CasesPage.tsx
+msgid "Startfälle wieder einklappen"
+msgstr ""
+
 #: src/admin/UsersPage.tsx
 msgid "Startpasswort"
 msgstr ""
@@ -5440,6 +5488,10 @@ msgid "Treffer im Entwurf"
 msgstr ""
 
 #: src/admin/evaluation/Reference.tsx
+msgid "Treffer neu nach dem Speichern"
+msgstr ""
+
+#: src/admin/evaluation/Reference.tsx
 msgid "Treffer nicht bestimmbar"
 msgstr ""
 
@@ -5517,7 +5569,7 @@ msgid "Übernehmen schreibt das Ergebnis als eine Abfrage in die Analyse, ihre B
 msgstr ""
 
 #: src/admin/evaluation/CaseDetailPage.tsx
-msgid "übernimmt die aktuelle Analyse des Arbeitsplatzes"
+msgid "übernimmt die angewendete Analyse des Arbeitsplatzes"
 msgstr ""
 
 #: src/admin/ImportLogPage.tsx
@@ -5578,6 +5630,10 @@ msgstr ""
 msgid "Ungespeicherte Änderungen"
 msgstr ""
 
+#: src/admin/evaluation/CaseDetailPage.tsx
+msgid "Ungespeicherte Änderungen am Prüffall verwerfen?"
+msgstr ""
+
 #: src/i18n/errors.ts
 msgid "ungültige Geometrie"
 msgstr ""
@@ -5608,7 +5664,11 @@ msgid "veraltet"
 msgstr ""
 
 #: src/admin/evaluation/CaseDetailPage.tsx
-msgid "Veraltet: Layer {layers} ist gelöscht oder für Sie nicht mehr sichtbar. Der Fall wird in keinem Lauf verwendet, bis er bearbeitet ist."
+msgid "Veraltet: Der Layer {layers} ist gelöscht oder für Sie nicht mehr sichtbar. Der Fall wird in keinem Lauf verwendet, bis er bearbeitet ist."
+msgstr ""
+
+#: src/admin/evaluation/CaseDetailPage.tsx
+msgid "Veraltet: Die Layer {layers} sind gelöscht oder für Sie nicht mehr sichtbar. Der Fall wird in keinem Lauf verwendet, bis er bearbeitet ist."
 msgstr ""
 
 #: src/admin/SystemPage.tsx

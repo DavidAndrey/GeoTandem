@@ -7,7 +7,7 @@
 import { Trans } from '@lingui/react/macro'
 import { t } from '@lingui/core/macro'
 import { useQueryClient } from '@tanstack/react-query'
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState, type RefObject } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { api, type CaseView, type DataState, type Split, type CaseOrigin } from '../../api/client'
 import { useLayers, useMe } from '../../api/queries'
@@ -70,6 +70,7 @@ export function CasesPage() {
   }
   const filtered = Object.entries(filters).some(([, v]) => v)
   const [expanded, setExpanded] = useState(false)
+  const importer = useImport()
   const setFilter = (key: string, value: string | undefined) => {
     const next = new URLSearchParams(params)
     if (value) next.set(key, value)
@@ -83,7 +84,8 @@ export function CasesPage() {
   const start = shown.filter((v) => v.read_only)
   const own = shown.filter((v) => !v.read_only)
   const ownTotal = all.filter((v) => !v.read_only).length
-  const hidden = !filtered && !expanded ? Math.max(0, start.length - START_SHOWN) : 0
+  const foldable = !filtered && start.length > START_SHOWN
+  const hidden = foldable && !expanded ? start.length - START_SHOWN : 0
   const startRows = hidden ? start.slice(0, START_SHOWN) : start
   const more = formatNumber(hidden)
 
@@ -150,12 +152,20 @@ export function CasesPage() {
           DATA_STATES.map((d) => [d, dataStateText(d)]),
         )}
         <span className="ml-auto flex gap-2">
-          <ImportButton />
+          <button
+            type="button"
+            className="btn"
+            onClick={(e) => importer.choose(e.currentTarget)}
+            disabled={importer.busy}
+          >
+            <Trans>Importieren</Trans>
+          </button>
           <a className="btn" href={api.evaluation.exportUrl} download="pruefaelle.json">
             <Trans>Exportieren</Trans>
           </a>
         </span>
       </div>
+      {importer.view}
       {cases.isPending && <Loading />}
       <ErrorNotice error={cases.error} />
       {cases.data && (
@@ -196,16 +206,20 @@ export function CasesPage() {
               {startRows.map((view) => (
                 <CaseRow key={view.case.id} view={view} />
               ))}
-              {hidden > 0 && (
+              {foldable && (
                 <tr>
                   <td colSpan={8}>
                     <button
                       type="button"
                       className="text-muted hover:text-accent-700 text-sm"
-                      aria-expanded={false}
-                      onClick={() => setExpanded(true)}
+                      aria-expanded={expanded}
+                      onClick={() => setExpanded(!expanded)}
                     >
-                      <Trans>… {more} weitere Startfälle</Trans>
+                      {expanded ? (
+                        <Trans>Startfälle wieder einklappen</Trans>
+                      ) : (
+                        <Trans>… {more} weitere Startfälle</Trans>
+                      )}
                     </button>
                   </td>
                 </tr>
@@ -223,7 +237,7 @@ export function CasesPage() {
             </tbody>
           </table>
           <StatusNotes views={own} />
-          {ownTotal === 0 && <NoOwnCases />}
+          {ownTotal === 0 && <NoOwnCases onImport={importer.choose} busy={importer.busy} />}
         </>
       )}
     </div>
@@ -275,6 +289,7 @@ function StatusNotes({ views }: { views: CaseView[] }) {
   const title = (name: string) => catalog?.find((l) => l.name === name)?.title ?? name
   const names = (view: CaseView) =>
     (view.status_layers ?? []).map((n) => `„${title(n)}"`).join(', ')
+  const several = (view: CaseView) => (view.status_layers ?? []).length > 1
   const stale = views.filter((v) => v.status === 'stale')
   const changed = views.filter((v) => v.status === 'dataset_changed')
   if (!stale.length && !changed.length) return null
@@ -286,11 +301,19 @@ function StatusNotes({ views }: { views: CaseView[] }) {
         const word = t`veraltet`
         return (
           <p key={id}>
-            <Trans>
-              <span className="font-semibold">{word}</span> ({id}): Layer {layers} ist gelöscht oder
-              für {me} nicht mehr sichtbar. Der Fall wird in keinem Lauf verwendet, bis er
-              bearbeitet ist.
-            </Trans>
+            {several(view) ? (
+              <Trans>
+                <span className="font-semibold">{word}</span> ({id}): Die Layer {layers} sind
+                gelöscht oder für {me} nicht mehr sichtbar. Der Fall wird in keinem Lauf verwendet,
+                bis er bearbeitet ist.
+              </Trans>
+            ) : (
+              <Trans>
+                <span className="font-semibold">{word}</span> ({id}): Der Layer {layers} ist
+                gelöscht oder für {me} nicht mehr sichtbar. Der Fall wird in keinem Lauf verwendet,
+                bis er bearbeitet ist.
+              </Trans>
+            )}
           </p>
         )
       })}
@@ -300,11 +323,19 @@ function StatusNotes({ views }: { views: CaseView[] }) {
         const word = t`Datenstand geändert`
         return (
           <p key={id}>
-            <Trans>
-              <span className="font-semibold">{word}</span> ({id}): {layers} wurde seit dem Anlegen
-              des Falls neu importiert. Die Referenz gilt weiter; die Trefferzahl wird beim nächsten
-              Lauf neu bestimmt.
-            </Trans>
+            {several(view) ? (
+              <Trans>
+                <span className="font-semibold">{word}</span> ({id}): {layers} wurden seit dem
+                Anlegen des Falls neu importiert. Die Referenz gilt weiter; die Trefferzahl wird
+                beim nächsten Lauf neu bestimmt.
+              </Trans>
+            ) : (
+              <Trans>
+                <span className="font-semibold">{word}</span> ({id}): {layers} wurde seit dem
+                Anlegen des Falls neu importiert. Die Referenz gilt weiter; die Trefferzahl wird
+                beim nächsten Lauf neu bestimmt.
+              </Trans>
+            )}
           </p>
         )
       })}
@@ -313,7 +344,7 @@ function StatusNotes({ views }: { views: CaseView[] }) {
 }
 
 /** V1.4: no own cases yet; the start set stays, the three ways sit where own cases would. */
-function NoOwnCases() {
+function NoOwnCases({ onImport, busy }: { onImport: (from: HTMLElement) => void; busy: boolean }) {
   return (
     <div className="mt-3 max-w-2xl rounded-[var(--radius-md)] border border-dashed border-neutral-400 p-3 text-sm">
       <p className="mb-1 font-semibold">
@@ -346,7 +377,16 @@ function NoOwnCases() {
         </li>
         <li>
           <Trans>
-            Eine Datei <ImportButton link /> (Format wie Export)
+            Eine Datei{' '}
+            <button
+              type="button"
+              className="text-accent-700 disabled:opacity-45"
+              disabled={busy}
+              onClick={(e) => onImport(e.currentTarget)}
+            >
+              importieren
+            </button>{' '}
+            (Format wie Export)
           </Trans>
         </li>
       </ol>
@@ -354,14 +394,22 @@ function NoOwnCases() {
   )
 }
 
-/** "Importieren": the file picker, then the outcome (V1.3); ``link`` for the hint of V1.4. */
-function ImportButton({ link }: { link?: boolean }) {
+/**
+ * Import (V1.3) for the whole page: one file picker, the outcome kept here, so
+ * a success started from the hint of V1.4 stays when the hint goes away.
+ */
+function useImport() {
   const input = useRef<HTMLInputElement>(null)
+  // The control that opened the picker gets the focus back from the dialog.
+  const opener = useRef<HTMLElement | null>(null)
   const client = useQueryClient()
   const [outcome, setOutcome] = useState<Outcome | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<unknown>(null)
-  const choose = () => input.current?.click()
+  const choose = (from?: HTMLElement) => {
+    if (from) opener.current = from
+    input.current?.click()
+  }
   const read = async (file: File | undefined) => {
     if (!file) return
     setBusy(true)
@@ -377,7 +425,7 @@ function ImportButton({ link }: { link?: boolean }) {
       if (input.current) input.current.value = ''
     }
   }
-  return (
+  const view = (
     <>
       <input
         ref={input}
@@ -388,21 +436,13 @@ function ImportButton({ link }: { link?: boolean }) {
         aria-label={t`Prüffall-Datei wählen`}
         onChange={(e) => void read(e.target.files?.[0])}
       />
-      {link ? (
-        <button type="button" className="text-accent-700" onClick={choose}>
-          <Trans>importieren</Trans>
-        </button>
-      ) : (
-        <button type="button" className="btn" onClick={choose} disabled={busy}>
-          <Trans>Importieren</Trans>
-        </button>
-      )}
       {outcome?.kind === 'imported' && (
         <Imported count={outcome.count} onClose={() => setOutcome(null)} />
       )}
       {outcome?.kind === 'refused' && (
         <ImportProblems
           outcome={outcome}
+          returnFocus={opener}
           onClose={() => setOutcome(null)}
           onRetry={() => {
             setOutcome(null)
@@ -413,6 +453,7 @@ function ImportButton({ link }: { link?: boolean }) {
       <ErrorNotice error={error} />
     </>
   )
+  return { choose, busy, view }
 }
 
 function Imported({ count, onClose }: { count: number; onClose: () => void }) {
@@ -437,7 +478,9 @@ function ImportProblems({
   outcome,
   onClose,
   onRetry,
+  returnFocus,
 }: {
+  returnFocus: RefObject<HTMLElement | null>
   outcome: Extract<Outcome, { kind: 'refused' }>
   onClose: () => void
   onRetry: () => void
@@ -451,6 +494,7 @@ function ImportProblems({
       open
       onOpenChange={(next) => !next && onClose()}
       title={t`Import nicht übernommen`}
+      returnFocus={returnFocus}
       description={t`Die Datei hat fehlerhafte Fälle; es wurde nichts übernommen.`}
       wide
     >

@@ -60,10 +60,13 @@ function Reading({
   dataState,
   part,
   onRemove,
+  pending,
 }: {
   reading: Record<string, unknown>
   name: string | null
   onRemove?: () => void
+  /** The readings were changed and not yet saved: hits come with the save. */
+  pending?: boolean
   hits: number | null
   dataState: DataState
   part: QueryPart | null
@@ -74,8 +77,9 @@ function Reading({
   const counts = useCounts(analysis)
   const state = dataStateText(dataState)
   const total = counts.data?.total
-  const found =
-    hits === null
+  const found = pending
+    ? t`Treffer neu nach dem Speichern`
+    : hits === null
       ? t`Treffer nicht bestimmbar`
       : live && total !== undefined
         ? hitsOf(hits, total)
@@ -113,8 +117,14 @@ export function Reference({
   dataState,
   extra,
   onRemove,
+  pending,
+  guard = (go) => go(),
 }: {
   docs: Record<string, unknown>[]
+  /** The readings differ from the saved ones (V2.1 "Weitere Lesart"). */
+  pending?: boolean
+  /** Asks before leaving the page, e.g. while the case has unsaved edits. */
+  guard?: (go: () => void) => void
   /** Removes a reading (an own case with several, V2.1). */
   onRemove?: (index: number) => void
   hits: number[] | null | undefined
@@ -135,7 +145,8 @@ export function Reference({
           key={i}
           reading={doc}
           name={several ? readingName(i) : null}
-          hits={hits?.[i] ?? null}
+          hits={pending ? null : (hits?.[i] ?? null)}
+          pending={pending}
           dataState={dataState}
           part={parts[i] ?? null}
           onRemove={onRemove && (() => onRemove(i))}
@@ -156,7 +167,7 @@ export function Reference({
                   <DropdownMenu.Item
                     key={i}
                     disabled={!part}
-                    onSelect={() => part && open(part)}
+                    onSelect={() => part && guard(() => open(part))}
                     className="cursor-pointer px-3 py-1 text-sm outline-none data-[disabled]:opacity-50 data-[highlighted]:bg-neutral-200"
                   >
                     {readingName(i)}
@@ -171,7 +182,10 @@ export function Reference({
             className="btn btn-primary"
             disabled={!openable}
             title={openable ? undefined : why}
-            onClick={() => parts[0] && open(parts[0])}
+            onClick={() => {
+              const part = parts[0]
+              if (part) guard(() => open(part))
+            }}
           >
             <Trans>Im Arbeitsplatz öffnen</Trans>
           </button>

@@ -2,9 +2,16 @@
 // D1-D3, design V1-V3). Pure, so they are unit-tested.
 import { i18n, type MessageDescriptor } from '@lingui/core'
 import { msg, t } from '@lingui/core/macro'
-import type { ApiRequestError, CaseOrigin, DataState, EvalCase, Split } from '../../api/client'
+import {
+  ApiRequestError,
+  type CaseOrigin,
+  type DataState,
+  type EvalCase,
+  type Split,
+} from '../../api/client'
 import { errorText, KNOWN_CODES } from '../../i18n/errors'
 import { formatNumber } from '../../i18n/locale'
+import { queryLayers } from '../../model/dialog/reference'
 
 export type AnswerKind = NonNullable<EvalCase['expect']>
 export type OtherApproach = NonNullable<EvalCase['other_approach']>
@@ -118,26 +125,8 @@ export const readingName = (index: number) => {
   return t`Lesart ${letter}`
 }
 
-const isObject = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value)
-
-const LAYER_KEYS = ['source', 'layer', 'by_layer']
-
-/** The layers a query names: source, relations, references, joins (``query_layers``). */
-export function layersOf(query: unknown): string[] {
-  const found = new Set<string>()
-  const walk = (value: unknown) => {
-    if (Array.isArray(value)) value.forEach(walk)
-    else if (isObject(value))
-      for (const [key, inner] of Object.entries(value)) {
-        if (key === 'symbology') continue
-        if (LAYER_KEYS.includes(key) && typeof inner === 'string') found.add(inner)
-        else walk(inner)
-      }
-  }
-  walk(query)
-  return [...found].sort()
-}
+/** The layers a query names, sorted, as a live case lists them (``query_layers``). */
+export const layersOf = (query: unknown): string[] => queryLayers(query).sort()
 
 /**
  * A query object as a case stores its reference: as the harness writes it,
@@ -195,41 +184,137 @@ export function tagProblem(tag: string): string | null {
   return null
 }
 
+type Details = Record<string, unknown>
+
+const text = (value: unknown) => (typeof value === 'string' && value ? value : null)
+const count = (value: unknown) => (typeof value === 'number' ? value : null)
+
 /**
- * A refusal of a case in words: for ``case_invalid`` the reason the check gave
- * (a refusal code of the model path, such as ``unknown_layer``), when this
- * version knows it; otherwise the code's own words.
+ * Why the check refused a case (``details.reason`` of ``case_invalid``), in
+ * words from the details the server sends; ``null`` when this version does not
+ * know the reason or a detail it needs is missing.
  */
-export function caseErrorText(error: ApiRequestError): string {
-  const body = error.body
-  if (!body) return error.message
-  const details = body.details ?? {}
-  const reason = typeof details.reason === 'string' ? details.reason : null
-  // The case route names the reason only, not the count (``cases.check_case``).
-  if (body.code === 'case_invalid' && reason === 'limit_exceeded') return tooManyConditions()
-  if (body.code === 'case_invalid' && reason && KNOWN_CODES.includes(reason))
-    return errorText(reason, details)
-  return error.message
+function reasonText(reason: string, d: Details): string | null {
+  switch (reason) {
+    case 'too_many': {
+      const max = count(d.max)
+      return max === null
+        ? null
+        : t`Neben dem Startbestand sind höchstens ${max} eigene Prüffälle möglich; mit diesen wären es mehr. Bitte zuerst Fälle löschen.`
+    }
+    case 'origin_start':
+      return t`Nur Fälle des Startbestands haben die Herkunft „Start".`
+    case 'origin_action': {
+      const action = count(d.origin_action)
+      return action === null ? null : t`Den Eintrag ${action} im Modellprotokoll gibt es nicht.`
+    }
+    case 'layer_not_listed': {
+      const layer = text(d.layer)
+      return layer === null
+        ? null
+        : t`Die Referenz nutzt den Layer „${layer}", der Fall nennt ihn aber nicht unter seinen Layern.`
+    }
+    case 'layer_not_used': {
+      const layer = text(d.layer)
+      return layer === null
+        ? null
+        : t`Der Fall nennt den Layer „${layer}", die Referenz nutzt ihn aber nicht.`
+    }
+    case 'unknown_attribute': {
+      const attribute = text(d.attribute)
+      const layer = text(d.layer)
+      if (attribute === null) return null
+      return layer === null
+        ? t`Das Feld „${attribute}" gibt es nicht, oder das Modell kennt es nicht.`
+        : t`Das Feld „${attribute}" gibt es im Layer „${layer}" nicht, oder das Modell kennt es nicht.`
+    }
+    case 'unknown_layer': {
+      const layer = text(d.layer)
+      return layer === null
+        ? null
+        : t`Den Layer „${layer}" gibt es nicht, er ist nicht sichtbar oder nicht für das Modell freigegeben.`
+    }
+    case 'limit_exceeded': {
+      const value = count(d.value)
+      const max = count(d.max)
+      return value === null || max === null
+        ? null
+        : t`Die Abfrage hat ${value} Bedingungen. Ein Prüffall darf höchstens ${max} haben, wie jede Modellantwort.`
+    }
+  }
+  // Refusal codes of the model path whose words need no detail, or name one.
+  const needs = NEEDS[reason]
+  if (!needs || !KNOWN_CODES.includes(reason)) return null
+  return needs.every((key) => text(d[key]) !== null) ? errorText(reason, d) : null
+}
+
+/** Other refusal codes a reading can get, with the details their words need. */
+const NEEDS: Record<string, string[]> = {
+  not_representable: [],
+  query_too_complex: [],
+  invalid_query: [],
+  model_query_invalid: [],
+  unsupported_operation: [],
+  invalid_query_geometry: [],
+  key_type_mismatch: [],
+  attribute_not_text: ['attribute'],
+  attribute_not_numeric: ['attribute'],
+  wrong_value_type: ['attribute'],
+  name_clash: ['attribute'],
+}
+
+/**
+ * A refusal of a case in words (create, edit, copy, import): for
+ * ``case_invalid`` the reason the check gave, with "Lesart B: " in front when
+ * the case has several readings; the code's own words when the reason is
+ * unknown or a detail is missing, never a sentence with a gap.
+ */
+export function refusalText(
+  code: string,
+  details: Details = {},
+  options: { readings?: number; fallback?: string } = {},
+): string {
+  if (code === 'case_invalid') {
+    const reason = text(details.reason)
+    const words = reason ? reasonText(reason, details) : null
+    if (!words) return errorText(code, details)
+    const reading = count(details.reading)
+    return reading !== null && (options.readings ?? 0) > 1
+      ? `${readingName(reading)}: ${words}`
+      : words
+  }
+  return errorText(code, details, options.fallback)
+}
+
+/** ``refusalText`` of a failed request. */
+export function caseErrorText(error: unknown, readingCount = 1): string {
+  if (error instanceof ApiRequestError && error.body?.code)
+    return refusalText(error.body.code, error.body.details ?? {}, {
+      readings: readingCount,
+      fallback: error.message,
+    })
+  return error instanceof Error ? error.message : String(error)
 }
 
 /** V3.2: "Die Analyse hat 10 Bedingungen. Ein Prüffall darf höchstens 8 haben …". */
-export function tooManyConditions(count?: number): string {
+export function tooManyConditions(n: number): string {
   const max = MAX_CONDITIONS
-  if (count === undefined)
-    return t`Die Abfrage hat mehr als ${max} Bedingungen. Ein Prüffall darf höchstens ${max} haben, wie jede Modellantwort.`
-  return t`Die Analyse hat ${count} Bedingungen. Ein Prüffall darf höchstens ${max} haben, wie jede Modellantwort.`
+  return t`Die Analyse hat ${n} Bedingungen. Ein Prüffall darf höchstens ${max} haben, wie jede Modellantwort.`
 }
 
 /** One problem of an import in words (V1.3): what is wrong with the case. */
-export function importProblemText(code: string): string {
+export function importProblemText(code: string, details: Details = {}): string {
   switch (code) {
     case 'case_id_taken':
       return t`Kennung doppelt (schon vorhanden)`
     case 'case_stale':
       return t`Ein Layer der Referenz fehlt oder ist für Sie nicht sichtbar`
-    case 'case_invalid':
-      return t`Referenzabfrage ungültig oder Fall unvollständig`
+    case 'case_invalid': {
+      const reason = text(details.reason)
+      const words = reason ? reasonText(reason, details) : null
+      return words ?? t`Referenzabfrage ungültig oder Fall unvollständig`
+    }
     default:
-      return errorText(code)
+      return errorText(code, details)
   }
 }

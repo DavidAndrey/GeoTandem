@@ -1,7 +1,7 @@
 // Administration frame (design D1): side navigation plus the current page.
 import { Trans } from '@lingui/react/macro'
 import { t } from '@lingui/core/macro'
-import { NavLink, Outlet, useLocation } from 'react-router'
+import { Link, NavLink, Outlet, useLocation } from 'react-router'
 
 type Group = {
   title: string
@@ -66,13 +66,18 @@ export function AdminLayout() {
             <ul>
               {group.links.map((item) => (
                 <li key={item.label}>
-                  {item.to ? (
-                    <NavLink
+                  {item.to && item.within !== undefined ? (
+                    // Active on every page below ``within``, not only at ``to`` (NavLink
+                    // would mark it at ``to`` only, also for assistive technology).
+                    <Link
                       to={item.to}
-                      className={({ isActive }) =>
-                        link(isActive || (item.within !== undefined && within(item.within)))
-                      }
+                      aria-current={within(item.within) ? 'page' : undefined}
+                      className={link(within(item.within))}
                     >
+                      {item.label}
+                    </Link>
+                  ) : item.to ? (
+                    <NavLink to={item.to} className={({ isActive }) => link(isActive)}>
                       {item.label}
                     </NavLink>
                   ) : (

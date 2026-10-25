@@ -1,7 +1,7 @@
 // One case (design V2, plan WP88): an own query case edited, saved, deleted
 // and opened in the workplace; a behaviour case; a start case read only and
 // copied into an own case.
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { Route, Routes } from 'react-router'
@@ -30,6 +30,10 @@ const schulanlagen = layer({
 })
 
 const OWN = 'e-turnhalle-ostermundigen'
+
+/** An error body as the backend writes it (api/errors.py). */
+const refusal = (status: number, code: string, details: Record<string, unknown>) =>
+  new Response(JSON.stringify({ code, message: 'English text.', details }), { status })
 
 /** The server keeps what a PUT saved, as the store does. */
 function backend(view: CaseView, patch: Record<string, unknown> = {}) {
@@ -141,25 +145,22 @@ test('V2.1: question, split, tags and note are saved with PUT, without null fiel
 test('V2.1: a refusal of the check is shown in words; Verwerfen restores the case', async () => {
   backend(caseView(OWN), {
     [`PUT /api/admin/evaluation/cases/${OWN}`]: () =>
-      new Response(
-        JSON.stringify({
-          code: 'case_invalid',
-          message: 'Reading 0 fails the checks.',
-          details: {
-            case_id: OWN,
-            reason: 'unknown_attribute',
-            attribute: 'turnhalle',
-            reading: 0,
-          },
-        }),
-        { status: 400 },
-      ),
+      refusal(400, 'case_invalid', {
+        case_id: OWN,
+        reason: 'unknown_attribute',
+        reading: 0,
+        layer: 'schulanlagen',
+        attribute: 'turnhalle',
+        available: ['name'],
+      }),
   })
   renderCase(OWN)
   const question = await screen.findByRole('textbox', { name: 'Frage' })
   await userEvent.type(question, '?')
   await userEvent.click(screen.getByRole('button', { name: 'Speichern' }))
-  expect(await screen.findByRole('alert')).toHaveTextContent('Das Feld „turnhalle" gibt es nicht.')
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Das Feld „turnhalle" gibt es im Layer „schulanlagen" nicht, oder das Modell kennt es nicht.',
+  )
   await userEvent.click(screen.getByRole('button', { name: 'Verwerfen' }))
   expect(question).toHaveValue('Schulanlagen mit Turnhalle in Ostermundigen')
   expect(screen.queryByRole('alert')).toBeNull()
@@ -174,7 +175,11 @@ test('V2.1: deleting asks first, then goes back to the list', async () => {
   const dialog = await screen.findByRole('alertdialog', { name: 'Prüffall löschen?' })
   await userEvent.click(within(dialog).getByRole('button', { name: 'Löschen' }))
   expect(await screen.findByText('Liste der Prüffälle')).toBeInTheDocument()
-  expect(calls.some((c) => c.key === `DELETE /api/admin/evaluation/cases/${OWN}`)).toBe(true)
+  const keys = calls.map((c) => c.key)
+  const deleted = keys.indexOf(`DELETE /api/admin/evaluation/cases/${OWN}`)
+  expect(deleted).toBeGreaterThan(-1)
+  // The deleted case is not asked for again (no 404 flash).
+  expect(keys.slice(deleted + 1)).not.toContain(`GET /api/admin/evaluation/cases/${OWN}`)
 })
 
 test('V2.1: "Im Arbeitsplatz öffnen" makes the reference the analysis', async () => {
@@ -319,4 +324,169 @@ test('keyboard: the copy dialog traps the focus and Esc closes it', async () => 
   }
   await userEvent.keyboard('{Escape}')
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+})
+
+test('V2.1: unsaved edits of the case are not dropped by leaving without a question', async () => {
+  backend(caseView(OWN))
+  renderCase(OWN)
+  const question = await screen.findByRole('textbox', { name: 'Frage' })
+  await userEvent.type(question, '!')
+  await userEvent.click(screen.getByRole('button', { name: 'Im Arbeitsplatz öffnen' }))
+  const ask = await screen.findByRole('alertdialog', {
+    name: 'Ungespeicherte Änderungen am Prüffall verwerfen?',
+  })
+  await userEvent.click(within(ask).getByRole('button', { name: 'Abbrechen' }))
+  expect(question).toHaveValue('Schulanlagen mit Turnhalle in Ostermundigen!')
+  expect(screen.queryByText('Arbeitsplatz')).toBeNull()
+  // The breadcrumb asks too; confirming leaves.
+  await userEvent.click(screen.getByRole('link', { name: 'Bewertung › Prüffälle' }))
+  const again = await screen.findByRole('alertdialog')
+  await userEvent.click(within(again).getByRole('button', { name: 'Verwerfen' }))
+  expect(await screen.findByText('Liste der Prüffälle')).toBeInTheDocument()
+})
+
+test('V2.1: a further reading is the applied analysis, never an open draft', async () => {
+  const calls = backend(caseView(OWN))
+  const s = useAnalysis.getState()
+  s.addLayer('schulanlagen')
+  s.edit()
+  s.addNode('root', { ...newAttributeRow('turnhalle'), operator: 'is_empty' })
+  s.apply()
+  // A draft in the editor that was not applied.
+  s.edit()
+  s.addNode('root', { ...newAttributeRow('turnhalle'), value: false })
+  renderCase(OWN)
+  await userEvent.click(await screen.findByRole('button', { name: 'Weitere Lesart hinzufügen' }))
+  // The hits of the readings come with the save.
+  expect(screen.getByRole('group', { name: 'Lesart A' })).toHaveTextContent(
+    'Treffer neu nach dem Speichern',
+  )
+  await userEvent.click(screen.getByRole('button', { name: 'Speichern' }))
+  await screen.findByRole('status')
+  const body = calls.find((c) => c.key.startsWith('PUT'))?.body as Record<string, unknown>
+  expect((body.gold_any as unknown[])[1]).toEqual({
+    source: 'schulanlagen',
+    where: { op: 'is_null', attr: 'turnhalle' },
+  })
+})
+
+test('V2.1: a further reading passes the checks of V3 and is not taken twice', async () => {
+  backend(caseView(OWN))
+  const s = useAnalysis.getState()
+  s.addLayer('schulanlagen')
+  s.edit()
+  s.addNode('root', { ...newAttributeRow('turnhalle'), value: true })
+  s.apply()
+  renderCase(OWN)
+  const add = await screen.findByRole('button', { name: 'Weitere Lesart hinzufügen' })
+  // The workplace holds the case's own reference.
+  expect(add).toBeDisabled()
+  await waitFor(() => expect(add).toHaveAccessibleDescription('Diese Lesart hat der Fall schon.'))
+  act(() => s.setRestriction({ kind: 'view', bbox: [7.4, 46.9, 7.5, 47] }))
+  expect(add).toBeDisabled()
+  expect(add).toHaveAccessibleDescription(/Die Einschränkung „Nur in"/)
+  act(() => {
+    s.setRestriction(null)
+    s.edit()
+    for (let i = 0; i < 9; i++) s.addNode('root', { ...newAttributeRow('turnhalle'), value: false })
+    s.apply()
+  })
+  expect(add).toBeDisabled()
+  expect(add).toHaveAccessibleDescription(/Die Analyse hat 10 Bedingungen/)
+})
+
+test('V2.1: editing only the question keeps the hits', async () => {
+  backend(caseView(OWN, { reference_hits: [9] }))
+  renderCase(OWN)
+  await userEvent.type(await screen.findByRole('textbox', { name: 'Frage' }), '?')
+  expect(await screen.findByText('9 von 248 · Datenstand Betriebsdaten')).toBeInTheDocument()
+})
+
+test('V2.1: a stale case that is saved unchanged is refused in words', async () => {
+  backend(caseView('e-kitas-bahnhof'), {
+    'PUT /api/admin/evaluation/cases/e-kitas-bahnhof': () =>
+      refusal(409, 'case_stale', {
+        case_id: 'e-kitas-bahnhof',
+        layer: 'kitas',
+        layers: ['kitas'],
+      }),
+  })
+  renderCase('e-kitas-bahnhof')
+  expect(await screen.findByText(/Veraltet: Der Layer „kitas" ist gelöscht/)).toBeInTheDocument()
+  await userEvent.type(screen.getByRole('textbox', { name: 'Frage' }), '?')
+  await userEvent.click(screen.getByRole('button', { name: 'Speichern' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Der Prüffall nutzt den Layer „kitas", den es nicht mehr gibt oder den Sie nicht sehen.',
+  )
+})
+
+test('V2.2: an own behaviour case saves its expected kind and what else passes', async () => {
+  const start = caseView('n15-je-gemeinde')
+  const own = {
+    ...start,
+    read_only: false,
+    case: { ...start.case, id: 'e-je-gemeinde', origin: 'import' as const },
+  }
+  const calls = backend(own)
+  renderCase('e-je-gemeinde')
+  await userEvent.selectOptions(
+    await screen.findByRole('combobox', { name: 'Erwartet' }),
+    'clarification',
+  )
+  const also = screen.getByRole('group', { name: 'Auch zulässig' })
+  await userEvent.click(within(also).getByRole('checkbox', { name: 'Nicht beantwortbar' }))
+  await userEvent.click(screen.getByRole('button', { name: 'Speichern' }))
+  await screen.findByRole('status')
+  expect(calls.find((c) => c.key.startsWith('PUT'))?.body).toMatchObject({
+    expect: 'clarification',
+    also: ['cannot_answer'],
+    other_approach: 'none',
+  })
+})
+
+test('a case on the sample data counts nothing on the live catalog', async () => {
+  const calls = backend(caseView('doc1-primar-koeniz', { reference_hits: [14, 17] }))
+  renderCase('doc1-primar-koeniz')
+  await screen.findAllByText(/Treffer · Datenstand Beispieldaten/)
+  await new Promise((resolve) => setTimeout(resolve, 400))
+  expect(calls.some((c) => c.key === 'POST /api/query/count')).toBe(false)
+})
+
+test('V2.3: a copy under an id in use is refused in words; the copy notes its source', async () => {
+  const calls = backend(caseView('doc1-primar-koeniz'), {
+    'POST /api/admin/evaluation/cases': () =>
+      refusal(409, 'case_id_taken', { case_id: 'doc1-primar-koeniz-kopie' }),
+  })
+  renderCase('doc1-primar-koeniz')
+  const open = await screen.findByRole('button', { name: 'Als eigenen Fall kopieren' })
+  await userEvent.click(open)
+  const dialog = await screen.findByRole('dialog')
+  const id = within(dialog).getByRole('textbox', { name: 'Kennung' })
+  await userEvent.clear(id)
+  await userEvent.type(id, 'X')
+  expect(id).toHaveAccessibleDescription(/Kennung: Kleinbuchstaben/)
+  await userEvent.clear(id)
+  await userEvent.type(id, 'doc1-primar-koeniz-kopie{Enter}')
+  expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+    'Einen Prüffall „doc1-primar-koeniz-kopie" gibt es schon.',
+  )
+  const post = calls.find((c) => c.key === 'POST /api/admin/evaluation/cases')?.body
+  expect(post).toMatchObject({ note: 'Kopie von doc1-primar-koeniz.' })
+  // Esc closes the dialog and the focus goes back to the button that opened it.
+  await userEvent.keyboard('{Escape}')
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  expect(open).toHaveFocus()
+})
+
+test('V2.3: a copy over the limit of own cases is refused in words', async () => {
+  backend(caseView('doc1-primar-koeniz'), {
+    'POST /api/admin/evaluation/cases': () =>
+      refusal(400, 'case_invalid', { case_id: null, reason: 'too_many', max: 429 }),
+  })
+  renderCase('doc1-primar-koeniz')
+  await userEvent.click(await screen.findByRole('button', { name: 'Als eigenen Fall kopieren' }))
+  await userEvent.click(await screen.findByRole('button', { name: 'Kopieren' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Neben dem Startbestand sind höchstens 429 eigene Prüffälle möglich',
+  )
 })

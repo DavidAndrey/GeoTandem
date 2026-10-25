@@ -11,6 +11,7 @@ import {
   caseErrorText,
   idFrom,
   idProblem,
+  importProblemText,
   layersOf,
   readings,
   referenceOf,
@@ -79,16 +80,73 @@ test('tags of the start set in words, others as written', () => {
   expect(tagText('paraphrase:muensingen')).toBe('paraphrase:muensingen')
 })
 
-test('a refusal of a case names the reason the check gave', () => {
-  const refused = (details: Record<string, unknown>) =>
-    caseErrorText(new ApiRequestError(400, { code: 'case_invalid', message: 'x', details }))
-  expect(refused({ case_id: 'e', reason: 'unknown_layer', layer: 'kitas' })).toBe(
-    'Den Layer „kitas" gibt es nicht oder er ist nicht sichtbar.',
+// The details as the backend sends them (cases.check_case, _too_many, engine errors).
+const refused = (details: Record<string, unknown>, readings = 1) =>
+  caseErrorText(
+    new ApiRequestError(400, { code: 'case_invalid', message: 'English.', details }),
+    readings,
   )
-  expect(refused({ case_id: 'e', reason: 'limit_exceeded' })).toMatch(/höchstens 8/)
-  expect(refused({ case_id: 'e', reason: 'layer_not_listed' })).toMatch(
-    /Der Prüffall „e" passt nicht/,
+
+test('a refusal of a case names the reason from the details the check sent', () => {
+  const reading = { case_id: 'e', reading: 0 }
+  expect(
+    refused({
+      ...reading,
+      reason: 'unknown_attribute',
+      layer: 'schulen',
+      attribute: 'becken_m',
+      available: ['typ'],
+    }),
+  ).toBe('Das Feld „becken_m" gibt es im Layer „schulen" nicht, oder das Modell kennt es nicht.')
+  expect(refused({ ...reading, reason: 'unknown_layer', layer: 'kitas' })).toMatch(
+    /^Den Layer „kitas" gibt es nicht/,
   )
+  expect(
+    refused({ ...reading, reason: 'limit_exceeded', limit: 'conditions', value: 10, max: 8 }),
+  ).toBe(
+    'Die Abfrage hat 10 Bedingungen. Ein Prüffall darf höchstens 8 haben, wie jede Modellantwort.',
+  )
+  expect(refused({ ...reading, reason: 'not_representable', part: 'buffer' })).toBe(
+    'Diese Abfrage lässt sich in den Bedienelementen nicht vollständig darstellen.',
+  )
+  // With several readings the failing one is named.
+  expect(refused({ case_id: 'e', reading: 1, reason: 'unknown_layer', layer: 'kitas' }, 2)).toMatch(
+    /^Lesart B: Den Layer „kitas"/,
+  )
+})
+
+test('the rules of a case have their own words', () => {
+  expect(refused({ case_id: null, reason: 'too_many', max: 429 })).toMatch(
+    /höchstens 429 eigene Prüffälle/,
+  )
+  expect(refused({ case_id: 'e', reason: 'origin_start' })).toMatch(/Herkunft „Start"/)
+  expect(refused({ case_id: 'e', reason: 'layer_not_listed', layer: 'gemeinden' })).toMatch(
+    /nutzt den Layer „gemeinden", der Fall nennt ihn aber nicht/,
+  )
+  expect(refused({ case_id: 'e', reason: 'layer_not_used', layer: 'kitas' })).toMatch(
+    /nennt den Layer „kitas", die Referenz nutzt ihn aber nicht/,
+  )
+  expect(refused({ case_id: 'e', reason: 'origin_action', origin_action: 7 })).toBe(
+    'Den Eintrag 7 im Modellprotokoll gibt es nicht.',
+  )
+})
+
+test('a missing detail falls back to the words of case_invalid, never a gap', () => {
+  const generic = /^Der Prüffall „e" passt nicht/
+  expect(refused({ case_id: 'e', reason: 'unknown_attribute', reading: 0 })).toMatch(generic)
+  expect(refused({ case_id: 'e', reason: 'limit_exceeded', reading: 0 })).toMatch(generic)
+  expect(refused({ case_id: 'e', reason: 'layer_not_listed' })).toMatch(generic)
+  expect(refused({ case_id: 'e', reason: 'wrong_value_type' })).toMatch(generic)
+  expect(refused({ case_id: 'e', reason: 'something_new' })).toMatch(generic)
+  expect(refused({ case_id: 'e', reason: 'unknown_attribute' })).not.toMatch(/„"/)
+})
+
+test('import problems use the same words, with a short fallback', () => {
+  expect(importProblemText('case_invalid', { reason: 'too_many', max: 2 })).toMatch(/höchstens 2/)
+  expect(importProblemText('case_invalid', { reason: 'unknown_attribute' })).toBe(
+    'Referenzabfrage ungültig oder Fall unvollständig',
+  )
+  expect(importProblemText('case_id_taken')).toBe('Kennung doppelt (schon vorhanden)')
 })
 
 const catalog: LayerInfo[] = [
@@ -137,6 +195,7 @@ test('the reference of an analysis, or why it cannot be one (V3.2)', () => {
   })
   expect(referenceFor(on(root(1)), catalog)).toEqual({
     gold: { source: 'schulen', where: { op: 'compare', attr: 'typ', cmp: 'eq', value: 'primar' } },
+    schemaVersion: '2',
     problem: null,
   })
   expect(referenceFor(on(root(9)), catalog).problem).toMatch(/9 Bedingungen/)

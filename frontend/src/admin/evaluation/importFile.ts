@@ -107,7 +107,7 @@ export async function importCases(file: File): Promise<Outcome> {
       cases: cases?.length ?? null,
       problems: result.problems.map((p) => ({
         caseId: p.case_id,
-        reason: importProblemText(p.code),
+        reason: importProblemText(p.code, p.details ?? {}),
         technical: p.message,
       })),
     }

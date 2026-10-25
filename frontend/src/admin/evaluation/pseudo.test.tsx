@@ -108,21 +108,100 @@ test.each([
   await waitFor(() => expect(strays(DATA)).toEqual([]))
 })
 
-test('the save dialog', async () => {
-  backend()
-  const s = useAnalysis.getState()
-  s.addLayer('schulen')
-  s.edit()
-  s.addNode('root', { ...newAttributeRow('typ'), value: 'primar' })
-  s.apply()
-  renderAt('/', <QueryPanel />)
-  // The entry's words are pseudo here: found by its place under the query.
-  const entry = await waitFor(() => {
+/** The entry under the query; its words are pseudo here, so found by its place. */
+const saveEntry = () =>
+  waitFor(() => {
     const found = document.querySelector<HTMLButtonElement>('section > div.mt-1\\.5 > button')
     if (!found) throw new Error('no entry')
     return found
   })
-  await userEvent.click(entry)
+
+function analysis(conditions: number) {
+  const s = useAnalysis.getState()
+  s.addLayer('schulen')
+  s.edit()
+  for (let i = 0; i < conditions; i++)
+    s.addNode('root', { ...newAttributeRow('typ'), value: 'primar' })
+  s.apply()
+}
+
+test('the save dialog (V3.1)', async () => {
+  backend()
+  analysis(1)
+  renderAt('/', <QueryPanel />)
+  await userEvent.click(await saveEntry())
   await screen.findByRole('dialog')
   await waitFor(() => expect(strays(DATA)).toEqual([]))
+})
+
+test('the save dialog refusing (V3.2)', async () => {
+  backend()
+  analysis(10)
+  renderAt('/', <QueryPanel />)
+  await userEvent.click(await saveEntry())
+  await screen.findByRole('alert')
+  await waitFor(() => expect(strays([...DATA, '10', '8'])).toEqual([]))
+})
+
+test('the import problems (V1.3) and the empty state (V1.4)', async () => {
+  const start = casePage().items.filter((v) => v.read_only)
+  fakeApi({
+    ...signedIn(),
+    'GET /api/layers': [schulen],
+    'GET /api/admin/evaluation/cases': { items: start, total: start.length },
+    'POST /api/admin/evaluation/cases/import': {
+      imported: 0,
+      problems: [
+        {
+          case_id: 'e-hallenbad',
+          code: 'case_invalid',
+          message: 'Reading 0 fails.',
+          details: {
+            reason: 'unknown_attribute',
+            reading: 0,
+            layer: 'schulen',
+            attribute: 'becken_m',
+          },
+        },
+        { case_id: 'e-kita-2', code: 'case_id_taken', message: 'Taken.', details: {} },
+      ],
+    },
+  })
+  renderAt('/admin/bewertung/faelle', <App />)
+  await screen.findByText('doc1-primar-koeniz')
+  await waitFor(() => expect(strays(DATA)).toEqual([]))
+  const input = document.querySelector<HTMLInputElement>('input[type="file"]')
+  if (!input) throw new Error('no file input')
+  const file = new File(
+    [JSON.stringify({ cases: [{ id: 'e-hallenbad' }, { id: 'e-kita-2' }] })],
+    'f.json',
+  )
+  await userEvent.upload(input, file)
+  await screen.findByRole('dialog')
+  const data = [
+    ...DATA,
+    'f.json',
+    'e-hallenbad',
+    'e-kita-2',
+    'becken_m',
+    '2',
+    'Reading 0 fails.',
+    'Taken.',
+  ]
+  await waitFor(() => expect(strays(data)).toEqual([]))
+})
+
+test('the copy dialog (V2.3)', async () => {
+  backend()
+  renderAt('/admin/bewertung/faelle/doc1-primar-koeniz', <App />)
+  await screen.findAllByRole('heading', { level: 2 })
+  // The header's second button: "Als eigenen Fall kopieren" in pseudo.
+  const copy = await waitFor(() => {
+    const found = document.querySelector<HTMLButtonElement>('form > div > button.btn')
+    if (!found) throw new Error('no copy button')
+    return found
+  })
+  await userEvent.click(copy)
+  await screen.findByRole('dialog')
+  await waitFor(() => expect(strays([...DATA, 'doc1-primar-koeniz-kopie'])).toEqual([]))
 })
