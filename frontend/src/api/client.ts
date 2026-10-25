@@ -298,6 +298,9 @@ export const api = {
       request<CaseView>(`/api/admin/evaluation/cases/${enc(id)}`, json('PUT', body)),
     remove: (id: string) =>
       request<undefined>(`/api/admin/evaluation/cases/${enc(id)}`, { method: 'DELETE' }),
+    /** A case prefilled from a model action of the log (F-3.14, V2 from M16.2); stores nothing. */
+    draftFromAction: (actionId: number) =>
+      request<CaseDraft>(`/api/admin/evaluation/cases/draft-from-action/${actionId}`),
     /** All or nothing (V1.3): ``problems`` name each case that stopped it. */
     importFile: (file: unknown) =>
       request<ImportResult>('/api/admin/evaluation/cases/import', json('POST', file)),
