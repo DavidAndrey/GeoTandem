@@ -16,18 +16,26 @@ a level or a case changes no run.
 **In the background**, in a thread of its own (as a chain runs, E2 P4): the
 readings of each case once (``grade.reading_ids``); a case whose reading no
 longer passes the checks or no longer runs is the case's problem, marked
-``invalid`` in the run and skipped, never an answer's fault. Then the points:
-those on different connections at the same time, those on one connection one
-after another (D8). Each question is built as operation builds it
-(``_prompt_for``: the level, an edited copy of its system prompt for this run
-only (D10), the layer profile of the data state, the starting
-administrator's for a live run (D4)), sent through ``LLMClient`` with the
-connection's endpoint, temperature and timeout and the repeat's seed, read
-and checked as ``DirectQuery.ask`` does, graded under the operating limits
-while holding one of the instance's query slots (security review #42). An
-abort stops before the next question; an answer that arrives after it is
-dropped. Once every question is answered the run is ``done`` and its figures
-are computed (``figures.py``, none while it runs: design review 5).
+``invalid`` in the run, skipped and left out of the label's count and hash,
+never an answer's fault. Then the points in one queue per model host
+(``queue_of``): points whose connections share a host one after another (one
+Ollama serves one model at a time), the hosts at the same time (D8), each
+queue case by case, every point of it in turn, in a plain daemon thread. Each
+question is built as operation builds it (``_prompt_for``: the level, an
+edited copy of its system prompt for this run only (D10), the layer profile
+of the data state, the starting administrator's for a live run (D4)), sent
+through ``LLMClient`` with the connection's endpoint and temperature, its
+timeout capped at ``MODEL_CALL_S`` as in operation, and the repeat's seed
+when the connection sends seeds at all; read and checked as
+``DirectQuery.ask`` does, graded under the operating limits while holding one
+of at most ``RUN_SLOTS`` of the instance's query slots (security review #42).
+After ``BREAKER_AFTER`` answers in a row that failed for the key, the
+provider's limits or the host, a queue stops and the run ends ``failed``
+with that code. An abort stops before the next question; an answer that
+arrives after it is dropped. Once every question is answered the run is
+``done`` and its figures are computed (``figures.py``, none while it runs:
+design review 5). Writes are retried when the database is busy for a moment;
+a run whose row cannot be closed keeps the instance busy (``Runs.hold``).
 
 A ``running`` run found at start-up has no thread left: it ends
 ``interrupted``, its answers kept (``close_interrupted``). A shutdown stops the
@@ -37,8 +45,8 @@ Logs carry ids and codes only, never a prompt, an answer or a key (C15).
 
 Hooks for the work packages built beside this one: ``prompt_profile_of`` and
 ``_prompt_for`` (WP91, the connection's prompt profile and the builder's
-options), ``price_of`` (WP91, prices on the connection), ``profile_summary_for``
-(WP94, the completeness summary of the layer profile).
+options), ``price_of`` (WP91, prices on the connection). The label's
+completeness summary is WP94's ``summary.profile_summary``.
 """
 
 from __future__ import annotations
@@ -50,15 +58,18 @@ import math
 import statistics
 import threading
 import time
+import traceback
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Iterator, Sequence
-from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
 from datetime import datetime
+from functools import partial
+from pathlib import Path
 from typing import Any, Final
 
 from sqlalchemy import Engine
+from sqlalchemy.exc import OperationalError
 
 from geotandem.auth.accounts import Account
 from geotandem.config import Settings
@@ -87,12 +98,10 @@ from geotandem.evaluation.schemas import (
     ConnectionEstimate,
     CostEstimate,
     EvalCase,
-    LayerGaps,
     MeasuringPoint,
     Money,
     PointLabel,
     PointView,
-    ProfileSummary,
     RunCase,
     RunComparison,
     RunComparisonRow,
@@ -100,11 +109,13 @@ from geotandem.evaluation.schemas import (
     RunLabel,
     RunPage,
     RunRequest,
+    RunStatus,
     RunSummary,
     RunView,
 )
 from geotandem.evaluation.stages import Assessment, assess, unanswered
 from geotandem.evaluation.stats import compare
+from geotandem.evaluation.summary import profile_summary
 from geotandem.levels import Level, load_levels
 from geotandem.llm import (
     ClientFactory,
@@ -120,8 +131,7 @@ from geotandem.model.errors import ActionError
 from geotandem.model.prompt import ANSWER_TOKENS, Prompt
 from geotandem.model.record.store import text_hash, utc_now
 from geotandem.model.schemas import PromptProfile
-from geotandem.model.service import QueryGate
-from geotandem.vault import CredentialsUnreadable
+from geotandem.model.service import MODEL_CALL_S, QueryGate
 from geotandem_query import SCHEMA_VERSION
 
 log = logging.getLogger(__name__)
@@ -138,6 +148,19 @@ not as use)."""
 MAX_RAW: Final = 20_000
 """Characters kept of the verbatim text of an unreadable answer (V7.4)."""
 SHUTDOWN_WAIT_S: Final = 5
+RUN_SLOTS: Final = 2
+"""Query slots of the instance one run holds at most at once (review C2)."""
+SLOT_POLL_S: Final = 0.2
+BREAKER_CODES: Final = frozenset(
+    {"llm_unauthorized", "llm_rate_limited", "llm_unreachable", "llm_quota_exhausted"}
+)
+"""Transport codes no further question mends: the key, the provider's limits,
+the host (security review S1)."""
+BREAKER_AFTER: Final = 5
+"""Answers in a row with one of ``BREAKER_CODES`` after which a queue stops."""
+WRITE_ATTEMPTS: Final = 3
+WRITE_PAUSE_S: Final = 0.2
+LOGGED_FRAMES: Final = 8
 
 
 class RunError(Exception):
@@ -168,50 +191,6 @@ def price_of(connection: ConnectionInfo) -> Price | None:
     """The connection's prices per million tokens (D12, O4); ``None`` until
     WP91 adds them to the connection."""
     return None
-
-
-def profile_summary_for(world: World) -> ProfileSummary:
-    """How complete the layer profile of ``world`` is (D11), from the profile
-    the model gets: labels other than the column name, text attributes with a
-    confirmed code list (the profile carries a code list only once confirmed,
-    S2), descriptions of layers and attributes. WP94 builds the summary of
-    the profile page; this is the one place a run takes it from."""
-    attributes = labelled = texts = with_codes = described = 0
-    gaps: list[LayerGaps] = []
-    for layer in world.profile.layers:
-        text = [a for a in layer.attributes if a.type == "text"]
-        unconfirmed = [a.name for a in text if not a.codes]
-        unlabelled = [a.name for a in layer.attributes if a.label == a.name]
-        undescribed = ([""] if not layer.description else []) + [
-            a.name for a in layer.attributes if not a.description
-        ]
-        attributes += len(layer.attributes)
-        labelled += len(layer.attributes) - len(unlabelled)
-        texts += len(text)
-        with_codes += len(text) - len(unconfirmed)
-        described += 1 + len(layer.attributes) - len(undescribed)
-        if unconfirmed or unlabelled or undescribed:
-            gaps.append(
-                LayerGaps(
-                    layer=layer.name,
-                    title=layer.title,
-                    attributes=len(layer.attributes),
-                    text_attributes=len(text),
-                    unconfirmed_codes=unconfirmed,
-                    unlabelled=unlabelled,
-                    undescribed=undescribed,
-                )
-            )
-    return ProfileSummary(
-        profile_hash=world.profile.hash,
-        layers=len(world.profile.layers),
-        attributes=attributes,
-        labelled=labelled,
-        text_attributes=texts,
-        text_with_codes=with_codes,
-        described=described,
-        gaps=gaps,
-    )
 
 
 @dataclass(frozen=True)
@@ -260,7 +239,12 @@ def _check_prompt_profile(point: Point) -> None:
 
 class Runs:
     """The run in flight (D8): at most one for the instance, in a thread of its
-    own, with its cancel event. One per application (``AppState``)."""
+    own, with its cancel event. One per application (``AppState``).
+
+    A run whose closing write failed even after its retries stays held here
+    (``hold``): the instance stays busy with it, and each later start tries to
+    close its row again first, so no second run starts over a row left
+    ``running`` (review C3)."""
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
@@ -268,18 +252,35 @@ class Runs:
         self._thread: threading.Thread | None = None
         self._cancel = threading.Event()
         self._stopping = False
+        self._held: tuple[int, Callable[[], bool]] | None = None
 
     @contextmanager
-    def admission(self) -> Iterator[Callable[[], int | None]]:
+    def admission(self) -> Iterator[Callable[[], tuple[int, str] | None]]:
         """Held around the checks and the creation of a run, so two starts never
-        both pass; yields what runs now (a run id, or ``None``)."""
+        both pass; yields what runs now: its id and ``running`` or
+        ``finishing`` (aborted, its last call not back yet), or ``None``."""
         with self._lock:
             yield self._busy
 
-    def _busy(self) -> int | None:
-        if self._thread is not None and self._thread.is_alive():
-            return self._run
+    def _busy(self) -> tuple[int, str] | None:
+        if self._thread is not None and self._thread.is_alive() and self._run is not None:
+            return self._run, "finishing" if self._cancel.is_set() else "running"
+        if self._held is not None:
+            run_id, close = self._held
+            try:
+                closed = close()
+            except Exception as exc:
+                log.error("evaluation run %d: still not closed (%s)", run_id, type(exc).__name__)
+                closed = False
+            if not closed:
+                return run_id, "finishing"
+            self._held = None
         return None
+
+    def hold(self, run_id: int, close: Callable[[], bool]) -> None:
+        """Keep the instance busy with ``run_id`` until ``close`` succeeds."""
+        with self._lock:
+            self._held = (run_id, close)
 
     def launch(self, run_id: int, work: Callable[[threading.Event], None]) -> None:
         """Start ``work`` for ``run_id``; inside ``admission``."""
@@ -457,7 +458,14 @@ class Evaluation:
             if endpoints:
                 endpoint, unreadable = self.connections.for_test(connection.id)
                 if unreadable:
-                    raise CredentialsUnreadable
+                    raise RunError(
+                        409,
+                        "credentials_unreadable",
+                        f"The key of the connection '{connection.name}' cannot be opened "
+                        "with this instance's secret.",
+                        connection_id=connection.id,
+                        connection=connection.name,
+                    )
             point = self._point(index, wanted, connection, level, endpoint)
             _check_prompt_profile(point)
             found.append(point)
@@ -508,19 +516,19 @@ class Evaluation:
         """Requests, tokens, cost and duration per connection before the start;
         no model call. Points on one connection run one after another, the
         connections at the same time (D8)."""
-        run_cases, world = self._run_cases(request)
-        asked = [rc.case for rc in run_cases if rc.status in RUNNABLE]
-        repeats = len(seeds_of(request))
         per: dict[int, list[Point]] = defaultdict(list)
         for point in self._points(request, endpoints=False):
             per[point.connection.id].append(point)
+        run_cases, world = self._run_cases(request)
+        asked = [rc.case for rc in run_cases if rc.status in RUNNABLE]
+        repeats = len(seeds_of(request))
         estimates = []
         for points in per.values():
             connection = points[0].connection
-            requests = len(asked) * repeats * len(points)
-            prompt_tokens = repeats * sum(
-                _prompt_tokens(point, case, world) for point in points for case in asked
-            )
+            # A question too large for the connection's context is never sent.
+            sizes = [_prompt_tokens(point, case, world) for point in points for case in asked]
+            requests = repeats * sum(size is not None for size in sizes)
+            prompt_tokens = repeats * sum(size or 0 for size in sizes)
             answer_tokens = requests * ANSWER_ESTIMATE
             estimates.append(
                 ConnectionEstimate(
@@ -559,7 +567,7 @@ class Evaluation:
             data_state=request.data_state,
             sample_version=None if live else sample_version(),
             dataset_versions={name: world.versions.get(name) for name in layers} if live else {},
-            profile=profile_summary_for(world),
+            profile=profile_summary(world.profile, world.context.backend.engine),
             account=self.admin.username,
             scope=request.scope,
             seeds=seeds_of(request),
@@ -573,7 +581,13 @@ class Evaluation:
         """Check, record ``running``, start the thread; the run as it is now."""
         with self.runs.admission() as busy:
             if (running := busy()) is not None:
-                raise RunError(409, "run_busy", f"The run {running} is still running.", run=running)
+                run_id, reason = running
+                message = (
+                    f"The run {run_id} was aborted and waits for its last answer."
+                    if reason == "finishing"
+                    else f"The run {run_id} is still running."
+                )
+                raise RunError(409, "run_busy", message, run=run_id, reason=reason)
             points = self._points(request, endpoints=True)
             for point in points:
                 connection = point.connection
@@ -601,7 +615,7 @@ class Evaluation:
                 total=label.cases * len(seeds) * len(points),
             )
             run_id = self.store.create(new, started_by=self.admin.username, started_at=now)
-            work = _Work(self, run_id, request, points, run_cases, world, seeds)
+            work = _Work(self, run_id, request, points, run_cases, world, seeds, label)
             self.runs.launch(run_id, work)
         log.info(
             "evaluation run %d started: %d points, %d cases, %s, %s",
@@ -764,12 +778,13 @@ def _by_point(scored: Iterable[Scored]) -> dict[int, list[Scored]]:
     return found
 
 
-def _prompt_tokens(point: Point, case: EvalCase, world: World) -> int:
-    """The size estimate of the question's messages (S5), without the answer's room."""
+def _prompt_tokens(point: Point, case: EvalCase, world: World) -> int | None:
+    """The size estimate of the question's messages (S5), without the answer's
+    room; ``None`` for one too large for the connection's context, never sent."""
     try:
         prompt = _prompt_for(point, case, world)
-    except ActionError:  # context_too_large: never sent, so it costs nothing
-        return 0
+    except ActionError:
+        return None
     return prompt.tokens_estimate - ANSWER_TOKENS
 
 
@@ -779,6 +794,33 @@ def close_interrupted(engine: Engine, clock: Callable[[], datetime] = utc_now) -
 
 
 # --- one run, in its thread -------------------------------------------------------
+
+
+def _frames(exc: BaseException) -> str:
+    """Where ``exc`` was raised, as file, line and function of its last frames:
+    never its message, which may quote a prompt (C15)."""
+    frames = traceback.extract_tb(exc.__traceback__)[-LOGGED_FRAMES:]
+    return " > ".join(f"{Path(f.filename).name}:{f.lineno} {f.name}" for f in frames)
+
+
+def _retried[T](write: Callable[[], T], what: str) -> T:
+    """A write retried on a database that is busy for a moment (review C3)."""
+    for attempt in range(1, WRITE_ATTEMPTS + 1):
+        try:
+            return write()
+        except OperationalError:
+            if attempt == WRITE_ATTEMPTS:
+                raise
+            log.warning("evaluation run: %s failed, attempt %d, again", what, attempt)
+            time.sleep(WRITE_PAUSE_S * attempt)
+    raise AssertionError("unreachable")
+
+
+def queue_of(point: Point) -> str:
+    """The queue a point waits in (D8, review C4): one per model host. Points
+    whose connections share a host run one after another, as one Ollama serves
+    one model at a time; points on different hosts run at the same time."""
+    return point.connection.host
 
 
 @dataclass
@@ -792,7 +834,14 @@ class _Work:
     cases: list[RunCase]
     world: World
     seeds: list[int]
+    label: RunLabel
     readings: dict[str, list[list[int]] | None] = field(default_factory=dict)
+    slots: threading.BoundedSemaphore = field(
+        default_factory=lambda: threading.BoundedSemaphore(RUN_SLOTS)
+    )
+    """The query slots this run may hold at once, of the instance's (review C2)."""
+    stopped: list[str] = field(default_factory=list)
+    """Codes after which a queue's points were stopped (circuit breaker)."""
 
     @property
     def store(self) -> RunStore:
@@ -803,47 +852,90 @@ class _Work:
         try:
             if not self._read(cancel):
                 return
-            groups: dict[int, list[Point]] = defaultdict(list)
+            queues: dict[str, list[Point]] = defaultdict(list)
             for point in self.points:
-                groups[point.connection.id].append(point)
-            with ThreadPoolExecutor(
-                max_workers=len(groups), thread_name_prefix=f"eval-run-{self.run_id}"
-            ) as pool:
-                asking = [pool.submit(self._ask_all, group, cancel) for group in groups.values()]
-                for done in asking:
-                    done.result()
+                queues[queue_of(point)].append(point)
+            errors: list[BaseException] = []
+            threads = [
+                threading.Thread(
+                    target=self._ask_all,
+                    args=(points, cancel, errors),
+                    name=f"eval-run-{self.run_id}-{index}",
+                    daemon=True,
+                )
+                for index, points in enumerate(queues.values())
+            ]
+            for thread in threads:
+                thread.start()
+            # Each call ends by its deadline (``MODEL_CALL_S``), so this ends too.
+            for thread in threads:
+                thread.join()
+            if errors:
+                raise errors[0]
             if cancel.is_set():
                 return  # aborted (the route closed it) or stopping (the start-up check will)
+            if self.stopped:
+                self._close("failed", error=self.stopped[0])
+                return
             self._finish()
         except Exception as exc:
-            # The type only: an exception's text may quote a prompt (C15).
-            log.error("evaluation run %d failed (%s)", self.run_id, type(exc).__name__)
-            try:
-                self.store.finish(self.run_id, "failed", error="internal_error")
-            except Exception as again:
-                log.error("evaluation run %d: not closed (%s)", self.run_id, type(again).__name__)
+            log.error(
+                "evaluation run %d failed (%s at %s)", self.run_id, type(exc).__name__, _frames(exc)
+            )
+            self._close("failed", error="internal_error")
+
+    def _close(
+        self,
+        status: RunStatus,
+        *,
+        points: Sequence[PointView] | None = None,
+        error: str | None = None,
+    ) -> None:
+        """Leave ``running``; if even the retries fail, the instance stays busy
+        with the run until a later start closes it (review C3)."""
+
+        def close() -> bool:
+            if self.store.finish(self.run_id, status, points=points, error=error):
+                return True
+            stored = self.store.get(self.run_id)
+            return stored is None or stored.status != "running"
+
+        try:
+            _retried(close, "closing")
+        except Exception as exc:
+            log.error("evaluation run %d: not closed (%s)", self.run_id, type(exc).__name__)
+            self.flow.runs.hold(self.run_id, close)
 
     @contextmanager
     def _slot(self, cancel: threading.Event) -> Iterator[bool]:
-        """One of the instance's query slots, waited for until the run is
-        cancelled (review #42); ``False`` then."""
-        gate = self.flow.gate
-        if gate is None:
-            yield True
+        """One of the run's slots, then one of the instance's query slots, each
+        waited for until the run is cancelled (review #42, C2); ``False`` then."""
+        got_own = False
+        while not got_own and not cancel.is_set():
+            got_own = self.slots.acquire(timeout=SLOT_POLL_S)
+        if not got_own:
+            yield False
             return
-        got = False
-        while not got and not cancel.is_set():
-            got = gate.take_thread(self.flow.settings.query_timeout_s, cancel.is_set)
         try:
-            yield got
+            gate = self.flow.gate
+            if gate is None:
+                yield True
+                return
+            got = False
+            while not got and not cancel.is_set():
+                got = gate.take_thread(self.flow.settings.query_timeout_s, cancel.is_set)
+            try:
+                yield got
+            finally:
+                if got:
+                    gate.give_back_thread()
         finally:
-            if got:
-                gate.give_back_thread()
+            self.slots.release()
 
     def _read(self, cancel: threading.Event) -> bool:
         """The readings of every case once (``reading_ids``); a reading that fails
-        is the case's problem: ``invalid`` in the run, not asked. ``False`` when
-        the run stops here."""
+        is the case's problem: ``invalid`` in the run, not asked, and out of the
+        label's count and hash. ``False`` when the run stops here."""
         context, profile = self.world.context, self.world.profile
         kept: list[RunCase] = []
         for run_case in self.cases:
@@ -866,62 +958,91 @@ class _Work:
                     )
                     run_case = run_case.model_copy(update={"status": "invalid"})
             kept.append(run_case)
-        if len(kept) != len(self.cases) or any(
-            a.status != b.status for a, b in zip(kept, self.cases, strict=True)
-        ):
+        if any(a.status != b.status for a, b in zip(kept, self.cases, strict=True)):
             self.cases = kept
-            asked = sum(rc.status in RUNNABLE for rc in kept)
-            self.store.set_cases(self.run_id, kept, asked * len(self.seeds) * len(self.points))
+            asked = [rc.case for rc in kept if rc.status in RUNNABLE]
+            self.label = self.label.model_copy(
+                update={"cases": len(asked), "case_set_hash": case_set_hash(asked)}
+            )
+            total = len(asked) * len(self.seeds) * len(self.points)
+            label = self.label
+            _retried(lambda: self.store.set_cases(self.run_id, kept, total, label), "cases")
         if not self.readings:
-            self.store.finish(self.run_id, "failed", error="no_cases")
+            self._close("failed", error="no_cases")
             return False
         return True
 
-    def _ask_all(self, points: Sequence[Point], cancel: threading.Event) -> None:
-        """The points of one connection, one after another (D8). A failure stops
-        the other connections too: the run ends ``failed``."""
+    def _ask_all(
+        self, points: Sequence[Point], cancel: threading.Event, errors: list[BaseException]
+    ) -> None:
+        """The points of one queue (D8). A failure stops the other queues too:
+        the run ends ``failed``."""
         try:
             self._ask_points(points, cancel)
-        except BaseException:
+        except BaseException as exc:
+            errors.append(exc)
             cancel.set()
-            raise
 
     def _ask_points(self, points: Sequence[Point], cancel: threading.Event) -> None:
-        for point in points:
-            for run_case in self.cases:
-                if run_case.case.id not in self.readings:
-                    continue
+        """Case by case, each at every point of the queue, so an aborted run has
+        its cases at the points paired. After ``BREAKER_AFTER`` answers in a row
+        that failed for a reason no further question will mend (the endpoint
+        refuses the key, limits the requests, cannot be reached), the queue
+        stops (security review S1)."""
+        streak = 0
+        for run_case in self.cases:
+            if run_case.case.id not in self.readings:
+                continue
+            for point in points:
                 for seed in self.seeds:
                     if cancel.is_set():
                         return
                     view = self._answer(point, run_case.case, seed, cancel)
                     if view is None:
                         return
-                    if not self.store.add_answer(self.run_id, point.connection.id, view):
+                    stored = partial(self.store.add_answer, self.run_id, point.connection.id, view)
+                    if not _retried(stored, "an answer"):
                         cancel.set()  # aborted meanwhile: the answer is dropped
+                        return
+                    streak = streak + 1 if view.code in BREAKER_CODES else 0
+                    if streak >= BREAKER_AFTER:
+                        assert view.code is not None
+                        log.warning(
+                            "evaluation run %d: queue %s stopped after %d answers %s",
+                            self.run_id,
+                            queue_of(point),
+                            streak,
+                            view.code,
+                        )
+                        self.stopped.append(view.code)
                         return
 
     def _answer(
         self, point: Point, case: EvalCase, seed: int, cancel: threading.Event
     ) -> AnswerView | None:
         """Ask one question and grade the answer; ``None`` when the run was
-        cancelled while the answer waited for a query slot."""
+        cancelled while the answer waited for a query slot. ``seed`` is the
+        repeat; it is sent only to a connection that sends a seed at all (an
+        endpoint with ``seed: null`` gets none, as in operation)."""
         assert point.endpoint is not None
         base = {"case_id": case.id, "point": point.index, "block": block_of(seed), "seed": seed}
         try:
             prompt = _prompt_for(point, case, self.world)
         except ActionError as exc:  # context_too_large: never sent
             return _view(base, unanswered(exc.code))
-        endpoint = replace(point.endpoint, seed=seed)
+        timeout_s = min(point.endpoint.timeout_s, MODEL_CALL_S)
+        endpoint = replace(
+            point.endpoint,
+            seed=None if point.endpoint.seed is None else seed,
+            timeout_s=timeout_s,
+        )
         client = _Recording(self.flow.client_factory(endpoint))
         found: DirectAnswer | None = None
         assessment: Assessment
         try:
             direct = DirectQuery(client, self.world.context, point.level)
             found = direct.ask(
-                prompt,
-                profile=self.world.profile,
-                deadline=self.flow.monotonic() + endpoint.timeout_s,
+                prompt, profile=self.world.profile, deadline=self.flow.monotonic() + timeout_s
             )
         except LLMError as exc:
             assessment = unanswered(exc.code)
@@ -981,15 +1102,8 @@ class _Work:
             )
             for point in self.points
         ]
-        if self.store.finish(self.run_id, "done", points=views):
-            reference = views[self.request.reference].figures
-            assert reference is not None
-            log.info(
-                "evaluation run %d done: reference point %d/%d passed",
-                self.run_id,
-                reference.passed,
-                reference.answers,
-            )
+        self._close("done", points=views)
+        log.info("evaluation run %d done", self.run_id)
 
 
 def _view(
@@ -1024,6 +1138,5 @@ __all__ = [
     "Runs",
     "close_interrupted",
     "price_of",
-    "profile_summary_for",
     "prompt_profile_of",
 ]

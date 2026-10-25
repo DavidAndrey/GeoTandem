@@ -200,7 +200,9 @@ const MESSAGES: Record<string, Words> = {
         : t`Nur eine angenommene oder automatisch angewendete, nicht zurückgenommene Direktabfrage wird zum Prüffall.`,
   run_busy: (d) => {
     const run = number(d.run)
-    return t`Lauf #${run} läuft noch. Es läuft höchstens ein Lauf zugleich.`
+    return d.reason === 'finishing'
+      ? t`Lauf #${run} ist abgebrochen und wartet noch auf die letzte Antwort des Modells. Versuchen Sie es gleich nochmals.`
+      : t`Lauf #${run} läuft noch. Es läuft höchstens ein Lauf zugleich.`
   },
   external_not_confirmed: (d) => {
     const host = text(d.host)

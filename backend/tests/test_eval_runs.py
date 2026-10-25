@@ -14,6 +14,7 @@ action; no row value of the live data reaches any prompt (E2 S7).
 import asyncio
 import json
 import threading
+import time
 from collections.abc import AsyncIterator, Callable, Sequence
 from pathlib import Path
 from typing import Any
@@ -134,22 +135,44 @@ class Model:
         self.released.set()
         self.asked = threading.Event()
         self.hold_from = 0
+        self.deadlines: list[float | None] = []
+        self.pause = 0.0
+        """Seconds each call takes, so calls in different threads overlap."""
+        self.active: set[str] = set()
+        self.together: set[frozenset[str]] = set()
+        """Models whose calls were in flight at the same time."""
 
     def __call__(self, endpoint: Endpoint) -> "Client":
         with self.lock:
             self.endpoints.append(endpoint)
         return Client(self, endpoint)
 
-    def answer(self, endpoint: Endpoint, messages: Sequence[Message]) -> Completion:
+    def answer(
+        self, endpoint: Endpoint, messages: Sequence[Message], deadline: float | None = None
+    ) -> Completion:
         with self.lock:
             self.calls.append((endpoint.model, endpoint.seed or 0, tuple(messages)))
+            self.deadlines.append(deadline)
             held = self.hold_from and len(self.calls) >= self.hold_from
+            self.active.add(endpoint.model)
+            if len(self.active) > 1:
+                self.together.add(frozenset(self.active))
+        try:
+            return self._answer(endpoint, messages, held=bool(held))
+        finally:
+            with self.lock:
+                self.active.discard(endpoint.model)
+
+    def _answer(self, endpoint: Endpoint, messages: Sequence[Message], *, held: bool) -> Completion:
+        if self.pause:
+            time.sleep(self.pause)
         if held:
             self.asked.set()
             assert self.released.wait(10), "the test never released the model"
         text = messages[-1].content
         case_id = next(i for i, p in PROMPTS.items() if p == text)
-        found = self.scripts[endpoint.model][case_id](endpoint.seed or 0)
+        # Without a seed sent, the script answers as for the first repeat.
+        found = self.scripts[endpoint.model][case_id](endpoint.seed or 1)
         if isinstance(found, LLMError):
             raise found
         if isinstance(found, str):
@@ -179,7 +202,7 @@ class Client:
         tools: Sequence[ToolSpec] = (),
         deadline: float | None = None,
     ) -> Completion:
-        return self.model.answer(self.endpoint, messages)
+        return self.model.answer(self.endpoint, messages, deadline)
 
     def models(self) -> list[ModelInfo]:
         return []
@@ -605,6 +628,32 @@ async def test_a_failing_reading_is_the_cases_problem(
     assert all(PROMPTS["h10-name-bahnhof"] != msgs[-1].content for _, _, msgs in model.calls)
     # The comparison has one confirmation case left.
     assert view["points"][0]["figures"]["by_split"]["confirm"]["answers"] == 5
+    # The label counts and hashes the cases asked (review B1), the list too.
+    asked = [rc["case"] for rc in view["cases"] if rc["status"] != "invalid"]
+    expected = run_module.case_set_hash(EvalCase.model_validate(c) for c in asked)
+    assert (view["label"]["cases"], view["label"]["case_set_hash"]) == (3, expected)
+    summary = (await client.get(RUNS)).json()["items"][0]
+    assert (summary["cases"], summary["case_set_hash"]) == (3, expected)
+    with Session(app.state.geotandem.backend.engine) as db:
+        row = db.get(EvalRun, view["id"])
+        assert row is not None and row.case_set_hash == expected
+
+
+async def test_a_run_whose_every_reading_fails_ends_failed_without_cases(
+    client: httpx.AsyncClient,
+    app: FastAPI,
+    model: Model,
+    two: Body,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def reading_ids(case: EvalCase, *args: Any) -> Any:
+        raise ReadingRefused(0, Refusal(code="unknown_attribute", message="gone"))
+
+    monkeypatch.setattr(run_module, "reading_ids", reading_ids)
+    body = {**two, "cases": {"tags": ["text"]}, "scope": "quick"}
+    view = await run_to_end(client, app, body)
+    assert (view["status"], view["error"]) == ("failed", "no_cases")
+    assert view["label"]["cases"] == 0 and model.calls == []
 
 
 # --- no row value in a prompt (E2 S7) ------------------------------------------

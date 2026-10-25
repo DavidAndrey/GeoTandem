@@ -174,13 +174,19 @@ class RunStore:
             rows = db.scalars(stmt.order_by(EvalRun.id.desc()).offset(offset).limit(limit))
             return [_stored(row) for row in rows], total
 
-    def set_cases(self, run_id: int, cases: Sequence[RunCase], total: int) -> None:
-        """The cases after their readings were read, with the total they leave."""
+    def set_cases(self, run_id: int, cases: Sequence[RunCase], total: int, label: RunLabel) -> None:
+        """The cases after their readings were read, with the total they leave
+        and the label counted and hashed over the cases asked."""
         with Session(self.engine) as db, db.begin():
             db.execute(
                 update(EvalRun)
                 .where(EvalRun.id == run_id)
-                .values(cases=_dump(cases), progress_total=total)
+                .values(
+                    cases=_dump(cases),
+                    progress_total=total,
+                    label=label.model_dump(mode="json"),
+                    case_set_hash=label.case_set_hash,
+                )
             )
 
     def _leave_running(self, run_id: int, **values: Any) -> bool:
