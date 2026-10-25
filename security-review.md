@@ -774,14 +774,19 @@ query's prompt), `connections.py`, migration **0017**, the connection form.
   by `parse_answer` and the query by `validate_model_query` as before.
 - **Changes are audited (O8).** A change of the profile or the prices is an
   ordinary connection update: admin-only routes, audited as
-  `llm_connection_changed` with the changed field names (never values), in
-  the audit log, not the model log. Setting the same profile again lists no
-  field.
+  `llm_connection_changed` with the changed field names, in the audit log,
+  not the model log. When the profile is set or changed the event also
+  carries its three values (closed presets, not secret); no other value is
+  logged. Setting the same profile again lists no field.
 - **Prices leak nothing.** Three plain columns (two numbers, an ISO currency),
   all three or none (`price_incomplete`, also a table check); shown to
   administrators only with the connection. No key is near them; the error
   details name the connection and the missing field names only.
-- **Not recorded on the model action:** which profile a direct query used is
-  not part of the record's connection snapshot (the contract is frozen); the
-  connection's current profile and the audit log of its changes say it.
-  Accepted until the record is extended.
+- **The record keeps the profile it was written with (F-6.8, H7).** Every
+  model action stores the prompt profile of its prompt (`model_action.prompt_profile`,
+  migration 0017; the chain's is the default), shown with the connection on
+  the action page when it is not the default. A later change of the
+  connection's profile changes no record (tested); records from before 0017
+  hold none, which is the default. A stored profile a later version does not
+  know reads as the default with a log line, so one row cannot break the
+  connection list or the log.

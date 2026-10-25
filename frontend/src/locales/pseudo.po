@@ -1223,11 +1223,11 @@ msgid "aus Raumfilter"
 msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
-msgid "Ausgabe"
+msgid "Ausgabe je Mio. Tokens"
 msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
-msgid "Ausgabe je Mio. Tokens"
+msgid "Ausgabeformat"
 msgstr ""
 
 #: src/workplace/QueryPanel.tsx
@@ -2480,6 +2480,10 @@ msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
 msgid "Drei Buchstaben, z. B. CHF, EUR, USD."
+msgstr ""
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Drei Grossbuchstaben, z. B. CHF"
 msgstr ""
 
 #: src/admin/CatalogPage.tsx
@@ -4882,6 +4886,10 @@ msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
 msgid "Promptprofil"
+msgstr ""
+
+#: src/admin/ModelActionPage.tsx
+msgid "Promptprofil: {written}"
 msgstr ""
 
 #: src/admin/evaluation/words.ts

@@ -255,8 +255,12 @@ function createBody(f: Form): ConnectionWrite {
     is_default: f.is_default,
     confirm_data_release: false,
     ...requestLimit(f),
-    prompt_profile: f.prompt_profile,
-    ...prices(f),
+    // Only what was set, so the audit lists it (O8): today's profile and an
+    // empty price are the back end's defaults.
+    ...(sameProfile(f.prompt_profile, DEFAULT_PROMPT_PROFILE)
+      ? {}
+      : { prompt_profile: f.prompt_profile }),
+    ...Object.fromEntries(Object.entries(prices(f)).filter(([, v]) => v !== null)),
   }
 }
 
@@ -519,7 +523,7 @@ function ConnectionForm({
           </select>
         </Field>
         <Field
-          label={t`Ausgabe`}
+          label={t`Ausgabeformat`}
           hint={t`Erzwungen: das Antwortschema geht auch als eingeschränkte Ausgabe mit. Nur Text: das Schema steht nur im Prompt.`}
         >
           <select
@@ -570,6 +574,8 @@ function ConnectionForm({
             <input
               className="input w-20 font-mono"
               maxLength={3}
+              pattern="[A-Z]{3}"
+              title={t`Drei Grossbuchstaben, z. B. CHF`}
               autoComplete="off"
               value={form.price_currency}
               onChange={(e) => set({ price_currency: e.target.value.toUpperCase() })}

@@ -664,6 +664,11 @@ class PromptFlow:
             thread = self.store.thread(caller, request.parent_action_id, MAX_TURNS)
             context = ToolContext(view, self.limits, self.unsupported)
             follow_up = follow_up_of(thread, request.analysis, context, profile)
+        # The connection's for the direct query (plan E3, D9); the chain keeps
+        # today's until it is evaluated (plan E3, 9). The record keeps it (H7).
+        written = (
+            connection.prompt_profile if request.approach == "direct" else DEFAULT_PROMPT_PROFILE
+        )
         prompt = build_prompt(
             request.text,
             approach=request.approach,
@@ -671,13 +676,7 @@ class PromptFlow:
             profile=profile,
             follow_up=follow_up,
             context_length=connection.context_length,
-            # The connection's for the direct query (plan E3, D9); the chain
-            # keeps today's until it is evaluated (plan E3, 9).
-            prompt_profile=(
-                connection.prompt_profile
-                if request.approach == "direct"
-                else DEFAULT_PROMPT_PROFILE
-            ),
+            prompt_profile=written,
         )
         timeout_s = min(endpoint.timeout_s, MODEL_CALL_S)
         call = _Call(
@@ -693,7 +692,7 @@ class PromptFlow:
             prompt=request.text,
             approach=request.approach,
             level=level_snapshot(level),
-            connection=connection_snapshot(connection),
+            connection=connection_snapshot(connection, written),
             profile_hash=profile.hash,
             parent_action_id=request.parent_action_id,
             reference=follow_up.reference if follow_up else "none",

@@ -12,6 +12,7 @@ from model_fixtures import REPO, case, scripted
 
 from geotandem.catalog import ModelProfile, model_profile
 from geotandem.data import DataBackend, Limits
+from geotandem.db import orm
 from geotandem.levels import Level
 from geotandem.levels.store import load_levels
 from geotandem.llm import Completion
@@ -26,7 +27,7 @@ from geotandem.model.prompt import (
     prompt_hash,
 )
 from geotandem.model.result import answer_format, parse_answer
-from geotandem.model.schemas import OutputMode, PromptProfile, QueryAnswer
+from geotandem.model.schemas import Approach, OutputMode, PromptProfile, QueryAnswer
 from geotandem.tools import ToolContext
 from geotandem_query import QueryObject
 
@@ -188,3 +189,64 @@ def test_the_client_gets_the_output_mode(
     [call] = model.calls
     assert call.schema == (answer_format("direct") if output == "constrained" else None)
     assert "JSON-Schema der Antwort" in call.messages[0].content
+
+
+FOLLOW_UP_MEASURED = {
+    "direct": "21e9e146cb74bbb92d35463f3c96a00585301495d503d81519b5e6c8d54b8e68",
+    "chain": "3450a1a2e268638b4b13db749add55232617190b7b433c962b90c1dccdd588db",
+}
+"""``prompt_hash`` of ``follow_up()`` under the default profile, taken with the
+builder as it was before WP91 (``ep-3`` at the tag ``e3.2``)."""
+
+
+def follow_up() -> FollowUp:
+    """A follow-up with a turn, a decision and the current analysis (P6)."""
+    turn = Turn(
+        "Welche Schulen gibt es?", "Alle Schulen.", ("Schulen jeder Stufe.",), decision="accepted"
+    )
+    analysis = QueryObject.model_validate(
+        {"schema_version": "2", "source": "schulen", "output": "map"}
+    )
+    return FollowUp(analysis=analysis, reference="last_answer", turns=[turn])
+
+
+@pytest.mark.parametrize("approach", ["direct", "chain"])
+def test_a_follow_up_under_the_default_is_todays_prompt(
+    template: tuple[ModelProfile, Level], approach: Approach
+) -> None:
+    profile, level = template
+    prompt = build_prompt(
+        "Nur Primarschulen", approach=approach, level=level, profile=profile, follow_up=follow_up()
+    )
+    assert prompt_hash(prompt.messages, prompt.schema) == FOLLOW_UP_MEASURED[approach]
+    assert [m.role for m in prompt.messages] == ["system", "user", "assistant", "user"]
+
+
+def test_a_follow_up_under_p5_and_the_twelve(template: tuple[ModelProfile, Level]) -> None:
+    """The examples before the layer profile, the twelve in place of the
+    standard set, and no first-question note: the prompt builds on a turn."""
+    profile, level = template
+    asked = {"approach": "direct", "level": level, "profile": profile}
+    chosen = PromptProfile(examples="12", placement="P5")
+    prompt = build_prompt(
+        "Nur Primarschulen", follow_up=follow_up(), prompt_profile=chosen, **asked
+    )
+    default = build_prompt("Nur Primarschulen", follow_up=follow_up(), **asked)
+    system = prompt.messages[0].content
+    assert system.index(examples_section("12")) < system.index("# Layer-Steckbrief")
+    assert examples_section("standard") not in system
+    assert all(FIRST not in m.content for m in prompt.messages)
+    assert prompt.messages[1:] == default.messages[1:]
+
+
+def test_the_stored_default_is_the_contracts() -> None:
+    """The ORM's and the migration's server default are ``PromptProfile()``."""
+    path = REPO / "backend/src/geotandem/db/migrations/versions/0017_connection_prompt_profile.py"
+    spec = importlib.util.spec_from_file_location("m0017", path)
+    assert spec is not None and spec.loader is not None
+    migration = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(migration)
+    expected = PromptProfile().model_dump()
+    assert json.loads(orm.DEFAULT_PROMPT_PROFILE) == expected
+    assert json.loads(migration.DEFAULT_PROMPT_PROFILE) == expected
+    assert DEFAULT_PROMPT_PROFILE.model_dump() == expected

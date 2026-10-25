@@ -348,12 +348,43 @@ class LevelSnapshot(BaseModel):
     prompt_hash: str
 
 
+# --- prompt profiles (plan E3, D9) ----------------------------------------------
+
+ExampleSet = Literal["standard", "12"]
+"""The worked examples of the prompt: today's set, or the twelve of
+``model/examples/12.txt`` (testplan-system-context, P6)."""
+
+Placement = Literal["P0", "P5", "P9"]
+"""Where the prompt puts its parts (testplan-system-context, 5): ``P0`` as
+today, ``P5`` the examples before the layer profile, ``P9`` the first-question
+note as a system message of its own (E-8, extended 2026-10-23)."""
+
+OutputMode = Literal["constrained", "text"]
+"""The answer schema as constrained output, or only as text in the prompt (H-8)."""
+
+
+class PromptProfile(BaseModel):
+    """How the application writes the prompt for a connection (plan E3, D9):
+    measured presets, never free text. The default is today's prompt byte for
+    byte; P1, P2, P3, P4 and P8 are not offered (testplan-system-context 8.2)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    examples: ExampleSet = "standard"
+    placement: Placement = "P0"
+    output: OutputMode = "constrained"
+
+
 class ConnectionSnapshot(BaseModel):
     id: int
     name: str
     model: str
     host: str
     locality: Locality
+    prompt_profile: PromptProfile | None = None
+    """The prompt profile the direct query was written with (plan E3, D9); a
+    chain records the default. ``None``: asked before profiles were kept, so
+    with the default."""
 
 
 class Refusal(BaseModel):
@@ -602,30 +633,3 @@ class KeyFigures(BaseModel):
     """(accepted + adjusted) / (accepted + adjusted + rejected + superseded),
     rounded to four decimals; ``None`` while nothing is decided."""
     not_counted: NotCounted
-
-
-# --- prompt profiles (plan E3, D9) ----------------------------------------------
-
-ExampleSet = Literal["standard", "12"]
-"""The worked examples of the prompt: today's set, or the twelve of
-``model/examples/12.txt`` (testplan-system-context, P6)."""
-
-Placement = Literal["P0", "P5", "P9"]
-"""Where the prompt puts its parts (testplan-system-context, 5): ``P0`` as
-today, ``P5`` the examples before the layer profile, ``P9`` the first-question
-note as a system message of its own (E-8, extended 2026-10-23)."""
-
-OutputMode = Literal["constrained", "text"]
-"""The answer schema as constrained output, or only as text in the prompt (H-8)."""
-
-
-class PromptProfile(BaseModel):
-    """How the application writes the prompt for a connection (plan E3, D9):
-    measured presets, never free text. The default is today's prompt byte for
-    byte; P1, P2, P3, P4 and P8 are not offered (testplan-system-context 8.2)."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    examples: ExampleSet = "standard"
-    placement: Placement = "P0"
-    output: OutputMode = "constrained"

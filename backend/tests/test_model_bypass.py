@@ -906,8 +906,14 @@ READ_ONLY_IMPORTS: dict[str, set[str]] = {
         "list_layers",
         "model_profile",
     },
-    # Connections: the account's active one, read for a call (``active_call``).
-    "geotandem.connections": {"ConnectionInfo", "ConnectionProblem", "Connections"},
+    # Connections: the account's active one, read for a call (``active_call``);
+    # a record's stored prompt profile, read leniently (plan E3, D9).
+    "geotandem.connections": {
+        "ConnectionInfo",
+        "ConnectionProblem",
+        "Connections",
+        "stored_prompt_profile",
+    },
     # The data core's types, its read-only view and the read-only marker of
     # its transactions.
     "geotandem.data": {"DataBackend", "Limits", "Op"},

@@ -11,7 +11,12 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import fixture from '../../../../schema/model-cases/v1.json'
 import { App } from '../../App'
-import type { KeyFigures, ModelActionSummary, ModelActionView } from '../../api/client'
+import type {
+  KeyFigures,
+  ModelActionSummary,
+  ModelActionView,
+  PromptProfile,
+} from '../../api/client'
 import { UserMenu } from '../../auth/UserMenu'
 import { activate } from '../../i18n/i18n'
 import { formatNumber, parseTimestamp } from '../../i18n/locale'
@@ -487,6 +492,25 @@ describe('M16.2 one entry', () => {
     expect(term('Prompt-Hash')).toHaveTextContent('c'.repeat(64))
     expect(document.querySelector('[data-status]')).toHaveAttribute('data-status', 'applied')
     expect(screen.queryByText('Schritte')).toBeNull()
+  })
+
+  test('the prompt profile it was written with, in one line when not today’s', async () => {
+    const withProfile = (prompt_profile: PromptProfile) =>
+      records().map((v) =>
+        v.id === 101 ? { ...v, connection: { ...v.connection, prompt_profile } } : v,
+      )
+    logServer(withProfile({ examples: '12', placement: 'P9', output: 'text' }))
+    renderAt(`${LOG_PATH}/101`, <App />)
+    expect(
+      await screen.findByText(
+        'Promptprofil: 12 Beispiele · P9 (Hinweis „erste Frage" als eigene Systemnachricht) · nur Text',
+      ),
+    ).toBeInTheDocument()
+    cleanup()
+    logServer(withProfile({ examples: 'standard', placement: 'P0', output: 'constrained' }))
+    renderAt(`${LOG_PATH}/101`, <App />)
+    await screen.findByRole('heading', { name: /· admin$/ })
+    expect(screen.queryByText(/^Promptprofil:/)).toBeNull()
   })
 
   test('a refusal with its code and the query it refused; a chain with its steps', async () => {

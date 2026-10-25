@@ -358,6 +358,9 @@ class ModelAction(Base):
     connection_model: Mapped[str] = mapped_column(String(200))
     connection_host: Mapped[str] = mapped_column(String(500))
     connection_locality: Mapped[str] = mapped_column(String(16))
+    prompt_profile: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    """The prompt profile the prompt was written with (plan E3, D9); the chain's
+    is the default. Null: asked before 0017, with the default."""
     profile_hash: Mapped[str] = mapped_column(String(128))
     answer: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     query: Mapped[dict[str, Any] | None] = mapped_column(JSON)

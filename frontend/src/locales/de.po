@@ -1223,12 +1223,12 @@ msgid "aus Raumfilter"
 msgstr "aus Raumfilter"
 
 #: src/admin/ConnectionsPage.tsx
-msgid "Ausgabe"
-msgstr "Ausgabe"
-
-#: src/admin/ConnectionsPage.tsx
 msgid "Ausgabe je Mio. Tokens"
 msgstr "Ausgabe je Mio. Tokens"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Ausgabeformat"
+msgstr "Ausgabeformat"
 
 #: src/workplace/QueryPanel.tsx
 msgid "Ausschnitt"
@@ -2481,6 +2481,10 @@ msgstr "Distanz in Metern"
 #: src/admin/ConnectionsPage.tsx
 msgid "Drei Buchstaben, z. B. CHF, EUR, USD."
 msgstr "Drei Buchstaben, z. B. CHF, EUR, USD."
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Drei Grossbuchstaben, z. B. CHF"
+msgstr "Drei Grossbuchstaben, z. B. CHF"
 
 #: src/admin/CatalogPage.tsx
 #: src/admin/DuplicateLayerDialog.tsx
@@ -4883,6 +4887,10 @@ msgstr "Prompt-Hash"
 #: src/admin/ConnectionsPage.tsx
 msgid "Promptprofil"
 msgstr "Promptprofil"
+
+#: src/admin/ModelActionPage.tsx
+msgid "Promptprofil: {written}"
+msgstr "Promptprofil: {written}"
 
 #: src/admin/evaluation/words.ts
 #: src/model/chain/Chain.tsx

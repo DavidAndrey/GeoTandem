@@ -11879,6 +11879,16 @@
               "external"
             ],
             "title": "Locality"
+          },
+          "prompt_profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PromptProfile"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",

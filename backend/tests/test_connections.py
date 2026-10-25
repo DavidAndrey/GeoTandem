@@ -350,6 +350,23 @@ async def test_price_of_reads_the_prices_in_one_place(client: httpx.AsyncClient)
     assert (round(cost.amount, 6), cost.currency) == (0.01, "USD")
 
 
+async def test_an_obsolete_stored_profile_reads_as_the_default(
+    client: httpx.AsyncClient, app: FastAPI, caplog: pytest.LogCaptureFixture
+) -> None:
+    """One row a later version no longer knows does not break the list."""
+    created = await create(client, "Ollama")
+    with Session(app.state.geotandem.backend.engine) as session, session.begin():
+        session.execute(
+            update(LLMConnection)
+            .where(LLMConnection.id == created["id"])
+            .values(prompt_profile={"examples": "standard", "placement": "P7", "output": "x"})
+        )
+    response = await client.get(URL)
+    assert response.status_code == 200
+    assert response.json()[0]["prompt_profile"] == P0
+    assert f"connection {created['id']}: unknown prompt profile" in caplog.text
+
+
 def state_info(body: Body) -> ConnectionInfo:
     return ConnectionInfo.model_validate(body)
 
@@ -378,6 +395,19 @@ async def test_every_change_is_audited_by_field_names(
         ("deleted", None),
     ]
     assert all(e["username"] == "admin" and e["id"] == created["id"] for e in logged)
+    # The profile's values come along when it is set or changed, nothing else's.
+    assert [e.get("prompt_profile") for e in logged] == [
+        None,
+        None,
+        {**P0, "placement": "P9"},
+        None,
+        None,
+        None,
+    ]
+    luna = {"examples": "12", "placement": "P9", "output": "text"}
+    await create(client, "Luna", prompt_profile=luna)
+    assert events[-1]["fields"] == ["base_url", "model", "name", "prompt_profile"]
+    assert events[-1]["prompt_profile"] == luna
 
 
 async def test_only_administrators_manage_connections(client: httpx.AsyncClient) -> None:

@@ -12,12 +12,13 @@ optional prices per million tokens (O4): all three price fields or none
 (``price_incomplete``); ``price_of`` reads them for a run's cost (D12).
 """
 
+import logging
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Annotated, Any
 
-from pydantic import BaseModel, ConfigDict, Field, SecretStr, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, StringConstraints, ValidationError
 from sqlalchemy import Engine, select, update
 from sqlalchemy.orm import Session
 
@@ -28,6 +29,8 @@ from geotandem.evaluation.schemas import Money
 from geotandem.llm import Effort, Endpoint, LLMError, Locality, classify_host, host_of
 from geotandem.model.schemas import PromptProfile
 from geotandem.vault import CredentialsUnreadable, Vault
+
+log = logging.getLogger(__name__)
 
 Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=60)]
 BaseUrl = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
@@ -132,6 +135,7 @@ class ConnectionPatch(BaseModel):
     request_limit_per_day: RequestLimit | None = None
     """``null`` removes the cap, allowed only while the limit is off."""
     prompt_profile: PromptProfile | None = None
+    """Replaced whole: a field left out takes its default, not its stored value."""
     price_input_per_mtok: PricePerMtok | None = None
     price_output_per_mtok: PricePerMtok | None = None
     price_currency: Currency | None = None
@@ -187,6 +191,17 @@ class ConnectionInfo(BaseModel):
     """Per million input tokens in ``price_currency`` (O4); all three or none."""
     price_output_per_mtok: float | None = None
     price_currency: str | None = None
+
+
+def stored_prompt_profile(value: Any, where: str) -> PromptProfile:
+    """A stored prompt profile, read leniently: one a later version no longer
+    knows is read as the default, with a log line, rather than failing every
+    read of the connection list or the record."""
+    try:
+        return PromptProfile.model_validate(value)
+    except ValidationError:
+        log.warning("%s: unknown prompt profile, read as the default", where)
+        return PromptProfile()
 
 
 @dataclass(frozen=True)
@@ -301,7 +316,7 @@ class Connections:
             updated_at=row.updated_at,
             request_limit_enabled=row.request_limit_enabled,
             request_limit_per_day=row.request_limit_per_day,
-            prompt_profile=PromptProfile.model_validate(row.prompt_profile),
+            prompt_profile=stored_prompt_profile(row.prompt_profile, f"connection {row.id}"),
             price_input_per_mtok=row.price_input_per_mtok,
             price_output_per_mtok=row.price_output_per_mtok,
             price_currency=row.price_currency,

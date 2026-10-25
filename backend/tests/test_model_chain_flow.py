@@ -249,11 +249,22 @@ async def test_the_connections_prompt_profile_writes_the_direct_query_not_the_ch
         f"/api/admin/llm/connections/{connection['id']}", json={"prompt_profile": own}
     )
     assert patched.status_code == 200, patched.text
-    await ask_chain(client, app, model, reference_plan())
+    planned = await ask_chain(client, app, model, reference_plan())
     model.script(completion(case("clarification")))
     response = await client.post(PROMPT, json={"text": "Welche Schulen?"})
     assert response.status_code == 202, response.text
     await settle(app)
+
+    # The record keeps the profile it was written with (F-6.8, H7), whatever
+    # the connection's is later.
+    back = {"examples": "standard", "placement": "P0", "output": "constrained"}
+    reset = await client.patch(
+        f"/api/admin/llm/connections/{connection['id']}", json={"prompt_profile": back}
+    )
+    assert reset.status_code == 200, reset.text
+    asked = await record(client, response.json()["id"])
+    assert asked["connection"]["prompt_profile"] == own
+    assert (await record(client, planned["id"]))["connection"]["prompt_profile"] == back
 
     chain, direct = model.fake.calls
     assert [m.role for m in chain.messages] == ["system", "user"]

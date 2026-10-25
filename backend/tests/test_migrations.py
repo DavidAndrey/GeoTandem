@@ -474,8 +474,9 @@ PRICES = ("price_input_per_mtok", "price_output_per_mtok", "price_currency")
 
 def test_prompt_profile_and_prices_come_and_go_with_0017(settings: Settings) -> None:
     """Plan E3, WP91: a connection that was there gets today's prompt and no
-    price; the table's check keeps the three prices together; a downgrade
-    removes the four columns and keeps the connection."""
+    price; the table's check keeps the three prices together; a model action
+    asked before keeps no profile (null: the default); a downgrade removes the
+    five columns and keeps the rows."""
     engine = make_engine(settings)
     migrate.upgrade(engine, "0016")
     with engine.begin() as conn:
@@ -487,8 +488,21 @@ def test_prompt_profile_and_prices_come_and_go_with_0017(settings: Settings) -> 
                 " 'qwen3:8b', 0, 120, 'none', 1, 1, 1, 0)"
             )
         )
+        conn.execute(
+            text(
+                "INSERT INTO model_action (id, account, created_at, prompt, prompt_hash,"
+                " approach, status, level_id, level_name, level_matrix, level_prompt_hash,"
+                " connection_id, connection_name, connection_model, connection_host,"
+                " connection_locality, profile_hash) VALUES (1, 'anna',"
+                " '2026-10-25 08:00:00', 'p', 'h', 'direct', 'proposed', 1, 'Prüfen', '{}',"
+                " 'h', 1, 'Ollama', 'qwen3:8b', '127.0.0.1', 'local', 'h')"
+            )
+        )
 
     migrate.upgrade(engine)
+
+    with engine.connect() as conn:
+        assert conn.scalar(text("SELECT prompt_profile FROM model_action")) is None
 
     row = "SELECT prompt_profile, " + ", ".join(PRICES) + " FROM llm_connection"
     with engine.connect() as conn:
@@ -512,6 +526,8 @@ def test_prompt_profile_and_prices_come_and_go_with_0017(settings: Settings) -> 
     migrate.downgrade(engine, "0016")
     columns = {c["name"] for c in inspect(engine).get_columns("llm_connection")}
     assert "model" in columns and not {"prompt_profile", *PRICES} & columns
+    assert "prompt_profile" not in {c["name"] for c in inspect(engine).get_columns("model_action")}
     with engine.connect() as conn:
         assert conn.scalar(text("SELECT count(*) FROM llm_connection")) == 1
+        assert conn.scalar(text("SELECT count(*) FROM model_action")) == 1
     migrate.upgrade(engine)

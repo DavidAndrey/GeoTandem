@@ -2842,6 +2842,7 @@ export interface components {
        * @enum {string}
        */
       locality: 'local' | 'external'
+      prompt_profile?: components['schemas']['PromptProfile'] | null
     }
     /**
      * ConnectionWrite
