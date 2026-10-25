@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { App } from '../../App'
 import type { RunPage, RunRequest } from '../../api/client'
-import { COST_ESTIMATE, runPage, runView } from '../../test/eval-mocks'
+import { CONNECTIONS, runPage, runView } from '../../test/eval-mocks'
 import { formatNumber } from '../../i18n/locale'
 import { renderAt } from '../../test/render'
 import { refused, runBackend, RUNS_URL } from '../../test/run-api'
@@ -214,35 +214,24 @@ test('V4.1: own cases run on live data, apart from the start set', async () => {
   expect(screen.getByRole('checkbox', { name: 'Startbestand (71)' })).toBeDisabled()
 })
 
-test('a prompt profile other than the default is sent, and refused until it can be measured', async () => {
+test("a point starts on the connection's own prompt profile; another one is sent explicitly", async () => {
+  const p9 = { examples: 'standard', placement: 'P9', output: 'constrained' } as const
+  const connections = CONNECTIONS.map((c) => (c.id === 1 ? { ...c, prompt_profile: p9 } : c))
   const calls = runBackend({
     [`GET ${RUNS_URL}`]: idle(),
-    [`POST ${RUNS_URL}/estimate`]: (init: RequestInit | undefined) => {
-      const body = JSON.parse(String(init?.body)) as RunRequest
-      return body.points.some((p) => p.prompt_profile)
-        ? refused(400, 'bad_request', { point: 0 })
-        : COST_ESTIMATE
-    },
+    'GET /api/admin/llm/connections': connections,
   })
   const u = user()
   renderAt('/admin/bewertung/lauf/neu', <App />)
-  await u.selectOptions(
-    await screen.findByRole('combobox', { name: 'Platzierung von Messpunkt 1' }),
-    'P9',
-  )
+  const placement = await screen.findByRole('combobox', { name: 'Platzierung von Messpunkt 1' })
+  // The connection's own profile is shown and sent as null ("as in operation").
+  expect(placement).toHaveValue('P9')
+  await waitFor(() => expect(estimates(calls).at(-1)?.points[0].prompt_profile).toBeNull())
+  await u.selectOptions(placement, 'P0')
   await waitFor(() =>
-    expect(estimates(calls).at(-1)?.points[0].prompt_profile).toEqual({
-      examples: 'standard',
-      placement: 'P9',
-      output: 'constrained',
-    }),
+    expect(estimates(calls).at(-1)?.points[0].prompt_profile).toEqual({ ...p9, placement: 'P0' }),
   )
-  expect(
-    await screen.findByText(/lassen sich in dieser Version noch nicht messen/),
-  ).toBeInTheDocument()
-  expect(startButtons()).toBeDisabled()
-  // Back to the default: the connection's own profile again (null).
-  await u.selectOptions(screen.getByRole('combobox', { name: 'Platzierung von Messpunkt 1' }), 'P0')
+  await u.selectOptions(placement, 'P9')
   await waitFor(() => expect(estimates(calls).at(-1)?.points[0].prompt_profile).toBeNull())
 })
 

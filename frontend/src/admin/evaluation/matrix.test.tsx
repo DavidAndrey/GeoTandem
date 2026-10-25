@@ -6,7 +6,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { App } from '../../App'
 import type { RunView } from '../../api/client'
-import { RUN_COMPARISON, runView } from '../../test/eval-mocks'
+import { CONNECTIONS, RUN_COMPARISON, runView } from '../../test/eval-mocks'
 import { renderAt } from '../../test/render'
 import { refused, runBackend, RUNS_URL } from '../../test/run-api'
 import { poll } from './runs'
@@ -139,8 +139,8 @@ test("V6.3: the run's label with the state of the profile and every point", asyn
   expect(screen.getByText('Vollständigkeit beim Lauf')).toBeInTheDocument()
 })
 
-test('V6.4: "Promptprofil übernehmen" lists the change and the drawback; disabled until stored', async () => {
-  runBackend()
+test('V6.4: "Promptprofil übernehmen" lists the change and the drawback, then sets it', async () => {
+  const calls = runBackend({ 'PATCH /api/admin/llm/connections/3': CONNECTIONS[2] })
   const user = userEvent.setup()
   renderAt('/admin/bewertung/lauf/13', <App />)
   await user.click(await screen.findByRole('button', { name: 'Promptprofil übernehmen ▾' }))
@@ -158,10 +158,12 @@ test('V6.4: "Promptprofil übernehmen" lists the change and the drawback; disabl
     'Gemessen in Lauf #13: besser als gpt-6-luna P0, +6.6 Punkte (+1.3 … +13.2) auf Bestätigung.',
   )
   expect(dialog).toHaveTextContent('Aber: 17 still falsch gegenüber 9 bei gpt-6-luna P0.')
-  expect(dialog).toHaveTextContent('speichert die Anbindung noch kein Promptprofil')
-  expect(within(dialog).getByRole('button', { name: 'Übernehmen' })).toBeDisabled()
-  await user.click(within(dialog).getByRole('button', { name: 'Abbrechen' }))
-  expect(screen.queryByRole('dialog')).toBeNull()
+  await user.click(within(dialog).getByRole('button', { name: 'Übernehmen' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  expect(calls.find((c) => c.key === 'PATCH /api/admin/llm/connections/3')?.body).toEqual({
+    prompt_profile: { examples: 'standard', placement: 'P9', output: 'constrained' },
+    confirm_data_release: false,
+  })
 })
 
 test('V6.2: "Zur Anbindung" leads to the connections page', async () => {

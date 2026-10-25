@@ -497,8 +497,7 @@ function ApplyProfileDialog({
   const now = connectionProfile(connection)
   const next = label.prompt_profile
   const apply = useMutation({
-    mutationFn: () =>
-      applyProfile ? applyProfile(label.connection_id, next) : Promise.resolve(null),
+    mutationFn: () => applyProfile(label.connection_id, next),
     onSuccess: () => {
       void client.invalidateQueries()
       onClose()
@@ -563,14 +562,6 @@ function ApplyProfileDialog({
           Protokoll der Administration vermerkt.
         </Trans>
       </p>
-      {!applyProfile && (
-        <p className="mb-2 text-sm" role="note">
-          <Trans>
-            In dieser Version speichert die Anbindung noch kein Promptprofil; Übernehmen ist noch
-            nicht möglich.
-          </Trans>
-        </p>
-      )}
       <ErrorNotice error={apply.error} />
       <div className="flex justify-end gap-2">
         <button type="button" className="btn" onClick={onClose}>
@@ -579,7 +570,7 @@ function ApplyProfileDialog({
         <button
           type="button"
           className="btn btn-primary"
-          disabled={!applyProfile || apply.isPending || sameProfile(now, next)}
+          disabled={apply.isPending || sameProfile(now, next)}
           onClick={() => apply.mutate()}
         >
           <Trans>Übernehmen</Trans>

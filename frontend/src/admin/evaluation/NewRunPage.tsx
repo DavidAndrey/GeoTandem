@@ -33,7 +33,6 @@ import {
   connectionProfile,
   EXAMPLES,
   examplesText,
-  isDefaultProfile,
   OUTPUTS,
   outputText,
   PLACEMENTS,
@@ -179,18 +178,6 @@ function selected(cases: CaseView[], f: RunForm): CaseView[] {
     if (f.tag && !v.case.tags.includes(f.tag)) return false
     return true
   })
-}
-
-/** Why the estimate cannot be had, in words. */
-function estimateProblem(error: unknown, request: RunRequest | null): string | null {
-  if (!error) return null
-  if (
-    error instanceof ApiRequestError &&
-    error.body?.code === 'bad_request' &&
-    request?.points.some((p) => p.prompt_profile && !isDefaultProfile(p.prompt_profile))
-  )
-    return t`Andere Promptprofile als Standard · P0 · erzwungen lassen sich in dieser Version noch nicht messen. Wählen Sie für jeden Messpunkt Standard · P0 · erzwungen.`
-  return error instanceof Error ? error.message : String(error)
 }
 
 function useDebounced<T>(value: T, ms: number): T {
@@ -573,7 +560,7 @@ function RunFormView({
   const tags = [...new Set(cases.flatMap((v) => v.case.tags))].sort()
   const state = dataStateText(dataStateOf(form))
   const count = current && settled ? current.cases : chosen.length
-  const problem = estimateProblem(estimate.error, asked)
+  const problem = estimate.error ? estimate.error.message : null
   const canStart =
     request !== null &&
     settled &&
