@@ -376,7 +376,7 @@ def _too_large(value: Any) -> bool:
     return len(text.encode()) > MAX_RAW_QUERY_BYTES
 
 
-def _bounded(answer: AnyAnswer | None) -> Any:
+def bounded(answer: AnyAnswer | None) -> Any:
     """A refused answer as the record keeps it (design M3): its raw query only up
     to ``MAX_RAW_QUERY_BYTES`` of canonical JSON (review #35); of a refused
     plan the first ``MAX_STEPS`` steps, and their arguments only while all of
@@ -1170,7 +1170,7 @@ class ModelActionStore:
             lambda _: {
                 "status": "refused",
                 "refusal": _json(refusal),
-                "answer": _bounded(answer),
+                "answer": bounded(answer),
                 "latency_ms": latency_ms,
                 **_tokens(tokens),
             },

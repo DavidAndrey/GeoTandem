@@ -23,6 +23,11 @@ const MESSAGES: Record<string, Words> = {
   // Requests
   bad_request: () => t`Die Anfrage wurde abgelehnt.`,
   not_found: (d) => {
+    // A run of the evaluation names itself by its number (``RunError``: ``run``).
+    if (d.run !== undefined && d.run !== null) {
+      const run = number(d.run)
+      return t`Lauf #${run} gibt es nicht (mehr).`
+    }
     const name = text(d.layer ?? d.session ?? d.query ?? d.import_id ?? d.run_id)
     return name ? t`„${name}" gibt es nicht (mehr).` : t`Das Gesuchte gibt es nicht (mehr).`
   },
@@ -206,10 +211,13 @@ const MESSAGES: Record<string, Words> = {
   },
   external_not_confirmed: (d) => {
     const host = text(d.host)
-    return t`Der Lauf würde an ${host} senden. Bestätigen Sie das zuerst.`
+    // ``changed``: the connection was edited to another host since the estimate.
+    return d.reason === 'changed'
+      ? t`Die Anbindung sendet inzwischen an ${host}, nicht an den bestätigten Host. Prüfen Sie die neue Abschätzung und bestätigen Sie erneut.`
+      : t`Der Lauf würde an ${host} senden. Bestätigen Sie das zuerst.`
   },
   runs_not_comparable: () =>
-    t`Diese Läufe lassen sich nicht gegenüberstellen: Sie haben andere Prüffälle, oder einer ist nicht vollständig.`,
+    t`Diese Läufe lassen sich nicht gegenüberstellen: Sie haben andere Prüffälle, oder einer ist nicht fertig.`,
   model_truncated: () =>
     t`Das Modell hat seine Antwort nicht beendet: Die Länge, die die Anbindung erlaubt, war aufgebraucht. Meist denkt das Modell zu lange, oder der Kontext ist zu klein.`,
   quota_exceeded: (d) => {

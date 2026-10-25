@@ -129,14 +129,18 @@ schliessen die Lücke.*
 - **F-3.14** Übernahme einer protokollierten Modellaktion (F-6.8) in den
   Prüffallbestand, mit der erzeugten Abfrage als Referenz. *Entschieden (E3,
   Entscheid 2): nur angenommene oder automatisch angewendete, nicht
-  zurückgenommene Direktabfragen; von Hand korrigierte vorerst nicht.*
+  zurückgenommene Direktabfragen; von Hand korrigierte (angepasst oder in den
+  Bedienelementen berührt) und Folgefragen (mit Bezug auf eine frühere
+  Antwort) vorerst nicht.*
 - **F-3.15** Bewertungslauf über wählbare Anbindungen, Prüffälle, Arbeitsweisen
   und System-Prompts (F-3.6), mit Wiederholung je Fall; ausschliesslich lesend
   (F-9.5) und unter denselben serverseitig durchgesetzten Grenzwerten wie der
   Betrieb (F-9.6). *Entschieden (D7, D8, D12): zwei Blöcke à fünf
-  Wiederholungen, ein Schnelltest mit einem; ein Lauf zugleich, Messpunkte
-  verschiedener Anbindungen parallel; kein Eintrag im Modellprotokoll;
-  Abschätzung von Anfragen, Tokens, Kosten und Dauer vor dem Start.*
+  Wiederholungen, ein Schnelltest mit genau einem; ein Lauf zugleich,
+  Messpunkte je Modell-Host nacheinander, verschiedene Hosts parallel; kein
+  Eintrag im Modellprotokoll; Abschätzung von Anfragen, Tokens, Kosten und
+  Dauer vor dem Start, die Dauer je Modell-Host summiert und ohne Messung als
+  grobe Schätzung bezeichnet.*
 - **F-3.16** Dreistufige Bewertung je Abfragefall: Formgültigkeit gegen das
   Schema (F-5.5), normalisierter Vergleich mit der Referenzabfrage, Vergleich
   der ausgeführten Ergebnisse (F-8.9). *Entschieden (D5): Das Urteil fällt der
@@ -154,7 +158,7 @@ schliessen die Lücke.*
   Beschriftung nennt dazu die Version der Bewertungsregeln, den Stand des
   Layer-Steckbriefs (D11) und die Fälle, wie sie gefragt wurden; die Matrix
   vergleicht jede Spalte gepaart je Fall mit einer Vergleichsbasis (D7), zwei
-  vollständige Läufe über dieselben Fälle lassen sich nebeneinanderstellen.*
+  fertige Läufe über dieselben Fälle lassen sich nebeneinanderstellen.*
 
 ## 4 Klassik-Modus
 

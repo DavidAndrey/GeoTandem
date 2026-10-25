@@ -3,7 +3,7 @@
 Seeds only where the connection sends one, the call's deadline held to the
 operating limit, transport errors counted, a question too large never sent, an
 unreadable key named, the estimate's latency from the connection test, a
-circuit breaker per queue, one queue per model host, at most two query slots
+circuit breaker that stops the run, one queue per model host, at most two query slots
 per run, a busy database tried again and a row that cannot be closed keeping
 the instance busy. The scripted model is ``test_eval_runs.Model``.
 """
@@ -153,28 +153,50 @@ async def test_the_estimate_falls_back_on_the_connection_test(
     assert estimate["connections"][0]["duration_s"] == 25  # 10 requests at 2.5 s
 
 
-async def test_a_repeated_failure_of_the_endpoint_stops_its_queue(
+async def test_a_repeated_failure_of_the_endpoint_stops_the_whole_run(
     client: httpx.AsyncClient, app: FastAPI, model: Model, two: Body
 ) -> None:
-    """Review S1: five refused keys in a row stop that host's points; the other
-    host's points run to their end; the run says why."""
+    """Five refused keys in a row on one host stop the run at once: the other
+    host's queue asks no further question (nothing more is spent); the run
+    ends ``failed`` and names the host and its connections."""
+    tripped = threading.Event()
+    refusals = 0
 
     def refused(seed: int) -> LLMError:
+        nonlocal refusals
+        refusals += 1
+        if refusals == run_module.BREAKER_AFTER:
+            tripped.set()
         return LLMError("llm_unauthorized", "scripted")
 
+    def after_the_trip(answer: Callable[[int], Any]) -> Callable[[int], Any]:
+        def waiting(seed: int) -> Any:
+            assert tripped.wait(10), "the other queue never tripped"
+            time.sleep(0.2)  # the tripped queue stores its fifth answer and stops the run
+            return answer(seed)
+
+        return waiting
+
     model.scripts["schwach"] = dict.fromkeys(PROMPTS, refused)
+    model.scripts["gut"] = {case: after_the_trip(answer) for case, answer in GOOD.items()}
     elsewhere = await connect(client, "Anderswo", "schwach", base_url=ELSEWHERE)
     view = await run_to_end(client, app, on(two, ids(two)[0], elsewhere))
     assert (view["status"], view["error"]) == ("failed", "llm_unauthorized")
     assert sum(1 for m, _, _ in model.calls if m == "schwach") == 5
-    assert sum(1 for m, _, _ in model.calls if m == "gut") == 10
-    assert view["progress"]["done"] == 15
+    # The question in flight at the trip was sent; none is asked after it, and
+    # its answer, graded only while the run goes on, is dropped.
+    assert sum(1 for m, _, _ in model.calls if m == "gut") == 1
+    assert view["progress"]["done"] == 5
+    assert view["stopped"] == [
+        {"host": "localhost", "connection_ids": [elsewhere], "code": "llm_unauthorized"}
+    ]
+    assert all(p["figures"] is None for p in view["points"])
 
 
 async def test_points_on_one_host_queue_and_hosts_run_at_the_same_time(
     client: httpx.AsyncClient, app: FastAPI, model: Model, two: Body
 ) -> None:
-    """Review C4: ``gut`` and ``schwach`` share 127.0.0.1, ``fern`` is on localhost."""
+    """D8: ``gut`` and ``schwach`` share 127.0.0.1, ``fern`` is on localhost."""
     model.scripts["fern"] = GOOD
     far = await connect(client, "Fern", "fern", base_url=ELSEWHERE)
     model.pause = 0.02

@@ -29,7 +29,10 @@ import { ensureAccount, signIn } from './accounts'
 //   weak      3 von 10 on every case     rate Abstimmung  30.0 %, 7 still falsch
 //
 // and, the weak one the reference, the strong one is *besser* by 70 points
-// on each of the 4 Bestätigung cases (interval +70 … +70, D7).
+// on each of the 4 Bestätigung cases (interval +70 … +70, D7). A system prompt
+// that carries ``MARKER`` makes the strong model answer as the weak one does
+// without its lucky seeds (the stub's ``marked``): the second system prompt of
+// one connection is *schlechter*.
 //
 // The cases of this spec (own cases, connections, a layer copy) carry its
 // prefix and are removed after it; a second pass (after the gate's restart)
@@ -66,6 +69,9 @@ const FRESH_ID = 'e3-frisch'
 const OUR_CASES = [AUTHORED_ID, LOGGED_ID, STALE_ID, FRESH_ID]
 /** A copy of the school layer that the stale test deletes; the shared one stays. */
 const COPY = 'e3_schulen'
+
+/** In a system prompt, the strong model answers every case wrong (the stub's ``marked``). */
+const MARKER = 'E3-MARKE-SCHLECHT'
 
 const AUTHORED_PROMPT = 'Welche Schulen führen eine Primarstufe als höchste Stufe?'
 const LOGGED_PROMPT = 'Welche Schulen haben eine Sekundarstufe I?'
@@ -125,7 +131,12 @@ function script(): Record<string, object> {
   const cases: Record<string, object> = {}
   for (const c of CODE_CASES) {
     const gold = goldOf(c)
-    cases[`e3s-${c.id}`] = { model: STRONG, prompt: c.prompt, answer: right(gold) }
+    cases[`e3s-${c.id}`] = {
+      model: STRONG,
+      prompt: c.prompt,
+      answer: right(gold),
+      marked: { text: MARKER, answer: wrong(gold) },
+    }
     cases[`e3w-${c.id}`] = {
       model: WEAK,
       prompt: c.prompt,
@@ -227,6 +238,7 @@ async function removeCases(request: APIRequestContext, ids: string[]) {
 
 interface Call {
   model?: string
+  seed?: number
   messages?: { role: string; content: unknown }[]
   tools?: unknown
 }
@@ -300,8 +312,12 @@ async function newRun(
   // The estimate: requests = cases × repeats × points (D12).
   const requests = cases.count * (scope === 'full' ? 10 : 5) * points.length
   await expect(
-    page.getByRole('table', { name: 'Abschätzung' }).getByRole('row', { name: /^Zusammen/ }),
-  ).toContainText(String(requests))
+    page
+      .getByRole('table', { name: 'Abschätzung' })
+      .getByRole('row', { name: /^Zusammen/ })
+      .getByRole('cell')
+      .first(),
+  ).toHaveText(String(requests))
   return page.getByRole('button', { name: 'Lauf starten' })
 }
 
@@ -522,7 +538,7 @@ test.describe('E3 against the model stub', { tag: '@stub' }, () => {
   }) => {
     await freshConnection(request, SYSTEM, STRONG)
     const level = (await levels(request)).find((l) => l.is_default)!
-    const marker = `E3-Markierung ${Date.now()}`
+    const marker = `${MARKER} ${Date.now()}`
     const calls = (await callsFor(STRONG)).length
 
     const start = await newRun(page, [{ connection: SYSTEM }, { connection: SYSTEM }], {
@@ -544,8 +560,12 @@ test.describe('E3 against the model stub', { tag: '@stub' }, () => {
     await expect(head(page, SYSTEM, 0)).not.toContainText('System-Prompt geändert')
     await expect(head(page, SYSTEM, 0)).toContainText('Vergleichsbasis')
     await expect(head(page, SYSTEM, 1)).toContainText('System-Prompt geändert')
-    // The stub answers both alike: the comparison is not proven either way.
-    await expect(head(page, SYSTEM, 1)).toContainText('nicht belegt')
+    // Under the marked system prompt the stub answers every case wrong: worse by
+    // 100 points on each Bestätigung case.
+    await expect(head(page, SYSTEM, 0)).toContainText(`${10 * CODE_TUNING} von ${10 * CODE_TUNING}`)
+    await expect(head(page, SYSTEM, 1)).toContainText(`0 von ${10 * CODE_TUNING}`)
+    await expect(head(page, SYSTEM, 1)).toContainText('schlechter')
+    await expect(head(page, SYSTEM, 1)).toContainText('-100.0 Punkte (-100.0 … -100.0)')
     const run = await runView(request, id)
     expect(run.points[0].label.system_prompt ?? null).toBeNull()
     expect(run.points[1].label.system_prompt).toContain(marker)
@@ -697,12 +717,41 @@ test.describe('E3 against the model stub', { tag: '@stub' }, () => {
     // The held answer comes after the abort: dropped, and no further question goes out.
     await fetch(`${CONTROL}/_release`, { method: 'POST' })
     await expect.poll(async () => (await runView(request, id)).status).toBe('aborted')
-    // Give a run that went on the time to ask its next question; none comes.
-    await page.waitForTimeout(1500)
-    expect((await callsFor(SLOW)).length - calls).toBe(1)
+    // The aborted run's thread has ended once the server accepts another run
+    // (until then it answers run_busy, "finishing"). That run asks seed 1 of the
+    // first case and is held; the aborted one would have gone on with seed 2.
+    const level = (await levels(request)).find((l) => l.is_default)!.id
+    const connection = (await connections(request)).find((c) => c.name === STOPPED)!.id
+    let next = 0
+    await expect
+      .poll(async () => {
+        const again = await request.post('/api/admin/evaluation/runs', {
+          data: {
+            points: [{ connection_id: connection, level_id: level }],
+            cases: { origins: ['start'], tags: ['code'] },
+            data_state: 'sample',
+            scope: 'quick',
+          },
+        })
+        if (again.status() === 202) next = ((await again.json()) as { id: number }).id
+        return again.status()
+      })
+      .toBe(202)
+    await expect.poll(async () => (await callsFor(SLOW)).length - calls).toBe(2)
+    expect((await callsFor(SLOW)).slice(calls).map((b) => b.seed)).toEqual([1, 1])
     expect((await runView(request, id)).cells).toEqual([])
-    // Another run may start: the instance is free again (one at a time, D8).
+    await request.post(`/api/admin/evaluation/runs/${next}/abort`)
+    await fetch(`${CONTROL}/_release`, { method: 'POST' })
+    // Another run may start: no run is running (one at a time, D8). The notice
+    // reads the list of runs: asserted once the list has come.
+    const listed = page.waitForResponse(
+      (r) =>
+        r.request().method() === 'GET' &&
+        new URL(r.url()).pathname === '/api/admin/evaluation/runs',
+    )
     await page.goto('/admin/bewertung/lauf/neu')
+    expect((await listed).ok()).toBe(true)
+    await expect(page.getByRole('heading', { name: 'Neuer Lauf' })).toBeVisible()
     await expect(page.getByText('Ein Lauf läuft schon')).toHaveCount(0)
     await removeConnections(request, [STOPPED])
   })
@@ -756,6 +805,11 @@ test.describe('E3 against the model stub', { tag: '@stub' }, () => {
     })
     expect(refused.status(), await refused.text()).toBe(400)
     expect(((await refused.json()) as { code: string }).code).toBe('external_not_confirmed')
+    // The dialog sent the host it showed (security review #49).
+    const started = (await runView(request, id)) as unknown as {
+      request: { confirm_external_hosts: string[] }
+    }
+    expect(started.request.confirm_external_hosts).toEqual([host])
     await removeConnections(request, [EXTERN])
   })
 
@@ -830,6 +884,7 @@ test.describe('E3 against the model stub', { tag: '@stub' }, () => {
     request,
   }) => {
     const connection = await freshConnection(request, PROFILE, STRONG)
+    const calls = (await callsFor(STRONG)).length
     const start = await newRun(page, [{ connection: PROFILE }, { connection: PROFILE }], {
       tag: 'Codeliste',
       count: CODE_CASES.length,
@@ -841,6 +896,17 @@ test.describe('E3 against the model stub', { tag: '@stub' }, () => {
     expect(
       (await connections(request)).find((c) => c.id === connection)!.prompt_profile.placement,
     ).toBe('P0')
+    // At the stub: point 1 (P0) sent two messages, point 2 (P9) three, the
+    // first-question note as a system message of its own; the user message is
+    // the question alone (E-8).
+    const roles = (b: Call) => b.messages!.map((m) => m.role).join(' ')
+    const sent = (await callsFor(STRONG)).slice(calls)
+    expect(sent).toHaveLength(2 * 10 * CODE_CASES.length)
+    expect(sent.filter((b) => roles(b) === 'system user')).toHaveLength(10 * CODE_CASES.length)
+    const p9 = sent.filter((b) => roles(b) === 'system system user')
+    expect(p9).toHaveLength(10 * CODE_CASES.length)
+    expect(p9.every((b) => CODE_CASES.some((c) => b.messages![2].content === c.prompt))).toBe(true)
+    const levelsBefore = await levels(request)
 
     // V6.4: the dialog lists what changes in operation; then it is set.
     await page.getByRole('button', { name: 'Promptprofil übernehmen ▾' }).click()
@@ -863,10 +929,37 @@ test.describe('E3 against the model stub', { tag: '@stub' }, () => {
         async () => (await connections(request)).find((c) => c.id === connection)!.prompt_profile,
       )
       .toEqual({ examples: 'standard', placement: 'P9', output: 'constrained' })
+    // "System-Prompt und Stufen bleiben unverändert": the levels as before.
+    expect(await levels(request)).toEqual(levelsBefore)
     // Now the P9 column is the one in operation.
     await page.getByRole('button', { name: 'Promptprofil übernehmen ▾' }).click()
     await expect(page.getByRole('menuitem', { name: /P9 · schon im Betrieb/ })).toBeVisible()
     await page.keyboard.press('Escape')
+
+    // Operation sends P9 now: one direct query on the connection, seen at the stub.
+    const enabled = await request.patch(`/api/admin/llm/connections/${connection}`, {
+      data: { enabled: true },
+    })
+    expect(enabled.ok(), await enabled.text()).toBe(true)
+    // The connection only: the administrator's level stays as other specs find it.
+    const chosen = await request.put('/api/llm/options', { data: { connection_id: connection } })
+    expect(chosen.ok(), await chosen.text()).toBe(true)
+    const before = (await callsFor(STRONG)).length
+    const question = CODE_CASES[0].prompt
+    const asked = await request.post('/api/model/prompt', { data: { text: question } })
+    expect(asked.status(), await asked.text()).toBe(202)
+    const action = ((await asked.json()) as { id: number }).id
+    await expect.poll(async () => (await callsFor(STRONG)).length - before).toBe(1)
+    const [operation] = (await callsFor(STRONG)).slice(before)
+    expect(roles(operation)).toBe('system system user')
+    expect(operation.messages![2].content).toBe(question)
+    await expect
+      .poll(
+        async () =>
+          ((await (await request.get(`/api/model/actions/${action}`)).json()) as { status: string })
+            .status,
+      )
+      .not.toBe('thinking')
 
     // V8: the summary of the layer profile, and the line to this run's result.
     await page.goto('/admin/steckbrief')

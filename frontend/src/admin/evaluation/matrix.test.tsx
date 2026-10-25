@@ -6,7 +6,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { App } from '../../App'
 import type { RunView } from '../../api/client'
-import { CONNECTIONS, RUN_COMPARISON, runView } from '../../test/eval-mocks'
+import { CONNECTIONS, PROFILE_RAW, RUN_COMPARISON, runView } from '../../test/eval-mocks'
 import { renderAt } from '../../test/render'
 import { refused, runBackend, RUNS_URL } from '../../test/run-api'
 import { poll } from './runs'
@@ -161,6 +161,8 @@ test('V6.4: "Promptprofil übernehmen" lists the change and the drawback, then s
     'Gemessen in Lauf #13: besser als gpt-6-luna P0, +6.6 Punkte (+1.3 … +13.2) auf Bestätigung.',
   )
   expect(dialog).toHaveTextContent('Aber: 17 still falsch gegenüber 9 bei gpt-6-luna P0.')
+  // O8: a configuration change, in the server's security log (not the model log).
+  expect(dialog).toHaveTextContent('Im Sicherheitsprotokoll des Servers vermerkt.')
   await user.click(within(dialog).getByRole('button', { name: 'Übernehmen' }))
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   expect(calls.find((c) => c.key === 'PATCH /api/admin/llm/connections/3')?.body).toEqual({
@@ -203,13 +205,23 @@ test('V6.5: a quick test shows rates without comparison, and offers the full run
 test.each([
   [
     'llm_unauthorized',
-    /Der Zugangsschlüssel wurde abgelehnt\. Die Messpunkte dieser Anbindung wurden angehalten\./,
+    /Der Zugangsschlüssel wurde abgelehnt\. Nach mehreren solchen Antworten in Folge von api\.openai\.com \(gpt-6-luna\) wurde der ganze Lauf angehalten; keine weitere Frage ging hinaus\./,
   ],
   ['no_cases', /Keiner der Prüffälle liess sich beim Lauf lesen/],
   ['internal_error', /Der Vorgang wurde unerwartet abgebrochen\./],
 ])('a failed run says why in words (%s)', async (code, words) => {
+  const stopped =
+    code === 'llm_unauthorized'
+      ? [{ host: 'api.openai.com', connection_ids: [3], code: 'llm_unauthorized' }]
+      : []
   runBackend({
-    [`GET ${RUNS_URL}/13`]: { ...runView('running'), id: 13, status: 'failed', error: code },
+    [`GET ${RUNS_URL}/13`]: {
+      ...runView('running'),
+      id: 13,
+      status: 'failed',
+      error: code,
+      stopped,
+    },
   })
   renderAt('/admin/bewertung/lauf/13', <App />)
   const alert = (await screen.findAllByRole('alert')).find((a) => words.test(a.textContent ?? ''))
@@ -363,4 +375,73 @@ test('a column head names its error codes in words', async () => {
   const [gemma] = await heads()
   const code = within(gemma).getByTitle('Die Antwort des Modells ist nicht lesbar.')
   expect(code).toHaveTextContent('model_unreadable 6')
+})
+
+test('a run without tuning cases heads its columns with the rate on Bestätigung', async () => {
+  const run = runView('done')
+  runBackend({
+    [`GET ${RUNS_URL}/13`]: {
+      ...run,
+      points: run.points.map((p) => ({
+        ...p,
+        figures: p.figures && {
+          ...p.figures,
+          rate_tuning: null,
+          by_split: { confirm: p.figures.by_split.confirm },
+        },
+      })),
+    },
+  })
+  renderAt('/admin/bewertung/lauf/13', <App />)
+  const [first] = await heads()
+  expect(first).toHaveTextContent('Quote Bestätigung')
+  expect(first).not.toHaveTextContent(/^–/)
+})
+
+test("the label's completeness is history: no links to today's fields", async () => {
+  const run = runView('done')
+  runBackend({ [`GET ${RUNS_URL}/13`]: { ...run, label: { ...run.label, profile: PROFILE_RAW } } })
+  const user = userEvent.setup()
+  renderAt('/admin/bewertung/lauf/13', <App />)
+  await user.click(await screen.findByText('Beschriftung des Laufs'))
+  await user.click(screen.getByText('Vollständigkeit im Einzelnen'))
+  expect(screen.getAllByRole('region', { name: /^Lücken in / }).length).toBeGreaterThan(0)
+  expect(screen.queryByRole('link', { name: /^Felder von / })).toBeNull()
+})
+
+test('V6.6: the header says when the layer profile or the data differ', async () => {
+  const quick = runView('done', 'quick')
+  runBackend({
+    'POST /api/admin/evaluation/comparison': RUN_COMPARISON,
+    [`GET ${RUNS_URL}/12`]: {
+      ...quick,
+      label: { ...quick.label, profile: PROFILE_RAW, sample_version: 'anders' },
+    },
+  })
+  renderAt('/admin/bewertung/lauf/13/gegen/12', <App />)
+  expect(await screen.findByText('Steckbrief anders · Datenstand anders:')).toBeInTheDocument()
+})
+
+test('V6.6: the same profile and data say nothing about them', async () => {
+  runBackend({ 'POST /api/admin/evaluation/comparison': RUN_COMPARISON })
+  renderAt('/admin/bewertung/lauf/13/gegen/12', <App />)
+  await screen.findByText(/#13: System-Prompt wie im Betrieb/)
+  expect(screen.queryByText(/Steckbrief anders|Datenstand anders/)).toBeNull()
+})
+
+test('a case whose dataset changed runs and is marked in its row (D3)', async () => {
+  const run = runView('done')
+  const first = run.cases[0]
+  runBackend({
+    [`GET ${RUNS_URL}/13`]: {
+      ...run,
+      cases: [{ ...first, status: 'dataset_changed' }, ...run.cases.slice(1)],
+    },
+  })
+  renderAt('/admin/bewertung/lauf/13', <App />)
+  const table = await matrix()
+  const row = within(table).getByRole('rowheader', { name: new RegExp(first.case.id) })
+  expect(row).toHaveTextContent('· Datenstand geändert')
+  // It ran: its cells are there, as any case's.
+  expect(row.closest('tr')?.querySelectorAll('a')).toHaveLength(run.points.length)
 })

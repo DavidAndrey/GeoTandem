@@ -104,6 +104,7 @@ export function ProfilePage() {
           summary={summary.data}
           imported={imported}
           measured={measured}
+          links={dataState !== 'sample'}
           heading={
             dataState === 'sample'
               ? t`Vollständigkeit · Beispieldaten`

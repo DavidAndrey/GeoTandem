@@ -33,6 +33,9 @@ export const outputLabel = (o: OutputMode) => ({ constrained: t`erzwungen`, text
 export const sameProfile = (a: PromptProfile, b: PromptProfile) =>
   a.examples === b.examples && a.placement === b.placement && a.output === b.output
 
-/** "12 Beispiele · P9 (…) · nur Text": one line for a profile. */
+/**
+ * "12 Beispiele · P9 (…) · nur Text": one line for a profile, the placement
+ * explained (the run's short line is ``profileShortText``).
+ */
 export const profileText = (p: PromptProfile) =>
   [examplesLabel(p.examples), placementLabel(p.placement), outputLabel(p.output)].join(' · ')

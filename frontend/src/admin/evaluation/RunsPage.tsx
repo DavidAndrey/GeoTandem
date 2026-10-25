@@ -110,7 +110,7 @@ export function RunsPage() {
   const reason =
     chosen.length === 2
       ? comparable(chosen[0], chosen[1])
-      : t`Zwei vollständige Läufe mit gleichen Fällen markieren.`
+      : t`Zwei fertige Läufe mit gleichen Fällen markieren.`
   const toggle = (id: number) =>
     setMarked((m) => (m.includes(id) ? m.filter((x) => x !== id) : [...m.slice(-1), id]))
   return (
@@ -134,7 +134,10 @@ export function RunsPage() {
               <Trans>Gegenüberstellen</Trans>
             </button>
             <span className="text-muted ml-auto text-xs">
-              <Trans>Vergleichsbasis = Quote Abstimmung des Basis-Messpunkts</Trans>
+              <Trans>
+                Vergleichsbasis = Quote Abstimmung des Basis-Messpunkts (ohne Abstimmungsfälle:
+                Quote Bestätigung)
+              </Trans>
             </span>
             <Link to={NEW_RUN} className="btn btn-primary">
               <Trans>Neuer Lauf</Trans>
@@ -197,7 +200,12 @@ export function RunsPage() {
                         <RunStatusLabel status={r.status} quick={r.scope === 'quick'} />
                       )}
                     </td>
-                    <td className="tabular-nums">{rateText(r.reference_rate)}</td>
+                    <td className="tabular-nums">
+                      {rateText(r.reference_rate)}
+                      {r.reference_split === 'confirm' && (
+                        <span className="text-muted block text-xs">{t`Quote Bestätigung`}</span>
+                      )}
+                    </td>
                     <td className="tabular-nums">{costText(r, connections)}</td>
                   </tr>
                 )

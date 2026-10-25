@@ -1564,7 +1564,9 @@ export interface paths {
      * Start Run
      * @description Starts the run in the background and answers at once, ``running``; the
      *     client polls ``GET /runs/{id}`` (D8). One run at a time (``run_busy``); an
-     *     external connection not in ``confirm_external`` is ``external_not_confirmed``;
+     *     external connection not in ``confirm_external``, or whose host is not in
+     *     ``confirm_external_hosts`` (changed since the estimate), is
+     *     ``external_not_confirmed``;
      *     a selection with no runnable case (all filtered out, stale or invalid) is
      *     refused before the start, 400 ``no_cases``. ``RunView.error`` is for what
      *     fails while the run runs.
@@ -1645,7 +1647,10 @@ export interface paths {
     }
     /**
      * Export Run
-     * @description The run with every answer, as JSON (V6.2 *Exportieren*).
+     * @description The run with every answer, as JSON (V6.2 *Exportieren*): written as it is
+     *     read, the answers a batch at a time, so a large run is never held whole
+     *     (security review #46). Every key of the schema is present, ``null`` ones
+     *     too.
      */
     get: operations['export_run_api_admin_evaluation_runs__run_id__export_get']
     put?: never
@@ -2689,6 +2694,11 @@ export interface components {
       cost: components['schemas']['Money'] | null
       /** Duration S */
       duration_s: number
+      /**
+       * Duration Measured
+       * @default true
+       */
+      duration_measured: boolean
     }
     /** ConnectionInfo */
     ConnectionInfo: {
@@ -2936,8 +2946,9 @@ export interface components {
     }
     /**
      * CostEstimate
-     * @description What a run will ask before it starts (D12). Connections run in parallel,
-     *     so ``duration_s`` is the longest of them (D8).
+     * @description What a run will ask before it starts (D12). Points run in one queue per
+     *     model host (D8): the connections of one host one after another, the hosts
+     *     at the same time, so ``duration_s`` is the longest of the hosts' sums.
      */
     CostEstimate: {
       /** Cases */
@@ -4886,6 +4897,19 @@ export interface components {
       meta: components['schemas']['ResultMeta']
     }
     /**
+     * QueueStop
+     * @description A model host whose queue tripped the circuit breaker: ``BREAKER_AFTER``
+     *     answers in a row with ``code``, after which the whole run stopped.
+     */
+    QueueStop: {
+      /** Host */
+      host: string
+      /** Connection Ids */
+      connection_ids: number[]
+      /** Code */
+      code: string
+    }
+    /**
      * ReadOptions
      * @description How to read a file; every field is detected when left empty.
      */
@@ -5232,6 +5256,10 @@ export interface components {
     /** RunComparisonRow */
     RunComparisonRow: {
       label: components['schemas']['PointLabel']
+      /** Point */
+      point: number
+      /** Point Against */
+      point_against: number
       /** Rate */
       rate: number | null
       /** Rate Against */
@@ -5336,6 +5364,11 @@ export interface components {
        * @default []
        */
       confirm_external: number[]
+      /**
+       * Confirm External Hosts
+       * @default []
+       */
+      confirm_external_hosts: string[]
     }
     /** RunSummary */
     RunSummary: {
@@ -5373,6 +5406,8 @@ export interface components {
       case_set_hash: string
       /** Reference Rate */
       reference_rate: number | null
+      /** Reference Split */
+      reference_split?: ('tuning' | 'confirm') | null
       /**
        * Cost
        * @default []
@@ -5406,6 +5441,11 @@ export interface components {
       cells: components['schemas']['Cell'][]
       /** Error */
       error?: string | null
+      /**
+       * Stopped
+       * @default []
+       */
+      stopped: components['schemas']['QueueStop'][]
       /** Finished At */
       finished_at?: string | null
     }
@@ -11860,15 +11900,6 @@ export interface operations {
           'application/json': components['schemas']['ErrorBody']
         }
       }
-      /** @description Not Implemented */
-      501: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['ErrorBody']
-        }
-      }
     }
   }
   create_case_api_admin_evaluation_cases_post: {
@@ -11929,15 +11960,6 @@ export interface operations {
           'application/json': components['schemas']['ErrorBody']
         }
       }
-      /** @description Not Implemented */
-      501: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['ErrorBody']
-        }
-      }
     }
   }
   export_cases_api_admin_evaluation_cases_export_get: {
@@ -11989,15 +12011,6 @@ export interface operations {
       }
       /** @description Unprocessable Content */
       422: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['ErrorBody']
-        }
-      }
-      /** @description Not Implemented */
-      501: {
         headers: {
           [name: string]: unknown
         }
@@ -12065,15 +12078,6 @@ export interface operations {
           'application/json': components['schemas']['ErrorBody']
         }
       }
-      /** @description Not Implemented */
-      501: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['ErrorBody']
-        }
-      }
     }
   }
   case_from_action_api_admin_evaluation_cases_draft_from_action__action_id__get: {
@@ -12132,15 +12136,6 @@ export interface operations {
           'application/json': components['schemas']['ErrorBody']
         }
       }
-      /** @description Not Implemented */
-      501: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['ErrorBody']
-        }
-      }
     }
   }
   case_api_admin_evaluation_cases__case_id__get: {
@@ -12192,15 +12187,6 @@ export interface operations {
       }
       /** @description Unprocessable Content */
       422: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['ErrorBody']
-        }
-      }
-      /** @description Not Implemented */
-      501: {
         headers: {
           [name: string]: unknown
         }
@@ -12270,15 +12256,6 @@ export interface operations {
           'application/json': components['schemas']['ErrorBody']
         }
       }
-      /** @description Not Implemented */
-      501: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['ErrorBody']
-        }
-      }
     }
   }
   delete_case_api_admin_evaluation_cases__case_id__delete: {
@@ -12328,15 +12305,6 @@ export interface operations {
       }
       /** @description Unprocessable Content */
       422: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['ErrorBody']
-        }
-      }
-      /** @description Not Implemented */
-      501: {
         headers: {
           [name: string]: unknown
         }
@@ -12404,15 +12372,6 @@ export interface operations {
           'application/json': components['schemas']['ErrorBody']
         }
       }
-      /** @description Not Implemented */
-      501: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['ErrorBody']
-        }
-      }
     }
   }
   runs_api_admin_evaluation_runs_get: {
@@ -12466,15 +12425,6 @@ export interface operations {
       }
       /** @description Unprocessable Content */
       422: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['ErrorBody']
-        }
-      }
-      /** @description Not Implemented */
-      501: {
         headers: {
           [name: string]: unknown
         }
@@ -12542,15 +12492,6 @@ export interface operations {
           'application/json': components['schemas']['ErrorBody']
         }
       }
-      /** @description Not Implemented */
-      501: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['ErrorBody']
-        }
-      }
     }
   }
   run_api_admin_evaluation_runs__run_id__get: {
@@ -12609,15 +12550,6 @@ export interface operations {
           'application/json': components['schemas']['ErrorBody']
         }
       }
-      /** @description Not Implemented */
-      501: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['ErrorBody']
-        }
-      }
     }
   }
   abort_run_api_admin_evaluation_runs__run_id__abort_post: {
@@ -12669,15 +12601,6 @@ export interface operations {
       }
       /** @description Unprocessable Content */
       422: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['ErrorBody']
-        }
-      }
-      /** @description Not Implemented */
-      501: {
         headers: {
           [name: string]: unknown
         }
@@ -12746,15 +12669,6 @@ export interface operations {
           'application/json': components['schemas']['ErrorBody']
         }
       }
-      /** @description Not Implemented */
-      501: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['ErrorBody']
-        }
-      }
     }
   }
   export_run_api_admin_evaluation_runs__run_id__export_get: {
@@ -12806,15 +12720,6 @@ export interface operations {
       }
       /** @description Unprocessable Content */
       422: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['ErrorBody']
-        }
-      }
-      /** @description Not Implemented */
-      501: {
         headers: {
           [name: string]: unknown
         }
@@ -12882,15 +12787,6 @@ export interface operations {
           'application/json': components['schemas']['ErrorBody']
         }
       }
-      /** @description Not Implemented */
-      501: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['ErrorBody']
-        }
-      }
     }
   }
   profile_summary_api_admin_evaluation_profile_summary_get: {
@@ -12943,15 +12839,6 @@ export interface operations {
       }
       /** @description Unprocessable Content */
       422: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['ErrorBody']
-        }
-      }
-      /** @description Not Implemented */
-      501: {
         headers: {
           [name: string]: unknown
         }

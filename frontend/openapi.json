@@ -7378,16 +7378,6 @@
               }
             },
             "description": "Unprocessable Content"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            },
-            "description": "Not Implemented"
           }
         }
       },
@@ -7458,16 +7448,6 @@
               }
             },
             "description": "Unprocessable Content"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            },
-            "description": "Not Implemented"
           }
         }
       }
@@ -7542,16 +7522,6 @@
               }
             },
             "description": "Unprocessable Content"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            },
-            "description": "Not Implemented"
           }
         }
       }
@@ -7617,16 +7587,6 @@
           },
           "422": {
             "description": "Unprocessable Content",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Not Implemented",
             "content": {
               "application/json": {
                 "schema": {
@@ -7709,16 +7669,6 @@
               }
             },
             "description": "Unprocessable Content"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            },
-            "description": "Not Implemented"
           }
         }
       }
@@ -7800,16 +7750,6 @@
               }
             },
             "description": "Unprocessable Content"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            },
-            "description": "Not Implemented"
           }
         }
       },
@@ -7899,16 +7839,6 @@
               }
             },
             "description": "Unprocessable Content"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            },
-            "description": "Not Implemented"
           }
         }
       },
@@ -7981,16 +7911,6 @@
               }
             },
             "description": "Unprocessable Content"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            },
-            "description": "Not Implemented"
           }
         }
       }
@@ -8063,16 +7983,6 @@
                 }
               }
             }
-          },
-          "501": {
-            "description": "Not Implemented",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            }
           }
         }
       }
@@ -8083,7 +7993,7 @@
           "evaluation"
         ],
         "summary": "Start Run",
-        "description": "Starts the run in the background and answers at once, ``running``; the\nclient polls ``GET /runs/{id}`` (D8). One run at a time (``run_busy``); an\nexternal connection not in ``confirm_external`` is ``external_not_confirmed``;\na selection with no runnable case (all filtered out, stale or invalid) is\nrefused before the start, 400 ``no_cases``. ``RunView.error`` is for what\nfails while the run runs.",
+        "description": "Starts the run in the background and answers at once, ``running``; the\nclient polls ``GET /runs/{id}`` (D8). One run at a time (``run_busy``); an\nexternal connection not in ``confirm_external``, or whose host is not in\n``confirm_external_hosts`` (changed since the estimate), is\n``external_not_confirmed``;\na selection with no runnable case (all filtered out, stale or invalid) is\nrefused before the start, 400 ``no_cases``. ``RunView.error`` is for what\nfails while the run runs.",
         "operationId": "start_run_api_admin_evaluation_runs_post",
         "requestBody": {
           "required": true,
@@ -8145,16 +8055,6 @@
               }
             },
             "description": "Unprocessable Content"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            },
-            "description": "Not Implemented"
           }
         }
       },
@@ -8259,16 +8159,6 @@
               }
             },
             "description": "Unprocessable Content"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            },
-            "description": "Not Implemented"
           }
         }
       }
@@ -8344,16 +8234,6 @@
               }
             },
             "description": "Unprocessable Content"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            },
-            "description": "Not Implemented"
           }
         }
       }
@@ -8429,16 +8309,6 @@
               }
             },
             "description": "Unprocessable Content"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            },
-            "description": "Not Implemented"
           }
         }
       }
@@ -8546,16 +8416,6 @@
               }
             },
             "description": "Unprocessable Content"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            },
-            "description": "Not Implemented"
           }
         }
       }
@@ -8566,7 +8426,7 @@
           "evaluation"
         ],
         "summary": "Export Run",
-        "description": "The run with every answer, as JSON (V6.2 *Exportieren*).",
+        "description": "The run with every answer, as JSON (V6.2 *Exportieren*): written as it is\nread, the answers a batch at a time, so a large run is never held whole\n(security review #46). Every key of the schema is present, ``null`` ones\ntoo.",
         "operationId": "export_run_api_admin_evaluation_runs__run_id__export_get",
         "parameters": [
           {
@@ -8631,16 +8491,6 @@
               }
             },
             "description": "Unprocessable Content"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            },
-            "description": "Not Implemented"
           }
         }
       }
@@ -8706,16 +8556,6 @@
           },
           "422": {
             "description": "Unprocessable Content",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Not Implemented",
             "content": {
               "application/json": {
                 "schema": {
@@ -8818,16 +8658,6 @@
               }
             },
             "description": "Unprocessable Content"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorBody"
-                }
-              }
-            },
-            "description": "Not Implemented"
           }
         }
       }
@@ -10079,6 +9909,7 @@
           },
           "schema_version": {
             "type": "string",
+            "pattern": "^[0-9]{1,4}$",
             "title": "Schema Version",
             "default": "2"
           },
@@ -11349,6 +11180,11 @@
           "duration_s": {
             "type": "integer",
             "title": "Duration S"
+          },
+          "duration_measured": {
+            "type": "boolean",
+            "title": "Duration Measured",
+            "default": true
           }
         },
         "type": "object",
@@ -12161,7 +11997,7 @@
           "external_hosts"
         ],
         "title": "CostEstimate",
-        "description": "What a run will ask before it starts (D12). Connections run in parallel,\nso ``duration_s`` is the longest of them (D8)."
+        "description": "What a run will ask before it starts (D12). Points run in one queue per\nmodel host (D8): the connections of one host one after another, the hosts\nat the same time, so ``duration_s`` is the longest of the hosts' sums."
       },
       "CountMetric": {
         "properties": {
@@ -12719,6 +12555,7 @@
           },
           "schema_version": {
             "type": "string",
+            "pattern": "^[0-9]{1,4}$",
             "title": "Schema Version",
             "default": "2"
           },
@@ -16856,6 +16693,33 @@
         "title": "QueryResult",
         "description": "A GeoJSON FeatureCollection plus the query and its provenance."
       },
+      "QueueStop": {
+        "properties": {
+          "host": {
+            "type": "string",
+            "title": "Host"
+          },
+          "connection_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Connection Ids"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "host",
+          "connection_ids",
+          "code"
+        ],
+        "title": "QueueStop",
+        "description": "A model host whose queue tripped the circuit breaker: ``BREAKER_AFTER``\nanswers in a row with ``code``, after which the whole run stopped."
+      },
       "ReadOptions": {
         "properties": {
           "sublayer": {
@@ -17409,7 +17273,8 @@
           "value": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 500
               },
               {
                 "type": "integer"
@@ -17630,6 +17495,14 @@
           "label": {
             "$ref": "#/components/schemas/PointLabel"
           },
+          "point": {
+            "type": "integer",
+            "title": "Point"
+          },
+          "point_against": {
+            "type": "integer",
+            "title": "Point Against"
+          },
           "rate": {
             "anyOf": [
               {
@@ -17666,6 +17539,8 @@
         "type": "object",
         "required": [
           "label",
+          "point",
+          "point_against",
           "rate",
           "rate_against",
           "comparison"
@@ -17868,6 +17743,16 @@
             "maxItems": 8,
             "title": "Confirm External",
             "default": []
+          },
+          "confirm_external_hosts": {
+            "items": {
+              "type": "string",
+              "maxLength": 253
+            },
+            "type": "array",
+            "maxItems": 8,
+            "title": "Confirm External Hosts",
+            "default": []
           }
         },
         "additionalProperties": false,
@@ -17949,6 +17834,21 @@
               }
             ],
             "title": "Reference Rate"
+          },
+          "reference_split": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "tuning",
+                  "confirm"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Split"
           },
           "cost": {
             "items": {
@@ -18044,6 +17944,14 @@
               }
             ],
             "title": "Error"
+          },
+          "stopped": {
+            "items": {
+              "$ref": "#/components/schemas/QueueStop"
+            },
+            "type": "array",
+            "title": "Stopped",
+            "default": []
           },
           "finished_at": {
             "anyOf": [

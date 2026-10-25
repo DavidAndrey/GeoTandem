@@ -32,7 +32,7 @@ import {
   connectionProfile,
   isOwnProfile,
   placementText,
-  profileText,
+  profileShortText,
 } from './profileOptions'
 import { runKeys, useRun, useRuns } from './runs'
 import { RunStatusLabel } from './RunsPage'
@@ -60,7 +60,6 @@ import {
   progressPercent,
   rateText,
   remainingSeconds,
-  repeats,
   runErrorText,
   scopeText,
   silentlyText,
@@ -81,7 +80,10 @@ function PointHead({ view, index, run }: { view: PointView; index: number; run: 
   const f = view.figures
   const reference = index === run.reference
   const quick = run.label.scope === 'quick'
-  const tuning = f?.by_split.tuning
+  // The headline is on Abstimmung; a run without tuning cases heads with Bestätigung.
+  const onConfirm = !!f && f.rate_tuning == null && f.rate_confirm != null
+  const headSplit = onConfirm ? f.by_split.confirm : f?.by_split.tuning
+  const headRate = onConfirm ? f.rate_confirm : f?.rate_tuning
   const c = view.comparison
   const silently = f?.silently_wrong ?? 0
   const unreadable = f?.unreadable ?? 0
@@ -104,11 +106,15 @@ function PointHead({ view, index, run }: { view: PointView; index: number; run: 
       {f && (
         <span className="mt-1 block text-xs">
           <span className="block">
-            <span className="text-lg tabular-nums">{rateText(f.rate_tuning)}</span>{' '}
-            {tuning && (
-              <span className="tabular-nums">{ofText(tuning.passed, tuning.answers)}</span>
+            <span className="text-lg tabular-nums">{rateText(headRate)}</span>{' '}
+            {headSplit && (
+              <span className="tabular-nums">{ofText(headSplit.passed, headSplit.answers)}</span>
             )}
-            <span className="sr-only"> {t`Quote Abstimmung`}</span>
+            {onConfirm ? (
+              <span className="block">{t`Quote Bestätigung`}</span>
+            ) : (
+              <span className="sr-only"> {t`Quote Abstimmung`}</span>
+            )}
           </span>
           <span className="block tabular-nums">
             {t`still falsch ${silently} · nicht lesbar ${unreadable}`}
@@ -173,7 +179,7 @@ function CellView({
   point: PointView
   split: Split
 }) {
-  const expected = repeats(run.label.scope)
+  const expected = run.label.seeds.length
   if (!cell || cell.answers === 0)
     return <span className="text-muted">{run.status === 'running' ? '·' : '–'}</span>
   const name = pointName(point.label)
@@ -376,7 +382,7 @@ function Progress({ run }: { run: RunView }) {
         <p>
           <Trans>
             Der Lauf hält vor der nächsten Frage an. Die bisherigen Antworten bleiben; Quoten und
-            Vergleich gibt es nur für vollständige Läufe.
+            Vergleich gibt es nur für fertige Läufe.
           </Trans>
         </p>
         <ErrorNotice error={abort.error} />
@@ -456,7 +462,12 @@ function RunLabelView({ run }: { run: RunView }) {
             <summary className="text-muted cursor-pointer text-xs">
               <Trans>Vollständigkeit im Einzelnen</Trans>
             </summary>
-            <ProfileCompleteness summary={l.profile} heading={t`Vollständigkeit beim Lauf`} />
+            {/* The gaps as they were: history, so no links to today's fields. */}
+            <ProfileCompleteness
+              summary={l.profile}
+              heading={t`Vollständigkeit beim Lauf`}
+              links={false}
+            />
           </details>
         </LabelRow>
         <LabelRow term={t`Fälle`}>
@@ -475,7 +486,7 @@ function RunLabelView({ run }: { run: RunView }) {
             <LabelRow key={i} term={pointName(label)}>
               <span className="font-mono text-xs">{label.host}</span> · {label.model} ·{' '}
               {t`Temperatur ${temperature}`} · {t`Denkaufwand ${effort}`} ·{' '}
-              {profileText(label.prompt_profile)} · {t`Stufe ${level}`} ·{' '}
+              {profileShortText(label.prompt_profile)} · {t`Stufe ${level}`} ·{' '}
               {label.system_prompt != null
                 ? t`System-Prompt geändert`
                 : t`System-Prompt wie im Betrieb`}{' '}
@@ -571,7 +582,7 @@ function ApplyProfileDialog({
       <p className="text-muted mb-3 text-xs">
         <Trans>
           Betrifft alle Anwender dieser Anbindung. System-Prompt und Stufen bleiben unverändert. Im
-          Protokoll der Administration vermerkt.
+          Sicherheitsprotokoll des Servers vermerkt.
         </Trans>
       </p>
       <ErrorNotice error={apply.error} />
@@ -787,14 +798,14 @@ function RunBody({ run }: { run: RunView }) {
       {run.status === 'running' && <Progress run={run} />}
       {run.status === 'failed' && (
         <p role="alert" className="card border-ink mb-3 p-3 text-sm">
-          {run.error ? runErrorText(run.error) : t`Der Lauf ist fehlgeschlagen.`}
+          {run.error ? runErrorText(run) : t`Der Lauf ist fehlgeschlagen.`}
         </p>
       )}
       {(run.status === 'aborted' || run.status === 'interrupted') && (
         <p className="card mb-3 p-3 text-sm">
           {run.status === 'aborted'
-            ? t`Abgebrochen. Die bisherigen Antworten bleiben; Quoten und Vergleich gibt es nur für vollständige Läufe.`
-            : t`Unterbrochen durch einen Neustart. Die bisherigen Antworten bleiben; Quoten und Vergleich gibt es nur für vollständige Läufe.`}
+            ? t`Abgebrochen. Die bisherigen Antworten bleiben; Quoten und Vergleich gibt es nur für fertige Läufe.`
+            : t`Unterbrochen durch einen Neustart. Die bisherigen Antworten bleiben; Quoten und Vergleich gibt es nur für fertige Läufe.`}
         </p>
       )}
       {quick && (

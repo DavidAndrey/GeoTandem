@@ -15,6 +15,10 @@ msgstr " · wird entfernt"
 msgid " (Tabelle)"
 msgstr " (Tabelle)"
 
+#: src/admin/evaluation/runWords.ts
+msgid " und "
+msgstr " und "
+
 #. Short level cell: off
 #: src/model/approval/governance.ts
 msgid "–"
@@ -166,8 +170,8 @@ msgid "(nur Administratoren)"
 msgstr "(nur Administratoren)"
 
 #: src/admin/evaluation/NewRunPage.tsx
-msgid "(parallel je Anbindung)"
-msgstr "(parallel je Anbindung)"
+msgid "(parallel je Modell-Host)"
+msgstr "(parallel je Modell-Host)"
 
 #: src/admin/UsersPage.tsx
 msgid "(Sie)"
@@ -344,6 +348,10 @@ msgstr "{head} und {last}"
 msgid "{hits} · Datenstand <0>{state}</0>"
 msgstr "{hits} · Datenstand <0>{state}</0>"
 
+#: src/admin/evaluation/runWords.ts
+msgid "{host} ({names})"
+msgstr "{host} ({names})"
+
 #: src/admin/format.ts
 msgid "{imported} von {read} Datensätzen übernommen"
 msgstr "{imported} von {read} Datensätzen übernommen"
@@ -389,8 +397,8 @@ msgid "{layer}: {objects} → {read} in der Datei. Felder: {changes}"
 msgstr "{layer}: {objects} → {read} in der Datei. Felder: {changes}"
 
 #: src/admin/evaluation/ComparisonPage.tsx
-msgid "{left} Messpunkte kommen nur in einem der Läufe vor (andere Anbindung, Promptprofil, Stufe oder System-Prompt) und fehlen hier."
-msgstr "{left} Messpunkte kommen nur in einem der Läufe vor (andere Anbindung, Promptprofil, Stufe oder System-Prompt) und fehlen hier."
+msgid "{left} Messpunkte kommen nur in einem der Läufe vor (andere Anbindung oder anders eingestellt, anderes Promptprofil, andere Stufe oder anderer System-Prompt) und fehlen hier."
+msgstr "{left} Messpunkte kommen nur in einem der Läufe vor (andere Anbindung oder anders eingestellt, anderes Promptprofil, andere Stufe oder anderer System-Prompt) und fehlen hier."
 
 #: src/model/compare/words.ts
 msgid "{left} nur links, {right} nur rechts"
@@ -605,6 +613,10 @@ msgstr "{surface} · Umfang {length}"
 msgid "{texts, plural, one {{textCount} Textattribut mit Codeliste (bestätigt oder vorgeschlagen)} other {{textCount} Textattributen mit Codeliste (bestätigt oder vorgeschlagen)}}"
 msgstr "{texts, plural, one {{textCount} Textattribut mit Codeliste (bestätigt oder vorgeschlagen)} other {{textCount} Textattributen mit Codeliste (bestätigt oder vorgeschlagen)}}"
 
+#: src/admin/evaluation/NewRunPage.tsx
+msgid "{time} · geschätzt, noch ohne Messung"
+msgstr "{time} · geschätzt, noch ohne Messung"
+
 #: src/workplace/Workplace.tsx
 msgid "{title} · Treffer"
 msgstr "{title} · Treffer"
@@ -658,16 +670,20 @@ msgid "{when} · {who} · {points} Messpunkte · {cases} Fälle · {state} · {s
 msgstr "{when} · {who} · {points} Messpunkte · {cases} Fälle · {state} · {scope}"
 
 #: src/admin/evaluation/runWords.ts
-msgid "{words} Die Messpunkte dieser Anbindung wurden angehalten."
-msgstr "{words} Die Messpunkte dieser Anbindung wurden angehalten."
+msgid "{words} Der Lauf wurde angehalten."
+msgstr "{words} Der Lauf wurde angehalten."
+
+#: src/admin/evaluation/runWords.ts
+msgid "{words} Nach mehreren solchen Antworten in Folge von {named} wurde der ganze Lauf angehalten; keine weitere Frage ging hinaus."
+msgstr "{words} Nach mehreren solchen Antworten in Folge von {named} wurde der ganze Lauf angehalten; keine weitere Frage ging hinaus."
 
 #: src/admin/evaluation/runWords.ts
 msgid "#{first} und #{second} haben andere Prüffälle; Gegenüberstellen nur bei gleichen Fällen."
 msgstr "#{first} und #{second} haben andere Prüffälle; Gegenüberstellen nur bei gleichen Fällen."
 
 #: src/admin/evaluation/runWords.ts
-msgid "#{id} ist nicht vollständig; Gegenüberstellen nur bei vollständigen Läufen."
-msgstr "#{id} ist nicht vollständig; Gegenüberstellen nur bei vollständigen Läufen."
+msgid "#{id} ist nicht fertig; Gegenüberstellen nur bei fertigen Läufen."
+msgstr "#{id} ist nicht fertig; Gegenüberstellen nur bei fertigen Läufen."
 
 #: src/admin/evaluation/ComparisonPage.tsx
 msgid "#{id}: System-Prompt geändert bei {names}"
@@ -914,8 +930,8 @@ msgid "abgebrochen"
 msgstr "abgebrochen"
 
 #: src/admin/evaluation/RunPage.tsx
-msgid "Abgebrochen. Die bisherigen Antworten bleiben; Quoten und Vergleich gibt es nur für vollständige Läufe."
-msgstr "Abgebrochen. Die bisherigen Antworten bleiben; Quoten und Vergleich gibt es nur für vollständige Läufe."
+msgid "Abgebrochen. Die bisherigen Antworten bleiben; Quoten und Vergleich gibt es nur für fertige Läufe."
+msgstr "Abgebrochen. Die bisherigen Antworten bleiben; Quoten und Vergleich gibt es nur für fertige Läufe."
 
 #: src/model/log/words.ts
 #: src/model/statusKey.ts
@@ -1780,8 +1796,8 @@ msgid "Betriebsdaten"
 msgstr "Betriebsdaten"
 
 #: src/admin/evaluation/RunPage.tsx
-msgid "Betrifft alle Anwender dieser Anbindung. System-Prompt und Stufen bleiben unverändert. Im Protokoll der Administration vermerkt."
-msgstr "Betrifft alle Anwender dieser Anbindung. System-Prompt und Stufen bleiben unverändert. Im Protokoll der Administration vermerkt."
+msgid "Betrifft alle Anwender dieser Anbindung. System-Prompt und Stufen bleiben unverändert. Im Sicherheitsprotokoll des Servers vermerkt."
+msgstr "Betrifft alle Anwender dieser Anbindung. System-Prompt und Stufen bleiben unverändert. Im Sicherheitsprotokoll des Servers vermerkt."
 
 #: src/admin/AdminLayout.tsx
 #: src/admin/evaluation/EvaluationLayout.tsx
@@ -2171,6 +2187,10 @@ msgstr "Datenkern"
 msgid "Datenstand"
 msgstr "Datenstand"
 
+#: src/admin/evaluation/runWords.ts
+msgid "Datenstand anders"
+msgstr "Datenstand anders"
+
 #: src/admin/evaluation/CasesPage.tsx
 #: src/admin/evaluation/parts.tsx
 msgid "Datenstand geändert"
@@ -2291,8 +2311,8 @@ msgid "Der Katalog ist leer."
 msgstr "Der Katalog ist leer."
 
 #: src/admin/evaluation/RunPage.tsx
-msgid "Der Lauf hält vor der nächsten Frage an. Die bisherigen Antworten bleiben; Quoten und Vergleich gibt es nur für vollständige Läufe."
-msgstr "Der Lauf hält vor der nächsten Frage an. Die bisherigen Antworten bleiben; Quoten und Vergleich gibt es nur für vollständige Läufe."
+msgid "Der Lauf hält vor der nächsten Frage an. Die bisherigen Antworten bleiben; Quoten und Vergleich gibt es nur für fertige Läufe."
+msgstr "Der Lauf hält vor der nächsten Frage an. Die bisherigen Antworten bleiben; Quoten und Vergleich gibt es nur für fertige Läufe."
 
 #: src/admin/evaluation/RunPage.tsx
 msgid "Der Lauf ist fehlgeschlagen."
@@ -2523,6 +2543,10 @@ msgstr "Die Analyse wurde seither von Hand geändert; die Modelländerung lässt
 msgid "Die Anbindung „{name}“ antwortet nicht."
 msgstr "Die Anbindung „{name}“ antwortet nicht."
 
+#: src/i18n/errors.ts
+msgid "Die Anbindung sendet inzwischen an {host}, nicht an den bestätigten Host. Prüfen Sie die neue Abschätzung und bestätigen Sie erneut."
+msgstr "Die Anbindung sendet inzwischen an {host}, nicht an den bestätigten Host. Prüfen Sie die neue Abschätzung und bestätigen Sie erneut."
+
 #: src/admin/evaluation/CaseDetailPage.tsx
 msgid "Die Änderungen an diesem Prüffall sind nicht gespeichert und gehen verloren."
 msgstr "Die Änderungen an diesem Prüffall sind nicht gespeichert und gehen verloren."
@@ -2576,8 +2600,12 @@ msgid "Die Anwendung wurde während des Imports beendet."
 msgstr "Die Anwendung wurde während des Imports beendet."
 
 #: src/admin/evaluation/ComparisonPage.tsx
-msgid "Die beiden Läufe haben keinen gleichen Messpunkt (gleiche Anbindung, Promptprofil, Stufe und System-Prompt)."
-msgstr "Die beiden Läufe haben keinen gleichen Messpunkt (gleiche Anbindung, Promptprofil, Stufe und System-Prompt)."
+msgid "Die beiden Läufe haben dieselben Fälle, aber nicht denselben Layer-Steckbrief oder Datenstand. Ein Unterschied kann auch daher kommen."
+msgstr "Die beiden Läufe haben dieselben Fälle, aber nicht denselben Layer-Steckbrief oder Datenstand. Ein Unterschied kann auch daher kommen."
+
+#: src/admin/evaluation/ComparisonPage.tsx
+msgid "Die beiden Läufe haben keinen gleichen Messpunkt (gleiche Anbindung mit gleicher Einstellung, Promptprofil, Stufe und System-Prompt)."
+msgstr "Die beiden Läufe haben keinen gleichen Messpunkt (gleiche Anbindung mit gleicher Einstellung, Promptprofil, Stufe und System-Prompt)."
 
 #: src/i18n/errors.ts
 msgid "Die beiden Schlüssel sind verschiedenen Typs (Text und Zahl)."
@@ -2814,8 +2842,8 @@ msgid "Diese Antwort wurde von Hand korrigiert. Von Hand korrigierte Antworten w
 msgstr "Diese Antwort wurde von Hand korrigiert. Von Hand korrigierte Antworten werden vorerst nicht zum Prüffall."
 
 #: src/i18n/errors.ts
-msgid "Diese Läufe lassen sich nicht gegenüberstellen: Sie haben andere Prüffälle, oder einer ist nicht vollständig."
-msgstr "Diese Läufe lassen sich nicht gegenüberstellen: Sie haben andere Prüffälle, oder einer ist nicht vollständig."
+msgid "Diese Läufe lassen sich nicht gegenüberstellen: Sie haben andere Prüffälle, oder einer ist nicht fertig."
+msgstr "Diese Läufe lassen sich nicht gegenüberstellen: Sie haben andere Prüffälle, oder einer ist nicht fertig."
 
 #: src/admin/evaluation/CaseDetailPage.tsx
 msgid "Diese Lesart hat der Fall schon."
@@ -4651,6 +4679,10 @@ msgid "Lauf #{run} gegen Lauf #{against}"
 msgstr "Lauf #{run} gegen Lauf #{against}"
 
 #: src/i18n/errors.ts
+msgid "Lauf #{run} gibt es nicht (mehr)."
+msgstr "Lauf #{run} gibt es nicht (mehr)."
+
+#: src/i18n/errors.ts
 msgid "Lauf #{run} ist abgebrochen und wartet noch auf die letzte Antwort des Modells. Versuchen Sie es gleich nochmals."
 msgstr "Lauf #{run} ist abgebrochen und wartet noch auf die letzte Antwort des Modells. Versuchen Sie es gleich nochmals."
 
@@ -5814,6 +5846,11 @@ msgstr "Quelle"
 msgid "Quote Abstimmung"
 msgstr "Quote Abstimmung"
 
+#: src/admin/evaluation/RunPage.tsx
+#: src/admin/evaluation/RunsPage.tsx
+msgid "Quote Bestätigung"
+msgstr "Quote Bestätigung"
+
 #. Badge: spatial or reference condition (Raum)
 #: src/editor/CompactTree.tsx
 msgid "R"
@@ -6293,6 +6330,10 @@ msgstr "Status"
 #: src/admin/evaluation/RunPage.tsx
 msgid "Steckbrief"
 msgstr "Steckbrief"
+
+#: src/admin/evaluation/runWords.ts
+msgid "Steckbrief anders"
+msgstr "Steckbrief anders"
 
 #: src/admin/evaluation/measured.ts
 msgid "Steckbrief damals {short}, heute anders."
@@ -6782,8 +6823,8 @@ msgid "unterbrochen"
 msgstr "unterbrochen"
 
 #: src/admin/evaluation/RunPage.tsx
-msgid "Unterbrochen durch einen Neustart. Die bisherigen Antworten bleiben; Quoten und Vergleich gibt es nur für vollständige Läufe."
-msgstr "Unterbrochen durch einen Neustart. Die bisherigen Antworten bleiben; Quoten und Vergleich gibt es nur für vollständige Läufe."
+msgid "Unterbrochen durch einen Neustart. Die bisherigen Antworten bleiben; Quoten und Vergleich gibt es nur für fertige Läufe."
+msgstr "Unterbrochen durch einen Neustart. Die bisherigen Antworten bleiben; Quoten und Vergleich gibt es nur für fertige Läufe."
 
 #: src/admin/evaluation/ComparisonPage.tsx
 #: src/model/compare/CompareDialog.tsx
@@ -6873,8 +6914,8 @@ msgid "Vergleichsbasis"
 msgstr "Vergleichsbasis"
 
 #: src/admin/evaluation/RunsPage.tsx
-msgid "Vergleichsbasis = Quote Abstimmung des Basis-Messpunkts"
-msgstr "Vergleichsbasis = Quote Abstimmung des Basis-Messpunkts"
+msgid "Vergleichsbasis = Quote Abstimmung des Basis-Messpunkts (ohne Abstimmungsfälle: Quote Bestätigung)"
+msgstr "Vergleichsbasis = Quote Abstimmung des Basis-Messpunkts (ohne Abstimmungsfälle: Quote Bestätigung)"
 
 #: src/admin/evaluation/CasesPage.tsx
 #: src/admin/evaluation/runWords.ts
@@ -7494,6 +7535,10 @@ msgstr "Zusammenfassung"
 msgid "zusätzliche Bedingung: {text}"
 msgstr "zusätzliche Bedingung: {text}"
 
+#: src/admin/evaluation/RunsPage.tsx
+msgid "Zwei fertige Läufe mit gleichen Fällen markieren."
+msgstr "Zwei fertige Läufe mit gleichen Fällen markieren."
+
 #: src/admin/evaluation/words.ts
 msgid "zwei Layer"
 msgstr "zwei Layer"
@@ -7501,10 +7546,6 @@ msgstr "zwei Layer"
 #: src/i18n/errors.ts
 msgid "Zwei Stufen heissen „{name}\"; jede braucht einen eigenen Namen."
 msgstr "Zwei Stufen heissen „{name}\"; jede braucht einen eigenen Namen."
-
-#: src/admin/evaluation/RunsPage.tsx
-msgid "Zwei vollständige Läufe mit gleichen Fällen markieren."
-msgstr "Zwei vollständige Läufe mit gleichen Fällen markieren."
 
 #: src/editor/describe.ts
 msgid "zwischen"

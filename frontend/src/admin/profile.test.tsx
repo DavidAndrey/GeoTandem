@@ -331,6 +331,8 @@ test('V8.1: a gap names what the newest complete run measured on the layer', asy
       /^Gemessen: gpt-6-luna P0 hatte auf diesem Layer .* \(Lauf #13, .*\)\. Steckbrief damals #b20a, heute anders\.$/,
     ),
   ).toBeInTheDocument()
+  // The sample data is mended nowhere: its gaps carry no links to fields.
+  expect(within(gaps).queryByRole('link', { name: /^Felder von / })).toBeNull()
 })
 
 test("V8.1 live: a full run (never a quick test) that saw the chosen account's view", async () => {

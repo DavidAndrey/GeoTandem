@@ -1,17 +1,20 @@
-// Two runs side by side (design V6.6, D7): complete runs over the same cases,
-// measuring points matched by connection, prompt profile, level and system
-// prompt; per point both rates on Abstimmung and the difference with its
-// interval and the word on Bestätigung. Otherwise ``runs_not_comparable``.
+// Two runs side by side (design V6.6, D7): finished runs over the same cases,
+// measuring points matched by the server on their whole snapshot (connection,
+// model, host, temperature, effort, prompt profile, level, system prompt;
+// ``_same_point`` of ``evaluation/run.py``), whose rows this page follows; per
+// point both rates on Abstimmung and the difference with its interval and the
+// word on Bestätigung. The header says when the layer profile or the data
+// differ between the runs. Otherwise ``runs_not_comparable``.
 import { Trans } from '@lingui/react/macro'
 import { t } from '@lingui/core/macro'
 import { Link, useNavigate, useParams } from 'react-router'
-import type { PointLabel, PointView, RunView } from '../../api/client'
+import type { PointView, RunComparisonRow, RunView } from '../../api/client'
 import { ErrorNotice, Loading } from '../../components/ui'
 import { formatNumber } from '../../i18n/locale'
-import { sameProfile } from '../promptProfile'
 import { useComparison, useRun } from './runs'
 import {
   differenceText,
+  labelDifferences,
   latencyText,
   moneyText,
   pointName,
@@ -22,16 +25,6 @@ import {
   wordText,
 } from './runWords'
 import { dataStateText } from './words'
-
-/** The same measuring point as the server matches it (``_same_point`` of ``evaluation/run.py``). */
-const samePoint = (a: PointLabel, b: PointLabel) =>
-  a.connection_id === b.connection_id &&
-  a.level_id === b.level_id &&
-  a.system_prompt_hash === b.system_prompt_hash &&
-  sameProfile(a.prompt_profile, b.prompt_profile)
-
-const pointIn = (run: RunView | undefined, label: PointLabel): PointView | undefined =>
-  run?.points.find((p) => samePoint(p.label, label))
 
 /** "#13: System-Prompt geändert bei gpt-6-luna P0" or "… wie im Betrieb". */
 function systemPromptNote(run: RunView): string {
@@ -46,11 +39,11 @@ function systemPromptNote(run: RunView): string {
 
 /** Still falsch, time and cost of one point in both runs ("Details je Messpunkt"). */
 function Details({
-  labels,
+  rows,
   mine,
   theirs,
 }: {
-  labels: PointLabel[]
+  rows: RunComparisonRow[]
   mine: RunView
   theirs: RunView
 }) {
@@ -86,13 +79,13 @@ function Details({
           </tr>
         </thead>
         <tbody>
-          {labels.map((label, i) => {
-            const left = pointIn(mine, label)
-            const right = pointIn(theirs, label)
+          {rows.map((row, i) => {
+            const left = mine.points[row.point]
+            const right = theirs.points[row.point_against]
             return (
               <tr key={i}>
                 <th scope="row" className="border-divider font-normal">
-                  {pointName(label)}
+                  {pointName(row.label)}
                 </th>
                 <td className="tabular-nums">{silently(left)}</td>
                 <td className="tabular-nums">{silently(right)}</td>
@@ -125,6 +118,7 @@ export function ComparisonPage() {
   const scopes = both ? t`beide ${scope}` : ''
   const shown = comparison.data?.points.length ?? 0
   const left = mine && theirs ? mine.points.length + theirs.points.length - 2 * shown : 0
+  const differs = mine && theirs ? labelDifferences(mine, theirs) : []
   return (
     <div className="max-w-5xl">
       <p className="text-muted mb-1 text-sm">
@@ -156,9 +150,18 @@ export function ComparisonPage() {
           {theirs && ` · ${systemPromptNote(mine)} · ${systemPromptNote(theirs)}`}
         </p>
       )}
+      {differs.length > 0 && (
+        <p className="card border-ink mb-3 p-2 text-sm">
+          <strong>{differs.join(' · ')}:</strong>{' '}
+          <Trans>
+            Die beiden Läufe haben dieselben Fälle, aber nicht denselben Layer-Steckbrief oder
+            Datenstand. Ein Unterschied kann auch daher kommen.
+          </Trans>
+        </p>
+      )}
       {comparison.data && left > 0 && (
         <p className="text-muted mb-2 text-xs">
-          {t`${left} Messpunkte kommen nur in einem der Läufe vor (andere Anbindung, Promptprofil, Stufe oder System-Prompt) und fehlen hier.`}
+          {t`${left} Messpunkte kommen nur in einem der Läufe vor (andere Anbindung oder anders eingestellt, anderes Promptprofil, andere Stufe oder anderer System-Prompt) und fehlen hier.`}
         </p>
       )}
       {comparison.isPending && <Loading />}
@@ -166,8 +169,8 @@ export function ComparisonPage() {
       {data && data.points.length === 0 && (
         <p className="text-sm">
           <Trans>
-            Die beiden Läufe haben keinen gleichen Messpunkt (gleiche Anbindung, Promptprofil, Stufe
-            und System-Prompt).
+            Die beiden Läufe haben keinen gleichen Messpunkt (gleiche Anbindung mit gleicher
+            Einstellung, Promptprofil, Stufe und System-Prompt).
           </Trans>
         </p>
       )}
@@ -222,9 +225,7 @@ export function ComparisonPage() {
               Schnelltest).
             </Trans>
           </p>
-          {mine && theirs && (
-            <Details labels={data.points.map((r) => r.label)} mine={mine} theirs={theirs} />
-          )}
+          {mine && theirs && <Details rows={data.points} mine={mine} theirs={theirs} />}
         </>
       )}
     </div>

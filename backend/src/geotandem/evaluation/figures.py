@@ -17,6 +17,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Final
 
+from geotandem.connections import Price
 from geotandem.evaluation.schemas import (
     Cell,
     EvalCase,
@@ -36,15 +37,6 @@ LIMITED: Final = frozenset({"llm_timeout", "limit_exceeded", "query_timeout", "r
 the model path, the engine's time or result size (section 2)."""
 UNREADABLE: Final = frozenset({"model_unreadable", "model_truncated"})
 """Codes of an answer that did not read (stage 0)."""
-
-
-@dataclass(frozen=True)
-class Price:
-    """What a connection costs per million tokens (D12, O4)."""
-
-    input_per_million: float
-    output_per_million: float
-    currency: str
 
 
 @dataclass(frozen=True)

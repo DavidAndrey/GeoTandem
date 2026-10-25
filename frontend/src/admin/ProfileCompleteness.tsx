@@ -2,8 +2,10 @@
 // found to matter as bar and number, per layer with a gap, and the gaps in the
 // order of care — code lists, then labels, then descriptions that state a
 // meaning, the lowest step (Phase 4: no measurable effect on average) — each
-// with a link to the layer's fields (D3 › Felder). Layers in the table and the
-// cards in one order, by care. Complete: one row and a short confirmation (V8.2).
+// with a link to the layer's fields (D3 › Felder) where they can be mended: not
+// for the sample data, nor in a run's label, where the gaps are history.
+// Layers in the table and the cards in one order, by care. Complete: one row and
+// a short confirmation (V8.2).
 import { Trans } from '@lingui/react/macro'
 import { plural, t } from '@lingui/core/macro'
 import { Check } from 'lucide-react'
@@ -47,9 +49,11 @@ function Gaps({
   gaps,
   imported,
   measured,
+  links,
 }: {
   gaps: LayerGaps
   imported: boolean
+  links: boolean
   /** The line to the measured result (V8.1 "Gemessen: …"), if a run asked about the layer. */
   measured?: string | null
 }) {
@@ -71,7 +75,7 @@ function Gaps({
     one: `${attributeCount} Attribut`,
     other: `${attributeCount} Attributen`,
   })
-  const fields = (
+  const fields = links && (
     <Link
       to={fieldsOf(gaps.layer)}
       aria-label={t`Felder von ${title}`}
@@ -164,9 +168,15 @@ export function ProfileCompleteness({
   heading,
   imported,
   measured,
+  links = true,
 }: {
   summary: ProfileSummary
   heading: string
+  /**
+   * "Felder ›" to each layer's fields: only for the live catalog as it is now;
+   * the sample data and a run's label show gaps nobody mends there.
+   */
+  links?: boolean
   /** Per layer the line to a run's result (V8.1), from the newest complete run. */
   measured?: (layer: string) => string | null
   /** A layer just imported: its gaps come first, marked (the import wizard's link). */
@@ -274,6 +284,7 @@ export function ProfileCompleteness({
                 gaps={g}
                 imported={g.layer === imported}
                 measured={measured?.(g.layer)}
+                links={links}
               />
             ))
           )}

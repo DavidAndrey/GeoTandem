@@ -15,6 +15,7 @@ import type {
   PointLabel,
   RunStatus,
   RunSummary,
+  RunView,
   Split,
   Verdict,
 } from '../../api/client'
@@ -27,10 +28,6 @@ import type { StatusKey } from '../../model/statusKey'
 import { examplesLabel, outputLabel } from '../promptProfile'
 import { placementText } from './profileOptions'
 import { isBehaviour, kindText, notRun, tagText, type AnswerKind } from './words'
-
-/** Repeats of a case per measuring point: two seed blocks of five, or one (D7, O2). */
-export const BLOCK = 5
-export const repeats = (scope: RunScope) => (scope === 'full' ? 2 * BLOCK : BLOCK)
 
 // --- addresses (design: Navigation und Adressen) ---------------------------------
 
@@ -152,27 +149,65 @@ export const scopeShort = (scope: RunScope) => (scope === 'full' ? t`Vollständi
 export const progressPercent = (done: number, total: number) =>
   total > 0 ? Math.min(done < total ? 99 : 100, Math.round((done / total) * 100)) : 0
 
-/** Two runs can be put side by side: both done, the same cases (D7, V5.1). */
+/**
+ * Two runs can be put side by side: both done (*fertig*), the same cases (D7,
+ * V5.1). *Vollständig* is the scope 2 × 5, never the status.
+ */
 export function comparable(a: RunSummary, b: RunSummary): string | null {
   const first = a.id
   const second = b.id
   for (const run of [a, b]) {
     const id = run.id
     if (run.status !== 'done')
-      return t`#${id} ist nicht vollständig; Gegenüberstellen nur bei vollständigen Läufen.`
+      return t`#${id} ist nicht fertig; Gegenüberstellen nur bei fertigen Läufen.`
   }
   if (a.case_set_hash !== b.case_set_hash)
     return t`#${first} und #${second} haben andere Prüffälle; Gegenüberstellen nur bei gleichen Fällen.`
   return null
 }
 
-/** Why a failed run stopped (``RunView.error``), in words. */
-export function runErrorText(code: string): string {
+/**
+ * What differs between two runs' labels beyond their cases, which are the same
+ * (V6.6): the layer profile (its hash), the data (sample version, dataset
+ * versions). A difference of rates may come from there as well.
+ */
+export function labelDifferences(a: RunView, b: RunView): string[] {
+  const found: string[] = []
+  if (a.label.profile.profile_hash !== b.label.profile.profile_hash)
+    found.push(t`Steckbrief anders`)
+  const versions = (run: RunView) =>
+    JSON.stringify(
+      Object.entries(run.label.dataset_versions ?? {}).sort(([x], [y]) => x.localeCompare(y)),
+    )
+  if (a.label.sample_version !== b.label.sample_version || versions(a) !== versions(b))
+    found.push(t`Datenstand anders`)
+  return found
+}
+
+/**
+ * Why a failed run stopped (``RunView.error``), in words; after the circuit
+ * breaker, the host and its connections whose answers stopped the whole run
+ * (``RunView.stopped``).
+ */
+export function runErrorText(run: Pick<RunView, 'error' | 'stopped' | 'points'>): string {
+  const code = run.error ?? 'internal_error'
   if (code === 'no_cases')
     return t`Keiner der Prüffälle liess sich beim Lauf lesen; der Lauf hat nichts gemessen.`
   if (code === 'internal_error') return errorText(code)
   const words = errorText(code)
-  return t`${words} Die Messpunkte dieser Anbindung wurden angehalten.`
+  const stops = run.stopped ?? []
+  if (!stops.length) return t`${words} Der Lauf wurde angehalten.`
+  const named = stops
+    .map((stop) => {
+      const host = stop.host
+      const names = stop.connection_ids
+        .map((id) => run.points.find((p) => p.label.connection_id === id)?.label.connection_name)
+        .filter((name): name is string => !!name)
+        .join(', ')
+      return names ? t`${host} (${names})` : host
+    })
+    .join(t` und `)
+  return t`${words} Nach mehreren solchen Antworten in Folge von ${named} wurde der ganze Lauf angehalten; keine weitere Frage ging hinaus.`
 }
 
 /** "seit 10:02". */

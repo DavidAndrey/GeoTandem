@@ -1,7 +1,8 @@
 // Prompt profiles of a measuring point (plan E3, D9): the lists and words are
 // the connection form's (``admin/promptProfile.ts``, WP91); here only what a
-// run adds: the short placement name for selects and column heads, one line
-// for a profile, the connection's own profile and applying a measured one to
+// run adds: the short placement name for selects and column heads, one short
+// line for a profile (``profileShortText``; the form's long one is
+// ``profileText``), the connection's own profile and applying a measured one to
 // the connection (V6.4).
 import { t } from '@lingui/core/macro'
 import { api, type ConnectionInfo, type PromptProfile } from '../../api/client'
@@ -16,8 +17,8 @@ import {
 /** "P9": the short name; the connection form explains it in full (``placementLabel``). */
 export const placementText = (value: Placement) => ({ P0: t`P0`, P5: t`P5`, P9: t`P9` })[value]
 
-/** "Standard · P0 · erzwungen". */
-export const profileText = (p: PromptProfile) =>
+/** "Standard · P0 · erzwungen": a profile in one short line, the placement by its name. */
+export const profileShortText = (p: PromptProfile) =>
   [examplesLabel(p.examples), placementText(p.placement), outputLabel(p.output)].join(' · ')
 
 /** The profile the connection uses in operation (D9). */
