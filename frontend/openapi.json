@@ -8730,7 +8730,7 @@
           "evaluation"
         ],
         "summary": "Profile Summary",
-        "description": "How complete the metadata is that the model sees (D11, V8): of the sample\ndata, or of the live catalog as ``account`` sees it (default: the caller).",
+        "description": "How complete the metadata is that the model sees (D11, V8): of the sample\ndata, or of the live catalog as ``account`` sees it (default: the caller).\nAn unknown ``account`` is 404, as on ``GET /api/admin/llm/profile``; the\nsample is the same for every account (D4).",
         "operationId": "profile_summary_api_admin_evaluation_profile_summary_get",
         "parameters": [
           {

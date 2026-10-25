@@ -117,3 +117,9 @@ export function typeLabel(type: string): string {
   const label = TYPE_LABELS[type]
   return label ? i18n._(label) : type
 }
+
+/** Whole percent, never rounded up to 100 while something is missing; ``null`` of nothing. */
+export function percent(done: number, total: number): number | null {
+  if (total === 0) return null
+  return Math.floor((done / total) * 100)
+}

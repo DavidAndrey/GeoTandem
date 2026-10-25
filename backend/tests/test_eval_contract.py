@@ -65,9 +65,9 @@ ROUTES: dict[tuple[str, str], str] = {
 """Every route of section 6 with the WP that builds it. A WP that lands moves
 its routes out of the 501 check into its own tests."""
 
-BUILT: set[tuple[str, str]] = {route for route, wp in ROUTES.items() if wp == "WP87"}
+BUILT: set[tuple[str, str]] = {route for route, wp in ROUTES.items() if wp in ("WP87", "WP94")}
 """Routes whose WP has landed; their behaviour is tested in the WP's own tests
-(WP87: ``test_eval_cases.py``)."""
+(WP87: ``test_eval_cases.py``, WP94: ``test_eval_summary.py``)."""
 
 POINT = {"connection_id": 1, "level_id": 1}
 CASE = {
