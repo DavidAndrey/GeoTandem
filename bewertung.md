@@ -14,6 +14,9 @@
 > Entwurf hinter den Paketen E3.1 bis E3.5; der Zuschnitt der Pakete selbst
 > steht in den Etappen. Abschnitt 10 nennt, was E2 dafür mitliefern muss — es
 > ist wenig, weil fast alles ohnehin entsteht.
+>
+> Umgesetzt nach [docs/plan-e3.md](docs/plan-e3.md); wo der Plan dieses
+> Konzept ändert, steht in Abschnitt 14.
 
 ## 1 Die Lücke
 
@@ -375,3 +378,27 @@ Bestehende Anforderungen, auf denen die Bewertung aufsetzt: F-3.2, F-3.3, F-3.6,
 F-3.8 (Gegenstand der Entscheidung), F-5.5, F-5.7, F-5.8, F-5.13, F-5.14, F-5.18
 (Prüfgegenstand), F-6.8, F-8.9, F-10.3, F-10.4, F-10.5 (Grundlage), F-9.3,
 F-9.5, F-9.6 (Grenzen des Laufs).
+
+## 14 Was der Plan für E3 ändert
+
+[docs/plan-e3.md](docs/plan-e3.md) hat dieses Konzept an einigen Stellen
+geändert, meist nach den Messungen von E2. Gebaut ist, was in der rechten
+Spalte steht.
+
+| Abschnitt | Hier | Umgesetzt | Entscheid |
+|---|---|---|---|
+| 3.1, 6 | Arbeitsweise Direktabfrage, Werkzeugkette oder beide | Nur die Direktabfrage; die Werkzeugkette folgt mit ihrer eigenen Bewertung nach E3, samt Schrittzahl (5) | plan-e3 9 |
+| 3.1 | Das Referenzergebnis ist hinterlegt | Gespeichert wird die Referenzabfrage. Das Ergebnis entsteht in jedem Lauf aus ihr, auf demselben Datenstand | D3 |
+| 3.1, 4 | Toleranzen für numerische Abweichungen | Verschoben: Stufe 2 vergleicht die Objektkennungen; Toleranzen kommen, sobald ein Fall eine Ausgabe mit Kennzahlen hat | D5 |
+| 3.1 | Datenstand: der Beispieldatensatz | Zwei Datenstände: eine eigens aufgebaute Kopie der Beispieldaten oder die Betriebsdaten in der Sicht des startenden Administrators | D1, D4 |
+| 3.3 | Zwei Herkünfte: von Hand, aus dem Protokoll | Vier: Startbestand, im Arbeitsplatz gespeichert, aus dem Protokoll, importiert. Ein importierter Fall trägt die Herkunft *Import*, auch wenn er anderswo im Arbeitsplatz oder aus dem Protokoll entstand; sein Verweis auf eine Modellaktion fällt weg, denn er bezeichnet hier nichts. Aus dem Protokoll nur angenommene oder automatisch angewendete, nicht zurückgenommene Direktabfragen; keine von Hand korrigierten und keine Folgefragen | D2, Entscheid 2 |
+| 3 | – | Ein Fall hat einen Status: *veraltet* (ein Layer fehlt oder ist nicht sichtbar), *ungültig* (die Referenz besteht die Prüfungen einer Modellabfrage nicht mehr oder läuft nicht mehr), *Datenstand geändert* (ein Layer wurde neu importiert). Veraltete und ungültige Fälle laufen nicht mit | D3 |
+| 4 | Eine nicht bestandene Stufe beendet die Auswertung des Falls | Nur Stufe 0 beendet sie. Stufe 1 urteilt nie: Sie steht als Unterschied neben dem Urteil von Stufe 2, auch bei einer richtigen Antwort | D5 |
+| 5 | Manuelle Einstufung der Verhaltensfälle als Rückfall | Nicht nötig: Die Antwortart wird automatisch eingestuft, wie im Harness bewährt | 12 |
+| 5, 7 | – | Dazu die Marken *still falsch* (falsch ohne genannte Annahme) und *0 Treffer* | D6 |
+| 6 | Der Lauf als Folge gewöhnlicher Anfragen ohne Warteschlange (10) | Ein Hintergrundlauf, einer zugleich für die Instanz; der Client fragt den Stand ab. Abbruch vor der nächsten Frage; ein Neustart beendet ihn als *unterbrochen* | D8 |
+| 6 | Dieselben Regeln wie im Betrieb | Gilt, mit zwei bewussten Ausnahmen: Ein Lauf schreibt **keine Modellaktion**, damit Modellprotokoll und Annahmequote die Spur der echten Benutzung bleiben. Und er zählt **nicht gegen die Tagesgrenze** einer Anbindung, die die Benutzung begrenzt, nicht die Messung; die Grenze ist die Bestätigung der Abschätzung vor dem Start | D8, D12 |
+| 6 | Wiederholungen frei wählbar | Zwei Blöcke à fünf; ein Schnelltest mit einem Block, ohne Vergleichsaussage | D7, O2 |
+| 6, 8 | Prüfumgebung: System-Prompt und Modellparameter | Dazu das Promptprofil je Messpunkt aus gemessenen Vorgaben (Beispiele, Platzierung, Ausgabe). Ein gemessenes Profil lässt sich auf die Anbindung übernehmen; das steht im Sicherheitsprotokoll, nicht im Modellprotokoll | D9, O8 |
+| 7 | Je Feld die erreichte Stufe und die Zeit | Je Feld die richtigen von 10 Antworten und die übrigen Urteile in Kurzform. Je Spalte die Quote auf der Abstimmung und gegen eine Vergleichsbasis *besser*, *schlechter* oder *nicht belegt*, gepaart je Fall auf der Bestätigung | D7 |
+| 7 | Beschriftung: Schemaversion, Datenstand, System-Prompt, Modell, Zeitpunkt | Dazu die Version der Bewertungsregeln, der Stand des Layer-Steckbriefs mit Vollständigkeit, das Promptprofil, die Seeds, die Fälle, wie sie gefragt wurden, und wessen Sicht | D11, plan-e3 2 |
