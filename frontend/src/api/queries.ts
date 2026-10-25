@@ -224,15 +224,15 @@ export function useChooseLLM() {
   })
 }
 
-/** The layer profile a model would get for an account (plan E2.2, S6). */
-/** The completeness of the profile (V8): the sample's, or live for ``account``. */
+/** The completeness of the profile (V8): the sample's, or live for ``account``
+ * (``''``: the signed-in administrator, as the server defaults). */
 export const useProfileSummary = (dataState: DataState, account: string) =>
   useQuery({
     queryKey: keys.profileSummary(dataState, account),
     queryFn: () => api.evaluation.profileSummary(dataState, account || undefined),
-    enabled: dataState === 'sample' || account !== '',
   })
 
+/** The layer profile a model would get for an account (plan E2.2, S6). */
 export const useModelProfile = (account: string) =>
   useQuery({
     queryKey: keys.modelProfile(account),

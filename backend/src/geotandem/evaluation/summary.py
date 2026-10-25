@@ -1,7 +1,7 @@
 """How complete the layer profile is (plan E3, D11, V8): the metadata Phase 4
 found to matter, counted, and per layer what is missing in the order of care
-(docs/testplan-system-context.md 8.5): code lists, then labels, then
-descriptions.
+(docs/testplan-system-context.md 8.5): code lists, then labels, then, least
+of all, descriptions.
 
 Counted over the profile, so only what the model sees counts: layers and
 attributes released for the model and visible to the account. A proposed code
@@ -18,13 +18,16 @@ from geotandem.evaluation.schemas import LayerGaps, ProfileSummary
 def profile_summary(profile: ModelProfile, engine: Engine) -> ProfileSummary:
     """The completeness of ``profile``, which was built from the catalog of ``engine``.
 
-    - ``labelled``: attributes whose label is not their column name (the profile
-      writes the column name where the label is empty).
+    - ``labelled``: attributes whose label is not their column name, case
+      ignored (the profile writes the column name where the label is empty, and
+      a raw header ``GEM_NR`` over ``gem_nr`` names nothing new).
     - ``text_attributes``: text attributes with a code list, confirmed or only
-      proposed; ``text_with_codes`` the confirmed ones. A text attribute that has
-      none (a name) is not counted, so the share can reach 100 % and each layer's
-      share follows from its totals and gaps (``LayerGaps``).
-    - ``described``: layers and attributes with a description.
+      proposed; ``text_with_codes`` the confirmed ones. Free text (a name) and a
+      categorical column the import did not propose a list for, or whose
+      proposal was removed, are not counted: the share can reach 100 %, and each
+      layer's share follows from its totals and gaps (``LayerGaps``).
+    - ``described``: layers and attributes with a description; the third and
+      lowest step of care (Phase 4: no measurable effect on average).
     """
     catalog = {
         layer.name: {a.name: a for a in layer.attributes}
@@ -47,7 +50,7 @@ def profile_summary(profile: ModelProfile, engine: Engine) -> ProfileSummary:
                 elif row is not None and "codes" in (row.value_domain or {}):
                     texts += 1
                     unconfirmed.append(a.name)
-            if a.label == a.name:
+            if a.label.casefold() == a.name.casefold():
                 unlabelled.append(a.name)
             if not a.description:
                 undescribed.append(a.name)

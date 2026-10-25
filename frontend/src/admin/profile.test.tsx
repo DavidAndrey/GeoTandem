@@ -2,7 +2,7 @@ import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, test, vi } from 'vitest'
 import { App } from '../App'
-import type { ProfilePreview, ProfileSummary } from '../api/client'
+import type { LayerGaps, ProfilePreview, ProfileSummary } from '../api/client'
 import { account, attribute, signedIn } from '../test/fixtures'
 import { fakeApi, renderAt } from '../test/render'
 import { AttributeRows } from './LayerPage'
@@ -153,77 +153,142 @@ test('a proposed code list is confirmed explicitly', async () => {
   expect(calls[0]?.body).toMatchObject({ value_domain: { codes: { A: 'A', B: 'B' } } })
 })
 
+const summaryRoute = (urls: string[], answer: ProfileSummary) => ({
+  'GET /api/admin/evaluation/profile-summary': (_init: unknown, input: string) => {
+    urls.push(input)
+    return answer
+  },
+})
+
+const SUMMARY = '/api/admin/evaluation/profile-summary'
+
+const percents = (row: HTMLElement) =>
+  within(row)
+    .getAllByText(/%/)
+    .map((c) => c.textContent)
+
 test('the completeness shows shares per layer and the gaps in the order of care (V8.1)', async () => {
   const urls: string[] = []
   fakeApi({
     ...signedIn(),
     'GET /api/admin/users': [account(), account({ id: 2, username: 'm.keller', role: 'user' })],
     'GET /api/admin/llm/profile': profile,
-    'GET /api/admin/evaluation/profile-summary': (_init: unknown, input: string) => {
-      urls.push(input)
-      return withGaps
-    },
+    ...summaryRoute(urls, withGaps),
   })
   renderAt('/admin/steckbrief', <App />)
 
   await screen.findByRole('option', { name: 'm.keller' })
   await userEvent.selectOptions(screen.getByLabelText('Konto'), 'm.keller')
-  const summary = await screen.findByRole('region', { name: 'Vollständigkeit' })
-  expect(urls).toEqual(['/api/admin/evaluation/profile-summary?data_state=live&account=m.keller'])
-  expect(within(summary).getByText('Vollständigkeit · Betriebsdaten')).toBeInTheDocument()
-  const total = within(summary).getByRole('row', { name: /Gesamt/ })
+  await vi.waitFor(() => expect(urls).toContain(`${SUMMARY}?data_state=live&account=m.keller`))
+  const summary = screen.getByRole('region', { name: 'Vollständigkeit' })
+  expect(within(summary).getAllByRole('heading', { level: 3 })[0]).toHaveTextContent(
+    'Vollständigkeit · Betriebsdaten',
+  )
   // Bar and number: 10/34 labelled, 3/9 code lists, 13/37 described.
+  expect(percents(within(summary).getByRole('row', { name: /Gesamt/ }))).toEqual([
+    '29 %',
+    '33 %',
+    '35 %',
+  ])
+  expect(percents(within(summary).getByRole('row', { name: /Schulanlagen/ }))).toEqual([
+    '0 %',
+    '0 %',
+    '4 %',
+  ])
+  expect(within(summary).getByText('2 weitere Layer sind vollständig.').tagName).toBe('TD')
   expect(
-    within(total)
-      .getAllByText(/%/)
-      .map((c) => c.textContent),
-  ).toEqual(['29 %', '33 %', '35 %'])
-  const layer = within(summary).getByRole('row', { name: /Schulanlagen/ })
-  expect(
-    within(layer)
-      .getAllByText(/%/)
-      .map((c) => c.textContent),
-  ).toEqual(['0 %', '0 %', '4 %'])
-  expect(within(summary).getByText('2 weitere Layer sind vollständig.')).toBeInTheDocument()
+    within(summary).getByRole('columnheader', { name: /Textattribute mit bestätigter Codeliste/ }),
+  ).toHaveTextContent('von denen mit Codeliste (bestätigt oder vorgeschlagen)')
 
   const gaps = within(summary).getByRole('region', {
     name: 'Lücken in Schulanlagen (Import 21.10.)',
   })
+  expect(within(gaps).getByRole('heading', { level: 4 })).toBeInTheDocument()
   const items = within(gaps).getAllByRole('listitem')
   expect(items.map((i) => i.querySelector('strong')?.textContent)).toEqual([
     'Codelisten bestätigen',
     'Beschriftungen',
     'Beschreibungen, die die Bedeutung nennen',
   ])
-  expect(items[0]).toHaveTextContent('0 von 6 Textattributen (schulstufe, sprache, traeger, …)')
+  expect(items[0]).toHaveTextContent(
+    '0 von 6 Textattributen mit Codeliste (bestätigt oder vorgeschlagen): schulstufe, sprache, traeger, …',
+  )
   expect(items[1]).toHaveTextContent('0 von 24 Attributen (z. B. hat_turnhalle, sw_dist_m, f0, …)')
   expect(items[2]).toHaveTextContent('1 von 25 (fehlt: Layerbeschreibung, f0, f1, …)')
+  expect(items[2]).toHaveTextContent('zuletzt: im Mittel ohne messbare Wirkung')
   for (const item of items)
-    expect(within(item).getByRole('link', { name: 'Felder ›' })).toHaveAttribute(
-      'href',
-      '/admin/daten/schulanlagen?reiter=felder',
-    )
+    expect(
+      within(item).getByRole('link', { name: 'Felder von Schulanlagen (Import 21.10.)' }),
+    ).toHaveAttribute('href', '/admin/daten/schulanlagen?reiter=felder')
   expect(within(summary).queryByText('vollständig')).not.toBeInTheDocument()
 })
 
-test('a complete profile is one row and a short confirmation (V8.2), the sample without an account', async () => {
-  const urls: string[] = []
-  fakeApi({
-    ...signedIn(),
-    'GET /api/admin/users': [account()],
-    'GET /api/admin/evaluation/profile-summary': (_init: unknown, input: string) => {
-      urls.push(input)
-      return complete
-    },
-  })
+const gap = (layer: string, extra: Partial<LayerGaps>): LayerGaps => ({
+  layer,
+  title: layer,
+  attributes: 1,
+  text_attributes: 1,
+  unconfirmed_codes: [],
+  unlabelled: [],
+  undescribed: [],
+  ...extra,
+})
+
+/** In the catalog's order: one layer lacks a description, one a label, one a code list. */
+const threeLayers: ProfileSummary = {
+  ...withGaps,
+  layers: 4,
+  attributes: 3,
+  gaps: [
+    gap('anlagen', { undescribed: ['x'] }),
+    gap('bahnen', { unlabelled: ['x'] }),
+    gap('zonen', { unconfirmed_codes: ['x'] }),
+  ],
+}
+
+test('layers and their gaps come in one order, by care; one complete layer in the singular', async () => {
+  fakeApi({ ...signedIn(), 'GET /api/admin/users': [account()], ...summaryRoute([], threeLayers) })
   renderAt('/admin/steckbrief', <App />)
 
-  await screen.findByRole('option', { name: 'admin' })
-  expect(screen.queryByRole('region', { name: 'Vollständigkeit' })).not.toBeInTheDocument()
-  await userEvent.click(screen.getByRole('radio', { name: 'Beispieldaten' }))
   const summary = await screen.findByRole('region', { name: 'Vollständigkeit' })
-  expect(urls).toEqual(['/api/admin/evaluation/profile-summary?data_state=sample'])
-  expect(within(summary).getByText('Vollständigkeit · Beispieldaten')).toBeInTheDocument()
+  const rows = within(summary).getAllByRole('row').slice(2, 5)
+  expect(rows.map((r) => r.querySelector('th')?.textContent)).toEqual([
+    'zonen',
+    'bahnen',
+    'anlagen',
+  ])
+  const cards = within(summary).getAllByRole('region')
+  expect(cards.map((c) => c.getAttribute('aria-label'))).toEqual([
+    'Lücken in zonen',
+    'Lücken in bahnen',
+    'Lücken in anlagen',
+  ])
+  expect(within(summary).getByText('Ein weiterer Layer ist vollständig.')).toBeInTheDocument()
+  expect(cards[0]).toHaveTextContent(
+    '0 von 1 Textattribut mit Codeliste (bestätigt oder vorgeschlagen): x',
+  )
+  expect(cards[1]).toHaveTextContent('0 von 1 Attribut (z. B. x)')
+})
+
+test("the import wizard's layer comes first, marked", async () => {
+  fakeApi({ ...signedIn(), 'GET /api/admin/users': [account()], ...summaryRoute([], threeLayers) })
+  renderAt('/admin/steckbrief?layer=anlagen', <App />)
+
+  const summary = await screen.findByRole('region', { name: 'Vollständigkeit' })
+  const [first] = within(summary).getAllByRole('region')
+  expect(first).toHaveAccessibleName('Lücken in anlagen')
+  expect(first).toHaveTextContent('gerade importiert')
+  expect(within(summary).getAllByText('gerade importiert')).toHaveLength(1)
+})
+
+test("live without an account is the caller's at once; complete is one row (V8.2); sample and back", async () => {
+  const urls: string[] = []
+  fakeApi({ ...signedIn(), 'GET /api/admin/users': [account()], ...summaryRoute(urls, complete) })
+  renderAt('/admin/steckbrief', <App />)
+
+  let summary = await screen.findByRole('region', { name: 'Vollständigkeit' })
+  expect(urls).toEqual([`${SUMMARY}?data_state=live`])
+  expect(within(summary).getByText('Vollständigkeit · Betriebsdaten')).toBeInTheDocument()
   expect(within(summary).getAllByRole('row')).toHaveLength(2)
   expect(within(summary).getAllByText('100 %')).toHaveLength(3)
   expect(within(summary).getByText('vollständig')).toBeInTheDocument()
@@ -233,6 +298,13 @@ test('a complete profile is one row and a short confirmation (V8.2), the sample 
     ),
   ).toBeInTheDocument()
   expect(within(summary).queryByRole('link')).not.toBeInTheDocument()
+
+  await userEvent.click(screen.getByRole('radio', { name: 'Beispieldaten' }))
+  await screen.findByText('Vollständigkeit · Beispieldaten')
+  expect(urls).toEqual([`${SUMMARY}?data_state=live`, `${SUMMARY}?data_state=sample`])
+  await userEvent.click(screen.getByRole('radio', { name: 'Betriebsdaten' }))
+  summary = await screen.findByRole('region', { name: 'Vollständigkeit' })
+  expect(within(summary).getByText('Vollständigkeit · Betriebsdaten')).toBeInTheDocument()
 })
 
 test('a share is never rounded up to 100 while something is missing', () => {

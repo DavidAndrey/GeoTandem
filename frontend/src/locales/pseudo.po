@@ -182,12 +182,16 @@ msgstr ""
 msgid "{attributeRows, plural, one {Eine Attribut-Bedingung bezieht sich auf die Felder des bisherigen Layers und fällt weg. Räumliche Bedingungen bleiben.} other {# Attribut-Bedingungen beziehen sich auf die Felder des bisherigen Layers und fallen weg. Räumliche Bedingungen bleiben.}}"
 msgstr ""
 
+#: src/admin/ProfileCompleteness.tsx
+msgid "{attributes, plural, one {{attributeCount} Attribut} other {{attributeCount} Attributen}}"
+msgstr ""
+
 #: src/model/chain/Chain.tsx
 msgid "{classes} · {cell}"
 msgstr ""
 
 #: src/admin/ProfileCompleteness.tsx
-msgid "{codesDone} von {textCount} Textattributen ({names})"
+msgid "{codesDone} von {ofTexts}: {names}"
 msgstr ""
 
 #: src/table/TableDock.tsx
@@ -308,7 +312,7 @@ msgid "{label}: {value} von {max}"
 msgstr ""
 
 #: src/admin/ProfileCompleteness.tsx
-msgid "{labelsDone} von {attributeCount} Attributen (z. B. {names})"
+msgid "{labelsDone} von {ofAttributes} (z. B. {names})"
 msgstr ""
 
 #: src/admin/VisibilityPage.tsx
@@ -481,6 +485,10 @@ msgstr ""
 
 #: src/map/Measurement.tsx
 msgid "{surface} · Umfang {length}"
+msgstr ""
+
+#: src/admin/ProfileCompleteness.tsx
+msgid "{texts, plural, one {{textCount} Textattribut mit Codeliste (bestätigt oder vorgeschlagen)} other {{textCount} Textattributen mit Codeliste (bestätigt oder vorgeschlagen)}}"
 msgstr ""
 
 #: src/workplace/Workplace.tsx
@@ -3076,6 +3084,10 @@ msgstr ""
 msgid "Felder beschreiben"
 msgstr ""
 
+#: src/admin/ProfileCompleteness.tsx
+msgid "Felder von {title}"
+msgstr ""
+
 #: src/admin/ImportWizard.tsx
 msgid "Feldname"
 msgstr ""
@@ -3269,6 +3281,10 @@ msgstr ""
 
 #: src/model/chain/PlanEditor.tsx
 msgid "Geplante Schritte · {n} von höchstens {max}"
+msgstr ""
+
+#: src/admin/ProfileCompleteness.tsx
+msgid "gerade importiert"
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -5897,6 +5913,10 @@ msgstr ""
 msgid "Von"
 msgstr ""
 
+#: src/admin/ProfileCompleteness.tsx
+msgid "von denen mit Codeliste (bestätigt oder vorgeschlagen)"
+msgstr ""
+
 #: src/model/approval/Approval.tsx
 msgid "Von Hand geändert. Änderungsliste neu berechnet."
 msgstr ""
@@ -6276,6 +6296,14 @@ msgstr ""
 
 #: src/session/SessionMenu.tsx
 msgid "Zuletzt"
+msgstr ""
+
+#: src/admin/ProfileCompleteness.tsx
+msgid "zuletzt pflegen"
+msgstr ""
+
+#: src/admin/ProfileCompleteness.tsx
+msgid "zuletzt: im Mittel ohne messbare Wirkung"
 msgstr ""
 
 #: src/admin/ImportWizard.tsx

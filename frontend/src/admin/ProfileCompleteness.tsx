@@ -1,10 +1,11 @@
 // The state of the layer profile (plan E3, D11, design V8): the shares Phase 4
 // found to matter as bar and number, per layer with a gap, and the gaps in the
 // order of care — code lists, then labels, then descriptions that state a
-// meaning — each with a link to the layer's fields (D3 › Felder). Complete:
-// one row and a short confirmation (V8.2).
+// meaning, the lowest step (Phase 4: no measurable effect on average) — each
+// with a link to the layer's fields (D3 › Felder). Layers in the table and the
+// cards in one order, by care. Complete: one row and a short confirmation (V8.2).
 import { Trans } from '@lingui/react/macro'
-import { t } from '@lingui/core/macro'
+import { plural, t } from '@lingui/core/macro'
 import { Check } from 'lucide-react'
 import { Link } from 'react-router'
 import type { LayerGaps, ProfileSummary } from '../api/client'
@@ -34,13 +35,15 @@ function examples(names: string[], more: (shown: string) => string): string {
   return more(shown)
 }
 
-/** The layers whose first gap matters most come first: code lists, then labels. */
-function byCare(gaps: LayerGaps[]): LayerGaps[] {
-  const rank = (g: LayerGaps) => (g.unconfirmed_codes.length ? 0 : g.unlabelled.length ? 1 : 2)
+/** The layers whose first gap matters most come first: code lists, then labels;
+ * otherwise in the catalog's order. */
+function byCare(gaps: LayerGaps[], first?: string): LayerGaps[] {
+  const rank = (g: LayerGaps) =>
+    g.layer === first ? -1 : g.unconfirmed_codes.length ? 0 : g.unlabelled.length ? 1 : 2
   return [...gaps].sort((a, b) => rank(a) - rank(b))
 }
 
-function Gaps({ gaps }: { gaps: LayerGaps }) {
+function Gaps({ gaps, imported }: { gaps: LayerGaps; imported: boolean }) {
   const title = gaps.title
   const texts = gaps.text_attributes
   const attributes = gaps.attributes
@@ -51,20 +54,45 @@ function Gaps({ gaps }: { gaps: LayerGaps }) {
   const textCount = formatNumber(texts)
   const attributeCount = formatNumber(attributes)
   const partCount = formatNumber(parts)
+  const ofTexts = plural(texts, {
+    one: `${textCount} Textattribut mit Codeliste (bestätigt oder vorgeschlagen)`,
+    other: `${textCount} Textattributen mit Codeliste (bestätigt oder vorgeschlagen)`,
+  })
+  const ofAttributes = plural(attributes, {
+    one: `${attributeCount} Attribut`,
+    other: `${attributeCount} Attributen`,
+  })
   const fields = (
-    <Link to={fieldsOf(gaps.layer)} className="text-accent-700 ml-auto whitespace-nowrap">
+    <Link
+      to={fieldsOf(gaps.layer)}
+      aria-label={t`Felder von ${title}`}
+      className="text-accent-700 ml-auto whitespace-nowrap"
+    >
       <Trans>Felder ›</Trans>
     </Link>
   )
   return (
-    <section aria-label={t`Lücken in ${title}`} className="card mb-3 border-neutral-500 p-3">
+    <section
+      aria-label={t`Lücken in ${title}`}
+      className={`card mb-3 p-3 ${imported ? 'border-accent' : 'border-neutral-500'}`}
+    >
       <h4 className="mb-1 text-sm">
         <Trans>Lücken in {title} · in dieser Reihenfolge pflegen</Trans>
+        {imported && (
+          <>
+            {' '}
+            <span className="chip chip-active ml-1 font-normal">
+              <Trans>gerade importiert</Trans>
+            </span>
+          </>
+        )}
       </h4>
       <ol className="flex flex-col gap-1 text-sm">
         {gaps.unconfirmed_codes.length > 0 && (
           <li value={1} className="flex items-baseline gap-2">
-            <span className="chip shrink-0">1</span>
+            <span aria-hidden className="chip shrink-0">
+              1
+            </span>
             <span>
               <strong>
                 <Trans>Codelisten bestätigen</Trans>
@@ -72,7 +100,7 @@ function Gaps({ gaps }: { gaps: LayerGaps }) {
               ·{' '}
               {examples(
                 gaps.unconfirmed_codes,
-                (names) => t`${codesDone} von ${textCount} Textattributen (${names})`,
+                (names) => t`${codesDone} von ${ofTexts}: ${names}`,
               )}{' '}
               · <Trans>stärkste Wirkung</Trans>
             </span>
@@ -81,7 +109,9 @@ function Gaps({ gaps }: { gaps: LayerGaps }) {
         )}
         {gaps.unlabelled.length > 0 && (
           <li value={2} className="flex items-baseline gap-2">
-            <span className="chip shrink-0">2</span>
+            <span aria-hidden className="chip shrink-0">
+              2
+            </span>
             <span>
               <strong>
                 <Trans>Beschriftungen</Trans>
@@ -89,7 +119,7 @@ function Gaps({ gaps }: { gaps: LayerGaps }) {
               ·{' '}
               {examples(
                 gaps.unlabelled,
-                (names) => t`${labelsDone} von ${attributeCount} Attributen (z. B. ${names})`,
+                (names) => t`${labelsDone} von ${ofAttributes} (z. B. ${names})`,
               )}
             </span>
             {fields}
@@ -97,7 +127,9 @@ function Gaps({ gaps }: { gaps: LayerGaps }) {
         )}
         {gaps.undescribed.length > 0 && (
           <li value={3} className="flex items-baseline gap-2">
-            <span className="chip shrink-0">3</span>
+            <span aria-hidden className="chip shrink-0">
+              3
+            </span>
             <span>
               <strong>
                 <Trans>Beschreibungen, die die Bedeutung nennen</Trans>
@@ -106,7 +138,8 @@ function Gaps({ gaps }: { gaps: LayerGaps }) {
               {examples(
                 gaps.undescribed,
                 (names) => t`${describedDone} von ${partCount} (fehlt: ${names})`,
-              )}
+              )}{' '}
+              · <Trans>zuletzt: im Mittel ohne messbare Wirkung</Trans>
             </span>
             {fields}
           </li>
@@ -119,16 +152,20 @@ function Gaps({ gaps }: { gaps: LayerGaps }) {
 export function ProfileCompleteness({
   summary,
   heading,
+  imported,
 }: {
   summary: ProfileSummary
   heading: string
+  /** A layer just imported: its gaps come first, marked (the import wizard's link). */
+  imported?: string
 }) {
   const complete = summary.gaps.length === 0
+  const ordered = byCare(summary.gaps, imported)
   const rest = summary.layers - summary.gaps.length
   const others = formatNumber(rest)
   return (
     <section aria-label={t`Vollständigkeit`} className="mb-4 max-w-5xl">
-      <p className="label-caps mb-1">{heading}</p>
+      <h3 className="label-caps mb-1 font-normal">{heading}</h3>
       {summary.layers === 0 ? (
         <p className="text-muted text-sm">
           <Trans>Der Steckbrief enthält keinen Layer.</Trans>
@@ -146,9 +183,15 @@ export function ProfileCompleteness({
                 </th>
                 <th scope="col">
                   <Trans>Textattribute mit bestätigter Codeliste</Trans>
+                  <span className="text-muted block text-xs font-normal">
+                    <Trans>von denen mit Codeliste (bestätigt oder vorgeschlagen)</Trans>
+                  </span>
                 </th>
                 <th scope="col">
                   <Trans>Layer und Attribute mit Beschreibung</Trans>
+                  <span className="text-muted block text-xs font-normal">
+                    <Trans>zuletzt pflegen</Trans>
+                  </span>
                 </th>
               </tr>
             </thead>
@@ -167,7 +210,7 @@ export function ProfileCompleteness({
                   <Share done={summary.described} total={summary.layers + summary.attributes} />
                 </td>
               </tr>
-              {summary.gaps.map((g) => (
+              {ordered.map((g) => (
                 <tr key={g.layer}>
                   <th scope="row" className="border-divider font-normal">
                     {g.title}
@@ -191,11 +234,11 @@ export function ProfileCompleteness({
               ))}
               {!complete && rest > 0 && (
                 <tr>
-                  <th scope="row" className="text-muted border-divider font-normal" colSpan={4}>
+                  <td className="text-muted" colSpan={4}>
                     {rest === 1
                       ? t`Ein weiterer Layer ist vollständig.`
                       : t`${others} weitere Layer sind vollständig.`}
-                  </th>
+                  </td>
                 </tr>
               )}
             </tbody>
@@ -212,7 +255,7 @@ export function ProfileCompleteness({
               </Trans>
             </p>
           ) : (
-            byCare(summary.gaps).map((g) => <Gaps key={g.layer} gaps={g} />)
+            ordered.map((g) => <Gaps key={g.layer} gaps={g} imported={g.layer === imported} />)
           )}
         </>
       )}

@@ -52,7 +52,15 @@ ATTRIBUTES = {
     ],
     "strassen": ["name", "nummer", "klasse"],
 }
-"""27 attributes, every one labelled (``gewaesser.name`` is «Name», not ``name``)."""
+"""27 attributes."""
+
+UNLABELLED = {
+    "gemeindedaten": ["einwohner", "steueranlage", "steuerpflichtige", "steuerjahr"],
+    "gewaesser": ["name"],
+    "haltestellen": ["verkehrsmittel"],
+}
+"""Labelled with their column name, case ignored («Einwohner», «Name»): 6 of 27
+name nothing new, so 21 are labelled."""
 
 CODED = {
     "gewaesser": ["typ"],
@@ -72,10 +80,10 @@ DESCRIBED = {
 
 TOTALS = {
     # mode: labelled, text_with_codes, described (of 27, 6, 33)
-    "full": (27, 6, 11),
-    "no-desc": (27, 6, 0),
+    "full": (21, 6, 11),
+    "no-desc": (21, 6, 0),
     "no-labels": (0, 6, 11),
-    "no-domains": (27, 0, 11),
+    "no-domains": (21, 0, 11),
     "raw": (0, 0, 0),
     "raw-codes": (0, 6, 0),
 }
@@ -94,7 +102,7 @@ def expected_gaps(mode: str) -> list[LayerGaps]:
             attributes=len(names),
             text_attributes=len(CODED.get(layer, [])),
             unconfirmed_codes=CODED.get(layer, []) if no_codes else [],
-            unlabelled=names if no_labels else [],
+            unlabelled=names if no_labels else UNLABELLED.get(layer, []),
             undescribed=([""] if no_desc else []) + [n for n in names if n not in described],
         )
         if gap.unconfirmed_codes or gap.unlabelled or gap.undescribed:
@@ -128,11 +136,13 @@ def test_the_summary_of_each_mode_matches_the_count_by_hand(stripped: Engine, mo
     )
 
 
-def test_the_sample_lacks_only_attribute_descriptions(stripped: Engine) -> None:
-    """Every code list confirmed and every attribute labelled: the sample's gaps
-    are of the third kind only, and its own layer descriptions are there."""
+def test_the_sample_lacks_descriptions_and_some_labels(stripped: Engine) -> None:
+    """Every code list confirmed, but the sample is not complete: six labels
+    repeat their column name and most attributes have no description; its own
+    layer descriptions are there."""
     summary = profile_summary(model_profile(stripped, list(TITLES)), stripped)
-    assert all(not g.unconfirmed_codes and not g.unlabelled for g in summary.gaps)
+    assert all(not g.unconfirmed_codes for g in summary.gaps)
+    assert {g.layer: g.unlabelled for g in summary.gaps if g.unlabelled} == UNLABELLED
     assert all("" not in g.undescribed for g in summary.gaps)
     assert [g.layer for g in summary.gaps] == list(TITLES)
 
@@ -167,7 +177,7 @@ async def summary_of(client: httpx.AsyncClient, **params: str) -> ProfileSummary
 async def test_the_sample_and_the_live_catalog_as_loaded_agree(client: httpx.AsyncClient) -> None:
     sample = await summary_of(client, data_state="sample")
     live = await summary_of(client)
-    assert (sample.layers, sample.attributes, sample.labelled) == (6, 27, 27)
+    assert (sample.layers, sample.attributes, sample.labelled) == (6, 27, 21)
     assert (sample.text_attributes, sample.text_with_codes, sample.described) == (6, 6, 11)
     assert sample.gaps == expected_gaps("full")
     assert live == sample
@@ -201,8 +211,9 @@ async def test_a_proposed_code_list_is_the_first_gap_until_confirmed(
     before = await summary_of(client)
     [gap] = [g for g in before.gaps if g.layer == "sentinel"]
     assert gap.unconfirmed_codes == ["kategorie"]
-    # The coordinates stay as columns, labelled by their header («E», «N»).
-    assert gap.unlabelled == ["kategorie", "wert"]
+    # The coordinates stay as columns ``e``, ``n``, labelled by their upper-case
+    # header «E», «N»: the column name, case ignored, so unlabelled.
+    assert gap.unlabelled == ["e", "n", "kategorie", "wert"]
     assert gap.undescribed == ["", "e", "n", "kategorie", "wert"]
     assert (gap.attributes, gap.text_attributes) == (4, 1)
     assert (before.text_attributes, before.text_with_codes) == (7, 6)
@@ -210,14 +221,31 @@ async def test_a_proposed_code_list_is_the_first_gap_until_confirmed(
 
     confirmed = await client.patch(
         "/api/admin/layers/sentinel/attributes/kategorie",
-        json={"value_domain": {"codes": {SENTINELS[0]: "Zebra"}}, "label": "Kategorie"},
+        json={"value_domain": {"codes": {SENTINELS[0]: "Zebra"}}, "label": "Tierkategorie"},
     )
     assert confirmed.status_code == 200, confirmed.text
     after = await summary_of(client)
     [gap] = [g for g in after.gaps if g.layer == "sentinel"]
-    assert (gap.unconfirmed_codes, gap.unlabelled) == ([], ["wert"])
+    assert (gap.unconfirmed_codes, gap.unlabelled) == ([], ["e", "n", "wert"])
     assert (after.text_attributes, after.text_with_codes) == (7, 7)
     assert after.profile_hash != before.profile_hash
+
+
+async def test_a_removed_proposal_is_no_longer_counted(
+    client: httpx.AsyncClient, tmp_path: Path
+) -> None:
+    """Saving no value domain removes the proposal: the attribute is free text
+    then, neither a gap nor counted among the text attributes with a code list."""
+    await import_sentinels(client, sentinel_csv(tmp_path))
+    removed = await client.patch(
+        "/api/admin/layers/sentinel/attributes/kategorie", json={"value_domain": None}
+    )
+    assert removed.status_code == 200, removed.text
+    assert removed.json()["value_domain"] is None
+    summary = await summary_of(client)
+    [gap] = [g for g in summary.gaps if g.layer == "sentinel"]
+    assert (gap.text_attributes, gap.unconfirmed_codes) == (0, [])
+    assert (summary.text_attributes, summary.text_with_codes) == (6, 6)
 
 
 async def test_an_unknown_account_is_not_found(client: httpx.AsyncClient) -> None:

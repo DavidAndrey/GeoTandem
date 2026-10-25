@@ -182,13 +182,17 @@ msgstr "{approach} · {took}"
 msgid "{attributeRows, plural, one {Eine Attribut-Bedingung bezieht sich auf die Felder des bisherigen Layers und fällt weg. Räumliche Bedingungen bleiben.} other {# Attribut-Bedingungen beziehen sich auf die Felder des bisherigen Layers und fallen weg. Räumliche Bedingungen bleiben.}}"
 msgstr "{attributeRows, plural, one {Eine Attribut-Bedingung bezieht sich auf die Felder des bisherigen Layers und fällt weg. Räumliche Bedingungen bleiben.} other {# Attribut-Bedingungen beziehen sich auf die Felder des bisherigen Layers und fallen weg. Räumliche Bedingungen bleiben.}}"
 
+#: src/admin/ProfileCompleteness.tsx
+msgid "{attributes, plural, one {{attributeCount} Attribut} other {{attributeCount} Attributen}}"
+msgstr "{attributes, plural, one {{attributeCount} Attribut} other {{attributeCount} Attributen}}"
+
 #: src/model/chain/Chain.tsx
 msgid "{classes} · {cell}"
 msgstr "{classes} · {cell}"
 
 #: src/admin/ProfileCompleteness.tsx
-msgid "{codesDone} von {textCount} Textattributen ({names})"
-msgstr "{codesDone} von {textCount} Textattributen ({names})"
+msgid "{codesDone} von {ofTexts}: {names}"
+msgstr "{codesDone} von {ofTexts}: {names}"
 
 #: src/table/TableDock.tsx
 msgid "{column} nach oben"
@@ -308,8 +312,8 @@ msgid "{label}: {value} von {max}"
 msgstr "{label}: {value} von {max}"
 
 #: src/admin/ProfileCompleteness.tsx
-msgid "{labelsDone} von {attributeCount} Attributen (z. B. {names})"
-msgstr "{labelsDone} von {attributeCount} Attributen (z. B. {names})"
+msgid "{labelsDone} von {ofAttributes} (z. B. {names})"
+msgstr "{labelsDone} von {ofAttributes} (z. B. {names})"
 
 #: src/admin/VisibilityPage.tsx
 msgid "{layer} für Administrator"
@@ -482,6 +486,10 @@ msgstr "{state} · fest"
 #: src/map/Measurement.tsx
 msgid "{surface} · Umfang {length}"
 msgstr "{surface} · Umfang {length}"
+
+#: src/admin/ProfileCompleteness.tsx
+msgid "{texts, plural, one {{textCount} Textattribut mit Codeliste (bestätigt oder vorgeschlagen)} other {{textCount} Textattributen mit Codeliste (bestätigt oder vorgeschlagen)}}"
+msgstr "{texts, plural, one {{textCount} Textattribut mit Codeliste (bestätigt oder vorgeschlagen)} other {{textCount} Textattributen mit Codeliste (bestätigt oder vorgeschlagen)}}"
 
 #: src/workplace/Workplace.tsx
 msgid "{title} · Treffer"
@@ -3076,6 +3084,10 @@ msgstr "Felder aus {rightTitle}"
 msgid "Felder beschreiben"
 msgstr "Felder beschreiben"
 
+#: src/admin/ProfileCompleteness.tsx
+msgid "Felder von {title}"
+msgstr "Felder von {title}"
+
 #: src/admin/ImportWizard.tsx
 msgid "Feldname"
 msgstr "Feldname"
@@ -3270,6 +3282,10 @@ msgstr "geplant"
 #: src/model/chain/PlanEditor.tsx
 msgid "Geplante Schritte · {n} von höchstens {max}"
 msgstr "Geplante Schritte · {n} von höchstens {max}"
+
+#: src/admin/ProfileCompleteness.tsx
+msgid "gerade importiert"
+msgstr "gerade importiert"
 
 #: src/i18n/errors.ts
 msgid "Gerade sind zu viele Anfragen gleichzeitig unterwegs. Bitte gleich nochmals versuchen."
@@ -5897,6 +5913,10 @@ msgstr "von"
 msgid "Von"
 msgstr "Von"
 
+#: src/admin/ProfileCompleteness.tsx
+msgid "von denen mit Codeliste (bestätigt oder vorgeschlagen)"
+msgstr "von denen mit Codeliste (bestätigt oder vorgeschlagen)"
+
 #: src/model/approval/Approval.tsx
 msgid "Von Hand geändert. Änderungsliste neu berechnet."
 msgstr "Von Hand geändert. Änderungsliste neu berechnet."
@@ -6277,6 +6297,14 @@ msgstr "Zugang angenommen"
 #: src/session/SessionMenu.tsx
 msgid "Zuletzt"
 msgstr "Zuletzt"
+
+#: src/admin/ProfileCompleteness.tsx
+msgid "zuletzt pflegen"
+msgstr "zuletzt pflegen"
+
+#: src/admin/ProfileCompleteness.tsx
+msgid "zuletzt: im Mittel ohne messbare Wirkung"
+msgstr "zuletzt: im Mittel ohne messbare Wirkung"
 
 #: src/admin/ImportWizard.tsx
 msgid "Zum Katalog"

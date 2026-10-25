@@ -8,6 +8,7 @@
 import { Trans } from '@lingui/react/macro'
 import { t } from '@lingui/core/macro'
 import { useState } from 'react'
+import { useSearchParams } from 'react-router'
 import type { DataState, ProfilePreview } from '../api/client'
 import { useModelProfile, useProfileSummary, useUsers } from '../api/queries'
 import { ErrorNotice, Loading } from '../components/ui'
@@ -33,6 +34,9 @@ export function ProfilePage() {
   const users = useUsers()
   const [account, setAccount] = useState('')
   const [dataState, setDataState] = useState<DataState>('live')
+  // From the import wizard: the layer just imported, its gaps first.
+  const [params] = useSearchParams()
+  const imported = dataState === 'live' ? (params.get('layer') ?? undefined) : undefined
   const profile = useModelProfile(account)
   const summary = useProfileSummary(dataState, account)
   const data = profile.data
@@ -93,6 +97,7 @@ export function ProfilePage() {
       {summary.data && (
         <ProfileCompleteness
           summary={summary.data}
+          imported={imported}
           heading={
             dataState === 'sample'
               ? t`Vollständigkeit · Beispieldaten`
