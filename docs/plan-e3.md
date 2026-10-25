@@ -1,6 +1,6 @@
 # Plan E3 — Evaluation of model connections
 
-> Stand: 2026-10-25 · **Entschieden: D1–D12 und O1–O4, O7, O8 (2026-10-24), Design abgeglichen (5.1) · WPs WP85–WP97 · in `ep-3` gemergt: WP85–WP89 (E3.1–E3.2), Gate E3.2 bestanden (2026-10-25, Tag `e3.2`)** · Design: [design/e3/README.md](../design/e3/README.md) (Bildschirme V1–V8, `fixture/bewertung.json`, `screenshots/`), Briefing [design/e3/BRIEF.md](../design/e3/BRIEF.md) · Bezug: [anforderungen.md](../anforderungen.md) (F-3.1, F-3.3, F-3.6, F-3.8, F-3.13–F-3.18, F-9.3–F-9.6, F-10.3–F-10.5), [etappen.md 5](../etappen.md), [bewertung.md](../bewertung.md), [plan-e2.3-e2.6.md](plan-e2.3-e2.6.md), Messungen: [testplan-system-context.md](testplan-system-context.md) (8.1–8.5), [testplan-external-models.md](testplan-external-models.md), [benchmarks.md](benchmarks.md), Harness: [backend/evals/](../backend/evals/README.md)
+> Stand: 2026-10-25 · **Entschieden: D1–D12 und O1–O4, O7, O8 (2026-10-24), Design abgeglichen (5.1) · WPs WP85–WP97 · in `ep-3` gemergt: WP85–WP89 (E3.1–E3.2), Gate E3.2 bestanden (2026-10-25, Tag `e3.2`); WP90–WP94 (E3.3–E3.5, 2026-10-25); WP97 docs auf `wp97-docs`** · Design: [design/e3/README.md](../design/e3/README.md) (Bildschirme V1–V8, `fixture/bewertung.json`, `screenshots/`), Briefing [design/e3/BRIEF.md](../design/e3/BRIEF.md) · Bezug: [anforderungen.md](../anforderungen.md) (F-3.1, F-3.3, F-3.6, F-3.8, F-3.13–F-3.18, F-9.3–F-9.6, F-10.3–F-10.5), [etappen.md 5](../etappen.md), [bewertung.md](../bewertung.md), [plan-e2.3-e2.6.md](plan-e2.3-e2.6.md), Messungen: [testplan-system-context.md](testplan-system-context.md) (8.1–8.5), [testplan-external-models.md](testplan-external-models.md), [benchmarks.md](benchmarks.md), Harness: [backend/evals/](../backend/evals/README.md)
 >
 > Integration branch **`ep-3`**: each WP is its own branch from it (`wpNN-…`), merged back with `--no-ff` after its gate and review; `ep-3` merges into `main` once every WP is done and Gate E3 is green. Same rules as E2: WP gate and code review per WP, etappe gates with `make gate`, acceptance test and a review of the integrated diff (section 5).
 
@@ -130,7 +130,7 @@ Open for E3.3–E3.5: WP92 adds the eligibility check also on `POST /cases` with
 ### Etappe E3.3–E3.5 — Runs, prompt profiles, comparison
 
 #### WP90 — Run engine (BE-eval)
-*Deps: Gate E3.2 · Parallel with: WP91 (merges first or rebases), WP92*
+*Deps: Gate E3.2 · Parallel with: WP91 (merges first or rebases), WP92* · **merged**
 
 - Migration 0016 `eval_run`, `eval_answer`. `POST /runs` (202) after the cost estimate (`POST /runs/estimate`, D12); `GET /runs/{id}` polled; `POST /runs/{id}/abort`; one run at a time (`run_busy`); restart closes `interrupted` (D8).
 - Per measuring point: the prompt as operation builds it (level, profile of the data state and account, prompt profile, optional system prompt copy, D10), `DirectQuery.ask`, grade, store the answer with latency, tokens, flags, diff. No `model_action` rows; the engine's limits apply.
@@ -138,7 +138,7 @@ Open for E3.3–E3.5: WP92 adds the eligibility check also on `POST /cases` with
 - **Done when:** a run against the model stub over the start set reproduces the stub's scripted verdicts; abort and restart tested; a sentinel test shows no row value in any prompt of a live run (E2 S7); the run never writes `model_action`.
 
 #### WP91 — Prompt profiles (BE-prompt, FE-profile)
-*Deps: WP85 · Parallel with: WP86, WP87*
+*Deps: WP85 · Parallel with: WP86, WP87* · **merged**
 
 - `prompt.py` gains `PromptProfile(examples, placement, output)` (D9); `examples/12.txt` moves into the application; P5 and P9 as builder options, P9 with its own system message (E-8 extended 2026-10-23). The harness's `--variant p5|p9` and `--examples 12` call the builder.
 - Migration 0017: `prompt_profile` (JSON, default today's) and optional prices on `llm_connection`. Connection form: three selects and the prices; change audited.
@@ -147,13 +147,13 @@ Open for E3.3–E3.5: WP92 adds the eligibility check also on `POST /cases` with
 - **Done when:** the default profile sends today's prompt byte for byte (hash `55e708badb92` on the harness's placeholder question); each preset's hash equals the harness variant's; the connection form tests.
 
 #### WP92 — Cases from the log (BE-eval, FE-eval)
-*Deps: WP87 · Parallel with: WP90*
+*Deps: WP87 · Parallel with: WP90* · **merged**
 
 - On the admin's model action page (M16.2): **Als Prüffall übernehmen** for a direct query with decision `accepted` or `auto`, neither undone, not touched, not a follow-up (F-3.14). Hand-corrected answers (`adjusted`, `touched_at`) and follow-ups (`parent_action_id`) are not offered (decision 2). It opens the case page (V2) prefilled with the prompt, the stored query as reference, `data_state` live, the layer names (the save stamps the versions, D3) and `origin: log` with `origin_action`; the case is stored only when the admin saves it with tags and split. `POST /cases` with `origin: log` checks the same eligibility (`action_not_eligible`), so a case cannot be taken from an adjusted action by hand.
 - **Done when:** a logged, accepted action becomes a case without typing the query; an adjusted one shows no button; the created case passes against itself.
 
 #### WP93 — Run dialog, matrix and case detail (FE-eval)
-*Deps: WP90, design · Parallel with: WP94*
+*Deps: WP90, design · Parallel with: WP94* · **merged**
 
 - **Bewertung › Läufe** (V5): list of runs with label and status, an empty state that proposes the smallest first run; **Neuer Lauf**: measuring points (connection, prompt profile, level, optional system prompt copy), cases (split, tags, origin), data state, full run or Schnelltest; estimate and external notice before start; progress while running, abort.
 - **Matrix** (F-3.18, V6): cases (grouped by tag, with group sums) × measuring points; cell = passes of 10 with the verdict mix in short form, "still falsch" as dashed frame, "!" and text; column heads only once the run is done (design review 5); column head = section 2 figures, profile completeness (D11; `ProfileCompleteness` of WP94 in V6.3, and V8.1's line from a layer's gaps to the run's result, which WP94 left for this WP), and the comparison to the chosen reference column (D7) in words: *besser*, *schlechter*, *nicht belegt*.
@@ -162,7 +162,7 @@ Open for E3.3–E3.5: WP92 adds the eligibility check also on `POST /cases` with
 - **Done when:** component tests per state against mocks; the demo of etappen.md 5 can be walked with the stub.
 
 #### WP94 — Profile completeness (FE-profile, BE `evaluation/summary.py`)
-*Deps: WP85 · Parallel with: WP93*
+*Deps: WP85 · Parallel with: WP93* · **merged**
 
 - `ProfileSummary` (D11) from the profile; shown on *Was das Modell sieht* and in each run's label; per layer the gaps in the order of care (code lists not confirmed, attributes without label, without description); the import's last step links there.
 - **Done when:** the summary of the sample data and of each Phase 4 mode (`evaluation/profiles.py`, which the harness imports) matches a hand count in a test.
@@ -178,9 +178,10 @@ Open for E3.3–E3.5: WP92 adds the eligibility check also on `POST /cases` with
 - `acceptance-e3.spec.ts` against the stub (answers scripted per seed): the demo of etappen.md 5 — two connections over the same cases, the matrix carries the release decision, a second run compares two system prompts on one connection; an authored case and a case from the log; abort; an external connection's notice; a stale live case.
 
 #### WP97 — Docs and wrap-up (docs)
-*Deps: WP96*
+*Deps: WP96* · **done** on `wp97-docs` (written against `ep-3` at `130b48e`, before WP95 and WP96; the integrator merges it and flips the gate result)
 
 - README "Bewertung im Einsatz"; user journey of the administrator choosing a model on own data; etappen.md E3 marked done; bewertung.md updated where the plan amends it (D5 stage 1, D8 no action records, D12 quota); testplan cross-references.
+- Written: README *Bewertung im Einsatz* (and the *Stand* at its top); `docs/user-journey.md` section 5 (*Die Administratorin wählt ein Modell für eigene Daten*); etappen.md 5 *E3 umgesetzt (WP85–WP96); Gate E3: offen*; bewertung.md 14 (what this plan changed: D1–D9, D12, O2, O8, the case status *ungültig*, the import origin rule); the harness as the developer's tool beside the application's runs in testplan-system-context.md, benchmarks.md and `backend/evals/README.md`.
 
 #### Gate E3
 As 5.2 of plan E2, plus: the real-model check WP95 (recorded), the security review (section 5) and the regrade identity of WP86.
@@ -258,6 +259,13 @@ Decided 2026-10-23 and 2026-10-24:
 | O4 | Prices | Optional price fields on the connection; estimate and cost in money where set (D12) |
 | O7 | "zuletzt bewertet" | Administrators only in E3, on the connections page; a user-facing mark later (decided 2026-10-24) |
 | O8 | Where applying a prompt profile is recorded | The audit log (Administration › Protokoll), not the model log, as D9 (decided 2026-10-24) |
+
+Known risks and gaps (recorded 2026-10-25, WP97):
+
+| # | What | State | Next step |
+|---|---|---|---|
+| R1 | The app container crashed with a segmentation fault during concurrent GDAL imports in the Playwright gate | Seen 3 of 3 times on one intermediate WP91 commit (`ea7d21d`); not reproduced in three later gate runs on `ep-3` (`130b48e`). Cause not found | If it recurs: run the gate with `PYTHONFAULTHANDLER=1` in the app container and keep its logs (`docker logs`), so the faulting thread's stack is on record |
+| R2 | The unsaved-changes guard of a case (V2) does not catch the browser's back button | Known gap: links of the page and the navigation ask first, closing or reloading the tab asks the browser's question, but the declarative `BrowserRouter` has no `useBlocker`, so back leaves without asking (`CaseDetailPage.tsx`, `useAskBeforeLeaving`) | A data router (`createBrowserRouter`) would give `useBlocker`; not in E3 |
 
 Still open, not blocking:
 

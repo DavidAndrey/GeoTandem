@@ -131,7 +131,97 @@ Geht etwas schief (das Modell antwortet nicht, oder die Antwort nutzt einen
 Layer, den es nicht mehr gibt), sagt die Anwendung das in Worten, und Petras
 Stand ist unverändert.
 
-## 5 Die Gesamtlandkarte
+## 5 Die Administratorin wählt ein Modell für eigene Daten
+
+Andrea betreut GeoTandem für das Bauamt einer Gemeinde. Zwei Anbindungen
+stehen zur Wahl: ein lokales Modell auf dem Server im Haus und ein externes
+über die API eines Anbieters. Welche soll sie für Petra und ihre Kolleginnen
+freigeben? Der Verbindungstest sagt nur, dass beide antworten. Ob sie die
+Fragen des Bauamts zu dessen Layern richtig beantworten, sagt er nicht. Das
+misst die **Bewertung** (*Administration › Modell › Bewertung*). Petra
+bekommt davon nichts zu sehen.
+
+```mermaid
+flowchart LR
+    I[Layer importieren] --> S[Steckbrief pflegen<br/>Codelisten, Beschriftungen]
+    S --> F[Eigene Prüffälle<br/>Arbeitsplatz, Protokoll]
+    F --> Q[Schnelltest<br/>eine Anbindung]
+    Q --> V[Vollständiger Lauf<br/>zwei Anbindungen]
+    V --> M[Matrix lesen]
+    M --> E[Freigeben,<br/>Promptprofil übernehmen]
+    E -. neue Daten, neue Fragen .-> F
+```
+
+**Erst der Steckbrief.** Andrea importiert den Layer der Parzellen mit dem
+Zonenplan. Der letzte Schritt des Imports verweist auf den Stand des
+Steckbriefs unter *Was das Modell sieht*. Dort steht, was dem Modell fehlt,
+in der Reihenfolge, in der es sich zu pflegen lohnt. Zuerst die Codelisten:
+Der Import hat für die Zone die Codes `W2`, `WG3` usw. vorgeschlagen, aber
+erst eine bestätigte Liste erreicht das Modell. Danach die Beschriftungen,
+etwa «Bruttogeschossfläche» statt `bgf`, denn sie verbinden Petras Wörter mit
+den Spalten. Zuletzt Beschreibungen, die sagen, was ein Feld bedeutet. Die
+Messungen hinter dieser Reihenfolge zeigen: Ein schlichter Import kostet mehr
+als die Wahl des Modells.
+
+**Eigene Prüffälle.** Die 71 Fälle des Startbestands laufen auf den
+Beispieldaten. Über die Layer des Bauamts sagen sie nichts. Andrea baut im
+Arbeitsplatz die Analyse für «Welche Parzellen in der Zone W2 sind grösser als
+1000 m²?», prüft das Ergebnis und speichert sie mit *Als Prüffall speichern*.
+Die Frage tippt sie so, wie Petra sie stellen würde. Im Modellprotokoll findet
+sie eine Frage, die Petra gestellt und angenommen hat, und übernimmt sie mit
+*Als Prüffall übernehmen*, ohne die Abfrage abzutippen. Eine Antwort, die
+Petra von Hand korrigiert hat, bietet den Knopf nicht an. Neue Fälle gehören
+zur *Bestätigung*. Einen Teil ihrer Fälle legt Andrea in die *Abstimmung*:
+Auf diesen Fällen rechnet die Matrix die Quote, auf den Fällen der
+Bestätigung den Vergleich. Mit *Exportieren* sichert sie den Bestand als
+Datei, die sich wieder importieren lässt.
+
+**Ein Schnelltest.** Für einen ersten Blick wählt Andrea im neuen Lauf nur
+das lokale Modell, ihre eigenen Fälle auf den Betriebsdaten und den
+*Schnelltest*: fünf Wiederholungen je Fall statt zehn. Die Abschätzung nennt
+Anfragen und Dauer, bevor etwas gesendet wird. Ein Fall fällt auf: «still
+falsch», gestrichelt umrandet. Das Modell hat sicher geantwortet und keine
+Annahme genannt, und die Antwort ist trotzdem falsch. Im Fall im Lauf zeigt
+der Unterschied zur Referenz, dass es ein anderes Attribut verglichen hat;
+die Ergebnismengen zeigen 0 Treffer gegen 14. Das Attribut hat noch keine
+Beschriftung. Andrea ergänzt sie.
+
+**Ein vollständiger Lauf mit zwei Anbindungen.** Jetzt richtet sie drei
+Messpunkte ein: das lokale Modell mit seinem Promptprofil als
+Vergleichsbasis, dasselbe Modell mit der Platzierung P5 und das externe
+Modell. Die Abschätzung zeigt die Anfragen je Anbindung, die Tokens und, weil
+an der externen Anbindung Preise stehen, die Kosten. Dazu kommt der Hinweis,
+dass Steckbrief und Fragen an den Host des Anbieters gehen, aber keine
+Geodaten-Inhalte. Erst mit dem Haken lässt sich der Lauf starten. Er läuft im
+Hintergrund; die beiden Hosts arbeiten gleichzeitig. Andrea schliesst die
+Seite und kommt später wieder.
+
+**Die Matrix lesen.** Die Spaltenköpfe erscheinen, wenn der Lauf fertig ist.
+Das externe Modell hat die höchste Quote auf der Abstimmung; gegenüber der
+Vergleichsbasis sagt die Matrix auf der Bestätigung *nicht belegt*. Die
+Spanne des Unterschieds schliesst 0 ein, der Vorsprung ist also nicht
+belegt. Das lokale Modell mit P5 ist *besser* als mit seinem bisherigen
+Profil und hat nicht mehr still falsche Antworten. Die Beschriftung des Laufs
+hält fest, wogegen gemessen wurde: Datenstand, Stand des Steckbriefs (Codelisten
+vollständig, Beschriftungen noch nicht), Modell, Promptprofil, Stufe, Seeds.
+Ein schwacher Wert lässt sich so nicht mit einer Lücke in den Metadaten
+verwechseln.
+
+**Entscheiden.** Über *Zur Anbindung* gibt Andrea auf der Seite
+Modellanbindungen das lokale Modell frei und setzt es als Standard. Mit
+*Promptprofil übernehmen* setzt sie für diese Anbindung P5. Der Dialog nennt,
+was sich im Betrieb ändert, und dass es alle Anwender dieser Anbindung
+betrifft. Die Änderung steht im Sicherheitsprotokoll; das Modellprotokoll
+bleibt die Spur der echten Benutzung, denn der Lauf selbst hat keine
+Modellaktion geschrieben und nicht gegen die Tagesgrenze gezählt. An der
+Anbindung steht jetzt *zuletzt bewertet* mit einem Verweis auf den Lauf.
+
+Wird der Layer später neu importiert, tragen die Fälle darauf *Datenstand
+geändert* und laufen weiter mit. Fehlt ein Layer, sind seine Fälle
+*veraltet* und bleiben draussen, bis Andrea sie bearbeitet. Ein neuer Lauf
+über dieselben Fälle lässt sich neben den alten stellen.
+
+## 6 Die Gesamtlandkarte
 
 ```mermaid
 flowchart LR
@@ -173,7 +263,7 @@ Die wichtigsten Begriffe in einfachen Worten:
 Grundsatz: **Daten bleiben im Haus.** Der Betrieb mit einem lokalen Modell ist
 der Normalfall, die Cloud die bewusst freigeschaltete Ausnahme.
 
-## 6 Drei Ziele und sechs Etappen
+## 7 Drei Ziele und sechs Etappen
 
 Woran wir merken, dass es klappt (Ziffern = Erfolgskriterien in
 [vision.md 9](../vision.md)):
@@ -207,7 +297,7 @@ flowchart LR
 
 Jede Etappe ist für sich vorführbar.
 
-## 7 Was GeoTandem nicht ist
+## 8 Was GeoTandem nicht ist
 
 - Kein Ersatz für QGIS oder ArcGIS
 - Kein Werkzeug, um Geodaten zu bearbeiten
@@ -217,7 +307,7 @@ Jede Etappe ist für sich vorführbar.
 - Kein Modell, das selbst Karten zeichnet: Es schlägt nur Abfragen vor, die
   Anwendung führt sie aus
 
-## 8 Weiterlesen
+## 9 Weiterlesen
 
 - [vision.md](../vision.md) — Zielbild, Leitprinzipien, offene Designfragen
 - [CONTEXT.md](../CONTEXT.md) — verbindliches Vokabular für Code und Dokumente

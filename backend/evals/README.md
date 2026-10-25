@@ -9,6 +9,15 @@ level, and grades each answer with the application's grader
 part of `make gate`: it needs a running OpenAI-compatible endpoint and takes
 minutes.
 
+For administrators the application's evaluation runs succeed this harness
+(*Administration › Modell › Bewertung*, README *Bewertung im Einsatz*, plan E3).
+The harness stays the developer's tool and shares with the application the
+grader (`evaluation/grade.py`), the paired statistics (`evaluation/stats.py`),
+the sample build (`evaluation/sample.py`), the start set (read by
+`evaluation/cases.py`) and the metadata ablation modes
+(`evaluation/profiles.py`); its prompt variants P5, P9 and `--examples 12` are
+the application's prompt profiles, built by the same builder.
+
 ```sh
 cd backend
 uv run python evals/run.py --model qwen3:8b --label baseline

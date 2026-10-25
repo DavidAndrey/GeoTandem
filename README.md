@@ -5,8 +5,8 @@ steht in [anforderungen.md](anforderungen.md), warum in [vision.md](vision.md),
 in welcher Reihenfolge in [etappen.md](etappen.md), womit in
 [tech-stack.md](tech-stack.md). Die Begriffe stehen in [CONTEXT.md](CONTEXT.md).
 
-Stand: **Etappe E1 abgeschlossen** (Modus A, ohne LLM); von E2 stehen die
-Grundlagen E2.0–E2.2, ein Prompt wird noch nicht gesendet (ab E2.3).
+Stand: **Etappen E1 und E2 abgeschlossen** (Modus A ohne LLM, Modus B mit
+LLM); E3, die Bewertung der Modellanbindungen, ist umgesetzt (Gate E3: offen).
 Die Anwendung kann:
 
 - Vektordaten und Tabellen importieren, Layer verwalten, Metadaten pflegen
@@ -27,6 +27,12 @@ Die Anwendung kann:
   Zugangsschlüssel und Verbindungstest, Wahl von Anbindung und Stufe im
   Arbeitsplatz (E2.1); der Layer-Steckbrief zeigt, was ein Modell je Konto
   erfährt: nur Metadaten (E2.2)
+- eine Frage per Prompt stellen, als Direktabfrage oder Werkzeugkette, unter
+  der gewählten Stufe, mit Protokoll jeder Modellaktion und Übergängen
+  zwischen Modus A und B (E2.3–E2.6, *Modus B im Einsatz*)
+- Modellanbindungen auf eigenen Daten und Fragen messen und vergleichen, mit
+  Prüffällen, Bewertungsläufen, Vergleichsmatrix und Promptprofilen je
+  Anbindung (E3, *Bewertung im Einsatz*)
 
 Pläne und Befunde je Etappe liegen in [docs/](docs/) (`plan-e1.*.md`); wie
 Bedingungen, Einschränkung und Abfrageobjekt zusammenhängen, steht in
@@ -413,6 +419,178 @@ damit die Entscheidungen einer Person, nämlich Freigeben, Ablehnen, Übernehmen
 (`approve`, `reject`, `decide`), die Vorschau und die Wahl von Anbindung und
 Stufe (`403 session_required`). Basic-Authentifizierung des Proxys stört nicht.
 Weitere Befunde und Massnahmen: [security-review.md](security-review.md).
+
+### Bewertung im Einsatz
+
+Unter *Administration › Modell › Bewertung* misst der Administrator, welche
+Anbindung auf seinen Daten und mit seinen Fragen taugt, statt es zu vermuten
+(Konzept in [bewertung.md](bewertung.md), Entscheidungen in
+[docs/plan-e3.md](docs/plan-e3.md)). Die Bewertung sehen nur Administratoren.
+Sie hat zwei Reiter: *Läufe* und *Prüffälle*.
+
+- **Prüffälle.** Ein Prüffall ist eine Frage, wie ein Anwender sie stellt, mit
+  ihrer richtigen Antwort: einer Referenzabfrage, mehreren fairen Lesarten
+  oder der erwarteten Antwortart (Rückfrage, nicht beantwortbar). Jeder Fall
+  gehört zu einem Teil: *Abstimmung* (daran darf man Prompts verbessern) oder
+  *Bestätigung* (nur zum Nachprüfen; Vorgabe für neue Fälle). Der
+  *Startbestand* (71 Fälle auf den Beispieldaten, 33 Abstimmung, 38
+  Bestätigung, `schema/eval-cases/`) ist nur lesbar; *Als eigenen Fall
+  kopieren* legt eine bearbeitbare Kopie an. Eigene Fälle entstehen auf drei
+  Wegen:
+  - im Arbeitsplatz mit *Als Prüffall speichern* (nur für Administratoren):
+    Die angewendete Analyse wird zur Referenz, dazu kommen die Frage in den
+    Worten eines Anwenders, Stichwörter und Teil. Die Abfrage muss die
+    Prüfungen einer Modellabfrage bestehen, etwa höchstens 8 Bedingungen;
+  - im Modellprotokoll mit *Als Prüffall übernehmen*: nur bei einer
+    Direktabfrage, die angenommen oder automatisch angewendet und nicht
+    zurückgenommen wurde. Von Hand korrigierte Antworten und Folgefragen
+    bieten den Knopf nicht an. Der Fall öffnet sich vorbefüllt und entsteht
+    erst mit *Speichern*;
+  - mit *Importieren* einer Datei im Format des Exports, ganz oder gar nicht:
+    Ist ein Fall fehlerhaft, wird keiner übernommen, und der Dialog nennt Fall
+    und Grund. Importierte Fälle tragen die Herkunft *Import*; der Verweis auf
+    einen Protokolleintrag einer anderen Instanz fällt weg. *Exportieren*
+    schreibt die eigenen Fälle in dieselbe Form.
+
+  Ein Fall auf Betriebsdaten nennt seine Layer. Fehlt einer, ist er nicht
+  sichtbar oder nicht für das Modell freigegeben, ist der Fall *veraltet*.
+  Besteht die Referenz die Prüfungen nicht mehr oder lässt sie sich nicht mehr
+  ausführen, ist er *ungültig*. Beide laufen nicht mit, bis sie bearbeitet
+  sind. Wurde ein Layer seit der letzten Prüfung der Referenz neu importiert,
+  läuft der Fall und trägt *Datenstand geändert*. Das Referenzergebnis wird
+  nicht gespeichert; es entsteht in jedem Lauf aus der Referenzabfrage.
+- **Ein Lauf** (*Läufe › Neuer Lauf*, eine Seite in vier Schritten):
+  1. *Messpunkte*: je eine Anbindung mit Promptprofil (Beispiele, Platzierung,
+     Ausgabe; vorbelegt mit dem der Anbindung), Stufe und wahlweise einem
+     System-Prompt, der nur für diesen Lauf geändert ist (*System-Prompt
+     ändern*; der Betrieb bleibt unberührt, die Beschriftung hält ihn mit
+     Hash fest). Ein Messpunkt ist die *Vergleichsbasis*.
+  2. *Prüffälle*: Startbestand oder eigene, Teil, Stichwort. Ein Lauf hat
+     einen Datenstand. Startbestand und eigene Fälle auf Beispieldaten laufen
+     auf einer eigens aufgebauten Kopie der Beispieldaten, gleich, was der
+     Katalog gerade enthält. Eigene Fälle auf Betriebsdaten laufen auf den
+     Layern, wie der startende Administrator sie sieht. Beides mischt ein Lauf
+     nicht.
+  3. *Umfang*: *Vollständig* fährt jeden Fall in zwei Blöcken zu fünf
+     Wiederholungen (Seeds 1–10). Der *Schnelltest* fährt einen Block (Seeds
+     1–5) für einen ersten Blick: Quoten und Urteile, aber keine
+     Vergleichsaussage und kein Promptprofil zum Übernehmen. *Als
+     vollständigen Lauf wiederholen* öffnet ihn danach vorbefüllt.
+  4. *Abschätzung vor dem Start*: Anfragen, Tokens, Dauer und Kosten. Kosten
+     erscheinen, wenn an der Anbindung Preise stehen (*Preise*: je Mio. Tokens
+     für Ein- und Ausgabe, mit Währung); ohne Preise bleibt es bei Tokens. Die
+     Dauer schätzt die Anwendung aus der mittleren Antwortzeit des letzten
+     Laufs der Anbindung, sonst aus ihrem Verbindungstest. Bei einer externen
+     Anbindung steht da, an welchen Host Steckbrief und Fragen gehen, und
+     dass keine Geodaten-Inhalte mitgehen. Ohne den Haken *Verstanden, extern
+     senden* bleibt *Lauf starten* gesperrt, und auch der Server lehnt den
+     Lauf ab (`external_not_confirmed`).
+
+  Der Lauf läuft im Hintergrund, auch wenn die Seite geschlossen wird; die
+  Matrix füllt sich, während er läuft. *Lauf abbrechen* hält vor der nächsten
+  Frage an. Auf der ganzen Instanz läuft höchstens ein Lauf zugleich
+  (`run_busy`). Messpunkte auf verschiedenen Modell-Hosts laufen
+  gleichzeitig, solche auf demselben Host nacheinander. Ein Neustart beendet
+  einen laufenden Lauf als *unterbrochen*. Bei einem abgebrochenen oder
+  unterbrochenen Lauf bleiben die bisherigen Antworten; Quoten und Vergleich
+  gibt es nur für fertige Läufe.
+- **Die Matrix lesen.** Die Zeilen sind die Prüffälle, nach erstem Stichwort
+  gruppiert und mit Summen je Gruppe; die Spalten sind die Messpunkte. Eine
+  Zelle zeigt, wie viele der 10 Antworten (Schnelltest: 5) richtig waren, und
+  die übrigen Urteile in Kurzform (f falsch, a abgewiesen, x andere
+  Antwortart, w andere Arbeitsweise, u unzulässig, n nicht lesbar).
+  *Still falsch* heisst falsch ohne genannte Annahme: Das Modell wirkt sicher
+  und liegt daneben. Solche Zellen haben einen gestrichelten Rahmen, ein «!»
+  und das Wort. Die Spaltenköpfe erscheinen erst, wenn der Lauf fertig ist:
+  die *Quote Abstimmung* (auf den Fällen der Abstimmung), still falsch, nicht
+  lesbar, Verhaltensfälle, Zeit (Median und oberes Zehntel), Tokens und
+  Kosten. Dazu kommt die Aussage gegenüber der Vergleichsbasis auf den Fällen
+  der *Bestätigung*: *besser*, *schlechter* oder *nicht belegt*, mit dem
+  Unterschied in Punkten und der 95-%-Spanne, gepaart je Fall gerechnet.
+  *Nicht belegt* heisst, die Spanne schliesst 0 ein. Das ist kein Fehler,
+  sondern ein fehlender Beleg. Ohne Bestätigungsfälle gibt es keine Aussage.
+  Die *Beschriftung des Laufs* hält fest, wogegen gemessen wurde:
+  - Version von Abfrageschema und Bewertungsregeln;
+  - der Datenstand: Fassung der Beispieldaten oder die Datensatzversion jedes
+    Layers;
+  - der Stand des Steckbriefs: Hash und die Anteile Beschriftungen ·
+    Codelisten · Beschreibungen, aufklappbar als *Vollständigkeit im
+    Einzelnen*;
+  - je Messpunkt Modell, Host, Temperatur, Denkaufwand, Promptprofil, Stufe
+    und System-Prompt;
+  - Seeds, Fälle, wessen Sicht, wann und durch wen.
+
+  Zwei fertige Läufe über dieselben Fälle lassen sich nebeneinander stellen:
+  in der Liste zwei markieren und *Gegenüberstellen*, oder aus der Matrix
+  *Lauf gegen anderen stellen*. Eine Vergleichsaussage gibt es dabei nur,
+  wenn beide Läufe vollständig sind (kein Schnelltest). Die Messpunkte werden dabei nach
+  Anbindung, Promptprofil, Stufe und System-Prompt zugeordnet. *Exportieren*
+  liefert den Lauf mit allen Antworten als JSON.
+- **Der Fall im Lauf** (Klick oder Enter auf eine Zelle). Links stehen Frage
+  und Referenz, rechts jede Antwort mit Urteil, Erklärung, Annahmen und Zeit.
+  Eine falsche Antwort zeigt:
+  - den Unterschied zur Referenz in Worten: fehlende, zusätzliche und
+    geänderte Bedingungen. Dieser Abfragevergleich (Stufe 1) erklärt, er
+    urteilt nicht; das Urteil fällt der Vergleich der Ergebnisse;
+  - beide Ergebnismengen als Trefferzahl und die abweichenden Objekte (*Nur
+    in Antwort*, *Nur in Referenz*).
+
+  Referenz und Antwort öffnen sich je im Arbeitsplatz. Bei einer unlesbaren
+  Antwort steht der Rohtext unter *Technisch*.
+- **Freigeben und Promptprofil übernehmen.** Die Matrix trägt die
+  Entscheidung, freigegeben und voreingestellt wird aber auf der Seite
+  *Modellanbindungen* (*Zur Anbindung*). Dort steht je Anbindung *zuletzt
+  bewertet* mit einem Verweis auf den Lauf. *Promptprofil übernehmen*
+  erscheint nur bei einem fertigen, vollständigen Lauf. Es setzt das Profil
+  eines Messpunkts auf seiner Anbindung in Betrieb, nach einem Dialog mit der
+  Liste der Änderungen und, wenn die Spalte mehr still falsche Antworten hat
+  als die Vergleichsbasis, mit diesem Hinweis. Das Profil gilt für die
+  Direktabfrage aller Anwender dieser Anbindung; die Werkzeugkette behält die
+  Vorgabe. Die Änderung steht nicht im Modellprotokoll, sondern im
+  Sicherheitsprotokoll, als `llm_connection_changed` mit den Werten des
+  Profils (siehe *Sicherheitsprotokoll* oben). Von Hand lässt sich das
+  Promptprofil im Formular der Anbindung wählen, ebenfalls mit Protokoll.
+- **Zuerst der Steckbrief.** Auf eigenen Daten entscheiden die Metadaten so
+  viel wie das Modell: Ein schlichter Import kostet mehr als die Wahl des
+  Modells ([docs/testplan-system-context.md](docs/testplan-system-context.md)
+  8.5). *Was das Modell sieht* zeigt deshalb die Vollständigkeit des
+  Steckbriefs und je Layer die Lücken in der Reihenfolge der Pflege:
+  1. Codelisten bestätigen (stärkste Wirkung). Gezählt werden die
+     Textattribute mit einer Codeliste, bestätigt oder vom Import
+     vorgeschlagen;
+  2. Beschriftungen: ein Attribut gilt als beschriftet, wenn die Beschriftung
+     vom Spaltennamen abweicht, ohne Rücksicht auf Gross- und
+     Kleinschreibung;
+  3. zuletzt Beschreibungen, die die Bedeutung nennen und nicht den Verbund
+     (im Mittel ohne messbare Wirkung).
+
+  Der letzte Schritt des Imports verweist dorthin. Nach einem vollständigen
+  Lauf steht je Layer, wie die Vergleichsbasis auf den Fällen dieses Layers
+  abschnitt. Weil die Beschriftung des Laufs dieselbe Zusammenfassung
+  festhält, liest man eine Lücke in den Metadaten nicht als schwaches Modell.
+  Die Beispieldaten sind in den Codelisten vollständig, in Beschriftungen und
+  Beschreibungen nicht.
+- **Grenzen.** Höchstens 500 Prüffälle je Instanz, den Startbestand
+  eingerechnet, also 429 eigene; eine Importdatei hält höchstens 500 Fälle
+  und `GEOTANDEM_MAX_REQUEST_MB` (eine grössere teilt man). Weitere Grenzen:
+  - höchstens 8 Messpunkte je Lauf;
+  - Wiederholungen mit den Seeds 1–10 bei der Temperatur der Anbindung; einer
+    Anbindung ohne Seed wird keiner gesendet;
+  - je Modellaufruf die Zeitgrenze der Anbindung, höchstens 120 s;
+  - jede Abfrage unter den Grenzen des Betriebs (10 000 Objekte, 10 s).
+
+  Scheitern an einem Host 5 Antworten in Folge an Schlüssel, Anbieterlimit
+  oder Erreichbarkeit, hält die Anwendung dessen Messpunkte an, und der Lauf
+  endet als *fehlgeschlagen*.
+- **Was ein Lauf nicht tut.** Ein Lauf ist eine Messung, kein Betrieb:
+  - Er schreibt keine Modellaktion; Modellprotokoll und Annahmequote bleiben
+    die Spur der echten Benutzung.
+  - Er zählt nicht gegen die Tagesgrenze einer Anbindung; die Grenze ist die
+    Bestätigung der Abschätzung vor dem Start.
+  - Er ändert weder Analyse noch Konfiguration, ausser man übernimmt danach
+    ein Promptprofil.
+  - Er sendet keine Geodaten-Inhalte, auch nicht an eine externe Anbindung:
+    nur Steckbrief und Fragen.
 
 ## Sicherung (F-9.8)
 

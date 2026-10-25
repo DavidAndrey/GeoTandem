@@ -5,6 +5,12 @@ Vergleich lokaler Modelle über die Evals in [backend/evals](../backend/evals/RE
 neuen Lauf fortgeschrieben: neue Läufe als eigener Abschnitt unten anfügen, ältere
 Abschnitte nicht überschreiben.
 
+Für Administratoren ersetzt seit E3 der Bewertungslauf der Anwendung diese
+Läufe (*Administration › Modell › Bewertung*, README *Bewertung im Einsatz*,
+[plan-e3.md](plan-e3.md)): dieselben Fälle und derselbe Grader, auf Wunsch
+auch auf eigenen Daten. Die Läufe hier bleiben Messungen der Entwicklung mit
+dem Harness.
+
 ## Lauf 1: alle Ollama-Modelle (2026-10-12)
 
 | | |

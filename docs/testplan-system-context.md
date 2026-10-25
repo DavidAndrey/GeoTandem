@@ -826,3 +826,13 @@ im Wortlaut. Die Läufe dieses Dokuments: `t3-v0-*`, `t3-v27-*`,
 `t3-v27b-*`, `t3-v27c-*`, `t3-v27c-*-s6`; Phase 1: `p0-*` (Liste in 8.1).
 gpt-oss:20b braucht `--effort medium` (bzw. `low`); alle anderen laufen mit
 dem Standard `none`.
+
+Für Administratoren ist seit E3 der **Bewertungslauf der Anwendung** der
+Nachfolger des Harness (*Administration › Modell › Bewertung*, README
+*Bewertung im Einsatz*, [plan-e3.md](plan-e3.md)): dieselben Startfälle,
+derselbe Grader, zwei Blöcke à fünf und der gepaarte Vergleich wie
+`compare.py --stats`, dazu eigene Fälle auf den Betriebsdaten. Die
+Platzierungen P0, P5, P9 und die 12 Beispiele sind dort Promptprofile einer
+Anbindung und senden denselben Prompt wie hier (gleicher Hash). Der Harness
+bleibt das Werkzeug der Entwicklung, etwa für Varianten, die die Anwendung
+nicht anbietet, und für die Abbaustufen von Phase 4.
