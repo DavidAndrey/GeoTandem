@@ -1,6 +1,6 @@
 # Plan E3 — Evaluation of model connections
 
-> Stand: 2026-10-25 · **Entschieden: D1–D12 und O1–O4, O7, O8 (2026-10-24), Design abgeglichen (5.1) · WPs WP85–WP97 · in `ep-3` gemergt: WP85–WP89 (E3.1–E3.2), Fixes des Gate-E3.2-Reviews** · Design: [design/e3/README.md](../design/e3/README.md) (Bildschirme V1–V8, `fixture/bewertung.json`, `screenshots/`), Briefing [design/e3/BRIEF.md](../design/e3/BRIEF.md) · Bezug: [anforderungen.md](../anforderungen.md) (F-3.1, F-3.3, F-3.6, F-3.8, F-3.13–F-3.18, F-9.3–F-9.6, F-10.3–F-10.5), [etappen.md 5](../etappen.md), [bewertung.md](../bewertung.md), [plan-e2.3-e2.6.md](plan-e2.3-e2.6.md), Messungen: [testplan-system-context.md](testplan-system-context.md) (8.1–8.5), [testplan-external-models.md](testplan-external-models.md), [benchmarks.md](benchmarks.md), Harness: [backend/evals/](../backend/evals/README.md)
+> Stand: 2026-10-25 · **Entschieden: D1–D12 und O1–O4, O7, O8 (2026-10-24), Design abgeglichen (5.1) · WPs WP85–WP97 · in `ep-3` gemergt: WP85–WP89 (E3.1–E3.2), Gate E3.2 bestanden (2026-10-25, Tag `e3.2`)** · Design: [design/e3/README.md](../design/e3/README.md) (Bildschirme V1–V8, `fixture/bewertung.json`, `screenshots/`), Briefing [design/e3/BRIEF.md](../design/e3/BRIEF.md) · Bezug: [anforderungen.md](../anforderungen.md) (F-3.1, F-3.3, F-3.6, F-3.8, F-3.13–F-3.18, F-9.3–F-9.6, F-10.3–F-10.5), [etappen.md 5](../etappen.md), [bewertung.md](../bewertung.md), [plan-e2.3-e2.6.md](plan-e2.3-e2.6.md), Messungen: [testplan-system-context.md](testplan-system-context.md) (8.1–8.5), [testplan-external-models.md](testplan-external-models.md), [benchmarks.md](benchmarks.md), Harness: [backend/evals/](../backend/evals/README.md)
 >
 > Integration branch **`ep-3`**: each WP is its own branch from it (`wpNN-…`), merged back with `--no-ff` after its gate and review; `ep-3` merges into `main` once every WP is done and Gate E3 is green. Same rules as E2: WP gate and code review per WP, etappe gates with `make gate`, acceptance test and a review of the integrated diff (section 5).
 
@@ -117,6 +117,15 @@ Legend as in plan E2: **Deps**, **Parallel with**, **Done when** beyond the WP g
 
 #### Gate E3.2
 Internal (no UI release): WP gates, `make gate`, `/code-review xhigh` of the etappe's diff, the regrade identity of WP86 re-run on main.
+
+**Passed 2026-10-25** on `ep-3` (tag `e3.2`):
+
+- WP gates and independent reviews of WP85–WP89, every finding fixed or answered in the merge commits.
+- Review of the integrated diff (`git diff E2...ep-3`, effort xhigh): seams between the WPs. Fixed on `ge32-fixes`: `require` conditions as a strict model (two shapes crashed the grader), rules for `also` and `forbid`, an own case shadowed by a start id stays reachable, `RunCase` carries the whole case, the status *ungültig* (`invalid`) for a reference that no longer runs, one reading helper, one sample build (`evaluation/sample.py`), the ablation modes in `evaluation/profiles.py`, bounds on every case field, `no_cases` refused at the start of a run, versions restamped only when the reference changes, docs aligned.
+- `make gate` green twice (before and after the fixes): 1891 backend tests, 725 frontend tests, Playwright 66 passed on both passes, restart included; the only skip is E2.1 without `GATE_LLM_MODEL`.
+- Regrade identity on `ep-3`: the 22 labels of Phases 1–4 (four local models, Haiku, Luna; P0, P9, ablation modes) regrade with 0 changed verdicts; all 269 labels give the same verdicts as before the fixes.
+
+Open for E3.3–E3.5: WP92 adds the eligibility check also on `POST /cases` with origin `log`; WP90 leaves out stale and invalid cases, keeps the readings once per case (`grade.reading_ids`) and treats a failing reading as a case problem.
 
 ### Etappe E3.3–E3.5 — Runs, prompt profiles, comparison
 
