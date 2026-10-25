@@ -819,7 +819,7 @@ PRESETS = [
     for placement in ("P0", "P5", "P9")
     for output in ("constrained", "text")
 ]
-"""Every prompt profile a connection can be set to (D9): 2 × 3 × 2 presets."""
+"""Every prompt profile a connection can be set to (D9): 2 x 3 x 2 presets."""
 
 
 @pytest.mark.parametrize("profile", PRESETS, ids=lambda p: "-".join(p.values()))
