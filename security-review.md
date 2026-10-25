@@ -835,7 +835,7 @@ and what the security log did not record (#50). #49 is the one of weight.
 | 50 | **Low** | **Runs and case changes left no security event.** A run's start (which may send to an external host and spend money), its abort, an import and a deletion of cases were in no line of the security log. | Who sent the profile to which host, and when, could not be traced from the log; the model log holds no run by design (D8). |
 | 51 | **Low** | **A token can start a run.** The evaluation routes take any credential of an administrator (`require_admin`), a Bearer token too, like the other admin routes; starting a run, and confirming an external host for it, needs no interactive session. | A program holding an administrator's token can run measurements, external ones included, without a person at the dialog. |
 | 52 | **Info** | **The bypass test covered two of twelve prompt profiles.** `test_a_prompt_cannot_change_format_level_or_tools` ran under P0 and P9 with the standard examples and constrained output only. | A preset (`12` examples, P5, output `text`) that let an injected prompt into a system message would have gone unnoticed. |
-| 53 | **Info** | **A run holds the decrypted keys of its connections in memory for its whole duration.** Each point's endpoint is resolved at the start (`Point.endpoint`) and kept until the run's thread ends, up to the length of a slow run. | A memory dump of the process during a run shows the keys; they are in no row, view or log line. |
+| 53 | **Info** | **No second line for a run's call.** Operation gives up a call 5 s past its deadline when its thread lingers (#34); a run's queue threads are joined without a timeout. | Should the adapter's deadline not hold, the run stays `finishing` and every start is `run_busy` until the thread ends or the process restarts. Operation is not affected. |
 
 ### Status of #45–#53
 
@@ -849,9 +849,11 @@ and what the security log did not record (#50). #49 is the one of weight.
 | 50 | Security events, no prompt text: `evaluation_run_started` (run, connection ids, confirmed external hosts, requests, data state, scope), `evaluation_run_aborted` (once, when the abort closed the run), `evaluation_cases_imported` (count), `evaluation_case_deleted` (case id); each with the acting account. Tested. |
 | 51 | **Accepted until E4**, with the token rules of E2.4 and E2.5: E4 decides which routes a program may call; until then an administrator's token is an administrator. |
 | 52 | The test runs every injection under all 2 × 3 × 2 presets (36 cases). |
-| 53 | **Accepted.** The keys are needed for every call of the run; resolving them per call would read and decrypt the row hundreds of times for no gain against a dump of the process, which holds the vault's secret anyway. |
+| 53 | **Accepted.** A call ends by the adapter's wall-clock deadline (#34), at most `MODEL_CALL_S`; if it ever does not, a restart frees the instance. |
 
 ### Accepted residual risks (E3)
+
+- **Keys in memory during a run.** Each measuring point's endpoint, with its decrypted key, is resolved at the start and held until the run ends; never stored, shown or logged (`test_the_key_goes_to_the_call_and_nowhere_else`). A dump of the process holds the vault's secret anyway.
 
 - **A run spends without a daily limit.** By design (D12) a run does not
   count against a connection's request limit; the confirmation of the
