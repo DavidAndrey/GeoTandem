@@ -4,8 +4,10 @@ Asks a real model the questions of the start set
 ([schema/eval-cases/](../../schema/eval-cases/), plan E3 D2) through the
 direct query path as production sends it (`direct_prompt`, `DirectQuery.ask`:
 real client, parser and checks), over a fresh sample dataset and the default
-level, and grades each answer. Not part of `make gate`: it needs a running
-OpenAI-compatible endpoint and takes minutes.
+level, and grades each answer with the application's grader
+(`geotandem.evaluation.grade`, the same rules an evaluation run uses). Not
+part of `make gate`: it needs a running OpenAI-compatible endpoint and takes
+minutes.
 
 ```sh
 cd backend
@@ -87,7 +89,8 @@ unchanged.
 `compare.py` joins seed blocks with `+`, sums per case tag with `--by-tag`,
 and with `--stats` compares each column with the first case by case (wins,
 losses, mean difference with a bootstrap interval, sign test): the answers of
-one case are not independent, so the sample is the cases.
+one case are not independent, so the sample is the cases. The figures come
+from `geotandem.evaluation.stats`, as the application's comparison takes them.
 
 ```sh
 uv run python evals/compare.py --stats --by-tag ho-luna+ho-luna-s6 ho-gemma4_12b+ho-gemma4_12b-s6
