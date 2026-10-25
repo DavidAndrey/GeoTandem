@@ -450,7 +450,7 @@ class LayerGaps(BaseModel):
     unconfirmed_codes: list[str]
     """Text attributes with a proposed code list not yet confirmed: the largest effect."""
     unlabelled: list[str]
-    """Attributes whose label is their column name."""
+    """Attributes whose label is their column name, case ignored."""
     undescribed: list[str]
     """Attributes without a description; ``""`` stands for the layer itself."""
 
@@ -463,9 +463,12 @@ class ProfileSummary(BaseModel):
     attributes: int
     labelled: int
     text_attributes: int
+    """Text attributes with a code list, confirmed or proposed; free text and a
+    column the import proposed no list for are not counted."""
     text_with_codes: int
     described: int
-    """Layers and attributes with a description, out of ``layers + attributes``."""
+    """Layers and attributes with a description, out of ``layers + attributes``:
+    the third and lowest step of care (Phase 4)."""
     gaps: list[LayerGaps]
     """Layers with something missing; empty when complete."""
 

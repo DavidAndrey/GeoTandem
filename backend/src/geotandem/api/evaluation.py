@@ -11,10 +11,12 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Path, Query, Response
 
 from geotandem.api.auth import require_admin
-from geotandem.api.errors import ErrorBody, Problem
+from geotandem.api.errors import ErrorBody, NotFound, Problem
 from geotandem.api.state import AppState, get_state
+from geotandem.auth import accounts
 from geotandem.auth.accounts import Account
-from geotandem.evaluation.cases import Cases
+from geotandem.catalog import model_profile
+from geotandem.evaluation.cases import Cases, sample_backend
 from geotandem.evaluation.schemas import (
     MAX_POINTS,
     AnswerView,
@@ -40,7 +42,9 @@ from geotandem.evaluation.schemas import (
     Username,
 )
 from geotandem.evaluation.store import CaseFilters
+from geotandem.evaluation.summary import profile_summary as summarize
 from geotandem.model.schemas import MAX_ID, MAX_PAGE
+from geotandem.model.service import profile_for
 
 router = APIRouter(
     prefix="/api/admin/evaluation", tags=["evaluation"], dependencies=[Depends(require_admin)]
@@ -225,8 +229,24 @@ def compare_runs(body: CompareRequest) -> RunComparison:
 
 @router.get("/profile-summary", responses=ERRORS)
 def profile_summary(
-    data_state: DataState = "live", account: Username | None = None
+    state: Annotated[AppState, Depends(get_state)],
+    admin: Admin,
+    data_state: DataState = "live",
+    account: Username | None = None,
 ) -> ProfileSummary:
     """How complete the metadata is that the model sees (D11, V8): of the sample
-    data, or of the live catalog as ``account`` sees it (default: the caller)."""
-    raise NotBuilt("WP94")
+    data, or of the live catalog as ``account`` sees it (default: the caller).
+    An unknown ``account`` is 404, as on ``GET /api/admin/llm/profile``; the
+    sample is the same for every account (D4)."""
+    found = admin
+    if account is not None:
+        known = (a for a in accounts.list_accounts(state.backend.engine) if a.username == account)
+        match = next(known, None)
+        if match is None:
+            raise NotFound(f"Unknown account '{account}'.", account=account)
+        found = match
+    if data_state == "sample":
+        view = sample_backend(state.settings)
+        return summarize(model_profile(view.engine, view.layer_names()), view.engine)
+    _, found_profile = profile_for(state.backend, found)
+    return summarize(found_profile, state.backend.engine)

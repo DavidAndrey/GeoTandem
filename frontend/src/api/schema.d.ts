@@ -1683,6 +1683,8 @@ export interface paths {
      * Profile Summary
      * @description How complete the metadata is that the model sees (D11, V8): of the sample
      *     data, or of the live catalog as ``account`` sees it (default: the caller).
+     *     An unknown ``account`` is 404, as on ``GET /api/admin/llm/profile``; the
+     *     sample is the same for every account (D4).
      */
     get: operations['profile_summary_api_admin_evaluation_profile_summary_get']
     put?: never

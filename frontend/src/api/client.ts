@@ -306,6 +306,13 @@ export const api = {
       request<ImportResult>('/api/admin/evaluation/cases/import', json('POST', file)),
     /** A link, not a request: the browser downloads the own cases as a case file. */
     exportUrl: '/api/admin/evaluation/cases/export',
+    /** How complete the layer profile is (D11, V8): of the sample, or live as
+     * ``account`` sees it (the caller when left out). */
+    profileSummary: (dataState: DataState, account?: string) =>
+      request<ProfileSummary>(
+        `/api/admin/evaluation/profile-summary?data_state=${dataState}` +
+          (account ? `&account=${enc(account)}` : ''),
+      ),
   },
   sampleRows: (layer: string, limit = 50) =>
     request<QueryResult>('/api/query', json('POST', { source: layer, output: 'table', limit })),
