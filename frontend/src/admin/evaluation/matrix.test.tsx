@@ -428,3 +428,20 @@ test('V6.6: the same profile and data say nothing about them', async () => {
   await screen.findByText(/#13: System-Prompt wie im Betrieb/)
   expect(screen.queryByText(/Steckbrief anders|Datenstand anders/)).toBeNull()
 })
+
+test('a case whose dataset changed runs and is marked in its row (D3)', async () => {
+  const run = runView('done')
+  const first = run.cases[0]
+  runBackend({
+    [`GET ${RUNS_URL}/13`]: {
+      ...run,
+      cases: [{ ...first, status: 'dataset_changed' }, ...run.cases.slice(1)],
+    },
+  })
+  renderAt('/admin/bewertung/lauf/13', <App />)
+  const table = await matrix()
+  const row = within(table).getByRole('rowheader', { name: new RegExp(first.case.id) })
+  expect(row).toHaveTextContent('· Datenstand geändert')
+  // It ran: its cells are there, as any case's.
+  expect(row.closest('tr')?.querySelectorAll('a')).toHaveLength(run.points.length)
+})
