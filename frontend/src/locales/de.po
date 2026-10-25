@@ -873,6 +873,10 @@ msgstr "als Kopie"
 msgid "Als Prüffall speichern"
 msgstr "Als Prüffall speichern"
 
+#: src/admin/ModelActionPage.tsx
+msgid "Als Prüffall übernehmen"
+msgstr "Als Prüffall übernehmen"
+
 #: src/admin/ModelLogPage.tsx
 msgid "Ältere"
 msgstr "Ältere"
@@ -1205,6 +1209,11 @@ msgstr "aus = nur Vorschlag, von Hand übernehmbar · Freigabe = Sie entscheiden
 msgid "Aus Analyse entfernen"
 msgstr "Aus Analyse entfernen"
 
+#: src/admin/evaluation/CaseDetailPage.tsx
+msgid "Aus dem Modellprotokoll übernommen: Frage und Referenz stammen aus der Modellaktion. Der Prüffall wird erst gespeichert, wenn Sie Kennung und Stichwörter gewählt haben."
+msgstr "Aus dem Modellprotokoll übernommen: Frage und Referenz stammen aus der Modellaktion. Der Prüffall wird erst gespeichert, wenn Sie Kennung und Stichwörter gewählt haben."
+
+#: src/admin/evaluation/CaseDetailPage.tsx
 #: src/admin/evaluation/SaveCaseDialog.tsx
 msgid "Aus der Frage vorgeschlagen; eindeutig unter allen Prüffällen."
 msgstr "Aus der Frage vorgeschlagen; eindeutig unter allen Prüffällen."
@@ -2361,6 +2370,10 @@ msgid "Diese Antwort ist schon die Wiederholung mit der anderen Arbeitsweise."
 msgstr "Diese Antwort ist schon die Wiederholung mit der anderen Arbeitsweise."
 
 #: src/i18n/errors.ts
+msgid "Diese Antwort wurde von Hand korrigiert. Von Hand korrigierte Antworten werden vorerst nicht zum Prüffall."
+msgstr "Diese Antwort wurde von Hand korrigiert. Von Hand korrigierte Antworten werden vorerst nicht zum Prüffall."
+
+#: src/i18n/errors.ts
 msgid "Diese Läufe lassen sich nicht gegenüberstellen: Sie haben andere Prüffälle, oder einer ist nicht vollständig."
 msgstr "Diese Läufe lassen sich nicht gegenüberstellen: Sie haben andere Prüffälle, oder einer ist nicht vollständig."
 
@@ -2568,6 +2581,10 @@ msgstr "Eine entfernte Stufe gilt für niemanden mehr: Wer sie gewählt hatte, a
 #: src/workplace/QueryPanel.tsx
 msgid "Eine Fläche auf der Karte zeichnen"
 msgstr "Eine Fläche auf der Karte zeichnen"
+
+#: src/i18n/errors.ts
+msgid "Eine Folgefrage wird nicht zum Prüffall: Sie hängt von der vorigen Antwort ab, die ein Prüffall nicht mitführt."
+msgstr "Eine Folgefrage wird nicht zum Prüffall: Sie hängt von der vorigen Antwort ab, die ein Prüffall nicht mitführt."
 
 #: src/model/chain/Chain.tsx
 msgid "Eine Freigabe für die ganze Kette; danach läuft sie ohne weitere Halte durch."
@@ -4228,6 +4245,7 @@ msgstr "Methode"
 msgid "Mindestens {MIN_PASSWORD_LENGTH} Zeichen, Sonderzeichen sind nicht nötig. Ein Satz aus mehreren Wörtern ist sicher und gut zu merken."
 msgstr "Mindestens {MIN_PASSWORD_LENGTH} Zeichen, Sonderzeichen sind nicht nötig. Ein Satz aus mehreren Wörtern ist sicher und gut zu merken."
 
+#: src/admin/evaluation/CaseDetailPage.tsx
 #: src/admin/evaluation/SaveCaseDialog.tsx
 msgid "Mindestens ein Stichwort."
 msgstr "Mindestens ein Stichwort."
@@ -4454,6 +4472,10 @@ msgstr "Neue Stufe"
 #: src/session/SessionsDialog.tsx
 msgid "Neuer Name"
 msgstr "Neuer Name"
+
+#: src/admin/evaluation/CaseDetailPage.tsx
+msgid "Neuer Prüffall"
+msgstr "Neuer Prüffall"
 
 #: src/admin/ModelLogPage.tsx
 msgid "Neuere"

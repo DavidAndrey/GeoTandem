@@ -149,7 +149,7 @@ Open for E3.3–E3.5: WP92 adds the eligibility check also on `POST /cases` with
 #### WP92 — Cases from the log (BE-eval, FE-eval)
 *Deps: WP87 · Parallel with: WP90*
 
-- On the admin's model action page (M16.2): **Als Prüffall übernehmen** for a direct query with decision `accepted`, or `auto` not undone (F-3.14). Hand-corrected answers (`adjusted`, `touched_at`) are not offered (decision 2). It opens the case page (V2) prefilled with the prompt, the stored query as reference, `data_state` live, the layers with their dataset versions and `origin: log` with `origin_action`; the case is stored only when the admin saves it with tags and split. `POST /cases` with `origin: log` checks the same eligibility (`action_not_eligible`), so a case cannot be taken from an adjusted action by hand.
+- On the admin's model action page (M16.2): **Als Prüffall übernehmen** for a direct query with decision `accepted` or `auto`, neither undone, not touched, not a follow-up (F-3.14). Hand-corrected answers (`adjusted`, `touched_at`) and follow-ups (`parent_action_id`) are not offered (decision 2). It opens the case page (V2) prefilled with the prompt, the stored query as reference, `data_state` live, the layer names (the save stamps the versions, D3) and `origin: log` with `origin_action`; the case is stored only when the admin saves it with tags and split. `POST /cases` with `origin: log` checks the same eligibility (`action_not_eligible`), so a case cannot be taken from an adjusted action by hand.
 - **Done when:** a logged, accepted action becomes a case without typing the query; an adjusted one shows no button; the created case passes against itself.
 
 #### WP93 — Run dialog, matrix and case detail (FE-eval)
