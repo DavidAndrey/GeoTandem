@@ -9,7 +9,15 @@ def make_engine(settings: Settings) -> Engine:
     if url.startswith("sqlite"):
         settings.data_dir.mkdir(parents=True, exist_ok=True)
         # A writer waits up to 30 s for another (an import holds the lock while it stores).
-        engine = create_engine(url, connect_args={"check_same_thread": False, "timeout": 30})
+        # SpatiaLite connections set up and close one at a time (spatialite.NATIVE).
+        engine = create_engine(
+            url,
+            connect_args={
+                "check_same_thread": False,
+                "timeout": 30,
+                "factory": spatialite.SpatiaLiteConnection,
+            },
+        )
         spatialite.attach(engine, settings.spatialite_library)
         return engine
     raise NotImplementedError("Only SpatiaLite is available; the PostGIS adapter follows in P.1.")
