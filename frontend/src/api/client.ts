@@ -298,11 +298,21 @@ export const api = {
       request<CaseView>(`/api/admin/evaluation/cases/${enc(id)}`, json('PUT', body)),
     remove: (id: string) =>
       request<undefined>(`/api/admin/evaluation/cases/${enc(id)}`, { method: 'DELETE' }),
+    /** A case prefilled from a model action of the log (F-3.14, V2 from M16.2); stores nothing. */
+    draftFromAction: (actionId: number) =>
+      request<CaseDraft>(`/api/admin/evaluation/cases/draft-from-action/${actionId}`),
     /** All or nothing (V1.3): ``problems`` name each case that stopped it. */
     importFile: (file: unknown) =>
       request<ImportResult>('/api/admin/evaluation/cases/import', json('POST', file)),
     /** A link, not a request: the browser downloads the own cases as a case file. */
     exportUrl: '/api/admin/evaluation/cases/export',
+    /** How complete the layer profile is (D11, V8): of the sample, or live as
+     * ``account`` sees it (the caller when left out). */
+    profileSummary: (dataState: DataState, account?: string) =>
+      request<ProfileSummary>(
+        `/api/admin/evaluation/profile-summary?data_state=${dataState}` +
+          (account ? `&account=${enc(account)}` : ''),
+      ),
   },
   sampleRows: (layer: string, limit = 50) =>
     request<QueryResult>('/api/query', json('POST', { source: layer, output: 'table', limit })),

@@ -6,6 +6,7 @@ import {
   ApiRequestError,
   type AccountUpdate,
   type AttributeUpdate,
+  type DataState,
   type ImportStatus,
   type LayerUpdate,
   type VisibilityRow,
@@ -29,6 +30,8 @@ export const keys = {
   connections: ['admin', 'llm', 'connections'] as const,
   llmOptions: ['llm', 'options'] as const,
   modelProfile: (account: string) => ['admin', 'model-profile', account] as const,
+  profileSummary: (dataState: string, account: string) =>
+    ['admin', 'profile-summary', dataState, account] as const,
 }
 
 /** The signed-in account, or ``null`` when nobody is signed in. */
@@ -220,6 +223,14 @@ export function useChooseLLM() {
     onSuccess: (data) => client.setQueryData(keys.llmOptions, data),
   })
 }
+
+/** The completeness of the profile (V8): the sample's, or live for ``account``
+ * (``''``: the signed-in administrator, as the server defaults). */
+export const useProfileSummary = (dataState: DataState, account: string) =>
+  useQuery({
+    queryKey: keys.profileSummary(dataState, account),
+    queryFn: () => api.evaluation.profileSummary(dataState, account || undefined),
+  })
 
 /** The layer profile a model would get for an account (plan E2.2, S6). */
 export const useModelProfile = (account: string) =>

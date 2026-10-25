@@ -18,6 +18,7 @@ import { StatusLabel } from '../model/status'
 import { statusKey } from '../model/statusKey'
 import { QueryTree } from '../model/tree'
 import { clockTime } from '../model/panel/time'
+import { fromLog } from './evaluation/words'
 import { formatDateTime } from './format'
 
 const CLASSES: OpClass[] = ['catalog', 'query', 'spatial', 'derive', 'display']
@@ -94,6 +95,12 @@ function Entry({ view }: { view: ModelActionView }) {
           </Trans>
         </h2>
         <StatusLabel status={statusKey(view)} detail={clockTime(view.decided_at ?? null)} />
+        {/* F-3.14: only what may become a case is offered; the server decides (WP92). */}
+        {fromLog(view) && (
+          <Link to={`/admin/bewertung/faelle/aus-protokoll/${view.id}`} className="btn">
+            <Trans>Als Prüffall übernehmen</Trans>
+          </Link>
+        )}
       </div>
       <dl className="max-w-4xl text-sm">
         <Row label={t`Prompt`}>

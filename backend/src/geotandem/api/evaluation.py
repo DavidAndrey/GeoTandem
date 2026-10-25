@@ -1,9 +1,10 @@
 """The evaluation of model connections over HTTP (plan E3, section 6).
 
-Frozen in WP85 with every route, its guard and its answer; each body answers
-501 ``not_implemented`` until its work package fills it in (WP92, WP94; WP87
-and WP90 have landed). Administrators only (F-3.1): a user gets 403 on every route. A run is a
-measurement, not use (D8): no route here writes a model action.
+Frozen in WP85 with every route, its guard and its answer; each body answered
+501 ``not_implemented`` until its work package filled it in (WP87, WP90, WP92,
+WP94, all landed). Administrators only (F-3.1): a user gets 403 on every
+route. A run is a measurement, not use (D8): no route here writes a model
+action.
 """
 
 from typing import Annotated, Any
@@ -11,10 +12,12 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Path, Query, Response
 
 from geotandem.api.auth import require_admin
-from geotandem.api.errors import ErrorBody, Problem
+from geotandem.api.errors import ErrorBody, NotFound, Problem
 from geotandem.api.state import AppState, get_state
+from geotandem.auth import accounts
 from geotandem.auth.accounts import Account
-from geotandem.evaluation.cases import Cases
+from geotandem.catalog import model_profile
+from geotandem.evaluation.cases import Cases, sample_backend
 from geotandem.evaluation.run import Evaluation
 from geotandem.evaluation.schemas import (
     MAX_POINTS,
@@ -41,7 +44,9 @@ from geotandem.evaluation.schemas import (
     Username,
 )
 from geotandem.evaluation.store import CaseFilters
+from geotandem.evaluation.summary import profile_summary as summarize
 from geotandem.model.schemas import MAX_ID, MAX_PAGE
+from geotandem.model.service import profile_for
 
 router = APIRouter(
     prefix="/api/admin/evaluation", tags=["evaluation"], dependencies=[Depends(require_admin)]
@@ -86,7 +91,7 @@ def cases(
     origin: Origin | None = None,
     data_state: DataState | None = None,
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE)] = MAX_PAGE,
-    offset: Annotated[int, Query(ge=0)] = 0,
+    offset: Annotated[int, Query(ge=0, le=MAX_ID)] = 0,
 ) -> CasePage:
     """The start set and the own cases, start cases first (V1.1); each with its
     status (D3), ``invalid`` by the checks alone. The list leaves
@@ -128,12 +133,12 @@ def import_cases(body: CaseFile, service: CaseService) -> ImportResult:
 
 
 @router.get("/cases/draft-from-action/{action_id}", responses=ERRORS)
-def case_from_action(action_id: Id) -> CaseDraft:
+def case_from_action(action_id: Id, service: CaseService) -> CaseDraft:
     """A case prefilled from a logged direct query with decision ``accepted``, or
     ``auto`` not undone (F-3.14); nothing is stored until it is saved with
     ``POST /cases``. Any other action, a hand-corrected one too (decision 2), is
     ``action_not_eligible``."""
-    raise NotBuilt("WP92")
+    return service.draft(action_id)
 
 
 @router.get("/cases/{case_id}", responses=ERRORS)
@@ -203,7 +208,7 @@ def runs(
     service: RunService,
     connection_id: Annotated[int | None, Query(ge=1, le=MAX_ID)] = None,
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE)] = 50,
-    offset: Annotated[int, Query(ge=0)] = 0,
+    offset: Annotated[int, Query(ge=0, le=MAX_ID)] = 0,
 ) -> RunPage:
     """Newest first; with ``connection_id`` the runs that measured it (O7)."""
     return service.page(connection_id, offset=offset, limit=limit)
@@ -250,8 +255,24 @@ def compare_runs(body: CompareRequest, service: RunService) -> RunComparison:
 
 @router.get("/profile-summary", responses=ERRORS)
 def profile_summary(
-    data_state: DataState = "live", account: Username | None = None
+    state: Annotated[AppState, Depends(get_state)],
+    admin: Admin,
+    data_state: DataState = "live",
+    account: Username | None = None,
 ) -> ProfileSummary:
     """How complete the metadata is that the model sees (D11, V8): of the sample
-    data, or of the live catalog as ``account`` sees it (default: the caller)."""
-    raise NotBuilt("WP94")
+    data, or of the live catalog as ``account`` sees it (default: the caller).
+    An unknown ``account`` is 404, as on ``GET /api/admin/llm/profile``; the
+    sample is the same for every account (D4)."""
+    found = admin
+    if account is not None:
+        known = (a for a in accounts.list_accounts(state.backend.engine) if a.username == account)
+        match = next(known, None)
+        if match is None:
+            raise NotFound(f"Unknown account '{account}'.", account=account)
+        found = match
+    if data_state == "sample":
+        view = sample_backend(state.settings)
+        return summarize(model_profile(view.engine, view.layer_names()), view.engine)
+    _, found_profile = profile_for(state.backend, found)
+    return summarize(found_profile, state.backend.engine)
