@@ -40,8 +40,9 @@ test("a cell's verdict mix in short form, passes left out", () => {
 test('two runs are comparable only when both are done and asked the same cases', () => {
   const [running, done, quick, interrupted] = runPage().items as RunSummary[]
   expect(comparable(done, quick)).toBeNull()
-  expect(comparable(done, interrupted)).toMatch(/#10 ist nicht vollständig/)
-  expect(comparable(running, done)).toMatch(/#14 ist nicht vollständig/)
+  // *fertig* is the status, *vollständig* only the scope 2 × 5.
+  expect(comparable(done, interrupted)).toMatch(/#10 ist nicht fertig; .* bei fertigen Läufen/)
+  expect(comparable(running, done)).toMatch(/#14 ist nicht fertig/)
   expect(comparable(done, { ...quick, case_set_hash: 'other' })).toMatch(/andere Prüffälle/)
 })
 

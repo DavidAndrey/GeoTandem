@@ -26,6 +26,9 @@ test('a refusal reads in German, from its code and details', () => {
   expect(refused('connection_not_available', { id: 3 }).message).toBe(
     'Diese Anbindung steht nicht zur Wahl.',
   )
+  // A run of the evaluation is named by its number.
+  expect(refused('not_found', { run: 12 }).message).toBe('Lauf #12 gibt es nicht (mehr).')
+  expect(refused('not_found', { layer: 'schulen' }).message).toBe('„schulen" gibt es nicht (mehr).')
   // A code from a newer back end: its English rather than nothing.
   expect(refused('brand_new').message).toBe('English text')
   expect(new ApiRequestError(502, undefined).message).toBe('HTTP 502')

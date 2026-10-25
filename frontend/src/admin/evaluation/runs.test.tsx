@@ -73,7 +73,7 @@ test('V5.1: two complete runs over the same cases are put side by side, others n
   await user.click(screen.getByRole('checkbox', { name: 'Lauf #13 markieren' }))
   await user.click(screen.getByRole('checkbox', { name: 'Lauf #10 markieren' }))
   expect(compare).toBeDisabled()
-  expect(screen.getByText(/#10 ist nicht vollständig/)).toBeInTheDocument()
+  expect(screen.getByText(/#10 ist nicht fertig/)).toBeInTheDocument()
   // A third mark replaces the older one: #10 out, #12 in.
   await user.click(screen.getByRole('checkbox', { name: 'Lauf #12 markieren' }))
   expect(screen.getByRole('checkbox', { name: 'Lauf #13 markieren' })).not.toBeChecked()
@@ -113,7 +113,8 @@ test('V4.1: the estimate follows every change at once', async () => {
   expect(screen.getByText('8.5 Mio')).toBeInTheDocument()
   expect(screen.getByText('≈ 2.08 USD')).toBeInTheDocument()
   expect(screen.getByText('lokal · kein Preis')).toBeInTheDocument()
-  expect(screen.getByText('(parallel je Anbindung)')).toBeInTheDocument()
+  expect(screen.getByText('(parallel je Modell-Host)')).toBeInTheDocument()
+  expect(screen.queryByText(/noch ohne Messung/)).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Vollständig · 2 × 5' }))
   await waitFor(() => expect(estimates(calls).at(-1)?.scope).toBe('full'))
   await user.click(screen.getByRole('button', { name: 'Bestätigung' }))
@@ -142,6 +143,8 @@ test('V4.1: an external host needs the confirmation; it is sent as confirm_exter
   await user.click(start)
   const sent = calls.find((c) => c.key === `POST ${RUNS_URL}`)?.body as RunRequest
   expect(sent.confirm_external).toEqual([2, 3])
+  // The hosts the dialog showed: a host changed since is refused (security review #49).
+  expect(sent.confirm_external_hosts).toEqual(['api.anthropic.com', 'api.openai.com'])
   expect(await screen.findByRole('heading', { name: 'Lauf #15' })).toBeInTheDocument()
 })
 
@@ -340,4 +343,45 @@ test('without a case origin no stale estimate is shown', async () => {
   await u.click(screen.getByRole('checkbox', { name: 'Startbestand (71)' }))
   expect(screen.queryByRole('table', { name: 'Abschätzung' })).toBeNull()
   expect(screen.queryByText(/Steckbrief und Fragen gehen an/)).toBeNull()
+})
+
+test('V5.1: a run without tuning cases names its rate Quote Bestätigung', async () => {
+  const page = runPage()
+  runBackend({
+    [`GET ${RUNS_URL}`]: {
+      ...page,
+      items: page.items.map((r) =>
+        r.id === 13 ? { ...r, reference_rate: 91.2, reference_split: 'confirm' as const } : r,
+      ),
+    },
+  })
+  renderAt('/admin/bewertung', <App />)
+  const row13 = (await screen.findByRole('link', { name: '#13' })).closest('tr')
+  if (!row13) throw new Error('no row')
+  expect(row13).toHaveTextContent('91.2 %Quote Bestätigung')
+  const row12 = screen.getByRole('link', { name: '#12' }).closest('tr')
+  expect(row12).not.toHaveTextContent('Quote Bestätigung')
+})
+
+test('V4.1: a duration without a measurement says it is a rough guess', async () => {
+  runBackend({
+    [`GET ${RUNS_URL}`]: idle(),
+    [`POST ${RUNS_URL}/estimate`]: {
+      ...COST_ESTIMATE,
+      connections: COST_ESTIMATE.connections.map((c) =>
+        c.connection_id === 1 ? { ...c, duration_measured: false } : c,
+      ),
+    },
+  })
+  renderAt('/admin/bewertung/lauf/neu', <App />)
+  const table = await screen.findByRole('table', { name: 'Abschätzung' })
+  const row = within(table).getByRole('rowheader', { name: 'gemma4:12b' }).closest('tr')
+  if (!row) throw new Error('no row')
+  expect(row).toHaveTextContent('≈ 17 min · geschätzt, noch ohne Messung')
+  const total = within(table).getByRole('rowheader', { name: 'Zusammen' }).closest('tr')
+  expect(total).toHaveTextContent(
+    '≈ 48 min · geschätzt, noch ohne Messung (parallel je Modell-Host)',
+  )
+  const haiku = within(table).getByRole('rowheader', { name: 'Claude Haiku 5.5' }).closest('tr')
+  expect(haiku).not.toHaveTextContent('ohne Messung')
 })

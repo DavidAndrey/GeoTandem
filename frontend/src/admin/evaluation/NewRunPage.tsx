@@ -141,12 +141,16 @@ function freshForm(connections: ConnectionInfo[], levels: Level[], scope: RunSco
 
 const dataStateOf = (f: RunForm): DataState => (f.start ? 'sample' : f.ownState)
 
-/** The request the form describes; ``null`` without a case origin or a point. */
+/**
+ * The request the form describes; ``null`` without a case origin or a point.
+ * ``confirm`` names the external connections and the hosts the dialog showed
+ * (F-9.4): the server refuses a start whose host changed since.
+ */
 function requestOf(
   f: RunForm,
   connections: ConnectionInfo[],
   levels: Level[],
-  confirm: number[] = [],
+  confirm: { ids: number[]; hosts: string[] } = { ids: [], hosts: [] },
 ): RunRequest | null {
   const origins: CaseOrigin[] = [...(f.start ? ['start' as const] : []), ...(f.own ? OWN : [])]
   if (!origins.length || !f.points.length) return null
@@ -169,7 +173,8 @@ function requestOf(
     cases: { origins, split: f.split, tags: f.tag ? [f.tag] : [] },
     data_state: dataStateOf(f),
     scope: f.scope,
-    confirm_external: confirm,
+    confirm_external: confirm.ids,
+    confirm_external_hosts: confirm.hosts,
   }
 }
 
@@ -411,8 +416,15 @@ function costCell(c: CostEstimate['connections'][number]) {
   return c.locality === 'local' ? t`lokal · kein Preis` : t`kein Preis`
 }
 
+/** "≈ 17 min", or "≈ 17 min · geschätzt, noch ohne Messung" without a run or a test (D12). */
+function durationCell(seconds: number, measured: boolean) {
+  const time = durationText(seconds)
+  return measured ? time : t`${time} · geschätzt, noch ohne Messung`
+}
+
 function Estimate({ estimate }: { estimate: CostEstimate }) {
   const total = moniesText(estimate.cost)
+  const measured = estimate.connections.every((c) => c.duration_measured)
   return (
     <table className="data-table mb-3 max-w-3xl" aria-label={t`Abschätzung`}>
       <thead>
@@ -446,7 +458,7 @@ function Estimate({ estimate }: { estimate: CostEstimate }) {
               <td className="tabular-nums">{formatNumber(c.requests)}</td>
               <td className="tabular-nums">{tokensText(c.tokens)}</td>
               <td className="tabular-nums">{costCell(c)}</td>
-              <td className="tabular-nums">{durationText(c.duration_s)}</td>
+              <td className="tabular-nums">{durationCell(c.duration_s, c.duration_measured)}</td>
             </tr>
           )
         })}
@@ -458,8 +470,8 @@ function Estimate({ estimate }: { estimate: CostEstimate }) {
           <td className="tabular-nums">{tokensText(estimate.tokens)}</td>
           <td className="tabular-nums">{total ? `≈ ${total}` : t`ohne Preis`}</td>
           <td className="tabular-nums">
-            {durationText(estimate.duration_s)}{' '}
-            <span className="font-normal">{t`(parallel je Anbindung)`}</span>
+            {durationCell(estimate.duration_s, measured)}{' '}
+            <span className="font-normal">{t`(parallel je Modell-Host)`}</span>
           </td>
         </tr>
       </tbody>
@@ -596,7 +608,12 @@ function RunFormView({
       className="btn btn-primary"
       disabled={!canStart}
       onClick={() => {
-        const body = requestOf(form, connections, levels, confirmed ? externalIds : [])
+        const body = requestOf(
+          form,
+          connections,
+          levels,
+          confirmed ? { ids: externalIds, hosts } : undefined,
+        )
         if (body) start.mutate(body)
       }}
     >
