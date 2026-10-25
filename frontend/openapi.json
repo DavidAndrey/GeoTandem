@@ -8000,7 +8000,7 @@
           "evaluation"
         ],
         "summary": "Estimate",
-        "description": "Requests, tokens, cost and duration before the start (D12, V4.1); no model call.",
+        "description": "Requests, tokens, cost and duration before the start (D12, V4.1); no\nmodel call. A selection without a runnable case is ``no_cases``, as at the\nstart.",
         "operationId": "estimate_api_admin_evaluation_runs_estimate_post",
         "requestBody": {
           "content": {
@@ -8162,6 +8162,7 @@
           "evaluation"
         ],
         "summary": "Runs",
+        "description": "Newest first; with ``connection_id`` the runs that measured it (O7).",
         "operationId": "runs_api_admin_evaluation_runs_get",
         "parameters": [
           {

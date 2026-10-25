@@ -34,11 +34,7 @@ START = {"tuning": CASES / "start-tuning.json", "confirm": CASES / "start-confir
 SOURCE = REPO / "backend" / "src" / "geotandem"
 
 PENDING_CODES: dict[str, str] = {
-    "no_cases": "WP90",
     "action_not_eligible": "WP92",
-    "run_busy": "WP90",
-    "external_not_confirmed": "WP90",
-    "runs_not_comparable": "WP90",
 }
 """Codes the contract names but no route raises yet, with the WP that must. That
 WP raises the code and removes it here; Gate E3 needs this empty."""
@@ -65,9 +61,9 @@ ROUTES: dict[tuple[str, str], str] = {
 """Every route of section 6 with the WP that builds it. A WP that lands moves
 its routes out of the 501 check into its own tests."""
 
-BUILT: set[tuple[str, str]] = {route for route, wp in ROUTES.items() if wp == "WP87"}
+BUILT: set[tuple[str, str]] = {route for route, wp in ROUTES.items() if wp in ("WP87", "WP90")}
 """Routes whose WP has landed; their behaviour is tested in the WP's own tests
-(WP87: ``test_eval_cases.py``)."""
+(WP87: ``test_eval_cases.py``, WP90: ``test_eval_runs.py``)."""
 
 POINT = {"connection_id": 1, "level_id": 1}
 CASE = {

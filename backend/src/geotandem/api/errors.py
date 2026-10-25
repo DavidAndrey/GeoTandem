@@ -13,6 +13,7 @@ from geotandem.auth.accounts import AccountError, HashingBusy
 from geotandem.connections import ConnectionProblem
 from geotandem.engine import QueryError
 from geotandem.evaluation.cases import CaseError
+from geotandem.evaluation.run import RunError
 from geotandem.levels import LevelError
 from geotandem.model.errors import ActionError
 from geotandem.model.service import ModelCallsBusy
@@ -112,6 +113,10 @@ def install(app: FastAPI) -> None:
 
     @app.exception_handler(CaseError)
     async def _case_rule(_: Request, exc: CaseError) -> JSONResponse:
+        return _body(exc.status, exc.code, exc.message, **exc.details)
+
+    @app.exception_handler(RunError)
+    async def _run_rule(_: Request, exc: RunError) -> JSONResponse:
         return _body(exc.status, exc.code, exc.message, **exc.details)
 
     @app.exception_handler(LevelError)

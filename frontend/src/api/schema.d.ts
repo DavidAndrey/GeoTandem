@@ -1536,7 +1536,9 @@ export interface paths {
     put?: never
     /**
      * Estimate
-     * @description Requests, tokens, cost and duration before the start (D12, V4.1); no model call.
+     * @description Requests, tokens, cost and duration before the start (D12, V4.1); no
+     *     model call. A selection without a runnable case is ``no_cases``, as at the
+     *     start.
      */
     post: operations['estimate_api_admin_evaluation_runs_estimate_post']
     delete?: never
@@ -1552,7 +1554,10 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** Runs */
+    /**
+     * Runs
+     * @description Newest first; with ``connection_id`` the runs that measured it (O7).
+     */
     get: operations['runs_api_admin_evaluation_runs_get']
     put?: never
     /**
