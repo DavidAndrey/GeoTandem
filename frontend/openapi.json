@@ -7221,7 +7221,7 @@
           "evaluation"
         ],
         "summary": "Cases",
-        "description": "The start set and the own cases, start cases first (V1.1); each with its\nstatus (D3). The list leaves ``reference_hits`` out.",
+        "description": "The start set and the own cases, start cases first (V1.1); each with its\nstatus (D3), ``invalid`` by the checks alone. The list leaves\n``reference_hits`` out.",
         "operationId": "cases_api_admin_evaluation_cases_get",
         "parameters": [
           {
@@ -7477,7 +7477,7 @@
           "evaluation"
         ],
         "summary": "Export Cases",
-        "description": "The own cases as a case file (F-3.13, F-10.4); with ``start`` the start set\ntoo. Without ``null`` fields, so export and import are a round trip.",
+        "description": "The own cases as a case file (F-3.13, F-10.4); with ``start`` the start set\ntoo, and then without an own case behind a start id (logged). Without\n``null`` fields, so export and import are a round trip.",
         "operationId": "export_cases_api_admin_evaluation_cases_export_get",
         "parameters": [
           {
@@ -7738,6 +7738,13 @@
             "schema": {
               "type": "string",
               "pattern": "^[a-z0-9][a-z0-9.-]{0,62}$",
+              "not": {
+                "enum": [
+                  "draft-from-action",
+                  "export",
+                  "import"
+                ]
+              },
               "title": "Case Id"
             }
           }
@@ -7810,7 +7817,7 @@
           "evaluation"
         ],
         "summary": "Update Case",
-        "description": "A start case is ``case_read_only``; editing a stale case makes it run again.",
+        "description": "A start case is ``case_read_only``; editing a stale or invalid case makes\nit run again. An own case behind a start id (a later start set brought it)\nis reached here, so it can be renamed.",
         "operationId": "update_case_api_admin_evaluation_cases__case_id__put",
         "parameters": [
           {
@@ -7820,6 +7827,13 @@
             "schema": {
               "type": "string",
               "pattern": "^[a-z0-9][a-z0-9.-]{0,62}$",
+              "not": {
+                "enum": [
+                  "draft-from-action",
+                  "export",
+                  "import"
+                ]
+              },
               "title": "Case Id"
             }
           }
@@ -7902,6 +7916,7 @@
           "evaluation"
         ],
         "summary": "Delete Case",
+        "description": "A start case is ``case_read_only``; an own case behind a start id is deleted.",
         "operationId": "delete_case_api_admin_evaluation_cases__case_id__delete",
         "parameters": [
           {
@@ -7911,6 +7926,13 @@
             "schema": {
               "type": "string",
               "pattern": "^[a-z0-9][a-z0-9.-]{0,62}$",
+              "not": {
+                "enum": [
+                  "draft-from-action",
+                  "export",
+                  "import"
+                ]
+              },
               "title": "Case Id"
             }
           }
@@ -8060,7 +8082,7 @@
           "evaluation"
         ],
         "summary": "Start Run",
-        "description": "Starts the run in the background and answers at once, ``running``; the\nclient polls ``GET /runs/{id}`` (D8). One run at a time (``run_busy``); an\nexternal connection not in ``confirm_external`` is ``external_not_confirmed``;\na selection with no runnable case (all filtered out or stale) is ``no_cases``.",
+        "description": "Starts the run in the background and answers at once, ``running``; the\nclient polls ``GET /runs/{id}`` (D8). One run at a time (``run_busy``); an\nexternal connection not in ``confirm_external`` is ``external_not_confirmed``;\na selection with no runnable case (all filtered out, stale or invalid) is\nrefused before the start, 400 ``no_cases``. ``RunView.error`` is for what\nfails while the run runs.",
         "operationId": "start_run_api_admin_evaluation_runs_post",
         "requestBody": {
           "required": true,
@@ -8445,6 +8467,13 @@
             "schema": {
               "type": "string",
               "pattern": "^[a-z0-9][a-z0-9.-]{0,62}$",
+              "not": {
+                "enum": [
+                  "draft-from-action",
+                  "export",
+                  "import"
+                ]
+              },
               "title": "Case Id"
             }
           },
@@ -10115,14 +10144,18 @@
               ]
             },
             "type": "array",
+            "maxItems": 2,
             "title": "Also",
             "default": []
           },
           "forbid": {
             "items": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 64,
+              "minLength": 1
             },
             "type": "array",
+            "maxItems": 16,
             "title": "Forbid",
             "default": []
           },
@@ -10147,6 +10180,7 @@
           },
           "note": {
             "type": "string",
+            "maxLength": 2000,
             "title": "Note",
             "default": ""
           },
@@ -10155,6 +10189,7 @@
               "$ref": "#/components/schemas/CaseLayer"
             },
             "type": "array",
+            "maxItems": 32,
             "title": "Layers",
             "default": []
           },
@@ -10201,6 +10236,7 @@
           },
           "about": {
             "type": "string",
+            "maxLength": 4000,
             "title": "About",
             "default": ""
           },
@@ -10274,12 +10310,14 @@
         "properties": {
           "name": {
             "type": "string",
+            "maxLength": 63,
             "title": "Name"
           },
           "dataset_version": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "maxLength": 64
               },
               {
                 "type": "null"
@@ -10327,6 +10365,7 @@
             "enum": [
               "ok",
               "stale",
+              "invalid",
               "dataset_changed"
             ],
             "title": "Status",
@@ -12603,14 +12642,18 @@
               ]
             },
             "type": "array",
+            "maxItems": 2,
             "title": "Also",
             "default": []
           },
           "forbid": {
             "items": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 64,
+              "minLength": 1
             },
             "type": "array",
+            "maxItems": 16,
             "title": "Forbid",
             "default": []
           },
@@ -12635,6 +12678,7 @@
           },
           "note": {
             "type": "string",
+            "maxLength": 2000,
             "title": "Note",
             "default": ""
           },
@@ -12643,10 +12687,18 @@
               "$ref": "#/components/schemas/CaseLayer"
             },
             "type": "array",
+            "maxItems": 32,
             "title": "Layers",
             "default": []
           },
           "id": {
+            "not": {
+              "enum": [
+                "draft-from-action",
+                "export",
+                "import"
+              ]
+            },
             "type": "string",
             "pattern": "^[a-z0-9][a-z0-9.-]{0,62}$",
             "title": "Id"
@@ -17136,14 +17188,15 @@
         "properties": {
           "source": {
             "type": "string",
+            "maxLength": 63,
             "title": "Source"
           },
           "conditions": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/RequiredCondition"
             },
             "type": "array",
+            "maxItems": 8,
             "minItems": 1,
             "title": "Conditions"
           }
@@ -17155,7 +17208,137 @@
           "conditions"
         ],
         "title": "Require",
-        "description": "What a query must contain where several readings select different\nfeatures (harness ``require``): the source layer, and per condition the keys\nit must match; ``distance_m`` is a ``[low, high]`` range."
+        "description": "What a query must contain where several readings select different\nfeatures (harness ``require``): the source layer, and the conditions it\nmust hold."
+      },
+      "RequiredCondition": {
+        "properties": {
+          "op": {
+            "type": "string",
+            "enum": [
+              "compare",
+              "between",
+              "in",
+              "text_match",
+              "is_null",
+              "bbox",
+              "geometry",
+              "near_feature",
+              "related",
+              "and",
+              "or",
+              "not"
+            ],
+            "title": "Op"
+          },
+          "attr": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 63
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attr"
+          },
+          "cmp": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "eq",
+                  "ne",
+                  "lt",
+                  "le",
+                  "gt",
+                  "ge"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cmp"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "layer": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 63
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Layer"
+          },
+          "predicate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "intersects",
+                  "within",
+                  "contains",
+                  "dwithin"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Predicate"
+          },
+          "distance_m": {
+            "anyOf": [
+              {
+                "prefixItems": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "type": "array",
+                "maxItems": 2,
+                "minItems": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distance M"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "op"
+        ],
+        "title": "RequiredCondition",
+        "description": "A condition the query must hold somewhere in its tree (``grade.matches``):\neach key given must have that value; ``distance_m`` is a ``[low, high]``\nrange. Unset keys match anything."
       },
       "ResultMeta": {
         "properties": {
@@ -17249,79 +17432,15 @@
       },
       "RunCase": {
         "properties": {
-          "id": {
-            "type": "string",
-            "title": "Id"
-          },
-          "prompt": {
-            "type": "string",
-            "title": "Prompt"
-          },
-          "tags": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Tags"
-          },
-          "split": {
-            "type": "string",
-            "enum": [
-              "tuning",
-              "confirm"
-            ],
-            "title": "Split"
-          },
-          "origin": {
-            "type": "string",
-            "enum": [
-              "start",
-              "authored",
-              "import",
-              "log"
-            ],
-            "title": "Origin"
-          },
-          "readings": {
-            "items": {
-              "additionalProperties": true,
-              "type": "object"
-            },
-            "type": "array",
-            "title": "Readings",
-            "default": []
-          },
-          "require": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Require"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "expect": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "query",
-                  "clarification",
-                  "cannot_answer"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Expect"
+          "case": {
+            "$ref": "#/components/schemas/EvalCase"
           },
           "status": {
             "type": "string",
             "enum": [
               "ok",
               "stale",
+              "invalid",
               "dataset_changed"
             ],
             "title": "Status",
@@ -17330,14 +17449,10 @@
         },
         "type": "object",
         "required": [
-          "id",
-          "prompt",
-          "tags",
-          "split",
-          "origin"
+          "case"
         ],
         "title": "RunCase",
-        "description": "A case as the run asked it (H7): the matrix, V7 and the export read it\nhere, not from the case store, which may have changed since."
+        "description": "A case as the run asked it (H7): the whole case, so the matrix, V7 and the\nexport read what it demanded here, not from the case store, which may have\nchanged since, and a run can be graded again."
       },
       "RunComparison": {
         "properties": {

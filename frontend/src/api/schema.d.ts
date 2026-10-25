@@ -1412,7 +1412,8 @@ export interface paths {
     /**
      * Cases
      * @description The start set and the own cases, start cases first (V1.1); each with its
-     *     status (D3). The list leaves ``reference_hits`` out.
+     *     status (D3), ``invalid`` by the checks alone. The list leaves
+     *     ``reference_hits`` out.
      */
     get: operations['cases_api_admin_evaluation_cases_get']
     put?: never
@@ -1439,7 +1440,8 @@ export interface paths {
     /**
      * Export Cases
      * @description The own cases as a case file (F-3.13, F-10.4); with ``start`` the start set
-     *     too. Without ``null`` fields, so export and import are a round trip.
+     *     too, and then without an own case behind a start id (logged). Without
+     *     ``null`` fields, so export and import are a round trip.
      */
     get: operations['export_cases_api_admin_evaluation_cases_export_get']
     put?: never
@@ -1507,11 +1509,16 @@ export interface paths {
     get: operations['case_api_admin_evaluation_cases__case_id__get']
     /**
      * Update Case
-     * @description A start case is ``case_read_only``; editing a stale case makes it run again.
+     * @description A start case is ``case_read_only``; editing a stale or invalid case makes
+     *     it run again. An own case behind a start id (a later start set brought it)
+     *     is reached here, so it can be renamed.
      */
     put: operations['update_case_api_admin_evaluation_cases__case_id__put']
     post?: never
-    /** Delete Case */
+    /**
+     * Delete Case
+     * @description A start case is ``case_read_only``; an own case behind a start id is deleted.
+     */
     delete: operations['delete_case_api_admin_evaluation_cases__case_id__delete']
     options?: never
     head?: never
@@ -1553,7 +1560,9 @@ export interface paths {
      * @description Starts the run in the background and answers at once, ``running``; the
      *     client polls ``GET /runs/{id}`` (D8). One run at a time (``run_busy``); an
      *     external connection not in ``confirm_external`` is ``external_not_confirmed``;
-     *     a selection with no runnable case (all filtered out or stale) is ``no_cases``.
+     *     a selection with no runnable case (all filtered out, stale or invalid) is
+     *     refused before the start, 400 ``no_cases``. ``RunView.error`` is for what
+     *     fails while the run runs.
      */
     post: operations['start_run_api_admin_evaluation_runs_post']
     delete?: never
@@ -2258,7 +2267,7 @@ export interface components {
        * @default ok
        * @enum {string}
        */
-      status: 'ok' | 'stale' | 'dataset_changed'
+      status: 'ok' | 'stale' | 'invalid' | 'dataset_changed'
       /**
        * Status Layers
        * @default []
@@ -5065,16 +5074,51 @@ export interface components {
     /**
      * Require
      * @description What a query must contain where several readings select different
-     *     features (harness ``require``): the source layer, and per condition the keys
-     *     it must match; ``distance_m`` is a ``[low, high]`` range.
+     *     features (harness ``require``): the source layer, and the conditions it
+     *     must hold.
      */
     Require: {
       /** Source */
       source: string
       /** Conditions */
-      conditions: {
-        [key: string]: unknown
-      }[]
+      conditions: components['schemas']['RequiredCondition'][]
+    }
+    /**
+     * RequiredCondition
+     * @description A condition the query must hold somewhere in its tree (``grade.matches``):
+     *     each key given must have that value; ``distance_m`` is a ``[low, high]``
+     *     range. Unset keys match anything.
+     */
+    RequiredCondition: {
+      /**
+       * Op
+       * @enum {string}
+       */
+      op:
+        | 'compare'
+        | 'between'
+        | 'in'
+        | 'text_match'
+        | 'is_null'
+        | 'bbox'
+        | 'geometry'
+        | 'near_feature'
+        | 'related'
+        | 'and'
+        | 'or'
+        | 'not'
+      /** Attr */
+      attr?: string | null
+      /** Cmp */
+      cmp?: ('eq' | 'ne' | 'lt' | 'le' | 'gt' | 'ge') | null
+      /** Value */
+      value?: string | number | boolean | null
+      /** Layer */
+      layer?: string | null
+      /** Predicate */
+      predicate?: ('intersects' | 'within' | 'contains' | 'dwithin') | null
+      /** Distance M */
+      distance_m?: [number, number] | null
     }
     /** ResultMeta */
     ResultMeta: {
@@ -5123,42 +5167,18 @@ export interface components {
     }
     /**
      * RunCase
-     * @description A case as the run asked it (H7): the matrix, V7 and the export read it
-     *     here, not from the case store, which may have changed since.
+     * @description A case as the run asked it (H7): the whole case, so the matrix, V7 and the
+     *     export read what it demanded here, not from the case store, which may have
+     *     changed since, and a run can be graded again.
      */
     RunCase: {
-      /** Id */
-      id: string
-      /** Prompt */
-      prompt: string
-      /** Tags */
-      tags: string[]
-      /**
-       * Split
-       * @enum {string}
-       */
-      split: 'tuning' | 'confirm'
-      /**
-       * Origin
-       * @enum {string}
-       */
-      origin: 'start' | 'authored' | 'import' | 'log'
-      /**
-       * Readings
-       * @default []
-       */
-      readings: {
-        [key: string]: unknown
-      }[]
-      require?: components['schemas']['Require'] | null
-      /** Expect */
-      expect?: ('query' | 'clarification' | 'cannot_answer') | null
+      case: components['schemas']['EvalCase']
       /**
        * Status
        * @default ok
        * @enum {string}
        */
-      status: 'ok' | 'stale' | 'dataset_changed'
+      status: 'ok' | 'stale' | 'invalid' | 'dataset_changed'
     }
     /** RunComparison */
     RunComparison: {

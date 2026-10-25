@@ -34,6 +34,7 @@ from pydantic import (
 from geotandem.levels.model import MAX_SYSTEM_PROMPT
 from geotandem.llm import Effort, Locality
 from geotandem.model.schemas import (
+    MAX_CONDITIONS,
     MAX_ID,
     MAX_PROMPT,
     Approach,
@@ -54,6 +55,17 @@ MAX_CASES = 500
 MAX_TAGS = 8
 MAX_READINGS = 4
 """Fair readings of one question (``gold_any``)."""
+MAX_ALSO = 2
+"""Further answer kinds besides the expected one: there are three kinds."""
+MAX_FORBID = 16
+"""Forbidden words of one case: the start set's ``x-ohne-kontext`` has 10."""
+MAX_WORD = 64
+"""A forbidden word's length."""
+MAX_LAYERS = 32
+"""Layers a live case names."""
+MAX_NOTE = 2000
+MAX_ABOUT = 4000
+"""The ``about`` text of a case file."""
 MAX_POINTS = 8
 """Measuring points of one run."""
 MAX_IDS = 200
@@ -75,8 +87,10 @@ CaseId = Annotated[
     str,
     StringConstraints(pattern=r"^[a-z0-9][a-z0-9.-]{0,62}$"),
     AfterValidator(_not_reserved),
+    Field(json_schema_extra={"not": {"enum": sorted(RESERVED_IDS)}}),
 ]
-"""As the harness names its cases (``doc1-primar-koeniz``, ``h31-naehe-wovon``)."""
+"""As the harness names its cases (``doc1-primar-koeniz``, ``h31-naehe-wovon``);
+the schema names the reserved words, so the interface reads them from it."""
 Tag = Annotated[str, StringConstraints(pattern=r"^[a-z0-9][a-z0-9:-]{0,31}$")]
 Id = Annotated[int, Field(ge=1, le=MAX_ID)]
 """A record's id in a body: beyond a 64-bit integer it is 422, never a 500 (E2 review #38)."""
@@ -105,9 +119,12 @@ answer (``code``)."""
 Flag = Literal["no_assumption", "zero_hits"]
 """Marks of a ``wrong`` answer (D6). ``wrong`` with ``no_assumption`` is
 *still falsch*."""
-CaseStatus = Literal["ok", "stale", "dataset_changed"]
-"""A live case whose layer is gone or hidden is ``stale`` and left out of runs;
-one whose layer was re-imported since is run and marked (D3)."""
+CaseStatus = Literal["ok", "stale", "invalid", "dataset_changed"]
+"""Computed on every read (D3). A live case whose layer is gone or hidden is
+``stale``; a live or sample case whose reference no longer passes the checks
+of a model's query or no longer runs is ``invalid``; a run (WP90) leaves both
+out. A live case whose layer was re-imported since its reference was last
+checked is ``dataset_changed``: run, and marked."""
 RunScope = Literal["full", "quick"]
 """Two seed blocks with the comparison words, or one block without (D7, O2)."""
 RunStatus = Literal["running", "done", "aborted", "interrupted", "failed"]
@@ -136,15 +153,51 @@ lacks, one it adds, one it changes (operator, value, layer, predicate, distance)
 # --- the case ------------------------------------------------------------------
 
 
-class Require(BaseModel):
-    """What a query must contain where several readings select different
-    features (harness ``require``): the source layer, and per condition the keys
-    it must match; ``distance_m`` is a ``[low, high]`` range."""
+ConditionOp = Literal[
+    "compare",
+    "between",
+    "in",
+    "text_match",
+    "is_null",
+    "bbox",
+    "geometry",
+    "near_feature",
+    "related",
+    "and",
+    "or",
+    "not",
+]
+"""The condition operators of the query schema (``geotandem_query.models``)."""
+Identifier = Annotated[str, StringConstraints(max_length=63)]
+"""A layer or attribute name, at most as long as the query schema allows (63)."""
+
+
+class RequiredCondition(BaseModel):
+    """A condition the query must hold somewhere in its tree (``grade.matches``):
+    each key given must have that value; ``distance_m`` is a ``[low, high]``
+    range. Unset keys match anything."""
 
     model_config = ConfigDict(extra="forbid")
 
-    source: str
-    conditions: list[dict[str, Any]] = Field(min_length=1)
+    op: ConditionOp
+    attr: Identifier | None = None
+    cmp: Literal["eq", "ne", "lt", "le", "gt", "ge"] | None = None
+    value: str | int | float | bool | None = None
+    layer: Identifier | None = None
+    predicate: Literal["intersects", "within", "contains", "dwithin"] | None = None
+    distance_m: tuple[float, float] | None = None
+
+
+class Require(BaseModel):
+    """What a query must contain where several readings select different
+    features (harness ``require``): the source layer, and the conditions it
+    must hold."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    source: Identifier
+    conditions: list[RequiredCondition] = Field(min_length=1, max_length=MAX_CONDITIONS)
+    """At most as many as a model's query may have (``MAX_CONDITIONS``)."""
 
 
 class CaseLayer(BaseModel):
@@ -152,8 +205,8 @@ class CaseLayer(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    name: str
-    dataset_version: str | None = None
+    name: Identifier
+    dataset_version: Annotated[str, StringConstraints(max_length=64)] | None = None
 
 
 Prompt = Annotated[str, StringConstraints(min_length=1, max_length=MAX_PROMPT, pattern=r"\S")]
@@ -176,15 +229,25 @@ class _CaseBody(BaseModel):
     )
     require: Require | None = None
     expect: AnswerKind | None = None
-    also: list[AnswerKind] = []
-    """Further answer kinds that pass (a clarification beside an assumption)."""
-    forbid: list[str] = []
+    also: list[AnswerKind] = Field(default=[], max_length=MAX_ALSO)
+    """Further answer kinds that pass (a clarification beside an assumption);
+    never the expected kind itself, and ``query`` only beside an ``expect``
+    (a query case grades its query)."""
+    forbid: list[Annotated[str, StringConstraints(min_length=1, max_length=MAX_WORD)]] = Field(
+        default=[], max_length=MAX_FORBID
+    )
     """Words that fail the answer, e.g. an invented layer of the prompt's examples."""
     other_approach: OtherApproach | None = None
-    note: str = ""
+    note: Annotated[str, StringConstraints(max_length=MAX_NOTE)] = ""
     """The question's intent, for the person who judges a difference."""
-    layers: list[CaseLayer] = []
+    layers: list[CaseLayer] = Field(default=[], max_length=MAX_LAYERS)
     """For a live case: the layers its reference uses (D3)."""
+
+    def readings(self) -> list[dict[str, Any]]:
+        """The reference query, or the fair readings; empty for other cases."""
+        if self.gold_any is not None:
+            return self.gold_any
+        return [self.gold] if self.gold is not None else []
 
 
 class EvalCase(_CaseBody):
@@ -204,10 +267,18 @@ class EvalCase(_CaseBody):
 
     @model_validator(mode="after")
     def _rules(self) -> Self:
-        given = [k for k in ("gold", "gold_any", "require", "expect") if getattr(self, k)]
+        given = [
+            k for k in ("gold", "gold_any", "require", "expect") if getattr(self, k) is not None
+        ]
         if len(given) != 1:
             found = ", ".join(given) or "none"
             raise ValueError(f"exactly one of gold, gold_any, require, expect; got {found}")
+        if len(set(self.also)) != len(self.also):
+            raise ValueError("also repeats a kind")
+        if self.expect is not None and self.expect in self.also:
+            raise ValueError("also repeats the expected kind")
+        if self.expect is None and "query" in self.also:
+            raise ValueError("a query case grades its query; also cannot pass any query")
         if (self.origin == "log") != (self.origin_action is not None):
             raise ValueError("origin_action goes with origin 'log', and only with it")
         if self.data_state == "live" and not self.layers and self.expect is None:
@@ -234,7 +305,7 @@ class CaseFile(BaseModel):
 
     format: Literal["geotandem-eval-cases"] = CASE_FILE_FORMAT
     version: Literal[1] = CASE_FILE_VERSION
-    about: str = ""
+    about: Annotated[str, StringConstraints(max_length=MAX_ABOUT)] = ""
     cases: list[EvalCase] = Field(max_length=MAX_CASES)
 
     @model_validator(mode="after")
@@ -418,20 +489,14 @@ class PointLabel(BaseModel):
 
 
 class RunCase(BaseModel):
-    """A case as the run asked it (H7): the matrix, V7 and the export read it
-    here, not from the case store, which may have changed since."""
+    """A case as the run asked it (H7): the whole case, so the matrix, V7 and the
+    export read what it demanded here, not from the case store, which may have
+    changed since, and a run can be graded again."""
 
-    id: str
-    prompt: str
-    tags: list[str]
-    split: Split
-    origin: Origin
-    readings: list[dict[str, Any]] = []
-    """The reference query or the fair readings; empty for other cases."""
-    require: Require | None = None
-    expect: AnswerKind | None = None
+    case: EvalCase
     status: CaseStatus = "ok"
-    """``dataset_changed``: run, but its layer was re-imported since the case was made."""
+    """``dataset_changed``: run, but its layer was re-imported since its
+    reference was last checked. A ``stale`` or ``invalid`` case is not run."""
 
 
 class RunLabel(BaseModel):
@@ -543,7 +608,9 @@ class RunView(BaseModel):
     cost_so_far: list[Money] = []
     cells: list[Cell]
     error: str | None = None
-    """Why a ``failed`` run stopped, as a code (``no_cases``, a transport code)."""
+    """Why a ``failed`` run stopped while running, as a code (the sample copy
+    could not be built, a transport code). A selection without a runnable case
+    never starts: ``POST /runs`` refuses it with ``no_cases``."""
     finished_at: datetime | None = None
 
 

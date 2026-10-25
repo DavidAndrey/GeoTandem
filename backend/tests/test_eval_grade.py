@@ -13,13 +13,24 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from pydantic import ValidationError
 
-from geotandem.catalog import model_profile
+from geotandem.catalog import ModelProfile, model_profile
+from geotandem.config import Settings
 from geotandem.data import DataBackend, Limits
 from geotandem.engine.errors import QueryTimedOut
 from geotandem.evaluation import grade as grade_module
-from geotandem.evaluation.grade import Graded, conditions, errored, grade, matches, query_of
-from geotandem.evaluation.schemas import EvalCase
+from geotandem.evaluation.cases import sample_world, start_set
+from geotandem.evaluation.grade import (
+    Graded,
+    conditions,
+    errored,
+    grade,
+    matches,
+    query_of,
+    reading_ids,
+)
+from geotandem.evaluation.schemas import EvalCase, Require
 from geotandem.llm import Completion
 from geotandem.model.errors import ActionError
 from geotandem.model.result import parse_answer
@@ -28,28 +39,26 @@ from geotandem.model.validate import Validated, validate_model_query
 from geotandem.tools import ToolContext
 
 HERE = Path(__file__).parent
-CASES = HERE.parents[1] / "schema" / "eval-cases"
 LIMITS = Limits(max_features=10_000, timeout_s=10)
 ANSWERS: list[dict[str, Any]] = json.loads((HERE / "eval_answers.json").read_text("utf-8"))[
     "answers"
 ]
 
 
-def start_set() -> dict[str, EvalCase]:
-    found = {}
-    for name in ("start-tuning", "start-confirm"):
-        for case in json.loads((CASES / f"{name}.json").read_text("utf-8"))["cases"]:
-            found[case["id"]] = EvalCase.model_validate(case)
-    return found
+START = {case.id: case for case in start_set()}
+"""As the application and the harness read it (``cases.start_set``)."""
 
 
-START = start_set()
-
-
-def graded(item: dict[str, Any], backend: DataBackend) -> Graded:
+def graded(
+    item: dict[str, Any],
+    backend: DataBackend,
+    context: ToolContext | None = None,
+    profile: ModelProfile | None = None,
+) -> Graded:
     """As ``evals/regrade.py`` (``main``, the loop over the stored records) and
     ``evals/run.py`` (``errored`` for an ``ActionError``): the answer read
-    again, a query checked in the sample's profile, then graded."""
+    again, a query checked in the sample's profile, then graded, with the
+    readings checked and read once (``reading_ids``)."""
     if "answer" not in item:
         # Never read: the parser must still refuse the verbatim text.
         completion = Completion(text=item["raw"], finish_reason=item["finish_reason"])
@@ -57,16 +66,18 @@ def graded(item: dict[str, Any], backend: DataBackend) -> Graded:
             parse_answer(completion, "direct")
         return errored(failed.value.code)
     answer = parse_answer(Completion(text=json.dumps(item["answer"])), "direct")
+    profile = profile or model_profile(backend.engine, backend.layer_names())
+    context = context or ToolContext(backend=backend, limits=LIMITS)
     query = refusal = None
     if isinstance(answer, QueryAnswer):
-        profile = model_profile(backend.engine, backend.layer_names())
-        context = ToolContext(backend=backend, limits=LIMITS)
         checked = validate_model_query(answer.query, context, profile)
         if isinstance(checked, Validated):
             query = checked.query
         else:
             refusal = checked
-    return grade(START[item["case"]], answer, refusal, query, backend, LIMITS)
+    case = START[item["case"]]
+    readings = reading_ids(case, context, profile)
+    return grade(case, answer, refusal, query, backend, LIMITS, readings)
 
 
 def test_the_fixture_covers_every_verdict_and_flag() -> None:
@@ -87,6 +98,20 @@ def test_a_recorded_answer_grades_as_the_harness_wrote(
         item["code"],
         item["flags"],
     )
+
+
+def test_the_application_path_grades_the_recorded_answers_alike(tmp_path: Path) -> None:
+    """T1: through ``sample_world`` (the read-only sample a run of the
+    application uses), every recorded answer gets the harness's verdict."""
+    world = sample_world(Settings(data_dir=tmp_path), LIMITS)
+    backend = world.context.backend
+    for item in ANSWERS:
+        found = graded(item, backend, world.context, world.profile)
+        assert (found.tag, found.verdict, list(found.flags)) == (
+            item["tag"],
+            item["verdict"],
+            item["flags"],
+        ), item["what"]
 
 
 def test_an_answer_that_never_came_is_an_error_with_its_code() -> None:
@@ -135,7 +160,7 @@ def test_a_require_case_flags_a_wrong_answer_by_its_hits(
     sample: DataBackend,
 ) -> None:
     case = START["n04-grosse-gemeinden"]
-    found = grade(case, answer_with(query, assumptions), None, query_of(query), sample, LIMITS)
+    found = grade(case, answer_with(query, assumptions), None, query_of(query, "2"), sample, LIMITS)
     assert (found.verdict, found.tag, found.flags) == (tag.split(":")[0], tag, flags)
 
 
@@ -151,7 +176,7 @@ def test_a_require_case_keeps_its_verdict_when_the_hits_cannot_be_read(
     monkeypatch.setattr(grade_module, "ids_query", timed_out)
     query = {"source": "gemeinden", "where": NONE_OF}
     case = START["n04-grosse-gemeinden"]
-    found = grade(case, answer_with(query, []), None, query_of(query), sample, LIMITS)
+    found = grade(case, answer_with(query, []), None, query_of(query, "2"), sample, LIMITS)
     assert (found.verdict, found.tag, found.flags) == (
         "wrong",
         "wrong:missing compare",
@@ -206,3 +231,45 @@ def test_conditions_reach_into_relations_and_distances_are_ranges() -> None:
     assert matches({"op": "near", "distance_m": [200, 500]}, where["args"][1])
     assert not matches({"op": "near", "distance_m": [400, 500]}, where["args"][1])
     assert not matches({"op": "near", "layer": "schulen"}, where["args"][1])
+
+
+# --- the require model (B1) ----------------------------------------------------------
+
+
+REQUIRES = [case for case in START.values() if case.require is not None]
+
+
+@pytest.mark.parametrize("case", REQUIRES, ids=[case.id for case in REQUIRES])
+@pytest.mark.parametrize("where", [None, NONE_OF, LARGE])
+def test_every_require_case_of_the_start_set_grades(
+    case: EvalCase, where: dict[str, Any] | None, sample: DataBackend
+) -> None:
+    """Whatever the query holds, a ``require`` case gives a verdict, never an exception."""
+    assert case.require is not None
+    query = {"source": case.require.source, "where": where}
+    found = grade(case, answer_with(query, []), None, query_of(query, "2"), sample, LIMITS)
+    assert found.verdict in ("pass", "wrong")
+
+
+@pytest.mark.parametrize(
+    "condition",
+    [
+        {"op": "related", "layer": "schulen", "distance_m": 300},
+        {"layer": "schulen", "predicate": "dwithin"},
+        {"op": "near", "layer": "schulen"},
+        {"op": "compare", "attr": "typ", "erfunden": 1},
+    ],
+    ids=["scalar-distance", "no-op", "unknown-op", "unknown-key"],
+)
+def test_a_required_condition_the_grader_cannot_read_is_refused(
+    condition: dict[str, Any],
+) -> None:
+    with pytest.raises(ValidationError):
+        Require.model_validate({"source": "schulen", "conditions": [condition]})
+
+
+def test_a_require_holds_at_most_eight_conditions() -> None:
+    nine = [{"op": "compare", "attr": "typ"}] * 9
+    with pytest.raises(ValidationError):
+        Require.model_validate({"source": "schulen", "conditions": nine})
+    Require.model_validate({"source": "schulen", "conditions": nine[:8]})

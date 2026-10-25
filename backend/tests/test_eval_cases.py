@@ -10,8 +10,10 @@ all or nothing. A live case becomes ``stale`` when its layer goes and
 each reading's features on the case's data state.
 """
 
+import importlib.util
 import json
 import logging
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -24,7 +26,7 @@ from sqlalchemy.orm import Session
 
 from geotandem.catalog import get_layer
 from geotandem.config import Settings
-from geotandem.data import DataBackend
+from geotandem.data import DataBackend, Limits
 from geotandem.db.bootstrap import ConfigurationError
 from geotandem.db.orm import Layer
 from geotandem.engine import count_query
@@ -32,6 +34,7 @@ from geotandem.evaluation import cases as case_module
 from geotandem.evaluation.schemas import EvalCase
 from geotandem.evaluation.store import CaseStore
 from geotandem.importing.run import ImportDecisions, run_import
+from geotandem.sample.load import dataset_version
 from geotandem_query import QueryObject
 
 REPO = Path(__file__).resolve().parents[2]
@@ -261,6 +264,22 @@ async def test_a_reference_passes_the_checks_of_a_model_query(
     assert body["details"]["case_id"] == "eigene-primar"
     assert body["details"]["reason"] == reason
     assert body["details"]["reading"] == 0
+
+
+async def test_two_readings_of_one_canonical_form_are_refused(client: httpx.AsyncClient) -> None:
+    """T3: the same query twice, written otherwise, is no second fair reading."""
+    reordered = {
+        "where": {"op": "and", "args": [PRIMAR, {**PRIMAR, "attr": "sprache", "value": "de"}]}
+    }
+    again = {"where": {"op": "and", "args": list(reversed(reordered["where"]["args"]))}}
+    gold_any = [{"source": "schulen", **reordered}, {"source": "schulen", **again}]
+    body = await refused(client, {**OWN, "gold": None, "gold_any": gold_any}, 400, "case_invalid")
+    assert body["details"] == {
+        "case_id": "eigene-primar",
+        "reason": "duplicate_reading",
+        "reading": 1,
+        "same_as": 0,
+    }
 
 
 async def test_a_failing_reading_names_what_failed(client: httpx.AsyncClient) -> None:
@@ -567,6 +586,27 @@ def _live_of(layers: list[dict[str, Any]], gold: dict[str, Any]) -> dict[str, An
     return {"id": "live-primar", "data_state": "live", "layers": layers, "gold": gold}
 
 
+async def test_an_edit_of_tags_or_note_keeps_the_dataset_versions(
+    client: httpx.AsyncClient, app: FastAPI
+) -> None:
+    """D3: *Datenstand geändert* means "since the reference was last checked";
+    only an edit of readings, ``require`` or layers stamps the versions again."""
+    await created(client, live(app))
+    engine = app.state.geotandem.backend.engine
+    with Session(engine) as db, db.begin():
+        db.execute(update(Layer).where(Layer.name == "schulen").values(dataset_version="neu"))
+
+    noted = await client.put(f"{CASES}/live-primar", json=live(app, note="nur eine Notiz"))
+    assert noted.status_code == 200, noted.text
+    assert noted.json()["status"] == "dataset_changed"
+    assert noted.json()["case"]["layers"] != [{"name": "schulen", "dataset_version": "neu"}]
+
+    whole = await client.put(f"{CASES}/live-primar", json=live(app, gold={"source": "schulen"}))
+    assert whole.status_code == 200, whole.text
+    assert whole.json()["status"] == "ok"
+    assert whole.json()["case"]["layers"] == [{"name": "schulen", "dataset_version": "neu"}]
+
+
 async def test_a_changed_dataset_version_marks_the_case(
     client: httpx.AsyncClient, app: FastAPI
 ) -> None:
@@ -602,7 +642,7 @@ async def test_a_re_imported_layer_marks_the_case(
     assert view["reference_hits"] == [hits(app, whole)]
 
 
-async def test_a_reading_that_no_longer_passes_has_no_hits(
+async def test_a_reading_that_no_longer_passes_makes_the_case_invalid(
     client: httpx.AsyncClient, app: FastAPI
 ) -> None:
     """The attribute of the reference is withdrawn from the model after creation."""
@@ -612,8 +652,10 @@ async def test_a_reading_that_no_longer_passes_has_no_hits(
     )
     assert withdrawn.status_code == 200, withdrawn.text
     view = (await client.get(f"{CASES}/live-primar")).json()
-    assert view["status"] == "ok"
+    assert (view["status"], view["status_layers"]) == ("invalid", [])
     assert view["reference_hits"] is None
+    listed = (await client.get(CASES, params={"data_state": "live"})).json()["items"]
+    assert [i["status"] for i in listed] == ["invalid"]
 
 
 async def test_sample_cases_run_on_their_own_copy_of_the_sample(
@@ -653,6 +695,28 @@ def test_the_sample_never_touches_a_configured_database(
     assert "schulen" in sample.layer_names()
 
 
+def test_the_harness_reads_the_start_set_with_the_applications_reader() -> None:
+    """T5: ``evals/casefiles.py`` has no reader of its own; its two files are
+    the 71 start cases, by split."""
+    evals = REPO / "backend" / "evals"
+    sys.path.insert(0, str(evals))
+    try:
+        spec = importlib.util.spec_from_file_location("casefiles", evals / "casefiles.py")
+        assert spec is not None and spec.loader is not None
+        harness = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(harness)
+    finally:
+        sys.path.remove(str(evals))
+    tuning, confirm = harness.load_cases("cases"), harness.load_cases("heldout")
+    assert (len(tuning), len(confirm)) == (33, 38)
+    assert [c.id for c in tuning + confirm] == [c["id"] for c in start_cases()]
+    assert tuple(tuning + confirm) == case_module.start_set()
+
+
+def test_the_sample_version_is_the_packaged_one() -> None:
+    assert case_module.sample_version() == dataset_version()
+
+
 def test_a_missing_start_set_stops_the_start(tmp_path: Path) -> None:
     with pytest.raises(ConfigurationError, match="start set of the evaluation is missing"):
         case_module.start_cases(Settings(data_dir=tmp_path, eval_cases_dir=tmp_path / "leer"))
@@ -667,3 +731,54 @@ def test_an_own_case_behind_a_start_id_is_named_at_start(
     with caplog.at_level(logging.WARNING, logger=case_module.log.name):
         case_module.check_start_set(settings, backend.engine)
     assert "doc1-primar-koeniz" in caplog.text
+
+
+async def test_an_own_case_behind_a_start_id_is_edited_deleted_and_left_out_of_an_export(
+    client: httpx.AsyncClient, backend: DataBackend, caplog: pytest.LogCaptureFixture
+) -> None:
+    """B3: the start case wins on read; edit and delete reach the own case; an
+    export with the start set leaves it out (one file, unique ids) and logs it."""
+    clash = EvalCase.model_validate({**OWN, "id": "doc1-primar-koeniz"})
+    CaseStore(backend.engine).add([clash], at_most=10)
+    listed = (await client.get(CASES)).json()["items"]
+    shadowed = [(i["case"]["id"], i["read_only"]) for i in listed]
+    assert shadowed.count(("doc1-primar-koeniz", True)) == 1
+    assert shadowed.count(("doc1-primar-koeniz", False)) == 1
+
+    with caplog.at_level(logging.WARNING, logger=case_module.log.name):
+        exported = await client.get(f"{CASES}/export", params={"start": True})
+    assert exported.status_code == 200, exported.text
+    assert exported.json()["cases"] == start_cases()
+    assert "doc1-primar-koeniz" in caplog.text
+    own = (await client.get(f"{CASES}/export")).json()["cases"]
+    assert [c["id"] for c in own] == ["doc1-primar-koeniz"]
+
+    edited = {**OWN, "id": "doc1-primar-koeniz", "note": "umbenennen"}
+    put = await client.put(f"{CASES}/doc1-primar-koeniz", json=edited)
+    assert put.status_code == 200, put.text
+    assert not put.json()["read_only"] and put.json()["case"]["note"] == "umbenennen"
+    renamed = await client.put(f"{CASES}/doc1-primar-koeniz", json={**edited, "id": "eigene-doc1"})
+    assert renamed.status_code == 200, renamed.text
+    assert (await client.get(f"{CASES}/doc1-primar-koeniz")).json()["read_only"]
+
+    CaseStore(backend.engine).add([clash], at_most=10)
+    assert (await client.delete(f"{CASES}/doc1-primar-koeniz")).status_code == 204
+    gone = await client.delete(f"{CASES}/doc1-primar-koeniz")
+    assert (gone.status_code, gone.json()["code"]) == (409, "case_read_only")
+    assert (await client.get(f"{CASES}/doc1-primar-koeniz")).status_code == 200
+
+
+def test_a_sample_case_whose_reference_fails_the_checks_reads_invalid(tmp_path: Path) -> None:
+    """C2: computed on read like staleness; the list checks without counting."""
+    world = case_module.sample_world(
+        Settings(data_dir=tmp_path), Limits(max_features=10_000, timeout_s=10)
+    )
+    broken = EvalCase.model_validate(
+        {**OWN, "gold": {"source": "schulen", "where": {**PRIMAR, "attr": "erfunden"}}}
+    )
+    assert case_module.assess_case(broken, world, count=False) == ("invalid", [], None)
+    assert case_module.assess_case(broken, world, count=True) == ("invalid", [], None)
+    fine = EvalCase.model_validate(OWN)
+    status, layers, found = case_module.assess_case(fine, world, count=True)
+    assert (status, layers) == ("ok", [])
+    assert found is not None and found[0] > 0

@@ -31,11 +31,27 @@ import type {
 const STARTED = '2026-10-22T15:30:00'
 const FINISHED = '2026-10-22T16:18:00'
 
-/** A case as the backend sends it: every field, the defaults filled in. */
+/**
+ * A case as the backend sends it: every field, the defaults filled in and an
+ * unset optional field as ``null`` (a view dumps them all).
+ */
 function full(
   c: Omit<EvalCase, 'schema_version' | 'also' | 'forbid' | 'note' | 'layers'> & Partial<EvalCase>,
 ): EvalCase {
-  return { schema_version: '2', also: [], forbid: [], note: '', layers: [], ...c }
+  return {
+    schema_version: '2',
+    origin_action: null,
+    gold: null,
+    gold_any: null,
+    require: null,
+    expect: null,
+    also: [],
+    forbid: [],
+    other_approach: null,
+    note: '',
+    layers: [],
+    ...c,
+  }
 }
 
 /** The start set as the backend sends it (defaults filled in, as ``full``). */
@@ -43,8 +59,12 @@ export const START_CASES: EvalCase[] = [...tuning.cases, ...confirm.cases].map((
   full(c as unknown as Parameters<typeof full>[0]),
 )
 
-/** Own cases as V1.2 shows them: authored, from the log and stale, imported and re-imported. */
-export const OWN_CASES: { case: EvalCase; status: CaseStatus }[] = [
+/**
+ * Own cases as V1.2 shows them: authored, from the log and stale (its layer
+ * Kitas deleted, design fixture), imported and re-imported; ``layers`` are the
+ * ones behind the status (``status_layers``).
+ */
+export const OWN_CASES: { case: EvalCase; status: CaseStatus; layers?: string[] }[] = [
   {
     status: 'ok',
     case: full({
@@ -63,6 +83,7 @@ export const OWN_CASES: { case: EvalCase; status: CaseStatus }[] = [
   },
   {
     status: 'stale',
+    layers: ['kitas'],
     case: full({
       id: 'e-kitas-bahnhof',
       prompt: 'Kitas nahe an Bahnhöfen',
@@ -86,6 +107,7 @@ export const OWN_CASES: { case: EvalCase; status: CaseStatus }[] = [
   },
   {
     status: 'dataset_changed',
+    layers: ['schulwege'],
     case: full({
       id: 'e-schulweg-import',
       prompt: 'Schulen mit Schulweg über 2 km',
@@ -110,7 +132,7 @@ export function caseView(id: string, overrides: Partial<CaseView> = {}): CaseVie
   return {
     case: found,
     status: own?.status ?? 'ok',
-    status_layers: own && own.status !== 'ok' ? own.case.layers.map((l) => l.name).slice(0, 1) : [],
+    status_layers: own?.layers ?? [],
     read_only: start !== undefined,
     reference_hits: null,
     created_at: own ? '2026-10-20T09:12:00' : null,
@@ -310,18 +332,8 @@ export const PROFILE_RAW: ProfileSummary = {
   ],
 }
 
-/** The cases of a run as it asked them (H7): the start set at run time. */
-const RUN_CASES: RunCase[] = START_CASES.map((c) => ({
-  id: c.id,
-  prompt: c.prompt,
-  tags: c.tags,
-  split: c.split,
-  origin: c.origin,
-  readings: c.gold_any ?? (c.gold ? [c.gold] : []),
-  require: c.require ?? null,
-  expect: c.expect ?? null,
-  status: 'ok',
-}))
+/** The cases of a run as it asked them (H7): the whole start case at run time. */
+const RUN_CASES: RunCase[] = START_CASES.map((c) => ({ case: c, status: 'ok' }))
 
 function label(scope: RunView['label']['scope'] = 'full'): RunLabel {
   return {

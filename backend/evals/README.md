@@ -66,8 +66,9 @@ with the median latency, mean tokens and the number of errors.
 ## Metadata ablation (testplan-system-context, Phase 4)
 
 `--profile MODE` strips part of the sample data's metadata before the layer
-profile is built ([profiles.py](profiles.py)); the run header names the mode
-and the profile's hash. `full` is the profile as loaded and sends the P0 prompt
+profile is built ([evaluation/profiles.py](../src/geotandem/evaluation/profiles.py),
+shared with the application's tests); the run header names the mode and the
+profile's hash. `full` is the profile as loaded and sends the P0 prompt
 unchanged.
 
 | Mode | The model no longer sees |
@@ -116,7 +117,7 @@ and `evals/heldout.json`; the testplans still call them so.
 | `wrong:missing <op>` / `wrong:source=…` | a `require` case without the required condition or layer |
 | `refused:<code>` | the application refused the query (`not_representable`, `unknown_attribute`, …) |
 | `kind:<kind>` | a clarification or cannot-answer where a query was due, or the reverse |
-| `other_approach:<x>` | a cannot-answer that offers the other approach where the case names none, or the reverse |
+| `other_approach:<x>` | the offer of the other approach is not the one the case names: `none` demands no offer, `chain` or `direct` that one; a case without `other_approach` checks nothing |
 | `forbidden:<word>` | the answer holds a word the case forbids (an invented layer of the prompt's examples) |
 | `error:<code>` | no usable answer (`llm_timeout`, `model_unreadable`, …) |
 

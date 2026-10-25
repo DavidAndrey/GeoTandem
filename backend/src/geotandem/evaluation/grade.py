@@ -18,11 +18,14 @@ import json
 from dataclasses import dataclass, field, replace
 from typing import Any
 
+from geotandem.catalog import ModelProfile
 from geotandem.data import DataBackend, Limits
 from geotandem.engine import QueryError, ids_query
 from geotandem.evaluation.schemas import EvalCase, Flag, Verdict
 from geotandem.model.result import Answer
 from geotandem.model.schemas import QueryAnswer, Refusal
+from geotandem.model.validate import validate_model_query
+from geotandem.tools import ToolContext
 from geotandem_query import QueryObject
 
 
@@ -52,18 +55,51 @@ def errored(code: str) -> Graded:
     return Graded("error", f"error:{code}", code)
 
 
-def reading_ids(case: EvalCase, backend: DataBackend, limits: Limits) -> list[list[int]] | None:
-    """The feature ids of the reference or each fair reading, in order; ``None``
-    for a case without readings. A ``QueryError`` here is the case's problem,
-    not an answer's: a run marks or skips the case."""
-    golds = case.gold_any or ([case.gold] if case.gold else [])
-    return [ids_query(query_of(gold), backend, limits) for gold in golds] or None
+class ReadingRefused(Exception):
+    """A reading of a case fails the checks of a model's query: the case's
+    problem, not an answer's."""
+
+    def __init__(self, index: int, refusal: Refusal) -> None:
+        super().__init__(f"reading {index}: {refusal.code}")
+        self.index = index
+        self.refusal = refusal
 
 
-def query_of(doc: dict[str, Any]) -> QueryObject:
+def reading_ids(
+    case: EvalCase, context: ToolContext, profile: ModelProfile
+) -> list[list[int]] | None:
+    """The feature ids of the reference or each fair reading, in order, each
+    checked as a model's query first (``check_reading``); ``None`` for a case
+    without readings. ``ReadingRefused`` or a ``QueryError`` here is the case's
+    problem, not an answer's: a run marks or skips the case."""
+    found = []
+    for index, doc in enumerate(case.readings()):
+        query = check_reading(doc, case.schema_version, context, profile)
+        if isinstance(query, Refusal):
+            raise ReadingRefused(index, query)
+        found.append(ids_query(query, context.backend, context.limits, context.unsupported))
+    return found or None
+
+
+def query_of(doc: dict[str, Any], schema_version: str) -> QueryObject:
     """A reference query as a case stores it, without ``schema_version`` and
-    ``output``, as a query object."""
-    return QueryObject.model_validate({"schema_version": "2", "output": "map", **doc})
+    ``output``, as a query object: as the case states it, unchecked (the diff
+    addresses its nodes so)."""
+    return QueryObject.model_validate(_document(doc, schema_version))
+
+
+def check_reading(
+    doc: dict[str, Any], schema_version: str, context: ToolContext, profile: ModelProfile
+) -> QueryObject | Refusal:
+    """A reference as a case stores it, checked as a model's query in the world
+    of ``profile`` (``validate_model_query``): the one way from a reference to
+    the query that runs, for the checks of a case and for a run."""
+    found = validate_model_query(_document(doc, schema_version), context, profile)
+    return found if isinstance(found, Refusal) else found.query
+
+
+def _document(doc: dict[str, Any], schema_version: str) -> dict[str, Any]:
+    return {"schema_version": schema_version, "output": "map", **doc}
 
 
 def conditions(node: dict[str, Any] | None) -> list[dict[str, Any]]:
@@ -103,7 +139,7 @@ def grade(
     result sets are read from ``backend`` within ``limits``. ``readings`` are
     the feature ids of the reference or each fair reading when the caller has
     them already (``reading_ids``, a run reads them once per case); without
-    them they are read here."""
+    them they are read here, unchecked."""
     said = json.dumps(answer.model_dump(mode="json"), ensure_ascii=False).casefold()
     for word in case.forbid:
         if word.casefold() in said:
@@ -124,16 +160,13 @@ def grade(
     if refusal is not None:
         return Graded("refused", f"refused:{refusal.code}", refusal.code)
     assert query is not None
-    if case.gold or case.gold_any:
+    if golds := case.readings():
         # More than one fair reading with different features: any one passes.
-        if case.gold_any:
-            golds = case.gold_any
-        else:
-            assert case.gold is not None
-            golds = [case.gold]
         got = ids_query(query, backend, limits)
         if readings is None:
-            readings = [ids_query(query_of(gold), backend, limits) for gold in golds]
+            readings = [
+                ids_query(query_of(gold, case.schema_version), backend, limits) for gold in golds
+            ]
         assert len(readings) == len(golds)
         if got in readings:
             return replace(PASS, hits=got)
@@ -146,9 +179,11 @@ def grade(
     else:
         present = conditions(query.model_dump(mode="json", exclude_none=True).get("where"))
         for want_condition in need.conditions:
-            if not any(matches(want_condition, c) for c in present):
-                wrong = f"wrong:missing {want_condition['op']}"
+            keys = want_condition.model_dump(exclude_none=True)
+            if not any(matches(keys, c) for c in present):
+                wrong = f"wrong:missing {want_condition.op}"
                 break
+
     if wrong is None:
         return PASS
     # Only for the flags (D6): the harness keeps the tag and discards them, a run

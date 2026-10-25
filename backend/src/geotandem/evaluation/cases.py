@@ -7,27 +7,32 @@ read only, a copy of it becomes an own case. **Own cases** are the rows of
 ``CaseStore``; start and own cases together are at most ``MAX_CASES``, so an
 export of both is still one case file. Ids are unique over both: an own case
 cannot take a start id. Should a later start set bring an id an own case
-already has, the start case wins on read and in the list both show; the
-start says so in its log (``check_start_set``), naming the ids to rename.
+already has, the start case wins on read, the list shows both, an edit or a
+delete of the id reaches the own case, and an export with the start set
+leaves the own case out; the start says so in its log (``check_start_set``),
+naming the ids to rename.
 
 A case runs on a **data state** (D1), here a ``World``: the backend it reads,
 the layer profile the model gets over it and the checks of the model path.
 
 - ``sample``: an isolated SpatiaLite database built from the packaged sample
-  data, as the harness builds it (``evals/run.py``), once per process, then
-  opened read-only, so the start set means the same whatever the live
+  data as the harness builds it (``sample.build_sample``), once per process,
+  then opened read-only, so the start set means the same whatever the live
   catalog holds;
 - ``live``: the live catalog as the administrator sees it (D4), read-only.
 
 A case is checked on its data state when it is created, edited or imported,
-as a model's query is checked (``validate_model_query``): a reference that
+as a model's query is checked (``grade.check_reading``): a reference that
 the application would refuse from a model cannot become the right answer.
-A live case names exactly the layers it uses, and on creation and edit each
-with the dataset version it has now (an imported file keeps its versions).
-A named layer gone or outside the administrator's model world makes it
-``stale`` (D3), so a stale case can only become stale, never be created.
-Its status is computed on every read: ``stale``, or ``dataset_changed`` when
-a layer was re-imported since.
+A live case names exactly the layers it uses, each with the dataset version
+it had when its reference was last checked: stamped on creation, and on an
+edit of its readings, ``require`` or layers; an edit of tags, note or split
+keeps them, and an imported file keeps its own. A named layer gone or
+outside the administrator's model world makes it ``stale`` (D3), so a stale
+case can only become stale, never be created. Its status is computed on
+every read: ``stale``; ``invalid`` when its reference no longer passes the
+checks or no longer runs (the list checks, the detail also counts);
+``dataset_changed`` when a layer was re-imported since.
 
 An imported case is ``origin: import``: an ``authored`` or ``log`` case of a
 file becomes one, and its ``origin_action`` is dropped, since an action id of
@@ -39,9 +44,9 @@ Nothing here logs a case: prompts and references are the administrator's.
 from __future__ import annotations
 
 import atexit
+import json
 import logging
 import shutil
-import tempfile
 import threading
 from collections.abc import Iterable
 from dataclasses import dataclass, field
@@ -59,11 +64,14 @@ from geotandem.config import Settings
 from geotandem.data import DataBackend, Limits, Op
 from geotandem.data.spatialite import SpatiaLiteBackend
 from geotandem.data.view import LayerView
-from geotandem.db.bootstrap import ConfigurationError, bootstrap
+from geotandem.db.bootstrap import ConfigurationError
 from geotandem.db.engine import make_engine
 from geotandem.db.orm import ModelAction
 from geotandem.db.spatialite import reading
 from geotandem.engine import QueryError, count_query
+from geotandem.evaluation.diff import canonical
+from geotandem.evaluation.grade import check_reading
+from geotandem.evaluation.sample import build_sample
 from geotandem.evaluation.schemas import (
     CASE_FILE_FORMAT,
     CASE_FILE_VERSION,
@@ -90,8 +98,7 @@ from geotandem.evaluation.store import (
 from geotandem.model.represent import query_layers
 from geotandem.model.schemas import Refusal
 from geotandem.model.service import profile_for
-from geotandem.model.validate import validate_model_query
-from geotandem.sample.load import load_sample
+from geotandem.sample.load import dataset_version
 from geotandem.tools import ToolContext
 from geotandem_query import QueryObject
 
@@ -168,7 +175,11 @@ def cases_dir(settings: Settings) -> Path:
 
 
 @cache
-def _start_set(directory: Path) -> tuple[EvalCase, ...]:
+def start_set(directory: Path = REPO_CASES) -> tuple[EvalCase, ...]:
+    """The start set of ``directory``, tuning first, read once per process: the
+    one reader of the start set, for the application and the harness
+    (``evals/casefiles.py``); ``ConfigurationError`` if it is missing or
+    invalid."""
     try:
         texts = [(directory / name).read_text("utf-8") for name in START_FILES.values()]
     except OSError as exc:
@@ -188,7 +199,13 @@ def _start_set(directory: Path) -> tuple[EvalCase, ...]:
 def start_cases(settings: Settings) -> tuple[EvalCase, ...]:
     """Both files of the start set, tuning first, each case as its file writes
     it; ``ConfigurationError`` if they are missing or invalid."""
-    return _start_set(cases_dir(settings).resolve())
+    return start_set(cases_dir(settings).resolve())
+
+
+def sample_version() -> str:
+    """The version of the packaged sample data, which a sample run's label names
+    (``RunLabel.sample_version``)."""
+    return dataset_version()
 
 
 def check_start_set(settings: Settings, engine: Engine) -> None:
@@ -197,8 +214,8 @@ def check_start_set(settings: Settings, engine: Engine) -> None:
     ids = {case.id for case in start_cases(settings)}
     if clash := sorted(ids & CaseStore(engine).ids()):
         log.warning(
-            "own evaluation cases share their id with a start case and are hidden "
-            "behind it until renamed: %s",
+            "own evaluation cases share their id with a start case, which wins on "
+            "read and in an export with the start set; rename them: %s",
             ", ".join(clash),
         )
 
@@ -231,9 +248,7 @@ class World:
 
     def check(self, reading: dict[str, Any], schema_version: str) -> QueryObject | Refusal:
         """A reference as the harness stores it, checked as a model's query."""
-        raw = {"schema_version": schema_version, "output": "map", **reading}
-        found = validate_model_query(raw, self.context, self.profile)
-        return found if isinstance(found, Refusal) else found.query
+        return check_reading(reading, schema_version, self.context, self.profile)
 
     def count(self, query: QueryObject) -> int | None:
         """Features of ``query`` under the operating limits; ``None`` if it cannot run."""
@@ -262,29 +277,25 @@ _samples: dict[tuple[int, str], SpatiaLiteBackend] = {}
 
 
 def _build_sample(settings: Settings) -> SpatiaLiteBackend:
-    """A temporary SpatiaLite file, migrated and loaded with the packaged sample,
-    then opened again read-only; removed at exit, or at once if building fails.
-    Its own URL, so a configured ``database_url`` is never touched."""
-    directory = Path(tempfile.mkdtemp(prefix="geotandem-eval-sample-"))
-    path = directory / "sample.sqlite"
-    own = settings.model_copy(update={"data_dir": directory, "database_url": f"sqlite:///{path}"})
+    """The sample as ``build_sample`` builds it, then opened again read-only;
+    removed at exit, or at once if building fails. Its own URL, so a
+    configured ``database_url`` is never touched."""
+    built = build_sample(settings)
+    built.engine.dispose()
     engine: Engine | None = None
     try:
-        engine = bootstrap(own)
-        load_sample(SpatiaLiteBackend(engine, own.internal_crs))
-        engine.dispose()
-        read_only = own.model_copy(
-            update={"database_url": f"sqlite:///file:{path}?mode=ro&uri=true"}
+        read_only = built.settings.model_copy(
+            update={"database_url": f"sqlite:///file:{built.path}?mode=ro&uri=true"}
         )
         engine = reading(make_engine(read_only))
-        backend = SpatiaLiteBackend(engine, own.internal_crs)
+        backend = SpatiaLiteBackend(engine, settings.internal_crs)
         backend.layer_names()  # fails here, not in the first request, if it cannot be read
     except BaseException:
         if engine is not None:
             engine.dispose()
-        shutil.rmtree(directory, ignore_errors=True)
+        shutil.rmtree(built.directory, ignore_errors=True)
         raise
-    atexit.register(shutil.rmtree, directory, ignore_errors=True)
+    atexit.register(shutil.rmtree, built.directory, ignore_errors=True)
     log.info("sample data state built for the evaluation")
     return backend
 
@@ -319,28 +330,23 @@ def live_world(
 # --- a case on its data state ------------------------------------------------------
 
 
-def readings(case: EvalCase) -> list[dict[str, Any]]:
-    """The reference query, or the fair readings; empty for other cases."""
-    return case.gold_any or ([case.gold] if case.gold is not None else [])
-
-
-def status_of(case: EvalCase, world: World) -> tuple[CaseStatus, list[str]]:
-    """D3: a live case with a layer outside the model's world is ``stale``; one
-    whose layer has another dataset version than when it was made is
-    ``dataset_changed``; with the layers behind it."""
+def _gone(case: EvalCase, world: World) -> list[str]:
+    """The named layers of a live case outside the model's world (D3)."""
     if case.data_state != "live":
-        return "ok", []
-    gone = [layer.name for layer in case.layers if layer.name not in world.known]
-    if gone:
-        return "stale", gone
-    changed = [
+        return []
+    return [layer.name for layer in case.layers if layer.name not in world.known]
+
+
+def _changed(case: EvalCase, world: World) -> list[str]:
+    """The layers of a live case with another dataset version than when its
+    reference was last checked (D3)."""
+    if case.data_state != "live":
+        return []
+    return [
         layer.name
         for layer in case.layers
         if world.versions.get(layer.name) != layer.dataset_version
     ]
-    if changed:
-        return "dataset_changed", changed
-    return "ok", []
 
 
 def _check_require(case: EvalCase, world: World) -> set[str]:
@@ -350,7 +356,7 @@ def _check_require(case: EvalCase, world: World) -> set[str]:
     if case.require is None:
         return set()
     named = {case.require.source} | {
-        c["layer"] for c in case.require.conditions if isinstance(c.get("layer"), str)
+        c.layer for c in case.require.conditions if c.layer is not None
     }
     for layer in sorted(named):
         if layer not in world.known:
@@ -362,7 +368,7 @@ def _check_require(case: EvalCase, world: World) -> set[str]:
             )
     attributes = frozenset().union(*(world.attributes(layer) for layer in named))
     for condition in case.require.conditions:
-        attr = condition.get("attr")
+        attr = condition.attr
         if attr is not None and attr not in attributes:
             raise _invalid(
                 case.id,
@@ -373,28 +379,15 @@ def _check_require(case: EvalCase, world: World) -> set[str]:
     return named
 
 
-def check_case(case: EvalCase, world: World, *, stamp: bool) -> EvalCase:
-    """The rules an own case meets before it is stored; the case as stored.
-
-    ``case_invalid``: a start case's origin, a reading the model path would
-    refuse (the refusal's code is the reason), a required layer or attribute
-    the model does not know, a live case whose named layers are not the layers
-    it uses; ``case_stale``: a named layer is not in the model's world. With
-    ``stamp``, a live case's layers get their dataset versions of now."""
-    if case.origin == "start":
-        raise _invalid(case.id, "Only the start set says origin 'start'.", reason="origin_start")
-    status, layers = status_of(case, world)
-    if status == "stale":
-        raise CaseError(
-            409,
-            "case_stale",
-            f"The case '{case.id}' uses the layer '{layers[0]}', which is gone or hidden.",
-            case_id=case.id,
-            layer=layers[0],
-            layers=layers,
-        )
+def _checked(case: EvalCase, world: World) -> tuple[list[QueryObject], set[str]]:
+    """Each reading checked as a model's query, no two of one canonical form
+    (stage 1, ``diff.canonical``), and what a ``require`` names known: the
+    readings as they run and the layers the reference uses; ``case_invalid``
+    otherwise (the refusal's code is the reason)."""
+    queries: list[QueryObject] = []
     used: set[str] = set()
-    for index, doc in enumerate(readings(case)):
+    seen: dict[str, int] = {}
+    for index, doc in enumerate(case.readings()):
         found = world.check(doc, case.schema_version)
         if isinstance(found, Refusal):
             # The refusal's details (attribute, layer, limit …) name what failed;
@@ -409,8 +402,69 @@ def check_case(case: EvalCase, world: World, *, stamp: bool) -> EvalCase:
                 reading=index,
                 **named,
             )
+        key = json.dumps(canonical(found), sort_keys=True)
+        if key in seen:
+            raise _invalid(
+                case.id,
+                f"Readings {seen[key]} and {index} of the case '{case.id}' are the same query.",
+                reason="duplicate_reading",
+                reading=index,
+                same_as=seen[key],
+            )
+        seen[key] = index
+        queries.append(found)
         used |= query_layers(found)
     used |= _check_require(case, world)
+    return queries, used
+
+
+def assess_case(
+    case: EvalCase, world: World, *, count: bool
+) -> tuple[CaseStatus, list[str], list[int] | None]:
+    """D3 on read: the status, the layers behind it, and with ``count`` the
+    features of each reading (V2.3). ``stale``: a named layer is outside the
+    model's world; ``invalid``: the reference no longer passes the checks (or,
+    counted, a reading no longer runs); ``dataset_changed``: a layer was
+    re-imported since. Hits are ``None`` for a case without readings, a stale
+    or an invalid one, and without ``count``."""
+    if gone := _gone(case, world):
+        return "stale", gone, None
+    try:
+        queries, _ = _checked(case, world)
+    except CaseError:
+        return "invalid", [], None
+    hits: list[int] | None = None
+    if count and queries:
+        counted = [world.count(query) for query in queries]
+        if any(n is None for n in counted):
+            return "invalid", [], None
+        hits = [n for n in counted if n is not None]
+    if changed := _changed(case, world):
+        return "dataset_changed", changed, hits
+    return "ok", [], hits
+
+
+def check_case(case: EvalCase, world: World, *, stamp: bool) -> EvalCase:
+    """The rules an own case meets before it is stored; the case as stored.
+
+    ``case_invalid``: a start case's origin, a reading the model path would
+    refuse (the refusal's code is the reason), two readings of one canonical
+    form (``duplicate_reading``), a required layer or attribute the model does
+    not know, a live case whose named layers are not the layers it uses;
+    ``case_stale``: a named layer is not in the model's world. With ``stamp``,
+    a live case's layers get their dataset versions of now."""
+    if case.origin == "start":
+        raise _invalid(case.id, "Only the start set says origin 'start'.", reason="origin_start")
+    if layers := _gone(case, world):
+        raise CaseError(
+            409,
+            "case_stale",
+            f"The case '{case.id}' uses the layer '{layers[0]}', which is gone or hidden.",
+            case_id=case.id,
+            layer=layers[0],
+            layers=layers,
+        )
+    _, used = _checked(case, world)
     if case.data_state != "live":
         return case
     listed = {layer.name for layer in case.layers}
@@ -437,20 +491,18 @@ def check_case(case: EvalCase, world: World, *, stamp: bool) -> EvalCase:
     return case.model_copy(update={"layers": current})
 
 
-def reference_hits(case: EvalCase, world: World) -> list[int] | None:
-    """Features of each reading on the case's data state (V2.3); ``None`` for a
-    case without readings, a stale one, or one whose reading no longer passes
-    the checks or no longer runs."""
-    if not readings(case) or status_of(case, world)[0] == "stale":
-        return None
-    hits = []
-    for doc in readings(case):
-        found = world.check(doc, case.schema_version)
-        count = None if isinstance(found, Refusal) else world.count(found)
-        if count is None:
-            return None
-        hits.append(count)
-    return hits
+def reference_changed(old: EvalCase, new: EvalCase) -> bool:
+    """Whether an edit touches what the reference demands (its readings,
+    ``require``, layers, data state or schema version): only then are a live
+    case's dataset versions stamped again (D3), so *Datenstand geändert* means
+    "since the reference was last checked"."""
+    return (
+        old.readings() != new.readings()
+        or old.require != new.require
+        or [layer.name for layer in old.layers] != [layer.name for layer in new.layers]
+        or old.data_state != new.data_state
+        or old.schema_version != new.schema_version
+    )
 
 
 def as_imported(case: EvalCase) -> EvalCase:
@@ -468,8 +520,8 @@ def as_imported(case: EvalCase) -> EvalCase:
 
 class Cases:
     """The start set and the own cases as one administrator works on them: a
-    live world is that administrator's (D4). Worlds are made on first need, so
-    a list of start cases builds no sample database."""
+    live world is that administrator's (D4). Worlds are made on first need; the
+    sample's database is built once per process (``sample_backend``)."""
 
     def __init__(
         self,
@@ -509,14 +561,7 @@ class Cases:
         else:
             case, read_only = stored.case, False
             times = {"created_at": stored.created_at, "updated_at": stored.updated_at}
-        status: CaseStatus = "ok"
-        layers: list[str] = []
-        found: list[int] | None = None
-        if case.data_state == "live" or hits:
-            world = self.world(case.data_state)
-            status, layers = status_of(case, world)
-            if hits:
-                found = reference_hits(case, world)
+        status, layers, found = assess_case(case, self.world(case.data_state), count=hits)
         return CaseView(
             case=case,
             status=status,
@@ -574,16 +619,21 @@ class Cases:
         return self._view(stored, hits=True)
 
     def update(self, case_id: str, case: EvalCase) -> CaseView:
-        """Editing a stale case so that it passes makes it run again (D3); the id
-        may change to one that is free."""
-        if case_id in self._start_ids:
-            raise _read_only(case_id)
-        if self.store.get(case_id) is None:
-            raise _not_found(case_id)
+        """Editing a stale or invalid case so that it passes makes it run again
+        (D3); the id may change to one that is free. An own case behind a start
+        id is reached here; the start case stays read-only. A live case's
+        dataset versions are stamped again only when its reference changes
+        (``reference_changed``)."""
+        old = self.store.get(case_id)
+        if old is None:
+            raise _read_only(case_id) if case_id in self._start_ids else _not_found(case_id)
         if case.id != case_id and case.id in self._start_ids:
             raise _taken(case.id)
         self._check_origin(case)
-        case = check_case(case, self.world(case.data_state), stamp=True)
+        restamp = reference_changed(old.case, case)
+        case = check_case(case, self.world(case.data_state), stamp=restamp)
+        if not restamp and case.data_state == "live":
+            case = case.model_copy(update={"layers": old.case.layers})
         try:
             stored = self.store.replace(case_id, case)
         except CaseIdTaken:
@@ -593,16 +643,23 @@ class Cases:
         return self._view(stored, hits=True)
 
     def delete(self, case_id: str) -> None:
-        if case_id in self._start_ids:
-            raise _read_only(case_id)
-        if not self.store.delete(case_id):
-            raise _not_found(case_id)
+        """An own case behind a start id is reached here; the start case stays."""
+        if self.store.delete(case_id):
+            return
+        raise _read_only(case_id) if case_id in self._start_ids else _not_found(case_id)
 
     def export(self, *, start: bool) -> CaseFile:
-        """The own cases as stored, with ``start`` the start set before them.
-        ``format`` and ``version`` are set, so a file without ``null`` and unset
-        fields still names itself."""
+        """The own cases as stored, with ``start`` the start set before them;
+        then an own case behind a start id is left out (one file, unique ids)
+        and named in the log. ``format`` and ``version`` are set, so a file
+        without ``null`` and unset fields still names itself."""
         own = [stored.case for stored in self.store.cases()]
+        if start and (hidden := [c.id for c in own if c.id in self._start_ids]):
+            log.warning(
+                "export with the start set leaves out own cases behind a start id: %s",
+                ", ".join(hidden),
+            )
+            own = [c for c in own if c.id not in self._start_ids]
         return CaseFile(
             format=CASE_FILE_FORMAT,
             version=CASE_FILE_VERSION,

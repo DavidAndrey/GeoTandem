@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from pydantic import ValidationError
 from test_eval_grade import ANSWERS, LIMITS, START
 
 from geotandem.catalog import model_profile
@@ -25,11 +26,12 @@ from geotandem.evaluation import grade as grade_module
 from geotandem.evaluation import stages as stages_module
 from geotandem.evaluation.diff import canonical, diff
 from geotandem.evaluation.grade import query_of, reading_ids
-from geotandem.evaluation.schemas import MAX_IDS, AnswerView, DiffEntry
+from geotandem.evaluation.schemas import MAX_IDS, AnswerView, DiffEntry, EvalCase
 from geotandem.evaluation.stages import Assessment, assess, unanswered
 from geotandem.llm import Completion
 from geotandem.model.result import parse_answer
 from geotandem.model.schemas import QueryAnswer
+from geotandem.model.shapes import plain
 from geotandem.model.validate import Validated, validate_model_query
 from geotandem.tools import ToolContext
 from geotandem_query import QueryObject
@@ -55,7 +57,15 @@ def assessed(item: dict[str, Any], backend: DataBackend) -> Assessment:
         else:
             refusal = checked
     case = START[item["case"]]
-    return assess(case, answer, refusal, query, backend, LIMITS, reading_ids(case, backend, LIMITS))
+    return assess(
+        case, answer, refusal, query, backend, LIMITS, readings=readings_of(case, backend)
+    )
+
+
+def readings_of(case: EvalCase, backend: DataBackend) -> list[list[int]] | None:
+    """The case's readings as a run reads them: checked in the sample's profile."""
+    profile = model_profile(backend.engine, backend.layer_names())
+    return reading_ids(case, ToolContext(backend=backend, limits=LIMITS), profile)
 
 
 def entries(found: Assessment) -> list[tuple[str, str]]:
@@ -183,7 +193,7 @@ def test_a_wrong_gold_any_answer_refers_to_the_nearest_reading(sample: DataBacke
     case = START[item["case"]]
     assert case.gold_any is not None
     answer = QueryObject.model_validate(item["answer"]["query"])
-    assert len(diff(query_of(case.gold_any[0]), answer)) == 3
+    assert len(diff(query_of(case.gold_any[0], case.schema_version), answer)) == 3
     assert (found.hits, found.reference_hits, found.only_reference_count) == (0, 8, 8)
 
 
@@ -250,7 +260,7 @@ def test_the_id_lists_are_capped_and_the_counts_exact(sample: DataBackend) -> No
             "query": {"source": "haltestellen"},
         }
     )
-    found = assess(case, answer, None, every, sample, LIMITS, reading_ids(case, sample, LIMITS))
+    found = assess(case, answer, None, every, sample, LIMITS, readings=readings_of(case, sample))
     assert found.verdict == "wrong"
     assert found.hits is not None and found.reference_hits is not None
     assert found.only_answer_count == found.hits - found.reference_hits > MAX_IDS
@@ -291,7 +301,7 @@ def test_a_gold_case_takes_the_answers_hits_from_the_grader(
     they come from the caller (``reading_ids``, once per case)."""
     item = RECORDED[what]
     case = START[item["case"]]
-    readings = reading_ids(case, sample, LIMITS)
+    readings = readings_of(case, sample)
     calls: list[QueryObject] = []
     real = ids_query
 
@@ -308,7 +318,7 @@ def test_a_gold_case_takes_the_answers_hits_from_the_grader(
         answer.query, ToolContext(backend=sample, limits=LIMITS), profile
     )
     assert isinstance(checked, Validated)
-    found = assess(case, answer, None, checked.query, sample, LIMITS, readings)
+    found = assess(case, answer, None, checked.query, sample, LIMITS, readings=readings)
     assert found.verdict == item["tag"].split(":")[0]
     assert found.hits is not None and found.diff is not None
     assert len(calls) == 1
@@ -501,11 +511,11 @@ def test_a_diff_holds_only_the_queries_own_values(sample: DataBackend) -> None:
     own conditions, no row content."""
     for item in RECORDED.values():
         case = START[item["case"]]
-        readings = case.gold_any or ([case.gold] if case.gold else [])
         answer = QueryObject.model_validate(item["answer"]["query"])
-        for reading in readings:
-            own = _scalars(canonical(query_of(reading))) | _scalars(canonical(answer))
-            for entry in diff(query_of(reading), answer):
+        for reading in case.readings():
+            stated = query_of(reading, case.schema_version)
+            own = _scalars(canonical(stated)) | _scalars(canonical(answer))
+            for entry in diff(stated, answer):
                 assert _scalars(entry.reference) | _scalars(entry.answer) <= own
 
 
@@ -515,3 +525,42 @@ def _scalars(value: Any) -> set[str]:
     if isinstance(value, list):
         return {s for v in value for s in _scalars(v)}
     return set() if value is None else {json.dumps(value)}
+
+
+def _recorded_queries() -> list[QueryObject]:
+    found = []
+    for item in [*ANSWERS, *RECORDED.values()]:
+        query = item.get("answer", {}).get("query")
+        # An answer refused at stage 0 for its schema has no query object.
+        if query is not None and _valid(query):
+            found.append(QueryObject.model_validate(query))
+    return found
+
+
+def _valid(query: dict[str, Any]) -> bool:
+    try:
+        QueryObject.model_validate(query)
+    except ValidationError:
+        return False
+    return True
+
+
+def test_the_canonical_form_takes_in_every_rule_of_the_harmless_shapes() -> None:
+    """D5: what ``shapes.plain`` rewrites (E-3) the diff sees as equal, so a new
+    rule there cannot silently diverge from stage 1."""
+    queries = _recorded_queries()
+    assert len(queries) > 20
+    for query in queries:
+        assert diff(query, plain(query)) == [], query
+
+
+def test_the_readings_must_be_given_for_a_case_with_readings(sample: DataBackend) -> None:
+    """WP90: no silent skip of the diff when the caller forgot the readings."""
+    item = RECORDED["pass-reordered"]
+    case = START[item["case"]]
+    answer = parse_answer(Completion(text=json.dumps(item["answer"])), "direct")
+    with pytest.raises(ValueError, match="readings"):
+        assess(case, answer, None, None, sample, LIMITS, readings=None)
+    behaviour = START["n15-je-gemeinde"]
+    with pytest.raises(ValueError, match="readings"):
+        assess(behaviour, answer, None, None, sample, LIMITS, readings=[[1]])
