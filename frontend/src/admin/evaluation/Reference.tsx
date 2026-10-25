@@ -5,52 +5,16 @@
 import { Trans } from '@lingui/react/macro'
 import { t } from '@lingui/core/macro'
 import { DropdownMenu } from 'radix-ui'
-import { useMemo, useState, type ReactNode } from 'react'
-import { useNavigate } from 'react-router'
+import { useMemo, type ReactNode } from 'react'
 import type { QueryPart } from '../../analysis/model'
-import { currentAnalysis, useAnalysis } from '../../analysis/store'
 import type { DataState } from '../../api/client'
 import { useLayers } from '../../api/queries'
-import { ConfirmDialog } from '../../components/ui'
 import { useCounts } from '../../editor/useCounts'
 import { hitsOf } from '../../i18n/phrases'
 import { QueryTree } from '../../model/tree'
-import { wouldLose } from '../../queries/part'
-import { useSession } from '../../session/store'
-import { analysisOf, partOf } from './reference'
+import { useOpenInWorkplace } from './openInWorkplace'
+import { analysisOf, notOpenable, partOf } from './reference'
 import { dataStateText, hitsText, readingName } from './words'
-
-/** Replaces the workplace's query with ``part`` and goes there (the open session, if any). */
-function useOpenInWorkplace() {
-  const navigate = useNavigate()
-  const [pending, setPending] = useState<QueryPart | null>(null)
-  const go = (part: QueryPart) => {
-    useAnalysis.getState().applyQuery(part, null)
-    const session = useSession.getState().current
-    navigate(session ? `/sitzung/${session.id}` : '/')
-  }
-  const open = (part: QueryPart) => {
-    const s = useAnalysis.getState()
-    // As a saved query opens (B1): unsaved conditions are not dropped without a question.
-    if (wouldLose(currentAnalysis(s), s.queryRef)) setPending(part)
-    else go(part)
-  }
-  const dialog = (
-    <ConfirmDialog
-      open={pending !== null}
-      onOpenChange={(next) => !next && setPending(null)}
-      title={t`Abfrage im Arbeitsplatz ersetzen?`}
-      confirm={t`Ersetzen`}
-      onConfirm={() => pending && go(pending)}
-    >
-      <Trans>
-        Die Abfrage im Arbeitsplatz hat ungespeicherte Bedingungen. Sie wird durch die Referenz des
-        Prüffalls ersetzt.
-      </Trans>
-    </ConfirmDialog>
-  )
-  return { open, dialog }
-}
 
 /** One reading: its tree with the hits per condition where they can be counted, and its hits. */
 function Reading({
@@ -137,7 +101,7 @@ export function Reference({
   const { open, dialog } = useOpenInWorkplace()
   const several = docs.length > 1
   const openable = parts.some((p) => p !== null)
-  const why = t`Die Referenz lässt sich im Arbeitsplatz nicht darstellen: Ein Layer fehlt dort, oder sie nutzt mehr, als die Bedienelemente zeigen.`
+  const why = notOpenable()
   return (
     <div className="flex flex-col gap-3">
       {docs.map((doc, i) => (

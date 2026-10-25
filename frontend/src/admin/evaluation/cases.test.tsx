@@ -43,19 +43,22 @@ const rowIds = () =>
 
 beforeEach(() => vi.stubGlobal('scrollTo', () => undefined))
 
-test('Bewertung is active in the navigation and enters on the Prüffälle tab', async () => {
+test('Bewertung is active in the navigation and enters on the Läufe tab', async () => {
   backend()
   renderAt('/admin/daten', <App />)
   const nav = await screen.findByRole('navigation', { name: 'Administration' })
   const entry = within(nav).getByRole('link', { name: 'Bewertung' })
-  expect(entry).toHaveAttribute('href', '/admin/bewertung/faelle')
+  expect(entry).toHaveAttribute('href', '/admin/bewertung')
   expect(within(nav).queryByText(/ab E3/)).toBeNull()
 })
 
-test('the Läufe tab holds a placeholder until WP93', async () => {
-  backend()
+test('the Läufe tab is the default of Bewertung', async () => {
+  backend(casePage(), {
+    'GET /api/admin/evaluation/runs': { items: [], total: 0 },
+    'GET /api/admin/llm/connections': [],
+  })
   renderAt('/admin/bewertung', <App />)
-  expect(await screen.findByText(/Bewertungsläufe folgen/)).toBeInTheDocument()
+  expect(await screen.findByText('Noch keine Bewertung')).toBeInTheDocument()
   const tabs = screen.getByRole('navigation', { name: 'Bewertung' })
   expect(within(tabs).getByRole('link', { name: 'Läufe' })).toHaveAttribute('aria-current', 'page')
   // The group entry stays marked on every tab of Bewertung.

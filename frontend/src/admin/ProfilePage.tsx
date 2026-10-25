@@ -10,9 +10,10 @@ import { t } from '@lingui/core/macro'
 import { useState } from 'react'
 import { useSearchParams } from 'react-router'
 import type { DataState, ProfilePreview } from '../api/client'
-import { useModelProfile, useProfileSummary, useUsers } from '../api/queries'
+import { useMe, useModelProfile, useProfileSummary, useUsers } from '../api/queries'
 import { ErrorNotice, Loading } from '../components/ui'
 import { formatNumber } from '../i18n/locale'
+import { useMeasured } from './evaluation/measured'
 import { typeLabel } from './format'
 import { ProfileCompleteness } from './ProfileCompleteness'
 
@@ -32,6 +33,7 @@ function domainText(a: AttributeProfile): string {
 
 export function ProfilePage() {
   const users = useUsers()
+  const me = useMe()
   const [account, setAccount] = useState('')
   const [dataState, setDataState] = useState<DataState>('live')
   // From the import wizard: the layer just imported, its gaps first.
@@ -39,6 +41,9 @@ export function ProfilePage() {
   const imported = dataState === 'live' ? (params.get('layer') ?? undefined) : undefined
   const profile = useModelProfile(account)
   const summary = useProfileSummary(dataState, account)
+  // Whose view the summary shows: the chosen account, else the caller's.
+  const viewer = account || me.data?.username || ''
+  const measured = useMeasured(dataState, viewer, summary.data?.profile_hash)
   const data = profile.data
   const size = data ? formatNumber(data.size_chars) : ''
   const tokens = data ? formatNumber(data.tokens_estimate) : ''
@@ -98,6 +103,7 @@ export function ProfilePage() {
         <ProfileCompleteness
           summary={summary.data}
           imported={imported}
+          measured={measured}
           heading={
             dataState === 'sample'
               ? t`Vollständigkeit · Beispieldaten`

@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, expect, test, vi } from 'vitest'
 import { App } from '../App'
 import type { CheckResult, ConnectionInfo } from '../api/client'
+import { runPage } from '../test/eval-mocks'
 import { signedIn } from '../test/fixtures'
 import { fakeApi, renderAt } from '../test/render'
 
@@ -466,4 +467,40 @@ test('a saved connection is tested from its menu', async () => {
   await userEvent.click(screen.getByRole('menuitem', { name: 'Verbindung testen' }))
   const result = await screen.findByRole('region', { name: 'Verbindungstest „Ollama"' })
   expect(within(result).getByText('Verbindungstest bestanden')).toBeInTheDocument()
+})
+
+test('"zuletzt bewertet": the newest run that measured a connection, with a link (O7)', async () => {
+  const calls = fakeApi({
+    ...signedIn(),
+    [`GET ${URL}`]: [connection(), cloud],
+    'GET /api/admin/evaluation/runs': (_init: RequestInit | undefined, url: string) => {
+      const id = new URLSearchParams(url.split('?')[1]).get('connection_id')
+      const page = runPage()
+      return id === '1' ? { items: [page.items[1]], total: 1 } : { items: [], total: 0 }
+    },
+  })
+  renderAt('/admin/modelle', <App />)
+  const row = (await screen.findByText('Ollama')).closest('tr')
+  if (!row) throw new Error('no row')
+  expect(await within(row).findByRole('link', { name: 'Lauf #13' })).toHaveAttribute(
+    'href',
+    '/admin/bewertung/lauf/13',
+  )
+  const other = screen.getByText('Cloud').closest('tr')
+  expect(await within(other as HTMLElement).findByText('noch nie')).toBeInTheDocument()
+  const asked = calls.filter((c) => c.key === 'GET /api/admin/evaluation/runs')
+  expect(asked).toHaveLength(2)
+})
+
+test('"Zur Anbindung" of a run: the connection named in the address is focused and marked', async () => {
+  fakeApi({
+    ...signedIn(),
+    [`GET ${URL}`]: [connection(), cloud],
+    'GET /api/admin/evaluation/runs': { items: [], total: 0 },
+  })
+  renderAt('/admin/modelle#anbindung-2', <App />)
+  const row = (await screen.findByText('Cloud')).closest('tr')
+  await vi.waitFor(() => expect(row).toHaveFocus())
+  expect(row).toHaveAttribute('aria-current', 'location')
+  expect(screen.getByText('Ollama').closest('tr')).not.toHaveAttribute('aria-current')
 })

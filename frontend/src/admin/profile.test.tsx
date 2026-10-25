@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, expect, test, vi } from 'vitest'
 import { App } from '../App'
 import type { LayerGaps, ProfilePreview, ProfileSummary } from '../api/client'
+import { runPage, runView } from '../test/eval-mocks'
 import { account, attribute, signedIn } from '../test/fixtures'
 import { fakeApi, renderAt } from '../test/render'
 import { AttributeRows } from './LayerPage'
@@ -311,4 +312,64 @@ test('a share is never rounded up to 100 while something is missing', () => {
   expect(percent(199, 200)).toBe(99)
   expect(percent(0, 0)).toBeNull()
   expect(percent(3, 3)).toBe(100)
+})
+
+test('V8.1: a gap names what the newest complete run measured on the layer', async () => {
+  const haltestellen = { ...withGaps.gaps[0], layer: 'haltestellen', title: 'Haltestellen' }
+  fakeApi({
+    ...signedIn(),
+    'GET /api/admin/users': [account()],
+    ...summaryRoute([], { ...withGaps, gaps: [haltestellen] }),
+    'GET /api/admin/evaluation/runs': runPage(),
+    'GET /api/admin/evaluation/runs/13': runView('done'),
+  })
+  renderAt('/admin/steckbrief', <App />)
+  await userEvent.click(await screen.findByRole('radio', { name: 'Beispieldaten' }))
+  const gaps = await screen.findByRole('region', { name: 'Lücken in Haltestellen' })
+  expect(
+    await within(gaps).findByText(
+      /^Gemessen: gpt-6-luna P0 hatte auf diesem Layer .* \(Lauf #13, .*\)\. Steckbrief damals #b20a, heute anders\.$/,
+    ),
+  ).toBeInTheDocument()
+})
+
+test("V8.1 live: a full run (never a quick test) that saw the chosen account's view", async () => {
+  const haltestellen = { ...withGaps.gaps[0], layer: 'haltestellen', title: 'Haltestellen' }
+  const done = runView('done')
+  const live = (id: number, account: string, scope: 'full' | 'quick' = 'full') => ({
+    ...done,
+    id,
+    label: { ...done.label, data_state: 'live' as const, account, scope },
+  })
+  const summary = (id: number, scope: 'full' | 'quick' = 'full') => ({
+    ...runPage().items[1],
+    id,
+    scope,
+    data_state: 'live' as const,
+  })
+  const asked: string[] = []
+  fakeApi({
+    ...signedIn(),
+    'GET /api/admin/users': [account(), account({ id: 2, username: 'm.keller', role: 'user' })],
+    'GET /api/admin/llm/profile': profile,
+    ...summaryRoute([], {
+      ...withGaps,
+      profile_hash: done.label.profile.profile_hash,
+      gaps: [haltestellen],
+    }),
+    'GET /api/admin/evaluation/runs': {
+      items: [summary(31, 'quick'), summary(30), summary(29)],
+      total: 3,
+    },
+    'GET /api/admin/evaluation/runs/31': () => (asked.push('31'), live(31, 'm.keller', 'quick')),
+    'GET /api/admin/evaluation/runs/30': () => (asked.push('30'), live(30, 'admin')),
+    'GET /api/admin/evaluation/runs/29': () => (asked.push('29'), live(29, 'm.keller')),
+  })
+  renderAt('/admin/steckbrief', <App />)
+  await screen.findByRole('option', { name: 'm.keller' })
+  await userEvent.selectOptions(screen.getByLabelText('Konto'), 'm.keller')
+  const gaps = await screen.findByRole('region', { name: 'Lücken in Haltestellen' })
+  // #31 is a quick test, #30 saw admin's view: #29. The same profile: no note.
+  expect(await within(gaps).findByText(/^Gemessen: .* \(Lauf #29, [^)]*\)\.$/)).toBeInTheDocument()
+  expect(asked).not.toContain('31')
 })

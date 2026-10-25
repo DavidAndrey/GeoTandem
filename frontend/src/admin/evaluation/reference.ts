@@ -74,3 +74,7 @@ export function referenceFor(
   if (!partOf(gold, catalog)) return { gold: null, problem: errorText('not_representable') }
   return { gold, schemaVersion: query.schema_version ?? '2', problem: null }
 }
+
+/** Why a query cannot open in the workplace (V2.1, V7.2): the controls cannot show it. */
+export const notOpenable = () =>
+  t`Die Abfrage lässt sich im Arbeitsplatz nicht darstellen: Ein Layer fehlt dort, oder sie nutzt mehr, als die Bedienelemente zeigen.`

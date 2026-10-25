@@ -7,7 +7,12 @@ import { CatalogPage } from './admin/CatalogPage'
 import { ConnectionsPage } from './admin/ConnectionsPage'
 import { CaseDetailPage, CaseFromLogPage } from './admin/evaluation/CaseDetailPage'
 import { CasesPage } from './admin/evaluation/CasesPage'
-import { EvaluationLayout, RunsPlaceholder } from './admin/evaluation/EvaluationLayout'
+import { ComparisonPage } from './admin/evaluation/ComparisonPage'
+import { EvaluationLayout } from './admin/evaluation/EvaluationLayout'
+import { NewRunPage } from './admin/evaluation/NewRunPage'
+import { RunCasePage } from './admin/evaluation/RunCasePage'
+import { RunPage } from './admin/evaluation/RunPage'
+import { RunsPage } from './admin/evaluation/RunsPage'
 import { ImportLogPage } from './admin/ImportLogPage'
 import { ImportRunPage } from './admin/ImportRunPage'
 import { ImportWizard } from './admin/ImportWizard'
@@ -138,9 +143,13 @@ export function App() {
               <Route path="modellprotokoll" element={<ModelLogPage />} />
               <Route path="modellprotokoll/:id" element={<ModelActionPage />} />
               <Route path="bewertung" element={<EvaluationLayout />}>
-                <Route index element={<RunsPlaceholder />} />
+                <Route index element={<RunsPage />} />
                 <Route path="faelle" element={<CasesPage />} />
               </Route>
+              <Route path="bewertung/lauf/neu" element={<NewRunPage />} />
+              <Route path="bewertung/lauf/:id" element={<RunPage />} />
+              <Route path="bewertung/lauf/:id/gegen/:other" element={<ComparisonPage />} />
+              <Route path="bewertung/lauf/:id/fall/:fall" element={<RunCasePage />} />
               <Route path="bewertung/faelle/:id" element={<CaseDetailPage />} />
               <Route path="bewertung/faelle/aus-protokoll/:action" element={<CaseFromLogPage />} />
               <Route path="system" element={<SystemPage />} />

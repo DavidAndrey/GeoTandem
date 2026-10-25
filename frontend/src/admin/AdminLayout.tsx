@@ -31,8 +31,8 @@ const groups = (): Group[] => [
       { to: '/admin/stufen', label: t`Stufen` },
       { to: '/admin/steckbrief', label: t`Was das Modell sieht` },
       { to: '/admin/modellprotokoll', label: t`Modellprotokoll` },
-      // Enters on Prüffälle until WP93 builds Läufe, the design's default tab.
-      { to: '/admin/bewertung/faelle', label: t`Bewertung`, within: '/admin/bewertung' },
+      // Enters on Läufe, the design's default tab (V5).
+      { to: '/admin/bewertung', label: t`Bewertung`, within: '/admin/bewertung' },
     ],
   },
   {

@@ -7,12 +7,14 @@ import tuning from '../../../schema/eval-cases/start-tuning.json'
 import confirm from '../../../schema/eval-cases/start-confirm.json'
 import type {
   AnswerView,
+  ConnectionInfo,
   CasePage,
   CaseStatus,
   CaseView,
   Cell,
   CostEstimate,
   EvalCase,
+  Schemas,
   PointComparison,
   PointFigures,
   PointLabel,
@@ -258,13 +260,14 @@ const CELLS: Record<string, [number, Partial<Record<Verdict, number>>, number][]
     [0, { wrong: 10 }, 2],
     [0, { wrong: 9, refused: 1 }, 0],
     [0, { wrong: 10 }, 1],
-    [0, { wrong: 10 }, 1],
-  ],
-  'n03-einwohner-tabelle': [
-    [7, { wrong: 3 }, 0],
-    [10, {}, 0],
-    [9, { wrong: 1 }, 0],
     [4, { wrong: 6 }, 6],
+  ],
+  // A behaviour case (``expect: cannot_answer``): a miss is another kind of answer.
+  'n03-einwohner-tabelle': [
+    [7, { kind: 3 }, 0],
+    [10, {}, 0],
+    [9, { kind: 1 }, 0],
+    [4, { kind: 6 }, 0],
   ],
   'attr-franzoesisch': [
     [10, {}, 0],
@@ -466,10 +469,23 @@ export const COST_ESTIMATE: CostEstimate = {
   external_hosts: ['api.anthropic.com', 'api.openai.com'],
 }
 
-/** V7.2: Luna with P9 on ``n03``, silently wrong: no filter, the explanation claims one. */
+/** The reference of ``n13`` (start set): schools within 1 km of the stop "Bern". */
+const N13_NEAR = {
+  op: 'related',
+  layer: 'haltestellen',
+  predicate: 'dwithin',
+  distance_m: 1000,
+  where: { op: 'compare', attr: 'name', cmp: 'eq', value: 'Bern' },
+}
+
+/**
+ * V7.2: Luna with P9 on ``n13``, silently wrong: no filter, the explanation
+ * claims one. A query case (a behaviour case has no readings, so no diff); the
+ * diff's path addresses the stored reference, the ids are capped with exact counts.
+ */
 export function answerViews(): AnswerView[] {
   const wrong = (block: number, seed: number): AnswerView => ({
-    case_id: 'n03-einwohner-tabelle',
+    case_id: 'n13-bahnhof-bern',
     point: 3,
     block,
     seed,
@@ -481,25 +497,18 @@ export function answerViews(): AnswerView[] {
     completion_tokens: 94,
     answer: {
       kind: 'query',
-      explanation: 'Ich habe Gemeinden mit mehr als 10 000 Einwohnern gewählt.',
+      explanation: 'Ich habe Schulen im Umkreis von 1 km um den Bahnhof Bern gewählt.',
       assumptions: [],
-      query: { source: 'gemeinden', output: 'map' },
+      query: { source: 'schulen', output: 'map' },
     },
     refusal: null,
     raw: null,
     reading: 0,
-    diff: [
-      {
-        kind: 'missing',
-        path: 'where',
-        reference: { op: 'compare', attr: 'einwohner', cmp: 'gt', value: 10000 },
-        answer: null,
-      },
-    ],
-    hits: 102,
-    reference_hits: 13,
-    only_answer: Array.from({ length: 89 }, (_, i) => i + 14),
-    only_answer_count: 89,
+    diff: [{ kind: 'missing', path: 'where', reference: N13_NEAR, answer: null }],
+    hits: 236,
+    reference_hits: 23,
+    only_answer: Array.from({ length: 200 }, (_, i) => i + 24),
+    only_answer_count: 213,
     only_reference: [],
     only_reference_count: 0,
   })
@@ -507,8 +516,14 @@ export function answerViews(): AnswerView[] {
     ...wrong(block, seed),
     verdict: 'pass',
     flags: [],
+    answer: {
+      kind: 'query',
+      explanation: 'Schulen im Umkreis von 1 km um die Haltestelle Bern.',
+      assumptions: [{ text: 'Bahnhof Bern = Haltestelle „Bern“', condition: [0] }],
+      query: { source: 'schulen', where: N13_NEAR, output: 'map' },
+    },
     diff: [],
-    hits: 13,
+    hits: 23,
     only_answer: [],
     only_answer_count: 0,
   })
@@ -517,6 +532,184 @@ export function answerViews(): AnswerView[] {
       ? wrong(seed > 5 ? 2 : 1, seed)
       : right(seed > 5 ? 2 : 1, seed),
   )
+}
+
+/** V7.3: right, worded otherwise: the second reading's form of "in Köniz"; the diff stays. */
+export function rightOtherwise(): AnswerView {
+  return {
+    ...answerViews()[0],
+    case_id: 'doc1-primar-koeniz',
+    point: 0,
+    verdict: 'pass',
+    flags: [],
+    answer: {
+      kind: 'query',
+      explanation: 'Primarschulen in der Gemeinde Köniz.',
+      assumptions: [],
+      query: {
+        source: 'schulen',
+        where: { op: 'compare', attr: 'typ', cmp: 'eq', value: 'primar' },
+      },
+    },
+    reading: 0,
+    diff: [
+      {
+        kind: 'missing',
+        path: 'where.args[1]',
+        reference: {
+          op: 'related',
+          layer: 'gemeinden',
+          predicate: 'within',
+          where: { op: 'compare', attr: 'name', cmp: 'eq', value: 'Köniz' },
+        },
+        answer: null,
+      },
+    ],
+    hits: 14,
+    reference_hits: 14,
+    only_answer: [],
+    only_answer_count: 0,
+    only_reference: [],
+    only_reference_count: 0,
+  }
+}
+
+/** V7.4: refused by the application (unknown attribute) and one answer that did not read. */
+export function refusedAnswers(): AnswerView[] {
+  const base = answerViews()[0]
+  return [
+    {
+      ...base,
+      point: 1,
+      block: 2,
+      seed: 9,
+      verdict: 'refused',
+      code: 'unknown_attribute',
+      flags: [],
+      answer: {
+        kind: 'query',
+        explanation: 'Schulen nahe am Bahnhof Bern.',
+        assumptions: [],
+        query: {
+          source: 'schulen',
+          where: { op: 'compare', attr: 'bahnhof_name', cmp: 'eq', value: 'Bern' },
+        },
+      },
+      refusal: {
+        code: 'unknown_attribute',
+        message: "Unknown attribute 'bahnhof_name'.",
+        details: { attribute: 'bahnhof_name', layer: 'haltestellen' },
+      },
+      diff: null,
+      hits: null,
+      reference_hits: null,
+      only_answer: [],
+      only_answer_count: 0,
+    },
+    {
+      ...base,
+      point: 1,
+      block: 1,
+      seed: 2,
+      verdict: 'error',
+      code: 'model_unreadable',
+      flags: [],
+      latency_ms: 1900,
+      answer: null,
+      raw: '{"kind": "query", "query": {"source": "schulen", "where": {"op": "related"',
+      reading: null,
+      diff: null,
+      hits: null,
+      reference_hits: null,
+      only_answer: [],
+      only_answer_count: 0,
+    },
+  ]
+}
+
+/** V7.5: the behaviour case ``n15``: a query given where "nicht beantwortbar" was expected. */
+export function behaviourAnswer(): AnswerView {
+  return {
+    ...answerViews()[0],
+    case_id: 'n15-je-gemeinde',
+    point: 2,
+    verdict: 'kind',
+    code: 'query',
+    flags: [],
+    answer: {
+      kind: 'query',
+      explanation: 'Alle 412 Schulen, ohne Zählung.',
+      assumptions: [],
+      query: { source: 'schulen' },
+    },
+    reading: null,
+    diff: null,
+    hits: null,
+    reference_hits: null,
+    only_answer: [],
+    only_answer_count: 0,
+  }
+}
+
+/** The connections of the design's runs: gemma local, Haiku and Luna external. */
+export const CONNECTIONS: ConnectionInfo[] = (
+  [
+    [1, 'gemma4:12b', 'gemma4:12b', 'ollama', 'local'],
+    [2, 'Claude Haiku 5.5', 'claude-haiku-5-5', 'api.anthropic.com', 'external'],
+    [3, 'gpt-6-luna', 'gpt-6-luna', 'api.openai.com', 'external'],
+  ] as const
+).map(([id, name, model, host, locality]) => ({
+  id,
+  name,
+  base_url: locality === 'local' ? 'http://ollama:11434/v1' : `https://${host}/v1`,
+  host,
+  locality,
+  model,
+  has_api_key: locality === 'external',
+  credentials_unreadable: false,
+  temperature: 0.3,
+  seed: null,
+  timeout_s: 120,
+  reasoning_effort: 'none',
+  context_length: null,
+  enabled: true,
+  is_default: id === 1,
+  may_receive_data: false,
+  marked_external: false,
+  last_test: null,
+  created_at: '2026-10-08T10:00:00',
+  updated_at: '2026-10-08T10:00:00',
+  request_limit_enabled: false,
+  request_limit_per_day: null,
+  prompt_profile: P0,
+  // Prices as the estimate of V4.1 shows them (O4): Haiku and Luna in USD, gemma none.
+  price_input_per_mtok: locality === 'external' ? 0.4 : null,
+  price_output_per_mtok: locality === 'external' ? 1.6 : null,
+  price_currency: locality === 'external' ? 'USD' : null,
+}))
+
+/** The levels of the design (``GET /api/admin/levels``). */
+export const LEVELS: Schemas['LevelSet'] = {
+  levels: [
+    {
+      id: 1,
+      name: 'Nur Vorschlag',
+      description: '',
+      system_prompt: 'Du übersetzt Fragen in Abfragen für GeoTandem.',
+      selectable: true,
+      is_default: false,
+      matrix: {},
+    },
+    {
+      id: 2,
+      name: 'Prüfen',
+      description: '',
+      system_prompt: 'Du übersetzt Fragen in Abfragen für GeoTandem. Nenne jede Annahme.',
+      selectable: true,
+      is_default: true,
+      matrix: {},
+    },
+  ],
 }
 
 /** V6.6: run #13 against #8. */

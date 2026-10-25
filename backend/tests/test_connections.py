@@ -322,6 +322,22 @@ async def test_the_prompt_profile_is_set_and_changed_from_the_presets(
     assert (await connections(client))["Luna"]["prompt_profile"] == {**P0, "placement": "P5"}
 
 
+async def test_applying_a_prompt_profile_keeps_the_data_release(
+    client: httpx.AsyncClient,
+) -> None:
+    """Applying a measured profile (V6.4) patches only the profile, with
+    ``confirm_data_release: false``: a released external connection keeps its release."""
+    cloud = await create(client, "Cloud", **EXTERNAL)
+    released = await patch(client, cloud["id"], may_receive_data=True, confirm_data_release=True)
+    assert released.json()["may_receive_data"] is True
+    p9 = {**P0, "placement": "P9"}
+    applied = await patch(client, cloud["id"], prompt_profile=p9, confirm_data_release=False)
+    assert applied.status_code == 200, applied.text
+    assert applied.json()["prompt_profile"] == p9
+    assert applied.json()["may_receive_data"] is True
+    assert (await connections(client))["Cloud"]["may_receive_data"] is True
+
+
 async def test_prices_come_all_three_or_none(client: httpx.AsyncClient) -> None:
     half = await client.post(URL, json={"name": "Cloud", **EXTERNAL, "price_input_per_mtok": 1.0})
     await refused(half, "price_incomplete")
