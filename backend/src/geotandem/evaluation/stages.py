@@ -63,19 +63,24 @@ def assess(
     query: QueryObject | None,
     backend: DataBackend,
     limits: Limits,
+    *,
     readings: list[list[int]] | None,
 ) -> Assessment:
     """Grade ``answer`` (stage 2) and explain it (stage 1). ``query`` and
     ``refusal`` are as ``DirectAnswer`` has them; ``readings`` are the case's
     ``reading_ids``, read once per case by the caller, who treats a reading
     that cannot be read as a problem of the case (a run marks or skips it), not
-    of an answer.
+    of an answer. They must be given for a case with readings, and only for
+    one: a missing reading would skip the diff without a word.
 
     Only the grader decides the verdict: an answer query the engine cannot run
     within ``limits`` while grading is an ``error`` with the engine's code
     (``query_timeout``, ...). Reading it afterwards for the view (a ``require``
     case that passed) never changes the verdict; when that fails, hits, diff
     and reading stay ``None``."""
+    golds = case.readings()
+    if (readings is None) != (not golds) or (readings is not None and len(readings) != len(golds)):
+        raise ValueError(f"the case '{case.id}' has {len(golds)} readings")
     try:
         graded = grade(case, answer, refusal, query, backend, limits, readings)
     except QueryError as exc:
@@ -90,8 +95,8 @@ def assess(
             return _graded(graded)
     if not readings:  # a ``require`` case: the answer's hits only
         return _graded(graded, hits=len(hits))
-    golds = case.gold_any or ([case.gold] if case.gold else [])
-    diffs = [diff(query_of(gold), query) for gold in golds]
+    diffs = [diff(query_of(gold, case.schema_version), query) for gold in golds]
+
     reading = (
         readings.index(hits)
         if hits in readings

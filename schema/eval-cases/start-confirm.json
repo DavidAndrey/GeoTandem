@@ -1,7 +1,7 @@
 {
   "format": "geotandem-eval-cases",
   "version": 1,
-  "about": "Held-out questions (docs/testplan-external-models.md, 9): never used to tune the prompt, its rules or examples. Read results from them, do not change the prompt because of one of them; a prompt change is judged on cases.json and confirmed here. Same fields as cases.json, plus 'gold_any' (several fair readings, any passes) and 'tags'. Drafted and reviewed 2026-10-20 (the set is fixed: add cases, do not reword them), every gold checked against the sample data and the direct path's checks, with a plausible wrong reading returning other features.",
+  "about": "Held-out questions (docs/testplan-external-models.md, 9): never used to tune the prompt, its rules or examples. Read results from them, do not change the prompt because of one of them; a prompt change is judged on the tuning split (start-tuning.json) and confirmed here. Same fields as start-tuning.json, plus 'gold_any' (several fair readings, any passes) and 'tags'. Drafted and reviewed 2026-10-20 (the set is fixed: add cases, do not reword them), every gold checked against the sample data and the direct path's checks, with a plausible wrong reading returning other features.",
   "cases": [
     {
       "id": "h01-hauptgewaesser",

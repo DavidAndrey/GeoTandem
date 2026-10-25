@@ -14,6 +14,7 @@ import { strays } from '../../test/pseudo'
 import { fakeApi, renderAt } from '../../test/render'
 import { compactQuery } from '../../model/readable'
 import { QueryPanel } from '../../workplace/QueryPanel'
+import { readings } from './words'
 
 beforeEach(() => {
   activate('pseudo', messages)
@@ -44,11 +45,7 @@ function leaves(value: unknown): string[] {
 const DATA = [
   ...CASES.flatMap(leaves),
   // The reference as JSON under "Technisch" is data.
-  ...CASES.flatMap((c) =>
-    [...(c.gold_any ?? []), ...(c.gold ? [c.gold] : [])].map((g) =>
-      JSON.stringify(compactQuery(g), null, 2),
-    ),
-  ),
+  ...CASES.flatMap((c) => readings(c).map((g) => JSON.stringify(compactQuery(g), null, 2))),
   // "Lesart A": the letter is a placeholder.
   'A',
   'B',

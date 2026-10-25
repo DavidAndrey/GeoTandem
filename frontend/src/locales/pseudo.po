@@ -524,11 +524,11 @@ msgid "<0>{file}</0> lässt sich nicht übernehmen. Es wurde <1>{nothing}</1> ü
 msgstr ""
 
 #: src/admin/evaluation/CasesPage.tsx
-msgid "<0>{word}</0> ({id}): {layers} wurde seit dem Anlegen des Falls neu importiert. Die Referenz gilt weiter; die Trefferzahl wird beim nächsten Lauf neu bestimmt."
+msgid "<0>{word}</0> ({id}): {layers} wurde seit der letzten Prüfung der Referenz neu importiert. Die Referenz gilt weiter; die Trefferzahl wird beim nächsten Lauf neu bestimmt."
 msgstr ""
 
 #: src/admin/evaluation/CasesPage.tsx
-msgid "<0>{word}</0> ({id}): {layers} wurden seit dem Anlegen des Falls neu importiert. Die Referenz gilt weiter; die Trefferzahl wird beim nächsten Lauf neu bestimmt."
+msgid "<0>{word}</0> ({id}): {layers} wurden seit der letzten Prüfung der Referenz neu importiert. Die Referenz gilt weiter; die Trefferzahl wird beim nächsten Lauf neu bestimmt."
 msgstr ""
 
 #: src/admin/evaluation/CasesPage.tsx
@@ -537,6 +537,10 @@ msgstr ""
 
 #: src/admin/evaluation/CasesPage.tsx
 msgid "<0>{word}</0> ({id}): Die Layer {layers} sind gelöscht oder für {me} nicht mehr sichtbar. Der Fall wird in keinem Lauf verwendet, bis er bearbeitet ist."
+msgstr ""
+
+#: src/admin/evaluation/CasesPage.tsx
+msgid "<0>{word}</0> ({id}): Die Referenz besteht die Prüfungen einer Modellabfrage nicht mehr, etwa weil ein Feld nicht mehr für das Modell freigegeben ist. Der Fall wird in keinem Lauf verwendet, bis er bearbeitet ist."
 msgstr ""
 
 #: src/editor/describe.ts
@@ -1749,11 +1753,11 @@ msgid "Datenstand geändert"
 msgstr ""
 
 #: src/admin/evaluation/CaseDetailPage.tsx
-msgid "Datenstand geändert: {layers} wurde seit dem Anlegen des Falls neu importiert. Die Referenz gilt weiter; die Trefferzahl wird beim nächsten Lauf neu bestimmt."
+msgid "Datenstand geändert: {layers} wurde seit der letzten Prüfung der Referenz neu importiert. Die Referenz gilt weiter; die Trefferzahl wird beim nächsten Lauf neu bestimmt."
 msgstr ""
 
 #: src/admin/evaluation/CaseDetailPage.tsx
-msgid "Datenstand geändert: {layers} wurden seit dem Anlegen des Falls neu importiert. Die Referenz gilt weiter; die Trefferzahl wird beim nächsten Lauf neu bestimmt."
+msgid "Datenstand geändert: {layers} wurden seit der letzten Prüfung der Referenz neu importiert. Die Referenz gilt weiter; die Trefferzahl wird beim nächsten Lauf neu bestimmt."
 msgstr ""
 
 #: src/admin/format.ts
@@ -3753,7 +3757,7 @@ msgid "keiner"
 msgstr ""
 
 #: src/i18n/errors.ts
-msgid "Keiner der gewählten Prüffälle kann laufen: Keiner passt zur Auswahl, oder alle sind veraltet."
+msgid "Keiner der gewählten Prüffälle kann laufen: Keiner passt zur Auswahl, oder alle sind veraltet oder ungültig."
 msgstr ""
 
 #: src/admin/evaluation/CaseDetailPage.tsx
@@ -5103,6 +5107,10 @@ msgstr ""
 msgid "Sie haben sich mit einem Startpasswort angemeldet. Bitte legen Sie jetzt ein eigenes fest."
 msgstr ""
 
+#: src/admin/evaluation/words.ts
+msgid "Sie ist dieselbe Abfrage wie {other}, nur anders geschrieben."
+msgstr ""
+
 #: src/queries/ManageQueriesDialog.tsx
 msgid "Sie ist geteilt und verschwindet auch für alle anderen."
 msgstr ""
@@ -5632,6 +5640,15 @@ msgstr ""
 
 #: src/admin/evaluation/CaseDetailPage.tsx
 msgid "Ungespeicherte Änderungen am Prüffall verwerfen?"
+msgstr ""
+
+#: src/admin/evaluation/CasesPage.tsx
+#: src/admin/evaluation/parts.tsx
+msgid "ungültig"
+msgstr ""
+
+#: src/admin/evaluation/CaseDetailPage.tsx
+msgid "Ungültig: Die Referenz besteht die Prüfungen einer Modellabfrage nicht mehr oder lässt sich nicht mehr ausführen, etwa weil ein Feld nicht mehr für das Modell freigegeben ist. Der Fall wird in keinem Lauf verwendet, bis er bearbeitet ist."
 msgstr ""
 
 #: src/i18n/errors.ts

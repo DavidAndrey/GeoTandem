@@ -191,14 +191,21 @@ geforderte Teile (*Abfragefall*), oder die erwartete Antwortart (*Verhaltensfall
 Rückfrage, nicht beantwortbar). Gehört zu einem **Teil**: *Abstimmung* (daran
 darf man Prompts verbessern) oder *Bestätigung* (nur zum Nachprüfen). Der
 **Startbestand** (71 Fälle, `schema/eval-cases/`) ist nur lesbar; **eigene
-Prüffälle** entstehen im Arbeitsplatz, aus dem Modellprotokoll oder durch Import.
+Prüffälle** entstehen im Arbeitsplatz, aus dem Modellprotokoll, durch Import
+oder als Kopie eines Startfalls.
 
 **Datenstand** (Bewertung, D1) — Wogegen ein Prüffall läuft: *Beispieldaten*,
 eine eigens aufgebaute Kopie des Beispieldatensatzes, immer gleich; oder
 *Betriebsdaten*, die eigenen Layer, so wie der startende Administrator sie
-sieht. Ein Fall auf Betriebsdaten, dessen Layer fehlt oder nicht sichtbar
-ist, ist **veraltet** und läuft nicht mit, bis er bearbeitet ist; einer, dessen
-Layer seither neu importiert wurde, läuft und trägt **Datenstand geändert**.
+sieht. Ein Fall auf Betriebsdaten, dessen Layer fehlt, nicht sichtbar oder
+nicht für das Modell freigegeben ist, ist **veraltet** und läuft nicht mit, bis
+er bearbeitet ist; einer, dessen Layer seit der letzten Prüfung seiner Referenz
+neu importiert wurde, läuft und trägt **Datenstand geändert**.
+
+**Ungültig** (Prüffall, D3) — Ein Fall auf Beispiel- oder Betriebsdaten, dessen
+Referenz die Prüfungen einer Modellabfrage nicht mehr besteht oder sich nicht
+mehr ausführen lässt (etwa ein Feld, das nicht mehr für das Modell freigegeben
+ist). Er läuft wie ein veralteter nicht mit, bis er bearbeitet ist.
 
 **Messpunkt** — Eine Anbindung mit Promptprofil und Stufe, wahlweise mit einem
 nur für den Lauf geänderten System-Prompt: eine Spalte der Vergleichsmatrix.
@@ -209,7 +216,9 @@ Vergleichsaussage). Eine Messung, kein Betrieb: Er schreibt keine Modellaktion
 und ändert nichts, ausser der Administrator übernimmt danach ein Promptprofil.
 
 **Urteil** — Was aus einer Antwort im Lauf wurde: richtig (das Ergebnis gleicht
-einer Lesart), falsch, abgewiesen, andere Antwortart, nicht lesbar. **Still
+einer Lesart), falsch, abgewiesen, andere Antwortart, falsches Angebot der
+anderen Arbeitsweise, verbotenes Wort (die Antwort nennt ein Wort, das der Fall
+verbietet), nicht lesbar. **Still
 falsch** heisst falsch und ohne genannte Annahme: Das Modell wirkt sicher und
 liegt daneben. Gegen die Vergleichsbasis sagt der Lauf **besser**,
 **schlechter** oder **nicht belegt**, gepaart je Fall auf den Fällen der

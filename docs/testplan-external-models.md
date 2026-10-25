@@ -309,7 +309,7 @@ Der erste Vergleich (8.2) war in fünf Punkten schief. So wird er gerade gestell
 |---|---|
 | Luna 165, die lokalen Modelle 330 Antworten | zweiter Block für Luna (`x-p0-luna-s6`) |
 | Ausgabe verschieden erzwungen: Grammatik (Ollama), verpackt (Luna), gar nicht (Claude) | zusätzlich eine gemeinsame Bedingung **nur Text** (`--no-format`, H-8) neben «wie eingesetzt» |
-| Prompt an gemma4 und qwen3 abgestimmt (V-2 bis V-7 aus ihren Fehlern) | **Held-out-Satz** [heldout.json](../backend/evals/heldout.json): 38 Fragen, an denen nie abgestimmt wird |
+| Prompt an gemma4 und qwen3 abgestimmt (V-2 bis V-7 aus ihren Fehlern) | **Held-out-Satz** [heldout.json](../schema/eval-cases/start-confirm.json): 38 Fragen, an denen nie abgestimmt wird |
 | vertretbare Lesart als falsch bewertet (`doc1`) | `gold_any`: mehrere Referenzabfragen, jede gilt |
 | Summe ohne Streuung; fünf Antworten eines Falls sind nicht unabhängig | `compare.py --stats`: je Fall gepaart, besser/schlechter/gleich, mittlerer Unterschied mit Bootstrap-Intervall über die Fälle, Vorzeichentest; `--by-tag` je Fähigkeit |
 

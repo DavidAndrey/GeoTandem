@@ -148,12 +148,43 @@ test('V1.2: stale grey with a struck-through label, a changed data state as a me
   expect(screen.getByText(/ist gelöscht oder für admin nicht mehr sichtbar/)).toHaveTextContent(
     'e-kitas-bahnhof',
   )
-  expect(screen.getByText(/wurde seit dem Anlegen des Falls neu importiert/)).toHaveTextContent(
-    '„schulwege"',
-  )
+  expect(
+    screen.getByText(/wurde seit der letzten Prüfung der Referenz neu importiert/),
+  ).toHaveTextContent('„schulwege"')
   // An ok case has no label.
   const ok = must(screen.getByText('e-turnhalle-ostermundigen').closest('tr'))
   expect(within(ok).queryByText('veraltet')).toBeNull()
+})
+
+test('an invalid case is worded and shown like a stale one: left out of runs', async () => {
+  const page = casePage()
+  const items = page.items.map((v) =>
+    v.case.id === 'e-turnhalle-ostermundigen' ? { ...v, status: 'invalid' as const } : v,
+  )
+  backend({ ...page, items })
+  renderAt('/admin/bewertung/faelle', <App />)
+  const row = must((await screen.findByText('e-turnhalle-ostermundigen')).closest('tr'))
+  const label = must(within(row).getByText('ungültig').closest('[data-status]'))
+  expect(label).toHaveAttribute('data-line', 'void')
+  expect(label.className).toMatch(/line-through/)
+  expect(row.className).toMatch(/text-muted/)
+  expect(
+    screen.getByText(/besteht die Prüfungen einer Modellabfrage nicht mehr/),
+  ).toHaveTextContent('e-turnhalle-ostermundigen')
+})
+
+test('an own case sharing its id with a start case is listed beside it', async () => {
+  const page = casePage()
+  const start = must(page.items.find((v) => v.case.id === 'doc1-primar-koeniz'))
+  const own = { ...start, read_only: false, case: { ...start.case, origin: 'authored' as const } }
+  backend({ items: [...page.items, own], total: page.total + 1 })
+  renderAt('/admin/bewertung/faelle', <App />)
+  await screen.findByText('e-schulweg-import')
+  const rows = screen.getAllByRole('row').filter((row) => row.textContent?.includes('doc1-primar'))
+  expect(rows.map((row) => within(row).getAllByRole('cell')[5].textContent)).toEqual([
+    'Start',
+    'Arbeitsplatz',
+  ])
 })
 
 test('V1.4: without own cases the start set stays and the three ways stand below it', async () => {

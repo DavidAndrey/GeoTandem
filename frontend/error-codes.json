@@ -78,7 +78,7 @@
   "model_unreadable": "The model's answer does not fit the answer schema.",
   "name_clash": "A joined, computed or aggregated attribute takes a used name.",
   "name_taken": "A session or query of that name exists; details.existing is its id.",
-  "no_cases": "No case of the selection can run: none matches, or all are stale.",
+  "no_cases": "No case of the selection can run: none matches, or all are stale or invalid.",
   "no_geo_reference_found": "No coordinate columns or area key recognised.",
   "no_geometry": "No record has a geometry.",
   "no_geometry_in_source": "A table needs coordinate columns or an area key.",

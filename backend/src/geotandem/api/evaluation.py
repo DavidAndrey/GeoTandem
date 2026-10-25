@@ -88,7 +88,9 @@ def cases(
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> CasePage:
     """The start set and the own cases, start cases first (V1.1); each with its
-    status (D3). The list leaves ``reference_hits`` out."""
+    status (D3), ``invalid`` by the checks alone. The list leaves
+    ``reference_hits`` out."""
+
     filters = CaseFilters(split=split, tag=tag, origin=origin, data_state=data_state)
     return service.page(filters, offset=offset, limit=limit)
 
@@ -111,7 +113,8 @@ def create_case(body: EvalCase, service: CaseService) -> CaseView:
 )
 def export_cases(service: CaseService, start: bool = False) -> CaseFile:
     """The own cases as a case file (F-3.13, F-10.4); with ``start`` the start set
-    too. Without ``null`` fields, so export and import are a round trip."""
+    too, and then without an own case behind a start id (logged). Without
+    ``null`` fields, so export and import are a round trip."""
     return service.export(start=start)
 
 
@@ -140,12 +143,15 @@ def case(case_id: CaseId, service: CaseService) -> CaseView:
 
 @router.put("/cases/{case_id}", responses=ERRORS)
 def update_case(case_id: CaseId, body: EvalCase, service: CaseService) -> CaseView:
-    """A start case is ``case_read_only``; editing a stale case makes it run again."""
+    """A start case is ``case_read_only``; editing a stale or invalid case makes
+    it run again. An own case behind a start id (a later start set brought it)
+    is reached here, so it can be renamed."""
     return service.update(case_id, body)
 
 
 @router.delete("/cases/{case_id}", status_code=204, responses=ERRORS)
 def delete_case(case_id: CaseId, service: CaseService) -> Response:
+    """A start case is ``case_read_only``; an own case behind a start id is deleted."""
     service.delete(case_id)
     return Response(status_code=204)
 
@@ -164,7 +170,9 @@ def start_run(body: RunRequest) -> RunView:
     """Starts the run in the background and answers at once, ``running``; the
     client polls ``GET /runs/{id}`` (D8). One run at a time (``run_busy``); an
     external connection not in ``confirm_external`` is ``external_not_confirmed``;
-    a selection with no runnable case (all filtered out or stale) is ``no_cases``."""
+    a selection with no runnable case (all filtered out, stale or invalid) is
+    refused before the start, 400 ``no_cases``. ``RunView.error`` is for what
+    fails while the run runs."""
     raise NotBuilt("WP90")
 
 

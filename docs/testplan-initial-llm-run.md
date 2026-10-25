@@ -83,7 +83,7 @@ eine Frage mehrere faire Lesarten hat („nahe“), prüft `require` die Form
 `error:<code>`. Jede Antwort steht in `evals/results/<zeit>-<label>.jsonl`
 (nicht im Git).
 
-**Die 17 Fälle** ([cases.json](../backend/evals/cases.json)):
+**Die 17 Fälle** ([cases.json](../schema/eval-cases/start-tuning.json)):
 
 | Gruppe | Fälle | Prüft |
 |---|---|---|
@@ -359,7 +359,7 @@ Antwort im Wortlaut; die Fehler liest man dort.
 > auf eine Lücke der 17 Fälle oder eine Fehlerart aus Abschnitt 5. Die
 > erwarteten Trefferzahlen sind mit der Referenzabfrage auf den Beispieldaten
 > gerechnet (unten). Nach der Bewertung kommen die Fragen mit Referenz in
-> [cases.json](../backend/evals/cases.json).
+> [cases.json](../schema/eval-cases/start-tuning.json).
 
 **Vorgehen:** Stufe *Prüfen*, Verbindung wie zu bewerten (gemma4:12b ohne
 Denken empfohlen, zum Vergleich qwen3:8b). Jede Frage als neue Anfrage, nicht

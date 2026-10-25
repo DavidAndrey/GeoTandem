@@ -16,6 +16,7 @@ import {
   runView,
   START_CASES,
 } from './eval-mocks'
+import { readings } from '../admin/evaluation/words'
 import { assertValidQuery } from './schema'
 
 const ajv = new Ajv2020({ strict: false, allErrors: true })
@@ -36,12 +37,32 @@ test('every case view is valid, start cases read-only and own cases editable', (
   valid('CasePage', casePage())
   for (const item of casePage().items) valid('CaseView', item)
   expect(caseView('doc1-primar-koeniz').read_only).toBe(true)
-  expect(caseView('e-kitas-bahnhof')).toMatchObject({ read_only: false, status: 'stale' })
+  expect(caseView('e-kitas-bahnhof')).toMatchObject({
+    read_only: false,
+    status: 'stale',
+    status_layers: ['kitas'],
+  })
+  expect(caseView('e-turnhalle-ostermundigen').status_layers).toEqual([])
+})
+
+test('a case view sends null for an unset optional field, as the backend does', () => {
+  const view = caseView('doc1-primar-koeniz')
+  for (const key of ['origin_action', 'gold', 'require', 'expect', 'other_approach'] as const)
+    expect(view.case[key]).toBeNull()
+  expect(caseView('n15-je-gemeinde').case.gold_any).toBeNull()
+  valid('CaseView', caseView('e-kitas-bahnhof', { status: 'invalid', status_layers: [] }))
+})
+
+test('a run keeps each case whole as it asked it (H7)', () => {
+  const view = runView('done')
+  expect(view.cases).toHaveLength(71)
+  expect(view.cases[0].case).toEqual(START_CASES[0])
+  expect(view.cases.every((c) => c.status === 'ok')).toBe(true)
 })
 
 test('every reference of a case is a valid query object', () => {
   for (const c of [...START_CASES, ...OWN_CASES.map((o) => o.case)]) {
-    for (const gold of c.gold_any ?? (c.gold ? [c.gold] : [])) {
+    for (const gold of readings(c)) {
       assertValidQuery({ schema_version: c.schema_version ?? '2', output: 'map', ...gold })
     }
   }

@@ -14,18 +14,19 @@ import httpx
 import pytest
 from api_helpers import sign_in_as
 from fastapi import FastAPI
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from geotandem.codes import CODES
 from geotandem.evaluation.schemas import (
     CaseDraft,
     CaseFile,
+    ConditionOp,
     EvalCase,
     EvalErrorCode,
     RunRequest,
     case_file_schema,
 )
-from geotandem_query import QueryObject
+from geotandem_query import QueryObject, models
 
 REPO = Path(__file__).resolve().parents[2]
 CASES = REPO / "schema" / "eval-cases"
@@ -90,10 +91,6 @@ def _start(split: str) -> CaseFile:
     return CaseFile.model_validate_json(START[split].read_text("utf-8"))
 
 
-def _readings(case: EvalCase) -> list[dict[str, Any]]:
-    return case.gold_any or ([case.gold] if case.gold else [])
-
-
 # --- the start set (D2) --------------------------------------------------------
 
 
@@ -120,7 +117,7 @@ def test_start_case_ids_are_unique_over_both_splits() -> None:
 def test_every_reference_of_the_start_set_is_a_query_object() -> None:
     for split in START:
         for case in _start(split).cases:
-            for gold in _readings(case):
+            for gold in case.readings():
                 QueryObject.model_validate(
                     {"schema_version": case.schema_version, "output": "map", **gold}
                 )
@@ -146,6 +143,79 @@ def test_the_committed_case_file_schema_is_current() -> None:
 def test_a_case_has_exactly_one_answer(extra: dict[str, Any]) -> None:
     with pytest.raises(ValidationError):
         EvalCase.model_validate({**CASE, **extra})
+
+
+def test_the_readings_of_a_case_are_its_gold_or_its_fair_readings() -> None:
+    """D1: one ``readings()``; an empty reference is a reference too (``is not None``)."""
+    cases = {c.id: c for split in START for c in _start(split).cases}
+    assert len(cases["doc1-primar-koeniz"].readings()) == 2
+    assert cases["n01-tram-zaehlen"].readings() == [cases["n01-tram-zaehlen"].gold]
+    assert cases["n15-je-gemeinde"].readings() == []
+    whole = EvalCase.model_validate({**CASE, "gold": {}})
+    assert whole.readings() == [{}]
+    with pytest.raises(ValidationError):
+        EvalCase.model_validate({**CASE, "gold": {}, "expect": "clarification"})
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        {"expect": "clarification", "also": ["clarification"]},
+        {"expect": "clarification", "also": ["cannot_answer", "cannot_answer"]},
+        {"gold": {"source": "schulen"}, "also": ["query"]},
+        {"expect": "clarification", "forbid": [""]},
+        {"expect": "clarification", "also": ["query", "cannot_answer", "clarification"]},
+    ],
+    ids=["expect-again", "repeat", "query-of-a-query-case", "empty-word", "too-many"],
+)
+def test_also_and_forbid_say_something(extra: dict[str, Any]) -> None:
+    """B2: ``also`` neither repeats a kind nor the expected one, nor lets any
+    query pass a query case; a forbidden word is not empty."""
+    with pytest.raises(ValidationError):
+        EvalCase.model_validate({**CASE, **extra})
+
+
+def test_a_behaviour_case_may_let_a_query_pass() -> None:
+    """``h35-injection-sql``: a harmless query passes beside ``cannot_answer``."""
+    case = EvalCase.model_validate({**CASE, "expect": "cannot_answer", "also": ["query"]})
+    assert case.also == ["query"]
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        {"note": "x" * 2001},
+        {"forbid": ["x" * 65]},
+        {"forbid": [f"w{n}" for n in range(17)]},
+        {"data_state": "live", "layers": [{"name": f"l{n}"} for n in range(33)]},
+        {"data_state": "live", "layers": [{"name": "x" * 64}]},
+        {"data_state": "live", "layers": [{"name": "schulen", "dataset_version": "v" * 65}]},
+    ],
+    ids=["note", "word", "words", "layers", "layer-name", "dataset-version"],
+)
+def test_the_fields_of_a_case_are_bounded(extra: dict[str, Any]) -> None:
+    """S1: no field of a case grows without bound."""
+    with pytest.raises(ValidationError):
+        EvalCase.model_validate({**CASE, "expect": "clarification", **extra})
+
+
+def test_the_about_of_a_case_file_is_bounded() -> None:
+    with pytest.raises(ValidationError):
+        CaseFile.model_validate({"about": "x" * 4001, "cases": []})
+    assert all(len(_start(split).about) <= 4000 for split in START)
+
+
+def test_a_required_condition_names_an_operator_of_the_query_schema() -> None:
+    """``ConditionOp`` is the ops of ``geotandem_query``'s conditions, no more, no less."""
+    ops = {
+        member.model_fields["op"].annotation.__args__[0]
+        for member in models.__dict__.values()
+        if isinstance(member, type)
+        and issubclass(member, BaseModel)
+        and member.__module__ == models.__name__
+        and "op" in member.model_fields
+    }
+    assert set(get_args(ConditionOp)) == ops
 
 
 def test_a_log_case_names_its_action_and_only_it_does() -> None:

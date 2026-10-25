@@ -14,7 +14,6 @@ import json
 import os
 import statistics
 import sys
-import tempfile
 import time
 from collections import Counter
 from collections.abc import Sequence
@@ -24,15 +23,14 @@ from pathlib import Path
 from typing import Any
 
 from casefiles import CASE_FILES, load_cases
-from profiles import PROFILES, strip
 from variants import VARIANTS, load_examples, prompt_hash, with_examples
 
 from geotandem.catalog import model_profile
 from geotandem.config import Settings
 from geotandem.data import Limits
-from geotandem.data.spatialite import SpatiaLiteBackend
-from geotandem.db.bootstrap import bootstrap
-from geotandem.evaluation.grade import PASS, errored, grade
+from geotandem.evaluation.grade import PASS, errored, grade, reading_ids
+from geotandem.evaluation.profiles import PROFILES
+from geotandem.evaluation.sample import build_sample
 from geotandem.levels.store import load_levels
 from geotandem.llm import Completion, Endpoint, LLMError, Message
 from geotandem.llm.hosts import host_of
@@ -40,7 +38,6 @@ from geotandem.llm.openai_compat import OpenAICompatClient
 from geotandem.model.direct import DirectQuery, direct_prompt
 from geotandem.model.errors import ActionError
 from geotandem.model.prompt import Prompt
-from geotandem.sample.load import load_sample
 from geotandem.tools import ToolContext
 
 HERE = Path(__file__).parent
@@ -156,11 +153,8 @@ def main() -> int:
     if args.only:
         cases = [c for c in cases if c.id in args.only.split(",")]
 
-    settings = Settings(data_dir=Path(tempfile.mkdtemp(prefix="geotandem-eval-")))
-    engine = bootstrap(settings)
-    backend = SpatiaLiteBackend(engine, settings.internal_crs)
-    load_sample(backend)
-    strip(engine, args.profile)
+    built = build_sample(Settings(), prefix="geotandem-eval-", profile=args.profile)
+    engine, backend = built.engine, built.backend
     profile = model_profile(engine, backend.layer_names())
     level = next(lv for lv in load_levels(engine) if lv.is_default)
     context = ToolContext(backend=backend, limits=LIMITS)
@@ -206,6 +200,8 @@ def main() -> int:
         log.write(json.dumps(header) + "\n")
         for case in cases:
             tally[case.id] = Counter()
+            # Checked and read once per case, as a run of the application does.
+            readings = reading_ids(case, context, profile)
             for seed in range(args.seed_start, args.seed_start + args.repeat):
                 endpoint = Endpoint(
                     base_url=args.url,
@@ -223,8 +219,9 @@ def main() -> int:
                 try:
                     found = DirectQuery(client, context, level).ask(prompt, profile=profile)
                     verdict = grade(
-                        case, found.answer, found.refusal, found.query, backend, LIMITS
+                        case, found.answer, found.refusal, found.query, backend, LIMITS, readings
                     ).tag
+
                     record |= {
                         "answer": found.answer.model_dump(mode="json"),
                         "refusal": found.refusal.model_dump(mode="json") if found.refusal else None,
