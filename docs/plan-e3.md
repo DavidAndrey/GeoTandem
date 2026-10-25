@@ -196,7 +196,7 @@ As plan E2, section 5: WP gate (lint, tests, `make gen`, security list, `/code-r
 
 ### 5.1 Design conformance
 
-Handoff received 2026-10-24 ([design/e3/README.md](../design/e3/README.md)); its six review decisions are taken into D2, D7, D9 and WP93. Also taken from the screenshots: measuring points on different connections run in parallel (D8), the grading rules' version in the label (section 2), export of a run and "Als vollständigen Lauf wiederholen" (WP93). One deviation: applying a prompt profile is recorded in the server's security log, not the model log (D9); the dialog says so. The screenshots still show `attr-franzoesisch` at 0 of 10; the README and the fixture are authoritative. The handoff's open point (`attr-franzoesisch` at 0 of 10) came from a misreading of the brief and is settled there: under P0 every measuring point has 10 of 10, the fixture is corrected.
+Handoff received 2026-10-24 ([design/e3/README.md](../design/e3/README.md)); its six review decisions are taken into D2, D7, D9 and WP93. Also taken from the screenshots: measuring points run in parallel (D8; per model host since Gate E3, the design said per connection), the grading rules' version in the label (section 2), export of a run and "Als vollständigen Lauf wiederholen" (WP93). One deviation: applying a prompt profile is recorded in the server's security log, not the model log (D9); the dialog says so. The screenshots still show `attr-franzoesisch` at 0 of 10; the README and the fixture are authoritative. The handoff's open point (`attr-franzoesisch` at 0 of 10) came from a misreading of the brief and is settled there: under P0 every measuring point has 10 of 10, the fixture is corrected.
 
 | WP | States checked against `design/e3/screenshots/` |
 |---|---|
