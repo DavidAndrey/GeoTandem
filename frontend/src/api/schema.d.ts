@@ -3446,6 +3446,13 @@ export interface components {
       code: string
       /** Message */
       message: string
+      /**
+       * Details
+       * @default {}
+       */
+      details: {
+        [key: string]: unknown
+      }
     }
     /**
      * ImportResult

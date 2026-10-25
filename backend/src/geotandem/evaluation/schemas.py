@@ -269,6 +269,10 @@ class ImportProblem(BaseModel):
     case_id: str | None
     code: str
     message: str
+    details: dict[str, Any] = {}
+    """As the error body of the same refusal on ``POST /cases``: for
+    ``case_invalid`` the ``reason`` and what it names (``reading``,
+    ``attribute``, ``layer``, ``max`` …), so the interface can word it."""
 
 
 class ImportResult(BaseModel):

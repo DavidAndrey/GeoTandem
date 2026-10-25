@@ -124,6 +124,12 @@ def _invalid(case_id: str | None, message: str, *, reason: str, **details: Any) 
     return CaseError(400, "case_invalid", message, case_id=case_id, reason=reason, **details)
 
 
+def _problem(case_id: str | None, error: CaseError) -> ImportProblem:
+    """A refusal as one problem of an import, with the details its error body has."""
+    details = {k: v for k, v in error.details.items() if k != "case_id"}
+    return ImportProblem(case_id=case_id, code=error.code, message=error.message, details=details)
+
+
 def _read_only(case_id: str) -> CaseError:
     return CaseError(
         409,
@@ -391,11 +397,17 @@ def check_case(case: EvalCase, world: World, *, stamp: bool) -> EvalCase:
     for index, doc in enumerate(readings(case)):
         found = world.check(doc, case.schema_version)
         if isinstance(found, Refusal):
+            # The refusal's details (attribute, layer, limit …) name what failed;
+            # ``reason``, ``reading`` and ``case_id`` are the case's own and win.
+            named = {
+                k: v for k, v in found.details.items() if k not in ("reason", "reading", "case_id")
+            }
             raise _invalid(
                 case.id,
                 f"Reading {index} of the case '{case.id}' fails the checks: {found.message}",
                 reason=found.code,
                 reading=index,
+                **named,
             )
         used |= query_layers(found)
     used |= _check_require(case, world)
@@ -610,15 +622,12 @@ class Cases:
                 check_case(case, self.world(case.data_state), stamp=False)
                 taken.append(as_imported(case))
             except CaseError as exc:
-                problems.append(ImportProblem(case_id=case.id, code=exc.code, message=exc.message))
+                problems.append(_problem(case.id, exc))
         if problems:
             return ImportResult(imported=0, problems=problems)
         try:
             stored = self.store.add(taken, at_most=self.room)
         except (CaseIdTaken, TooManyCases) as exc:
             error = _taken(exc.args[0]) if isinstance(exc, CaseIdTaken) else _too_many(*exc.args)
-            problem = ImportProblem(
-                case_id=error.details["case_id"], code=error.code, message=error.message
-            )
-            return ImportResult(imported=0, problems=[problem])
+            return ImportResult(imported=0, problems=[_problem(error.details["case_id"], error)])
         return ImportResult(imported=len(stored))
