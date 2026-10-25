@@ -18,7 +18,9 @@ import { StatusLabel } from '../model/status'
 import { statusKey } from '../model/statusKey'
 import { QueryTree } from '../model/tree'
 import { clockTime } from '../model/panel/time'
+import { fromLog } from './evaluation/words'
 import { formatDateTime } from './format'
+import { DEFAULT_PROMPT_PROFILE, profileText, sameProfile } from './promptProfile'
 
 const CLASSES: OpClass[] = ['catalog', 'query', 'spatial', 'derive', 'display']
 
@@ -82,6 +84,9 @@ function Entry({ view }: { view: ModelActionView }) {
   const query = view.query ?? (answer?.kind === 'query' ? answer.query : null)
   const latency = view.latency_ms ?? null
   const parent = view.parent_action_id
+  const profile = view.connection.prompt_profile
+  const written =
+    profile && !sameProfile(profile, DEFAULT_PROMPT_PROFILE) ? profileText(profile) : null
   const matrix = CLASSES.filter((c) => c in view.level.matrix)
     .map((c) => `${c} ${modeText(view.level.matrix[c])}`)
     .join(' · ')
@@ -94,6 +99,12 @@ function Entry({ view }: { view: ModelActionView }) {
           </Trans>
         </h2>
         <StatusLabel status={statusKey(view)} detail={clockTime(view.decided_at ?? null)} />
+        {/* F-3.14: only what may become a case is offered; the server decides (WP92). */}
+        {fromLog(view) && (
+          <Link to={`/admin/bewertung/faelle/aus-protokoll/${view.id}`} className="btn">
+            <Trans>Als Prüffall übernehmen</Trans>
+          </Link>
+        )}
       </div>
       <dl className="max-w-4xl text-sm">
         <Row label={t`Prompt`}>
@@ -110,6 +121,10 @@ function Entry({ view }: { view: ModelActionView }) {
             </span>
             <LocalityBadge locality={view.connection.locality} host={view.connection.host} />
           </span>
+          {/* Plan E3, D9: the prompt profile it was written with, when not today's. */}
+          {written && (
+            <span className="text-muted block text-xs">{t`Promptprofil: ${written}`}</span>
+          )}
         </Row>
         <Row label={t`Arbeitsweise`}>
           {approachText(view.approach)}

@@ -1,4 +1,4 @@
-"""Ask a real model the questions of ``cases.json`` and grade its answers.
+"""Ask a real model the questions of the start set and grade its answers.
 
 The direct query as the prompt flow sends it (``direct_prompt``,
 ``DirectQuery.ask``: the real client, parser and checks), over a fresh sample
@@ -14,7 +14,6 @@ import json
 import os
 import statistics
 import sys
-import tempfile
 import time
 from collections import Counter
 from collections.abc import Sequence
@@ -23,15 +22,22 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from profiles import PROFILES, strip
-from variants import VARIANTS, load_examples, prompt_hash, with_examples
+from casefiles import CASE_FILES, load_cases
+from variants import (
+    APP_EXAMPLES,
+    VARIANTS,
+    load_examples,
+    prompt_hash,
+    prompt_profile,
+    with_examples,
+)
 
 from geotandem.catalog import model_profile
 from geotandem.config import Settings
 from geotandem.data import Limits
-from geotandem.data.spatialite import SpatiaLiteBackend
-from geotandem.db.bootstrap import bootstrap
-from geotandem.engine import ids_query
+from geotandem.evaluation.grade import PASS, errored, grade, reading_ids
+from geotandem.evaluation.profiles import PROFILES
+from geotandem.evaluation.sample import build_sample
 from geotandem.levels.store import load_levels
 from geotandem.llm import Completion, Endpoint, LLMError, Message
 from geotandem.llm.hosts import host_of
@@ -39,97 +45,22 @@ from geotandem.llm.openai_compat import OpenAICompatClient
 from geotandem.model.direct import DirectQuery, direct_prompt
 from geotandem.model.errors import ActionError
 from geotandem.model.prompt import Prompt
-from geotandem.model.schemas import QueryAnswer
-from geotandem.sample.load import load_sample
 from geotandem.tools import ToolContext
-from geotandem_query import QueryObject
 
 HERE = Path(__file__).parent
 LIMITS = Limits(max_features=10_000, timeout_s=10)
-PASS = "pass"
 
 
 class Recording(OpenAICompatClient):
     """The real client, keeping its last completion: tokens for every answer
-    (H-3), the verbatim text when the answer does not read (H-4). With
-    ``text_only`` the schema is not sent as constrained output; the prompt
-    still holds it as text, as for an endpoint that ignores it (H-8)."""
+    (H-3), the verbatim text when the answer does not read (H-4)."""
 
     last: Completion | None = None
-    text_only = False
 
     def complete(self, messages: Sequence[Message], **kwargs: Any) -> Completion:
         self.last = None
-        if self.text_only:
-            kwargs["schema"] = None
         self.last = super().complete(messages, **kwargs)
         return self.last
-
-
-def query_of(doc: dict[str, Any]) -> QueryObject:
-    return QueryObject.model_validate({"schema_version": "2", "output": "map", **doc})
-
-
-def conditions(node: dict[str, Any] | None) -> list[dict[str, Any]]:
-    """Every condition of a where tree, a relation's own filter included."""
-    if not node:
-        return []
-    found = [node]
-    for child in [*node.get("args", []), node.get("arg"), node.get("where")]:
-        found += conditions(child)
-    return found
-
-
-def matches(want: dict[str, Any], got: dict[str, Any]) -> bool:
-    for key, value in want.items():
-        if key == "distance_m":
-            low, high = value
-            if not low <= (got.get(key) or 0) <= high:
-                return False
-        elif got.get(key) != value:
-            return False
-    return True
-
-
-def grade(
-    case: dict[str, Any],
-    answer: Any,
-    refusal: Any,
-    query: QueryObject | None,
-    backend: SpatiaLiteBackend,
-) -> str:
-    """``pass``, or the first thing that went wrong, as a short tag."""
-    said = json.dumps(answer.model_dump(mode="json"), ensure_ascii=False).casefold()
-    for word in case.get("forbid", []):
-        if word.casefold() in said:
-            return f"forbidden:{word}"
-    if answer.kind in case.get("also", []):
-        return PASS
-    if "expect" in case:
-        if answer.kind != case["expect"]:
-            return f"kind:{answer.kind}"
-        if "other_approach" in case and answer.other_approach != case["other_approach"]:
-            return f"other_approach:{answer.other_approach}"
-        return PASS
-    if not isinstance(answer, QueryAnswer):
-        return f"kind:{answer.kind}"
-    if refusal is not None:
-        return f"refused:{refusal.code}"
-    assert query is not None
-    if "gold" in case or "gold_any" in case:
-        # More than one fair reading with different features: any one passes.
-        golds = case.get("gold_any") or [case["gold"]]
-        got = ids_query(query, backend, LIMITS)
-        wants = [ids_query(query_of(gold), backend, LIMITS) for gold in golds]
-        return PASS if got in wants else f"wrong:{len(got)}≠{len(wants[0])}"
-    need = case["require"]
-    if query.source != need["source"]:
-        return f"wrong:source={query.source}"
-    present = conditions(query.model_dump(mode="json", exclude_none=True).get("where"))
-    for want_condition in need["conditions"]:
-        if not any(matches(want_condition, c) for c in present):
-            return f"wrong:missing {want_condition['op']}"
-    return PASS
 
 
 def cost(records: list[dict[str, Any]]) -> list[str]:
@@ -173,12 +104,14 @@ def main() -> int:
         "--cases",
         default="cases",
         metavar="NAME",
-        help="NAME.json of this directory: cases (tuning set, default) or heldout",
+        choices=list(CASE_FILES),
+        help="cases (the tuning split of schema/eval-cases, default) or heldout (confirmation)",
     )
     parser.add_argument(
         "--no-format",
         action="store_true",
-        help="no constrained output; the schema only as text in the prompt (H-8)",
+        help="no constrained output; the schema only as text in the prompt (H-8; "
+        "the prompt profile's output 'text')",
     )
     parser.add_argument("--label", default="run")
     parser.add_argument(
@@ -190,12 +123,14 @@ def main() -> int:
         "--variant",
         default="p0",
         choices=sorted(VARIANTS),
-        help="how the messages are rebuilt (docs/testplan-system-context.md, 5)",
+        help="how the messages are written (docs/testplan-system-context.md, 5): p0, p5 and "
+        "p9 by the application's builder, the others rebuilt from p0 (measurement only)",
     )
     parser.add_argument(
         "--examples",
         metavar="NAME",
-        help="examples/NAME.txt in place of the prompt's examples section",
+        help="an example set in place of the prompt's examples section: 12 the "
+        "application's (builder), any other examples/NAME.txt",
     )
     parser.add_argument(
         "--profile",
@@ -211,35 +146,43 @@ def main() -> int:
     args = parser.parse_args()
     if args.no_examples and (args.examples or args.variant != "p0"):
         parser.error("--no-examples takes neither --examples nor a variant")
-    examples = "" if args.no_examples else load_examples(args.examples) if args.examples else None
+    in_app = args.examples in APP_EXAMPLES
+    examples = (
+        ""
+        if args.no_examples
+        else load_examples(args.examples)
+        if args.examples and not in_app
+        else None
+    )
     variant = VARIANTS[args.variant]
+    # What the application's builder writes (plan E3, D9): same options, same prompt.
+    written = prompt_profile(args.variant, args.examples, args.no_format)
     api_key = None
     if args.api_key_env:
         api_key = os.environ.get(args.api_key_env)
         if not api_key:
             parser.error(f"--api-key-env: {args.api_key_env} is not set")
 
-    cases = json.loads((HERE / f"{args.cases}.json").read_text("utf-8"))["cases"]
+    cases = load_cases(args.cases)
     if args.only:
-        cases = [c for c in cases if c["id"] in args.only.split(",")]
+        cases = [c for c in cases if c.id in args.only.split(",")]
 
-    settings = Settings(data_dir=Path(tempfile.mkdtemp(prefix="geotandem-eval-")))
-    engine = bootstrap(settings)
-    backend = SpatiaLiteBackend(engine, settings.internal_crs)
-    load_sample(backend)
-    strip(engine, args.profile)
+    built = build_sample(Settings(), prefix="geotandem-eval-", profile=args.profile)
+    engine, backend = built.engine, built.backend
     profile = model_profile(engine, backend.layer_names())
     level = next(lv for lv in load_levels(engine) if lv.is_default)
     context = ToolContext(backend=backend, limits=LIMITS)
 
     def build(text: str) -> Prompt:
-        """The prompt of ``text`` as this run sends it: examples, then variant."""
-        prompt = direct_prompt(text, level=level, profile=profile)
+        """The prompt of ``text`` as this run sends it: the builder's after the
+        prompt profile, then an example set of this directory, then a
+        measurement-only variant."""
+        prompt = direct_prompt(text, level=level, profile=profile, prompt_profile=written)
         messages = variant(with_examples(list(prompt.messages), examples))
         return replace(prompt, messages=tuple(messages))
 
     if args.show:
-        for message in build(cases[0]["prompt"]).messages:
+        for message in build(cases[0].prompt).messages:
             print(f"===== {message.role} ({len(message.content)} chars)\n{message.content}\n")
         return 0
     # Over the prompt of a placeholder question: one hash names the run's
@@ -272,7 +215,9 @@ def main() -> int:
         }
         log.write(json.dumps(header) + "\n")
         for case in cases:
-            tally[case["id"]] = Counter()
+            tally[case.id] = Counter()
+            # Checked and read once per case, as a run of the application does.
+            readings = reading_ids(case, context, profile)
             for seed in range(args.seed_start, args.seed_start + args.repeat):
                 endpoint = Endpoint(
                     base_url=args.url,
@@ -283,23 +228,25 @@ def main() -> int:
                     timeout_s=300,
                     reasoning_effort=args.effort,
                 )
-                prompt = build(case["prompt"])
-                record: dict[str, Any] = {"case": case["id"], "seed": seed}
+                prompt = build(case.prompt)
+                record: dict[str, Any] = {"case": case.id, "seed": seed}
                 client = Recording(endpoint)
-                client.text_only = args.no_format
                 try:
                     found = DirectQuery(client, context, level).ask(prompt, profile=profile)
-                    verdict = grade(case, found.answer, found.refusal, found.query, backend)
+                    verdict = grade(
+                        case, found.answer, found.refusal, found.query, backend, LIMITS, readings
+                    ).tag
+
                     record |= {
                         "answer": found.answer.model_dump(mode="json"),
                         "refusal": found.refusal.model_dump(mode="json") if found.refusal else None,
                         "latency_ms": found.latency_ms,
                     }
                 except LLMError as exc:
-                    verdict = f"error:{exc.code}"
+                    verdict = errored(exc.code).tag
                     record |= {"cause": exc.cause, "retries": exc.retries}
                 except ActionError as exc:
-                    verdict = f"error:{exc.code}"
+                    verdict = errored(exc.code).tag
                     record["details"] = exc.details
                 finally:
                     client.close()
@@ -314,19 +261,19 @@ def main() -> int:
                 record["verdict"] = verdict
                 records.append(record)
                 log.write(json.dumps(record, ensure_ascii=False) + "\n")
-                tally[case["id"]][verdict] += 1
-                print(f"{case['id']:<32} seed {seed}  {verdict}", flush=True)
+                tally[case.id][verdict] += 1
+                print(f"{case.id:<32} seed {seed}  {verdict}", flush=True)
 
     runs = sum(sum(c.values()) for c in tally.values())
-    passed = sum(c[PASS] for c in tally.values())
+    passed = sum(c[PASS.tag] for c in tally.values())
     print(
         f"\n{args.label} · {args.model} · effort {args.effort} · {args.variant} · "
         f"{passed}/{runs} passed · {time.monotonic() - started:.0f} s · {out}"
     )
     print("  " + " · ".join(cost(records)))
     for case_id, counts in tally.items():
-        rest = ", ".join(f"{k} x{n}" for k, n in counts.items() if k != PASS)
-        print(f"  {counts[PASS]}/{sum(counts.values())}  {case_id:<32} {rest}")
+        rest = ", ".join(f"{k} x{n}" for k, n in counts.items() if k != PASS.tag)
+        print(f"  {counts[PASS.tag]}/{sum(counts.values())}  {case_id:<32} {rest}")
     return 0
 
 

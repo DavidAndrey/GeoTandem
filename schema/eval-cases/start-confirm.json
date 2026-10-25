@@ -1,5 +1,7 @@
 {
-  "_about": "Held-out questions (docs/testplan-external-models.md, 9): never used to tune the prompt, its rules or examples. Read results from them, do not change the prompt because of one of them; a prompt change is judged on cases.json and confirmed here. Same fields as cases.json, plus 'gold_any' (several fair readings, any passes) and 'tags'. Drafted and reviewed 2026-10-20 (the set is fixed: add cases, do not reword them), every gold checked against the sample data and the direct path's checks, with a plausible wrong reading returning other features.",
+  "format": "geotandem-eval-cases",
+  "version": 1,
+  "about": "Held-out questions (docs/testplan-external-models.md, 9): never used to tune the prompt, its rules or examples. Read results from them, do not change the prompt because of one of them; a prompt change is judged on the tuning split (start-tuning.json) and confirmed here. Same fields as start-tuning.json, plus 'gold_any' (several fair readings, any passes) and 'tags'. Drafted and reviewed 2026-10-20 (the set is fixed: add cases, do not reword them), every gold checked against the sample data and the direct path's checks, with a plausible wrong reading returning other features.",
   "cases": [
     {
       "id": "h01-hauptgewaesser",
@@ -8,6 +10,10 @@
         "attribute",
         "code"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "gewaesser",
         "where": {
@@ -25,6 +31,10 @@
         "attribute",
         "range"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "gewaesser",
         "where": {
@@ -43,6 +53,10 @@
         "code",
         "in-list"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "strassen",
         "where": {
@@ -63,6 +77,10 @@
         "attribute",
         "range"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "haltestellen",
         "where": {
@@ -80,6 +98,10 @@
         "attribute",
         "null"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "haltestellen",
         "where": {
@@ -95,6 +117,10 @@
         "attribute",
         "code"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "haltestellen",
         "where": {
@@ -112,6 +138,10 @@
         "attribute",
         "range"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "schulen",
         "where": {
@@ -129,6 +159,10 @@
         "attribute",
         "code"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "schulen",
         "where": {
@@ -146,6 +180,10 @@
         "attribute",
         "range"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "gemeinden",
         "where": {
@@ -163,6 +201,10 @@
         "attribute",
         "text"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "haltestellen",
         "where": {
@@ -181,6 +223,10 @@
         "combination",
         "in-list"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "haltestellen",
         "where": {
@@ -213,6 +259,10 @@
         "combination",
         "negation"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "schulen",
         "where": {
@@ -242,6 +292,10 @@
         "negation",
         "in-list"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "haltestellen",
         "where": {
@@ -264,6 +318,10 @@
         "combination",
         "nesting"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "schulen",
         "where": {
@@ -304,6 +362,10 @@
         "in",
         "paraphrase:muensingen"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "schulen",
         "where": {
@@ -327,6 +389,10 @@
         "in",
         "paraphrase:muensingen"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "schulen",
         "where": {
@@ -350,6 +416,10 @@
         "in",
         "paraphrase:muensingen"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "schulen",
         "where": {
@@ -373,6 +443,10 @@
         "in",
         "in-list"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "haltestellen",
         "where": {
@@ -398,6 +472,10 @@
         "spatial",
         "two-layers"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "gemeinden",
         "where": {
@@ -420,6 +498,10 @@
         "spatial",
         "two-layers"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "strassen",
         "where": {
@@ -443,6 +525,10 @@
         "near",
         "two-layers"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "schulen",
         "where": {
@@ -467,6 +553,10 @@
         "in",
         "combination"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "haltestellen",
         "where": {
@@ -501,6 +591,10 @@
         "negation",
         "two-layers"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "gemeinden",
         "where": {
@@ -527,6 +621,10 @@
         "near",
         "negation"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "schulen",
         "where": {
@@ -554,6 +652,10 @@
         "outside",
         "in-list"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "haltestellen",
         "where": {
@@ -581,6 +683,10 @@
         "spatial",
         "two-layers"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "gemeinden",
         "where": {
@@ -604,6 +710,10 @@
         "combination",
         "two-layers"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "gemeinden",
         "where": {
@@ -636,6 +746,10 @@
       "tags": [
         "count"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "haltestellen",
         "where": {
@@ -653,6 +767,10 @@
         "attribute",
         "language"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "schulen",
         "where": {
@@ -671,6 +789,10 @@
         "in",
         "language"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "gold": {
         "source": "schulen",
         "where": {
@@ -692,6 +814,10 @@
       "tags": [
         "clarification"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "expect": "clarification"
     },
     {
@@ -700,6 +826,10 @@
       "tags": [
         "chain"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "expect": "cannot_answer",
       "other_approach": "chain"
     },
@@ -709,6 +839,10 @@
       "tags": [
         "chain"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "expect": "cannot_answer",
       "other_approach": "chain"
     },
@@ -719,6 +853,10 @@
         "out-of-scope",
         "safety"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "expect": "cannot_answer"
     },
     {
@@ -728,6 +866,10 @@
         "out-of-scope",
         "safety"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "expect": "cannot_answer",
       "also": [
         "query"
@@ -742,8 +884,12 @@
       "tags": [
         "unknown-layer"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "expect": "cannot_answer",
-      "other_approach": null
+      "other_approach": "none"
     },
     {
       "id": "h37-steueranlage",
@@ -751,8 +897,12 @@
       "tags": [
         "table"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "expect": "cannot_answer",
-      "other_approach": null
+      "other_approach": "none"
     },
     {
       "id": "h38-je-gemeinde",
@@ -761,8 +911,12 @@
         "count",
         "per-group"
       ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
       "expect": "cannot_answer",
-      "other_approach": null
+      "other_approach": "none"
     }
   ]
 }

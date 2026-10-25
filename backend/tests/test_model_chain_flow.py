@@ -68,12 +68,13 @@ from geotandem.data import DataBackend, Limits
 from geotandem.data import spatialite as spatialite_module
 from geotandem.db.orm import ModelAction
 from geotandem.engine.errors import ResultTooLarge
-from geotandem.llm import Completion
+from geotandem.llm import Completion, Message
 from geotandem.model import service
 from geotandem.model.chain import run as chain_run
 from geotandem.model.chain.plan import check_plan
 from geotandem.model.chain.run import run_step
 from geotandem.model.chain.tools import tool_list
+from geotandem.model.prompt import FIRST, examples_section
 from geotandem.model.record import ModelActionStore
 from geotandem.model.result import answer_format
 from geotandem.model.schemas import (
@@ -237,6 +238,44 @@ async def test_the_reference_question_as_a_chain_finds_10_of_137(
     assert (await client.post(url(done["id"], "undo"))).status_code == 200
 
 
+async def test_the_connections_prompt_profile_writes_the_direct_query_not_the_chain(
+    client: httpx.AsyncClient, app: FastAPI, model: Model, levels: dict[str, int]
+) -> None:
+    """Plan E3, D9: the connection's prompt profile writes the direct query; the
+    chain keeps the default until it is evaluated (plan E3, 9)."""
+    [connection] = (await client.get("/api/admin/llm/connections")).json()
+    own = {"examples": "12", "placement": "P9", "output": "text"}
+    patched = await client.patch(
+        f"/api/admin/llm/connections/{connection['id']}", json={"prompt_profile": own}
+    )
+    assert patched.status_code == 200, patched.text
+    planned = await ask_chain(client, app, model, reference_plan())
+    model.script(completion(case("clarification")))
+    response = await client.post(PROMPT, json={"text": "Welche Schulen?"})
+    assert response.status_code == 202, response.text
+    await settle(app)
+
+    # The record keeps the profile it was written with (F-6.8, H7), whatever
+    # the connection's is later.
+    back = {"examples": "standard", "placement": "P0", "output": "constrained"}
+    reset = await client.patch(
+        f"/api/admin/llm/connections/{connection['id']}", json={"prompt_profile": back}
+    )
+    assert reset.status_code == 200, reset.text
+    asked = await record(client, response.json()["id"])
+    assert asked["connection"]["prompt_profile"] == own
+    assert (await record(client, planned["id"]))["connection"]["prompt_profile"] == back
+
+    chain, direct = model.fake.calls
+    assert [m.role for m in chain.messages] == ["system", "user"]
+    assert chain.messages[0].content.endswith(FIRST)
+    assert chain.schema == answer_format("chain")
+    assert [m.role for m in direct.messages] == ["system", "system", "user"]
+    assert direct.messages[1:] == (Message("system", FIRST), Message("user", "Welche Schulen?"))
+    assert examples_section("12") in direct.messages[0].content
+    assert direct.schema is None  # output "text": the schema only in the prompt
+
+
 async def test_teilautonom_halts_before_the_buffer(
     client: httpx.AsyncClient, app: FastAPI, model: Model, levels: dict[str, int]
 ) -> None:
@@ -393,6 +432,74 @@ async def test_an_empty_step_before_the_last_is_re_planned(
     assert seen.role == "user"
     assert 'Schritt 2 (filter): {"outcome":"ok","empty":true,"count":0}' in seen.content
     assert "ab Schritt 3" in seen.content and "Die Schritte 1 bis 2 bleiben" in seen.content
+
+
+async def test_a_chain_keeps_the_tokens_of_its_planning_call_and_re_plans(
+    client: httpx.AsyncClient, app: FastAPI, model: Model, levels: dict[str, int]
+) -> None:
+    """bewertung.md 10 (WP86): the planning call's tokens, the re-plan's added;
+    a call that reported none adds nothing. In the store, never in a view."""
+    await choose(client, levels["Automatisch"])
+    first = replace(planned(*EMPTY_THEN), prompt_tokens=1000, completion_tokens=80)
+    approved = await ask_chain(client, app, model, first)
+    replanned = planned(MUNICIPALITIES, within(1, 3), why="Gemeinden statt nichts.")
+    model.script(replace(replanned, prompt_tokens=1300))
+    done, _ = await drive(client, app, approved["id"])
+
+    assert (done["status"], done["replans"]) == ("done", 1)
+    with Session(app.state.geotandem.backend.engine) as db:
+        row = db.get(ModelAction, approved["id"])
+        assert row is not None
+        assert (row.prompt_tokens, row.completion_tokens) == (2300, 80)
+    assert "tokens" not in json.dumps(done)
+
+
+def stored_tokens(app: FastAPI, action_id: int) -> tuple[int | None, int | None]:
+    with Session(app.state.geotandem.backend.engine) as db:
+        row = db.get(ModelAction, action_id)
+        assert row is not None
+        return row.prompt_tokens, row.completion_tokens
+
+
+@pytest.mark.parametrize(
+    ("again", "status"),
+    [
+        (planned(MUNICIPALITIES, within(1, 3), why="Gemeinden statt nichts."), "done"),
+        (Completion(text="Ich plane neu.", parse_error="not JSON"), "limited"),
+    ],
+)
+async def test_a_re_plan_adds_its_tokens_to_a_planning_call_that_reported_none(
+    client: httpx.AsyncClient,
+    app: FastAPI,
+    model: Model,
+    levels: dict[str, int],
+    again: Completion,
+    status: str,
+) -> None:
+    """The re-plan's tokens count from nothing (coalesce), also when its answer
+    does not read (``replan_limit``)."""
+    await choose(client, levels["Automatisch"])
+    approved = await ask_chain(client, app, model, planned(*EMPTY_THEN))
+    assert stored_tokens(app, approved["id"]) == (None, None)
+    model.script(replace(again, prompt_tokens=500, completion_tokens=20))
+    done, _ = await drive(client, app, approved["id"])
+
+    assert done["status"] == status
+    assert stored_tokens(app, approved["id"]) == (500, 20)
+
+
+@pytest.mark.parametrize("case_id", ["step_limit", "clarification"])
+async def test_a_planning_call_that_proposes_nothing_keeps_its_tokens(
+    client: httpx.AsyncClient, app: FastAPI, model: Model, levels: dict[str, int], case_id: str
+) -> None:
+    """A refused plan and a clarification instead of a plan keep the call's tokens."""
+    scripted = completion(case(case_id))
+    assert isinstance(scripted, Completion)
+    first = replace(scripted, prompt_tokens=700, completion_tokens=30)
+    asked = await ask_chain(client, app, model, first)
+
+    assert asked["status"] in ("refused", "answered")
+    assert stored_tokens(app, asked["id"]) == (700, 30)
 
 
 async def test_an_empty_last_step_is_the_result(

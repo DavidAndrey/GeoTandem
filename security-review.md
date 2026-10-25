@@ -742,3 +742,125 @@ Scope: `engine/compile.py`, `_check_ordered`.
   8.2). Now refused as `wrong_value_type` before the expression is built;
   tested for `compare` and `between`. No data was exposed: the error was
   raised before any SQL ran.
+
+## Prompt profiles and prices, WP91 (plan E3, D9, O4; 2026-10-25)
+
+Scope: `model/prompt.py`, `model/direct.py`, `model/service.py` (the direct
+query's prompt), `connections.py`, migration **0017**, the connection form.
+
+- **P9 adds a system message; the user message stays the prompt text (E-8,
+  extended 2026-10-23).** A connection's prompt profile may place the
+  first-question note `FIRST` as a second system message right before the
+  question: three messages instead of two. The note is the fixed text of
+  `prompt.py`, the same for every prompt; nothing of the request, the
+  profile or the data goes into it. The user message is still the prompt text
+  and nothing else. The bypass test `test_a_prompt_cannot_change_format_level_or_tools`
+  now runs every injection under P0 and P9: the messages before the user's
+  are byte for byte those of a harmless prompt, the second one is exactly
+  `FIRST`, the injected text appears in no system message, and a model that
+  obeys still gets no further than its answer's checks.
+- **Presets, never free text (D9).** `PromptProfile` takes three closed
+  choices (`standard`·`12`, `P0`·`P5`·`P9`, `constrained`·`text`) and refuses
+  any other field (`extra="forbid"`, 422); the measurement-only variants
+  P1–P4 and P8 cannot be set. The example set `12` is a packaged file of
+  invented layers, like the standard set: it names no layer an account may
+  not see (S3), and a test checks every worked answer against the answer and
+  query schemas. The chain keeps the default profile (the builder refuses
+  another for the chain), so a profile cannot change the chain's tools or
+  schema.
+- **Output `text` drops only the grammar.** The schema stays in the system
+  message; the client is asked without `response_format`, as the adapter
+  already does for an endpoint that refuses it (X-8). The answer is checked
+  by `parse_answer` and the query by `validate_model_query` as before.
+- **Changes are audited (O8).** A change of the profile or the prices is an
+  ordinary connection update: admin-only routes, audited as
+  `llm_connection_changed` with the changed field names, in the audit log,
+  not the model log. When the profile is set or changed the event also
+  carries its three values (closed presets, not secret); no other value is
+  logged. Setting the same profile again lists no field.
+- **Prices leak nothing.** Three plain columns (two numbers, an ISO currency),
+  all three or none (`price_incomplete`, also a table check); shown to
+  administrators only with the connection. No key is near them; the error
+  details name the connection and the missing field names only.
+- **The record keeps the profile it was written with (F-6.8, H7).** Every
+  model action stores the prompt profile of its prompt (`model_action.prompt_profile`,
+  migration 0017; the chain's is the default), shown with the connection on
+  the action page when it is not the default. A later change of the
+  connection's profile changes no record (tested); records from before 0017
+  hold none, which is the default. A stored profile a later version does not
+  know reads as the default with a log line, so one row cannot break the
+  connection list or the log.
+
+## Gate E3 (plan E3, section 5)
+
+Date: 2026-10-25, at the E3 etappe gate. Scope: the integrated diff of E3
+(WP85–WP97) on `ep-3`: the cases and their store (`evaluation/cases.py`,
+`store.py`, migration 0015), the grader and its stages (`grade.py`,
+`stages.py`, `diff.py`), the run engine and its rows (`run.py`,
+`run_store.py`, migration 0016), the routes (`api/evaluation.py`), the
+prompt profiles and prices (WP91, its own section above), the frontend's
+evaluation pages and the model stub's additions. Method: `/security-review`
+on the diff and the checklist of plan E3, section 5, item by item, each fix
+shown by a test.
+
+**Overall:** a run is a measurement and stays one: admin-only, no model
+action, no row of the data in a prompt or a view. The findings are about
+bounds a run's answer, its export and the case routes did not yet keep
+(#45–#48), a confirmation that named the connection but not its host (#49),
+and what the security log did not record (#50). #49 is the one of weight.
+
+### Checklist (E3)
+
+| Item | Result | Basis |
+|---|---|---|
+| **Admin-only on every `/api/admin/evaluation/*` route** | No finding | The router depends on `require_admin`; every route of plan section 6 answers 401 without a session and 403 to a user (`test_every_route_needs_a_session`, `test_every_route_is_for_administrators`); no route is a stub left (`test_no_route_answers_501`). |
+| **Model calls only through `LLMClient`, queries only through the engine with the operating limits** | #47 | A run asks through `DirectQuery.ask` with the connection's endpoint, its call capped at `MODEL_CALL_S` (120 s); readings and grading run under the operating limits holding one of at most two of the instance's query slots (#42). The case routes that run a reference held none (#47). |
+| **No row value reaches a prompt (sentinel)** | No finding | `test_no_row_value_reaches_a_prompt_of_a_live_run`: sentinels in a layer's values and a layer not released for the model; neither appears in any message of a live run. Answers carry feature ids and counts, never rows (`test_no_view_of_the_evaluation_can_carry_rows`). |
+| **A live run uses exactly the starting administrator's visibility (D4)** | No finding | The run's world is `profile_for` of the starting account; its label names it. Tested with an account whose role does not see a layer: its case is stale, the profile lacks the layer, the label's profile equals `GET /profile-summary?account=` (`test_a_live_run_uses_the_view_of_the_account_that_starts_it`). |
+| **External runs only after the notice (D12)** | #49 | The estimate lists the external hosts, the dialog names them and locks the start without the tick, and the start refuses an external connection not confirmed in the request. The confirmation was bound to the connection's id, not to its host (#49). |
+| **Import of cases cannot inject queries past the checks** | #48 | A reference passes the checks of a model's query on its data state (`case_invalid`); an import is all or nothing. Two fields of a case had no bound (#48). |
+| **The P9 system message keeps the E-8 invariant** | No finding (#52 widened the test) | See *Prompt profiles and prices, WP91* above; the bypass test now covers all twelve presets (#52). |
+| **Prices and tokens leak no key** | No finding | The run's endpoint holds the decrypted key in memory for the call only; no row, view, export or log line carries it (`test_the_key_goes_to_the_call_and_nowhere_else`). Prices are three plain columns. |
+| **Cost of a failing endpoint** | No finding | After 5 answers in a row of one queue that failed for the key, the provider's limits or the host, the whole run stops at once: no queue asks a further question (decided at the gate; before, only the failing host's queue stopped). `RunView.stopped` names host and connections. |
+
+### New findings
+
+| # | Priority | Finding | Impact |
+|---|---|---|---|
+| 45 | **Low** | **A run stored an answer as it came.** The record bounds a refused answer's raw query to 64 kB (#35); a run's `eval_answer` kept the model's answer whole, up to the answer's size limit (1 MB, #34). | Up to 1 MB per answer, 710 answers in a full run of the start set: hundreds of MB written to the data core and sent with every V7 page and the export. |
+| 46 | **Low** | **The export was built whole in memory.** `GET /runs/{id}/export` read every answer of the run and serialised them in one response. | A run of 8 points over 500 cases (40 000 answers, each with its diff and id lists) held in memory at once per request; a few requests in parallel strain a small instance. |
+| 47 | **Low** | **The case routes ran references outside the query slots.** `GET /cases/{id}` counts each reading's features, `POST /cases` and `PUT /cases/{id}` check and run the reference; none held a query slot (#5). | Queries beyond the instance's cap of queries at once, as #42 found for the chain: an administrator's requests could crowd out everyone's queries. |
+| 48 | **Info** | **Two fields of a case had no bound.** `schema_version` was any string, a required condition's text `value` too. | A case file of the request's size (2 MiB) in one field, stored and returned with every list; no query ran on them. |
+| 49 | **Medium** | **The external confirmation named the connection, not the host.** `confirm_external` carried connection ids; a connection edited to another host between the estimate and the start was sent to with the confirmation given for the old host. | The layer profile and the questions could go to a host the administrator never saw named (F-9.3, F-9.4): another administrator's edit, or one's own in another tab. |
+| 50 | **Low** | **Runs and case changes left no security event.** A run's start (which may send to an external host and spend money), its abort, an import and a deletion of cases were in no line of the security log. | Who sent the profile to which host, and when, could not be traced from the log; the model log holds no run by design (D8). |
+| 51 | **Low** | **A token can start a run.** The evaluation routes take any credential of an administrator (`require_admin`), a Bearer token too, like the other admin routes; starting a run, and confirming an external host for it, needs no interactive session. | A program holding an administrator's token can run measurements, external ones included, without a person at the dialog. |
+| 52 | **Info** | **The bypass test covered two of twelve prompt profiles.** `test_a_prompt_cannot_change_format_level_or_tools` ran under P0 and P9 with the standard examples and constrained output only. | A preset (`12` examples, P5, output `text`) that let an injected prompt into a system message would have gone unnoticed. |
+| 53 | **Info** | **No second line for a run's call.** Operation gives up a call 5 s past its deadline when its thread lingers (#34); a run's queue threads are joined without a timeout. | Should the adapter's deadline not hold, the run stays `finishing` and every start is `run_busy` until the thread ends or the process restarts. Operation is not affected. |
+
+### Status of #45–#53
+
+| # | Fixed |
+|---|---|
+| 45 | A run stores an answer as the record does (`record.store.bounded`, made public): a raw query beyond 64 kB of canonical JSON is kept as `{"omitted": "too large"}`; the verbatim text of an unreadable answer stays capped at 20 000 characters. Tested with a refused query of 1 MB (`test_a_large_refused_query_is_stored_bounded`). |
+| 46 | The export is streamed: the run's view first (404 before anything is written), then the answers read 500 at a time (`RunStore.answer_batches`, keyset by point and id) and written as they come. The response schema stays `RunExport`, every key present, `null` ones too (`response_model_exclude_none` dropped). Tested in batches of 7. |
+| 47 | `dependencies=[QuerySlot]` on `GET /cases/{id}`, `POST /cases` and `PUT /cases/{id}`, as on `POST /sessions/{id}/check`; with the account's slots taken they answer `503 busy`, the list (which counts nothing) still answers. |
+| 48 | `schema_version` is 1 to 4 digits; a required condition's text `value` at most 500 characters. Tested in `test_the_fields_of_a_case_are_bounded` and `test_a_required_conditions_text_value_is_bounded`. |
+| 49 | Additive `confirm_external_hosts`: the hosts as the estimate listed them, sent by the dialog with the ids. A start whose external connection is not confirmed is `external_not_confirmed` with `reason: missing`; one whose current host is not among the confirmed hosts, `reason: changed`, before any call. Tested: a connection edited to another host after the estimate is refused, ids alone are refused, the confirmed host runs. |
+| 50 | Security events, no prompt text: `evaluation_run_started` (run, connection ids, confirmed external hosts, requests, data state, scope), `evaluation_run_aborted` (once, when the abort closed the run), `evaluation_cases_imported` (count), `evaluation_case_deleted` (case id); each with the acting account. Tested. |
+| 51 | **Accepted until E4**, with the token rules of E2.4 and E2.5: E4 decides which routes a program may call; until then an administrator's token is an administrator. |
+| 52 | The test runs every injection under all 2 × 3 × 2 presets (36 cases). |
+| 53 | **Accepted.** A call ends by the adapter's wall-clock deadline (#34), at most `MODEL_CALL_S`; if it ever does not, a restart frees the instance. |
+
+### Accepted residual risks (E3)
+
+- **Keys in memory during a run.** Each measuring point's endpoint, with its decrypted key, is resolved at the start and held until the run ends; never stored, shown or logged (`test_the_key_goes_to_the_call_and_nowhere_else`). A dump of the process holds the vault's secret anyway.
+
+- **A run spends without a daily limit.** By design (D12) a run does not
+  count against a connection's request limit; the confirmation of the
+  estimate is the cap. The estimate names requests, tokens and, with prices,
+  the money; the circuit breaker stops a run whose endpoint refuses the key
+  or limits the requests.
+- **The questions of a run go to an external host in full.** Only the
+  layer profile and the case's question, never data contents (F-9.3); the
+  start set's questions are public, an own case's question is the
+  administrator's own wording.

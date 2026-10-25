@@ -12,23 +12,22 @@ now reads (its verbatim ``raw``, H-4).
 
 import json
 import sys
-import tempfile
 from datetime import datetime
-from pathlib import Path
 
+from casefiles import load_cases
 from compare import newest
-from run import HERE, LIMITS, grade
+from run import HERE, LIMITS
 
-from geotandem.catalog import model_profile
+from geotandem.catalog import ModelProfile, model_profile
 from geotandem.config import Settings
 from geotandem.data.spatialite import SpatiaLiteBackend
-from geotandem.db.bootstrap import bootstrap
+from geotandem.evaluation.grade import grade, reading_ids
+from geotandem.evaluation.sample import build_sample
 from geotandem.llm import Completion
 from geotandem.model.errors import ActionError
 from geotandem.model.result import parse_answer
 from geotandem.model.schemas import QueryAnswer
 from geotandem.model.validate import Validated, validate_model_query
-from geotandem.sample.load import load_sample
 from geotandem.tools import ToolContext
 
 
@@ -36,22 +35,26 @@ def main() -> int:
     labels = sys.argv[1:]
     if not labels:
         raise SystemExit(__doc__)
-    settings = Settings(data_dir=Path(tempfile.mkdtemp(prefix="geotandem-regrade-")))
-    engine = bootstrap(settings)
-    backend = SpatiaLiteBackend(engine, settings.internal_crs)
-    load_sample(backend)
-    profile = model_profile(engine, backend.layer_names())
-    context = ToolContext(backend=backend, limits=LIMITS)
+    worlds: dict[str, tuple[SpatiaLiteBackend, ModelProfile, ToolContext]] = {}
+
+    def world(mode: str) -> tuple[SpatiaLiteBackend, ModelProfile, ToolContext]:
+        """The sample with the metadata the run's model saw (``--profile``, Phase 4):
+        an answer is checked against the profile it was given, not the full one."""
+        if mode not in worlds:
+            built = build_sample(Settings(), prefix="geotandem-regrade-", profile=mode)
+            backend = built.backend
+            profile = model_profile(built.engine, backend.layer_names())
+            worlds[mode] = backend, profile, ToolContext(backend=backend, limits=LIMITS)
+        return worlds[mode]
+
     for label in labels:
         source = newest(label)
         lines = source.read_text("utf-8").splitlines()
         header = json.loads(lines[0])
-        cases = {
-            c["id"]: c
-            for c in json.loads((HERE / f"{header.get('cases', 'cases')}.json").read_text("utf-8"))[
-                "cases"
-            ]
-        }
+        backend, profile, context = world(header.get("profile") or "full")
+        cases = {c.id: c for c in load_cases(header.get("cases") or "cases")}
+        # Checked and read once per case, as a run does.
+        readings = {c.id: reading_ids(c, context, profile) for c in cases.values()}
         out = HERE / "results" / f"{datetime.now():%Y%m%d-%H%M%S}-{label}.jsonl"
         changed = 0
         with out.open("w", encoding="utf-8") as log:
@@ -76,7 +79,9 @@ def main() -> int:
                             query = checked.query
                         else:
                             refusal = checked
-                    verdict = grade(cases[record["case"]], answer, refusal, query, backend)
+                    case = cases[record["case"]]
+                    graded = grade(case, answer, refusal, query, backend, LIMITS, readings[case.id])
+                    verdict = graded.tag
                     changed += verdict != record["verdict"]
                     record["verdict"] = verdict
                 log.write(json.dumps(record, ensure_ascii=False) + "\n")

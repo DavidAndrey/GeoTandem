@@ -517,6 +517,8 @@ test.describe('E2.4 against the model stub', { tag: '@stub' }, () => {
     await expect(mixed.card.getByText('Ohne Grund abgelehnt.')).toHaveCount(0)
     await expect(mixed.card).toContainText('falscher Wert')
     await expect(hits(page)).toHaveText('10 von 137')
+    // The card shows the reason as chosen; the record changes once the request lands.
+    await expect.poll(async () => (await view(analyst, mixed.id)).status).toBe('rejected')
     const rejected = await view(analyst, mixed.id)
     expect([rejected.status, rejected.decision, rejected.reject_reason]).toEqual([
       'rejected',

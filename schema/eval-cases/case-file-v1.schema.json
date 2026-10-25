@@ -1,0 +1,443 @@
+{
+  "$defs": {
+    "CaseLayer": {
+      "additionalProperties": false,
+      "description": "A layer a live case uses, with its dataset version when the case was made (D3).",
+      "properties": {
+        "name": {
+          "maxLength": 63,
+          "title": "Name",
+          "type": "string"
+        },
+        "dataset_version": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dataset Version"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "CaseLayer",
+      "type": "object"
+    },
+    "EvalCase": {
+      "additionalProperties": false,
+      "description": "One question with its right answer (F-3.13, D2). Exactly one of ``gold``,\n``gold_any``, ``require`` and ``expect``: a query case has a reference\nquery, several fair readings or required parts; a behaviour case names the\nexpected answer kind. A reference query is stored as the harness writes it,\nwithout ``schema_version`` and ``output``, against ``schema_version``.\n\nThe JSON schema of the file cannot say \"exactly one of\"; the application\nchecks it, the uniqueness of ids and ``origin_action`` on import.",
+      "properties": {
+        "prompt": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Prompt",
+          "type": "string"
+        },
+        "data_state": {
+          "default": "sample",
+          "enum": [
+            "sample",
+            "live"
+          ],
+          "title": "Data State",
+          "type": "string"
+        },
+        "origin_action": {
+          "anyOf": [
+            {
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Origin Action"
+        },
+        "schema_version": {
+          "default": "2",
+          "pattern": "^[0-9]{1,4}$",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "gold": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gold"
+        },
+        "gold_any": {
+          "anyOf": [
+            {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "maxItems": 4,
+              "minItems": 2,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gold Any"
+        },
+        "require": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Require"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "expect": {
+          "anyOf": [
+            {
+              "enum": [
+                "query",
+                "clarification",
+                "cannot_answer"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expect"
+        },
+        "also": {
+          "default": [],
+          "items": {
+            "enum": [
+              "query",
+              "clarification",
+              "cannot_answer"
+            ],
+            "type": "string"
+          },
+          "maxItems": 2,
+          "title": "Also",
+          "type": "array"
+        },
+        "forbid": {
+          "default": [],
+          "items": {
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Forbid",
+          "type": "array"
+        },
+        "other_approach": {
+          "anyOf": [
+            {
+              "enum": [
+                "direct",
+                "chain"
+              ],
+              "type": "string"
+            },
+            {
+              "const": "none",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Other Approach"
+        },
+        "note": {
+          "default": "",
+          "maxLength": 2000,
+          "title": "Note",
+          "type": "string"
+        },
+        "layers": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/CaseLayer"
+          },
+          "maxItems": 32,
+          "title": "Layers",
+          "type": "array"
+        },
+        "id": {
+          "not": {
+            "enum": [
+              "draft-from-action",
+              "export",
+              "import"
+            ]
+          },
+          "pattern": "^[a-z0-9][a-z0-9.-]{0,62}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "tags": {
+          "items": {
+            "pattern": "^[a-z0-9][a-z0-9:-]{0,31}$",
+            "type": "string"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Tags",
+          "type": "array"
+        },
+        "split": {
+          "enum": [
+            "tuning",
+            "confirm"
+          ],
+          "title": "Split",
+          "type": "string"
+        },
+        "origin": {
+          "enum": [
+            "start",
+            "authored",
+            "import",
+            "log"
+          ],
+          "title": "Origin",
+          "type": "string"
+        }
+      },
+      "required": [
+        "prompt",
+        "id",
+        "tags",
+        "split",
+        "origin"
+      ],
+      "title": "EvalCase",
+      "type": "object"
+    },
+    "Require": {
+      "additionalProperties": false,
+      "description": "What a query must contain where several readings select different\nfeatures (harness ``require``): the source layer, and the conditions it\nmust hold.",
+      "properties": {
+        "source": {
+          "maxLength": 63,
+          "title": "Source",
+          "type": "string"
+        },
+        "conditions": {
+          "items": {
+            "$ref": "#/$defs/RequiredCondition"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Conditions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "source",
+        "conditions"
+      ],
+      "title": "Require",
+      "type": "object"
+    },
+    "RequiredCondition": {
+      "additionalProperties": false,
+      "description": "A condition the query must hold somewhere in its tree (``grade.matches``):\neach key given must have that value; ``distance_m`` is a ``[low, high]``\nrange. Unset keys match anything.",
+      "properties": {
+        "op": {
+          "enum": [
+            "compare",
+            "between",
+            "in",
+            "text_match",
+            "is_null",
+            "bbox",
+            "geometry",
+            "near_feature",
+            "related",
+            "and",
+            "or",
+            "not"
+          ],
+          "title": "Op",
+          "type": "string"
+        },
+        "attr": {
+          "anyOf": [
+            {
+              "maxLength": 63,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Attr"
+        },
+        "cmp": {
+          "anyOf": [
+            {
+              "enum": [
+                "eq",
+                "ne",
+                "lt",
+                "le",
+                "gt",
+                "ge"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cmp"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        },
+        "layer": {
+          "anyOf": [
+            {
+              "maxLength": 63,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Layer"
+        },
+        "predicate": {
+          "anyOf": [
+            {
+              "enum": [
+                "intersects",
+                "within",
+                "contains",
+                "dwithin"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Predicate"
+        },
+        "distance_m": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Distance M"
+        }
+      },
+      "required": [
+        "op"
+      ],
+      "title": "RequiredCondition",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "The start set, an export, an import: the same JSON (F-10.4), written\nwithout ``null`` fields.",
+  "properties": {
+    "format": {
+      "const": "geotandem-eval-cases",
+      "default": "geotandem-eval-cases",
+      "title": "Format",
+      "type": "string"
+    },
+    "version": {
+      "const": 1,
+      "default": 1,
+      "title": "Version",
+      "type": "integer"
+    },
+    "about": {
+      "default": "",
+      "maxLength": 4000,
+      "title": "About",
+      "type": "string"
+    },
+    "cases": {
+      "items": {
+        "$ref": "#/$defs/EvalCase"
+      },
+      "maxItems": 500,
+      "title": "Cases",
+      "type": "array"
+    }
+  },
+  "required": [
+    "cases"
+  ],
+  "title": "CaseFile",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://geotandem.local/schema/eval-cases/case-file-v1.json"
+}

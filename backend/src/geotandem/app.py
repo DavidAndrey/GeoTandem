@@ -12,7 +12,18 @@ from starlette.responses import FileResponse, HTMLResponse, Response
 from starlette.types import Scope
 
 from geotandem import __version__, audit
-from geotandem.api import admin, auth, errors, llm, model, model_log, queries, routes, sessions
+from geotandem.api import (
+    admin,
+    auth,
+    errors,
+    evaluation,
+    llm,
+    model,
+    model_log,
+    queries,
+    routes,
+    sessions,
+)
 from geotandem.api.guards import (
     CSP_NONCE,
     NONCE_PLACEHOLDER,
@@ -29,6 +40,8 @@ from geotandem.config import Settings, get_settings
 from geotandem.connections import Connections
 from geotandem.data.spatialite import SpatiaLiteBackend
 from geotandem.db.bootstrap import bootstrap
+from geotandem.evaluation.cases import check_start_set
+from geotandem.evaluation.run import Runs, close_interrupted
 from geotandem.importing import log as import_log
 from geotandem.importing.staging import Staging
 from geotandem.llm.openai_compat import OpenAICompatClient
@@ -42,7 +55,8 @@ log = logging.getLogger(__name__)
 
 def start(settings: Settings) -> AppState:
     """Bring the data core up to date and check capabilities (F-2.12, F-2.14);
-    close what the last shutdown left running (imports, model actions, P7)."""
+    close what the last shutdown left running (imports, model actions, P7,
+    evaluation runs, D8)."""
     engine = bootstrap(settings)
     backend = SpatiaLiteBackend(engine, settings.internal_crs)
     unsupported = backend.missing_functions()
@@ -54,8 +68,11 @@ def start(settings: Settings) -> AppState:
         log.warning("%d imports were interrupted by the last shutdown", stale)
     if closed := model_service.close_stale(engine, settings.max_features):
         log.warning("%d model actions were left open by the last shutdown", len(closed))
+    if interrupted := close_interrupted(engine):
+        log.warning("%d evaluation runs were interrupted by the last shutdown", len(interrupted))
     if settings.load_sample_data:
         load_sample(backend)
+    check_start_set(settings, engine)
     staging = Staging(settings.staging_dir)
     staging.cleanup()
     throttle = LoginThrottle(
@@ -83,6 +100,7 @@ def start(settings: Settings) -> AppState:
         Connections(engine, Vault.open(settings.data_dir), settings.local_hosts),
         OpenAICompatClient,
         model_service.ModelCalls(settings.max_model_calls),
+        Runs(),
         token,
     )
 
@@ -119,6 +137,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.geotandem = start(settings)
         yield
         app.state.geotandem.model_calls.shutdown()
+        app.state.geotandem.runs.shutdown()
         app.state.geotandem.backend.engine.dispose()
 
     docs = settings.api_docs
@@ -146,6 +165,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(llm.router)
     app.include_router(model.router)
     app.include_router(model_log.router)
+    app.include_router(evaluation.router)
     frontend = settings.frontend_dir
     if frontend is not None and Path(frontend, "index.html").exists():
         app.mount("/", SinglePageApp(directory=frontend, html=True), name="frontend")

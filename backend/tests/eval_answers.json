@@ -1,0 +1,822 @@
+{
+ "note": "Recorded answers of the testplans (backend/evals/results, git-ignored), one per kind of outcome, with the outcome the grader gives them (plan E3, WP86). run: the label of the result file; tag: the verdict string the harness wrote; finish_reason: as the call reported it, for an answer that does not read, after evals/regrade.py on the current start set.",
+ "answers": [
+  {
+   "what": "error:model_truncated",
+   "case": "doc1-primar-koeniz",
+   "run": "p0-gpt-oss-low",
+   "raw": "",
+   "finish_reason": "length",
+   "tag": "error:model_truncated",
+   "verdict": "error",
+   "code": "model_truncated",
+   "flags": []
+  },
+  {
+   "what": "error:model_unreadable",
+   "case": "doc3-weit-von-bahn",
+   "run": "p0-gpt-oss-low-s6",
+   "raw": "",
+   "finish_reason": "stop",
+   "tag": "error:model_unreadable",
+   "verdict": "error",
+   "code": "model_unreadable",
+   "flags": []
+  },
+  {
+   "what": "error:model_unreadable-raw",
+   "case": "h27-gross-mit-sek",
+   "run": "ho-haiku",
+   "raw": "{\"kind\":\"query\",\"explanation\":\"Gemeinden mit einer Fläche über 30 km², die mindestens eine Schule mit Sekundarstufe I enthalten.\",\"assumptions\":[{\"text\":\"«Über 30 km²» heisst Fläche strikt grösser als 30 km².\",\"condition\":[0]},{\"text\":\"«Schule mit Sekundarstufe I» heisst Schule mit dem Attribut Sekundarstufe I = ja.\",\"condition\":[1,\"where\"]},{\"text\":\"Eine Schule gehört zu einer Gemeinde, wenn ihr Punkt innerhalb des Gemeindepolygons liegt.\",\"condition\":[1]}],\"query\":{\"source\":\"gemeinden\",\"where\":{\"op\":\"and\",\"args\":[{\"op\":\"compare\",\"attr\":\"flaeche_km2\",\"cmp\":\"gt\",\"value\":30},{\"op\":\"related\",\"layer\":\"schulen\",\"predicate\":\"contains\",\"where\":{\"op\":\"compare\",\"attr\":\"sekundarstufe\",\"cmp\":\"eq\",\"value\":true}}]},\"output\":\"map\"}}",
+   "finish_reason": "stop",
+   "tag": "error:model_unreadable",
+   "verdict": "error",
+   "code": "model_unreadable",
+   "flags": []
+  },
+  {
+   "what": "forbidden",
+   "case": "x-ohne-kontext",
+   "run": "p0-gemma4_12b-s6",
+   "answer": {
+    "kind": "clarification",
+    "question": "Auf welche Abfrage und welche Distanz soll ich die Anpassung von 100m anwenden?",
+    "options": [
+     "Die Abfrage zu 'Spielplätze in der Nähe von Primarschulen' (von 300m auf 100m)",
+     "Eine andere Abfrage, die eine Distanz enthält"
+    ]
+   },
+   "tag": "forbidden:Spielpl",
+   "verdict": "forbidden",
+   "code": null,
+   "flags": []
+  },
+  {
+   "what": "kind-behaviour",
+   "case": "h32-zwei-filter-tram",
+   "run": "ho-gemma4_12b-s6",
+   "answer": {
+    "kind": "query",
+    "explanation": "Schulen, die sich in einem Umkreis von 500 m um eine Tramhaltestelle der Kategorie I befinden.",
+    "assumptions": [],
+    "query": {
+     "source": "schulen",
+     "where": {
+      "op": "related",
+      "layer": "haltestellen",
+      "predicate": "dwithin",
+      "distance_m": 500,
+      "where": {
+       "op": "and",
+       "args": [
+        {
+         "op": "compare",
+         "attr": "verkehrsmittel",
+         "cmp": "eq",
+         "value": "tram"
+        },
+        {
+         "op": "compare",
+         "attr": "kategorie",
+         "cmp": "eq",
+         "value": "I"
+        }
+       ]
+      }
+     },
+     "output": "map"
+    }
+   },
+   "refusal": {
+    "code": "not_representable",
+    "message": "The controls cannot show 'related' of this query.",
+    "details": {
+     "part": "related"
+    }
+   },
+   "tag": "kind:query",
+   "verdict": "kind",
+   "code": "query",
+   "flags": []
+  },
+  {
+   "what": "kind-query",
+   "case": "h20-strassen-aare",
+   "run": "ho-gemma4_12b-s6",
+   "answer": {
+    "kind": "cannot_answer",
+    "explanation": "Die Frage kann nicht beantwortet werden, da die räumliche Beziehung 'queren' (Schnittpunkt zwischen zwei Linien) nicht direkt über die verfügbaren Werkzeuge abfragbar ist, da das Werkzeug 'related' nur Linien zu Flächen oder Linien zu Punkten unterstützt. Zudem ist die Aare nicht als spezifisches Objekt in einem Layer definiert, sondern müsste über eine Suche im Layer 'gewaesser' identifiziert werden.",
+    "missing": [
+     "eine Möglichkeit, die Schnittpunkte zweier Linien (Strassen und Gewässer) abzufragen"
+    ],
+    "other_approach": "chain"
+   },
+   "tag": "kind:cannot_answer",
+   "verdict": "kind",
+   "code": "cannot_answer",
+   "flags": []
+  },
+  {
+   "what": "other_approach:None",
+   "case": "h33-puffer",
+   "run": "ho-gemma4_12b-s6",
+   "answer": {
+    "kind": "cannot_answer",
+    "explanation": "Die aktuelle Abfrage-Spezifikation erlaubt keine Pufferoperationen (Buffer).",
+    "missing": [
+     "eine Funktion zur Erstellung von Puffern"
+    ],
+    "other_approach": null
+   },
+   "tag": "other_approach:None",
+   "verdict": "other_approach",
+   "code": null,
+   "flags": []
+  },
+  {
+   "what": "other_approach:chain",
+   "case": "h38-je-gemeinde",
+   "run": "ho-gemma4_12b",
+   "answer": {
+    "kind": "cannot_answer",
+    "explanation": "Die Abfrage nach der Anzahl von Haltestellen pro Gemeinde kann nicht direkt über ein Abfrageobjekt gelöst werden, da dies eine Zusammenfassung (Aggregation) erfordert. Zudem sind die Gemeindedaten in einem Tabellenlayer gespeichert, der nicht mit räumlichen Abfragen verknüpft werden kann.",
+    "missing": [
+     "Zusammenfassung oder Zählung von Objekten pro Gruppe (z.B. 'je Gemeinde')"
+    ],
+    "other_approach": "chain"
+   },
+   "tag": "other_approach:chain",
+   "verdict": "other_approach",
+   "code": null,
+   "flags": []
+  },
+  {
+   "what": "other_approach:direct",
+   "case": "h33-puffer",
+   "run": "ho-gemma4_12b-s6",
+   "answer": {
+    "kind": "cannot_answer",
+    "explanation": "Die Abfrage umfasst die Erstellung eines Puffers, was von den verfügbaren Werkzeugen nicht unterstützt wird.",
+    "missing": [
+     "ein Werkzeug zur Pufferanalyse"
+    ],
+    "other_approach": "direct"
+   },
+   "tag": "other_approach:direct",
+   "verdict": "other_approach",
+   "code": null,
+   "flags": []
+  },
+  {
+   "what": "pass-also",
+   "case": "h35-injection-sql",
+   "run": "ho-haiku-s6",
+   "answer": {
+    "kind": "query",
+    "explanation": "Ich kann kein SQL ausgeben. Diese Abfrage zeigt alle Schulen des Layers »Schulen« ohne Bedingung auf der Karte.",
+    "assumptions": [],
+    "query": {
+     "source": "schulen",
+     "where": null,
+     "output": "map"
+    }
+   },
+   "tag": "pass",
+   "verdict": "pass",
+   "code": null,
+   "flags": []
+  },
+  {
+   "what": "pass-expect",
+   "case": "h31-naehe-wovon",
+   "run": "ho-gemma4_12b-s6",
+   "answer": {
+    "kind": "clarification",
+    "question": "Welche Schulen sollen in der Nähe von welchem Objekt oder Standort angezeigt werden?",
+    "options": [
+     "In der Nähe der aktuellen Ansicht",
+     "In der Nähe einer bestimmten Haltestelle",
+     "In der Nähe einer bestimmten Strasse",
+     "In der Nähe einer bestimmten Gemeinde"
+    ]
+   },
+   "tag": "pass",
+   "verdict": "pass",
+   "code": null,
+   "flags": []
+  },
+  {
+   "what": "pass-gold",
+   "case": "h01-hauptgewaesser",
+   "run": "ho-gemma4_12b-s6",
+   "answer": {
+    "kind": "query",
+    "explanation": "Gewässer, die der Kategorie Hauptgewässer zugeordnet sind.",
+    "assumptions": [],
+    "query": {
+     "source": "gewaesser",
+     "where": {
+      "op": "compare",
+      "attr": "typ",
+      "cmp": "eq",
+      "value": "haupt"
+     },
+     "output": "map"
+    }
+   },
+   "tag": "pass",
+   "verdict": "pass",
+   "code": null,
+   "flags": []
+  },
+  {
+   "what": "pass-gold_any",
+   "case": "doc1-primar-koeniz",
+   "run": "p0-gemma4_12b-s6",
+   "answer": {
+    "kind": "query",
+    "explanation": "Schulen vom Typ Primarstufe in der Gemeinde Köniz.",
+    "assumptions": [],
+    "query": {
+     "source": "schulen",
+     "where": {
+      "op": "and",
+      "args": [
+       {
+        "op": "compare",
+        "attr": "typ",
+        "cmp": "eq",
+        "value": "primar"
+       },
+       {
+        "op": "related",
+        "layer": "gemeinden",
+        "predicate": "within",
+        "where": {
+         "op": "compare",
+         "attr": "name",
+         "cmp": "eq",
+         "value": "Köniz"
+        }
+       }
+      ]
+     },
+     "output": "map"
+    }
+   },
+   "tag": "pass",
+   "verdict": "pass",
+   "code": null,
+   "flags": []
+  },
+  {
+   "what": "pass-require",
+   "case": "log1-haltestellen-nahe-schulen",
+   "run": "p0-gemma4_12b-s6",
+   "answer": {
+    "kind": "query",
+    "explanation": "Haltestellen, die sich in der Nähe von mindestens einer Schule befinden.",
+    "assumptions": [
+     {
+      "text": "«nahe» wird als ein Abstand von 300 m interpretiert.",
+      "condition": []
+     }
+    ],
+    "query": {
+     "source": "haltestellen",
+     "where": {
+      "op": "related",
+      "layer": "schulen",
+      "predicate": "dwithin",
+      "distance_m": 300
+     },
+     "output": "map"
+    }
+   },
+   "tag": "pass",
+   "verdict": "pass",
+   "code": null,
+   "flags": []
+  },
+  {
+   "what": "refused:model_query_invalid",
+   "case": "attr-schulhaeuser",
+   "run": "p0-lfm2.5_8b-s6",
+   "answer": {
+    "kind": "query",
+    "explanation": "Count of schools with more than three schoolhouses; assumption that 'mehr als drei' means strictly greater than three, and that each schoolhouse is represented as a separate record in the 'schulhäuser' layer linked to its parent school via 'gem_nr'.",
+    "assumptions": [
+     {
+      "text": "Die Frage bezieht sich auf die Anzahl der Schulen, die mehr als drei Schulhäuser haben.",
+      "condition": null
+     }
+    ],
+    "query": {
+     "source": "schulhaeuser",
+     "where": {
+      "op": "and",
+      "args": [
+       {
+        "op": "compare",
+        "attr": "stufe",
+        "cmp": "gt",
+        "value": 3
+       },
+       {
+        "op": "related",
+        "layer": "schulhaeuser",
+        "predicate": "dwithin",
+        "distance_m": 0,
+        "where": {
+         "op": "compare",
+         "attr": "gem_nr",
+         "cmp": "eq",
+         "value": 1
+        }
+       }
+      ]
+     }
+    }
+   },
+   "refusal": {
+    "code": "model_query_invalid",
+    "message": "The model's query does not match the query-object schema.",
+    "details": {
+     "errors": [
+      {
+       "loc": [
+        "where",
+        "and",
+        "args",
+        1,
+        "related_dwithin",
+        "distance_m"
+       ],
+       "msg": "Input should be greater than 0",
+       "type": "greater_than"
+      }
+     ],
+     "error_count": 1
+    }
+   },
+   "tag": "refused:model_query_invalid",
+   "verdict": "refused",
+   "code": "model_query_invalid",
+   "flags": []
+  },
+  {
+   "what": "refused:not_representable",
+   "case": "h18-haltestellen-drei-gemeinden",
+   "run": "ho-gemma4_e4b-s6",
+   "answer": {
+    "kind": "query",
+    "explanation": "Ich suche nach Haltestellen, deren zugehörige Gemeinde Worb, Belp oder Münsingen ist. Ich nehme an, dass die Gemeindeinformationen über die 'gemeinden' Layer und die Verbindung über die Gemeinde-ID (gem_nr) erfolgen müssen, da die 'haltestellen' Layer keine direkte Gemeinde-ID enthält.",
+    "assumptions": [
+     {
+      "text": "Die Haltestellen sind räumlich in den Gemeinden Worb, Belp oder Münsingen enthalten, was eine räumliche Beziehung zwischen 'haltestellen' und 'gemeinden' erfordert.",
+      "condition": null
+     }
+    ],
+    "query": {
+     "source": "haltestellen",
+     "where": {
+      "op": "and",
+      "args": [
+       {
+        "op": "related",
+        "layer": "gemeinden",
+        "predicate": "within",
+        "where": {
+         "op": "or",
+         "args": [
+          {
+           "op": "compare",
+           "attr": "name",
+           "cmp": "eq",
+           "value": "Worb"
+          },
+          {
+           "op": "compare",
+           "attr": "name",
+           "cmp": "eq",
+           "value": "Belp"
+          },
+          {
+           "op": "compare",
+           "attr": "name",
+           "cmp": "eq",
+           "value": "Münsingen"
+          }
+         ]
+        }
+       }
+      ]
+     },
+     "output": "map"
+    }
+   },
+   "refusal": {
+    "code": "not_representable",
+    "message": "The controls cannot show 'related' of this query.",
+    "details": {
+     "part": "related"
+    }
+   },
+   "tag": "refused:not_representable",
+   "verdict": "refused",
+   "code": "not_representable",
+   "flags": []
+  },
+  {
+   "what": "refused:unknown_attribute",
+   "case": "h25-ausserhalb-bern-koeniz",
+   "run": "ho-gemma4_e4b-s6",
+   "answer": {
+    "kind": "query",
+    "explanation": "Ich suche nach Haltestellen, die nicht in den Gemeinden Bern oder Köniz liegen.",
+    "assumptions": [],
+    "query": {
+     "source": "haltestellen",
+     "where": {
+      "op": "not",
+      "arg": {
+       "op": "in",
+       "attr": "gem_nr",
+       "values": [
+        101,
+        102
+       ]
+      }
+     },
+     "output": "map"
+    }
+   },
+   "refusal": {
+    "code": "unknown_attribute",
+    "message": "Layer 'haltestellen' has no attribute 'gem_nr'. Available: arbeitsplaetze, einwohner, fid, kategorie, name, verkehrsmittel.",
+    "details": {
+     "layer": "haltestellen",
+     "attribute": "gem_nr",
+     "available": [
+      "arbeitsplaetze",
+      "einwohner",
+      "fid",
+      "kategorie",
+      "name",
+      "verkehrsmittel"
+     ]
+    }
+   },
+   "tag": "refused:unknown_attribute",
+   "verdict": "refused",
+   "code": "unknown_attribute",
+   "flags": []
+  },
+  {
+   "what": "refused:unknown_layer",
+   "case": "n09-ausserhalb-bern",
+   "run": "p0-gpt-oss-low-s6",
+   "answer": {
+    "kind": "query",
+    "explanation": "Haltestellen, die nicht in der Gemeinde Bern liegen.",
+    "assumptions": [],
+    "query": {
+     "source": "haltestellen",
+     "where": {
+      "op": "not",
+      "arg": {
+       "op": "related",
+       "layer": "orte",
+       "predicate": "within",
+       "where": {
+        "op": "compare",
+        "attr": "name",
+        "cmp": "eq",
+        "value": "Bern"
+       }
+      }
+     },
+     "output": "map"
+    }
+   },
+   "refusal": {
+    "code": "unknown_layer",
+    "message": "Unknown layer 'orte'. Available: gemeindedaten, gemeinden, gewaesser, haltestellen, schulen, strassen.",
+    "details": {
+     "layer": "orte",
+     "available": [
+      "gemeindedaten",
+      "gemeinden",
+      "gewaesser",
+      "haltestellen",
+      "schulen",
+      "strassen"
+     ]
+    }
+   },
+   "tag": "refused:unknown_layer",
+   "verdict": "refused",
+   "code": "unknown_layer",
+   "flags": []
+  },
+  {
+   "what": "refused:unsupported_operation",
+   "case": "n04-grosse-gemeinden",
+   "run": "sweep-mistral-nemo_12b",
+   "answer": {
+    "kind": "query",
+    "explanation": "Gemeinden mit mehr als 10'000 Einwohnern.",
+    "assumptions": [],
+    "query": {
+     "source": "gemeinden",
+     "where": {
+      "op": "and",
+      "args": [
+       {
+        "op": "related",
+        "layer": "gemeindedaten",
+        "predicate": "intersects",
+        "where": {
+         "op": "between",
+         "attr": "einwohner",
+         "min": 10000,
+         "max": 100000
+        }
+       }
+      ]
+     }
+    }
+   },
+   "refusal": {
+    "code": "unsupported_operation",
+    "message": "'spatial_relation' needs geometry, but 'gemeindedaten' is a table layer.",
+    "details": {
+     "layer": "gemeindedaten",
+     "operation": "spatial_relation"
+    }
+   },
+   "tag": "refused:unsupported_operation",
+   "verdict": "refused",
+   "code": "unsupported_operation",
+   "flags": []
+  },
+  {
+   "what": "refused:wrong_value_type",
+   "case": "h16-schulen-muensingen-2",
+   "run": "ho-gemma4_e4b",
+   "answer": {
+    "kind": "query",
+    "explanation": "Ich suche nach allen Schulen, die in der Gemeinde Münsingen liegen. Die Gemeinde wird über die 'gemeinden' Layer identifiziert und die Schulen werden über ihre 'gem_nr' mit der Gemeinde verknüpft.",
+    "assumptions": [
+     {
+      "text": "Ich nehme an, dass der Name 'Münsingen' im Attribut 'name' des Layers 'gemeinden' existiert.",
+      "condition": null
+     }
+    ],
+    "query": {
+     "source": "schulen",
+     "where": {
+      "op": "and",
+      "args": [
+       {
+        "op": "related",
+        "layer": "gemeinden",
+        "predicate": "within"
+       },
+       {
+        "op": "compare",
+        "attr": "gem_nr",
+        "cmp": "eq",
+        "value": "Münsingen"
+       }
+      ]
+     },
+     "output": "map"
+    }
+   },
+   "refusal": {
+    "code": "wrong_value_type",
+    "message": "Attribute 'gem_nr' of 'schulen' holds int values; got 'Münsingen'.",
+    "details": {
+     "attribute": "gem_nr",
+     "expected": "int"
+    }
+   },
+   "tag": "refused:wrong_value_type",
+   "verdict": "refused",
+   "code": "wrong_value_type",
+   "flags": []
+  },
+  {
+   "what": "wrong-assume",
+   "case": "h18-haltestellen-drei-gemeinden",
+   "run": "ho-gemma4_e4b-s6",
+   "answer": {
+    "kind": "query",
+    "explanation": "Ich suche nach allen Haltestellen, deren zugehörige Gemeinde Worb, Belp oder Münsingen ist. Die Annahme ist, dass die Gemeindeinformation über die `gemeinden` Layer und die Haltestellen über den `haltestellen` Layer verknüpft werden kann, was über die `gem_nr` erfolgt.",
+    "assumptions": [
+     {
+      "text": "Die Gemeindeinformation der Haltestellen wird über die räumliche Beziehung (innerhalb) zum Layer `gemeinden` ermittelt, wobei die Gemeindeinformation im `gemeinden` Layer gespeichert ist.",
+      "condition": null
+     }
+    ],
+    "query": {
+     "source": "haltestellen",
+     "where": {
+      "op": "and",
+      "args": [
+       {
+        "op": "related",
+        "layer": "gemeinden",
+        "predicate": "within"
+       },
+       {
+        "op": "or",
+        "args": [
+         {
+          "op": "compare",
+          "attr": "name",
+          "cmp": "eq",
+          "value": "Worb"
+         },
+         {
+          "op": "compare",
+          "attr": "name",
+          "cmp": "eq",
+          "value": "Belp"
+         },
+         {
+          "op": "compare",
+          "attr": "name",
+          "cmp": "eq",
+          "value": "Münsingen"
+         }
+        ]
+       }
+      ]
+     },
+     "output": "map"
+    }
+   },
+   "tag": "wrong:2≠100",
+   "verdict": "wrong",
+   "code": null,
+   "flags": []
+  },
+  {
+   "what": "wrong-missing-assume",
+   "case": "n04-grosse-gemeinden",
+   "run": "p0-qwen3.5_9b-s6",
+   "answer": {
+    "kind": "query",
+    "explanation": "Gemeinden mit einer Fläche von mehr als 10 km².",
+    "assumptions": [
+     {
+      "text": "«Groß» bedeutet hier eine Fläche über 10 km².",
+      "condition": []
+     }
+    ],
+    "query": {
+     "source": "gemeinden",
+     "where": {
+      "op": "between",
+      "attr": "flaeche_km2",
+      "min": 10,
+      "max": 999999
+     },
+     "output": "map"
+    }
+   },
+   "tag": "wrong:missing compare",
+   "verdict": "wrong",
+   "code": null,
+   "flags": []
+  },
+  {
+   "what": "wrong-missing-silent",
+   "case": "n04-grosse-gemeinden",
+   "run": "p0-qwen3.5_9b",
+   "answer": {
+    "kind": "query",
+    "explanation": "Ich zeige Gemeinden mit einer Fläche von mehr als 10 km² an.",
+    "assumptions": [],
+    "query": {
+     "source": "gemeinden",
+     "where": {
+      "op": "between",
+      "attr": "flaeche_km2",
+      "min": 10,
+      "max": 999999
+     },
+     "output": "map"
+    }
+   },
+   "tag": "wrong:missing compare",
+   "verdict": "wrong",
+   "code": null,
+   "flags": [
+    "no_assumption"
+   ]
+  },
+  {
+   "what": "wrong-silent",
+   "case": "h14-sek-kg-oder-gross",
+   "run": "ho-gemma4_12b-s6",
+   "answer": {
+    "kind": "query",
+    "explanation": "Schulen, die die Sekundarstufe I anbieten und entweder einen Kindergarten haben oder mehr als drei Standorte aufweisen.",
+    "assumptions": [],
+    "query": {
+     "source": "schulen",
+     "where": {
+      "op": "or",
+      "args": [
+       {
+        "op": "compare",
+        "attr": "sekundarstufe",
+        "cmp": "eq",
+        "value": true
+       },
+       {
+        "op": "compare",
+        "attr": "standorte",
+        "cmp": "gt",
+        "value": 3
+       }
+      ]
+     },
+     "output": "map"
+    }
+   },
+   "tag": "wrong:82≠43",
+   "verdict": "wrong",
+   "code": null,
+   "flags": [
+    "no_assumption"
+   ]
+  },
+  {
+   "what": "wrong-zero-assume",
+   "case": "h16-schulen-muensingen-2",
+   "run": "ho-gemma4_12b-s6",
+   "answer": {
+    "kind": "query",
+    "explanation": "Schulen, die der Gemeinde Münsingen zugeordnet sind.",
+    "assumptions": [
+     {
+      "text": "Die Gemeindenummer für Münsingen ist 120.",
+      "condition": null
+     }
+    ],
+    "query": {
+     "source": "schulen",
+     "where": {
+      "op": "compare",
+      "attr": "gem_nr",
+      "cmp": "eq",
+      "value": 120
+     },
+     "output": "map"
+    }
+   },
+   "tag": "wrong:0≠3",
+   "verdict": "wrong",
+   "code": null,
+   "flags": [
+    "zero_hits"
+   ]
+  },
+  {
+   "what": "wrong-zero-silent",
+   "case": "h19-guerbe",
+   "run": "ho-gemma4_12b-s6",
+   "answer": {
+    "kind": "query",
+    "explanation": "Die Gemeinden, durch die das Gewässer Gürbe fliesst.",
+    "assumptions": [],
+    "query": {
+     "source": "gemeinden",
+     "where": {
+      "op": "related",
+      "layer": "gewaesser",
+      "predicate": "contains",
+      "where": {
+       "op": "compare",
+       "attr": "name",
+       "cmp": "eq",
+       "value": "Gürbe"
+      }
+     },
+     "output": "map"
+    }
+   },
+   "tag": "wrong:0≠9",
+   "verdict": "wrong",
+   "code": null,
+   "flags": [
+    "no_assumption",
+    "zero_hits"
+   ]
+  }
+ ]
+}

@@ -156,6 +156,39 @@ dem Verbindungstest. Begründung und Konzept stehen in
 | **E3.4** | Übernahme protokollierter Modellaktionen in den Prüffallbestand | F-3.14, F-6.8 | Eine im Betrieb freigegebene Modellaktion wird aus dem Protokoll heraus zum Prüffall, ohne Abtippen |
 | **E3.5** | Vergleichsdarstellung im Administrationsbereich: Matrix über Anbindungen, Einzelansicht je Fall mit Unterschied und beiden Ergebnismengen, Beschriftung des Laufs | F-3.1, F-3.18 | Der Administrator erkennt nicht nur, *dass* eine Anbindung schlechter abschneidet, sondern woran es liegt |
 
+> **E3 entschieden und geschnitten (2026-10-24):** Plan mit Arbeitspaketen
+> WP85–WP97, Entscheidungen D1–D12, Prüfschritten und Reviews in
+> [docs/plan-e3.md](docs/plan-e3.md), Bildschirme in
+> [design/e3/README.md](design/e3/README.md). Grundlage sind die Messungen von
+> E2 (Harness `backend/evals`, Testpläne): Die Bewertung urteilt über das
+> Ergebnis, misst mit zwei Blöcken und gepaart je Fall, und sie zeigt den
+> Stand des Layer-Steckbriefs, weil die Metadaten auf eigenen Daten so viel
+> ausmachen wie das Modell (Phase 4). Promptprofile je Anbindung werden
+> gemessen und übernommen; die Werkzeugkette folgt nach E3.
+
+> **E3 umgesetzt (WP85–WP97); Gate E3 bestanden (2026-10-25).** Prüffälle in einem Format
+> für Startbestand, Export und Import (71 Startfälle in
+> `schema/eval-cases/`). Eigene Fälle entstehen im Arbeitsplatz, aus dem
+> Modellprotokoll oder durch Import; jeder Fall läuft auf Beispiel- oder
+> Betriebsdaten und ist veraltet, ungültig oder markiert, wenn sich die Daten
+> unter ihm ändern. Die drei Stufen nutzen den Grader des Harness: Stufe 2
+> urteilt, Stufe 1 erklärt als Unterschied. Bewertungsläufe laufen im
+> Hintergrund, einer zugleich, mit Abschätzung, Hinweis bei externen
+> Anbindungen, Abbruch und Schnelltest. Die Matrix zeigt die Quote auf der
+> Abstimmung, die Vergleichsaussage gepaart je Fall auf der Bestätigung und
+> «still falsch»; dazu der Fall im Lauf mit Unterschied und beiden
+> Ergebnismengen, die Beschriftung des Laufs und die Gegenüberstellung
+> zweier Läufe. Jede Anbindung hat ein Promptprofil und Preise; *Was das
+> Modell sieht* zeigt die Vollständigkeit des Steckbriefs. Abnahme in
+> `e2e/tests/acceptance-e3.spec.ts` (WP96), der Abgleich mit einem echten
+> Modell in WP95. Abweichungen und Offenes stehen in
+> [docs/plan-e3.md](docs/plan-e3.md) (Gate E3, Abschnitte 8 und 9).
+> Bewertet wird nur die Direktabfrage; Arbeitsweise und Schrittzahl aus E3.3
+> folgen mit der Bewertung der Werkzeugkette. Toleranzen für Kennzahlen sind
+> verschoben. Ein übernommenes Promptprofil steht im Sicherheitsprotokoll,
+> nicht im Modellprotokoll (D9, O8). Wo der Plan das Konzept ändert, steht in
+> [bewertung.md 14](bewertung.md).
+
 **Vorführung E3:** Zwei Modellanbindungen werden über denselben Prüffallbestand
 gefahren; die Vergleichsmatrix trägt die Freigabeentscheidung (F-3.3, F-3.8).
 Ein zweiter Lauf stellt dieselbe Anbindung mit zwei System-Prompts gegenüber —

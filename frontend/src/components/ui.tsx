@@ -3,7 +3,7 @@ import { Trans } from '@lingui/react/macro'
 import { t } from '@lingui/core/macro'
 import { AlertTriangle, Check, Circle, Loader, MoreHorizontal, X } from 'lucide-react'
 import { AlertDialog, Dialog, DropdownMenu } from 'radix-ui'
-import type { ReactNode } from 'react'
+import type { ReactNode, RefObject } from 'react'
 import type { ImportStatus } from '../api/client'
 import { statusLabel } from '../admin/format'
 
@@ -153,6 +153,8 @@ export function Modal({
   description,
   children,
   wide,
+  onEscapeKeyDown,
+  returnFocus,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -161,12 +163,22 @@ export function Modal({
   description: string
   children: ReactNode
   wide?: boolean
+  /** ``preventDefault`` keeps the dialog open, e.g. while Esc belongs to a field in it. */
+  onEscapeKeyDown?: (event: KeyboardEvent) => void
+  /** Where the focus goes back on closing; without a trigger Radix has none. */
+  returnFocus?: RefObject<HTMLElement | null>
 }) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="bg-ink/30 fixed inset-0 z-[1200]" />
         <Dialog.Content
+          onEscapeKeyDown={onEscapeKeyDown}
+          onCloseAutoFocus={(event) => {
+            if (!returnFocus?.current) return
+            event.preventDefault()
+            returnFocus.current.focus()
+          }}
           className={`card fixed top-[12%] left-1/2 z-[1200] max-h-[80vh] ${wide ? 'w-[46rem]' : 'w-[30rem]'} max-w-[calc(100vw-2rem)] -translate-x-1/2 overflow-auto p-5 shadow-[var(--shadow-md)]`}
         >
           <Dialog.Title className="mb-3 text-xl">{title}</Dialog.Title>

@@ -1,10 +1,22 @@
 # Model evals
 
-Asks a real model the questions in [cases.json](cases.json) through the
+Asks a real model the questions of the start set
+([schema/eval-cases/](../../schema/eval-cases/), plan E3 D2) through the
 direct query path as production sends it (`direct_prompt`, `DirectQuery.ask`:
 real client, parser and checks), over a fresh sample dataset and the default
-level, and grades each answer. Not part of `make gate`: it needs a running
-OpenAI-compatible endpoint and takes minutes.
+level, and grades each answer with the application's grader
+(`geotandem.evaluation.grade`, the same rules an evaluation run uses). Not
+part of `make gate`: it needs a running OpenAI-compatible endpoint and takes
+minutes.
+
+For administrators the application's evaluation runs succeed this harness
+(*Administration › Modell › Bewertung*, README *Bewertung im Einsatz*, plan E3).
+The harness stays the developer's tool and shares with the application the
+grader (`evaluation/grade.py`), the paired statistics (`evaluation/stats.py`),
+the sample build (`evaluation/sample.py`), the start set (read by
+`evaluation/cases.py`) and the metadata ablation modes
+(`evaluation/profiles.py`); its prompt variants P5, P9 and `--examples 12` are
+the application's prompt profiles, built by the same builder.
 
 ```sh
 cd backend
@@ -31,9 +43,12 @@ that differ.
 ## Prompt variants
 
 The placement runs of [docs/testplan-system-context.md](../../docs/testplan-system-context.md)
-(section 5) rebuild the messages `direct_prompt` wrote before they are sent,
-so the application stays as it is until a variant wins
-([variants.py](variants.py)):
+(section 5). The presets the application offers as a connection's prompt
+profile (plan E3, D9: `--variant p0|p5|p9`, `--examples 12`, `--no-format`)
+are written by its builder (`direct_prompt` with a `PromptProfile`), so a run
+here and a run in the application send the same prompt, hash for hash. The
+measurement-only variants rebuild the messages the builder wrote under P0
+before they are sent ([variants.py](variants.py)):
 
 | Option | Effect |
 |---|---|
@@ -42,10 +57,10 @@ so the application stays as it is until a variant wins
 | `--variant p2` | the worked examples as user/assistant turns (measurement only, E-8) |
 | `--variant p3` | examples, rules and the first-question note in the user message (measurement only, E-8) |
 | `--variant p4` | worked examples without the rules |
-| `--variant p5` | examples before the layer profile |
+| `--variant p5` | examples before the layer profile (builder) |
 | `--variant p8` | the JSON schema only as constrained output, not as text |
-| `--variant p9` | the first-question note as a system message of its own |
-| `--examples NAME` | [examples/NAME.txt](examples/) in place of the examples section (P6: `3`, `12`), applied before the variant |
+| `--variant p9` | the first-question note as a system message of its own (builder) |
+| `--examples NAME` | an example set in place of the examples section (P6): `12` is the application's ([model/examples/12.txt](../src/geotandem/model/examples/12.txt), builder), any other [examples/NAME.txt](examples/) (`3`), applied before the variant |
 | `--show` | print the messages of the first case as they would be sent, and stop |
 
 An example set is a whole `# Beispiele` section: intro with the invented layer
@@ -63,8 +78,9 @@ with the median latency, mean tokens and the number of errors.
 ## Metadata ablation (testplan-system-context, Phase 4)
 
 `--profile MODE` strips part of the sample data's metadata before the layer
-profile is built ([profiles.py](profiles.py)); the run header names the mode
-and the profile's hash. `full` is the profile as loaded and sends the P0 prompt
+profile is built ([evaluation/profiles.py](../src/geotandem/evaluation/profiles.py),
+shared with the application's tests); the run header names the mode and the
+profile's hash. `full` is the profile as loaded and sends the P0 prompt
 unchanged.
 
 | Mode | The model no longer sees |
@@ -79,14 +95,15 @@ unchanged.
 
 | Option | Effect |
 |---|---|
-| `--cases heldout` | [heldout.json](heldout.json) in place of [cases.json](cases.json): questions no prompt change is tuned on |
-| `--no-format` | no constrained output; the schema only as text in the prompt, as every endpoint can take it (H-8) |
+| `--cases heldout` | the confirmation split (`start-confirm.json`) in place of the tuning split (`start-tuning.json`, `--cases cases`): questions no prompt change is tuned on |
+| `--no-format` | no constrained output; the schema only as text in the prompt, as every endpoint can take it (H-8; the profile's output `text`) |
 | `--api-key-env NAME` | the endpoint's key from the environment variable `NAME`; the run header names the variable, never the key |
 
 `compare.py` joins seed blocks with `+`, sums per case tag with `--by-tag`,
 and with `--stats` compares each column with the first case by case (wins,
 losses, mean difference with a bootstrap interval, sign test): the answers of
-one case are not independent, so the sample is the cases.
+one case are not independent, so the sample is the cases. The figures come
+from `geotandem.evaluation.stats`, as the application's comparison takes them.
 
 ```sh
 uv run python evals/compare.py --stats --by-tag ho-luna+ho-luna-s6 ho-gemma4_12b+ho-gemma4_12b-s6
@@ -98,8 +115,9 @@ current cases, without asking a model; it changes nothing on unchanged cases.
 A case may list `gold_any`, several fair readings that select different
 features; any one passes. `tags` group the cases; `needs-values` marks one
 that only a model knowing attribute values can pass. A held-out case is never
-a reason to change the prompt: a change is judged on cases.json and
-confirmed on heldout.json.
+a reason to change the prompt: a change is judged on the tuning split and
+confirmed on the confirmation split. Until E3 these were `evals/cases.json`
+and `evals/heldout.json`; the testplans still call them so.
 
 ## Verdicts
 
@@ -111,7 +129,7 @@ confirmed on heldout.json.
 | `wrong:missing <op>` / `wrong:source=…` | a `require` case without the required condition or layer |
 | `refused:<code>` | the application refused the query (`not_representable`, `unknown_attribute`, …) |
 | `kind:<kind>` | a clarification or cannot-answer where a query was due, or the reverse |
-| `other_approach:<x>` | a cannot-answer that offers the other approach where the case names none, or the reverse |
+| `other_approach:<x>` | the offer of the other approach is not the one the case names: `none` demands no offer, `chain` or `direct` that one; a case without `other_approach` checks nothing |
 | `forbidden:<word>` | the answer holds a word the case forbids (an invented layer of the prompt's examples) |
 | `error:<code>` | no usable answer (`llm_timeout`, `model_unreadable`, …) |
 

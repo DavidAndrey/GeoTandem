@@ -735,7 +735,7 @@ Zahlen aus 8.1 und dieser Tabelle als Massstab.
 ### 8.5 Phase 4: Metadaten des Steckbriefs (2026-10-23)
 
 Je Modus fehlt dem Modell ein Teil der kuratierten Metadaten der Beispieldaten
-(`--profile`, [evals/profiles.py](../backend/evals/profiles.py)); Abfrage,
+(`--profile`, [evaluation/profiles.py](../backend/src/geotandem/evaluation/profiles.py)); Abfrage,
 Prüfung und Daten bleiben gleich. Tuning-Satz, je zwei Blöcke (/330); Referenz
 P0 (`full`, Prompt-Hash `55e708badb92` wie in Phase 1 bis 3). Labels
 `a-<modus>-<modell>[-s6]`, 60 Läufe; Kosten extern geschätzt ≈ 3,5 USD.
@@ -826,3 +826,13 @@ im Wortlaut. Die Läufe dieses Dokuments: `t3-v0-*`, `t3-v27-*`,
 `t3-v27b-*`, `t3-v27c-*`, `t3-v27c-*-s6`; Phase 1: `p0-*` (Liste in 8.1).
 gpt-oss:20b braucht `--effort medium` (bzw. `low`); alle anderen laufen mit
 dem Standard `none`.
+
+Für Administratoren ist seit E3 der **Bewertungslauf der Anwendung** der
+Nachfolger des Harness (*Administration › Modell › Bewertung*, README
+*Bewertung im Einsatz*, [plan-e3.md](plan-e3.md)): dieselben Startfälle,
+derselbe Grader, zwei Blöcke à fünf und der gepaarte Vergleich wie
+`compare.py --stats`, dazu eigene Fälle auf den Betriebsdaten. Die
+Platzierungen P0, P5, P9 und die 12 Beispiele sind dort Promptprofile einer
+Anbindung und senden denselben Prompt wie hier (gleicher Hash). Der Harness
+bleibt das Werkzeug der Entwicklung, etwa für Varianten, die die Anwendung
+nicht anbietet, und für die Abbaustufen von Phase 4.

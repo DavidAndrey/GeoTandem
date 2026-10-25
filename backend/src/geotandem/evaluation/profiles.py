@@ -6,6 +6,9 @@ It edits the catalog rows, not the profile: ``model_profile`` and the code
 reading of E-2 (``labels.py``, from the profile's codes) work as in production.
 The rows only describe; the data and the checks do not read them.
 
+The harness takes a mode with ``--profile`` (``evals/run.py``, ``regrade.py``),
+the tests of the profile summary (WP94) take every mode from here:
+
     uv run python evals/run.py --model gemma4:12b --profile no-desc --label a1-gemma4_12b
 """
 

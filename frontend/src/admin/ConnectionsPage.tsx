@@ -4,7 +4,8 @@
 import { Trans } from '@lingui/react/macro'
 import { plural, t } from '@lingui/core/macro'
 import { Check, Minus, Plus, X } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { Link, useLocation } from 'react-router'
 import {
   api,
   type CheckResult,
@@ -14,6 +15,7 @@ import {
   type ConnectionPatch,
   type ConnectionWrite,
   type Effort,
+  type PromptProfile,
 } from '../api/client'
 import { useConnectionChange, useConnections } from '../api/queries'
 import { LocalityBadge } from '../components/LocalityBadge'
@@ -21,7 +23,19 @@ import { ConfirmDialog, ErrorNotice, Loading, Menu, MenuItem } from '../componen
 import { errorText } from '../i18n/errors'
 import { formatNumber } from '../i18n/locale'
 import { actionsFor } from '../i18n/phrases'
-import { formatDateTime } from './format'
+import { useLastRun } from './evaluation/runs'
+import { RunStatusLabel } from './evaluation/RunsPage'
+import { formatDate, formatDateTime } from './format'
+import {
+  DEFAULT_PROMPT_PROFILE,
+  EXAMPLE_SETS,
+  examplesLabel,
+  OUTPUT_MODES,
+  outputLabel,
+  PLACEMENTS,
+  placementLabel,
+  sameProfile,
+} from './promptProfile'
 
 const EFFORTS: Effort[] = ['default', 'none', 'low', 'medium', 'high']
 
@@ -140,6 +154,10 @@ type Form = {
   confirm_data_release: boolean
   limit_enabled: boolean
   limit_per_day: string
+  prompt_profile: PromptProfile
+  price_input: string
+  price_output: string
+  price_currency: string
 }
 
 const blank: Form = {
@@ -160,6 +178,10 @@ const blank: Form = {
   confirm_data_release: false,
   limit_enabled: false,
   limit_per_day: '',
+  prompt_profile: DEFAULT_PROMPT_PROFILE,
+  price_input: '',
+  price_output: '',
+  price_currency: '',
 }
 
 const fromConnection = (c: ConnectionInfo): Form => ({
@@ -178,6 +200,10 @@ const fromConnection = (c: ConnectionInfo): Form => ({
   marked_external: c.marked_external,
   limit_enabled: c.request_limit_enabled,
   limit_per_day: String(c.request_limit_per_day ?? ''),
+  prompt_profile: c.prompt_profile,
+  price_input: String(c.price_input_per_mtok ?? ''),
+  price_output: String(c.price_output_per_mtok ?? ''),
+  price_currency: c.price_currency ?? '',
 })
 
 /**
@@ -200,6 +226,17 @@ const hostOf = (url: string) => {
 
 const optionalNumber = (value: string) => (value.trim() === '' ? null : Number(value))
 
+/**
+ * The prices per million tokens (plan E3, O4): all three or none. An empty
+ * field is sent as null, so the back end words a half-filled price
+ * (``price_incomplete``).
+ */
+const prices = (f: Form) => ({
+  price_input_per_mtok: optionalNumber(f.price_input),
+  price_output_per_mtok: optionalNumber(f.price_output),
+  price_currency: f.price_currency.trim() || null,
+})
+
 /** The fields both a saved connection and a draft test share. */
 const parameters = (f: Form) => ({
   base_url: f.base_url,
@@ -221,6 +258,12 @@ function createBody(f: Form): ConnectionWrite {
     is_default: f.is_default,
     confirm_data_release: false,
     ...requestLimit(f),
+    // Only what was set, so the audit lists it (O8): today's profile and an
+    // empty price are the back end's defaults.
+    ...(sameProfile(f.prompt_profile, DEFAULT_PROMPT_PROFILE)
+      ? {}
+      : { prompt_profile: f.prompt_profile }),
+    ...Object.fromEntries(Object.entries(prices(f)).filter(([, v]) => v !== null)),
   }
 }
 
@@ -234,10 +277,12 @@ function patchBody(f: Form, c: ConnectionInfo): ConnectionPatch {
     is_default: f.is_default,
     may_receive_data: f.may_receive_data,
     ...requestLimit(f),
+    ...prices(f),
   }
   const patch: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(next))
     if (value !== (c[key as keyof ConnectionInfo] ?? null)) patch[key] = value
+  if (!sameProfile(f.prompt_profile, c.prompt_profile)) patch.prompt_profile = f.prompt_profile
   if (f.api_key) patch.api_key = f.api_key
   else if (f.remove_key) patch.api_key = null
   if (f.confirm_data_release) patch.confirm_data_release = true
@@ -291,6 +336,8 @@ function ConnectionForm({
 }) {
   const [form, setForm] = useState<Form>(connection ? fromConnection(connection) : blank)
   const set = (patch: Partial<Form>) => setForm((f) => ({ ...f, ...patch }))
+  const setProfile = (patch: Partial<PromptProfile>) =>
+    setForm((f) => ({ ...f, prompt_profile: { ...f.prompt_profile, ...patch } }))
   const save = useConnectionChange(() =>
     connection
       ? api.admin.updateConnection(connection.id, patchBody(form, connection))
@@ -442,6 +489,105 @@ function ConnectionForm({
       </Field>
       <fieldset className="mt-3 text-sm">
         <legend className="label-caps mb-1">
+          <Trans>Promptprofil</Trans>
+        </legend>
+        <p className="text-muted mb-1 text-xs">
+          <Trans>
+            Gemessene Varianten des Prompts der Direktabfrage; die Werkzeugkette nutzt immer den
+            Standard. Welche Variante einem Modell hilft, zeigt ein Bewertungslauf.
+          </Trans>
+        </p>
+        <Field label={t`Beispiele`}>
+          <select
+            className="input"
+            value={form.prompt_profile.examples}
+            onChange={(e) => setProfile({ examples: e.target.value as PromptProfile['examples'] })}
+          >
+            {EXAMPLE_SETS.map((e) => (
+              <option key={e} value={e}>
+                {examplesLabel(e)}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label={t`Platzierung`}>
+          <select
+            className="input"
+            value={form.prompt_profile.placement}
+            onChange={(e) =>
+              setProfile({ placement: e.target.value as PromptProfile['placement'] })
+            }
+          >
+            {PLACEMENTS.map((p) => (
+              <option key={p} value={p}>
+                {placementLabel(p)}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field
+          label={t`Ausgabeformat`}
+          hint={t`Erzwungen: das Antwortschema geht auch als eingeschränkte Ausgabe mit. Nur Text: das Schema steht nur im Prompt.`}
+        >
+          <select
+            className="input"
+            value={form.prompt_profile.output}
+            onChange={(e) => setProfile({ output: e.target.value as PromptProfile['output'] })}
+          >
+            {OUTPUT_MODES.map((o) => (
+              <option key={o} value={o}>
+                {outputLabel(o)}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </fieldset>
+      <fieldset className="mt-3 text-sm">
+        <legend className="label-caps mb-1">
+          <Trans>Preise</Trans>
+        </legend>
+        <p className="text-muted mb-1 text-xs">
+          <Trans>
+            Optional, je Million Tokens: Damit zeigt die Bewertung Schätzung und Kosten in Geld,
+            sonst in Tokens. Beide Beträge und die Währung, oder keines davon.
+          </Trans>
+        </p>
+        <div className="grid grid-cols-2 gap-x-4">
+          <Field label={t`Eingabe je Mio. Tokens`}>
+            <input
+              className="input w-28"
+              type="number"
+              min={0}
+              step="any"
+              value={form.price_input}
+              onChange={(e) => set({ price_input: e.target.value })}
+            />
+          </Field>
+          <Field label={t`Ausgabe je Mio. Tokens`}>
+            <input
+              className="input w-28"
+              type="number"
+              min={0}
+              step="any"
+              value={form.price_output}
+              onChange={(e) => set({ price_output: e.target.value })}
+            />
+          </Field>
+          <Field label={t`Währung`} hint={t`Drei Buchstaben, z. B. CHF, EUR, USD.`}>
+            <input
+              className="input w-20 font-mono"
+              maxLength={3}
+              pattern="[A-Z]{3}"
+              title={t`Drei Grossbuchstaben, z. B. CHF`}
+              autoComplete="off"
+              value={form.price_currency}
+              onChange={(e) => set({ price_currency: e.target.value.toUpperCase() })}
+            />
+          </Field>
+        </div>
+      </fieldset>
+      <fieldset className="mt-3 text-sm">
+        <legend className="label-caps mb-1">
           <Trans>Anfragen</Trans>
         </legend>
         <label className="flex items-center gap-1.5">
@@ -574,8 +720,44 @@ function LastTest({ connection }: { connection: ConnectionInfo }) {
   )
 }
 
+/** "zuletzt bewertet" (O7, design review 6): the newest run that measured it, with a link. */
+function LastRun({ connection }: { connection: ConnectionInfo }) {
+  const last = useLastRun(connection.id)
+  if (last.isPending) return <span className="text-muted">…</span>
+  if (last.isError) return <span className="text-muted">–</span>
+  if (!last.data) return <span className="text-muted">{t`noch nie`}</span>
+  const run = last.data
+  const id = run.id
+  const when = formatDate(run.started_at)
+  return (
+    <span className="flex flex-wrap items-center gap-1">
+      <Link to={`/admin/bewertung/lauf/${id}`} className="text-accent-700 tabular-nums">
+        {t`Lauf #${id}`}
+      </Link>
+      <span className="text-muted text-xs">{when}</span>
+      {run.status !== 'done' && <RunStatusLabel status={run.status} />}
+    </span>
+  )
+}
+
+/**
+ * "Zur Anbindung" of a run (design review 6) links to ``#anbindung-N``: once
+ * the list is there, that row is scrolled to, focused and marked.
+ */
+function useTargetRow(loaded: boolean) {
+  const { hash } = useLocation()
+  useEffect(() => {
+    if (!loaded || !hash.startsWith('#anbindung-')) return
+    const row = document.getElementById(hash.slice(1))
+    row?.scrollIntoView?.({ block: 'center' })
+    row?.focus()
+  }, [hash, loaded])
+  return hash
+}
+
 export function ConnectionsPage() {
   const connections = useConnections()
+  const target = useTargetRow(connections.data !== undefined)
   const [editing, setEditing] = useState<ConnectionInfo | 'new'>()
   const [deleting, setDeleting] = useState<ConnectionInfo>()
   const [tested, setTested] = useState<{ name: string; result: CheckResult }>()
@@ -643,6 +825,9 @@ export function ConnectionsPage() {
                 <Trans>Letzter Test</Trans>
               </th>
               <th>
+                <Trans>Zuletzt bewertet</Trans>
+              </th>
+              <th>
                 <span className="sr-only">
                   <Trans>Aktionen</Trans>
                 </span>
@@ -651,7 +836,15 @@ export function ConnectionsPage() {
           </thead>
           <tbody>
             {connections.data.map((c) => (
-              <tr key={c.id}>
+              <tr
+                key={c.id}
+                id={`anbindung-${c.id}`}
+                tabIndex={-1}
+                aria-current={target === `#anbindung-${c.id}` ? 'location' : undefined}
+                className={
+                  target === `#anbindung-${c.id}` ? 'outline-accent bg-neutral-200 outline' : ''
+                }
+              >
                 <td>
                   {c.name}
                   {c.is_default && (
@@ -671,6 +864,9 @@ export function ConnectionsPage() {
                 <td>{c.may_receive_data ? t`erlaubt` : t`nur Metadaten`}</td>
                 <td>
                   <LastTest connection={c} />
+                </td>
+                <td>
+                  <LastRun connection={c} />
                 </td>
                 <td className="text-right">
                   <Menu label={actionsFor(c.name)}>

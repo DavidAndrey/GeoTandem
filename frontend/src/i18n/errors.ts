@@ -23,6 +23,11 @@ const MESSAGES: Record<string, Words> = {
   // Requests
   bad_request: () => t`Die Anfrage wurde abgelehnt.`,
   not_found: (d) => {
+    // A run of the evaluation names itself by its number (``RunError``: ``run``).
+    if (d.run !== undefined && d.run !== null) {
+      const run = number(d.run)
+      return t`Lauf #${run} gibt es nicht (mehr).`
+    }
     const name = text(d.layer ?? d.session ?? d.query ?? d.import_id ?? d.run_id)
     return name ? t`„${name}" gibt es nicht (mehr).` : t`Das Gesuchte gibt es nicht (mehr).`
   },
@@ -172,6 +177,47 @@ const MESSAGES: Record<string, Words> = {
     return t`Die frühere Antwort nutzt den Layer „${layer}", den es nicht mehr gibt.`
   },
   model_unreadable: () => t`Die Antwort des Modells ist nicht lesbar.`,
+  // Evaluation of model connections (plan E3)
+  case_invalid: (d) => {
+    const id = text(d.case_id)
+    return id
+      ? t`Der Prüffall „${id}" passt nicht: Das Format stimmt nicht, oder seine Referenzabfrage besteht die Prüfung nicht.`
+      : t`Ein Prüffall passt nicht: Das Format stimmt nicht, oder seine Referenzabfrage besteht die Prüfung nicht.`
+  },
+  case_id_taken: (d) => {
+    const id = text(d.case_id)
+    return t`Einen Prüffall „${id}" gibt es schon.`
+  },
+  case_read_only: () =>
+    t`Fälle des Startbestands lassen sich nicht ändern. Kopieren Sie den Fall in einen eigenen.`,
+  case_stale: (d) => {
+    const layer = text(d.layer)
+    return t`Der Prüffall nutzt den Layer „${layer}", den es nicht mehr gibt oder den Sie nicht sehen. Bearbeiten Sie den Fall zuerst.`
+  },
+  no_cases: () =>
+    t`Keiner der gewählten Prüffälle kann laufen: Keiner passt zur Auswahl, oder alle sind veraltet oder ungültig.`,
+  action_not_eligible: (d) =>
+    // ``touched`` and ``adjusted``: hand-corrected answers are not taken yet (decision 2).
+    d.reason === 'touched' || d.decision === 'adjusted'
+      ? t`Diese Antwort wurde von Hand korrigiert. Von Hand korrigierte Antworten werden vorerst nicht zum Prüffall.`
+      : d.reason === 'follow_up'
+        ? t`Eine Folgefrage wird nicht zum Prüffall: Sie hängt von der vorigen Antwort ab, die ein Prüffall nicht mitführt.`
+        : t`Nur eine angenommene oder automatisch angewendete, nicht zurückgenommene Direktabfrage wird zum Prüffall.`,
+  run_busy: (d) => {
+    const run = number(d.run)
+    return d.reason === 'finishing'
+      ? t`Lauf #${run} ist abgebrochen und wartet noch auf die letzte Antwort des Modells. Versuchen Sie es gleich nochmals.`
+      : t`Lauf #${run} läuft noch. Es läuft höchstens ein Lauf zugleich.`
+  },
+  external_not_confirmed: (d) => {
+    const host = text(d.host)
+    // ``changed``: the connection was edited to another host since the estimate.
+    return d.reason === 'changed'
+      ? t`Die Anbindung sendet inzwischen an ${host}, nicht an den bestätigten Host. Prüfen Sie die neue Abschätzung und bestätigen Sie erneut.`
+      : t`Der Lauf würde an ${host} senden. Bestätigen Sie das zuerst.`
+  },
+  runs_not_comparable: () =>
+    t`Diese Läufe lassen sich nicht gegenüberstellen: Sie haben andere Prüffälle, oder einer ist nicht fertig.`,
   model_truncated: () =>
     t`Das Modell hat seine Antwort nicht beendet: Die Länge, die die Anbindung erlaubt, war aufgebraucht. Meist denkt das Modell zu lange, oder der Kontext ist zu klein.`,
   quota_exceeded: (d) => {
@@ -213,6 +259,8 @@ const MESSAGES: Record<string, Words> = {
     t`Der gespeicherte Zugangsschlüssel geht nur an die bisherige Adresse. Für eine neue Adresse bitte den Schlüssel neu eintragen oder entfernen.`,
   request_limit_required: () =>
     t`Ist die Begrenzung eingeschaltet, braucht es die Zahl der Anfragen pro Tag.`,
+  price_incomplete: () =>
+    t`Ein Preis braucht beide Beträge (Eingabe und Ausgabe) und die Währung, oder keinen davon.`,
   credentials_unreadable: () =>
     t`Der gespeicherte Zugangsschlüssel lässt sich nicht mehr öffnen (secret.key fehlt oder wurde ersetzt). Bitte neu eintragen.`,
   llm_invalid_url: () =>

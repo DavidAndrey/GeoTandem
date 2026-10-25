@@ -7,22 +7,23 @@
 Each label names the newest ``results/*-<label>.jsonl``; ``a+b`` joins the
 runs of both into one column (two seed blocks). ``--changed`` keeps only the
 cases whose passes differ between the runs (and the sums). ``--by-tag`` sums
-per tag of the cases (``tags`` in cases.json and heldout.json). ``--stats``
+per tag of the cases (``tags`` of the start set, schema/eval-cases). ``--stats``
 compares every column with the first, case by case: the five answers of a case
 are not independent, so the sample is the cases, not the answers.
 """
 
 import argparse
 import json
-import math
-import random
 import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import Any
+
+from casefiles import CASE_FILES, load_cases
+
+from geotandem.evaluation.schemas import EvalCase
+from geotandem.evaluation.stats import compare, tally
 
 HERE = Path(__file__).parent
-CASE_FILES = ("cases", "heldout")
 
 
 def newest(label: str) -> Path:
@@ -40,42 +41,16 @@ def newest(label: str) -> Path:
 def passes(column: str) -> tuple[dict[str, tuple[int, int]], int]:
     """Case id → (passed, runs) of the newest run of each label in ``column``
     (``a+b``), and the number of ``error:*`` answers."""
-    counts: dict[str, list[int]] = defaultdict(lambda: [0, 0])
-    errors = 0
+    verdicts: list[tuple[str, str]] = []
     for label in column.split("+"):
         with newest(label).open(encoding="utf-8") as lines:
             next(lines)  # the run's header
-            for line in lines:
-                record = json.loads(line)
-                counts[record["case"]][0] += record["verdict"] == "pass"
-                counts[record["case"]][1] += 1
-                errors += record["verdict"].startswith("error:")
-    return {case: (n[0], n[1]) for case, n in counts.items()}, errors
+            verdicts += [(r["case"], r["verdict"]) for r in map(json.loads, lines)]
+    return tally(verdicts), sum(v.startswith("error:") for _, v in verdicts)
 
 
-def all_cases() -> list[dict[str, Any]]:
-    found: list[dict[str, Any]] = []
-    for name in CASE_FILES:
-        path = HERE / f"{name}.json"
-        if path.exists():
-            found += json.loads(path.read_text("utf-8"))["cases"]
-    return found
-
-
-def sign_test(wins: int, losses: int) -> float:
-    """Two-sided p of ``wins`` against ``losses`` under 50:50; ties left out."""
-    n = wins + losses
-    if n == 0:
-        return 1.0
-    tail: float = sum(math.comb(n, k) for k in range(min(wins, losses) + 1)) / 2**n
-    return min(1.0, 2 * tail)
-
-
-def bootstrap(diffs: list[float], rounds: int = 10_000) -> tuple[float, float]:
-    """95 % interval of the mean difference, cases drawn with replacement."""
-    draw = random.Random(1)
-    means = sorted(sum(draw.choices(diffs, k=len(diffs))) / len(diffs) for _ in range(rounds))
-    return means[int(0.025 * rounds)], means[int(0.975 * rounds) - 1]
+def all_cases() -> list[EvalCase]:
+    return [c for name in CASE_FILES for c in load_cases(name)]
 
 
 def stats(columns: list[str], runs: dict[str, dict[str, tuple[int, int]]]) -> None:
@@ -87,28 +62,20 @@ def stats(columns: list[str], runs: dict[str, dict[str, tuple[int, int]]]) -> No
     )
     print("|---|---:|---:|---:|---:|---:|---|---:|")
     for other in columns[1:]:
-        shared = [c for c in runs[base] if c in runs[other]]
-        diffs = [
-            100 * (runs[other][c][0] / runs[other][c][1] - runs[base][c][0] / runs[base][c][1])
-            for c in shared
-        ]
-        wins = sum(d > 0 for d in diffs)
-        losses = sum(d < 0 for d in diffs)
-        low, high = bootstrap(diffs) if diffs else (0.0, 0.0)
-        mean = sum(diffs) / len(diffs) if diffs else 0.0
+        found = compare(runs[base], runs[other])
         print(
-            f"| {other} | {len(shared)} | {wins} | {losses} | {len(diffs) - wins - losses} "
-            f"| {mean:+.1f} | {low:+.1f} … {high:+.1f} | {sign_test(wins, losses):.2f} |"
+            f"| {other} | {found.cases} | {found.better} | {found.worse} | {found.same} "
+            f"| {found.mean:+.1f} | {found.low:+.1f} … {found.high:+.1f} | {found.p_sign:.2f} |"
         )
 
 
 def by_tag(
-    columns: list[str], runs: dict[str, dict[str, tuple[int, int]]], cases: list[dict[str, Any]]
+    columns: list[str], runs: dict[str, dict[str, tuple[int, int]]], cases: list[EvalCase]
 ) -> None:
     tags: dict[str, list[str]] = defaultdict(list)
     for case in cases:
-        for tag in case.get("tags", []):
-            tags[tag].append(case["id"])
+        for tag in case.tags:
+            tags[tag].append(case.id)
     print("\n| Tag | Fälle | " + " | ".join(columns) + " |")
     print("|---|---:|" + "---:|" * len(columns))
     for tag in sorted(tags):
@@ -131,7 +98,7 @@ def main() -> int:
     loaded = {label: passes(label) for label in args.labels}
     runs = {label: found for label, (found, _) in loaded.items()}
     cases = all_cases()
-    ids = [c["id"] for c in cases if any(c["id"] in runs[label] for label in args.labels)]
+    ids = [c.id for c in cases if any(c.id in runs[label] for label in args.labels)]
 
     def cell(label: str, case: str) -> str:
         found = runs[label].get(case)

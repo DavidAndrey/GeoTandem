@@ -243,6 +243,10 @@ class LevelPermission(Base):
     mode: Mapped[str] = mapped_column(String(16))
 
 
+DEFAULT_PROMPT_PROFILE = '{"examples": "standard", "placement": "P0", "output": "constrained"}'
+"""``PromptProfile()`` as JSON, for the rows that were there before it (0017)."""
+
+
 class LLMConnection(Base):
     """A model behind an OpenAI-compatible endpoint (F-3.2, plan E2.1, C4)."""
 
@@ -278,6 +282,24 @@ class LLMConnection(Base):
         )
     )
     """The cap; required and positive while the limit is on."""
+    prompt_profile: Mapped[dict[str, Any]] = mapped_column(
+        JSON, server_default=DEFAULT_PROMPT_PROFILE
+    )
+    """How the direct query's prompt is written (plan E3, D9), as
+    ``PromptProfile`` dumps it; the default is today's prompt."""
+    price_input_per_mtok: Mapped[float | None]
+    """Price per million input tokens (plan E3, O4); with the other two or not at all."""
+    price_output_per_mtok: Mapped[float | None]
+    price_currency: Mapped[str | None] = mapped_column(
+        String(3),
+        CheckConstraint(
+            "(price_input_per_mtok IS NULL AND price_output_per_mtok IS NULL"
+            " AND price_currency IS NULL) OR (price_input_per_mtok IS NOT NULL"
+            " AND price_output_per_mtok IS NOT NULL AND price_currency IS NOT NULL)",
+            name="ck_llm_connection_price",
+        ),
+    )
+    """ISO 4217, upper case."""
     created_at: Mapped[datetime] = mapped_column(server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(server_default=func.current_timestamp())
 
@@ -336,6 +358,9 @@ class ModelAction(Base):
     connection_model: Mapped[str] = mapped_column(String(200))
     connection_host: Mapped[str] = mapped_column(String(500))
     connection_locality: Mapped[str] = mapped_column(String(16))
+    prompt_profile: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    """The prompt profile the prompt was written with (plan E3, D9); the chain's
+    is the default. Null: asked before 0017, with the default."""
     profile_hash: Mapped[str] = mapped_column(String(128))
     answer: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     query: Mapped[dict[str, Any] | None] = mapped_column(JSON)
@@ -347,6 +372,11 @@ class ModelAction(Base):
     replans: Mapped[int] = mapped_column(default=0, server_default="0")
     stamp: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     latency_ms: Mapped[int | None]
+    prompt_tokens: Mapped[int | None]
+    completion_tokens: Mapped[int | None]
+    """As the endpoint reported them (bewertung.md 10): the direct query's
+    call, a chain's planning call and its re-plans added up; ``None`` when the
+    endpoint reported none. Never part of a view."""
     called_at: Mapped[datetime | None]
     """When the model call started; ``None`` for a request aborted before it.
     The request limit counts only requests that reached the call (P5)."""
@@ -408,6 +438,92 @@ class ModelCall(Base):
     connection_id: Mapped[int]
     called_at: Mapped[datetime]
     """Naive UTC from the application's clock, like the record's times."""
+
+
+class OwnCase(Base):
+    """An own case of the evaluation (plan E3, D2): authored, imported or taken
+    from the log. The start set stays files (``schema/eval-cases``). ``body`` is
+    the case as the case file writes it, without ``null`` fields; ``split``,
+    ``origin`` and ``data_state`` repeat its fields for the list's filters."""
+
+    __tablename__ = "eval_case"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    case_id: Mapped[str] = mapped_column(String(63), unique=True)
+    split: Mapped[str] = mapped_column(String(16), index=True)
+    origin: Mapped[str] = mapped_column(String(16), index=True)
+    data_state: Mapped[str] = mapped_column(String(16), index=True)
+    body: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime]
+    updated_at: Mapped[datetime]
+    """Naive UTC from the application's clock."""
+
+
+class EvalRun(Base):
+    """A run of the evaluation (plan E3, D7, D8): a measurement, not use, so
+    never a model action. ``request`` is the request as V4 composed it,
+    ``label`` the ``RunLabel``, ``cases`` the ``RunCase`` list as the run asked
+    them (H7), ``points`` the ``PointView`` list (figures once done), ``prices``
+    each point's price as it was at the start (``None`` without one).
+    ``connection_ids`` is ``,1,3,``, for the filter of a connection's runs."""
+
+    __tablename__ = "eval_run"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    status: Mapped[str] = mapped_column(String(16), index=True)
+    scope: Mapped[str] = mapped_column(String(16))
+    data_state: Mapped[str] = mapped_column(String(16))
+    request: Mapped[dict[str, Any]] = mapped_column(JSON)
+    label: Mapped[dict[str, Any]] = mapped_column(JSON)
+    cases: Mapped[list[Any]] = mapped_column(JSON)
+    points: Mapped[list[Any]] = mapped_column(JSON)
+    prices: Mapped[list[Any]] = mapped_column(JSON)
+    connection_ids: Mapped[str] = mapped_column(String(200))
+    case_set_hash: Mapped[str] = mapped_column(String(80))
+    reference: Mapped[int]
+    progress_done: Mapped[int] = mapped_column(default=0, server_default="0")
+    progress_total: Mapped[int]
+    error: Mapped[str | None] = mapped_column(String(64))
+    started_by: Mapped[str] = mapped_column(String(63))
+    started_at: Mapped[datetime]
+    finished_at: Mapped[datetime | None]
+    """Naive UTC from the application's clock."""
+
+
+class EvalAnswer(Base):
+    """One answer of one repeat of a run (``AnswerView``): the grading fields,
+    latency, tokens, the answer as read, the verbatim text of one that did not
+    read. Result sets are feature ids, never rows."""
+
+    __tablename__ = "eval_answer"
+    __table_args__ = (UniqueConstraint("run_id", "case_id", "point", "seed"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    run_id: Mapped[int] = mapped_column(ForeignKey("eval_run.id", ondelete="CASCADE"))
+    case_id: Mapped[str] = mapped_column(String(63))
+    point: Mapped[int]
+    connection_id: Mapped[int] = mapped_column(index=True)
+    """The point's connection, for the duration estimate of its next run (D12)."""
+    block: Mapped[int]
+    seed: Mapped[int]
+    verdict: Mapped[str] = mapped_column(String(16))
+    code: Mapped[str | None] = mapped_column(String(64))
+    flags: Mapped[list[str]] = mapped_column(JSON)
+    silently_wrong: Mapped[bool] = mapped_column(default=False, server_default=false())
+    latency_ms: Mapped[int | None]
+    prompt_tokens: Mapped[int | None]
+    completion_tokens: Mapped[int | None]
+    answer: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    refusal: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    raw: Mapped[str | None]
+    reading: Mapped[int | None]
+    diff: Mapped[list[Any] | None] = mapped_column(JSON)
+    hits: Mapped[int | None]
+    reference_hits: Mapped[int | None]
+    only_answer: Mapped[list[int]] = mapped_column(JSON)
+    only_answer_count: Mapped[int] = mapped_column(default=0, server_default="0")
+    only_reference: Mapped[list[int]] = mapped_column(JSON)
+    only_reference_count: Mapped[int] = mapped_column(default=0, server_default="0")
 
 
 class AppMeta(Base):

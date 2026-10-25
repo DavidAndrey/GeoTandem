@@ -78,6 +78,46 @@ export type DecideRequest = Omit<Schemas['DecideRequest'], 'applied_by_hand'> &
   Partial<Pick<Schemas['DecideRequest'], 'applied_by_hand'>>
 export type Assumption = Schemas['Assumption']
 export type Approach = ModelActionView['approach']
+// Evaluation of model connections (plan E3, frozen in WP85)
+export type PromptProfile = Schemas['PromptProfile']
+export type EvalCase = Schemas['EvalCase']
+export type CaseFile = Schemas['CaseFile']
+export type CaseDraft = Schemas['CaseDraft']
+export type CaseView = Schemas['CaseView']
+export type CasePage = Schemas['CasePage']
+export type CaseStatus = NonNullable<CaseView['status']>
+export type Split = EvalCase['split']
+export type DataState = NonNullable<EvalCase['data_state']>
+export type CaseOrigin = EvalCase['origin']
+export type ImportResult = Schemas['ImportResult']
+export type MeasuringPoint = Schemas['MeasuringPoint']
+export type RunRequest = Schemas['RunRequest']
+export type RunScope = NonNullable<RunRequest['scope']>
+export type CostEstimate = Schemas['CostEstimate']
+export type ConnectionEstimate = Schemas['ConnectionEstimate']
+export type Money = Schemas['Money']
+export type RunView = Schemas['RunView']
+export type RunStatus = RunView['status']
+export type RunLabel = Schemas['RunLabel']
+export type RunSummary = Schemas['RunSummary']
+export type RunPage = Schemas['RunPage']
+export type PointView = Schemas['PointView']
+export type PointLabel = Schemas['PointLabel']
+export type PointFigures = Schemas['PointFigures']
+export type PointComparison = Schemas['PointComparison']
+export type ComparisonWord = PointComparison['word']
+export type Cell = Schemas['Cell']
+export type RunCase = Schemas['RunCase']
+export type Tally = Schemas['Tally']
+export type AnswerView = Schemas['AnswerView']
+export type Verdict = AnswerView['verdict']
+export type Flag = NonNullable<AnswerView['flags']>[number]
+export type DiffEntry = Schemas['DiffEntry']
+export type ProfileSummary = Schemas['ProfileSummary']
+export type LayerGaps = Schemas['LayerGaps']
+export type RunComparison = Schemas['RunComparison']
+export type RunComparisonRow = Schemas['RunComparisonRow']
+export type RunExport = Schemas['RunExport']
 /** The filters of the model log (design M16.1); ``from``/``to`` as ISO times. */
 export interface ModelLogFilter {
   from?: string
@@ -244,6 +284,65 @@ export const api = {
      * A ``POST``: it stamps ``previewed_at`` on a waiting side (security review #41). */
     comparison: (id: number) =>
       request<Comparison>(`/api/model/actions/${id}/comparison`, { method: 'POST' }),
+  },
+  // The evaluation's cases (plan E3, WP87): the start set read-only, own cases
+  // created, edited, deleted, imported all or nothing and exported as one file.
+  evaluation: {
+    /** One page of the list, start cases first (V1.1); without ``reference_hits``. */
+    cases: (offset = 0, limit = 200) =>
+      request<CasePage>(`/api/admin/evaluation/cases?offset=${offset}&limit=${limit}`),
+    /** One case with the hits of each reading on its data state (V2). */
+    case: (id: string) => request<CaseView>(`/api/admin/evaluation/cases/${enc(id)}`),
+    create: (body: EvalCase) =>
+      request<CaseView>('/api/admin/evaluation/cases', json('POST', body)),
+    update: (id: string, body: EvalCase) =>
+      request<CaseView>(`/api/admin/evaluation/cases/${enc(id)}`, json('PUT', body)),
+    remove: (id: string) =>
+      request<undefined>(`/api/admin/evaluation/cases/${enc(id)}`, { method: 'DELETE' }),
+    /** A case prefilled from a model action of the log (F-3.14, V2 from M16.2); stores nothing. */
+    draftFromAction: (actionId: number) =>
+      request<CaseDraft>(`/api/admin/evaluation/cases/draft-from-action/${actionId}`),
+    /** All or nothing (V1.3): ``problems`` name each case that stopped it. */
+    importFile: (file: unknown) =>
+      request<ImportResult>('/api/admin/evaluation/cases/import', json('POST', file)),
+    /** A link, not a request: the browser downloads the own cases as a case file. */
+    exportUrl: '/api/admin/evaluation/cases/export',
+    /** How complete the layer profile is (D11, V8): of the sample, or live as
+     * ``account`` sees it (the caller when left out). */
+    profileSummary: (dataState: DataState, account?: string) =>
+      request<ProfileSummary>(
+        `/api/admin/evaluation/profile-summary?data_state=${dataState}` +
+          (account ? `&account=${enc(account)}` : ''),
+      ),
+    // Runs (plan E3, WP90): estimated, started in the background (202) and
+    // polled; one at a time for the instance (``run_busy``).
+    /** Requests, tokens, cost and duration before the start (D12); no model call. */
+    estimate: (body: RunRequest) =>
+      request<CostEstimate>('/api/admin/evaluation/runs/estimate', json('POST', body)),
+    /** 202 with the run ``running``: the client polls it (D8). */
+    start: (body: RunRequest) => request<RunView>('/api/admin/evaluation/runs', json('POST', body)),
+    /** Newest first; with ``connectionId`` the runs that measured it (O7). */
+    runs: (filter: { connectionId?: number; offset?: number; limit?: number } = {}) => {
+      const params = new URLSearchParams()
+      if (filter.connectionId !== undefined)
+        params.set('connection_id', String(filter.connectionId))
+      params.set('offset', String(filter.offset ?? 0))
+      params.set('limit', String(filter.limit ?? 50))
+      return request<RunPage>(`/api/admin/evaluation/runs?${params}`)
+    },
+    run: (id: number) => request<RunView>(`/api/admin/evaluation/runs/${id}`),
+    abort: (id: number) =>
+      request<RunView>(`/api/admin/evaluation/runs/${id}/abort`, { method: 'POST' }),
+    /** The repeats of one case at one measuring point (V7). */
+    answers: (id: number, caseId: string, point: number) =>
+      request<AnswerView[]>(
+        `/api/admin/evaluation/runs/${id}/answers?case_id=${enc(caseId)}&point=${point}`,
+      ),
+    /** A link, not a request: the browser downloads the run with every answer as JSON. */
+    exportRunUrl: (id: number) => `/api/admin/evaluation/runs/${id}/export`,
+    /** Two complete runs over the same cases (V6.6), else ``runs_not_comparable``. */
+    compare: (run: number, against: number) =>
+      request<RunComparison>('/api/admin/evaluation/comparison', json('POST', { run, against })),
   },
   sampleRows: (layer: string, limit = 50) =>
     request<QueryResult>('/api/query', json('POST', { source: layer, output: 'table', limit })),

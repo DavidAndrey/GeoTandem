@@ -170,9 +170,17 @@ grep -q "sample dataset" <<<"$logs" \
 token=$(grep -o 'Setup token: [A-Za-z0-9_-]*' <<<"$logs" | head -n1 | cut -d' ' -f3)
 [ -n "$token" ] || { echo "no setup token in the log of the first start" >&2; exit 1; }
 
+# When a pass fails, say how the app ended before the cleanup removes it: a
+# crash in native code leaves only its exit code and the fault handler's trace
+# (PYTHONFAULTHANDLER, plan E3 risk R1) in the container's log.
+dump_app() {
+  echo "app container: $(docker inspect -f 'status={{.State.Status}} exit={{.State.ExitCode}} oom={{.State.OOMKilled}} restarts={{.RestartCount}}' "$name" 2>&1)" >&2
+  docker logs "$name" 2>&1 | tail -n 300 >&2
+}
+
 step "playwright against $base, offline${llm_model:+, with $llm_model}"
 (cd e2e && env "${llm_env[@]}" "${stub_env[@]}" E2E_SETUP_TOKEN="$token" E2E_BASE_URL="$base" \
-  npx playwright test --reporter=line)
+  npx playwright test --reporter=line) || { dump_app; exit 1; }
 
 step "restart on the same volume"
 since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -192,7 +200,7 @@ step "playwright again, on the data of the first pass"
 base="http://$(address):8000"  # the address may change with the restart
 # Marked, so tests that save in the first pass insist on finding it (E1.7).
 (cd e2e && env "${stub_env[@]}" E2E_AFTER_RESTART=1 E2E_BASE_URL="$base" \
-  npx playwright test --reporter=line)
+  npx playwright test --reporter=line) || { dump_app; exit 1; }
 
 # Say what did not run, so a pass never hides a skipped acceptance.
 skipped=()

@@ -1,5 +1,6 @@
 """Schema migrations (F-2.17): every revision carries existing data along."""
 
+import json
 from typing import Any
 
 import pytest
@@ -406,4 +407,177 @@ def test_re_plan_calls_come_and_go_with_0012(settings: Settings) -> None:
 
     migrate.downgrade(engine, "0011")
     assert "model_call" not in inspect(engine).get_table_names()
+    migrate.upgrade(engine)
+
+
+def test_tokens_come_and_go_with_0014_and_keep_the_records(settings: Settings) -> None:
+    """WP86: the tokens of a model action are two nullable columns; existing
+    records have none."""
+    engine = make_engine(settings)
+    migrate.upgrade(engine, "0013")
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO model_action (id, account, created_at, prompt, prompt_hash,"
+                " approach, status, level_id, level_name, level_matrix, level_prompt_hash,"
+                " connection_id, connection_name, connection_model, connection_host,"
+                " connection_locality, profile_hash, latency_ms) VALUES (1, 'anna',"
+                " '2026-10-24 08:00:00', 'p', 'h', 'direct', 'proposed', 1, 'Prüfen', '{}',"
+                " 'h', 1, 'Lokal', 'm', 'localhost', 'local', 'h', 900)"
+            )
+        )
+
+    migrate.upgrade(engine)
+
+    tokens = "SELECT latency_ms, prompt_tokens, completion_tokens FROM model_action"
+    with engine.begin() as conn:
+        assert tuple(conn.execute(text(tokens)).one()) == (900, None, None)
+        conn.execute(text("UPDATE model_action SET prompt_tokens = 10, completion_tokens = 2"))
+
+    migrate.downgrade(engine, "0013")
+    columns = {c["name"] for c in inspect(engine).get_columns("model_action")}
+    assert "latency_ms" in columns and not {"prompt_tokens", "completion_tokens"} & columns
+    with engine.connect() as conn:
+        assert conn.scalar(text("SELECT count(*) FROM model_action")) == 1
+    migrate.upgrade(engine)
+
+
+def test_own_cases_come_and_go_with_0015(settings: Settings) -> None:
+    """Plan E3, WP87: own cases in a table of their own, with the list's indexes
+    and unique ids; a downgrade removes it and leaves the rest as it was."""
+    engine = make_engine(settings)
+    migrate.upgrade(engine, "0014")
+    assert "eval_case" not in inspect(engine).get_table_names()
+
+    migrate.upgrade(engine)
+
+    indexes = {i["name"] for i in inspect(engine).get_indexes("eval_case")}
+    assert indexes >= {"ix_eval_case_split", "ix_eval_case_origin", "ix_eval_case_data_state"}
+    insert = text(
+        "INSERT INTO eval_case (case_id, split, origin, data_state, body, created_at,"
+        " updated_at) VALUES ('eigene-1', 'confirm', 'authored', 'sample', '{}',"
+        " '2026-10-24 08:00:00', '2026-10-24 08:00:00')"
+    )
+    with engine.begin() as conn:
+        conn.execute(insert)
+    with pytest.raises(IntegrityError), engine.begin() as conn:
+        conn.execute(insert)
+
+    migrate.downgrade(engine, "0014")
+    assert "eval_case" not in inspect(engine).get_table_names()
+    assert "model_action" in inspect(engine).get_table_names()
+    migrate.upgrade(engine)
+
+
+PRICES = ("price_input_per_mtok", "price_output_per_mtok", "price_currency")
+
+
+def test_prompt_profile_and_prices_come_and_go_with_0017(settings: Settings) -> None:
+    """Plan E3, WP91: a connection that was there gets today's prompt and no
+    price; the table's check keeps the three prices together; a model action
+    asked before keeps no profile (null: the default); a downgrade removes the
+    five columns and keeps the rows."""
+    engine = make_engine(settings)
+    migrate.upgrade(engine, "0016")
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO llm_connection (id, name, base_url, model, temperature,"
+                " timeout_s, reasoning_effort, enabled, is_default, may_receive_data,"
+                " marked_external) VALUES (1, 'Ollama', 'http://127.0.0.1:11434/v1',"
+                " 'qwen3:8b', 0, 120, 'none', 1, 1, 1, 0)"
+            )
+        )
+        conn.execute(
+            text(
+                "INSERT INTO model_action (id, account, created_at, prompt, prompt_hash,"
+                " approach, status, level_id, level_name, level_matrix, level_prompt_hash,"
+                " connection_id, connection_name, connection_model, connection_host,"
+                " connection_locality, profile_hash) VALUES (1, 'anna',"
+                " '2026-10-25 08:00:00', 'p', 'h', 'direct', 'proposed', 1, 'Prüfen', '{}',"
+                " 'h', 1, 'Ollama', 'qwen3:8b', '127.0.0.1', 'local', 'h')"
+            )
+        )
+
+    migrate.upgrade(engine)
+
+    with engine.connect() as conn:
+        assert conn.scalar(text("SELECT prompt_profile FROM model_action")) is None
+
+    row = "SELECT prompt_profile, " + ", ".join(PRICES) + " FROM llm_connection"
+    with engine.connect() as conn:
+        profile, *prices = conn.execute(text(row)).one()
+    assert json.loads(profile) == {
+        "examples": "standard",
+        "placement": "P0",
+        "output": "constrained",
+    }
+    assert prices == [None, None, None]
+    with pytest.raises(IntegrityError), engine.begin() as conn:
+        conn.execute(text("UPDATE llm_connection SET price_currency = 'CHF'"))
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "UPDATE llm_connection SET price_input_per_mtok = 1, price_output_per_mtok = 2,"
+                " price_currency = 'CHF'"
+            )
+        )
+
+    migrate.downgrade(engine, "0016")
+    columns = {c["name"] for c in inspect(engine).get_columns("llm_connection")}
+    assert "model" in columns and not {"prompt_profile", *PRICES} & columns
+    assert "prompt_profile" not in {c["name"] for c in inspect(engine).get_columns("model_action")}
+    with engine.connect() as conn:
+        assert conn.scalar(text("SELECT count(*) FROM llm_connection")) == 1
+        assert conn.scalar(text("SELECT count(*) FROM model_action")) == 1
+    migrate.upgrade(engine)
+
+
+def test_runs_and_answers_come_and_go_with_0016(settings: Settings) -> None:
+    """Plan E3, WP90: a run and its answers in two tables, one answer per case,
+    point and seed; a downgrade removes both and keeps the own cases."""
+    engine = make_engine(settings)
+    migrate.upgrade(engine, "0015")
+    assert not {"eval_run", "eval_answer"} & set(inspect(engine).get_table_names())
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO eval_case (case_id, split, origin, data_state, body, created_at,"
+                " updated_at) VALUES ('eigene-1', 'confirm', 'authored', 'sample', '{}',"
+                " '2026-10-24 08:00:00', '2026-10-24 08:00:00')"
+            )
+        )
+
+    migrate.upgrade(engine, "0016")
+
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO eval_run (id, status, scope, data_state, request, label, cases,"
+                " points, prices, connection_ids, case_set_hash, reference, progress_total,"
+                " started_by, started_at) VALUES (1, 'done', 'quick', 'sample', '{}', '{}',"
+                " '[]', '[]', '[null]', ',1,', 'h', 0, 5, 'admin', '2026-10-25 08:00:00')"
+            )
+        )
+    answer = text(
+        "INSERT INTO eval_answer (run_id, case_id, point, connection_id, block, seed,"
+        " verdict, flags, only_answer, only_reference) VALUES (1, 'eigene-1', 0, 1, 1, 1,"
+        " 'pass', '[]', '[]', '[]')"
+    )
+    with engine.begin() as conn:
+        conn.execute(answer)
+    with pytest.raises(IntegrityError), engine.begin() as conn:
+        conn.execute(answer)
+    with engine.connect() as conn:
+        progress, silently = conn.execute(
+            text("SELECT progress_done, silently_wrong FROM eval_run, eval_answer")
+        ).one()
+    assert (progress, silently) == (0, 0)  # the server defaults
+    indexes = {i["name"] for i in inspect(engine).get_indexes("eval_run")}
+    assert "ix_eval_run_status" in indexes
+
+    migrate.downgrade(engine, "0015")
+    assert not {"eval_run", "eval_answer"} & set(inspect(engine).get_table_names())
+    with engine.connect() as conn:
+        assert conn.scalar(text("SELECT case_id FROM eval_case")) == "eigene-1"
     migrate.upgrade(engine)

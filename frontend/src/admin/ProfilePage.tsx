@@ -2,15 +2,20 @@
 // metadata only, limited to what that account sees and the administrator
 // released for the model — with its hash and size, the size estimated in
 // tokens against the context length of the connection the account would use
-// (S5). The per-layer view stays on the layer page.
+// (S5). The per-layer view stays on the layer page. On top, how complete the
+// metadata is (plan E3, D11, V8): of the live catalog for the chosen account,
+// or of the sample data.
 import { Trans } from '@lingui/react/macro'
 import { t } from '@lingui/core/macro'
 import { useState } from 'react'
-import type { ProfilePreview } from '../api/client'
-import { useModelProfile, useUsers } from '../api/queries'
+import { useSearchParams } from 'react-router'
+import type { DataState, ProfilePreview } from '../api/client'
+import { useMe, useModelProfile, useProfileSummary, useUsers } from '../api/queries'
 import { ErrorNotice, Loading } from '../components/ui'
 import { formatNumber } from '../i18n/locale'
+import { useMeasured } from './evaluation/measured'
 import { typeLabel } from './format'
+import { ProfileCompleteness } from './ProfileCompleteness'
 
 type AttributeProfile = ProfilePreview['layers'][number]['attributes'][number]
 
@@ -28,8 +33,17 @@ function domainText(a: AttributeProfile): string {
 
 export function ProfilePage() {
   const users = useUsers()
+  const me = useMe()
   const [account, setAccount] = useState('')
+  const [dataState, setDataState] = useState<DataState>('live')
+  // From the import wizard: the layer just imported, its gaps first.
+  const [params] = useSearchParams()
+  const imported = dataState === 'live' ? (params.get('layer') ?? undefined) : undefined
   const profile = useModelProfile(account)
+  const summary = useProfileSummary(dataState, account)
+  // Whose view the summary shows: the chosen account, else the caller's.
+  const viewer = account || me.data?.username || ''
+  const measured = useMeasured(dataState, viewer, summary.data?.profile_hash)
   const data = profile.data
   const size = data ? formatNumber(data.size_chars) : ''
   const tokens = data ? formatNumber(data.tokens_estimate) : ''
@@ -61,7 +75,43 @@ export function ProfilePage() {
           ))}
         </select>
       </label>
-      <ErrorNotice error={users.error ?? profile.error} />
+      <fieldset className="mb-2 flex items-center gap-3 text-sm">
+        <legend className="sr-only">
+          <Trans>Vollständigkeit von</Trans>
+        </legend>
+        <label className="flex items-center gap-1">
+          <input
+            type="radio"
+            name="data-state"
+            checked={dataState === 'live'}
+            onChange={() => setDataState('live')}
+          />
+          <Trans>Betriebsdaten</Trans>
+        </label>
+        <label className="flex items-center gap-1">
+          <input
+            type="radio"
+            name="data-state"
+            checked={dataState === 'sample'}
+            onChange={() => setDataState('sample')}
+          />
+          <Trans>Beispieldaten</Trans>
+        </label>
+      </fieldset>
+      <ErrorNotice error={users.error ?? summary.error ?? profile.error} />
+      {summary.data && (
+        <ProfileCompleteness
+          summary={summary.data}
+          imported={imported}
+          measured={measured}
+          links={dataState !== 'sample'}
+          heading={
+            dataState === 'sample'
+              ? t`Vollständigkeit · Beispieldaten`
+              : t`Vollständigkeit · Betriebsdaten`
+          }
+        />
+      )}
       {account && profile.isPending && <Loading />}
       {data && (
         <>

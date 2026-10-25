@@ -23,13 +23,20 @@ export function StatusLabel({
   status,
   detail,
   live,
+  line,
 }: {
   status: StatusKey
+  /**
+   * Another line style for the same words, where a domain draws a state its own
+   * way (a finished evaluation run is solid, design V5); the icon stays the status's.
+   */
+  line?: LineStyle
   /** Plain text after the label, e.g. the time "14:06". */
   detail?: string
   live?: boolean
 }) {
-  const style = lineStyle(status)
+  const own = lineStyle(status)
+  const style = line ?? own
   const text = statusText(status)
   return (
     <span
@@ -38,7 +45,7 @@ export function StatusLabel({
       data-line={style}
       className={`inline-flex items-center gap-1 rounded-full border px-2 text-xs ${LABEL[style]}`}
     >
-      {style === 'applied' && <Check size={11} aria-hidden />}
+      {own === 'applied' && <Check size={11} aria-hidden />}
       {status === 'clarification' && <CircleHelp size={11} aria-hidden />}
       {/* Struck through by style only: <del> would be read as "gelöscht". */}
       <span>{text}</span>

@@ -26,7 +26,8 @@ Routes, each also under a prefix ``/case/<id>`` (see below):
 - ``PUT /_cases/<id>``: adds (or replaces) case ``<id>``, a JSON object shaped
   as the fixture's cases, for ``/case/<id>``: a test scripts a sequence the
   fixture has no case for (E2.5: a re-plan that brings a plan the run
-  finishes). Kept until the stub stops.
+  finishes). Kept until the stub stops. A case with a ``model`` answers by
+  prompt too, without a prefix, for requests naming that model (below).
 - ``POST /_release``: ends every hold under way (``/hold/<seconds>``, below)
   at once.
 
@@ -48,6 +49,18 @@ is how a test keeps a chain ``running`` long enough to abort it (E2.5): its
 steps take milliseconds, its re-plan waits for the model, until ``<seconds>``
 are over or the test ends the hold (``POST /_release``), whichever is first.
 A release counts for the requests received before it only.
+
+A case added with a ``model`` (E3, the evaluation's runs) answers every
+request for that model (the request's ``model``, the connection's) whose
+question is its ``prompt``, or every question when it has none; such cases
+come before the fixture's, the newest first. ``GET /v1/models`` lists their
+models too, so their connections test green. Three more fields, for any
+case: ``seeds``, answers by the request's ``seed`` (a run sends the repeat's
+seed, 1 to 10) in place of ``answer``; ``hold_s``, the seconds every answer of
+the case is held, or until ``POST /_release`` (a run kept ``running`` to abort
+it); ``marked``, ``{"text": ..., "answer": ...}``, answers with its ``answer``
+whenever a system message holds its ``text`` (a run's edited system prompt,
+D10, so two system prompts on one connection measure apart).
 
     python stub.py [--port 8080] [--cases /cases/v1.json]
 """
@@ -78,6 +91,8 @@ class Stub:
         self.cases = {c["id"]: c for c in cases}
         # Direct cases first: a prompt shared with a chain case answers directly.
         self.by_order = sorted(cases, key=lambda c: c.get("approach") != "direct")
+        # Added cases with a ``model``, the newest first: they answer by prompt.
+        self.scripted: list[dict[str, Any]] = []
         self.requests: list[Any] = []
         self.lock = threading.Lock()
         # Each release starts a new generation; a hold waits for the next one.
@@ -91,6 +106,13 @@ class Stub:
     def add(self, case_id: str, case: dict[str, Any]) -> None:
         with self.lock:
             self.cases[case_id] = {**case, "id": case_id}
+            self.scripted = [c for c in self.scripted if c["id"] != case_id]
+            if case.get("model"):
+                self.scripted.insert(0, self.cases[case_id])
+
+    def models(self) -> list[str]:
+        with self.lock:
+            return [MODEL, *dict.fromkeys(c["model"] for c in self.scripted if c["model"] != MODEL)]
 
     def hold(self, seconds: float, since: int) -> None:
         """Waits ``seconds``, or until a release after generation ``since``."""
@@ -102,10 +124,13 @@ class Stub:
             self.generation += 1
             self.released.notify_all()
 
-    def case_for(self, question: str, forced: str | None) -> dict[str, Any] | None:
-        if forced is not None:
-            with self.lock:
+    def case_for(self, question: str, forced: str | None, model: Any) -> dict[str, Any] | None:
+        with self.lock:
+            if forced is not None:
                 return self.cases.get(forced)
+            for case in self.scripted:
+                if case["model"] == model and case.get("prompt", "").strip() in ("", question):
+                    return case
         return next((c for c in self.by_order if c.get("prompt", "").strip() == question), None)
 
 
@@ -122,6 +147,14 @@ def question_of(messages: list[dict[str, Any]]) -> str:
 def continues(messages: list[dict[str, Any]]) -> bool:
     """Whether the request goes on from an answer of the model's (a re-plan)."""
     return any(m.get("role") == "assistant" for m in messages)
+
+
+def marked_answer(case: dict[str, Any], messages: list[dict[str, Any]]) -> Any:
+    """The case's ``marked`` answer when a system message holds its ``text``."""
+    marked = case.get("marked") or {}
+    text = marked.get("text")
+    systems = (str(m.get("content", "")) for m in messages if m.get("role") == "system")
+    return marked.get("answer") if text and any(text in c for c in systems) else None
 
 
 def is_schema_probe(body: dict[str, Any]) -> bool:
@@ -183,8 +216,11 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         path = self._route()[2]
         if path == "/v1/models":
-            model = {"id": MODEL, "object": "model", "created": 0, "owned_by": "stub"}
-            self._json(200, {"object": "list", "data": [model]})
+            models = [
+                {"id": m, "object": "model", "created": 0, "owned_by": "stub"}
+                for m in self.stub.models()
+            ]
+            self._json(200, {"object": "list", "data": models})
         elif path == "/_requests":
             with self.stub.lock:
                 self._json(200, list(self.stub.requests))
@@ -249,7 +285,9 @@ class Handler(BaseHTTPRequestHandler):
         messages = body.get("messages", [])
         if hold and continues(messages):
             self.stub.hold(hold, since)  # a re-plan waits; the chain stays running meanwhile
-        case = self.stub.case_for(question_of(messages), forced) or {}
+        case = self.stub.case_for(question_of(messages), forced, body.get("model")) or {}
+        if case.get("hold_s"):
+            self.stub.hold(float(case["hold_s"]), since)
         error = case.get("llm_error")
         if error == "llm_unreachable":
             # No status line at all: the client's transport fails, as for a dead host.
@@ -261,7 +299,10 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, completion(case["raw"]))
             return
         replan = case.get("replan") if continues(messages) else None
-        answer = replan or case.get("answer") or NO_ANSWER
+        by_seed = (case.get("seeds") or {}).get(str(body.get("seed")))
+        answer = (
+            replan or marked_answer(case, messages) or by_seed or case.get("answer") or NO_ANSWER
+        )
         self._send(200, completion(json.dumps(answer, ensure_ascii=False)))
 
 

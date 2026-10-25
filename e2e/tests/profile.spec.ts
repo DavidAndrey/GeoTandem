@@ -7,7 +7,7 @@ test('the profile for the administrator lists the sample layers without counts',
 }) => {
   await page.goto('/admin/steckbrief')
   await page.getByLabel('Konto').selectOption('admin')
-  await expect(page.getByRole('region', { name: 'Schulen' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Schulen', exact: true })).toBeVisible()
   await expect(page.getByText(/^[0-9a-f]{64}$/)).toBeVisible()
   await page.getByText('Als JSON').click()
   const json = await page.locator('pre').innerText()

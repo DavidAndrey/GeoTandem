@@ -30,7 +30,7 @@ from sqlalchemy.orm import Session, object_session
 
 from geotandem import audit
 from geotandem.auth.accounts import Account
-from geotandem.connections import ConnectionInfo
+from geotandem.connections import ConnectionInfo, stored_prompt_profile
 from geotandem.db.orm import ModelAction, ModelActionStep, ModelCall
 from geotandem.db.spatialite import reading
 from geotandem.engine import ResultStamp
@@ -38,6 +38,7 @@ from geotandem.levels import CellMode, Level, OpClass
 from geotandem.model.chain.plan import one_approval
 from geotandem.model.chain.view import restored
 from geotandem.model.errors import ActionError
+from geotandem.model.result import NO_TOKENS, Tokens
 from geotandem.model.schemas import (
     MAX_PAGE,
     MAX_STEPS,
@@ -55,6 +56,7 @@ from geotandem.model.schemas import (
     ModelActionView,
     NotCounted,
     PlanAnswer,
+    PromptProfile,
     QueryAnswer,
     Reference,
     Refusal,
@@ -340,9 +342,18 @@ def level_snapshot(level: Level) -> LevelSnapshot:
     )
 
 
-def connection_snapshot(info: ConnectionInfo) -> ConnectionSnapshot:
+def connection_snapshot(
+    info: ConnectionInfo, prompt_profile: PromptProfile | None = None
+) -> ConnectionSnapshot:
+    """The connection as it was; ``prompt_profile`` the one the prompt was
+    written with (the connection's for a direct query, the default for a chain)."""
     return ConnectionSnapshot(
-        id=info.id, name=info.name, model=info.model, host=info.host, locality=info.locality
+        id=info.id,
+        name=info.name,
+        model=info.model,
+        host=info.host,
+        locality=info.locality,
+        prompt_profile=prompt_profile,
     )
 
 
@@ -355,13 +366,17 @@ def _json(model: Any) -> Any:
     return None if model is None else model.model_dump(mode="json", by_alias=True)
 
 
+def _tokens(tokens: Tokens) -> dict[str, int | None]:
+    return {"prompt_tokens": tokens.prompt, "completion_tokens": tokens.completion}
+
+
 def _too_large(value: Any) -> bool:
     """``value`` as canonical JSON (UTF-8) beyond ``MAX_RAW_QUERY_BYTES``."""
     text = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return len(text.encode()) > MAX_RAW_QUERY_BYTES
 
 
-def _bounded(answer: AnyAnswer | None) -> Any:
+def bounded(answer: AnyAnswer | None) -> Any:
     """A refused answer as the record keeps it (design M3): its raw query only up
     to ``MAX_RAW_QUERY_BYTES`` of canonical JSON (review #35); of a refused
     plan the first ``MAX_STEPS`` steps, and their arguments only while all of
@@ -463,6 +478,11 @@ def to_view(
                 "model": row.connection_model,
                 "host": row.connection_host,
                 "locality": row.connection_locality,
+                "prompt_profile": (
+                    None
+                    if row.prompt_profile is None
+                    else stored_prompt_profile(row.prompt_profile, f"model action {row.id}")
+                ),
             },
             "profile_hash": row.profile_hash,
             "prompt_hash": row.prompt_hash,
@@ -918,6 +938,11 @@ class ModelActionStore:
                 connection_model=new.connection.model,
                 connection_host=new.connection.host,
                 connection_locality=new.connection.locality,
+                prompt_profile=(
+                    new.connection.prompt_profile.model_dump()
+                    if new.connection.prompt_profile is not None
+                    else None
+                ),
                 profile_hash=new.profile_hash,
             )
             db.add(row)
@@ -1133,6 +1158,7 @@ class ModelActionStore:
         *,
         answer: AnyAnswer | None = None,
         latency_ms: int | None = None,
+        tokens: Tokens = NO_TOKENS,
     ) -> ModelActionView:
         """The application refused the answer (D1, D3); the answer stays for
         inspection (design M3). Not a decision."""
@@ -1144,8 +1170,9 @@ class ModelActionStore:
             lambda _: {
                 "status": "refused",
                 "refusal": _json(refusal),
-                "answer": _bounded(answer),
+                "answer": bounded(answer),
                 "latency_ms": latency_ms,
+                **_tokens(tokens),
             },
         )
 
@@ -1156,6 +1183,7 @@ class ModelActionStore:
         answer: Clarification | CannotAnswer,
         *,
         latency_ms: int | None = None,
+        tokens: Tokens = NO_TOKENS,
     ) -> ModelActionView:
         """A clarification or a cannot-answer: nothing proposed, nothing to decide."""
         return self._move(
@@ -1163,7 +1191,12 @@ class ModelActionStore:
             action_id,
             "answer",
             ["thinking"],
-            lambda _: {"status": "answered", "answer": _json(answer), "latency_ms": latency_ms},
+            lambda _: {
+                "status": "answered",
+                "answer": _json(answer),
+                "latency_ms": latency_ms,
+                **_tokens(tokens),
+            },
         )
 
     def propose(
@@ -1175,6 +1208,7 @@ class ModelActionStore:
         query: QueryObject | None,
         governance: Governance,
         latency_ms: int | None = None,
+        tokens: Tokens = NO_TOKENS,
         steps: Sequence[ChainStep] = (),
     ) -> ModelActionView:
         """A query or a plan the application accepted: ``approved`` without a
@@ -1196,6 +1230,7 @@ class ModelActionStore:
                 "query": _query_json(query),
                 "governance": _json(governance),
                 "latency_ms": latency_ms,
+                **_tokens(tokens),
                 "turns": None,
             }
 
@@ -1215,14 +1250,27 @@ class ModelActionStore:
             lambda _: {"status": "aborted", "decision": "aborted"},
         )
 
-    def fail(self, caller: Account, action_id: int, error: dict[str, Any]) -> ModelActionView:
-        """A model or limit error, ``{code, message, details}`` (design M14)."""
+    def fail(
+        self,
+        caller: Account,
+        action_id: int,
+        error: dict[str, Any],
+        *,
+        tokens: Tokens = NO_TOKENS,
+    ) -> ModelActionView:
+        """A model or limit error, ``{code, message, details}`` (design M14);
+        ``tokens`` of a call that was made but whose answer did not read."""
         return self._move(
             caller,
             action_id,
             "fail",
             ["thinking"],
-            lambda _: {"status": "failed", "decision": "failed", "error": error},
+            lambda _: {
+                "status": "failed",
+                "decision": "failed",
+                "error": error,
+                **_tokens(tokens),
+            },
         )
 
     # from proposed
@@ -1584,6 +1632,21 @@ class ModelActionStore:
             db.add(
                 ModelCall(action_id=action_id, connection_id=connection_id, called_at=self.clock())
             )
+
+    def add_tokens(self, action_id: int, tokens: Tokens) -> None:
+        """A re-plan's tokens, added to the chain's (bewertung.md 10). One
+        update, so it never overwrites another change of the record."""
+        values = {
+            column: func.coalesce(column, 0) + value
+            for column, value in [
+                (ModelAction.prompt_tokens, tokens.prompt),
+                (ModelAction.completion_tokens, tokens.completion),
+            ]
+            if value is not None
+        }
+        if values:
+            with Session(self.engine) as db, db.begin():
+                db.execute(update(ModelAction).where(ModelAction.id == action_id).values(values))
 
     def stop(
         self,
