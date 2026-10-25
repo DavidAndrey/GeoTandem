@@ -41,6 +41,7 @@ from geotandem.connections import Connections
 from geotandem.data.spatialite import SpatiaLiteBackend
 from geotandem.db.bootstrap import bootstrap
 from geotandem.evaluation.cases import check_start_set
+from geotandem.evaluation.run import Runs, close_interrupted
 from geotandem.importing import log as import_log
 from geotandem.importing.staging import Staging
 from geotandem.llm.openai_compat import OpenAICompatClient
@@ -54,7 +55,8 @@ log = logging.getLogger(__name__)
 
 def start(settings: Settings) -> AppState:
     """Bring the data core up to date and check capabilities (F-2.12, F-2.14);
-    close what the last shutdown left running (imports, model actions, P7)."""
+    close what the last shutdown left running (imports, model actions, P7,
+    evaluation runs, D8)."""
     engine = bootstrap(settings)
     backend = SpatiaLiteBackend(engine, settings.internal_crs)
     unsupported = backend.missing_functions()
@@ -66,6 +68,8 @@ def start(settings: Settings) -> AppState:
         log.warning("%d imports were interrupted by the last shutdown", stale)
     if closed := model_service.close_stale(engine, settings.max_features):
         log.warning("%d model actions were left open by the last shutdown", len(closed))
+    if interrupted := close_interrupted(engine):
+        log.warning("%d evaluation runs were interrupted by the last shutdown", len(interrupted))
     if settings.load_sample_data:
         load_sample(backend)
     check_start_set(settings, engine)
@@ -96,6 +100,7 @@ def start(settings: Settings) -> AppState:
         Connections(engine, Vault.open(settings.data_dir), settings.local_hosts),
         OpenAICompatClient,
         model_service.ModelCalls(settings.max_model_calls),
+        Runs(),
         token,
     )
 
@@ -132,6 +137,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.geotandem = start(settings)
         yield
         app.state.geotandem.model_calls.shutdown()
+        app.state.geotandem.runs.shutdown()
         app.state.geotandem.backend.engine.dispose()
 
     docs = settings.api_docs

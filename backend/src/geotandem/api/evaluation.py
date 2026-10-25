@@ -1,9 +1,10 @@
 """The evaluation of model connections over HTTP (plan E3, section 6).
 
-Frozen in WP85 with every route, its guard and its answer; each body answers
-501 ``not_implemented`` until its work package fills it in (WP87, WP90, WP92,
-WP94). Administrators only (F-3.1): a user gets 403 on every route. A run is a
-measurement, not use (D8): no route here writes a model action.
+Frozen in WP85 with every route, its guard and its answer; each body answered
+501 ``not_implemented`` until its work package filled it in (WP87, WP90, WP92,
+WP94, all landed). Administrators only (F-3.1): a user gets 403 on every
+route. A run is a measurement, not use (D8): no route here writes a model
+action.
 """
 
 from typing import Annotated, Any
@@ -17,6 +18,7 @@ from geotandem.auth import accounts
 from geotandem.auth.accounts import Account
 from geotandem.catalog import model_profile
 from geotandem.evaluation.cases import Cases, sample_backend
+from geotandem.evaluation.run import Evaluation
 from geotandem.evaluation.schemas import (
     MAX_POINTS,
     AnswerView,
@@ -89,7 +91,7 @@ def cases(
     origin: Origin | None = None,
     data_state: DataState | None = None,
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE)] = MAX_PAGE,
-    offset: Annotated[int, Query(ge=0)] = 0,
+    offset: Annotated[int, Query(ge=0, le=MAX_ID)] = 0,
 ) -> CasePage:
     """The start set and the own cases, start cases first (V1.1); each with its
     status (D3), ``invalid`` by the checks alone. The list leaves
@@ -163,42 +165,65 @@ def delete_case(case_id: CaseId, service: CaseService) -> Response:
 # --- runs (WP90) -------------------------------------------------------------------
 
 
+def evaluation(state: Annotated[AppState, Depends(get_state)], admin: Admin) -> Evaluation:
+    """The runs as the calling administrator starts them: a live run uses
+    the administrator's view (D4)."""
+    return Evaluation(
+        settings=state.settings,
+        backend=state.backend,
+        connections=state.connections,
+        client_factory=state.client_factory,
+        runs=state.runs,
+        admin=admin,
+        limits=state.limits,
+        unsupported=frozenset(state.unsupported),
+        gate=state.query_slots,
+    )
+
+
+RunService = Annotated[Evaluation, Depends(evaluation)]
+
+
 @router.post("/runs/estimate", responses=ERRORS)
-def estimate(body: RunRequest) -> CostEstimate:
-    """Requests, tokens, cost and duration before the start (D12, V4.1); no model call."""
-    raise NotBuilt("WP90")
+def estimate(body: RunRequest, service: RunService) -> CostEstimate:
+    """Requests, tokens, cost and duration before the start (D12, V4.1); no
+    model call. A selection without a runnable case is ``no_cases``, as at the
+    start."""
+    return service.estimate(body)
 
 
 @router.post("/runs", status_code=202, responses=ERRORS)
-def start_run(body: RunRequest) -> RunView:
+def start_run(body: RunRequest, service: RunService) -> RunView:
     """Starts the run in the background and answers at once, ``running``; the
     client polls ``GET /runs/{id}`` (D8). One run at a time (``run_busy``); an
     external connection not in ``confirm_external`` is ``external_not_confirmed``;
     a selection with no runnable case (all filtered out, stale or invalid) is
     refused before the start, 400 ``no_cases``. ``RunView.error`` is for what
     fails while the run runs."""
-    raise NotBuilt("WP90")
+    return service.start(body)
 
 
 @router.get("/runs", responses=ERRORS)
 def runs(
+    service: RunService,
     connection_id: Annotated[int | None, Query(ge=1, le=MAX_ID)] = None,
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE)] = 50,
-    offset: Annotated[int, Query(ge=0)] = 0,
+    offset: Annotated[int, Query(ge=0, le=MAX_ID)] = 0,
 ) -> RunPage:
-    raise NotBuilt("WP90")
+    """Newest first; with ``connection_id`` the runs that measured it (O7)."""
+    return service.page(connection_id, offset=offset, limit=limit)
 
 
 @router.get("/runs/{run_id}", responses=ERRORS)
-def run(run_id: Id) -> RunView:
+def run(run_id: Id, service: RunService) -> RunView:
     """Polled while the run runs; figures and comparisons once it is done."""
-    raise NotBuilt("WP90")
+    return service.view(run_id)
 
 
 @router.post("/runs/{run_id}/abort", responses=ERRORS)
-def abort_run(run_id: Id) -> RunView:
+def abort_run(run_id: Id, service: RunService) -> RunView:
     """Stops before the next question; the answers so far stay."""
-    raise NotBuilt("WP90")
+    return service.abort(run_id)
 
 
 @router.get("/runs/{run_id}/answers", responses=ERRORS)
@@ -206,22 +231,23 @@ def answers(
     run_id: Id,
     case_id: CaseId,
     point: Annotated[int, Query(ge=0, le=MAX_POINTS - 1)],
+    service: RunService,
 ) -> list[AnswerView]:
     """The repeats of one case at one measuring point (V7)."""
-    raise NotBuilt("WP90")
+    return service.answers(run_id, case_id, point)
 
 
 @router.get("/runs/{run_id}/export", responses=ERRORS, response_model_exclude_none=True)
-def export_run(run_id: Id) -> RunExport:
+def export_run(run_id: Id, service: RunService) -> RunExport:
     """The run with every answer, as JSON (V6.2 *Exportieren*)."""
-    raise NotBuilt("WP90")
+    return service.export(run_id)
 
 
 @router.post("/comparison", responses=ERRORS)
-def compare_runs(body: CompareRequest) -> RunComparison:
+def compare_runs(body: CompareRequest, service: RunService) -> RunComparison:
     """Two complete runs over the same cases side by side (V6.6, D7);
     otherwise ``runs_not_comparable``."""
-    raise NotBuilt("WP90")
+    return service.compare(body)
 
 
 # --- the state of the layer profile (WP94) -------------------------------------

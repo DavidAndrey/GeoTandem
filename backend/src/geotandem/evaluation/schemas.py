@@ -520,8 +520,12 @@ class RunLabel(BaseModel):
     seeds: list[int]
     cases: int
     case_set_hash: str
-    """Over the ids and references of the cases: two runs with the same hash
-    asked the same questions (V5.1 *Gegenüberstellen*)."""
+    """SHA-256 (64 hex digits) over every field of each case the run asked
+    except its tags and note (id, prompt, references, ``require``, ``expect``,
+    split, data state, ...), in the order of their ids: two runs with the same
+    hash asked the same questions (V5.1 *Gegenüberstellen*). A case left out
+    when its reading fails at run time is left out of the hash and of
+    ``cases`` too."""
     started_at: datetime
     started_by: str
 
@@ -611,9 +615,11 @@ class RunView(BaseModel):
     cost_so_far: list[Money] = []
     cells: list[Cell]
     error: str | None = None
-    """Why a ``failed`` run stopped while running, as a code (the sample copy
-    could not be built, a transport code). A selection without a runnable case
-    never starts: ``POST /runs`` refuses it with ``no_cases``."""
+    """Why a ``failed`` run stopped while running, as a code: ``internal_error``,
+    a transport code (``llm_unauthorized``, ...) after which a connection's
+    points were stopped, or ``no_cases`` when every reading failed at run
+    time. A selection without a runnable case never starts: ``POST /runs``
+    refuses it with ``no_cases``."""
     finished_at: datetime | None = None
 
 

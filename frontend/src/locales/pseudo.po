@@ -4023,6 +4023,10 @@ msgid "Lädt …"
 msgstr ""
 
 #: src/i18n/errors.ts
+msgid "Lauf #{run} ist abgebrochen und wartet noch auf die letzte Antwort des Modells. Versuchen Sie es gleich nochmals."
+msgstr ""
+
+#: src/i18n/errors.ts
 msgid "Lauf #{run} läuft noch. Es läuft höchstens ein Lauf zugleich."
 msgstr ""
 
