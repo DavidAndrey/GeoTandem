@@ -10,10 +10,21 @@ import { MAX_TAGS, SPLITS, splitText, tagProblem, tagText } from './words'
 
 /**
  * A case's status (V1.2): *veraltet* grey with the label struck through, as
- * E2's "veraltet"; *Datenstand geändert* a message, black. Nothing when ``ok``.
+ * E2's "veraltet", and *ungültig* alike (both are left out of runs);
+ * *Datenstand geändert* a message, black. Nothing when ``ok``.
  */
 export function CaseStatusLabel({ status }: { status: CaseStatus }) {
   if (status === 'stale') return <StatusLabel status="stale" />
+  if (status === 'invalid')
+    return (
+      <span
+        data-status="invalid"
+        data-line="void"
+        className="text-muted inline-flex items-center rounded-full border border-neutral-400 px-2 text-xs whitespace-nowrap line-through"
+      >
+        <Trans>ungültig</Trans>
+      </span>
+    )
   if (status === 'dataset_changed')
     return (
       <span

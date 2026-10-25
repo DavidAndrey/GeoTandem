@@ -5,6 +5,7 @@ import { msg, t } from '@lingui/core/macro'
 import {
   ApiRequestError,
   type CaseOrigin,
+  type CaseStatus,
   type DataState,
   type EvalCase,
   type Split,
@@ -21,15 +22,20 @@ export const ORIGINS: CaseOrigin[] = ['start', 'authored', 'import', 'log']
 export const DATA_STATES: DataState[] = ['sample', 'live']
 export const ANSWER_KINDS: AnswerKind[] = ['query', 'clarification', 'cannot_answer']
 
-/** Limits of the case format (``evaluation/schemas.py``). */
+/**
+ * Limits of the case format (``evaluation/schemas.py``), held to the server's
+ * schema by ``words.test.ts`` (read from ``openapi.json``).
+ */
 export const MAX_TAGS = 8
 export const MAX_READINGS = 4
 /** A case's reference passes the checks a model's query passes: at most this
- * many conditions (``MAX_CONDITIONS`` of ``model/schemas.py``, design M3.2, V3.2). */
+ * many conditions (``MAX_CONDITIONS`` of ``model/schemas.py``, design M3.2, V3.2;
+ * the schema has it as the most conditions of a ``require``). */
 export const MAX_CONDITIONS = 8
 export const CASE_ID = /^[a-z0-9][a-z0-9.-]{0,62}$/
 export const TAG = /^[a-z0-9][a-z0-9:-]{0,31}$/
-const RESERVED = ['export', 'import', 'draft-from-action']
+/** Words of the case routes (``RESERVED_IDS``). */
+export const RESERVED = ['draft-from-action', 'export', 'import']
 
 const SPLIT_LABELS: Record<Split, MessageDescriptor> = {
   tuning: msg`Abstimmung`,
@@ -94,6 +100,9 @@ export const approachText = (approach: OtherApproach) => i18n._(APPROACH_LABELS[
 export const tagText = (tag: string) => (TAG_LABELS[tag] ? i18n._(TAG_LABELS[tag]) : tag)
 export const tagList = (tags: readonly string[]) => tags.map(tagText).join(' · ')
 
+/** A case a run leaves out (D3): *veraltet* or *ungültig*, both shown grey and struck through. */
+export const notRun = (status: CaseStatus | undefined) => status === 'stale' || status === 'invalid'
+
 /** A behaviour case names the expected kind of answer; every other case is a query case. */
 export const isBehaviour = (c: EvalCase) => c.expect != null
 /** "Abfrage" or "Verhalten" (V1.1). */
@@ -101,9 +110,13 @@ export const caseKindShort = (c: EvalCase) => (isBehaviour(c) ? t`Verhalten` : t
 /** "Abfragefall" or "Verhaltensfall" (V2). */
 export const caseKindText = (c: EvalCase) => (isBehaviour(c) ? t`Verhaltensfall` : t`Abfragefall`)
 
-/** The reference query, or the fair readings; empty for other cases (``cases.readings``). */
+/**
+ * The reference query, or the fair readings; empty for other cases
+ * (``EvalCase.readings``): the one helper of these pages for it.
+ */
 export function readings(c: Pick<EvalCase, 'gold' | 'gold_any'>): Record<string, unknown>[] {
-  return c.gold_any ?? (c.gold ? [c.gold] : [])
+  if (c.gold_any != null) return c.gold_any
+  return c.gold != null ? [c.gold] : []
 }
 
 /** The readings back into a case: one is ``gold``, several are ``gold_any``. */
@@ -201,6 +214,12 @@ function reasonText(reason: string, d: Details): string | null {
       return max === null
         ? null
         : t`Neben dem Startbestand sind höchstens ${max} eigene Prüffälle möglich; mit diesen wären es mehr. Bitte zuerst Fälle löschen.`
+    }
+    case 'duplicate_reading': {
+      const same = count(d.same_as)
+      if (same === null) return null
+      const other = readingName(same)
+      return t`Sie ist dieselbe Abfrage wie ${other}, nur anders geschrieben.`
     }
     case 'origin_start':
       return t`Nur Fälle des Startbestands haben die Herkunft „Start".`

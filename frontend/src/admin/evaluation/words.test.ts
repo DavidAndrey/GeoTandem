@@ -5,19 +5,53 @@ import type { Analysis } from '../../analysis/model'
 import { ApiRequestError, type LayerInfo } from '../../api/client'
 import { caseView } from '../../test/eval-mocks'
 import { attribute, layer } from '../../test/fixtures'
+import openapi from '../../../openapi.json'
 import { referenceFor } from './reference'
 import {
+  CASE_ID,
   caseBody,
   caseErrorText,
   idFrom,
   idProblem,
   importProblemText,
   layersOf,
+  MAX_CONDITIONS,
+  MAX_READINGS,
+  MAX_TAGS,
+  notRun,
   readings,
   referenceOf,
+  RESERVED,
+  TAG,
   tagText,
   withReadings,
 } from './words'
+
+interface Prop {
+  pattern?: string
+  maxItems?: number
+  not?: { enum: string[] }
+  items?: Prop
+  anyOf?: Prop[]
+}
+const schemas = openapi.components.schemas as unknown as Record<
+  string,
+  { properties: Record<string, Prop> }
+>
+const field = (schema: string, name: string) => schemas[schema].properties[name]
+
+test('the limits and patterns of a case are those of the server (openapi.json)', () => {
+  const id = field('EvalCase', 'id')
+  expect(CASE_ID.source).toBe(id.pattern)
+  expect(RESERVED).toEqual(id.not?.enum)
+  const tags = field('EvalCase', 'tags')
+  expect(MAX_TAGS).toBe(tags.maxItems)
+  expect(TAG.source).toBe(tags.items?.pattern)
+  const goldAny = field('EvalCase', 'gold_any').anyOf?.find((p) => p.maxItems !== undefined)
+  expect(MAX_READINGS).toBe(goldAny?.maxItems)
+  // MAX_CONDITIONS of model/schemas.py, which also bounds a require.
+  expect(MAX_CONDITIONS).toBe(field('Require', 'conditions').maxItems)
+})
 
 test('readings are the reference or the fair readings; one reading is gold again', () => {
   const doc1 = caseView('doc1-primar-koeniz').case
@@ -26,6 +60,17 @@ test('readings are the reference or the fair readings; one reading is gold again
   expect(one.gold).toEqual(doc1.gold_any?.[0])
   expect(one.gold_any).toBeNull()
   expect(readings(caseView('n15-je-gemeinde').case)).toEqual([])
+  // An empty reference is a reference too, as the server reads it (``is not None``).
+  expect(readings({ gold: {}, gold_any: null })).toEqual([{}])
+})
+
+test('stale and invalid cases are left out of runs', () => {
+  expect(['ok', 'stale', 'invalid', 'dataset_changed'].map((s) => notRun(s as never))).toEqual([
+    false,
+    true,
+    true,
+    false,
+  ])
 })
 
 test('the layers a query names, without the keys of a symbology', () => {
@@ -128,6 +173,9 @@ test('the rules of a case have their own words', () => {
   )
   expect(refused({ case_id: 'e', reason: 'origin_action', origin_action: 7 })).toBe(
     'Den Eintrag 7 im Modellprotokoll gibt es nicht.',
+  )
+  expect(refused({ case_id: 'e', reason: 'duplicate_reading', reading: 1, same_as: 0 }, 2)).toBe(
+    'Lesart B: Sie ist dieselbe Abfrage wie Lesart A, nur anders geschrieben.',
   )
 })
 

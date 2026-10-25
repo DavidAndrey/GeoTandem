@@ -552,18 +552,30 @@ function StatusHint({ view }: { view: CaseView }) {
         )}
       </p>
     )
+  if (view.status === 'invalid')
+    return (
+      <p className="mb-2 max-w-3xl rounded-[var(--radius-md)] border border-neutral-400 p-2 text-sm">
+        <Trans>
+          Ungültig: Die Referenz besteht die Prüfungen einer Modellabfrage nicht mehr oder lässt
+          sich nicht mehr ausführen, etwa weil ein Feld nicht mehr für das Modell freigegeben ist.
+          Der Fall wird in keinem Lauf verwendet, bis er bearbeitet ist.
+        </Trans>
+      </p>
+    )
   if (view.status === 'dataset_changed')
     return (
       <p className="border-ink mb-2 max-w-3xl rounded-[var(--radius-md)] border p-2 text-sm">
         {names.length > 1 ? (
           <Trans>
-            Datenstand geändert: {layers} wurden seit dem Anlegen des Falls neu importiert. Die
-            Referenz gilt weiter; die Trefferzahl wird beim nächsten Lauf neu bestimmt.
+            Datenstand geändert: {layers} wurden seit der letzten Prüfung der Referenz neu
+            importiert. Die Referenz gilt weiter; die Trefferzahl wird beim nächsten Lauf neu
+            bestimmt.
           </Trans>
         ) : (
           <Trans>
-            Datenstand geändert: {layers} wurde seit dem Anlegen des Falls neu importiert. Die
-            Referenz gilt weiter; die Trefferzahl wird beim nächsten Lauf neu bestimmt.
+            Datenstand geändert: {layers} wurde seit der letzten Prüfung der Referenz neu
+            importiert. Die Referenz gilt weiter; die Trefferzahl wird beim nächsten Lauf neu
+            bestimmt.
           </Trans>
         )}
       </p>

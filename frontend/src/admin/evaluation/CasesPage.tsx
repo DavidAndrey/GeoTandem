@@ -21,6 +21,7 @@ import {
   DATA_STATES,
   dataStateText,
   isBehaviour,
+  notRun,
   ORIGINS,
   originText,
   SPLITS,
@@ -204,7 +205,7 @@ export function CasesPage() {
             </thead>
             <tbody>
               {startRows.map((view) => (
-                <CaseRow key={view.case.id} view={view} />
+                <CaseRow key={rowKey(view)} view={view} />
               ))}
               {foldable && (
                 <tr>
@@ -225,7 +226,7 @@ export function CasesPage() {
                 </tr>
               )}
               {own.map((view) => (
-                <CaseRow key={view.case.id} view={view} />
+                <CaseRow key={rowKey(view)} view={view} />
               ))}
               {shown.length === 0 && (
                 <tr>
@@ -259,11 +260,16 @@ function Summary({ all }: { all: CaseView[] }) {
   )
 }
 
+/**
+ * A row's key: origin and id, since an own case may share its id with a start
+ * case a later start set brought (both are listed).
+ */
+const rowKey = (view: CaseView) => `${view.case.origin}|${view.case.id}`
+
 function CaseRow({ view }: { view: CaseView }) {
   const c = view.case
-  const stale = view.status === 'stale'
   return (
-    <tr className={stale ? 'text-muted' : undefined} data-status={view.status}>
+    <tr className={notRun(view.status) ? 'text-muted' : undefined} data-status={view.status}>
       <td className="font-mono text-xs whitespace-nowrap">
         <Link to={`/admin/bewertung/faelle/${c.id}`} className="hover:text-accent-700">
           {c.id}
@@ -282,7 +288,7 @@ function CaseRow({ view }: { view: CaseView }) {
   )
 }
 
-/** What *veraltet* and *Datenstand geändert* mean for the cases that have them (V1.2). */
+/** What *veraltet*, *ungültig* and *Datenstand geändert* mean for the cases that have them (V1.2). */
 function StatusNotes({ views }: { views: CaseView[] }) {
   const me = useMe().data?.username ?? ''
   const catalog = useLayers().data
@@ -291,8 +297,9 @@ function StatusNotes({ views }: { views: CaseView[] }) {
     (view.status_layers ?? []).map((n) => `„${title(n)}"`).join(', ')
   const several = (view: CaseView) => (view.status_layers ?? []).length > 1
   const stale = views.filter((v) => v.status === 'stale')
+  const invalid = views.filter((v) => v.status === 'invalid')
   const changed = views.filter((v) => v.status === 'dataset_changed')
-  if (!stale.length && !changed.length) return null
+  if (!stale.length && !invalid.length && !changed.length) return null
   return (
     <div className="mt-3 flex max-w-3xl flex-col gap-1 text-sm">
       {stale.map((view) => {
@@ -317,6 +324,19 @@ function StatusNotes({ views }: { views: CaseView[] }) {
           </p>
         )
       })}
+      {invalid.map((view) => {
+        const id = view.case.id
+        const word = t`ungültig`
+        return (
+          <p key={`${view.case.origin}|${id}`}>
+            <Trans>
+              <span className="font-semibold">{word}</span> ({id}): Die Referenz besteht die
+              Prüfungen einer Modellabfrage nicht mehr, etwa weil ein Feld nicht mehr für das Modell
+              freigegeben ist. Der Fall wird in keinem Lauf verwendet, bis er bearbeitet ist.
+            </Trans>
+          </p>
+        )
+      })}
       {changed.map((view) => {
         const id = view.case.id
         const layers = names(view)
@@ -325,15 +345,15 @@ function StatusNotes({ views }: { views: CaseView[] }) {
           <p key={id}>
             {several(view) ? (
               <Trans>
-                <span className="font-semibold">{word}</span> ({id}): {layers} wurden seit dem
-                Anlegen des Falls neu importiert. Die Referenz gilt weiter; die Trefferzahl wird
-                beim nächsten Lauf neu bestimmt.
+                <span className="font-semibold">{word}</span> ({id}): {layers} wurden seit der
+                letzten Prüfung der Referenz neu importiert. Die Referenz gilt weiter; die
+                Trefferzahl wird beim nächsten Lauf neu bestimmt.
               </Trans>
             ) : (
               <Trans>
-                <span className="font-semibold">{word}</span> ({id}): {layers} wurde seit dem
-                Anlegen des Falls neu importiert. Die Referenz gilt weiter; die Trefferzahl wird
-                beim nächsten Lauf neu bestimmt.
+                <span className="font-semibold">{word}</span> ({id}): {layers} wurde seit der
+                letzten Prüfung der Referenz neu importiert. Die Referenz gilt weiter; die
+                Trefferzahl wird beim nächsten Lauf neu bestimmt.
               </Trans>
             )}
           </p>

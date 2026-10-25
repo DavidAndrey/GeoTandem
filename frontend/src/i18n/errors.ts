@@ -190,7 +190,7 @@ const MESSAGES: Record<string, Words> = {
     return t`Der Prüffall nutzt den Layer „${layer}", den es nicht mehr gibt oder den Sie nicht sehen. Bearbeiten Sie den Fall zuerst.`
   },
   no_cases: () =>
-    t`Keiner der gewählten Prüffälle kann laufen: Keiner passt zur Auswahl, oder alle sind veraltet.`,
+    t`Keiner der gewählten Prüffälle kann laufen: Keiner passt zur Auswahl, oder alle sind veraltet oder ungültig.`,
   action_not_eligible: () =>
     t`Nur eine angenommene oder automatisch angewendete, nicht zurückgenommene Direktabfrage wird zum Prüffall.`,
   run_busy: (d) => {
