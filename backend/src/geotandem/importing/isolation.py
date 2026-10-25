@@ -9,6 +9,13 @@ limit on top. Whatever happens there, the server answers: "cannot be read".
 
 What it does not do: the child runs as the same user, so it is no sandbox
 against code execution; it bounds the damage of the far likelier failures.
+
+One file is read at a time, for the whole server. Several imports arriving at
+once, the first ones starting the forkserver among them, crashed the server
+process with a heap corruption (``double free or corruption``) in the gate
+runs of E3 (docs/plan-e3.md, risk R1); with the reads serialised that path has
+no concurrency left. Imports are rare administrator actions, so the wait is
+short.
 """
 
 from __future__ import annotations
@@ -16,6 +23,7 @@ from __future__ import annotations
 import logging
 import multiprocessing
 import resource
+import threading
 from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures import TimeoutError as FutureTimeout
 from dataclasses import dataclass
@@ -39,6 +47,8 @@ class ReadLimits:
 
 
 _context: Any = None
+_reading = threading.Lock()
+"""Held while a file is read; also guards the lazy set-up of ``_context``."""
 
 
 def _forkserver() -> Any:
@@ -55,7 +65,15 @@ def _forkserver() -> Any:
 def read_isolated(
     path: Path, file_name: str, options: ReadOptions | None, limits: ReadLimits
 ) -> Source:
-    """``read_source`` in a child process under ``limits``; raises ``SourceError``."""
+    """``read_source`` in a child process under ``limits``; raises ``SourceError``.
+    One read at a time for the whole server (see the module docstring)."""
+    with _reading:
+        return _read_alone(path, file_name, options, limits)
+
+
+def _read_alone(
+    path: Path, file_name: str, options: ReadOptions | None, limits: ReadLimits
+) -> Source:
     pool = ProcessPoolExecutor(
         max_workers=1,
         mp_context=_forkserver(),

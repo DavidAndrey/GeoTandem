@@ -5,9 +5,12 @@ import io
 import json
 import os
 import struct
+import threading
 import time
 import zipfile
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from typing import Any
 
 import httpx
 import pytest
@@ -167,6 +170,38 @@ def test_a_reading_process_that_fails_ends_in_an_answer(limits: ReadLimits, code
     assert time.monotonic() - started < 30
     # And the next file reads as usual.
     assert read_isolated(SAMPLE / "schulen.geojson", "schulen.geojson", None, ReadLimits())
+
+
+def test_files_arriving_at_once_are_read_one_after_another(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Risk R1 of plan E3: several reads at once crashed the server process, so
+    the reads are serialised; here no two overlap, and all of them succeed."""
+    from geotandem.importing import isolation
+
+    inside, most = 0, 0
+    guard = threading.Lock()
+    read_alone = isolation._read_alone
+
+    def counted(*args: Any) -> Any:
+        nonlocal inside, most
+        with guard:
+            inside += 1
+            most = max(most, inside)
+        try:
+            return read_alone(*args)
+        finally:
+            with guard:
+                inside -= 1
+
+    monkeypatch.setattr(isolation, "_read_alone", counted)
+    files = ["schulen.geojson", "gemeinden.geojson", "haltestellen.geojson", "schulen.geojson"]
+    with ThreadPoolExecutor(max_workers=len(files)) as pool:
+        sources = list(
+            pool.map(lambda name: read_isolated(SAMPLE / name, name, None, ReadLimits()), files)
+        )
+    assert most == 1
+    assert all(source.record_count > 0 for source in sources)
 
 
 # --- uploads left waiting (#11) ----------------------------------------------------
