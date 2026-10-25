@@ -641,8 +641,9 @@ Beispielen; qwen3:8b damals 89/165 gegen 93/165 (Abschnitt 2.3).
 Aus den Befunden der oberen Referenz
 ([testplan-external-models.md](testplan-external-models.md), 9.1). Je ein
 Block auf dem Tuning-Satz (33 × 5) und dem Held-out-Satz (38 × 5), gegen P0
-derselben Modelle; Branches `p2-related-rule` (`2da7575`) und
-`p2-related-schema` (`7e97264`), **nicht gemergt**.
+derselben Modelle; Tags `archive/p2-related-rule` (`2da7575`) und
+`archive/p2-related-schema` (`7e97264`), **nicht gemergt** (bis 2026-10-25
+Branches gleichen Namens ohne `archive/`).
 
 | Variante | Änderung | gemma4:12b T / H | gemma4:e4b T / H | qwen3:14b T / H | qwen3.5:9b T / H | Zielfälle | Entscheid |
 |---|---|---:|---:|---:|---:|---|---|
@@ -679,7 +680,7 @@ die Gemeindeliste als `in` statt als Gruppe schreibt.
 den Regeln der Beispiele: «Die Objekte von "source" stehen links, die von
 "layer" rechts», mit je einem Beispiel für `within` und `contains` an den
 erfundenen Layern. Tuning-Satz, lokal ein Block, extern zwei
-(Branch `p2-r2`, nicht gemergt):
+(Tag `archive/p2-r2`, `4c9595b`, nicht gemergt; bis 2026-10-25 Branch `p2-r2`):
 
 | | gemma4:12b | gemma4:e4b | qwen3:14b | qwen3.5:9b | Haiku | Luna |
 |---|---:|---:|---:|---:|---:|---:|
