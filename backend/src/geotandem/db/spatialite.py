@@ -1,12 +1,30 @@
 """The one place where SpatiaLite is loaded and initialised (tech-stack 3.3)."""
 
 import sqlite3
+import threading
 from typing import Any
 
 from geoalchemy2.admin.dialects.sqlite import init_spatialite
 from sqlalchemy import Connection, Engine, event
 
 from geotandem.data import text as text_rules
+
+NATIVE = threading.Lock()
+"""Held while SpatiaLite sets up or tears down a connection. Its per-connection
+set-up and clean-up are not safe to run in two threads at once: overflow
+connections of the pool closed by several request threads together corrupted
+the heap ("double free or corruption", exit 139; plan E3, risk R1, traced with
+the fault handler to ``QueuePool._do_return_conn`` → ``do_close``)."""
+
+
+class SpatiaLiteConnection(sqlite3.Connection):
+    """A connection that closes under ``NATIVE`` (passed as ``factory`` to
+    ``sqlite3.connect``, see ``db/engine.py``)."""
+
+    def close(self) -> None:
+        with NATIVE:
+            super().close()
+
 
 READ_ONLY = "geotandem_read_only"
 """Execution option for connections that never write; they need no write lock."""
@@ -37,13 +55,14 @@ def attach(engine: Engine, library: str) -> None:
 
     @event.listens_for(engine, "connect")
     def _on_connect(dbapi_conn: sqlite3.Connection, _record: Any) -> None:
-        dbapi_conn.enable_load_extension(True)
-        try:
-            dbapi_conn.load_extension(library)
-        finally:
-            dbapi_conn.enable_load_extension(False)
-        # Loads the EPSG table so ST_Transform works; a no-op on an initialised file.
-        init_spatialite(dbapi_conn, transaction=True)
+        with NATIVE:
+            dbapi_conn.enable_load_extension(True)
+            try:
+                dbapi_conn.load_extension(library)
+            finally:
+                dbapi_conn.enable_load_extension(False)
+            # Loads the EPSG table so ST_Transform works; a no-op on an initialised file.
+            init_spatialite(dbapi_conn, transaction=True)
         # Text compares alike on every backend (F-2.14): SQLite's own lower() folds
         # ASCII only, and its default order is by bytes ("Ä" after "Z").
         dbapi_conn.create_function(text_rules.LOWER, 1, text_rules.lower, deterministic=True)
