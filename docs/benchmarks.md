@@ -200,3 +200,90 @@ Tuning-Satz, je zwei Blöcke (/330). Einzelheiten:
 schlichter Import kostet mehr als der Wechsel des Modells. Die bestätigte
 Codeliste des Imports bringt Haiku und Luna fast auf P0, den lokalen Modellen
 fehlen danach die Beschriftungen.
+
+## Lauf 6: Werkzeugkette, Phase-1-Basislauf (2026-10-25/26)
+
+Branch `chain-eval`, Commit `4210963`; [plan-chain-eval.md](plan-chain-eval.md),
+Phase 1.
+
+Die Werkzeugkette läuft mit `--approach chain`, so wie die Anwendung sie auf
+*Automatisch* fährt. Die Direktabfrage läuft als Kontrolle auf denselben vier
+Sätzen:
+- A: der Startsatz, Tuning und Bestätigung;
+- B: die kettentypischen Fälle aus `chain-cases.json` (`kb*`);
+- C: die Belastungsfälle aus `chain-cases.json` (`ks*`).
+
+Temperatur 0.3, Effort `none`, `--repeat 5`, zwei Blöcke (Seeds 1–5 und
+6–10); Hardware wie Lauf 1. Luna fehlt, weil in der Sitzung kein Schlüssel
+gesetzt war. Rohdaten: `backend/evals/results/*-b1-*.jsonl`; ausgewertet mit
+`evals/chain_report.py` und `evals/compare.py`.
+
+### Bestehensquote (Kette / direkt, beide Blöcke)
+
+| Modell | A Tuning | A Bestätigung | B Tuning | B Bestätigung | C Tuning | C Bestätigung |
+|---|---|---|---|---|---|---|
+| gemma4:e4b | 32 % / 78 % | 26 % / 78 % | 3 % / 61 % | 0 % / 62 % | 0 % / 38 % | 6 % / 40 % |
+| gemma4:12b | 41 % / 82 % | 41 % / 86 % | 14 % / 64 % | 8 % / 77 % | 8 % / 48 % | 10 % / 39 % |
+| qwen3:14b | 45 % / 73 % | 49 % / 77 % | 12 % / 54 % | 6 % / 58 % | 10 % / 22 % | 0 % / 43 % |
+
+Gepaart je Fall, Kette minus direkt, auf den Bestätigungsfällen:
+
+| Modell | A | B |
+|---|---:|---:|
+| gemma4:e4b | −56 Punkte | −62 Punkte |
+| gemma4:12b | −50 Punkte | −69 Punkte |
+| qwen3:14b | −32 Punkte | −52 Punkte |
+
+- Jedes Intervall liegt unter null. Besser als die Direktabfrage ist die
+  Kette in zwei Fällen, beide bei gemma4:12b (einer in A, einer in B).
+- Von den Antworten, die die Direktabfrage auf Bestätigungsfällen verfehlt,
+  holt die Kette 0 % (e4b), 4 % (12b) und 2 % (qwen3:14b).
+- Rauschen zwischen den Blöcken: Kette +3,6 / +2,9 / +0,9 Punkte, direkt
+  +2,5 / +0,2 / −1,9 Punkte (e4b / 12b / qwen3:14b).
+
+### Verhalten (alle Sätze, beide Blöcke)
+
+| | Kette e4b | direkt e4b | Kette 12b | direkt 12b | Kette qwen3:14b | direkt qwen3:14b |
+|---|---|---|---|---|---|---|
+| pass | 19 % | 70 % | 29 % | 76 % | 32 % | 66 % |
+| still falsch | 1 % | 6 % | 2 % | 8 % | 0 % | 16 % |
+| erster Aufruf ein Plan | 72 % | – | 83 % | – | 86 % | – |
+| davon Plan angenommen | 19 % | – | 33 % | – | 40 % | – |
+| Kette lief zu Ende | 149 | – | 291 | – | 373 | – |
+| davon pass / still falsch | 83 % / 6 % | – | 81 % / 6 % | – | 76 % / 1 % | – |
+| mit Re-Plan | 0 % | – | 1 % | – | 1 % | – |
+| Latenz Median | 1,5 s | 0,9 s | 3,3 s | 1,3 s | 7,4 s | 3,4 s |
+| s je richtige Antwort | 9,8 | 1,5 | 11,8 | 1,8 | 23,1 | 5,7 |
+| Tokens je richtige Antwort | 29 500 | 8 200 | 19 100 | 7 400 | 17 500 | 9 000 |
+
+Abgewiesene Pläne, nach dem ersten Fehler (1843 über alle drei Modelle):
+
+| Fehler | Pläne |
+|---|---:|
+| Schrittnummer als Text | 448 |
+| `where` ohne lesbare Bedingung (`$ref`, `$op` oder verschachteltes `where`) | 353 |
+| `layer` und `of` zugleich, oder keins von beiden | 260 |
+| Verweis auf keinen früheren Schritt | 122 |
+| erfundener `text_match`-Modus | 99 |
+| `not_representable` | 116 |
+
+Der Rest sind weitere Schemafehler.
+
+Ohne Plan beim ersten Aufruf fragt gemma4:e4b oft zurück: 212 Rückfragen,
+wo eine Abfrage fällig war. qwen3:14b hat 6 Zeitüberschreitungen
+(`llm_timeout`).
+
+**Ergebnis:** Die Kette scheitert am Format, nicht am Denken.
+
+- **Format:** Zwei Drittel bis vier Fünftel der Pläne werden schon bei der
+  Prüfung abgewiesen, weil die Argumente der Schritte nicht dem Schema der
+  Werkzeuge folgen. Die erzwungene Ausgabe der Kette lässt `arguments` frei
+  (plan-chain-eval, F6), die der Direktabfrage nicht.
+- **Inhalt:** Eine Kette, die angenommen wird und zu Ende läuft, besteht zu
+  76–83 % und ist seltener still falsch als die Direktabfrage.
+- **Re-Plans:** Ein abgewiesener Plan bekommt keinen Re-Plan. Re-Plans kommen
+  deshalb kaum vor (1 %) und retten keinen Fall.
+- **Regel:** Nach der Regel aus plan-chain-eval 8 ist auf diesem Stand jedes
+  der drei Modelle *nicht empfohlen*, weil weniger als 50 % der ersten Pläne
+  angenommen werden. Das ist ein Befund über die ausgelieferte Kette, nicht
+  über die Modelle.

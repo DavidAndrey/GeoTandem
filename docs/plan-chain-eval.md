@@ -307,7 +307,7 @@ Rules for the rule:
 |---|---|---|
 | 0 | Driver, trace, verdicts, parity test, gate dry run | done 2026-10-25 |
 | 1a | Authoring groups B and C | done 2026-10-25 |
-| 1b | Baseline runs and first read | 2 days |
+| 1b | Baseline runs and first read | local ladder done 2026-10-26 (section 12); Luna open |
 | 2 | Failure taxonomy by hand | 2 days |
 | 3 | Ablations | 2 days |
 | 4 | Prompt variants, routing simulation | 3 days |
@@ -346,3 +346,52 @@ case or a probe in the dry run, so a fix shows up there.
 Decided 2026-10-25: F1 and F2 are fixed after the Phase 1 baseline, which
 measures what ships; `ks01`, `ks02`, h32 and h33 then show the fix as a
 difference.
+
+## 12 First read of Phase 1 (2026-10-26)
+
+Local ladder only (gemma4:e4b, gemma4:12b, qwen3:14b). Chain and direct on
+all four sets, two seed blocks each, 48 runs, about 6 700 answers. Luna is
+still to run: `OPENAI_API_KEY` was not set in the session. The figures are in
+[benchmarks.md](benchmarks.md), *Lauf 6*.
+
+**In one sentence:** the chain loses to the direct path everywhere, by 32 to
+69 points on the confirm cases, and the cause is the format of its plans, not
+the reasoning in them.
+
+- Only 19 % (e4b), 33 % (12b) and 40 % (qwen3:14b) of first plans pass
+  `check_plan`.
+- A chain that is accepted and runs to its end passes 76–83 % of the time.
+  That is as good as the direct path's overall rate, and such chains are
+  less often silently wrong (1–6 % against direct's 6–16 %).
+- The chain recovers 0–4 % of the answers the direct path misses.
+
+New findings:
+
+| # | Finding | Evidence | Candidate fix |
+|---|---|---|---|
+| F6 | The chain's constrained output leaves each step's `arguments` free (`"type": "object", "additionalProperties": true`). The tools' schemas reach the model only as text, so models copy JSON-Schema syntax into their plans. The direct path's schema constrains the whole query | 1 843 refused plans. By first error: step number as text 448; `where` with `$ref`, `$op` or a nested `where` 353; both `layer` and `of`, or neither, 260; reference to no earlier step 122; invented `text_match` mode 99. Only 116 are `not_representable` | The chain's answer format with one schema per tool: the tool name as a constant, the arguments as the tool's own model, references as integers, `layer` and `of` as alternatives. Highest value: the errors of this kind are 77–84 % of all refusals |
+| F7 | A plan refused by `check_plan` ends the chain. Only an error or an empty step that ran triggers a re-plan, so the model never learns what was wrong with its plan | Re-plans in 1 % of chains | A re-plan after a refused plan, carrying the refusal's code and location as a step error is carried (a P4 change: the record and the approval flow are involved) |
+| F8 | Re-plans, where they happen, rescue nothing: 23 re-planned chains, 0 passes | Mostly an empty filter, re-planned to the same empty result | Measure again after F6; Q4 cannot be answered while plans die at the check |
+| F9 | On the chain path, small models ask back instead of planning: gemma4:e4b answers with a clarification 212 times where a query was due | `kind:clarification` 212 (e4b), 83 (12b), 75 (qwen3:14b) | Phase 4: compare the chain prompt's rules on clarifications with the direct prompt's |
+
+What this changes in the plan:
+
+1. **Classification.** By the rule of section 8, all three models are *not
+   recommended* on this baseline: fewer than 50 % of first plans are accepted.
+   That is a statement about the chain as shipped.
+2. **Calibration check of group B.** It is formally triggered: the worst
+   chain rate on B is below 10 %. The direct path passes the same cases at
+   54–77 %, so the cases do separate models; the floor comes from F6.
+   Recommended: keep the cases and the thresholds, and record that the check
+   fired for that reason.
+3. **Order.** Phase 3's ablations (re-plans, step limit) say nothing while
+   most plans die before the first step. Recommended next steps:
+   - Pull the F6 fix forward as the first improvement.
+   - Re-run the chain for the three local models (tuning and confirm, two
+     blocks, about 3 hours).
+   - Then the failure reading of Phase 2 on what remains.
+   - Then Phase 3.
+
+   F7 is the second candidate. F1 and F2 stay as decided, after the baseline.
+4. **Luna.** It still belongs to the baseline. It runs as soon as the key is
+   available, on the chain as shipped, before any fix.
