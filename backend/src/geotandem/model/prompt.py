@@ -232,10 +232,84 @@ _EXAMPLES: Final[dict[Approach, str]] = {
         '{"kind":"cannot_answer","explanation":"Kein Layer beschreibt Sitzbänke.",'
         '"missing":["ein Layer mit Sitzbänken"]}'
     ),
+    "chain": (
+        "# Beispiele\n"
+        "Erfundene Beispiele an erfundenen Layern. Sie sind kein Teil des Gesprächs: Der "
+        "Anwender hat diese Fragen nie gestellt, und es gibt keine frühere Abfrage dazu. "
+        "Verwende nur die Layer und Attribute des Layer-Steckbriefs. Erfundener Steckbrief "
+        'der Beispiele: baeume.art codes {"qu":"Eiche","ti":"Linde"} (Punkte); quartiere.name '
+        '(Flächen, Text); schulhaeuser.stufe codes {"prim":"Primarschule","sek":'
+        '"Sekundarschule"} (Punkte); schulhaeuser.oeffentlich (Ja/Nein); wanderwege (Linien); '
+        "orte.name (Gemeinden, Flächen, Text).\n"
+        "- Zuerst die Schritte, auf die sich ein räumlicher Schritt bezieht, dann der "
+        'räumliche Schritt: "of", "in", "to" und "with" nennen nur frühere Schritte, nie den '
+        "eigenen oder einen späteren.\n"
+        "- Ein Ort, der ein Objekt eines anderen Layers ist («in der Altstadt»): ein Schritt "
+        '"filter" auf diesen Layer mit einer Bedingung auf seinen Namen, dann "within". '
+        "Rate nie eine Nummer oder Kennung.\n"
+        '- Ein Objekt mit Namen (Gemeinde, Quartier, Gewässer, Haltestelle): "compare" mit '
+        '"eq" auf den Namen, nie "text_match": «Altstadt» träfe sonst auch «Altstadt-Nord». '
+        '"text_match" nur, wenn nach einem Teil gefragt ist («beginnt mit», «enthält»).\n'
+        "- Linien (Strassen, Flüsse, Wege) zu Flächen: «durch», «entlang», «in» heisst "
+        '"intersects"; "within" nur, wenn die Linie ganz in der Fläche liegen soll.\n'
+        '- Nähe: "near" mit "distance_m". «Weiter als» von Punkten: "buffer" um die anderen '
+        'Objekte und "outside". Ohne Zahl («nahe», «in der Nähe») nimm 300 m an und nenne '
+        'es als Annahme. "near_feature" meint ein einzelnes Objekt mit bekannter fid; du '
+        "kennst keine fids, verwende es nicht.\n"
+        '- Werte mit "codes": der Schlüssel links, nie die Beschriftung rechts '
+        '(«Eiche» ⇒ "qu"). Ja/Nein-Attribute vergleichst du mit true oder false. '
+        '«Von … bis …» auf einem Attribut mit "codes": "in" mit allen Codes dazwischen, in '
+        'der Reihenfolge der Codeliste, nie "between" (Codes sind Text). «A oder B» auf '
+        'demselben Attribut ist "in" mit beiden Werten, nie "and".\n'
+        "- Höchstens eine Rückfrage: Folgt die Frage auf deine Rückfrage, antworte mit einer "
+        'Annahme. Zahlen in Optionen nur innerhalb von "range", wenn es sie gibt. «Stadt X» '
+        "oder «Dorf X» ist die Gemeinde X, ohne Rückfrage.\n"
+        "- Nur Bedingungen, nach denen gefragt ist; keine zusätzlichen «ist nicht leer».\n"
+        "\nFrage: Welche Eichen stehen in der Altstadt?\n"
+        '{"kind":"plan","explanation":"Das Quartier Altstadt, die Eichen, dann die Eichen '
+        'darin.","assumptions":[],"steps":['
+        '{"text":"Quartier Altstadt","tool":"filter","arguments":{"layer":"quartiere",'
+        '"where":{"op":"compare","attr":"name","cmp":"eq","value":"Altstadt"}}},'
+        '{"text":"Eichen","tool":"filter","arguments":{"layer":"baeume",'
+        '"where":{"op":"compare","attr":"art","cmp":"eq","value":"qu"}}},'
+        '{"text":"Eichen in der Altstadt","tool":"within","arguments":{"of":2,"in":1}}]}\n'
+        "\nFrage: Primarschulhäuser in der Nähe von Linden\n"
+        '{"kind":"plan","explanation":"Linden, Primarschulhäuser, dann die '
+        'Primarschulhäuser nahe einer Linde.","assumptions":[{"text":"«In der Nähe» heisst '
+        'höchstens 300 m.","condition":[]}],"steps":['
+        '{"text":"Linden","tool":"filter","arguments":{"layer":"baeume",'
+        '"where":{"op":"compare","attr":"art","cmp":"eq","value":"ti"}}},'
+        '{"text":"Primarschulhäuser","tool":"filter","arguments":{"layer":"schulhaeuser",'
+        '"where":{"op":"compare","attr":"stufe","cmp":"eq","value":"prim"}}},'
+        '{"text":"Primarschulhäuser höchstens 300 m von einer Linde","tool":"near",'
+        '"arguments":{"of":2,"to":1,"distance_m":300}}]}\n'
+        "\nFrage: Linden, die mehr als 1 km von jedem öffentlichen Schulhaus entfernt sind\n"
+        '{"kind":"plan","explanation":"Ein Puffer von 1 km um die öffentlichen Schulhäuser, '
+        'dann die Linden ausserhalb.","assumptions":[],"steps":['
+        '{"text":"1 km um öffentliche Schulhäuser","tool":"buffer","arguments":{"layer":'
+        '"schulhaeuser","distance_m":1000,"where":{"op":"compare","attr":"oeffentlich",'
+        '"cmp":"eq","value":true}}},'
+        '{"text":"Linden","tool":"filter","arguments":{"layer":"baeume",'
+        '"where":{"op":"compare","attr":"art","cmp":"eq","value":"ti"}}},'
+        '{"text":"Linden ausserhalb des Puffers","tool":"outside","arguments":{"of":2,'
+        '"in":1}}]}\n'
+        "\nFrage: Öffentliche Sekundarschulhäuser\n"
+        '{"kind":"plan","explanation":"Sekundarschulhäuser, davon die öffentlichen.",'
+        '"assumptions":[],"steps":['
+        '{"text":"Sekundarschulhäuser","tool":"filter","arguments":{"layer":"schulhaeuser",'
+        '"where":{"op":"compare","attr":"stufe","cmp":"eq","value":"sek"}}},'
+        '{"text":"davon die öffentlichen","tool":"filter","arguments":{"of":1,'
+        '"where":{"op":"compare","attr":"oeffentlich","cmp":"eq","value":true}}}]}\n'
+        "\nFrage: Wie viele Sitzbänke gibt es?\n"
+        '{"kind":"cannot_answer","explanation":"Kein Layer beschreibt Sitzbänke.",'
+        '"missing":["ein Layer mit Sitzbänken"]}'
+    ),
 }
-"""Worked examples after the answer format (direct approach only): invented
-layers, so they fit any data core and name no layer an account may not see
-(S3); the harness in ``evals/`` measures what they change."""
+"""Worked examples after the answer format: invented layers, so they fit any
+data core and name no layer an account may not see (S3); the harness in
+``evals/`` measures what they change. The chain's are the direct query's rules
+as steps (plan-chain-eval, F10): without them a chain was planned with none of
+them."""
 
 DEFAULT_PROMPT_PROFILE: Final = PromptProfile()
 """Today's prompt (D9): standard examples, P0, constrained output."""
@@ -346,7 +420,9 @@ def system_message(
     if approach != "direct" and prompt_profile != DEFAULT_PROMPT_PROFILE:
         raise ValueError("a prompt profile other than the default is for the direct query only")
     sections = [level.system_prompt.strip()] if level.system_prompt.strip() else []
-    examples = [examples_section(prompt_profile.examples)] if approach == "direct" else []
+    examples = [
+        examples_section(prompt_profile.examples) if approach == "direct" else _EXAMPLES["chain"]
+    ]
     if prompt_profile.placement == "P5":
         sections += examples
     sections.append(

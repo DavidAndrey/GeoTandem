@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+import jsonschema
 import pytest
 from model_fixtures import REPO, case, cases, fixture, scripted
 from pydantic import TypeAdapter
@@ -37,6 +38,7 @@ from geotandem.importing.run import (
 from geotandem.levels import CellMode, Level, OpClass, classify
 from geotandem.llm import Completion, LLMError
 from geotandem.llm.fake import FakeLLMClient
+from geotandem.model.chain.tools import CHAIN
 from geotandem.model.direct import DirectAnswer, DirectQuery, direct_prompt
 from geotandem.model.errors import ActionError
 from geotandem.model.prompt import (
@@ -834,6 +836,18 @@ def test_every_example_of_the_prompt_is_a_valid_answer() -> None:
         parsed = parse_answer(Completion(text=json.dumps(answer)), "direct")
         if isinstance(parsed, QueryAnswer):
             QueryObject.model_validate(parsed.query)
+
+
+def test_every_example_of_the_chain_prompt_is_a_valid_answer() -> None:
+    """As for the direct query (plan-chain-eval, F10): each fits the chain's
+    constrained output, and each step's arguments its tool's model."""
+    answers = [json.loads(line) for line in _EXAMPLES["chain"].splitlines() if line.startswith("{")]
+    assert len(answers) >= 4
+    for answer in answers:
+        jsonschema.validate(answer, answer_format("chain"))
+        parsed = parse_answer(Completion(text=json.dumps(answer)), "chain")
+        for step in getattr(parsed, "steps", []):
+            CHAIN[step.tool].arguments.model_validate(step.arguments)
 
 
 def test_only_a_prompt_that_builds_on_nothing_is_called_the_first() -> None:
