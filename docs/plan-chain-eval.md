@@ -373,6 +373,25 @@ New findings:
 | F7 | A plan refused by `check_plan` ends the chain. Only an error or an empty step that ran triggers a re-plan, so the model never learns what was wrong with its plan | Re-plans in 1 % of chains | A re-plan after a refused plan, carrying the refusal's code and location as a step error is carried (a P4 change: the record and the approval flow are involved) |
 | F8 | Re-plans, where they happen, rescue nothing: 23 re-planned chains, 0 passes | Mostly an empty filter, re-planned to the same empty result | Measure again after F6; Q4 cannot be answered while plans die at the check |
 | F9 | On the chain path, small models ask back instead of planning: gemma4:e4b answers with a clarification 212 times where a query was due | `kind:clarification` 212 (e4b), 83 (12b), 75 (qwen3:14b) | Phase 4: compare the chain prompt's rules on clarifications with the direct prompt's |
+| F10 | The chain's system message has no rules and no worked examples: the builder adds them for the direct query only. Nothing tells a chain about code keys, names with `eq`, lines against areas, the 300 m default (F5) or "at most one clarification" (F9) | `system_message` in `model/prompt.py`; label errors such as "Bahn" for `bahn` | The direct query's rules, written as steps, with worked plans on the same invented layers |
+
+**Fixes made (2026-10-26):**
+- **F6**, commit `8514c5c`: one schema per tool in the chain's constrained
+  output.
+  - A first look at gemma4:e4b, seed block 1, before a stopped re-run: first
+    plans accepted went from 20–27 % to 70–79 % on the start set, and from
+    0 % to 39 % on the confirm chain cases.
+  - Pass went from 23–29 % to 44–46 % on the start set.
+  - Silently wrong went from 1 % to 9–14 %, now that more plans run.
+  - About 85 of the roughly 100 refusals left are references to no earlier
+    step (F7).
+- **F10**, commit `ab2df04`: the rules and worked plans for the chain prompt.
+  The prompt grows by about 1 300 tokens. Not measured yet beyond a smoke
+  test.
+
+Both fixes change the chain prompt, so its pinned hash in
+`test_prompt_profiles.py` is taken again. Luna's baseline must therefore
+come from commit `7d1bc35`.
 
 What this changes in the plan:
 
