@@ -427,3 +427,50 @@ What this changes in the plan:
    F7 is the second candidate. F1 and F2 stay as decided, after the baseline.
 4. **Luna.** It still belongs to the baseline. It runs as soon as the key is
    available, on the chain as shipped, before any fix.
+
+## 13 After F6, F10 and F7 (2026-10-26)
+
+The chain was re-run on the three local models with the three fixes (commit
+`cc8ba0d`, labels `b3-k-*`), at the baseline's settings. The direct path is
+the baseline's. Figures in [benchmarks.md](benchmarks.md), *Lauf 7*.
+
+**What changed:**
+- **First plans accepted:** 19/33/40 % → 49/61/68 % (gemma4:e4b, gemma4:12b,
+  qwen3:14b).
+- **Pass, all sets:** 19/29/32 % → 40/47/43 %.
+- **Recovery of direct's failures (confirm cases):** 0–4 % → 12/18/24 %.
+
+**What did not change:**
+- **Gap to direct.** The chain is still behind on every set: −25 to −31
+  points on A (confirm) and −30 to −48 on B. Only qwen3:14b's interval on B
+  touches zero.
+- **Silent wrongs.** The chain is now about as often silently wrong as direct
+  (8/10/16 % against 6/8/16 %). The baseline's lead only meant that few plans
+  ran.
+- **Corrections and re-plans rarely rescue.** 7–18 % of corrected plans are
+  accepted, and re-planned chains almost never pass.
+- **gemma4:e4b still asks back** where a plan is due: 211 clarifications
+  (F9 is not solved by F10's rule). On its stress cases it dropped from 6 %
+  to 1 % because of one case (`ks09`, a clarification in place of
+  `cannot_answer`).
+
+**Classification (section 8), on this intermediate state:** still no model
+reaches *fallback*.
+- First plans accepted: gemma4:12b and qwen3:14b now clear 50 %; gemma4:e4b
+  does not (49 %).
+- Recovery: qwen3:14b reaches 24 %, just below the 25 % bar; the others are
+  further below.
+
+| # | Finding | Evidence | Candidate fix |
+|---|---|---|---|
+| F11 | F3 is the main refusal left. A spatial step can act only on an earlier step, so to use a whole layer the model names the step itself (`outside {"of": 2, "in": 1}` as step 2) | 495 of the 900 refusals after the correction are a step naming itself; 11 name a later step | Let `of`, `in`, `to` and `with` take a layer name as well as a step number (one condition-free query object on that layer). This also removes the invented always-true conditions of F3 |
+| F12 | Next after F11 are `not_representable` refusals (288): a relation to a step with more than one condition or a negated one, a relation to a relation, a chain ending in a buffer | Refusals after the correction, by code | F1/F2 (the direct prompt's promises) and a clearer statement in the chain's rules; part of it is the chain's real limit (F4) |
+
+**Next, recommended:**
+1. F11. It is the largest single cause, and it makes the tools match how
+   models plan.
+2. A re-run.
+3. Then the failure reading of Phase 2, on the wrong answers that run (the
+   silent wrongs), not on the refusals.
+
+Luna's baseline still runs from commit `7d1bc35`.

@@ -287,3 +287,74 @@ wo eine Abfrage fällig war. qwen3:14b hat 6 Zeitüberschreitungen
   der drei Modelle *nicht empfohlen*, weil weniger als 50 % der ersten Pläne
   angenommen werden. Das ist ein Befund über die ausgelieferte Kette, nicht
   über die Modelle.
+
+## Lauf 7: Werkzeugkette nach F6, F10 und F7 (2026-10-26)
+
+Branch `chain-eval`, Commit `cc8ba0d`; [plan-chain-eval.md](plan-chain-eval.md),
+Abschnitt 13. Die Kette mit drei Korrekturen:
+- F6: eine erzwungene Ausgabe je Werkzeug;
+- F10: Regeln und Beispiele im Prompt der Kette;
+- F7: eine Korrektur eines abgewiesenen Plans.
+
+Sonst wie Lauf 6: dieselben Modelle, Sätze, Seeds und Einstellungen, nur die
+Kette (`b3-k-*`). Die Direktabfrage zum Vergleich ist die aus Lauf 6
+(unverändert).
+
+### Bestehensquote der Kette (vorher → nachher, Direktabfrage)
+
+| Modell | A Bestätigung | B Bestätigung | C Bestätigung | B Tuning |
+|---|---|---|---|---|
+| gemma4:e4b | 26 → 56 % (78 %) | 0 → 14 % (62 %) | 6 → 1 % (40 %) | 3 → 21 % (61 %) |
+| gemma4:12b | 41 → 59 % (86 %) | 8 → 36 % (77 %) | 10 → 21 % (39 %) | 14 → 52 % (64 %) |
+| qwen3:14b | 49 → 55 % (77 %) | 6 → 28 % (58 %) | 0 → 29 % (43 %) | 12 → 34 % (54 %) |
+
+Gepaart je Fall, Kette minus direkt, auf den Bestätigungsfällen:
+
+| Modell | A | B |
+|---|---:|---:|
+| gemma4:e4b | −26 Punkte | −48 Punkte |
+| gemma4:12b | −31 Punkte | −42 Punkte |
+| qwen3:14b | −25 Punkte | −30 Punkte, Intervall bis +2 |
+
+Von den Antworten, die die Direktabfrage auf Bestätigungsfällen verfehlt,
+holt die Kette jetzt 12 %, 18 % und 24 % (vorher 0–4 %).
+
+### Verhalten (alle Sätze, beide Blöcke; vorher → nachher)
+
+| | gemma4:e4b | gemma4:12b | qwen3:14b |
+|---|---|---|---|
+| pass | 19 → 40 % | 29 → 47 % | 32 → 43 % |
+| still falsch | 1 → 8 % (direkt 6 %) | 2 → 10 % (direkt 8 %) | 0 → 16 % (direkt 16 %) |
+| erster Plan angenommen | 19 → 49 % | 33 → 61 % | 40 → 68 % |
+| nach Korrektur angenommen | 7 % | 18 % | 8 % |
+| mit Re-Plan | 0 → 1 % | 1 → 8 % | 1 → 8 % |
+| Tokens ein je Frage | 5 200 → 9 800 | 5 300 → 10 000 | 5 300 → 9 900 |
+| Latenz Median | 1,5 → 1,3 s | 3,3 → 2,5 s | 7,4 → 7,4 s |
+
+Abgewiesene Pläne nach der Korrektur (900 über alle drei Modelle, vorher
+1843):
+
+| Fehler | Pläne |
+|---|---:|
+| Verweis auf keinen früheren Schritt | 506 |
+| `not_representable` (Bezug mit mehr als einer Bedingung, Bezug auf einen Bezug, Ende im Puffer …) | 288 |
+| `wrong_value_type` | 43 |
+| `unknown_attribute` | 43 |
+
+Der Rest sind weitere Codes.
+
+**Ergebnis:**
+- **Format:** F6 behebt das Format. Die erste Prüfung nehmen jetzt 49–68 %
+  der Pläne, und die Kette besteht 11–21 Punkte öfter.
+- **Abstand zur Direktabfrage:** Er bleibt auf jedem Satz, auf A 25–31
+  Punkte, auf B 30–48.
+- **Still falsch:** Laufen mehr Pläne, ist die Kette so oft still falsch wie
+  die Direktabfrage. Der frühere Vorsprung kam daher, dass kaum ein Plan lief.
+- **Korrektur und Re-Plan (F7):** Beide retten selten. Nach einer Korrektur
+  wird der Plan in 7–18 % angenommen, und Re-Plans enden fast nie mit pass.
+- **Verbleibender Hauptfehler:** Ein Schritt nennt einen Schritt, der nicht
+  vor ihm steht. Das sind 506 der 900 abgewiesenen Pläne, trotz der Regel aus
+  F10 und der Korrektur.
+- **Regel:** Nach der Regel aus plan-chain-eval 8 erreicht weiter kein
+  Modell *Fallback*. qwen3:14b liegt mit 24 % Rettung knapp unter der
+  Schwelle von 25 %.
