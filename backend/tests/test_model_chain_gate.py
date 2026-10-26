@@ -250,6 +250,35 @@ async def test_re_plans_count_against_the_request_limit(
     assert (again.status_code, again.json()["code"]) == (429, "quota_exceeded")
 
 
+@pytest.mark.parametrize(("limit", "calls"), [(2, 2), (1, 1)])
+async def test_a_correction_counts_against_the_request_limit(
+    client: httpx.AsyncClient,
+    app: FastAPI,
+    model: Model,
+    levels: dict[str, int],
+    limit: int,
+    calls: int,
+) -> None:
+    """F7, as a re-plan (P5, review #43): the correction of a refused plan is a
+    call of its own on the day. Within the limit it is asked and counted; at
+    the limit it is not asked, and the plan's refusal stands."""
+    await choose(client, levels["Automatisch"])
+    found = await connection(client)
+    limited = await client.patch(
+        f"{CONNECTIONS}/{found['id']}",
+        json={"request_limit_enabled": True, "request_limit_per_day": limit},
+    )
+    assert limited.status_code == 200, limited.text
+    ending = planned(SCHOOLS, BUFFER)
+    asked = await ask_chain(client, app, model, ending, ending)
+
+    assert (asked["status"], asked["refusal"]["code"]) == ("refused", "not_representable")
+    assert len(model.fake.calls) == calls
+    with Session(app.state.geotandem.backend.engine) as db:
+        assert db.scalar(select(func.count()).select_from(ModelCall)) == calls - 1
+    model.fake.script.clear()
+
+
 # --- what a stop says of a re-plan refused (integrated review, item A) -----------------
 
 
@@ -310,7 +339,8 @@ async def test_no_chain_ends_in_a_buffer(
     re-plan as the run's stop, naming the step."""
     await choose(client, levels["Automatisch"])
     if when == "plan":
-        refused = await ask_chain(client, app, model, planned(SCHOOLS, BUFFER))
+        ending = planned(SCHOOLS, BUFFER)
+        refused = await ask_chain(client, app, model, ending, ending)  # corrected: the same
         assert refused["status"] == "refused"
         assert refused["refusal"]["code"] == "not_representable"
         assert refused["refusal"]["details"] == {"step": 2, "part": "buffer"}

@@ -17,28 +17,42 @@ model did not write, is dropped. So is a name from a condition the step took
 over from an earlier one (``of``, ``in``): an error inside an inherited
 condition reaches the model with its code and ``part`` ``None``.
 
+A plan the checks refused before any step ran (``check_plan``) reaches the
+model the same way, for the step the refusal names (plan-chain-eval, F7): its
+code, and as ``part`` a name the model wrote as above or, failing one, the
+word of the tool's schema the refusal is about (``to``, ``where``,
+``buffer``: ``SCHEMA_PARTS``). A schema word holds no data; the refusal's
+message and its error texts never reach the model.
+
 The data release of the connection (C6) changes nothing here (D10): nothing
 of the data is offered that it could release. It begins to count with the
 first tool that returns row content (plan 9).
 """
 
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Final
 
 from pydantic import TypeAdapter, ValidationError
 
 from geotandem.engine import QueryError
-from geotandem.model.schemas import ModelView, Name
+from geotandem.model.schemas import ModelView, Name, PlannedStep, Refusal
 
-StepOutcome = int | QueryError
-"""What became of a step (``run.run_step``): its count, or the engine's error."""
+StepOutcome = int | QueryError | Refusal
+"""What became of a step (``run.run_step``): its count, or the engine's error;
+or the checks' refusal of the plan it is in, before anything ran."""
 
 NAME_KEYS: Final = frozenset({"layer", "attr"})
 """Where a chain step's arguments, conditions included, hold a layer or attribute name."""
 
 PART_KEYS: Final = ("attribute", "layer")
 """Where an error's details name what it is about, the most precise first."""
+
+SCHEMA_PARTS: Final = frozenset(
+    {"layer", "of", "in", "with", "to", "where", "distance_m", "buffer", "related", "source"}
+)
+"""Words of the tools' schemas and of the query object a refusal may be about:
+the arguments of the chain's tools, and the parts ``not_representable`` names."""
 
 _NAME: Final = TypeAdapter[str](Name)
 
@@ -84,10 +98,27 @@ def _is_name(text: str) -> bool:
     return True
 
 
+def _schema_part(details: Mapping[str, Any]) -> str | None:
+    """The schema word a refusal is about: its ``part``, or the argument its
+    first schema error is in (``loc`` ``["arguments", "to"]``)."""
+    part = details.get("part")
+    if isinstance(part, str) and part in SCHEMA_PARTS:
+        return part
+    errors = details.get("errors")
+    loc = errors[0].get("loc") if isinstance(errors, list) and errors else None
+    if isinstance(loc, list) and len(loc) > 1 and loc[0] == "arguments" and loc[1] in SCHEMA_PARTS:
+        return str(loc[1])
+    return None
+
+
 def model_view(result: StepResult) -> ModelView:
-    """The only function that turns an engine result or error into what the
-    model sees (D9, D10)."""
+    """The only function that turns an engine result or error, or a refusal of
+    the checks, into what the model sees (D9, D10)."""
     outcome = result.outcome
+    if isinstance(outcome, Refusal):
+        details = outcome.details
+        part = _part(details, result.arguments) or _schema_part(details)
+        return ModelView.model_validate({"outcome": "error", "code": outcome.code, "part": part})
     if isinstance(outcome, QueryError):
         return ModelView.model_validate(
             {
@@ -99,6 +130,19 @@ def model_view(result: StepResult) -> ModelView:
     if isinstance(outcome, bool):
         raise TypeError("a count is a number")
     return ModelView(outcome="ok", empty=outcome == 0, count=outcome)
+
+
+def refused_step(refusal: Refusal, steps: Sequence[PlannedStep]) -> tuple[int, str, ModelView]:
+    """The step of a first plan (positions from 1) that ``refusal`` names, as
+    the model sees it: its position, its tool and ``model_view`` of the
+    refusal over the arguments the model wrote for it (F7). A refusal that
+    names no step of the plan is shown at the plan's last step."""
+    position = refusal.details.get("step")
+    if not isinstance(position, int) or isinstance(position, bool):
+        position = len(steps)
+    position = min(max(position, 1), len(steps))
+    step = steps[position - 1]
+    return position, step.tool, model_view(StepResult(step.arguments, refusal))
 
 
 def restored(stored: Mapping[str, Any] | None) -> ModelView | None:

@@ -40,7 +40,9 @@ picks a failure without a prompt of its own.
 A case with a ``replan`` answers a request that continues a conversation
 with the model (one with an assistant turn in it: a tool chain's re-plan, P4)
 with that, and the first call with its ``answer``; without one, ``answer``
-answers both.
+answers both. A chain's correction of a plan the checks refused continues a
+conversation too: it is found by the question before it, and a case without
+``replan`` gives its refused plan again, so the refusal stands.
 
 A further prefix ``/hold/<seconds>`` (after ``/case/<id>``, if any) holds the
 answer to every request that continues a conversation with the model: a tool
@@ -134,9 +136,16 @@ class Stub:
         return next((c for c in self.by_order if c.get("prompt", "").strip() == question), None)
 
 
+CORRECTION = "Die Prüfung hat den Plan abgewiesen"
+"""How a tool chain's correction of a refused plan opens (``ask.correction_message``)."""
+
+
 def question_of(messages: list[dict[str, Any]]) -> str:
-    """The user's question: the last user message, after its last ``Frage: ``."""
+    """The user's question: the last user message, after its last ``Frage: ``;
+    the one before a correction of a refused plan, which asks it again."""
     users = [m for m in messages if m.get("role") == "user"]
+    if users and str(users[-1].get("content", "")).startswith(CORRECTION):
+        users = users[:-1]
     content = users[-1].get("content", "") if users else ""
     if not isinstance(content, str):
         content = "".join(p.get("text", "") for p in content if isinstance(p, dict))

@@ -234,7 +234,15 @@ SCRIPTS: dict[str, Callable[[], list[Completion]]] = {
         planned(*EMPTY_THEN),
         Completion(text="Ich plane neu.", parse_error="not JSON"),
     ],
-    "a plan refused": lambda: [completion(model_case("step_limit"))],  # type: ignore[list-item]
+    "a plan refused, its correction too": lambda: [
+        completion(model_case("step_limit")),  # type: ignore[list-item]
+        completion(model_case("step_limit")),  # type: ignore[list-item]
+    ],
+    "a plan refused, then corrected": lambda: [
+        planned(MUNICIPALITIES, within(1, 3), NOTHING_AGAIN),
+        planned(*EMPTY_THEN),
+        planned(MUNICIPALITIES, within(1, 3), why="Gemeinden statt nichts."),
+    ],
     "no plan": lambda: [completion(model_case("clarification"))],  # type: ignore[list-item]
 }
 
@@ -263,9 +271,9 @@ async def test_the_driver_runs_a_chain_as_the_service_does(
     for word, the same steps run with the same counts, and the chain ends the
     same way with the same result."""
     await choose(client, levels["Automatisch"])
+    # The whole script at once: a correction (F7) is asked before the plan is stored.
     first, *rest = SCRIPTS[name]()
-    asked = await ask_chain(client, app, model, first, text=TEXT)
-    model.script(*rest)
+    asked = await ask_chain(client, app, model, first, *rest, text=TEXT)
     ended, approvals = await drive_api(client, app, asked["id"])
     assert approvals == 0
 

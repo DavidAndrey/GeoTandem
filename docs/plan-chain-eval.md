@@ -389,7 +389,20 @@ New findings:
   The prompt grows by about 1 300 tokens. Not measured yet beyond a smoke
   test.
 
-Both fixes change the chain prompt, so its pinned hash in
+- **F7**: a plan the checks refuse gets one correction (`ask.plan`, used by
+  the service and the evaluation driver alike).
+  - The model is told what it is told of a failed step: the step, its tool,
+    and `model_view` of the refusal (code, plus as `part` a name it wrote or
+    a word of the tool's schema). The refusal's text never reaches it.
+  - The correction counts against the request limit as a re-plan does. It
+    is skipped at the limit, and the refusal then stands. It does not count
+    against `MAX_REPLANS`. Its tokens are added to the record's.
+  - The model stub (`e2e/model-stub`) finds a correction's case by the
+    question before it.
+  - The security sentinel now checks that a correction for a hidden layer
+    is word for word the one for a missing layer.
+
+Both F6 and F10 change the chain prompt, so its pinned hash in
 `test_prompt_profiles.py` is taken again. Luna's baseline must therefore
 come from commit `7d1bc35`.
 

@@ -7,10 +7,13 @@ to that: it imports nothing of the engine and reads no attribute a result or
 an error carries.
 
 Planning is one call (P4): the system message and the prompt of
-``prompt.build_prompt`` with the chain's answer format. A re-plan continues
-that conversation: the plan the model gave, as it gave it, and a user message
-with the ``ModelView`` of every step that ran, asking for the remaining steps
-only; the completed steps stay (P4).
+``prompt.build_prompt`` with the chain's answer format. A plan the checks
+refuse (``check_plan``) gets one correction (``plan``, plan-chain-eval F7):
+the plan the model gave and a user message with the ``ModelView`` of the
+step the refusal names, asking for the whole plan again; nothing ran, so
+nothing stays. A re-plan continues that conversation: the plan the model
+gave, as it gave it, and a user message with the ``ModelView`` of every step
+that ran, asking for the remaining steps only; the completed steps stay (P4).
 
 ``ChainState`` keeps the rules of a run that concern the model: which step is
 next, when a re-plan is due (an error, or an empty step before the last; not
@@ -19,21 +22,28 @@ steps, stores them and stops for approval is the caller (WP75).
 """
 
 import json
-from collections.abc import Sequence
+import time
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import Any, Final, Literal
 
 from geotandem.catalog import ModelProfile
-from geotandem.llm import LLMClient, Message
+from geotandem.llm import LLMClient, LLMError, Message
 from geotandem.model.chain.plan import CheckedStep, check_plan
+from geotandem.model.chain.view import refused_step
+from geotandem.model.errors import ActionError
 from geotandem.model.prompt import Prompt, fit
-from geotandem.model.result import Answer, Tokens, parse_answer
+from geotandem.model.result import NO_TOKENS, Answer, AnswerError, Tokens, parse_answer
 from geotandem.model.schemas import MAX_REPLANS, MAX_STEPS, ModelView, PlanAnswer, Refusal
 from geotandem.tools import ToolContext
 
 After = Literal["next", "replan", "done", "stopped"]
 """What follows a step: the next one, a re-plan, the end, or a stop because a
 re-plan is due and none is left."""
+
+MAX_CORRECTIONS: Final = 1
+"""Calls after a first plan the checks refused (F7). Each is a model call the
+request limit counts, as a re-plan is; none counts against ``MAX_REPLANS``."""
 
 
 def ask(
@@ -55,6 +65,101 @@ def said(answer: PlanAnswer) -> str:
 
 Seen = tuple[int, str, ModelView]
 """A step that ran: its position, its tool and what the model saw of it."""
+
+
+def correction_message(position: int, tool: str, view: ModelView) -> str:
+    """The correction's input (F7): the refused step as a step that ran is
+    shown in a re-plan's, and the whole plan asked for again."""
+    shown = json.dumps(view.model_dump(exclude_none=True), separators=(",", ":"))
+    return (
+        "Die Prüfung hat den Plan abgewiesen; kein Schritt wurde ausgeführt.\n"
+        f"Schritt {position} ({tool}): {shown}\n"
+        "Plane neu: antworte mit dem ganzen Plan, die Schritte zählen ab Schritt 1."
+    )
+
+
+@dataclass(frozen=True)
+class PlanCall:
+    """One call of the planning: the first, or a correction."""
+
+    latency_ms: int
+    tokens: Tokens
+    outcome: str
+    """The answer's kind, or ``error:<code>`` for a correction that failed."""
+
+
+@dataclass(frozen=True)
+class Planned:
+    """The planning (P4, F7): the model's last answer that read, the plan
+    checked whole (``None`` for an answer that is no plan), every call."""
+
+    answer: Answer
+    checked: list[CheckedStep] | Refusal | None
+    calls: tuple[PlanCall, ...]
+
+    @property
+    def tokens(self) -> Tokens:
+        """The calls' tokens added up; ``None`` where no call reported any."""
+        prompts = [c.tokens.prompt for c in self.calls if c.tokens.prompt is not None]
+        answers = [c.tokens.completion for c in self.calls if c.tokens.completion is not None]
+        return Tokens(sum(prompts) if prompts else None, sum(answers) if answers else None)
+
+
+def _nothing() -> None:
+    """No check before a correction (the harness: no request limit)."""
+
+
+def plan(
+    client: LLMClient,
+    prompt: Prompt,
+    context: ToolContext,
+    profile: ModelProfile,
+    deadline: float | None,
+    *,
+    context_length: int | None = None,
+    before_correction: Callable[[], None] = _nothing,
+    clock: Callable[[], float] = time.monotonic,
+) -> Planned:
+    """The planning call, checked whole in the world of ``profile``, and up to
+    ``MAX_CORRECTIONS`` corrections of a plan the checks refused, all within
+    ``deadline``. The first call raises what ``ask`` raises. A correction is
+    left out when it does not fit the connection's context or
+    ``before_correction`` refuses it (the request limit, ``quota_exceeded``);
+    when its call fails or its answer does not read, the refusal before it
+    stands. An answer that is no plan ends the planning, as the first call's."""
+
+    def call(messages: Sequence[Message]) -> tuple[Answer, Tokens, int]:
+        started = clock()
+        answer, tokens = ask(client, messages, prompt.schema, deadline)
+        return answer, tokens, round((clock() - started) * 1000)
+
+    answer, tokens, latency = call(prompt.messages)
+    calls = [PlanCall(latency, tokens, answer.kind)]
+    checked = check_plan(answer.steps, context, profile) if isinstance(answer, PlanAnswer) else None
+    while isinstance(checked, Refusal) and len(calls) <= MAX_CORRECTIONS:
+        assert isinstance(answer, PlanAnswer)
+        message = correction_message(*refused_step(checked, answer.steps))
+        messages = (*prompt.messages, Message("assistant", said(answer)), Message("user", message))
+        try:
+            fit(messages, context_length)
+            before_correction()
+        except ActionError:  # context_too_large, quota_exceeded: no call is made
+            break
+        started = clock()
+        try:
+            again, tokens, latency = call(messages)
+        except (LLMError, ActionError) as exc:
+            spent = exc.tokens if isinstance(exc, AnswerError) else NO_TOKENS
+            failed = round((clock() - started) * 1000)
+            calls.append(PlanCall(failed, spent, f"error:{exc.code}"))
+            break
+        calls.append(PlanCall(latency, tokens, again.kind))
+        answer = again
+        if not isinstance(answer, PlanAnswer):
+            checked = None
+            break
+        checked = check_plan(answer.steps, context, profile)
+    return Planned(answer, checked, tuple(calls))
 
 
 def _named(positions: Sequence[int]) -> str:

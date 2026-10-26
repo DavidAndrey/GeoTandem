@@ -129,10 +129,13 @@ async def ask_chain(
     app: FastAPI,
     model: Model,
     answer: Completion,
+    *corrected: Completion,
     text: str = "Welche Primarschulen?",
 ) -> Body:
-    """A chain prompt with ``answer`` as the model's plan; the record once planned."""
-    model.script(answer)
+    """A chain prompt with ``answer`` as the model's plan, and ``corrected`` as
+    its answer to a correction (F7) where the checks refuse it; the record once
+    planned."""
+    model.script(answer, *corrected)
     response = await client.post(PROMPT, json={"text": text, "approach": "chain"})
     assert response.status_code == 202, response.text
     assert (response.json()["status"], response.json()["approach"]) == ("thinking", "chain")
@@ -348,16 +351,59 @@ async def test_an_off_class_makes_the_chain_a_proposal_only(
 async def test_nine_planned_steps_are_refused_eight_pass(
     client: httpx.AsyncClient, app: FastAPI, model: Model, levels: dict[str, int]
 ) -> None:
+    """Nine steps are refused, and the correction (F7) bringing nine again
+    leaves the refusal standing; eight pass at once, without a correction."""
     beyond = case("step_limit")
-    refused = await ask_chain(client, app, model, completion(beyond))
+    nine = completion(beyond)
+    assert isinstance(nine, Completion)
+    refused = await ask_chain(client, app, model, nine, nine)  # corrected: nine again
     assert (refused["status"], refused["refusal"]["code"]) == ("refused", "step_limit")
     assert refused["refusal"]["details"] == beyond["expect"]["details"]
     assert refused["steps"] == [] and refused["decision"] is None
+    assert len(model.fake.calls) == 2
 
     eight = beyond["answer"]["steps"][:MAX_STEPS]
     answer = {**beyond["answer"], "steps": eight}
     proposed = await ask_chain(client, app, model, completion({"answer": answer}))
     assert proposed["status"] == "proposed" and len(proposed["steps"]) == MAX_STEPS
+    assert len(model.fake.calls) == 3
+
+
+async def test_a_refused_plan_is_corrected_once_with_what_the_model_may_see(
+    client: httpx.AsyncClient, app: FastAPI, model: Model, levels: dict[str, int]
+) -> None:
+    """F7: a plan the checks refuse gets one correction. The model learns of it
+    what it learns of a failed step (``model_view``): the step, its tool, the
+    code and a name it wrote or a word of the schema, never the refusal's
+    text. The corrected plan is the one stored, with both calls' tokens."""
+    forward = planned(SCHOOLS, within(1, 3), MUNICIPALITIES)
+    corrected = planned(SCHOOLS, MUNICIPALITIES, within(1, 2))
+    asked = await ask_chain(
+        client,
+        app,
+        model,
+        replace(forward, prompt_tokens=200),
+        replace(corrected, prompt_tokens=300),
+    )
+
+    assert asked["status"] == "proposed" and [s["tool"] for s in asked["steps"]] == [
+        "filter",
+        "filter",
+        "within",
+    ]
+    first, second = model.fake.calls
+    assert second.messages[: len(first.messages)] == first.messages
+    plan_turn, told = second.messages[len(first.messages) :]
+    assert plan_turn.role == "assistant" and json.loads(plan_turn.content)["steps"][1]["tool"] == (
+        "within"
+    )
+    assert told.role == "user"
+    assert told.content == (
+        "Die Prüfung hat den Plan abgewiesen; kein Schritt wurde ausgeführt.\n"
+        'Schritt 2 (within): {"outcome":"error","code":"model_query_invalid","part":"in"}\n'
+        "Plane neu: antworte mit dem ganzen Plan, die Schritte zählen ab Schritt 1."
+    )
+    assert stored_tokens(app, asked["id"]) == (500, None)
 
 
 EMPTY_THEN: list[Step] = [
@@ -492,14 +538,17 @@ async def test_a_re_plan_adds_its_tokens_to_a_planning_call_that_reported_none(
 async def test_a_planning_call_that_proposes_nothing_keeps_its_tokens(
     client: httpx.AsyncClient, app: FastAPI, model: Model, levels: dict[str, int], case_id: str
 ) -> None:
-    """A refused plan and a clarification instead of a plan keep the call's tokens."""
+    """A refused plan and a clarification instead of a plan keep the call's
+    tokens; a refused plan's correction (F7) adds its own."""
     scripted = completion(case(case_id))
     assert isinstance(scripted, Completion)
     first = replace(scripted, prompt_tokens=700, completion_tokens=30)
-    asked = await ask_chain(client, app, model, first)
+    again = replace(scripted, prompt_tokens=800, completion_tokens=40)
+    corrected = (again,) if case_id == "step_limit" else ()
+    asked = await ask_chain(client, app, model, first, *corrected)
 
     assert asked["status"] in ("refused", "answered")
-    assert stored_tokens(app, asked["id"]) == (700, 30)
+    assert stored_tokens(app, asked["id"]) == ((1500, 70) if corrected else (700, 30))
 
 
 async def test_an_empty_last_step_is_the_result(

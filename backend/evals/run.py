@@ -136,6 +136,7 @@ def ask_chain(
                 "prompt_tokens": c.tokens.prompt,
                 "completion_tokens": c.tokens.completion,
                 "outcome": c.outcome,
+                "correction": c.correction,
             }
             for c in chain.calls
         ],

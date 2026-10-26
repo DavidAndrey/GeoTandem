@@ -7,7 +7,8 @@ One column per label (``a+b`` joins seed blocks, as in ``compare.py``), one row
 per figure: passes, silently wrong (``wrong`` with ``no_assumption``), latency
 and tokens, seconds and tokens per correct answer, and for a chain run the
 chain's own: first plan accepted, refused plans by code, how chains ended,
-re-plans and what came of them, steps. A direct run has no chain figures
+corrections of a refused first plan and re-plans and what came of them,
+steps. A direct run has no chain figures
 (``-``). ``--why`` lists what refused the plans, by the first error of each,
 for the failure reading of Phase 2.
 """
@@ -90,7 +91,9 @@ def figures(rows: list[dict[str, Any]]) -> dict[str, str]:
     if not chains:
         return out
     planned = [r for r in chains if r["calls"] and r["calls"][0]["outcome"] == "plan"]
-    accepted = [r for r in planned if r["end"] != "refused"]
+    corrected = [r for r in planned if any(c.get("correction") for c in r["calls"])]
+    accepted = [r for r in planned if r["end"] != "refused" and r not in corrected]
+    came = sum(r["end"] not in ("refused", "answered") for r in corrected)
     replanned = [r for r in chains if r["replans"]]
     steps = [len(r["steps"]) for r in chains if r["steps"]]
     calls = [len(r["calls"]) for r in chains]
@@ -99,6 +102,12 @@ def figures(rows: list[dict[str, Any]]) -> dict[str, str]:
     out |= {
         "Plan beim ersten Aufruf": share(len(planned), len(chains)),
         "erster Plan angenommen": share(len(accepted), len(planned)),
+        "Korrektur, dann Plan angenommen / pass": (
+            f"{share(came, len(corrected))}"
+            f" / {share(sum(r['verdict'] == 'pass' for r in corrected), len(corrected))}"
+            if corrected
+            else "-"
+        ),
         "Plan abgewiesen, nach Code": ", ".join(f"{c} {n}" for c, n in refused.most_common()),
         "Ende": ", ".join(f"{e} {n}" for e, n in ends.most_common()),
         "mit Re-Plan": share(len(replanned), len(chains)),

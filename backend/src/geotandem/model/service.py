@@ -67,7 +67,9 @@ the client restores the analysis itself.
 
 The tool chain (WP75, P4) goes the same way up to its answer: the prompt
 with the chain's answer format, one planning call, the plan checked whole
-(``check_plan``) and stored with its steps, governed by the union of their
+(``check_plan``), and when the checks refuse it one correction, a call of its
+own for the request limit whose answer is the plan then (``ask.plan``,
+plan-chain-eval F7); the plan is stored with its steps, governed by the union of their
 classes at the level as it was (``chain_governance``): any class ``off``, a
 proposal only (D1); any ``approve``, ``proposed``; all ``auto``, ``approved``.
 Each step keeps its own cell. Before it runs, the user may change values and
@@ -143,6 +145,7 @@ from geotandem.model.chain.ask import (
     ask,
     edits_message,
     kept_turns,
+    plan,
     restored_turns,
 )
 from geotandem.model.chain.plan import (
@@ -521,6 +524,9 @@ class _Call:
     prompt: Prompt = field(repr=False)
     profile: ModelProfile = field(repr=False)
     approach: str = "direct"
+    connection: ConnectionInfo | None = field(default=None, repr=False)
+    """The connection the call goes to: a chain's correction counts against its
+    request limit and fits its context (F7)."""
 
 
 @dataclass(frozen=True)
@@ -534,6 +540,10 @@ class _Planned:
     steps: list[ChainStep] | None = None
     governance: Governance | None = None
     refusal: Refusal | None = None
+
+
+def _no_count() -> None:
+    """A call without a connection to count for (unit tests)."""
 
 
 def new_step(level: Level, checked: CheckedStep, **more: Any) -> ChainStep:
@@ -687,6 +697,7 @@ class PromptFlow:
             prompt=prompt,
             profile=profile,
             approach=request.approach,
+            connection=connection,
         )
         new = NewAction(
             prompt=request.text,
@@ -859,7 +870,7 @@ class PromptFlow:
             client = self.client_factory(call.endpoint)
             try:
                 if call.approach == "chain":
-                    found = self._plan(client, call)
+                    found = self._plan(client, call, action_id)
                 else:
                     direct = DirectQuery(client, call.context, call.level)
                     found = direct.ask(call.prompt, profile=call.profile, deadline=call.deadline)
@@ -878,17 +889,35 @@ class PromptFlow:
             return partial(self._keep, store, caller, action_id, found)
         return partial(store.fail, caller, action_id, error, tokens=tokens)
 
-    def _plan(self, client: LLMClient, call: _Call) -> _Planned:
-        """The chain's planning call (P4): one call, the plan checked whole in the
-        model's world (``check_plan``); never run here. Its time counts towards
-        the request's (``CHAIN_TIME_LIMIT_S``), on the flow's clock."""
+    def _plan(self, client: LLMClient, call: _Call, action_id: int) -> _Planned:
+        """The chain's planning (P4): one call, the plan checked whole in the
+        model's world (``check_plan``), and a correction of a plan the checks
+        refused (``ask.plan``, F7), counted as a model call of its own for the
+        request limit, as a re-plan is; never run here. Its time counts towards
+        the request's (``CHAIN_TIME_LIMIT_S``), on the flow's clock; the record
+        keeps the last answer, with every call's tokens."""
+        connection = call.connection
         started = self.monotonic()
-        answer, tokens = ask(client, call.prompt.messages, call.prompt.schema, call.deadline)
+        planned = plan(
+            client,
+            call.prompt,
+            call.context,
+            call.profile,
+            call.deadline,
+            context_length=connection.context_length if connection else None,
+            before_correction=(
+                partial(self._count_replan, action_id, connection) if connection else _no_count
+            ),
+            clock=self.monotonic,
+        )
         latency = round((self.monotonic() - started) * 1000)
+        answer, tokens, checked = planned.answer, planned.tokens, planned.checked
+        if len(planned.calls) > 1:
+            log.info("model action %d: plan corrected (%s)", action_id, planned.calls[-1].outcome)
         if not isinstance(answer, PlanAnswer):
             assert not isinstance(answer, QueryAnswer)  # parse_answer took the chain's kinds only
             return _Planned(answer, latency, tokens)
-        checked = check_plan(answer.steps, call.context, call.profile)
+        assert checked is not None
         if isinstance(checked, Refusal):
             return _Planned(answer, latency, tokens, refusal=checked)
         steps = [new_step(call.level, step) for step in checked]

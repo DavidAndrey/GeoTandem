@@ -252,10 +252,14 @@ async def test_no_row_content_reaches_the_model_through_a_chain(
     finally:
         update_attribute(engine, "strassen", "klasse", AttributeUpdate(for_model=True))
 
+    # Each refused, and its correction (F7) asks the same again: the correction's
+    # input is part of what the model received, for the hidden layer as for none.
     step = ("filter", {"layer": HIDDEN, "where": {"op": "is_null", "attr": "kategorie"}})
-    hidden, hidden_model = await chain(client, app, plan(step, why="Punkte."), text="Punkte?")
+    again = plan(step, why="Punkte.")
+    hidden, hidden_model = await chain(client, app, again, again, text="Punkte?")
     step = ("filter", {"layer": "kitas", "where": {"op": "is_null", "attr": "kategorie"}})
-    missing, missing_model = await chain(client, app, plan(step, why="Punkte."), text="Punkte?")
+    again = plan(step, why="Punkte.")
+    missing, missing_model = await chain(client, app, again, again, text="Punkte?")
 
     # The chain did what it should: an empty step, an error, a re-plan after each.
     assert (empty["status"], empty["replans"]) == ("done", 1)
@@ -270,6 +274,13 @@ async def test_no_row_content_reaches_the_model_through_a_chain(
         HIDDEN,
     )
     assert hidden["refusal"]["code"] == "unknown_layer" and hidden["steps"] == []
+    # The correction (F7) repeats the model's own plan and names the layer it
+    # wrote, as for a layer that does not exist: the same words, the name aside
+    # (S3). Beyond the name the model wrote, nothing of either.
+    corrections = [model.calls.pop() for model in (hidden_model, missing_model)]
+    told = [[m.content for m in call.messages[-2:]] for call in corrections]
+    assert told[0] == [content.replace("kitas", HIDDEN) for content in told[1]]
+    assert '"code":"unknown_layer","part":"zz_geheim_sentinel"' in told[0][1]
     text = sent(planned, erred, hidden_model, missing_model)
     assert '"empty":true' in text and '"code":"unknown_attribute","part":"klasse"' in text
     assert 'Schritt 1 (filter): {"outcome":"ok","empty":false,"count":' in text

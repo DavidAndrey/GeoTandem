@@ -37,8 +37,8 @@ from geotandem.evaluation.grade import Graded, grade
 from geotandem.evaluation.schemas import EvalCase
 from geotandem.levels import CellMode
 from geotandem.llm import LLMClient, LLMError
-from geotandem.model.chain.ask import ChainState, ask
-from geotandem.model.chain.plan import CheckedStep, check_plan
+from geotandem.model.chain.ask import ChainState, ask, plan
+from geotandem.model.chain.plan import CheckedStep
 from geotandem.model.chain.run import StepRun, run_step
 from geotandem.model.errors import ActionError
 from geotandem.model.prompt import Prompt
@@ -69,7 +69,9 @@ class CallTrace:
     tokens: Tokens
     outcome: str
     """The answer's kind (``plan``, ``clarification``, ``cannot_answer``), or
-    ``error:<code>`` for a re-plan whose call or answer failed."""
+    ``error:<code>`` for a correction or a re-plan whose call or answer failed."""
+    correction: bool = False
+    """A correction of a plan the checks refused (``ask.plan``, F7)."""
 
 
 @dataclass(frozen=True)
@@ -131,11 +133,23 @@ def drive(
     ``profile`` over the read-only view of ``context``, to its end."""
     started = clock()
     deadline = started + CHAIN_TIME_LIMIT_S
-    answer, tokens = ask(client, prompt.messages, prompt.schema, started + MODEL_CALL_S)
-    calls = [CallTrace(0, _ms(clock() - started), tokens, answer.kind)]
+    planned = plan(
+        client,
+        prompt,
+        context,
+        profile,
+        started + MODEL_CALL_S,
+        context_length=context_length,
+        clock=clock,
+    )
+    calls = [
+        CallTrace(0, c.latency_ms, c.tokens, c.outcome, correction=i > 0)
+        for i, c in enumerate(planned.calls)
+    ]
+    answer, checked = planned.answer, planned.checked
     if not isinstance(answer, PlanAnswer):
         return ChainRun(answer, "answered", calls=calls)
-    checked = check_plan(answer.steps, context, profile)
+    assert checked is not None
     if isinstance(checked, Refusal):
         return ChainRun(answer, "refused", refusal=checked, calls=calls)
     state = ChainState(prompt, answer, checked, context_length=context_length)
