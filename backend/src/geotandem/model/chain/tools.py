@@ -7,12 +7,14 @@ position instead (``Ref``, 1 for the first): the same input model with
 that step's query object, never the model.
 
 Planning is one call that returns the steps as structured output (P4): no
-tool is called by the model. ``tool_list`` is the part of the answer format
-that names the tools, their arguments as JSON schema, and the conditions they
-take, cut to what the controls write (``result.conditions_as_controls``).
+tool is called by the model. ``planned_steps`` is the step of the answer
+format, one definition per tool with its arguments as JSON schema and the
+conditions they take, cut to what the controls write
+(``result.conditions_as_controls``): so constrained output writes a step its
+tool takes (plan-chain-eval, F6). ``tool_list`` names the tools in the
+prompt's words.
 """
 
-import json
 from dataclasses import dataclass
 from functools import cache
 from typing import Annotated, Any, Final, get_args
@@ -20,7 +22,7 @@ from typing import Annotated, Any, Final, get_args
 from pydantic import BaseModel, Field
 
 from geotandem.model.result import NOT_IN_CONTROLS, conditions_as_controls, drop_titles
-from geotandem.model.schemas import MAX_CONDITIONS, MAX_STEPS
+from geotandem.model.schemas import MAX_CONDITIONS, MAX_STEPS, PlannedStep
 from geotandem.tools.chain import chain_tools
 from geotandem.tools.registry import Tool
 from geotandem_query import QueryObject
@@ -83,18 +85,57 @@ def _schemas() -> tuple[dict[str, Any], dict[str, Any]]:
     return tools, shared
 
 
-def _compact(value: Any) -> str:
-    return json.dumps(value, separators=(",", ":"), ensure_ascii=False)
+def _one_base(arguments: dict[str, Any]) -> dict[str, Any]:
+    """A step on a layer or on an earlier step (``_OnLayerOrStep``) as two
+    alternatives, each with its base required: never both, never neither, as
+    the validator wants it. Other arguments as they are."""
+    properties = arguments["properties"]
+    if not {"layer", "of"} <= properties.keys():
+        return arguments
+    variants = []
+    for base, other in (("layer", "of"), ("of", "layer")):
+        kept = {key: value for key, value in properties.items() if key != other}
+        kept[base] = next(s for s in properties[base]["anyOf"] if s.get("type") != "null")
+        required = [base, *arguments.get("required", [])]
+        variants.append(arguments | {"properties": kept, "required": required})
+    return {"oneOf": variants}
+
+
+@cache
+def planned_steps() -> tuple[dict[str, Any], dict[str, Any]]:
+    """The planned step of the answer format: one of a definition per tool,
+    with ``tool`` its name and ``arguments`` its schema; and the definitions
+    they all refer to. ``PlannedStep`` itself keeps ``arguments`` free, and
+    constrained output then let models write JSON-Schema syntax into them
+    (plan-chain-eval, F6). The caller copies before it changes them."""
+    tools, shared = _schemas()
+    text = PlannedStep.model_json_schema()["properties"]["text"]
+    defs = dict(shared)
+    for name, arguments in tools.items():
+        defs[f"{name.capitalize()}Step"] = {
+            "additionalProperties": False,
+            "properties": {
+                "text": text,
+                "tool": {"const": name, "type": "string"},
+                "arguments": _one_base(arguments),
+            },
+            "required": ["text", "tool", "arguments"],
+            "type": "object",
+        }
+    drop_titles(defs)
+    step = {"oneOf": [{"$ref": f"#/$defs/{name.capitalize()}Step"} for name in tools]}
+    return step, defs
 
 
 @cache
 def tool_list() -> str:
     """The tools in the answer format of the chain (P4), in German framing; the
-    descriptions are the registry's, written once (F-10.2)."""
-    tools, shared = _schemas()
+    descriptions are the registry's, written once (F-10.2). Their arguments
+    are in the answer's schema (``planned_steps``), not repeated here."""
     lines = [
         'Werkzeuge: ein Schritt ist {"text", "tool", "arguments"}. "text" sagt den Schritt '
-        'in Worten, "arguments" folgt dem Schema des Werkzeugs. Ein früherer Schritt wird mit '
+        'in Worten, "arguments" folgt dem Schema des Werkzeugs im JSON-Schema der Antwort. '
+        "Ein früherer Schritt wird mit "
         "seiner Nummer genannt (1 ist der erste) und muss vor dem Schritt stehen, der ihn "
         f"nennt. Höchstens {MAX_STEPS} Schritte; das Ergebnis des letzten Schritts ist die "
         "Antwort. Jeder Schritt baut ein Abfrageobjekt, nichts wird gespeichert; es hat "
@@ -104,8 +145,6 @@ def tool_list() -> str:
     ]
     for name, chain in CHAIN.items():
         lines.append(f"- {name} ({chain.tool.op_class}): {chain.tool.description}")
-        lines.append(f"  {_compact(tools[name])}")
-    lines.append('Bedingungen ("where"), auf die "#/$defs/…" verweist: ' + _compact(shared))
     lines.append(
         "Nach jedem Schritt erfährst du nur: ok oder ein Fehlercode, leer oder nicht und die "
         "Trefferzahl; nie Objekte, Werte oder Geometrien."

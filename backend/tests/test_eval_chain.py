@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any
 
 import httpx
+import jsonschema
 import pytest
 from chain_fixtures import (  # noqa: F401 - levels, model: fixtures
     MUNICIPALITIES,
@@ -55,7 +56,7 @@ from geotandem.llm.fake import FakeLLMClient
 from geotandem.model.chain.plan import check_plan
 from geotandem.model.prompt import build_prompt
 from geotandem.model.record import RAN
-from geotandem.model.result import parse_answer
+from geotandem.model.result import answer_format, parse_answer
 from geotandem.model.schemas import PlannedStep, QueryAnswer, Refusal
 from geotandem.model.service import profile_for
 from geotandem.model.validate import Validated, validate_model_query
@@ -162,6 +163,54 @@ def test_what_a_case_says_the_chain_cannot_do_it_still_cannot(case_id: str, worl
     assert not isinstance(checked, Refusal), checked
     found = ids_query(checked[-1].query, world.context.backend, LIMITS)
     assert found not in (reading_ids(CASES[case_id], world.context, world.profile) or [])
+
+
+ANSWERS = [
+    (case_id, entry if isinstance(entry, dict) else body(entry))
+    for case_id, plans in sorted(PLANS.items())
+    for entry in plans["script"]
+]
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [a for _, a in ANSWERS],
+    ids=[f"{case_id}-{i}" for i, (case_id, _) in enumerate(ANSWERS)],
+)
+def test_constrained_output_can_write_every_reference_answer(answer: dict[str, Any]) -> None:
+    """The chain's answer format (F6) bounds the steps, never below what
+    ``check_plan`` accepts: every reference script, re-plans included, fits it."""
+    jsonschema.validate(answer.get("answer", answer), answer_format("chain"))
+
+
+BASE = (
+    "filter",
+    {"layer": "schulen", "where": {"op": "compare", "attr": "typ", "cmp": "eq", "value": "primar"}},
+)
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        {"layer": "schulen", "of": 1, "where": BASE[1]["where"]},
+        {"where": BASE[1]["where"]},
+        {"of": "1", "where": BASE[1]["where"]},
+        {"layer": "schulen", "where": {"$ref": "#/$defs/IsNull", "attr": "name"}},
+        {"layer": "schulen", "where": {"where": {"op": "text_match", "attr": "name", "text": "x"}}},
+        {
+            "layer": "schulen",
+            "where": {"op": "text_match", "attr": "name", "text": "x", "mode": "like"},
+        },
+    ],
+    ids=["layer-and-of", "neither", "of-as-text", "ref", "nested-where", "invented-mode"],
+)
+def test_constrained_output_cannot_write_what_the_baseline_saw_refused(
+    arguments: dict[str, Any],
+) -> None:
+    """The commonest first errors of the Phase 1 baseline (plan-chain-eval 12, F6)."""
+    jsonschema.validate(body([BASE]), answer_format("chain"))
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(body([("filter", arguments)]), answer_format("chain"))
 
 
 # --- parity with the service ---------------------------------------------------------

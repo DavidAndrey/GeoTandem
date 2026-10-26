@@ -99,6 +99,8 @@ def _format(approach: Approach) -> dict[str, Any]:
         }
     if approach == "direct":
         _controls_only(defs)
+    else:
+        _steps_per_tool(defs)
     _tag_first(defs)
     schema["$defs"] = {name: defs[name] for name in sorted(_reachable(schema, defs))}
     drop_titles(schema)
@@ -117,6 +119,18 @@ def _tag_first(defs: dict[str, Any]) -> None:
             if isinstance(properties, dict) and tag in properties:
                 definition["properties"] = {tag: properties[tag]} | properties
                 break
+
+
+def _steps_per_tool(defs: dict[str, Any]) -> None:
+    """A plan's step as one of the chain's tools takes it (``tools.planned_steps``):
+    constrained output writes the tool's own arguments, where ``PlannedStep``
+    alone would let any object through (plan-chain-eval, F6). What is accepted
+    stays ``PlanAnswer``: ``check_plan`` reads each step's arguments."""
+    from geotandem.model.chain.tools import planned_steps  # it imports this module
+
+    step, shared = planned_steps()
+    defs["PlannedStep"] = copy.deepcopy(step)
+    defs.update(copy.deepcopy(shared))
 
 
 def _controls_only(defs: dict[str, Any]) -> None:
