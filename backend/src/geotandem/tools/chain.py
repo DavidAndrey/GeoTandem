@@ -280,30 +280,30 @@ def chain_tools() -> list[Tool[Any, QueryObject]]:
             OpClass.SPATIAL,
             WithinInput[QueryObject],
             _within,
-            "Keep the features of step 'of' that lie in a feature of step 'in'. In a buffer: "
-            "within its distance; for point (not multipoint) features only.",
+            "Keep the features of 'of' that lie in a feature of 'in'. In a buffer: within its "
+            "distance; for point (not multipoint) features only.",
         ),
         tool(
             "outside",
             OpClass.SPATIAL,
             OutsideInput[QueryObject],
             _outside,
-            "Keep the features of step 'of' that lie in no feature of step 'in'. Of a buffer: "
-            "farther than its distance; for point (not multipoint) features only.",
+            "Keep the features of 'of' that lie in no feature of 'in'. Of a buffer: farther "
+            "than its distance; for point (not multipoint) features only.",
         ),
         tool(
             "intersects",
             OpClass.SPATIAL,
             IntersectsInput[QueryObject],
             _intersects,
-            "Keep the features of step 'of' that intersect a feature of step 'with' (a buffer: "
-            "come within its distance).",
+            "Keep the features of 'of' that intersect a feature of 'with' (a buffer: come "
+            "within its distance).",
         ),
         tool(
             "near",
             OpClass.SPATIAL,
             NearInput[QueryObject],
             _near,
-            "Keep the features of step 'of' within 'distance_m' of a feature of step 'to'.",
+            "Keep the features of 'of' within 'distance_m' of a feature of 'to'.",
         ),
     ]

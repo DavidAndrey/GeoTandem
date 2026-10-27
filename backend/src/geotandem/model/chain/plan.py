@@ -10,7 +10,9 @@ is materialised. In order, each failure a ``Refusal`` naming the step
 1. the step limit, counting the completed steps of a re-plan too (P4) ⇒
    ``step_limit``, naming the first step beyond it;
 2. a tool the chain does not have, arguments that do not fit its schema, a
-   reference to no earlier step ⇒ ``model_query_invalid`` with ``errors``;
+   reference to no earlier step ⇒ ``model_query_invalid`` with ``errors``
+   (a spatial step may name a whole layer instead, ``tools.Target``: its
+   features, no condition, checked in 4 as any layer of a query);
 3. a step that cannot extend the query object (``tools.chain``), or relates
    anything but points to a buffer by ``within`` or ``outside`` ⇒
    ``not_representable`` with the argument as ``part``;
@@ -271,6 +273,9 @@ def _check_step(
     for name in chain.references:
         ref = resolved[name]
         if ref is None:
+            continue
+        if isinstance(ref, str):  # a whole layer (``tools.Target``, F11): checked below
+            resolved[name] = QueryObject(source=ref)
             continue
         if ref >= position or ref not in by_position:
             loc = ["arguments", fields[name].alias or name]

@@ -60,7 +60,7 @@ from geotandem.model.result import answer_format, parse_answer
 from geotandem.model.schemas import PlannedStep, QueryAnswer, Refusal
 from geotandem.model.service import profile_for
 from geotandem.model.validate import Validated, validate_model_query
-from geotandem_query import compact
+from geotandem_query import QueryObject, canonical_json, compact
 
 HERE = Path(__file__).parent
 LIMITS = Limits(max_features=10_000, timeout_s=10)
@@ -211,6 +211,78 @@ def test_constrained_output_cannot_write_what_the_baseline_saw_refused(
     jsonschema.validate(body([BASE]), answer_format("chain"))
     with pytest.raises(jsonschema.ValidationError):
         jsonschema.validate(body([("filter", arguments)]), answer_format("chain"))
+
+
+KOENIZ = {"op": "compare", "attr": "name", "cmp": "eq", "value": "Köniz"}
+IN_KOENIZ = {"op": "related", "layer": "gemeinden", "predicate": "within", "where": KOENIZ}
+SCHOOLS_IN: Steps = [
+    ("filter", {"layer": "gemeinden", "where": KOENIZ}),
+    ("within", {"of": "schulen", "in": 1}),
+]
+
+
+@pytest.mark.parametrize(
+    ("steps", "expected"),
+    [
+        (
+            [
+                ("filter", {"layer": "gemeinden", "where": KOENIZ}),
+                ("within", {"of": "schulen", "in": 1}),
+            ],
+            {
+                "source": "schulen",
+                "where": {
+                    "op": "related",
+                    "layer": "gemeinden",
+                    "predicate": "within",
+                    "where": KOENIZ,
+                },
+            },
+        ),
+        (
+            [("near", {"of": "schulen", "to": "haltestellen", "distance_m": 100})],
+            {
+                "source": "schulen",
+                "where": {
+                    "op": "related",
+                    "layer": "haltestellen",
+                    "predicate": "dwithin",
+                    "distance_m": 100,
+                },
+            },
+        ),
+    ],
+    ids=["of-a-layer", "both-layers"],
+)
+def test_a_spatial_step_takes_a_whole_layer_by_name(
+    steps: Steps, expected: dict[str, Any], world: World
+) -> None:
+    """F11: a layer's name in ``of``, ``in``, ``to`` or ``with`` is all its
+    features, with no condition: the query a direct answer would write."""
+    planned_steps = [PlannedStep(text="x", tool=tool, arguments=args) for tool, args in steps]
+    checked = check_plan(planned_steps, world.context, world.profile)
+    assert not isinstance(checked, Refusal), checked
+    assert canonical_json(checked[-1].query) == canonical_json(QueryObject.model_validate(expected))
+
+
+@pytest.mark.parametrize(
+    ("arguments", "tool", "code"),
+    [
+        ({"of": "spitaeler", "to": "haltestellen", "distance_m": 100}, "near", "unknown_layer"),
+        ({"of": "1", "to": "haltestellen", "distance_m": 100}, "near", "model_query_invalid"),
+        ({"of": "schulen", "where": KOENIZ}, "filter", "model_query_invalid"),
+    ],
+    ids=["unknown-layer", "number-as-text", "filter-of-a-layer"],
+)
+def test_a_layer_by_name_is_checked_as_any(
+    arguments: dict[str, Any], tool: str, code: str, world: World
+) -> None:
+    """Checked as a layer of a query (unknown and hidden alike, S3); a step
+    number written as text is no name; ``filter`` names a layer in ``layer``."""
+    found = check_plan(
+        [PlannedStep(text="x", tool=tool, arguments=arguments)], world.context, world.profile
+    )
+    assert isinstance(found, Refusal) and found.code == code
 
 
 # --- parity with the service ---------------------------------------------------------

@@ -10,7 +10,8 @@ engine result reaches a module that talks to the model by another way.
 
 ``part`` names what an error is about, but only a layer or attribute **name
 the model itself wrote** in the step's arguments: a name taken from a name's
-place there (``layer``, ``attr``), never from a value's (``value``,
+place there (``layer``, ``attr``, a spatial step's reference to a whole
+layer), never from a value's (``value``,
 ``values``, ``text``). An attribute value can look like a name
 (``kantonsstrasse_b``); an error detail that holds one, or anything else the
 model did not write, is dropped. So is a name from a condition the step took
@@ -42,8 +43,10 @@ StepOutcome = int | QueryError | Refusal
 """What became of a step (``run.run_step``): its count, or the engine's error;
 or the checks' refusal of the plan it is in, before anything ran."""
 
-NAME_KEYS: Final = frozenset({"layer", "attr"})
-"""Where a chain step's arguments, conditions included, hold a layer or attribute name."""
+NAME_KEYS: Final = frozenset({"layer", "attr", "of", "in", "to", "with"})
+"""Where a chain step's arguments, conditions included, hold a layer or attribute
+name; a spatial step's references hold one when they name a whole layer (F11),
+a number otherwise, which is no name."""
 
 PART_KEYS: Final = ("attribute", "layer")
 """Where an error's details name what it is about, the most precise first."""

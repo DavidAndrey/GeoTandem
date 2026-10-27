@@ -242,8 +242,9 @@ _EXAMPLES: Final[dict[Approach, str]] = {
         '"Sekundarschule"} (Punkte); schulhaeuser.oeffentlich (Ja/Nein); wanderwege (Linien); '
         "orte.name (Gemeinden, Flächen, Text).\n"
         "- Zuerst die Schritte, auf die sich ein räumlicher Schritt bezieht, dann der "
-        'räumliche Schritt: "of", "in", "to" und "with" nennen nur frühere Schritte, nie den '
-        "eigenen oder einen späteren.\n"
+        'räumliche Schritt: "of", "in", "to" und "with" nennen frühere Schritte, nie den '
+        "eigenen oder einen späteren. Gilt der räumliche Schritt allen Objekten eines Layers, "
+        'nennen sie den Layer mit seinem Namen («Wanderwege» ⇒ "wanderwege").\n'
         "- Ein Ort, der ein Objekt eines anderen Layers ist («in der Altstadt»): ein Schritt "
         '"filter" auf diesen Layer mit einer Bedingung auf seinen Namen, dann "within". '
         "Rate nie eine Nummer oder Kennung.\n"
@@ -293,6 +294,13 @@ _EXAMPLES: Final[dict[Approach, str]] = {
         '"where":{"op":"compare","attr":"art","cmp":"eq","value":"ti"}}},'
         '{"text":"Linden ausserhalb des Puffers","tool":"outside","arguments":{"of":2,'
         '"in":1}}]}\n'
+        "\nFrage: Welche Wanderwege führen durch die Altstadt?\n"
+        '{"kind":"plan","explanation":"Das Quartier Altstadt, dann die Wanderwege, die es '
+        'schneiden.","assumptions":[],"steps":['
+        '{"text":"Quartier Altstadt","tool":"filter","arguments":{"layer":"quartiere",'
+        '"where":{"op":"compare","attr":"name","cmp":"eq","value":"Altstadt"}}},'
+        '{"text":"Wanderwege durch die Altstadt","tool":"intersects","arguments":'
+        '{"of":"wanderwege","with":1}}]}\n'
         "\nFrage: Öffentliche Sekundarschulhäuser\n"
         '{"kind":"plan","explanation":"Sekundarschulhäuser, davon die öffentlichen.",'
         '"assumptions":[],"steps":['

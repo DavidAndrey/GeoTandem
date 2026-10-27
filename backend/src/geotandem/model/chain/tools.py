@@ -23,7 +23,7 @@ from pydantic import BaseModel, Field
 
 from geotandem.model.result import NOT_IN_CONTROLS, conditions_as_controls, drop_titles
 from geotandem.model.schemas import MAX_CONDITIONS, MAX_STEPS, PlannedStep
-from geotandem.tools.chain import chain_tools
+from geotandem.tools.chain import Layer, chain_tools
 from geotandem.tools.registry import Tool
 from geotandem_query import QueryObject
 
@@ -34,15 +34,24 @@ Ref = Annotated[
 a step the user removed keeps its place and a re-plan's steps continue after
 the last step that ran, so a chain of ``MAX_STEPS`` steps may reach beyond it."""
 
+Target = Ref | Layer
+"""An earlier step, or a whole layer of the profile by its name, in a spatial
+step's arguments (plan-chain-eval, F11): the application reads a name as the
+layer's features, with no condition. Without it a model that relates to a
+whole layer had to invent a condition every feature meets, and wrote the
+step's own position instead. ``filter`` and ``buffer`` name a layer in
+``layer``; their ``of`` stays a step."""
+
 
 @dataclass(frozen=True)
 class ChainTool:
     tool: Tool[Any, QueryObject]
     """The registry's tool: earlier results as query objects."""
     arguments: type[BaseModel]
-    """Its input as the model writes it: earlier results as ``Ref``."""
+    """Its input as the model writes it: earlier results as ``Ref``, or as
+    ``Target`` (a step or a layer) for a spatial tool."""
     references: tuple[str, ...]
-    """The fields that name an earlier step."""
+    """The fields that name an earlier step (or, as ``Target``, a layer)."""
 
     @property
     def name(self) -> str:
@@ -60,7 +69,8 @@ def _as_planned(tool: Tool[Any, QueryObject]) -> ChainTool:
     origin = tool.input_model.__pydantic_generic_metadata__["origin"]
     if origin is None:
         raise TypeError(f"chain tool '{tool.name}' has no generic input")
-    return ChainTool(tool, origin[Ref], _references(tool.input_model))
+    target = Ref if "layer" in tool.input_model.model_fields else Target
+    return ChainTool(tool, origin[target], _references(tool.input_model))
 
 
 CHAIN: Final[dict[str, ChainTool]] = {t.name: _as_planned(t) for t in chain_tools()}
@@ -137,7 +147,10 @@ def tool_list() -> str:
         'in Worten, "arguments" folgt dem Schema des Werkzeugs im JSON-Schema der Antwort. '
         "Ein früherer Schritt wird mit "
         "seiner Nummer genannt (1 ist der erste) und muss vor dem Schritt stehen, der ihn "
-        f"nennt. Höchstens {MAX_STEPS} Schritte; das Ergebnis des letzten Schritts ist die "
+        'nennt. "of", "in", "to" und "with" eines räumlichen Schritts nennen einen früheren '
+        "Schritt oder einen ganzen Layer mit seinem Namen; für alle Objekte eines Layers "
+        f"braucht es keinen eigenen Schritt. Höchstens {MAX_STEPS} Schritte; das Ergebnis des "
+        "letzten Schritts ist die "
         "Antwort. Jeder Schritt baut ein Abfrageobjekt, nichts wird gespeichert; es hat "
         f"höchstens {MAX_CONDITIONS} Bedingungen, die übernommenen eingerechnet. Ein Schritt, "
         "auf den sich ein räumlicher Schritt bezieht, hat höchstens eine Attributbedingung, "
