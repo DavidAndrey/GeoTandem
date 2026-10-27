@@ -477,3 +477,105 @@ Zwei Muster:
   Die Klausel zu stillen Fehlern geht aber vor, deshalb ist auf diesem
   Zwischenstand jedes lokale Modell *nicht empfohlen*. Luna ist es auf der
   ausgelieferten Kette, weil es zu wenig rettet.
+
+## Lauf 9: Werkzeugkette nach Phase 2 (2026-10-27)
+
+[plan-chain-eval.md](plan-chain-eval.md), Abschnitt 15. Die Kette nach dem
+Commit `d61df1e` (`b5-k-*`) auf den drei lokalen Modellen, mit den
+Einstellungen von Lauf 6. Die Direktabfrage zum Vergleich ist die aus
+Lauf 6. Der Commit bringt:
+
+- **F13:** ein Werkzeug `contains` („Flächen, die ein Objekt enthalten“).
+  Ein `within` oder `outside` in Punkten oder Linien wird abgewiesen.
+- **F15:** Ein Schritt, den kein späterer liest und dessen Bedingungen dem
+  Ergebnis fehlen, wird abgewiesen.
+- **F16:** Regeln im Prompt der Kette.
+- **F12:** Ein verneinter Vergleich im Filter einer Beziehung wird als sein
+  Gegenteil geschrieben.
+
+### Bestehensquote der Kette (vorher → nachher, Direktabfrage)
+
+| Modell | A Bestätigung | B Bestätigung | C Bestätigung | B Tuning |
+|---|---|---|---|---|
+| gemma4:e4b | 66 → 68 % (78 %) | 25 → 26 % (62 %) | 16 → 20 % (40 %) | 26 → 28 % (61 %) |
+| gemma4:12b | 78 → 83 % (86 %) | 60 → 67 % (77 %) | 31 → 43 % (39 %) | 71 → 76 % (64 %) |
+| qwen3:14b | 58 → 68 % (77 %) | 53 → 51 % (58 %) | 30 → 29 % (43 %) | 58 → 53 % (54 %) |
+
+Gepaart je Fall, Kette minus direkt, auf den Bestätigungsfällen:
+
+| Modell | A | B und C |
+|---|---|---|
+| gemma4:e4b | −15 Punkte (−28 … −1) | −32 Punkte (−50 … −14) |
+| gemma4:12b | −8 Punkte (−18 … +3) | −6 Punkte (−26 … +14) |
+| qwen3:14b | −12 Punkte (−28 … +3) | −9 Punkte (−30 … +11) |
+
+Von den Antworten, die die Direktabfrage auf den Bestätigungsfällen von A
+und B verfehlt, holt die Kette 23 %, 57 % und 38 % (vorher 31 %, 43 %,
+26 %).
+
+### Verhalten (alle Sätze, beide Blöcke; vorher → nachher)
+
+| | gemma4:e4b | gemma4:12b | qwen3:14b |
+|---|---|---|---|
+| pass | 48 → 49 % (direkt 70 %) | 64 → 69 % (direkt 76 %) | 53 → 56 % (direkt 66 %) |
+| still falsch | 11 → 13 % (direkt 6 %) | 10 → 5 % (direkt 8 %) | 24 → 16 % (direkt 16 %) |
+| still falsch, Bestätigung A und B | 15 → 16 % (direkt 5 %) | 13 → 7 % (direkt 5 %) | 28 → 20 % (direkt 15 %) |
+| erster Plan angenommen | 80 → 69 % | 79 → 73 % | 82 → 75 % |
+| abgewiesen, nach Korrektur bestanden | 26 → 28 % | 31 → 32 % | 5 → 4 % |
+| endet abgewiesen | 86 → 126 | 100 → 146 | 133 → 201 |
+| Latenz Median | 1,1 → 1,1 s | 2,2 → 2,1 s | 6,4 → 5,6 s |
+| s je richtige Antwort | 3,5 → 3,2 (direkt 1,5) | 4,2 → 4,2 (direkt 1,8) | 12,4 → 11,3 (direkt 5,7) |
+
+Die neuen Prüfungen weisen nach der Korrektur 124 Pläne wegen eines
+ungelesenen Schritts und 45 wegen der Geometrie ab. Sie machen aus stillen
+Fehlern ehrliche Absagen. Beispiel: `doc2-gut-erschlossen` bei qwen3:14b,
+vorher 10 von 10 Antworten still falsch, jetzt 10 abgewiesen.
+
+### Die stillen Fehler der Kette
+
+- **Geometrie (F13) behoben:** `h26-gemeinden-seilbahn` war bei gemma4:12b
+  in 9 und bei qwen3:14b in 10 von 10 Antworten still falsch. Jetzt besteht
+  der Fall in 10 und 9. `h27-gross-mit-sek` besteht bei qwen3:14b in 9 von
+  10 Antworten, die Direktabfrage in 2. Kein stiller Fehler hat mehr die
+  Geometrie als Ursache (vorher 86).
+- **Ungelesene Schritte (F15):** 82 → 22 stille Fehler.
+- **Ergebnis auf dem falschen Layer:** 76 → 11.
+- **Fehlende Bedingung (offen, F17):** Der Gegenstand der Frage wird als
+  ganzer Layer genannt, obwohl die Frage ihn einschränkt. Für
+  „Bushaltestellen“ steht `"of": "haltestellen"`. Die Regel aus F16 erreicht
+  die kleinen Modelle nicht. Das ist jetzt die Hauptursache, 177 von 376
+  stillen Fehlern (vorher 121), bei gemma4:e4b 95 von 142. Eine Prüfung kann
+  das nicht abweisen, weil viele bestandene Antworten dieselbe Form haben.
+- **Erfundene Bedingungen:** unverändert (80 → 79), fast alle bei
+  qwen3:14b.
+
+### Einordnung nach der Regel
+
+Die Klausel zu stillen Fehlern wird jetzt wie die Bestehensquote geprüft:
+gepaart je Fall, mit einem 95-%-Bootstrap-Intervall. Gemessen auf den
+Bestätigungsfällen von A und B, 54 Fälle, Kette minus direkt:
+
+| Modell | still falsch | Rettung A+B | Einordnung |
+|---|---|---|---|
+| gemma4:e4b | +10,9 Punkte (+5,0 … +17,4) | 23 % | *nicht empfohlen* |
+| gemma4:12b | +2,2 Punkte (−4,4 … +8,9) | 57 % | *nicht entschieden*; Rückfall, wenn die Klausel frei bleibt |
+| qwen3:14b | +3,7 Punkte (−6,1 … +13,3) | 38 % | *nicht entschieden*; Rückfall, wenn die Klausel frei bleibt |
+
+Bei gemma4:12b und qwen3:14b enthält das Intervall 0. Es ist aber viel
+breiter als das Rauschen, und die Regel verlangt dann einen weiteren
+Saatblock. Kein Modell ist gleichwertig: Auf B Bestätigung bestehen sie 67 %
+und 51 %, unter der Schwelle von 70 %.
+
+So gelesen war auch das Urteil über gemma4:12b in Lauf 8 nicht entschieden.
+Gepaart ergibt `b4` +8,1 Punkte (−1,3 … +17,6). Die zusammengezählten
+Quoten (13 % gegen 5 %) wirkten eindeutig, weil viele stille Fehler auf
+wenigen Fällen liegen.
+
+**Ergebnis:**
+- **Wirkung:** Die Behebungen wirken bei gemma4:12b und qwen3:14b. Die
+  stillen Fehler sinken um die Hälfte und um ein Drittel. Die Kette besteht
+  3–5 Punkte öfter und rettet mehr.
+- **gemma4:e4b:** Bei gemma4:e4b wirken sie nicht. Das Modell nennt den
+  Gegenstand der Frage als ganzen Layer.
+- **Nächster Schritt:** Ein dritter Saatblock auf den Bestätigungsfällen
+  entscheidet, ob gemma4:12b und qwen3:14b als Rückfall gelten.

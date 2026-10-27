@@ -531,3 +531,146 @@ clause overrides it. No model is a peer: on A every interval stays below
 3. **F12.**
 4. **Luna on the current chain:** one block of the confirm sets, to know
    whether an external model clears the bar. That costs roughly USD 1–2.
+
+## 15 Phase 2: the silent wrongs after F11, their fixes, and the re-run (2026-10-27)
+
+**The reading.** Every silent wrong of the F11 run (`b4-k-*`, 510 answers
+over gemma4:e4b, gemma4:12b and qwen3:14b) was grouped by case and plan
+shape, read by case, and given one primary cause. Structural causes were
+then counted by script over all answers, passes included, to see which a
+check could refuse without touching a correct plan.
+
+| Cause | e4b | 12b | qwen3:14b | All | On passes |
+|---|---:|---:|---:|---:|---:|
+| A condition of the question is missing, mostly a layer named whole (F11) where the question restricts it («Bushaltestellen» ⇒ `"haltestellen"`) | 53 | 33 | 35 | 121 | – |
+| `within` or `outside` against points or lines: areas in points, everything «outside» a river | 1 | 19 | 66 | 86 | 0 |
+| A step no later step reads, whose conditions the result lacks: the model reads the steps as combined, the result is the last one alone | 40 | 16 | 26 | 82 | 7 |
+| Invented conditions: guessed codes and numbers (`gem_nr` = 1, 1234 …), catch-alls (`typ ne spezial`, `not is_null`) that drop features | 9 | 11 | 60 | 80 | – |
+| The result on the wrong layer: «Gemeinden mit einer Seilbahnstation» ends on the stations, since no step keeps areas that contain features | 10 | 20 | 46 | 76 | – |
+| Other (empty results of other causes, redundant steps, name resolution) | 12 | 17 | 36 | 65 | – |
+
+Most silent wrongs are on group A, cases direct gets right: the chain loses
+there what the direct query's `related` expresses in one condition.
+
+**F12 read again.** The 240 `not_representable` refusals of `b4` overlap
+these causes more than they mark the chain's own limit:
+- **`related` (79):** a relation's filter with two conditions (31) or a
+  negated one (20), the controls' limit (D3); invented catch-alls (9).
+- **`with`, `in`, `to` on a relation (39):** two results joined by
+  `intersects` where the second spatial step should build on the first;
+  a relation to a relation (the chain's limit, F4).
+- **`source` (35):** a table layer as a step.
+- **`in` of a buffer for areas or lines (21), a chain ending in a buffer
+  (20), a buffer as `of` (17, the arguments reversed).**
+- **`compare` (12), `near_feature` (5):** invented conditions.
+
+**F14 is not done as planned.** A re-plan after an empty last step would
+need a re-plan that keeps a result (today a re-plan answer that is no plan
+ends the chain), in the service and the interface, and would risk the 31
+passes whose correct result is empty. In the reading, an empty end is rarely
+a cause of its own (14 of 510): the empty endings come from the geometry
+and the invented conditions, which the fixes below address.
+
+**Fixes (commit `d61df1e`):**
+- **F13:** a tool `contains` (`{"of": <areas>, "has": <features>}`, the
+  query's `related` with `contains`), and a check: `within` or `outside` of
+  points or lines, and `contains` on them, is refused as
+  `not_representable`, `part: geometry`. Never on a pass of `b4`.
+- **F15:** a step no later step reads, whose conditions or buffer distance
+  the last step's query lacks, is refused as `not_representable`,
+  `part: unused`, naming the step. 89 silent wrongs of `b4` against 7
+  passes; a step the result repeats passes.
+- **F16:** rules in the chain prompt: name a whole layer without a
+  catch-all condition; a restricted subject needs a `filter`; only the last
+  step is the result and a further condition builds on the step before
+  (`of`), a second spatial one too; never a guessed code or number; nothing
+  lies in a point or a line, with a worked plan for `contains`.
+- **F12:** a relation's filter `not` of one comparison is written as its
+  complement (`ne`, `ge` …; the same rows in SQL, a missing value fails
+  both). This also lets the direct query through where it wrote the same.
+  A relation's filter of two conditions stays the controls' limit.
+
+The correction (F7) reaches the model with the code and the part
+(`geometry`, `unused`), as for every refusal.
+
+### The re-run (`b5-k-*`)
+
+Commit `d61df1e`, the three local models, both seed blocks, all four sets;
+direct is the baseline's (`b1-d-*`). Figures in
+[benchmarks.md](benchmarks.md), *Lauf 9*.
+
+**What the fixes did:**
+- **Silent wrongs, all sets:** 125/116/269 → 142/56/178 (e4b, 12b,
+  qwen3:14b). On the A and B confirm cases 15/13/28 % → 16/7/20 %, direct
+  5/5/15 %.
+- **F13 works.** `h26-gemeinden-seilbahn`, silent in 9 (12b) and 10
+  (qwen3:14b) of 10 answers, now passes in 10 and 9. `h27-gross-mit-sek`
+  passes for qwen3:14b in 9 of 10, direct in 2. No silent wrong is left
+  whose cause is geometry; the check refused 45 plans after the correction.
+- **F15 turns silent wrongs into refusals.** Unused steps with lost
+  conditions: 82 → 22 silent wrongs. `doc2-gut-erschlossen` on qwen3:14b:
+  10 silent wrongs → 10 refusals. The check refused 124 plans after the
+  correction, the most of any part.
+- **The price:** first plans accepted 80/79/82 → 69/73/75 %; chains ending
+  refused 86/100/133 → 126/146/201. The correction rescues 28/32/4 % of the
+  refused first plans (qwen3:14b rarely mends a plan).
+- **Pass, all sets:** 48/64/53 → 49/69/56 % (direct 70/76/66 %). On A
+  confirm 66/78/58 → 68/83/68 %.
+- **Paired on the confirm cases (chain minus direct):** A −15 (−28 … −1),
+  −8 (−18 … +3), −12 (−28 … +3); B and C −32 (−50 … −14), −6 (−26 … +14),
+  −9 (−30 … +11). gemma4:12b and qwen3:14b are no longer resolved behind
+  direct on A.
+- **Recovery of direct's failures on A and B (confirm):** 23/57/38 % (was
+  31/43/26 %).
+
+**What the fixes did not do.** F16's rule «a restricted subject needs a
+`filter`» did not take on gemma4:e4b and qwen3:14b. The missing condition is
+now the main silent cause by far:
+
+| Primary cause (`b5`) | e4b | 12b | qwen3:14b | All | `b4` |
+|---|---:|---:|---:|---:|---:|
+| A condition missing, mostly the subject's layer named whole | 95 | 19 | 63 | 177 | 121 |
+| Invented conditions | 7 | 6 | 66 | 79 | 80 |
+| An unused step with lost conditions | 4 | 2 | 16 | 22 | 82 |
+| Ends empty, of no other cause | 1 | 15 | 7 | 23 | – |
+| The result on the wrong layer | 6 | 0 | 5 | 11 | 76 |
+| Geometry (`within` of points or lines) | 0 | 0 | 0 | 0 | 86 |
+| Other | 29 | 14 | 21 | 64 | 65 |
+
+The typical shape (gemma4:e4b, `kb22`, `kb10`, `kb30`): filter and buffer the
+reference correctly, then `intersects {"of": "haltestellen", "with": 2}` for
+«Bushaltestellen»: the subject's own condition is dropped. A check cannot
+refuse it: 96/222/165 passes name a whole layer as well.
+
+**Classification (section 8), on the confirm cases.** The silent-wrong
+clause is now judged as the pass rate is, paired per case (seeds pooled),
+with a 95 % bootstrap interval (A and B confirm, 54 cases):
+
+| Model | Silent wrongs, chain minus direct | Seed blocks, chain | Recovery A+B | Class |
+|---|---|---|---|---|
+| gemma4:e4b | +10.9 points (+5.0 … +17.4) | 13.0 / 19.3 % | 23 % | *not recommended* |
+| gemma4:12b | +2.2 points (−4.4 … +8.9) | 7.0 / 7.0 % | 57 % | *not resolved*, fallback if the clause stays clear |
+| qwen3:14b | +3.7 points (−6.1 … +13.3) | 21.1 / 18.1 % | 38 % | *not resolved*, fallback if the clause stays clear |
+
+For gemma4:12b and qwen3:14b the interval contains 0 but is far wider than
+the noise, so the rule says *not resolved* and asks for another seed block.
+None is a peer: B confirm passes 67 % and 51 %, below the 70 % floor.
+
+Read the same way, section 14's verdict on gemma4:12b was not resolved
+either: paired, `b4` gives +8.1 (−1.3 … +17.6). The pooled rates (13 against
+5 %) looked clear, since many silent wrongs sit on a few cases. qwen3:14b's
+(+11.7, +0.6 … +22.8) and gemma4:e4b's (+9.6, +3.9 … +15.9) held.
+
+| # | Finding | Evidence | Candidate fix |
+|---|---|---|---|
+| F17 | The subject is named as a whole layer where the question restricts it; the rule of F16 does not reach the small models | 177 of 376 silent wrongs of `b5`, 95 of 142 on gemma4:e4b | A worked plan whose last spatial step reads a filtered subject (`of: <step>`); per-model prompts (Phase 4). No check: passes have the same shape |
+| F18 | qwen3:14b writes `related_dwithin` with `distance_m` 0 | 10 schema refusals | A rule, or 0 read as `intersects` |
+
+**Next, recommended:**
+1. **A third seed block on the confirm sets** (`heldout`, `chain-heldout`,
+   seeds from 11), chain and direct, for gemma4:12b and qwen3:14b. It
+   resolves the silent-wrong clause and is the fresh block a
+   re-classification needs. About 1–1.5 hours, local.
+2. **F17**, then a re-run.
+3. **Luna on the current chain** (roughly USD 1–2), for the global verdict's
+   external model.
