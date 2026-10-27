@@ -242,12 +242,22 @@ _EXAMPLES: Final[dict[Approach, str]] = {
         '"Sekundarschule"} (Punkte); schulhaeuser.oeffentlich (Ja/Nein); wanderwege (Linien); '
         "orte.name (Gemeinden, Flächen, Text).\n"
         "- Zuerst die Schritte, auf die sich ein räumlicher Schritt bezieht, dann der "
-        'räumliche Schritt: "of", "in", "to" und "with" nennen frühere Schritte, nie den '
-        "eigenen oder einen späteren. Gilt der räumliche Schritt allen Objekten eines Layers, "
-        'nennen sie den Layer mit seinem Namen («Wanderwege» ⇒ "wanderwege").\n'
+        'räumliche Schritt: "of", "in", "to", "with" und "has" nennen frühere Schritte, nie '
+        "den eigenen oder einen späteren. Gilt der räumliche Schritt allen Objekten eines "
+        'Layers, nennen sie den Layer mit seinem Namen («Wanderwege» ⇒ "wanderwege"); '
+        "schreibe dafür keine Bedingung, die alle erfüllen sollen.\n"
+        "- Schränkt die Frage die Objekte ein («Bushaltestellen», «Nebengewässer»), braucht "
+        'es dafür einen "filter"-Schritt; der ganze Layer wäre zu viel.\n'
+        "- Nur der letzte Schritt ist das Ergebnis. Jeder andere Schritt wird von einem "
+        "späteren genannt: Eine weitere Bedingung auf denselben Objekten nimmt den Schritt "
+        'davor in "of", auch eine zweite räumliche; zwei Ergebnisse verbindet kein Schritt.\n'
         "- Ein Ort, der ein Objekt eines anderen Layers ist («in der Altstadt»): ein Schritt "
-        '"filter" auf diesen Layer mit einer Bedingung auf seinen Namen, dann "within". '
-        "Rate nie eine Nummer oder Kennung.\n"
+        '"filter" auf diesen Layer mit einer Bedingung auf seinen Namen, dann "within" mit '
+        'den gesuchten Objekten in "of" und dem Ort in "in". Rate nie eine Nummer, einen '
+        "Code oder eine Kennung, auch keine Gemeindenummer.\n"
+        '- In einem Punkt oder einer Linie liegt nichts: "within" und "outside" nur mit '
+        'Flächen oder einem Puffer in "in". Flächen mit Objekten darin («Quartiere mit einer '
+        'Eiche»): "contains" mit den Flächen in "of" und den Objekten in "has".\n'
         '- Ein Objekt mit Namen (Gemeinde, Quartier, Gewässer, Haltestelle): "compare" mit '
         '"eq" auf den Namen, nie "text_match": «Altstadt» träfe sonst auch «Altstadt-Nord». '
         '"text_match" nur, wenn nach einem Teil gefragt ist («beginnt mit», «enthält»).\n'
@@ -301,6 +311,13 @@ _EXAMPLES: Final[dict[Approach, str]] = {
         '"where":{"op":"compare","attr":"name","cmp":"eq","value":"Altstadt"}}},'
         '{"text":"Wanderwege durch die Altstadt","tool":"intersects","arguments":'
         '{"of":"wanderwege","with":1}}]}\n'
+        "\nFrage: In welchen Quartieren steht eine Eiche?\n"
+        '{"kind":"plan","explanation":"Die Eichen, dann die Quartiere, die eine enthalten.",'
+        '"assumptions":[],"steps":['
+        '{"text":"Eichen","tool":"filter","arguments":{"layer":"baeume",'
+        '"where":{"op":"compare","attr":"art","cmp":"eq","value":"qu"}}},'
+        '{"text":"Quartiere mit einer Eiche","tool":"contains","arguments":'
+        '{"of":"quartiere","has":1}}]}\n'
         "\nFrage: Öffentliche Sekundarschulhäuser\n"
         '{"kind":"plan","explanation":"Sekundarschulhäuser, davon die öffentlichen.",'
         '"assumptions":[],"steps":['

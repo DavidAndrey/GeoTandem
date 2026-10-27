@@ -147,7 +147,7 @@ def tool_list() -> str:
         'in Worten, "arguments" folgt dem Schema des Werkzeugs im JSON-Schema der Antwort. '
         "Ein früherer Schritt wird mit "
         "seiner Nummer genannt (1 ist der erste) und muss vor dem Schritt stehen, der ihn "
-        'nennt. "of", "in", "to" und "with" eines räumlichen Schritts nennen einen früheren '
+        'nennt. "of", "in", "to", "with" und "has" eines räumlichen Schritts nennen einen früheren '
         "Schritt oder einen ganzen Layer mit seinem Namen; für alle Objekte eines Layers "
         f"braucht es keinen eigenen Schritt. Höchstens {MAX_STEPS} Schritte; das Ergebnis des "
         "letzten Schritts ist die "

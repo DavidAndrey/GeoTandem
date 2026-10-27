@@ -193,14 +193,15 @@ def test_the_client_gets_the_output_mode(
 
 FOLLOW_UP_MEASURED = {
     "direct": "21e9e146cb74bbb92d35463f3c96a00585301495d503d81519b5e6c8d54b8e68",
-    "chain": "4097ed865c6514cb1174af242cbe54e8fd8f63d57ebdc731b48829273b55ffb7",
+    "chain": "62d4028b06bbb331b87c3712b906c13e9060361380da08a2339070e4429a26fb",
 }
 """``prompt_hash`` of ``follow_up()`` under the default profile, taken with the
 builder as it was before WP91 (``ep-3`` at the tag ``e3.2``). The chain's taken
 again on purpose: with its answer format per tool (plan-chain-eval, F6;
-``7cf5b3fa…acf``), its rules and worked examples (F10; ``92e17509…669``) and
-a whole layer by name in a spatial step (F11); it was ``3450a1a2…88db``
-before all three."""
+``7cf5b3fa…acf``), its rules and worked examples (F10; ``92e17509…669``), a
+whole layer by name in a spatial step (F11; ``4097ed86…ffb7``) and the tool
+``contains`` with the rules of Phase 2 (F13, F15, F16); it was
+``3450a1a2…88db`` before all of them."""
 
 
 def follow_up() -> FollowUp:

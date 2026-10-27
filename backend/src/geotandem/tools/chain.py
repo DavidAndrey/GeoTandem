@@ -3,8 +3,8 @@
 
 Each wraps an operation the user reaches by hand in Modus A (F-5.8): a
 filter is the condition editor, a buffer the derived layer of design B4, and
-the spatial steps are the spatial rows "liegt in", "ausserhalb", "schneidet"
-and "≤ Distanz". A step **builds or extends a query object**: nothing runs,
+the spatial steps are the spatial rows "liegt in", "ausserhalb", "enthält",
+"schneidet" and "≤ Distanz". A step **builds or extends a query object**: nothing runs,
 nothing is stored, no layer is made. So every chain stays expressible as one
 query object (F-5.7): the result of the last step is the query the user
 adopts, and every intermediate result is a query object too, which the
@@ -95,6 +95,11 @@ class WithinInput[T](_Input):
 class OutsideInput[T](_Input):
     of: T
     in_: T = Field(alias="in")
+
+
+class ContainsInput[T](_Input):
+    of: T
+    has: T
 
 
 class IntersectsInput[T](_Input):
@@ -221,6 +226,13 @@ def _outside(_: ToolContext, args: OutsideInput[QueryObject]) -> QueryObject:
     return _narrowed(_result(args.of, "of"), Not(op="not", arg=_relation(target, "within")))
 
 
+def _contains(_: ToolContext, args: ContainsInput[QueryObject]) -> QueryObject:
+    target = _plain(args.has, "has")
+    if target.buffer is not None:
+        raise NotComposable("has", "an area contains features, not a buffer")
+    return _narrowed(_result(args.of, "of"), _relation(target, "contains"))
+
+
 def _intersects(_: ToolContext, args: IntersectsInput[QueryObject]) -> QueryObject:
     target = _plain(args.with_, "with")
     return _narrowed(_result(args.of, "of"), _relation(target, "intersects"))
@@ -280,16 +292,26 @@ def chain_tools() -> list[Tool[Any, QueryObject]]:
             OpClass.SPATIAL,
             WithinInput[QueryObject],
             _within,
-            "Keep the features of 'of' that lie in a feature of 'in'. In a buffer: within its "
-            "distance; for point (not multipoint) features only.",
+            "Keep the features of 'of' that lie in a feature of 'in'. 'in' holds areas or a "
+            "buffer: nothing lies in a point or a line. In a buffer: within its distance; for "
+            "point (not multipoint) features only.",
         ),
         tool(
             "outside",
             OpClass.SPATIAL,
             OutsideInput[QueryObject],
             _outside,
-            "Keep the features of 'of' that lie in no feature of 'in'. Of a buffer: farther "
-            "than its distance; for point (not multipoint) features only.",
+            "Keep the features of 'of' that lie in no feature of 'in'. 'in' holds areas or a "
+            "buffer. Of a buffer: farther than its distance; for point (not multipoint) "
+            "features only.",
+        ),
+        tool(
+            "contains",
+            OpClass.SPATIAL,
+            ContainsInput[QueryObject],
+            _contains,
+            "Keep the areas of 'of' that contain a feature of 'has' (the areas with such a "
+            "feature in them). 'of' holds areas; 'has' is no buffer.",
         ),
         tool(
             "intersects",

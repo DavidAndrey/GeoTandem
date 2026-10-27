@@ -1604,7 +1604,7 @@
      }
     ]
    ],
-   "refused": null
+   "refused": "not_representable"
   }
  },
  "ks06-muri": {
@@ -1925,10 +1925,11 @@
       "where": {
        "op": "not",
        "arg": {
-        "op": "compare",
+        "op": "in",
         "attr": "verkehrsmittel",
-        "cmp": "eq",
-        "value": "bus"
+        "values": [
+         "bus"
+        ]
        }
       }
      }

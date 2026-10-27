@@ -167,30 +167,39 @@ def test_every_step_is_a_query_object_and_nothing_is_written(world: DataBackend)
 
 
 def test_each_tool_composes_what_modus_a_writes(world: DataBackend) -> None:
-    """The spatial steps are the rows "liegt in", "ausserhalb", "schneidet",
-    "≤ Distanz" (``represent``); a filter narrows an earlier step with ``and``."""
+    """The spatial steps are the rows "liegt in", "ausserhalb", "enthält",
+    "schneidet", "≤ Distanz" (``represent``); a filter narrows an earlier step
+    with ``and``. Each as the last step of its own plan: a plan's other steps
+    are read by a later one (``part: unused``)."""
     gemeinden = ("filter", {"layer": "gemeinden", "where": cmp("gem_nr", "gt", 0)})
-    found = checked(
-        world,
-        steps(
-            SCHOOLS,
-            gemeinden,
-            ("outside", {"of": 1, "in": 2}),
-            ("intersects", {"of": 1, "with": 2}),
-            ("near", {"of": 1, "to": 2, "distance_m": 300}),
-            ("filter", {"of": 1, "where": cmp("standorte", "gt", 1)}),
-            ("buffer", {"of": 2, "distance_m": 100}),
-            ("intersects", {"of": 1, "with": 7}),
-        ),
-    )
-    where = [s.query.model_dump(exclude_none=True)["where"] for s in found]
+
+    def last(*then: tuple[str, Body]) -> CheckedStep:
+        return checked(world, steps(SCHOOLS, gemeinden, *then))[-1]
+
+    def where(step: CheckedStep) -> Any:
+        return step.query.model_dump(exclude_none=True)["where"]
+
     related = {"op": "related", "layer": "gemeinden", "where": cmp("gem_nr", "gt", 0)}
-    assert where[2]["args"][1] == {"op": "not", "arg": {**related, "predicate": "within"}}
-    assert where[3]["args"][1] == {**related, "predicate": "intersects"}
-    assert where[4]["args"][1] == {**related, "predicate": "dwithin", "distance_m": 300}
-    assert where[5] == {"op": "and", "args": [PRIMAR, cmp("standorte", "gt", 1)]}
-    assert found[6].query.buffer is not None and found[6].query.source == "gemeinden"
-    assert where[7]["args"][1] == {**related, "predicate": "dwithin", "distance_m": 100}
+    outside = where(last(("outside", {"of": 1, "in": 2})))
+    assert outside["args"][1] == {"op": "not", "arg": {**related, "predicate": "within"}}
+    intersects = where(last(("intersects", {"of": 1, "with": 2})))
+    assert intersects["args"][1] == {**related, "predicate": "intersects"}
+    near = where(last(("near", {"of": 1, "to": 2, "distance_m": 300})))
+    assert near["args"][1] == {**related, "predicate": "dwithin", "distance_m": 300}
+    contains = last(("contains", {"of": 2, "has": 1}))
+    assert contains.query.source == "gemeinden"
+    assert where(contains)["args"][1] == {
+        "op": "related",
+        "layer": "schulen",
+        "predicate": "contains",
+        "where": PRIMAR,
+    }
+    narrowed = checked(
+        world, steps(SCHOOLS, ("filter", {"of": 1, "where": cmp("standorte", "gt", 1)}))
+    )
+    assert where(narrowed[-1]) == {"op": "and", "args": [PRIMAR, cmp("standorte", "gt", 1)]}
+    buffered = last(("buffer", {"of": 2, "distance_m": 100}), ("intersects", {"of": 1, "with": 3}))
+    assert where(buffered)["args"][1] == {**related, "predicate": "dwithin", "distance_m": 100}
 
 
 def test_a_filter_on_a_buffer_takes_attribute_conditions_only(world: DataBackend) -> None:
@@ -304,6 +313,29 @@ REFUSALS: dict[str, tuple[list[tuple[str, Body]], str, Body]] = {
         "not_representable",
         {"part": "in"},
     ),
+    "areas in points": (
+        [SCHOOLS, ("filter", {"layer": "gemeinden", "where": cmp("gem_nr", "gt", 0)}),
+         ("within", {"of": 2, "in": 1})],
+        "not_representable",
+        {"part": "geometry"},
+    ),
+    "outside lines": (
+        [("filter", {"layer": "gewaesser", "where": cmp("typ", "eq", "haupt")}),
+         ("outside", {"of": "gemeinden", "in": 1})],
+        "not_representable",
+        {"part": "geometry"},
+    ),
+    "points contain": (
+        [("filter", {"layer": "haltestellen", "where": cmp("verkehrsmittel", "eq", "bus")}),
+         ("contains", {"of": "schulen", "has": 1})],
+        "not_representable",
+        {"part": "geometry"},
+    ),
+    "contains a buffer": (
+        [ROADS_B, ("contains", {"of": "gemeinden", "has": 1})],
+        "not_representable",
+        {"part": "has"},
+    ),
     "a buffer buffered": (
         [ROADS_B, ("buffer", {"of": 1, "distance_m": 50})], "not_representable", {"part": "of"}
     ),
@@ -350,6 +382,32 @@ def test_a_refused_step_is_named(world: DataBackend, name: str) -> None:
     assert refusal.code == code
     assert refusal.details["step"] == len(planned)
     assert details.items() <= refusal.details.items()
+
+
+def test_a_step_no_later_one_reads_is_refused_when_the_result_lacks_it(
+    world: DataBackend,
+) -> None:
+    """The result is the last step's (F15): a filter beside it, read by none,
+    is lost and names its step; one whose condition the result repeats, or a
+    buffer whose distance it keeps, loses nothing."""
+    bigger = ("filter", {"layer": "schulen", "where": cmp("standorte", "gt", 2)})
+    refusal = check(world, steps(SCHOOLS, bigger))
+    assert isinstance(refusal, Refusal)
+    assert (refusal.code, refusal.details) == ("not_representable", {"step": 1, "part": "unused"})
+    again = (
+        "filter",
+        {"layer": "schulen", "where": {"op": "and", "args": [PRIMAR, cmp("standorte", "gt", 2)]}},
+    )
+    assert isinstance(check(world, steps(SCHOOLS, again)), list)
+    roads = ("filter", {"layer": "strassen", "where": cmp("klasse", "eq", "kantonsstrasse_b")})
+    kept = check(world, steps(roads, ROADS_B, SCHOOLS, ("within", {"of": 3, "in": 2})))
+    assert isinstance(kept, list)
+    nearer = (
+        "buffer",
+        {"layer": "strassen", "distance_m": 50, "where": cmp("klasse", "eq", "kantonsstrasse_b")},
+    )
+    lost = check(world, steps(nearer, ROADS_B, SCHOOLS, ("within", {"of": 3, "in": 2})))
+    assert isinstance(lost, Refusal) and lost.details == {"step": 1, "part": "unused"}
 
 
 def test_a_reference_names_an_earlier_step(world: DataBackend) -> None:

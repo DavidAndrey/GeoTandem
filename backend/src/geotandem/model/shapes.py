@@ -8,6 +8,10 @@ what its plain form means, and ``represent.to_analysis`` would refuse it
 query is checked; the record keeps the plain query, the answer the model's
 own (design M3), so what the user sees is what runs.
 
+A relation's filter of ``not`` around one comparison is written as the
+comparison it means (``ne`` for ``not eq``): the controls cannot negate a
+relation's filter, but have every comparison operator (plan-chain-eval, F12).
+
 Nothing else is rewritten: a shape that changes the meaning, or one the
 controls cannot show in any form, is still checked and refused as before.
 """
@@ -30,8 +34,24 @@ def _plain(node: Any) -> Any:
             return arg["arg"]
         return {**node, "arg": arg}
     if op == "related" and node.get("where") is not None:
-        return {**node, "where": _plain(node["where"])}
+        return {**node, "where": _affirmed(_plain(node["where"]))}
     return node
+
+
+COMPLEMENT = {"eq": "ne", "ne": "eq", "lt": "ge", "ge": "lt", "le": "gt", "gt": "le"}
+"""A comparison and its negation: the same rows in SQL, where a missing value
+fails both (``NULL = v`` and ``NOT (NULL = v)`` are both unknown)."""
+
+
+def _affirmed(where: Any) -> Any:
+    """A relation's filter ``not`` of one comparison as the comparison it
+    means (plan-chain-eval, F12): the controls show a relation's filter as one
+    row without a NICHT toggle, but with every comparison operator."""
+    if isinstance(where, dict) and where.get("op") == "not":
+        arg = where["arg"]
+        if isinstance(arg, dict) and arg.get("op") == "compare":
+            return {**arg, "cmp": COMPLEMENT[arg["cmp"]]}
+    return where
 
 
 def plain(query: QueryObject) -> QueryObject:

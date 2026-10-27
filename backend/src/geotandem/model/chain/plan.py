@@ -15,14 +15,19 @@ is materialised. In order, each failure a ``Refusal`` naming the step
    features, no condition, checked in 4 as any layer of a query);
 3. a step that cannot extend the query object (``tools.chain``), or relates
    anything but points to a buffer by ``within`` or ``outside`` ⇒
-   ``not_representable`` with the argument as ``part``;
+   ``not_representable`` with the argument as ``part``; ``within`` or
+   ``outside`` of points or lines, ``contains`` on them, whose result the
+   geometry types decide whatever the data ⇒ ``part: geometry`` (F13);
 4. the step's query object in the model's world, as a direct query is
    (``validate.check_query``: the engine's validation, what the controls can
    show, the condition limit); a buffer is validated whole by the engine once,
    and shown as what it buffers;
 5. a chain that ends in a buffer ⇒ ``not_representable``, ``part: buffer``
    (D3): a buffer that feeds a spatial step becomes its distance, but as a
-   result the controls cannot show it.
+   result the controls cannot show it;
+6. a step no later step reads whose conditions the result lacks ⇒
+   ``not_representable``, ``part: unused`` (F15): the result is the last
+   step's, so the plan does not answer what its steps say.
 
 A step's classes (H4) are its tool's (H2) and those of the conditions it
 writes itself; the conditions it takes over from an earlier step are counted
@@ -31,7 +36,8 @@ never by ``classify`` of the last query: the composition turns a buffer into a
 distance and would hide ``derive``. Nothing here runs a query.
 """
 
-from collections.abc import Collection, Iterable, Mapping, Sequence
+import json
+from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Final
 
@@ -47,12 +53,18 @@ from geotandem.model.shapes import plain
 from geotandem.model.validate import NESTED, check_query, invalid, schema_errors
 from geotandem.tools import ToolContext
 from geotandem.tools.chain import NotComposable
-from geotandem_query import QueryObject
+from geotandem_query import And, Condition, QueryObject
 
 POINTS = ("Point",)
 """Geometry types for which lying in a buffer is lying within its distance: a
 multipoint lies in a buffer when all its points do, within its distance when
 one does."""
+
+NO_AREAS: Final = ("Point", "MultiPoint", "LineString", "MultiLineString")
+"""Geometry types no feature lies in and that contain no feature but their own
+kind: ``within`` or ``outside`` of them, and ``contains`` on them, is empty or
+everything whatever the data (plan-chain-eval, F13). A layer of another or of
+no known type is not checked."""
 
 
 @dataclass(frozen=True)
@@ -139,7 +151,46 @@ def check_plan(
         last = checked[-1].position
         message = f"Step {last}: a chain does not end in a buffer; the controls cannot show it."
         return _not_composable("buffer", message, last)
-    return checked[len(done) :]
+    new = checked[len(done) :]
+    if (lost := _lost(new)) is not None:
+        message = f"Step {lost}: no later step reads it, and the result lacks what it adds."
+        return _not_composable("unused", message, lost)
+    return new
+
+
+def _canonical(node: Any) -> str:
+    return json.dumps(node, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def _lost(steps: Sequence[CheckedStep]) -> int | None:
+    """The first of ``steps`` but the last that no later one reads and whose
+    conditions, or buffer distance, the last step's query lacks: the result is
+    the last step's alone, so what that step adds is lost (plan-chain-eval,
+    F15). A step the result repeats (a filter the next step writes again on
+    its layer) loses nothing and passes."""
+    if len(steps) < 2:
+        return None
+    read = {position for s in steps for position in reads(s.step).values()}
+    result = _canonical(steps[-1].query.model_dump(mode="json", by_alias=True))
+    for step in steps[:-1]:
+        if step.position in read:
+            continue
+        parts = [*_parts(step.query.where)]
+        kept = all(_canonical(p.model_dump(mode="json", by_alias=True)) in result for p in parts)
+        if step.query.buffer is not None:
+            kept = kept and f'"distance_m":{_canonical(step.query.buffer.distance_m)}' in result
+        if not kept:
+            return step.position
+    return None
+
+
+def _parts(condition: Condition | None) -> Iterator[Condition]:
+    """``condition`` as the parts of its top-level ``and``."""
+    if isinstance(condition, And):
+        for arg in condition.args:
+            yield from _parts(arg)
+    elif condition is not None:
+        yield condition
 
 
 # --- the user's edit of a plan (design M8.3, decision 17) ------------------------------
@@ -249,6 +300,31 @@ def _not_composable(part: str, message: str, position: int) -> Refusal:
     )
 
 
+def _geometry(
+    tool: str,
+    query: QueryObject,
+    resolved: Mapping[str, Any],
+    profile: ModelProfile,
+    position: int,
+) -> Refusal | None:
+    """A spatial step whose geometry types decide its result whatever the data:
+    ``within`` or ``outside`` of a buffer for anything but points (``in``), of
+    points or lines (``geometry``, F13); ``contains`` on points or lines."""
+    kinds = {layer.name: layer.geometry_type for layer in profile.layers}
+    if tool in ("within", "outside") and resolved["in_"].buffer is not None:
+        if kinds.get(query.source) not in POINTS:
+            reason = "lying in a buffer is lying within its distance for points only"
+            message = f"Step {position}: 'in': {reason}"
+            return _not_composable("in", message, position)
+    elif tool in ("within", "outside") and kinds.get(resolved["in_"].source) in NO_AREAS:
+        message = f"Step {position}: 'in' holds no areas; nothing lies in a point or a line"
+        return _not_composable("geometry", message, position)
+    if tool == "contains" and kinds.get(query.source) in NO_AREAS:
+        message = f"Step {position}: 'of' holds no areas; only an area contains features"
+        return _not_composable("geometry", message, position)
+    return None
+
+
 def _check_step(
     step: PlannedStep,
     position: int,
@@ -286,12 +362,8 @@ def _check_step(
         query: QueryObject = chain.tool.call(context, resolved)
     except NotComposable as exc:
         return _not_composable(exc.part, f"Step {position}: {exc}", position)
-    if chain.name in ("within", "outside") and resolved["in_"].buffer is not None:
-        kinds = {layer.name: layer.geometry_type for layer in profile.layers}
-        if kinds.get(query.source) not in POINTS:
-            reason = "lying in a buffer is lying within its distance for points only"
-            message = f"Step {position}: 'in': {reason}"
-            return _not_composable("in", message, position)
+    if (refused := _geometry(chain.name, query, resolved, profile, position)) is not None:
+        return refused
     query = as_codes(plain(query), profile)
     shown = query.model_copy(update={"buffer": None}) if query.buffer is not None else None
     found = check_query(query, context, profile, shown=shown)

@@ -87,7 +87,7 @@ async def test_schema_and_tools(client: httpx.AsyncClient) -> None:
         "list_layers",
         "describe_layer",
         "run_query",
-        *("filter", "buffer", "within", "outside", "intersects", "near"),  # the chain's (WP74)
+        *("filter", "buffer", "within", "outside", "contains", "intersects", "near"),  # WP74
     ]
 
 

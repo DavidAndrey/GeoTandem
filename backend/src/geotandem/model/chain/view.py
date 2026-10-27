@@ -43,7 +43,7 @@ StepOutcome = int | QueryError | Refusal
 """What became of a step (``run.run_step``): its count, or the engine's error;
 or the checks' refusal of the plan it is in, before anything ran."""
 
-NAME_KEYS: Final = frozenset({"layer", "attr", "of", "in", "to", "with"})
+NAME_KEYS: Final = frozenset({"layer", "attr", "of", "in", "to", "with", "has"})
 """Where a chain step's arguments, conditions included, hold a layer or attribute
 name; a spatial step's references hold one when they name a whole layer (F11),
 a number otherwise, which is no name."""
@@ -52,10 +52,12 @@ PART_KEYS: Final = ("attribute", "layer")
 """Where an error's details name what it is about, the most precise first."""
 
 SCHEMA_PARTS: Final = frozenset(
-    {"layer", "of", "in", "with", "to", "where", "distance_m", "buffer", "related", "source"}
+    {"layer", "of", "in", "with", "to", "has", "where", "distance_m", "buffer", "related", "source"}
+    | {"geometry", "unused"}
 )
 """Words of the tools' schemas and of the query object a refusal may be about:
-the arguments of the chain's tools, and the parts ``not_representable`` names."""
+the arguments of the chain's tools, and the parts ``not_representable`` names,
+the checks' own among them (``geometry``, ``unused``: ``plan.check_plan``)."""
 
 _NAME: Final = TypeAdapter[str](Name)
 

@@ -394,7 +394,7 @@ def test_engine_codes_pass_through(world: DataBackend) -> None:
                 "op": "related",
                 "layer": "gemeinden",
                 "predicate": "within",
-                "where": {"op": "not", "arg": cmp("name", "eq", "Bern")},
+                "where": {"op": "not", "arg": {"op": "in", "attr": "name", "values": ["Bern"]}},
             },
             "related",
         ),

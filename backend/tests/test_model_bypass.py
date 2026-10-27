@@ -893,6 +893,7 @@ TOOL_EFFECTS: dict[str, str] = {
     "buffer": "state",
     "within": "state",
     "outside": "state",
+    "contains": "state",
     "intersects": "state",
     "near": "state",
 }
@@ -1197,7 +1198,7 @@ async def test_walking_every_model_route_writes_the_action_record_only(
     # The chain (WP75): plan, edit, approve, run with a halt and a re-plan, an
     # abort while halted, adopt.
     await choose(client, level_id=levels["Teilautonom"])
-    steps = [SCHOOLS, ("filter", {"of": 1, "where": NOWHERE}), BUFFER, within(1, 3)]
+    steps = [SCHOOLS, ("filter", {"of": 1, "where": NOWHERE}), BUFFER, within(2, 3)]
     with writes(app, written):
         model.fake.script.extend([planned(*steps), planned(MUNICIPALITIES, within(1, 3))])
         asked = await client.post(PROMPT, json={"text": "Schulen", "approach": "chain"})

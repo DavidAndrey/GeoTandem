@@ -1324,7 +1324,7 @@
           ]
         }
       },
-      "note": "Die Direktabfrage kann es (not related intersects), die Kette nicht: «outside» heisst «liegt in keinem», für Flächen gegen Linien also nie. Misst die Lücke der Kette; die Probe zeigt die Falle (alle grossen Gemeinden)."
+      "note": "Die Direktabfrage kann es (not related intersects), die Kette nicht: «outside» heisst «liegt in keinem», für Flächen gegen Linien also nie. Misst die Lücke der Kette; die Probe zeigt die Falle (alle grossen Gemeinden), die die Kette seit plan-chain-eval F13 abweist."
     },
     {
       "id": "ks06-muri",
@@ -1578,7 +1578,7 @@
           }
         }
       ],
-      "note": "Auf dem Bezugslayer geht «ne» oder «in» mit den übrigen Codes; ein «not» weist die Kette ab."
+      "note": "Auf dem Bezugslayer geht «ne» oder «in» mit den übrigen Codes; ein «not» um einen Vergleich liest die Anwendung als dessen Gegenteil («ne», plan-chain-eval F12), ein «not» um ein «in» weist die Kette ab."
     }
   ]
 }

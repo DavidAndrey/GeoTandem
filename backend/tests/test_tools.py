@@ -13,6 +13,7 @@ CHAIN_CLASSES = {
     "buffer": OpClass.DERIVE,
     "within": OpClass.SPATIAL,
     "outside": OpClass.SPATIAL,
+    "contains": OpClass.SPATIAL,
     "intersects": OpClass.SPATIAL,
     "near": OpClass.SPATIAL,
 }
