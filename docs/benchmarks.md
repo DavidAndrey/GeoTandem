@@ -358,3 +358,122 @@ Der Rest sind weitere Codes.
 - **Regel:** Nach der Regel aus plan-chain-eval 8 erreicht weiter kein
   Modell *Fallback*. qwen3:14b liegt mit 24 % Rettung knapp unter der
   Schwelle von 25 %.
+
+## Lauf 8: Luna im Basislauf, Werkzeugkette nach F11 (2026-10-27)
+
+[plan-chain-eval.md](plan-chain-eval.md), Abschnitt 14. Zwei Läufe mit den
+Einstellungen von Lauf 6:
+
+- **Luna im Basislauf** (`b1-*-gpt-6-luna`): die Kette, wie sie ausgeliefert
+  war (Commit `7d1bc35`), und die Direktabfrage. Damit ist der Basislauf aus
+  Lauf 6 vollständig.
+- **Die Kette nach F11** (`b4-k-*`, Commit `f776048`) auf den drei lokalen
+  Modellen. F11: Ein räumlicher Schritt nennt einen ganzen Layer mit seinem
+  Namen. Die Direktabfrage zum Vergleich ist die aus Lauf 6.
+
+Gepaarte Unterschiede: „B und C“ ist der Satz `chain-heldout`, also die
+Bestätigungsfälle beider Gruppen.
+
+### Luna im Basislauf
+
+Bestehensquote, Kette / direkt, beide Blöcke:
+
+| A Tuning | A Bestätigung | B Tuning | B Bestätigung | C Tuning | C Bestätigung |
+|---|---|---|---|---|---|
+| 65 % / 84 % | 62 % / 90 % | 48 % / 77 % | 36 % / 79 % | 40 % / 48 % | 27 % / 49 % |
+
+- **Gepaart, Kette minus direkt:** A −31 Punkte (−44 … −19), B und C −37
+  Punkte (−52 … −23).
+- **Rettung:** Von den Antworten, die die Direktabfrage auf
+  Bestätigungsfällen verfehlt, holt die Kette 10 %.
+- **Still falsch:** Die Kette ist fast nie still falsch: 0,5 % aller
+  Antworten, direkt 7,5 %. Auf B ist die Direktabfrage zu 14 % still
+  falsch.
+- **Erster Plan angenommen:** 75 %. Die abgewiesenen Pläne (205) sind
+  meist schon behoben: 113 durch F11 (ein Schritt nennt sich selbst oder
+  einen Layer statt einer Nummer), 37 durch F6 (erfundener
+  `text_match`-Modus). Offen sind 56 `not_representable` (F12).
+- **Kosten:** Latenz im Median 2,5 / 4,0 s (A / B), direkt 2,3 / 2,5 s.
+  Tokens je richtige Antwort 9 000 / 15 900, direkt 8 700 / 10 900.
+
+### Bestehensquote der Kette nach F11 (vorher → nachher, Direktabfrage)
+
+| Modell | A Bestätigung | B Bestätigung | C Bestätigung | B Tuning |
+|---|---|---|---|---|
+| gemma4:e4b | 56 → 66 % (78 %) | 14 → 25 % (62 %) | 1 → 16 % (40 %) | 21 → 26 % (61 %) |
+| gemma4:12b | 59 → 78 % (86 %) | 36 → 60 % (77 %) | 21 → 31 % (39 %) | 52 → 71 % (64 %) |
+| qwen3:14b | 55 → 58 % (77 %) | 28 → 53 % (58 %) | 29 → 30 % (43 %) | 34 → 58 % (54 %) |
+
+Gepaart je Fall, Kette minus direkt, auf den Bestätigungsfällen:
+
+| Modell | A | B und C |
+|---|---|---|
+| gemma4:e4b | −16 Punkte (−32 … 0) | −34 Punkte (−50 … −16) |
+| gemma4:12b | −13 Punkte (−24 … −3) | −14 Punkte (−34 … +6) |
+| qwen3:14b | −23 Punkte (−37 … −10) | −7 Punkte (−27 … +13) |
+
+Von den Antworten, die die Direktabfrage auf Bestätigungsfällen verfehlt,
+holt die Kette jetzt 24 %, 29 % und 21 % (vorher 12 %, 18 %, 24 %). Nur auf
+A und B gezählt, wie es die Regel verlangt, sind es 31 %, 43 % und 26 %.
+
+### Verhalten (alle Sätze, beide Blöcke; vorher → nachher)
+
+| | gemma4:e4b | gemma4:12b | qwen3:14b |
+|---|---|---|---|
+| pass | 40 → 48 % (direkt 70 %) | 47 → 64 % (direkt 76 %) | 43 → 53 % (direkt 66 %) |
+| still falsch | 8 → 11 % (direkt 6 %) | 10 → 10 % (direkt 8 %) | 16 → 24 % (direkt 16 %) |
+| still falsch, Bestätigung A und B | 15 % (direkt 5 %) | 13 % (direkt 5 %) | 28 % (direkt 15 %) |
+| erster Plan angenommen | 49 → 80 % | 61 → 79 % | 68 → 82 % |
+| nach Korrektur angenommen | 7 → 24 % | 18 → 43 % | 8 → 25 % |
+| mit Re-Plan | 1 → 3 % | 8 → 11 % | 8 → 7 % |
+| Latenz Median | 1,3 → 1,1 s | 2,5 → 2,2 s | 7,4 → 6,4 s |
+| s je richtige Antwort | 5,0 → 3,5 (direkt 1,5) | 6,5 → 4,2 (direkt 1,8) | 17,3 → 12,4 (direkt 5,7) |
+
+Abgewiesene Pläne nach der Korrektur (319 über alle drei Modelle, vorher
+900):
+
+| Fehler | Pläne |
+|---|---:|
+| `not_representable` | 214 |
+| `unknown_attribute` | 59 |
+| `wrong_value_type` | 35 |
+| Schemafehler (`model_query_invalid`) | 6 |
+
+Der Rest sind weitere Codes.
+
+### Die stillen Fehler der Kette
+
+Die zusätzlichen stillen Fehler liegen vor allem auf A, auf Fällen, die die
+Direktabfrage richtig löst. Bei qwen3:14b sind es 156 stille Fehler auf A,
+direkt 63. Mehrere Fälle sind in allen zehn Antworten still falsch, zum
+Beispiel `doc2-gut-erschlossen`, `h26-gemeinden-seilbahn` und
+`h27-gross-mit-sek`.
+
+Zwei Muster:
+
+- **Richtung:** Für „Gemeinden mit einer Seilbahnstation“ schreibt die Kette
+  `within {"of": "gemeinden", "in": 1}`, also Flächen in Punkten. Das ist
+  immer leer. Die Direktabfrage schreibt `related … contains`; die Kette hat
+  dafür kein Werkzeug.
+- **Leeres Ergebnis:** Eine Kette, die mit null Objekten endet, gilt als
+  fertig. Von den stillen Fehlern enden 12 (e4b), 53 (12b) und 96
+  (qwen3:14b) leer. Der erste leere Schritt ist ein `filter` oder ein
+  `within`.
+
+**Ergebnis:**
+- **Luna:** Auf der ausgelieferten Kette verliert Luna wie die lokalen
+  Modelle deutlich gegen die Direktabfrage und rettet zu wenig (10 %). Die
+  meisten abgewiesenen Pläne sind inzwischen behoben. Ein Lauf auf der
+  heutigen Kette steht aus.
+- **F11:** F11 behebt die Schemafehler fast ganz. 79–82 % der ersten Pläne
+  werden angenommen, und die Kette besteht 8–17 Punkte öfter. gemma4:12b
+  besteht B Tuning jetzt öfter als die Direktabfrage (71 % / 64 %).
+  qwen3:14b und gemma4:12b liegen auf B und C nicht mehr gesichert hinter
+  der Direktabfrage.
+- **Still falsch:** Die Kette ist jetzt öfter still falsch als die
+  Direktabfrage, auf den Bestätigungsfällen von A und B etwa dreimal so oft
+  (lokal). Das ist der neue Hauptbefund.
+- **Regel:** Die Rettung erreicht 25 % für alle drei Modelle (auf A und B).
+  Die Klausel zu stillen Fehlern geht aber vor, deshalb ist auf diesem
+  Zwischenstand jedes lokale Modell *nicht empfohlen*. Luna ist es auf der
+  ausgelieferten Kette, weil es zu wenig rettet.

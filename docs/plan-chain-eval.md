@@ -474,3 +474,60 @@ reaches *fallback*.
    silent wrongs), not on the refusals.
 
 Luna's baseline still runs from commit `7d1bc35`.
+
+## 14 Luna's baseline, and the chain after F11 (2026-10-27)
+
+Two runs at the baseline's settings. Figures in [benchmarks.md](benchmarks.md),
+*Lauf 8*.
+- **Luna's baseline:** the chain as shipped (`7d1bc35`) and the direct path.
+  This completes Phase 1's baseline.
+- **The chain after F11:** commit `f776048`, labels `b4-k-*`, on the three
+  local models.
+
+**Luna (baseline):**
+- **Gap to direct:** the chain trails direct about as far as the local
+  models did. Paired, it is −31 points on A and −37 on B and C.
+- **Recovery:** 10 % of direct's confirm failures.
+- **Silent wrongs:** almost none (0.5 % against direct's 7.5 %).
+- **Refusals:** 150 of its 205 refused plans are F11 and F6 shapes, both
+  fixed since.
+
+So Luna's baseline says little about today's chain. *Not recommended* on the
+chain as shipped (recovery below 25 %).
+
+**After F11 (local):**
+- **First plans accepted:** 49/61/68 % → 80/79/82 % (gemma4:e4b,
+  gemma4:12b, qwen3:14b).
+- **Schema refusals:** almost gone (`model_query_invalid`: 6 in all).
+- **Pass, all sets:** 40/47/43 % → 48/64/53 %.
+- **Paired on B and C:** gemma4:12b (−14, interval to +6) and qwen3:14b (−7,
+  interval to +13) are no longer resolved behind direct.
+- **gemma4:12b on B tuning** is ahead of direct (71 % against 64 %).
+- **Recovery of direct's failures on A and B (confirm):** 31/43/26 %, past
+  the 25 % bar for all three.
+- **But silent wrongs rose:** on the A and B confirm cases they are now
+  15/13/28 % against direct's 5/5/15 %. Most of them are on group A, on
+  cases direct gets right.
+
+**Calibration check (section 8):** settled on this state. On B confirm the
+best model passes 60 % and the worst 25 %, so B separates models. The open
+question of section 12 (keep group B) needs no change of cases.
+
+**Classification, on this intermediate state:** every local model is *not
+recommended*. Recovery would make each a fallback, but the silent-wrong
+clause overrides it. No model is a peer: on A every interval stays below
+−noise.
+
+| # | Finding | Evidence | Candidate fix |
+|---|---|---|---|
+| F13 | No step expresses "polygons that contain features". Models write `within {"of": <polygons>, "in": <points>}`, which is always empty; direct writes `related … contains` | `h26-gemeinden-seilbahn` and `h27-gross-mit-sek` silently wrong in 9 and 10 of 10 answers of gemma4:12b; 16 (12b) and 49 (qwen3:14b) silent wrongs whose first empty step is a `within` | A `contains` tool, or `within` taking either direction by the geometry types; a rule and a worked example in the chain prompt |
+| F14 | A chain that ends with no features is taken as the answer | Of the silent wrongs, 12/53/96 end empty (e4b, 12b, qwen3:14b) | An empty step's result shown to the model as such, with one re-plan; or the answer carries a note that the result is empty |
+| F12 | `not_representable` is now the main refusal | 214 of the 319 refusals left after the correction | As in section 13 |
+
+**Next, recommended:**
+1. **Phase 2 failure reading of the silent wrongs.** They now decide the
+   class. F13 and F14 explain part of them, not all.
+2. **F13 and F14**, then a re-run.
+3. **F12.**
+4. **Luna on the current chain:** one block of the confirm sets, to know
+   whether an external model clears the bar. That costs roughly USD 1–2.
