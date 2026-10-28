@@ -821,3 +821,46 @@ chain runs as fallback:
 1. **Per-model prompts (Phase 4)**, starting with the qwen models, whose
    silent wrongs keep them out, and gemma4:12b (F19).
 2. **Haiku as peer:** only a larger B set can resolve it; the seeds cannot.
+
+### F21: the plan checked against its question (2026-10-28)
+
+The main silent cause, a condition of the question the plan drops (F17), can
+be checked after all, from the question's side: commit `e278945`
+(`model/chain/cover.py`). The question's text is searched for what the layer
+profile names, nothing else: codes of confirmed code lists and boolean
+attributes by their stem («Bus», «Hauptgewässer», «französisch»,
+«Sekundarstufe»), and distances («300 m», «2 km»). The plan carries one when
+it writes the code, a condition on the same attribute (a complement: «weder
+Bus noch Tram» as the other codes), a single feature by its name («der
+Bahnhof Bern»), or the distance within 1 %. A plan that lacks one is refused
+(`not_representable`, `part: missing`) and corrected once; the model is told
+the attribute, a name of the profile, never a value.
+
+**On the recorded `b6` answers** (all six models): 232 of 737 silent wrongs
+caught (gemma4:e4b 82, gemma4:12b 22, qwen3:14b 59, qwen3.5:9b 62, Luna 7,
+Haiku 0); of 5577 passes 3 refused, each a plan that drops the condition and
+passes by chance («near all stops» for «near bus stops»).
+
+**Tuning check (`t21`, seed block 1, against `b6` on the same seeds):**
+
+| Model, set | Pass | Silent wrong | Refused |
+|---|---|---|---|
+| gemma4:e4b, chain | 27 → 30 | 12 → 1 | 9 → 20 |
+| gemma4:e4b, cases | 90 → 91 | 2 → 4 | 31 → 29 |
+| qwen3:14b, chain | 36 → 38 | 16 → 7 | 18 → 24 |
+| qwen3:14b, cases | 98 → 100 | 20 → 17 | 25 → 27 |
+
+On the multi-step questions the silent wrongs fall by more than half; the
+caught plans become a corrected pass or an honest refusal, and passes do not
+drop. On the simple questions nothing changes beyond noise: qwen3:14b's silent
+wrongs there are mostly invented conditions, which the check does not see.
+
+| # | Finding | Evidence | Fix |
+|---|---|---|---|
+| F21 | A plan that drops a condition the question names (code, flag, distance) passes the checks | 232 of 737 silent wrongs of `b6`; 3 of 5577 passes, all by chance | Done in `e278945`; the classification needs a fresh confirm block |
+
+**Next:** a confirm block with F21 (the confirm sets, seeds from 16, chain
+only, against `b6-d`) re-classifies the local models. The qwen models'
+remaining silent wrongs are invented conditions: option 3 of the
+improvements, real values in the prompt (see
+[plan-improve-examples.md](plan-improve-examples.md)).
