@@ -914,3 +914,81 @@ is a little wider than the seed-paired count in the table above
 2. **Examples per question**, as planned in
    [plan-improve-examples.md](plan-improve-examples.md), starting with the
    harness experiment.
+
+## 17 Direct and the chain combined (2026-10-28)
+
+Two options of the improvement list were read again against the code and
+the runs before any work on them.
+
+**Real values for invented conditions: not as proposed.**
+- The profile already carries every confirmed code list and range
+  (`catalog.profile`); a tool listing an attribute's distinct values reads
+  data contents, which S1 / F-9.3 keep out of the profile and C6 allows only
+  on a connection that may receive them (local by default).
+- The invented conditions are not values the model lacks. `typ ne spezial`
+  uses a real code of `schulen.typ` («Nur besondere Förderung»): a
+  catch-all nobody asked for. `gem_nr = 1 / 1000 / 0` comes from questions
+  naming a commune (Münsingen, Köniz, Bern, Wohlen); `gem_nr` is a key
+  without a code list, and the right plan filters `gemeinden.name`.
+- Their share of the silent wrongs of `b7`: gemma4:e4b 3 of 19, gemma4:12b
+  4 of 14, qwen3:14b 17 of 31, qwen3.5:9b 4 of 44. They explain qwen3:14b,
+  not qwen3.5:9b.
+- Instead: a check for conditions the question does not ask for (F21 the
+  other way round): a compare on a key attribute with a number not in the
+  question, a `ne` or `not` on a code the question does not name. No data
+  contents, so external connections too. Not built.
+
+**The A gap, read again on `b7`.** Over the 36 A cases with a chain run the
+chain is 15 points below direct. About three quarters of it is one shape,
+«features in a named area»: h15–h17 (schools in Münsingen, direct 88–100 %,
+chain 25–40 %), h22 (tram in Bern, 70 / 10 %), h18 (three communes), h30
+(Köniz), h25 (outside Bern and Köniz). Direct writes it as one `related` to
+`gemeinden` with `name = …`; the chain needs two steps, the area filtered by
+name and `within` of the subject in it, and fails three ways:
+- the gemma models ask back («die Gemeinde Münsingen oder …?»);
+- qwen3:14b reverses the arguments (`within` of the commune in `schulen`)
+  or relates to the whole layer `gemeinden` and drops the name, which F21
+  cannot see (a name is data, not in the profile);
+- qwen3.5:9b filters the subject alone, by `name` or a guessed `gem_nr`.
+
+h34 and h38 are behaviour cases where the chain answers with a plan: a
+question of routing, not of the chain's steps.
+
+**A direct query as a chain step: dropped.** Every chain compiles to one
+query object (F-5.7), so a step holding a whole query adds nothing direct
+cannot write, and a step related to must stay plain, so it could only be the
+subject. It would close the A gap where the chain answers alone; with the
+chain as fallback, A is answered by direct. The shape is better served by an
+example («features in commune X») and a rule against asking back when a name
+matches a layer, both within [plan-improve-examples.md](plan-improve-examples.md).
+
+**Combinations, simulated.** On `b6-d` (seeds 1–15) × `b7-k` (16–20), every
+pair per case, query cases only (A 30, B 18, C 3; C left out below).
+Agreement is the same count, a proxy. Pass / silent in %:
+
+| | gemma4:e4b | gemma4:12b | qwen3:14b | qwen3.5:9b |
+|---|---|---|---|---|
+| D: direct alone | A 82/4 · B 59/16 | A 91/2 · B 76/13 | A 80/7 · B 58/33 | A 77/7 · B 43/3 |
+| F: fallback (today) | A 86/4 · B 70/16 | A 92/2 · B 83/13 | A 85/12 · B 61/38 | A 82/10 · B 59/11 |
+| H: the chain checks direct | A 85/2 · B 63/9 | A 92/1 · B 83/7 | A 84/4 · B 58/17 | A 78/1 · B 48/2 |
+
+- **F** keeps the best pass.
+- **H** shows direct's answer and runs the chain beside it; when their
+  results differ, the answer is marked uncertain («Die schrittweise Prüfung
+  kam auf N statt M Treffer») with the chain's plan offered. Pass in H
+  counts marked correct answers. It about halves the silent wrongs
+  (qwen3:14b B 33 → 17, gemma4:e4b B 16 → 9, gemma4:12b B 13 → 7). The
+  cost: a mark on 3–9 % of correct answers for the gemma models, up to 15 %
+  (qwen3.5:9b, A); a mark is right 30–77 % of the time; about twice the
+  model time, which can run after direct's result is shown.
+- **G**, both run and both shown when they differ, puts 5–24 % of answers
+  to the user as a choice; worse than H.
+
+**The exact measure (`b8-*`).** A run record now keeps the answer's feature
+ids (`hits`, commit `8ff8417`), so direct and chain compare on features.
+`b8-d-*` and `b8-k-*`: the four local models, the confirm sets, direct and
+chain on the same seeds 21–25. H is then read per (case, seed) pair: pass,
+silent, marks on correct and on wrong answers, model time. Proposed rule,
+to be confirmed before the reading:
+- H is worth building for a model when its silent wrongs on A+B fall by at
+  least a third against F, with marks on at most 10 % of correct answers.
