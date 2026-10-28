@@ -691,3 +691,44 @@ Modell:
 Die beiden qwen-Modelle machen aus einer ehrlichen Absage etwa so oft eine
 stille falsche Zahl wie eine richtige Antwort. **Gesamturteil: erfüllt.**
 Lokal sind gemma4:e4b und gemma4:12b Rückfall, extern Luna und Haiku.
+
+## Lauf 11: die Kette mit Abdeckungsprüfung (F21), 2026-10-28
+
+Die Kette prüft jetzt, ob der Plan jede Bedingung der Frage trägt (Code,
+Merkmal, Distanz), und lässt ihn sonst einmal korrigieren (F21, Commit
+`e278945`). Ein neuer Bestätigungsblock: Saaten 16–20, nur Kette, die vier
+lokalen Modelle, verglichen mit der Direktabfrage aus Lauf 10 (15 Saaten).
+Luna und Haiku liefen nicht erneut: Die Prüfung hätte bei ihnen 7 und 0
+stille Fehler gefangen.
+
+### Bestehensquote (Kette Lauf 10 → Lauf 11 / direkt)
+
+| Modell | A | B | C |
+|---|---|---|---|
+| gemma4:e4b | 62 → 63 / 78 | 30 → 43 / 59 | 20 → 29 / 48 |
+| gemma4:12b | 75 → 76 / 85 | 61 → 60 / 76 | 21 → 14 / 46 |
+| qwen3:14b | 67 → 68 / 76 | 49 → 54 / 58 | 30 → 29 / 43 |
+| qwen3.5:9b | 57 → 60 / 71 | 39 → 42 / 43 | 9 → 17 / 24 |
+
+### Einordnung (A und B, wo die Direktabfrage sichtbar scheitert)
+
+| Modell | Kette dort richtig | Kette dort still falsch | Einordnung |
+|---|---|---|---|
+| gemma4:e4b | 33 → 43 % (17 … 68) | 11 → 0 % (0 … 1) | **Rückfall** |
+| gemma4:12b | 35 → 41 % (6 … 81) | 5 → 4 % (0 … 13) | **Rückfall** |
+| qwen3:14b | 27 → 30 % (7 … 66) | 30 → 37 % (0 … 69) | *nicht empfohlen* |
+| qwen3.5:9b | 29 → 28 % (15 … 42) | 30 → 15 % (7 … 26) | *nicht empfohlen* |
+
+Beide Ketten sind hier gleich geschätzt (je Fall, Bootstrap über Fälle);
+die Werte von Lauf 10 weichen darum leicht vom Nachtrag oben ab.
+
+- **gemma4:e4b** gewinnt am meisten: B steigt um 13 Punkte, und dort, wo
+  die Direktabfrage scheitert, antwortet die Kette nicht mehr still falsch.
+- **gemma4:12b** bleibt im Rauschen gleich; der Rückgang bei C sind etwa
+  zwei Antworten auf zwei Fällen.
+- **qwen3.5:9b** halbiert seine stillen Fehler, bleibt aber mit 26 % über
+  der Grenze von 20 %.
+- **qwen3:14b** erfindet vor allem Bedingungen; das sieht die Prüfung nicht.
+- **Gesamturteil: erfüllt**, unverändert. Nächster Schritt: echte Werte
+  oder Beispiele je Frage im Prompt
+  ([plan-improve-examples.md](plan-improve-examples.md)).

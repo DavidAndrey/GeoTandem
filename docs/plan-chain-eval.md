@@ -864,3 +864,53 @@ only, against `b6-d`) re-classifies the local models. The qwen models'
 remaining silent wrongs are invented conditions: option 3 of the
 improvements, real values in the prompt (see
 [plan-improve-examples.md](plan-improve-examples.md)).
+
+### The confirm block with F21 (`b7-k-*`, 2026-10-28)
+
+The four local models, on the confirm sets, with seeds 16–20 (one block of
+5, chain only), against `b6-d` (direct, 15 seeds). Both chains are measured
+the same way: per case, direct's visible failures weighted by the chain's
+outcome shares on that case, bootstrap over cases. For `b6` this estimator
+is a little wider than the seed-paired count in the table above
+(gemma4:e4b silent 11 % (3 … 23) against 9 % (3 … 19)).
+
+**Pass, chain / direct:**
+
+| Model | A | B | C |
+|---|---|---|---|
+| gemma4:e4b | 62 → 63 / 78 | 30 → 43 / 59 | 20 → 29 / 48 |
+| gemma4:12b | 75 → 76 / 85 | 61 → 60 / 76 | 21 → 14 / 46 |
+| qwen3:14b | 67 → 68 / 76 | 49 → 54 / 58 | 30 → 29 / 43 |
+| qwen3.5:9b | 57 → 60 / 71 | 39 → 42 / 43 | 9 → 17 / 24 |
+
+**Silent wrongs (A+B) and the fallback measure:**
+
+| Model | Silent, chain / direct | Paired, chain − direct | On direct's visible failures: pass | … silent | Class |
+|---|---|---|---|---|---|
+| gemma4:e4b | 12.8 → 7.0 / 7.5 % | +5.3 → −0.5 (−7.2 … +6.3) | 33 → 43 % (17 … 68) | 11 → 0 % (0 … 1) | **fallback** |
+| gemma4:12b | 5.7 → 4.8 / 5.4 % | +0.2 → −0.6 (−8.1 … +6.8) | 35 → 41 % (6 … 81) | 5 → 4 % (0 … 13) | **fallback** |
+| qwen3:14b | 14.8 → 11.5 / 14.8 % | +0.0 → −3.3 (−14.1 … +7.7) | 27 → 30 % (7 … 66) | 30 → 37 % (0 … 69) | *not recommended* |
+| qwen3.5:9b | 21.7 → 15.2 / 4.9 % | +16.8 → +10.2 (+3.2 … +17.5) | 29 → 28 % (15 … 42) | 30 → 15 % (7 … 26) | *not recommended* |
+
+- **gemma4:e4b** gains most: on direct's visible failures the chain no longer
+  answers silently wrong at all, and B rises by 13 points. Its fallback is
+  now clear, not narrow.
+- **gemma4:12b** is unchanged within noise. Its drop on C (21 → 14 %) is
+  about 5 passes in 35 against 7 expected, on two cases (ks11, ks12, mostly
+  `replan_limit`); one block of 5 seeds cannot tell it from noise.
+- **qwen3:14b:** silent wrongs fall overall (−3.3 points paired), but not on
+  direct's visible failures, where a few cases dominate (interval 0 … 69).
+  Its silent wrongs are mostly invented conditions, which F21 does not see.
+- **qwen3.5:9b** halves its silent wrongs on direct's visible failures
+  (30 → 15 %), but the upper bound (26 %) is still above 20 %.
+- **Peer:** none; A stays 9–15 points below direct for every local model.
+- **Global verdict: met**, unchanged: local fallback gemma4:e4b and
+  gemma4:12b; Luna and Haiku were not re-run (F21 caught 7 and 0 of their
+  silent wrongs).
+
+**Next, recommended:**
+1. **Invented conditions** (qwen3:14b, qwen3.5:9b): real values in the
+   prompt, option 3 of the improvements, or per-model prompts (Phase 4).
+2. **Examples per question**, as planned in
+   [plan-improve-examples.md](plan-improve-examples.md), starting with the
+   harness experiment.
