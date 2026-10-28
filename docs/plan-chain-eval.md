@@ -301,6 +301,27 @@ Rules for the rule:
   local model reaches it, the chain is offered for external connections only
   and the report says so.
 
+**Amended 2026-10-28 (F20), after the results of `b6` (section 16).** The
+silent-wrong clause as frozen asked for another seed block whenever its
+interval contained 0 and was wider than the noise. The width comes from the
+cases, not the seeds (a third block moved it by 0.2 points), so the rule
+never ended. The clause is now split by class:
+- **Peer:** the chain replaces direct, so its silent wrongs count on every
+  case. Paired per case, chain minus direct, the upper bound of the 95 %
+  interval must stay below **+5 points** (a non-inferiority margin).
+- **Fallback:** the chain runs only after a *visible* failure of direct (a
+  refusal, an error, a wrong answer that states an assumption); a silent
+  wrong of direct never reaches it. Measured on those answers, A and B
+  confirm: the chain passes **≥ 25 %** of them, and its silent wrongs there
+  stay at **≤ 20 %** (upper bound of a 95 % bootstrap over cases). This
+  replaces the recovery bar over all of direct's failures.
+- **Not recommended:** neither, as before.
+
+Results seen when this was decided: the classification of section 16 and
+its silent-wrong intervals. No threshold above changes a class against the
+nearest alternative tried (a ratio of three passes per silent wrong gives
+the same classes).
+
 ## 9 Order and rough effort
 
 | Step | Content | Effort |
@@ -769,11 +790,34 @@ are safe failures, mostly; they explain 12b's lower A and B against `b5`.
 | # | Finding | Evidence | Candidate fix |
 |---|---|---|---|
 | F19 | After F17, gemma4:12b asks for clarification or declines where it planned before | `kind` verdicts on heldout 8 → 44 (blocks 1 and 6); `h22` 5 → 0, `h27` 5 → 0 passes | Per-model prompt (Phase 4); look at which F17 sentence it reads as doubt |
-| F20 | The silent-wrong clause of section 8 cannot be resolved by more seed blocks | Interval width unchanged by a third block (12b ±6.6 → ±6.4, qwen3:14b ±9.7 → ±9.5) | Decide: the clause fires only when the lower bound is above 0 |
+| F20 | The silent-wrong clause of section 8 cannot be resolved by more seed blocks | Interval width unchanged by a third block (12b ±6.6 → ±6.4, qwen3:14b ±9.7 → ±9.5) | Decided 2026-10-28: the clause split by class, section 8 amended (below) |
+
+### The classification under the amended rule (F20)
+
+On A and B confirm, three blocks, 810 answers per model. *Visible failures*
+are direct's answers that neither pass nor are silently wrong; on them the
+chain runs as fallback:
+
+| Model | Direct: visible failures / silent | Chain on them: pass | Chain on them: silent | Class |
+|---|---|---|---|---|
+| gemma4:e4b | 149 / 61 | 33 % (11 … 55) | 9 % (3 … 19) | **fallback** |
+| gemma4:12b | 77 / 44 | 35 % (12 … 70) | 5 % (0 … 11) | **fallback** |
+| qwen3:14b | 101 / 120 | 25 % (4 … 54) | 31 % (10 … 55) | *not recommended* |
+| qwen3.5:9b | 253 / 40 | 29 % (15 … 44) | 31 % (18 … 46) | *not recommended* |
+| gpt-6-luna | 50 / 58 | 72 % (37 … 100) | 6 % (0 … 14) | **fallback** |
+| claude-haiku-5-5 | 45 / 0 | 67 % (27 … 100) | 0 % | **fallback** |
+
+- **qwen3:14b and qwen3.5:9b** turn about as many visible failures into
+  silent wrongs as into passes. As a fallback they would replace an honest
+  failure with a wrong number one time in three.
+- **gemma4:e4b** clears the silent bar narrowly (upper bound 19 %).
+- **Peer:** only Haiku meets the B floor of 70 % with its own A; its silent
+  wrongs pass the new margin (0 against 0), but A (±3.8 against a noise of
+  ±1) and the B sign test (p 0.12) stay unresolved.
+- **Global verdict: met.** Local fallback: gemma4:e4b, gemma4:12b;
+  external fallback: gpt-6-luna, claude-haiku-5-5.
 
 **Next, recommended:**
-1. **Decide F20.** It settles the classification of the three local models
-   without another run.
-2. **Per-model prompts (Phase 4)**, starting with gemma4:12b (F19) and
-   qwen3.5:9b, whose silent wrongs make the chain unsafe as it is.
-3. **Haiku as peer:** only a larger B set can resolve it; the seeds cannot.
+1. **Per-model prompts (Phase 4)**, starting with the qwen models, whose
+   silent wrongs keep them out, and gemma4:12b (F19).
+2. **Haiku as peer:** only a larger B set can resolve it; the seeds cannot.

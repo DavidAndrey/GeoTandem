@@ -662,3 +662,32 @@ meist sichere Fehler.
   Lesart von F20 sind gemma4:e4b, gemma4:12b und qwen3:14b Rückfall,
   qwen3.5:9b nicht empfohlen.
 - **Nächster Schritt:** F20 entscheiden, dann Prompts je Modell (Phase 4).
+
+### Nachtrag: Einordnung nach der geänderten Regel (F20)
+
+Entschieden am 2026-10-28. Die Regel trennt jetzt nach Klasse
+([plan-chain-eval.md](plan-chain-eval.md), Abschnitt 8):
+
+- **Gleichwertig:** Die Kette ersetzt die Direktabfrage. Gepaart je Fall
+  darf sie höchstens 5 Punkte öfter still falsch antworten (obere Grenze
+  des Intervalls).
+- **Rückfall:** Die Kette läuft nur, wenn die Direktabfrage sichtbar
+  scheitert (Absage, Fehler, falsche Antwort mit Annahme). Auf diesen
+  Antworten muss sie mindestens 25 % retten und darf höchstens 20 % still
+  falsch beantworten (obere Grenze des Intervalls).
+
+Auf den Bestätigungsfällen von A und B, drei Blöcke, 810 Antworten je
+Modell:
+
+| Modell | direkt sichtbar gescheitert / still falsch | Kette dort richtig | Kette dort still falsch | Einordnung |
+|---|---|---|---|---|
+| gemma4:e4b | 149 / 61 | 33 % (11 … 55) | 9 % (3 … 19) | **Rückfall** |
+| gemma4:12b | 77 / 44 | 35 % (12 … 70) | 5 % (0 … 11) | **Rückfall** |
+| qwen3:14b | 101 / 120 | 25 % (4 … 54) | 31 % (10 … 55) | *nicht empfohlen* |
+| qwen3.5:9b | 253 / 40 | 29 % (15 … 44) | 31 % (18 … 46) | *nicht empfohlen* |
+| gpt-6-luna | 50 / 58 | 72 % (37 … 100) | 6 % (0 … 14) | **Rückfall** |
+| claude-haiku-5-5 | 45 / 0 | 67 % (27 … 100) | 0 % | **Rückfall** |
+
+Die beiden qwen-Modelle machen aus einer ehrlichen Absage etwa so oft eine
+stille falsche Zahl wie eine richtige Antwort. **Gesamturteil: erfüllt.**
+Lokal sind gemma4:e4b und gemma4:12b Rückfall, extern Luna und Haiku.
