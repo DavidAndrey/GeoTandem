@@ -243,11 +243,16 @@ _EXAMPLES: Final[dict[Approach, str]] = {
         "orte.name (Gemeinden, Flächen, Text).\n"
         "- Zuerst die Schritte, auf die sich ein räumlicher Schritt bezieht, dann der "
         'räumliche Schritt: "of", "in", "to", "with" und "has" nennen frühere Schritte, nie '
-        "den eigenen oder einen späteren. Gilt der räumliche Schritt allen Objekten eines "
-        'Layers, nennen sie den Layer mit seinem Namen («Wanderwege» ⇒ "wanderwege"); '
+        "den eigenen oder einen späteren.\n"
+        "- Schränkt die Frage Objekte ein («Bushaltestellen», «Nebengewässer», «öffentliche "
+        'Schulhäuser»), gibt es dafür einen "filter"-Schritt, und der räumliche Schritt nennt '
+        'ihn mit seiner Nummer: «Bushaltestellen im Puffer» ⇒ "of": <Nummer des Filters>, nie '
+        '"of": "haltestellen". Das gilt auch für die gesuchten Objekte selbst, nicht nur für '
+        "die anderen. Prüfe jeden räumlichen Schritt: Was sein Text einschränkt, muss der "
+        "genannte Schritt schon enthalten.\n"
+        "- Nur wenn die Frage alle Objekte eines Layers meint, ohne Einschränkung, nennt der "
+        'räumliche Schritt den Layer mit seinem Namen («Wanderwege» ⇒ "wanderwege"); '
         "schreibe dafür keine Bedingung, die alle erfüllen sollen.\n"
-        "- Schränkt die Frage die Objekte ein («Bushaltestellen», «Nebengewässer»), braucht "
-        'es dafür einen "filter"-Schritt; der ganze Layer wäre zu viel.\n'
         "- Nur der letzte Schritt ist das Ergebnis. Jeder andere Schritt wird von einem "
         "späteren genannt: Eine weitere Bedingung auf denselben Objekten nimmt den Schritt "
         'davor in "of", auch eine zweite räumliche; zwei Ergebnisse verbindet kein Schritt.\n'
@@ -263,7 +268,8 @@ _EXAMPLES: Final[dict[Approach, str]] = {
         '"text_match" nur, wenn nach einem Teil gefragt ist («beginnt mit», «enthält»).\n'
         "- Linien (Strassen, Flüsse, Wege) zu Flächen: «durch», «entlang», «in» heisst "
         '"intersects"; "within" nur, wenn die Linie ganz in der Fläche liegen soll.\n'
-        '- Nähe: "near" mit "distance_m". «Weiter als» von Punkten: "buffer" um die anderen '
+        '- Nähe: "near" mit "distance_m", immer grösser als 0; ein Abstand von 0 ist '
+        '"intersects". «Weiter als» von Punkten: "buffer" um die anderen '
         'Objekte und "outside". Ohne Zahl («nahe», «in der Nähe») nimm 300 m an und nenne '
         'es als Annahme. "near_feature" meint ein einzelnes Objekt mit bekannter fid; du '
         "kennst keine fids, verwende es nicht.\n"
@@ -303,6 +309,17 @@ _EXAMPLES: Final[dict[Approach, str]] = {
         '{"text":"Linden","tool":"filter","arguments":{"layer":"baeume",'
         '"where":{"op":"compare","attr":"art","cmp":"eq","value":"ti"}}},'
         '{"text":"Linden ausserhalb des Puffers","tool":"outside","arguments":{"of":2,'
+        '"in":1}}]}\n'
+        "\nFrage: Öffentliche Schulhäuser im 500-m-Puffer um Eichen\n"
+        '{"kind":"plan","explanation":"Ein Puffer von 500 m um die Eichen, die öffentlichen '
+        'Schulhäuser, dann die öffentlichen Schulhäuser im Puffer.","assumptions":[],'
+        '"steps":['
+        '{"text":"500 m um Eichen","tool":"buffer","arguments":{"layer":"baeume",'
+        '"distance_m":500,"where":{"op":"compare","attr":"art","cmp":"eq","value":"qu"}}},'
+        '{"text":"Öffentliche Schulhäuser","tool":"filter","arguments":{"layer":'
+        '"schulhaeuser","where":{"op":"compare","attr":"oeffentlich","cmp":"eq",'
+        '"value":true}}},'
+        '{"text":"Öffentliche Schulhäuser im Puffer","tool":"within","arguments":{"of":2,'
         '"in":1}}]}\n'
         "\nFrage: Welche Wanderwege führen durch die Altstadt?\n"
         '{"kind":"plan","explanation":"Das Quartier Altstadt, dann die Wanderwege, die es '
