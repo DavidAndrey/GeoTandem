@@ -166,7 +166,10 @@ A chain record has these fields besides the direct ones:
 `prompt_tokens` and `completion_tokens` are the calls' sums. The header adds
 `approach` and `replan_sha256`, a hash over the re-plan message. `flags`
 (`no_assumption`, `zero_hits`) is written for every `wrong` answer of either
-approach: `wrong` with `no_assumption` is *silently wrong*. `regrade.py`
+approach: `wrong` with `no_assumption` is *silently wrong*. `hits`, the
+answer's feature ids, is written where grading read them (a query case
+answered with a result, either approach), so two runs can be compared on
+their features, not their counts (plan-chain-eval 17). `regrade.py`
 refuses chain runs, since grading a chain again means running its steps
 again.
 

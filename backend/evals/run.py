@@ -362,6 +362,8 @@ def main() -> int:
                     record |= kept
                     if graded_as.flags:
                         record["flags"] = list(graded_as.flags)
+                    if graded_as.hits is not None:
+                        record["hits"] = graded_as.hits
                 except LLMError as exc:
                     verdict = errored(exc.code).tag
                     record |= {"cause": exc.cause, "retries": exc.retries}
