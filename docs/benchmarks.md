@@ -579,3 +579,86 @@ wenigen Fällen liegen.
   Gegenstand der Frage als ganzen Layer.
 - **Nächster Schritt:** Ein dritter Saatblock auf den Bestätigungsfällen
   entscheidet, ob gemma4:12b und qwen3:14b als Rückfall gelten.
+
+## Lauf 10: Werkzeugkette nach F17, sechs Modelle (2026-10-28)
+
+[plan-chain-eval.md](plan-chain-eval.md), Abschnitt 16. Die Kette nach dem
+Commit `a29d781` (`b6-*`). Der Commit bringt:
+
+- **F17:** Schränkt die Frage den Gegenstand ein („Bushaltestellen“), gibt es
+  dafür einen `filter`-Schritt, und der räumliche Schritt nennt ihn mit
+  seiner Nummer. Mit Beispielplan.
+- **F18:** `near` braucht einen Abstand über 0; ein Abstand von 0 ist
+  `intersects`.
+
+Sechs Modelle: gemma4:e4b, gemma4:12b, qwen3:14b und qwen3.5:9b (lokal, wie
+Lauf 6), gpt-6-luna (wie Lauf 8) und claude-haiku-5-5 (wie Lauf 3). Die
+Bestätigungssätze laufen in drei Saatblöcken (1, 6, 11), Kette und eine
+frische Direktabfrage. Die Tuning-Sätze laufen in zwei Blöcken, nur die
+Kette.
+
+### Bestehensquote auf den Bestätigungsfällen (Kette / direkt)
+
+| Modell | A | B | C |
+|---|---|---|---|
+| gemma4:e4b | 62 / 78 % | 30 / 59 % | 20 / 48 % |
+| gemma4:12b | 75 / 85 % | 61 / 76 % | 21 / 46 % |
+| qwen3:14b | 67 / 76 % | 49 / 58 % | 30 / 43 % |
+| qwen3.5:9b | 57 / 71 % | 39 / 43 % | 9 / 24 % |
+| gpt-6-luna | 82 / 87 % | 87 / 79 % | 47 / 50 % |
+| claude-haiku-5-5 | 98 / 98 % | 94 / 87 % | 70 / 56 % |
+
+### Einordnung nach der Regel
+
+Gepaart je Fall, Kette minus direkt, 95-%-Bootstrap-Intervall. Still falsch
+auf den Bestätigungsfällen von A und B (54 Fälle):
+
+| Modell | A gepaart | still falsch, Kette / direkt | still falsch, gepaart | erster Plan angenommen | Rettung A+B | Einordnung |
+|---|---|---|---|---|---|---|
+| gemma4:e4b | −19,4 (−34,8 … −4,3) | 12,8 / 7,3 % | +5,3 (−1,7 … +12,5) | 67 % | 35 % | *nicht entschieden* |
+| gemma4:12b | −14,8 (−26,9 … −4,1) | 5,7 / 5,2 % | +0,2 (−6,5 … +6,3) | 79 % | 41 % | *nicht entschieden* |
+| qwen3:14b | −13,3 (−28,1 … +0,9) | 14,8 / 14,3 % | +0,0 (−9,5 … +9,5) | 75 % | 33 % | *nicht entschieden* |
+| qwen3.5:9b | −17,0 (−29,8 … −3,9) | 21,7 / 4,8 % | +16,8 (+9,1 … +24,7) | 64 % | 32 % | *nicht empfohlen* |
+| gpt-6-luna | −9,1 (−20,9 … +2,0) | 2,0 / 6,9 % | −5,2 (−11,2 … −0,2) | 89 % | 75 % | **Rückfall** |
+| claude-haiku-5-5 | 0,0 (−3,7 … +3,9) | 0 / 0 % | 0 | 93 % | 67 % | **Rückfall**; gleichwertig *nicht entschieden* |
+
+- **Haiku** erfüllt alle Bedingungen für „gleichwertig“ bis auf zwei. Auf A
+  liegt das Intervall um 0, ist aber ±3,8 Punkte breit, das Rauschen nur ±1.
+  Auf B ist die Kette vorn (+6,7, Intervall +0,7 … +15,9), der Vorzeichentest
+  aber nicht signifikant (p 0,12).
+- **Luna** ist das erste Modell, dessen Kette deutlich weniger still falsch
+  antwortet als seine Direktabfrage.
+- **qwen3.5:9b** antwortet in der Kette viermal so oft still falsch wie
+  direkt.
+- Latenz und Kosten: Die Kette braucht im Median höchstens 1,7-mal so lange
+  wie direkt, je richtige Antwort höchstens 2,6-mal so viele Sekunden.
+
+**Die Klausel zu stillen Fehlern wird mit Saatblöcken nicht entschieden.**
+Bei gemma4:12b und qwen3:14b liegt der Schätzwert bei 0. Der dritte Block hat
+das Intervall kaum verengt (±6,6 → ±6,4 und ±9,7 → ±9,5). Die Breite kommt
+von den Unterschieden zwischen den Fällen, nicht zwischen den Saaten. Ein
+Vorschlag (F20): Die Klausel greift nur, wenn die untere Grenze über 0 liegt.
+Dann gelten gemma4:e4b, gemma4:12b und qwen3:14b als Rückfall.
+
+### F17 gegenüber Lauf 9, auf denselben Saaten
+
+Blöcke 1 und 6, nur die Kette, gepaart `b6` minus `b5`:
+
+| Modell | A | B und C | still falsch, beide Bestätigungssätze |
+|---|---|---|---|
+| gemma4:e4b | −4,2 (−11,1 … +1,4) | +2,4 (−3,6 … +10,0) | 93 → 70 |
+| gemma4:12b | −7,5 (−16,7 … +0,6) | −10,0 (−24,0 … +3,6) | 39 → 33 |
+| qwen3:14b | −1,1 (−4,7 … +1,9) | −0,8 (−14,0 … +11,6) | 118 → 81 |
+
+F17 senkt die stillen Fehler um ein Viertel bis ein Drittel. Bei gemma4:12b
+kostet es Treffer (F19): Das Modell fragt öfter nach („Welche Stadt meinen
+Sie mit Bern?“) oder lehnt ab, auf heldout 44-mal statt 8-mal. Das sind
+meist sichere Fehler.
+
+**Ergebnis:**
+- **Externe Modelle:** Luna und Haiku sind Rückfall, Luna mit weniger
+  stillen Fehlern als direkt.
+- **Lokale Modelle:** Nach der Regel noch nicht entschieden. Mit der
+  Lesart von F20 sind gemma4:e4b, gemma4:12b und qwen3:14b Rückfall,
+  qwen3.5:9b nicht empfohlen.
+- **Nächster Schritt:** F20 entscheiden, dann Prompts je Modell (Phase 4).

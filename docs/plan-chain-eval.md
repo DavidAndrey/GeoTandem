@@ -674,3 +674,106 @@ either: paired, `b4` gives +8.1 (−1.3 … +17.6). The pooled rates (13 against
 2. **F17**, then a re-run.
 3. **Luna on the current chain** (roughly USD 1–2), for the global verdict's
    external model.
+
+## 16 F17, and six models on the chain (2026-10-28)
+
+**F17 (commit `a29d781`).** The chain prompt gains two rules and a worked
+plan: a restricted subject («Bushaltestellen», «öffentliche Schulhäuser») is
+a `filter` step, and the spatial step names it by its number, the subject as
+well as the other objects; only a subject meant whole is named by its layer,
+without a catch-all condition. **F18** in the same commit: `near` needs a
+`distance_m` above 0, a distance of 0 is `intersects`.
+
+A tuning check before the run (gemma4:e4b, seed block 1, `t17`): cases 93 →
+90 passes, 8 → 6 silent wrongs; chain 24 → 27 passes, 13 → 12 silent wrongs.
+Within the noise. The subject is now mostly filtered, some other conditions
+are still dropped.
+
+### The run (`b6-*`)
+
+Commit `a29d781`, six models: gemma4:e4b, gemma4:12b, qwen3:14b, qwen3.5:9b
+(local, as in Lauf 6), gpt-6-luna (as in Lauf 8) and claude-haiku-5-5 (as in
+Lauf 3: effort default, temperature 1). Confirm sets (`heldout`,
+`chain-heldout`) in three seed blocks (1, 6, 11), chain and a fresh direct
+run each; tuning sets in two blocks, chain only. Figures in
+[benchmarks.md](benchmarks.md), *Lauf 10*.
+
+**Pass on the confirm cases, chain / direct:**
+
+| Model | A | B | C |
+|---|---|---|---|
+| gemma4:e4b | 62 / 78 % | 30 / 59 % | 20 / 48 % |
+| gemma4:12b | 75 / 85 % | 61 / 76 % | 21 / 46 % |
+| qwen3:14b | 67 / 76 % | 49 / 58 % | 30 / 43 % |
+| qwen3.5:9b | 57 / 71 % | 39 / 43 % | 9 / 24 % |
+| gpt-6-luna | 82 / 87 % | 87 / 79 % | 47 / 50 % |
+| claude-haiku-5-5 | 98 / 98 % | 94 / 87 % | 70 / 56 % |
+
+**Section 8, per model** (paired per case, seeds pooled, 95 % bootstrap;
+silent wrongs on A and B confirm, 54 cases; noise is the spread of the direct
+pass rate on A over the three blocks):
+
+| Model | Paired A | Paired B | Silent, chain / direct | Silent, paired | First plan accepted | Recovery A+B | Class |
+|---|---|---|---|---|---|---|---|
+| gemma4:e4b | −19.4 (−34.8 … −4.3) | −28.9 (−50.7 … −5.6) | 12.8 / 7.3 % | +5.3 (−1.7 … +12.5) | 67 % | 35 % | *not resolved*; fallback if the clause clears |
+| gemma4:12b | −14.8 (−26.9 … −4.1) | −14.4 (−40.0 … +12.6) | 5.7 / 5.2 % | +0.2 (−6.5 … +6.3) | 79 % | 41 % | *not resolved*; fallback if the clause clears |
+| qwen3:14b | −13.3 (−28.1 … +0.9) | −8.9 (−34.8 … +17.0) | 14.8 / 14.3 % | +0.0 (−9.5 … +9.5) | 75 % | 33 % | *not resolved*; fallback if the clause clears |
+| qwen3.5:9b | −17.0 (−29.8 … −3.9) | −3.3 (−25.9 … +19.6) | 21.7 / 4.8 % | +16.8 (+9.1 … +24.7) | 64 % | 32 % | *not recommended* |
+| gpt-6-luna | −9.1 (−20.9 … +2.0) | +8.5 (−9.3 … +25.9) | 2.0 / 6.9 % | −5.2 (−11.2 … −0.2) | 89 % | 75 % | **fallback** |
+| claude-haiku-5-5 | 0.0 (−3.7 … +3.9) | +6.7 (+0.7 … +15.9), sign test p 0.12 | 0 / 0 % | 0 | 93 % | 67 % | **fallback**; peer *not resolved* |
+
+- **Haiku** passes every peer condition but two: on A the interval is
+  centred on 0 but ±3.8 wide against a noise of ±1 (direct passes 97–99 %
+  per block), and on B the bootstrap interval excludes 0 while the sign test
+  (6 better, 1 worse) does not. With direct near the ceiling on A, more seed
+  blocks will hardly narrow either.
+- **Luna** is the first model whose chain makes fewer silent wrongs than its
+  direct query, outside the interval (2.0 against 6.9 %).
+- **qwen3.5:9b** (first time on the chain) adds silent wrongs: 21.7 against
+  4.8 %, every seed block near 21 %.
+- No model fails the latency and cost clause: median latency at most 1.7×
+  direct, seconds per correct answer at most 2.6×.
+
+**The silent-wrong clause does not resolve by seed blocks.** For gemma4:12b
+and qwen3:14b the point estimate is 0, and the third block narrowed the
+interval only from ±6.6 to ±6.4 and from ±9.7 to ±9.5. The width comes from
+the spread between cases (a few cases carry most silent wrongs), not between
+seeds; the seed-block rates move by 1–4 points. As written, section 8 keeps
+asking for another block. A reading that terminates: the clause fires when
+the interval's lower bound is above 0 (as for qwen3.5:9b), and only then.
+With it, gemma4:e4b, gemma4:12b and qwen3:14b are fallback. This is a change
+of a frozen rule and is left to a decision.
+
+**Global verdict.** At least one external model is fallback (Luna, Haiku).
+A local one is fallback under the reading above (gemma4:12b with the
+smallest interval); strictly, none is resolved yet.
+
+### F17 against Phase 2, on the same seeds
+
+`b5` and `b6` on seed blocks 1 and 6, chain only, paired `b6` minus `b5`:
+
+| Model | A | B and C | Silent wrongs, both confirm sets |
+|---|---|---|---|
+| gemma4:e4b | −4.2 (−11.1 … +1.4) | +2.4 (−3.6 … +10.0) | 93 → 70 |
+| gemma4:12b | −7.5 (−16.7 … +0.6) | −10.0 (−24.0 … +3.6) | 39 → 33 |
+| qwen3:14b | −1.1 (−4.7 … +1.9) | −0.8 (−14.0 … +11.6) | 118 → 81 |
+
+F17 cut silent wrongs by a quarter to a third, at no clear cost in passes
+for gemma4:e4b and qwen3:14b. gemma4:12b lost passes: on heldout it gives a
+clarification or a `cannot_answer` instead of a result 44 times instead of 8
+(both blocks). It asks which «Bern» is
+meant (`h22`, 5 of 5), declines `h27` because it takes `gemeinden` for a
+table layer, and filters the Aare by `typ` instead of `name` (`h20`). These
+are safe failures, mostly; they explain 12b's lower A and B against `b5`.
+
+| # | Finding | Evidence | Candidate fix |
+|---|---|---|---|
+| F19 | After F17, gemma4:12b asks for clarification or declines where it planned before | `kind` verdicts on heldout 8 → 44 (blocks 1 and 6); `h22` 5 → 0, `h27` 5 → 0 passes | Per-model prompt (Phase 4); look at which F17 sentence it reads as doubt |
+| F20 | The silent-wrong clause of section 8 cannot be resolved by more seed blocks | Interval width unchanged by a third block (12b ±6.6 → ±6.4, qwen3:14b ±9.7 → ±9.5) | Decide: the clause fires only when the lower bound is above 0 |
+
+**Next, recommended:**
+1. **Decide F20.** It settles the classification of the three local models
+   without another run.
+2. **Per-model prompts (Phase 4)**, starting with gemma4:12b (F19) and
+   qwen3.5:9b, whose silent wrongs make the chain unsafe as it is.
+3. **Haiku as peer:** only a larger B set can resolve it; the seeds cannot.
