@@ -28,6 +28,7 @@ from geotandem.levels import OpClass, classify
 from geotandem.llm import Completion
 from geotandem.model.chain import run as chain_run
 from geotandem.model.chain.ask import ChainState
+from geotandem.model.chain.cover import check_cover, missing
 from geotandem.model.chain.plan import CheckedStep, chain_classes, chain_governance, check_plan
 from geotandem.model.chain.run import run_step
 from geotandem.model.chain.tools import CHAIN
@@ -767,3 +768,80 @@ def test_a_step_reads_a_code_label_as_its_code(world: DataBackend) -> None:
     assert [canonical_json(s.query) for s in checked(world, labelled)] == [
         canonical_json(s.query) for s in checked(world, coded)
     ]
+
+
+# --- the plan against its question (plan-chain-eval F21) ----------------------------
+
+
+def lacking(world: DataBackend, question: str, *planned: tuple[str, Body]) -> list[str]:
+    return missing(question, steps(*planned), profile_of(world))
+
+
+BUS = cmp("verkehrsmittel", "eq", "bus")
+KONIZ = ("filter", {"layer": "gemeinden", "where": cmp("name", "eq", "Köniz")})
+
+
+def test_a_restricted_subject_named_as_a_whole_layer_lacks_its_condition(
+    world: DataBackend,
+) -> None:
+    """F17's shape: «Bushaltestellen» as the layer ``haltestellen`` drops the
+    code; the filter of the subject, read by the spatial step, carries it."""
+    question = "Bushaltestellen in Köniz"
+    whole = ("within", {"of": "haltestellen", "in": 1})
+    assert lacking(world, question, KONIZ, whole) == ["verkehrsmittel"]
+    buses = ("filter", {"layer": "haltestellen", "where": BUS})
+    assert lacking(world, question, KONIZ, buses, ("within", {"of": 2, "in": 1})) == []
+    refusal = check_cover(question, steps(KONIZ, whole), profile_of(world), 2)
+    assert refusal is not None and (refusal.code, refusal.details) == (
+        "not_representable",
+        {"step": 2, "part": "missing", "attribute": "verkehrsmittel"},
+    )
+
+
+def test_a_code_is_carried_by_a_value_a_complement_a_flag_or_a_name(world: DataBackend) -> None:
+    """A value that holds the code (``fr`` for «französisch»), the other codes
+    of the list for a negation, a boolean attribute, a single feature named."""
+    french = ("filter", {"layer": "schulen", "where": cmp("sprache", "eq", "fr")})
+    assert lacking(world, "Französischsprachige Schulen", french) == []
+    others = {"op": "in", "attr": "verkehrsmittel", "values": ["bahn", "schiff", "seilbahn"]}
+    neither = ("filter", {"layer": "haltestellen", "where": others})
+    assert lacking(world, "Haltestellen, die weder Bus noch Tram sind", neither) == []
+    sek = ("filter", {"layer": "schulen", "where": cmp("sekundarstufe", "eq", True)})
+    assert lacking(world, "Schulen mit Sekundarstufe I", sek) == []
+    station = ("filter", {"layer": "haltestellen", "where": cmp("name", "eq", "Bern")})
+    assert lacking(world, "Der Bahnhof Bern", station) == []
+    assert lacking(world, "Wie viele Schulen gibt es?", ("filter", {"layer": "schulen"})) == []
+
+
+def test_a_stem_inside_a_longer_one_counts_as_the_longer(world: DataBackend) -> None:
+    """«Seilbahnstationen» name the code ``seilbahn``, not also ``bahn``."""
+    cable = ("filter", {"layer": "haltestellen", "where": cmp("verkehrsmittel", "eq", "seilbahn")})
+    assert lacking(world, "Seilbahnstationen", cable) == []
+    whole = ("filter", {"layer": "haltestellen"})
+    assert lacking(world, "Seilbahnstationen", whole) == ["verkehrsmittel"]
+
+
+def test_a_distance_of_the_question_is_written_in_metres_or_its_own_unit(
+    world: DataBackend,
+) -> None:
+    """«2 km» as 2000 m, «weniger als 300 m» as 299.99, «länger als 5 km» as
+    the value 5; a distance the plan does not write is lacking."""
+    aare = ("filter", {"layer": "gewaesser", "where": cmp("name", "eq", "Aare")})
+    near = ("near", {"of": "schulen", "to": 1, "distance_m": 2000})
+    assert lacking(world, "Schulen im Umkreis von 2 km um die Aare", aare, near) == []
+    closer = ("near", {"of": "schulen", "to": 1, "distance_m": 299.99})
+    assert lacking(world, "Schulen weniger als 300 m von der Aare", aare, closer) == []
+    long = ("filter", {"layer": "gewaesser", "where": cmp("laenge_km", "gt", 5)})
+    assert lacking(world, "Gewässer, die länger als 5 km sind", long) == []
+    question = "Schulen im Umkreis von 500 m um die Aare"
+    assert lacking(world, question, aare, near) == ["distance_m"]
+
+
+def test_the_model_sees_the_attribute_its_plan_lacks(world: DataBackend) -> None:
+    """``model_view`` of the refusal: the attribute as ``part``, a name of the
+    layer profile, never a value of the question."""
+    whole = steps(("filter", {"layer": "haltestellen"}))
+    refusal = check_cover("Tramhaltestellen", whole, profile_of(world), 1)
+    assert refusal is not None
+    view = model_view(StepResult({"layer": "haltestellen"}, refusal))
+    assert view == ModelView(outcome="error", code="not_representable", part="verkehrsmittel")

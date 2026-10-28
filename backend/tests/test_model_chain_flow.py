@@ -364,7 +364,8 @@ async def test_nine_planned_steps_are_refused_eight_pass(
 
     eight = beyond["answer"]["steps"][:MAX_STEPS]
     answer = {**beyond["answer"], "steps": eight}
-    proposed = await ask_chain(client, app, model, completion({"answer": answer}))
+    asked = beyond["prompt"]  # its own question: the default one names Primarschulen (F21)
+    proposed = await ask_chain(client, app, model, completion({"answer": answer}), text=asked)
     assert proposed["status"] == "proposed" and len(proposed["steps"]) == MAX_STEPS
     assert len(model.fake.calls) == 3
 
@@ -404,6 +405,30 @@ async def test_a_refused_plan_is_corrected_once_with_what_the_model_may_see(
         "Plane neu: antworte mit dem ganzen Plan, die Schritte zählen ab Schritt 1."
     )
     assert stored_tokens(app, asked["id"]) == (500, None)
+
+
+async def test_a_plan_that_drops_a_condition_of_the_question_is_corrected(
+    client: httpx.AsyncClient, app: FastAPI, model: Model, levels: dict[str, int]
+) -> None:
+    """F21: «Primarschulen» planned as every school passes the checks but not
+    the question; the correction names the attribute the plan lacks, a name of
+    the layer profile, and the corrected plan is the one stored."""
+    every = planned(("filter", {"layer": "schulen", "where": EVERY_SCHOOL}))
+    asked = await ask_chain(client, app, model, every, planned(SCHOOLS))
+
+    assert asked["status"] == "proposed"
+    assert asked["steps"][0]["arguments"]["where"] == PRIMAR
+    _, second = model.fake.calls
+    assert second.messages[-1].content == (
+        "Die Prüfung hat den Plan abgewiesen; kein Schritt wurde ausgeführt.\n"
+        'Schritt 1 (filter): {"outcome":"error","code":"not_representable","part":"typ"}\n'
+        "Die Frage nennt eine Bedingung auf «typ», die kein Schritt schreibt.\n"
+        "Plane neu: antworte mit dem ganzen Plan, die Schritte zählen ab Schritt 1."
+    )
+
+
+EVERY_SCHOOL: Body = {"op": "compare", "attr": "standorte", "cmp": "ge", "value": 1}
+"""A condition every school meets, on another attribute than the question's."""
 
 
 EMPTY_THEN: list[Step] = [

@@ -103,6 +103,20 @@ def _is_name(text: str) -> bool:
     return True
 
 
+def lacks_condition(refusal: Refusal) -> bool:
+    """Whether ``refusal`` is a plan's lack of a condition of its question (F21)."""
+    return _missing(refusal.details) is not None
+
+
+def _missing(details: Mapping[str, Any]) -> str | None:
+    """The attribute a plan lacks a condition on (``part: missing``, F21): a
+    name of the layer profile the model was given, or ``distance_m``."""
+    attribute = details.get("attribute")
+    if details.get("part") == "missing" and isinstance(attribute, str) and _is_name(attribute):
+        return attribute
+    return None
+
+
 def _schema_part(details: Mapping[str, Any]) -> str | None:
     """The schema word a refusal is about: its ``part``, or the argument its
     first schema error is in (``loc`` ``["arguments", "to"]``)."""
@@ -122,7 +136,7 @@ def model_view(result: StepResult) -> ModelView:
     outcome = result.outcome
     if isinstance(outcome, Refusal):
         details = outcome.details
-        part = _part(details, result.arguments) or _schema_part(details)
+        part = _part(details, result.arguments) or _missing(details) or _schema_part(details)
         return ModelView.model_validate({"outcome": "error", "code": outcome.code, "part": part})
     if isinstance(outcome, QueryError):
         return ModelView.model_validate(

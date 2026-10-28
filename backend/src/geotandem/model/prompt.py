@@ -433,6 +433,9 @@ class Prompt:
     tokens_estimate: int
     output: OutputMode = "constrained"
     """Whether ``schema`` also goes as constrained output (D9)."""
+    question: str = ""
+    """The prompt text as the user wrote it: the chain checks a plan against it
+    (``chain.cover``, F21)."""
 
     @property
     def constrained(self) -> dict[str, Any] | None:
@@ -570,6 +573,7 @@ def build_prompt(
         profile_hash=profile.hash,
         tokens_estimate=fit(messages, context_length),
         output=prompt_profile.output,
+        question=text,
     )
 
 

@@ -8,7 +8,8 @@ an error carries.
 
 Planning is one call (P4): the system message and the prompt of
 ``prompt.build_prompt`` with the chain's answer format. A plan the checks
-refuse (``check_plan``) gets one correction (``plan``, plan-chain-eval F7):
+refuse (``check_plan``, or ``cover.check_cover`` for a condition of the
+question the plan drops, F21) gets one correction (``plan``, plan-chain-eval F7):
 the plan the model gave and a user message with the ``ModelView`` of the
 step the refusal names, asking for the whole plan again; nothing ran, so
 nothing stays. A re-plan continues that conversation: the plan the model
@@ -29,8 +30,9 @@ from typing import Any, Final, Literal
 
 from geotandem.catalog import ModelProfile
 from geotandem.llm import LLMClient, LLMError, Message
+from geotandem.model.chain.cover import check_cover
 from geotandem.model.chain.plan import CheckedStep, check_plan
-from geotandem.model.chain.view import refused_step
+from geotandem.model.chain.view import lacks_condition, refused_step
 from geotandem.model.errors import ActionError
 from geotandem.model.prompt import Prompt, fit
 from geotandem.model.result import NO_TOKENS, Answer, AnswerError, Tokens, parse_answer
@@ -67,15 +69,36 @@ Seen = tuple[int, str, ModelView]
 """A step that ran: its position, its tool and what the model saw of it."""
 
 
-def correction_message(position: int, tool: str, view: ModelView) -> str:
+def correction_message(position: int, tool: str, view: ModelView, *, missing: bool = False) -> str:
     """The correction's input (F7): the refused step as a step that ran is
-    shown in a re-plan's, and the whole plan asked for again."""
+    shown in a re-plan's, and the whole plan asked for again. A plan that lacks
+    a condition of the question (``cover``, F21) is told on which attribute,
+    the ``part`` of ``view``: a name of the layer profile, never a value."""
     shown = json.dumps(view.model_dump(exclude_none=True), separators=(",", ":"))
+    lacking = (
+        f"Die Frage nennt eine Bedingung auf «{view.part}», die kein Schritt schreibt.\n"
+        if missing and view.part
+        else ""
+    )
     return (
         "Die Prüfung hat den Plan abgewiesen; kein Schritt wurde ausgeführt.\n"
         f"Schritt {position} ({tool}): {shown}\n"
+        f"{lacking}"
         "Plane neu: antworte mit dem ganzen Plan, die Schritte zählen ab Schritt 1."
     )
+
+
+def check_planned(
+    answer: PlanAnswer, prompt: Prompt, context: ToolContext, profile: ModelProfile
+) -> list[CheckedStep] | Refusal:
+    """A model's plan checked whole (``check_plan``), then against its question
+    (``cover.check_cover``, F21): a plan that passes the checks but drops a
+    condition the question names is refused too, so the correction can mend it."""
+    checked = check_plan(answer.steps, context, profile)
+    if isinstance(checked, Refusal) or not prompt.question:
+        return checked
+    lacking = check_cover(prompt.question, answer.steps, profile, checked[-1].position)
+    return checked if lacking is None else lacking
 
 
 @dataclass(frozen=True)
@@ -135,10 +158,13 @@ def plan(
 
     answer, tokens, latency = call(prompt.messages)
     calls = [PlanCall(latency, tokens, answer.kind)]
-    checked = check_plan(answer.steps, context, profile) if isinstance(answer, PlanAnswer) else None
+    checked = (
+        check_planned(answer, prompt, context, profile) if isinstance(answer, PlanAnswer) else None
+    )
     while isinstance(checked, Refusal) and len(calls) <= MAX_CORRECTIONS:
         assert isinstance(answer, PlanAnswer)
-        message = correction_message(*refused_step(checked, answer.steps))
+        missing = lacks_condition(checked)
+        message = correction_message(*refused_step(checked, answer.steps), missing=missing)
         messages = (*prompt.messages, Message("assistant", said(answer)), Message("user", message))
         try:
             fit(messages, context_length)
@@ -158,7 +184,7 @@ def plan(
         if not isinstance(answer, PlanAnswer):
             checked = None
             break
-        checked = check_plan(answer.steps, context, profile)
+        checked = check_planned(answer, prompt, context, profile)
     return Planned(answer, checked, tuple(calls))
 
 
