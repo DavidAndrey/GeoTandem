@@ -732,3 +732,38 @@ die Werte von Lauf 10 weichen darum leicht vom Nachtrag oben ab.
 - **Gesamturteil: erfüllt**, unverändert. Nächster Schritt: echte Werte
   oder Beispiele je Frage im Prompt
   ([plan-improve-examples.md](plan-improve-examples.md)).
+
+## Lauf 12: die Kette prüft die Direktabfrage, 2026-10-29
+
+Direktabfrage und Kette auf denselben Saaten 21–25, die vier lokalen
+Modelle, die Bestätigungsfälle; jede Antwort speichert jetzt ihre
+Objekt-IDs (Commit `8ff8417`). Verglichen werden drei Arten, beide zu
+verbinden (plan-chain-eval 17):
+- **D:** nur die Direktabfrage;
+- **F:** heute: die Kette nur, wo die Direktabfrage sichtbar scheitert;
+- **H:** die Direktabfrage wird gezeigt, die Kette läuft daneben; liefern
+  beide andere Objekte, wird die Antwort als unsicher markiert und der Plan
+  der Kette angeboten.
+
+Regel, vor dem Lesen der qwen-Modelle vereinbart: H lohnt sich für ein
+Modell, wenn die stillen Fehler (A+B) gegenüber F um mindestens ein Drittel
+sinken und höchstens 10 % der richtigen Antworten markiert werden.
+
+| Modell | Still falsch A+B: D / F → H | H gegen F | Richtige markiert | Bestanden A+B: D / F / H | Rechenzeit je Frage F → H | Regel |
+|---|---|---|---|---|---|---|
+| gemma4:e4b | 6.7 / 7.9 → 3.8 % | −53 % (−86 … −23) | 7 % | 71 / 76 / 73 % | 1.4 → 2.5 s | erfüllt |
+| gemma4:12b | 5.8 / 7.5 → 4.2 % | −44 % (−91 … 0) | 3 % | 86 / 89 / 89 % | 1.6 → 3.7 s | erfüllt, knapp |
+| qwen3:14b | 20.8 / 25.0 → 10.4 % | −58 % (−83 … −33) | 8 % | 70 / 72 / 72 % | 4.2 → 9.9 s | erfüllt |
+| qwen3.5:9b | 7.9 / 13.3 → 1.2 % | −91 % (−100 … −78) | 18 % | 63 / 75 / 65 % | 3.2 → 5.5 s | *nicht erfüllt* (Markierungen) |
+
+- Die Prüfung halbiert die stillen Fehler etwa, bei doppelter Rechenzeit,
+  die nach dem Anzeigen des Ergebnisses laufen kann.
+- qwen3:14b gewinnt absolut am meisten, bleibt aber bei 10 % still falsch.
+- Bestanden zählt in H die Antwort der Direktabfrage; der Rückgang gegen F
+  (gemma4:e4b 3, qwen3.5:9b 10 Punkte) ist der Plan der Kette, der neben
+  der markierten Antwort angeboten wird.
+- Der frühere Vorschlag «echte Werte im Prompt» (Lauf 11) entfällt: Die
+  Codelisten stehen schon im Profil; die erfundenen Bedingungen nutzen
+  vorhandene Codes oder raten Schlüssel (plan-chain-eval 17).
+- **Nächster Schritt:** H im Dienst als wählbare Einstellung bauen und wie
+  jede Voreinstellung messen.

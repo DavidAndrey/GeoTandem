@@ -992,3 +992,38 @@ silent, marks on correct and on wrong answers, model time. Rule, agreed
 2026-10-29 after the gemma models were read and before the qwen models:
 - H is worth building for a model when its silent wrongs on A+B fall by at
   least a third against F, with marks on at most 10 % of correct answers.
+
+### The exact measure, read (`b8-*`, 2026-10-29)
+
+Direct and chain on the same seeds 21–25, the four local models, the confirm
+sets; per (case, seed) one direct and one chain answer, agreement on their
+feature ids. Query cases with a reference result: A 30, B 18 (C has 3 and is
+left out). Interval: bootstrap over cases.
+
+| Model | Silent A+B: D / F → H | H against F | Marks on correct answers | Marked wrong answers | Pass A+B: D / F / H | Model time per question: F → H |
+|---|---|---|---|---|---|---|
+| gemma4:e4b | 6.7 / 7.9 → 3.8 % | −53 % (−86 … −23) | 7 % (A 3, B 16) | 6.7 % | 71 / 76 / 73 % | 1.4 → 2.5 s |
+| gemma4:12b | 5.8 / 7.5 → 4.2 % | −44 % (−91 … 0) | 3 % | 3.3 % | 86 / 89 / 89 % | 1.6 → 3.7 s |
+| qwen3:14b | 20.8 / 25.0 → 10.4 % | −58 % (−83 … −33) | 8 % (A 6, B 13) | 12.9 % | 70 / 72 / 72 % | 4.2 → 9.9 s |
+| qwen3.5:9b | 7.9 / 13.3 → 1.2 % | −91 % (−100 … −78) | **18 %** (A 21, B 8) | 20.8 % | 63 / 75 / 65 % | 3.2 → 5.5 s |
+
+- **The simulation holds** on exact features: H about halves the silent
+  wrongs, and the fallback (F) adds some of its own over direct alone.
+- **Against the rule:** gemma4:e4b, gemma4:12b and qwen3:14b meet it;
+  gemma4:12b's interval reaches 0, so its gain is not certain. qwen3.5:9b
+  cuts the most but marks 18 % of correct answers, over 10 %.
+- **qwen3:14b** gains most in absolute terms (25.0 → 10.4 %), but 10 %
+  silent stays high.
+- **Pass in H** counts direct's answer, marked or not. Where direct answered
+  wrong with an assumption and the chain was right, H keeps direct's answer
+  marked with the chain's offered beside it; F would have taken the chain's.
+  That is the pass H loses against F (gemma4:e4b 3 points, qwen3.5:9b 10),
+  recoverable when the user takes the offered plan.
+- **Cost:** about twice the model time; the check can run after direct's
+  result is shown.
+
+**Next, recommended:** build H in the service as an option of the
+connection or the prompt profile (direct shown, the chain run beside it, a
+mark with the chain's plan when their features differ), measured like every
+preset; then the check for unasked conditions (above) for qwen3:14b's
+remaining silent wrongs, and the examples of plan-improve-examples.md.
