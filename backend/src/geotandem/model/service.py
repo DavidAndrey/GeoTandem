@@ -183,6 +183,7 @@ from geotandem.model.schemas import (
     MAX_TURNS,
     ActionPreview,
     CannotAnswer,
+    CheckMark,
     Clarification,
     Comparison,
     DecideRequest,
@@ -424,11 +425,14 @@ class ModelCalls:
         *,
         deadline: float | None = None,
         expire: Callable[[], None] | None = None,
+        holds_account: bool = True,
     ) -> None:
         """Run ``call`` with the action's cancel event; it calls ``finish``. With
         ``deadline`` (``time.monotonic()``) the call is given up ``grace_s``
         after it, if it has not finished by then: its cancel event is set, its
-        account entry and its slot are free, and ``expire`` runs."""
+        account entry and its slot are free, and ``expire`` runs. A check
+        (plan-check-mode, D3) takes a slot but not the account
+        (``holds_account``): the account's next prompt never waits for it."""
         cancel = threading.Event()
         timer = None
         if deadline is not None:
@@ -437,7 +441,8 @@ class ModelCalls:
             timer.daemon = True
         with self._lock:
             self._cancel[action_id] = cancel
-            self._accounts[account_id] = action_id
+            if holds_account:
+                self._accounts[account_id] = action_id
             self._held[action_id] = timer
         try:
             future = self._executor.submit(call, cancel)
@@ -651,11 +656,20 @@ class PromptFlow:
         return self._ask_model(caller, request)
 
     def _ask_model(
-        self, caller: Account, request: PromptRequest, compare_of: int | None = None
+        self,
+        caller: Account,
+        request: PromptRequest,
+        compare_of: int | None = None,
+        *,
+        check: bool = False,
     ) -> ModelActionView:
         """The prompt flow (module docstring), for a prompt and for a comparison:
         a repeat (``compare_of``) waits beside the record it repeats instead of
-        closing the account's open record."""
+        closing the account's open record. A ``check`` (plan-check-mode) is a
+        repeat the application asks by itself: it holds no account (D3) and
+        is admitted by the request limit alone (D5); without a free slot it
+        raises ``ModelCallsBusy``, as a prompt does. A prompt aborts the
+        account's checks still thinking (D3)."""
         level = active_level(self.backend.engine, caller.id, admin=caller.role == "admin")
         # One read: the snapshot is of the connection the call goes to (WP71).
         active = self.connections.active_call(caller.id)
@@ -714,27 +728,31 @@ class PromptFlow:
             ),
             level_prompt=level.system_prompt,
             compare_of=compare_of,
+            is_check=check,
         )
         # The account's own call first (review #36): an account that waits for
         # its answer gets 409 and never holds a slot, even for a moment, that
         # another account's prompt would find taken (503).
-        in_flight = self.calls.in_flight(caller.id)
+        in_flight = None if check else self.calls.in_flight(caller.id)
         if in_flight is not None:
             raise _busy(in_flight)
         self.calls.take()
         try:
             with self.calls.admission:
-                in_flight = self.calls.in_flight(caller.id)
+                in_flight = None if check else self.calls.in_flight(caller.id)
                 if in_flight is not None:
                     raise _busy(in_flight)
                 stale = self.clock() - timedelta(seconds=MODEL_CALL_S + STALE_MARGIN_S)
                 for closed in self.store.fail_thinking(caller, stale, STALE_ERROR):
                     log.warning("model action %d: closed, no call left to finish it", closed)
+                if not check:
+                    self._abort_checks(caller)
+                admit = self._within_limit if check else partial(self._admit, caller=caller)
                 action = self.store.create(
                     caller,
                     new,
                     supersede=compare_of is None,
-                    admit=partial(self._admit, caller=caller, connection=connection),
+                    admit=partial(admit, connection=connection),
                 )
                 answer = partial(self._answer, caller, action.id, call)
                 self.calls.start(
@@ -743,6 +761,7 @@ class PromptFlow:
                     answer,
                     deadline=self._real(call.deadline),
                     expire=partial(self._expired, caller, action.id),
+                    holds_account=not check,
                 )
         except BaseException:
             self.calls.give_back()
@@ -762,14 +781,18 @@ class PromptFlow:
         account, and the connection's request limit (P5). Off: no counting."""
         thinking = db.scalar(
             select(ModelAction.id)
-            .where(ModelAction.user_id == caller.id, ModelAction.status == "thinking")
+            .where(
+                ModelAction.user_id == caller.id,
+                ModelAction.status == "thinking",
+                ModelAction.is_check.is_(False),
+            )
             .limit(1)
         )
         if thinking is not None:
             raise _busy(thinking)
-        self._within_limit(db, connection)
+        self._within_limit(db, connection=connection)
 
-    def _within_limit(self, db: Session, connection: ConnectionInfo) -> None:
+    def _within_limit(self, db: Session, *, connection: ConnectionInfo) -> None:
         """The connection's request limit (P5), when the administrator switched
         it on: the model calls of the current calendar day, counted from the
         action table over all accounts, ``quota_exceeded`` at the limit. A
@@ -815,8 +838,11 @@ class PromptFlow:
         """Ask the model and store what came of it. Never raises; gives the slot
         back. Whatever goes wrong ends the record ``failed``: an outcome that
         cannot be stored as ``internal_error`` where that still can be, else the
-        account's next prompt or the start-up check closes it."""
+        account's next prompt or the start-up check closes it. What follows
+        the answer for the chain's check (plan-check-mode) runs once the slot
+        is back: a check needs a slot of its own, its comparison none."""
         store = self.store
+        then: Callable[[], None] = partial(self._check_ended, caller, action_id)
         try:
             if cancel.is_set() or not store.mark_called(caller, action_id):
                 log.info("model action %d: aborted before the call", action_id)
@@ -825,13 +851,22 @@ class PromptFlow:
             if cancel.is_set():
                 log.info("model action %d: answer dropped (aborted)", action_id)
                 return
-            self._settle(action_id, write)
+            view = self._settle(action_id, write)
+            if view is not None and view.is_check:
+                then = partial(self._check_found, caller, view)
+            elif view is not None and call.connection is not None:
+                checks = call.connection.check_mode == "chain"
+                then = partial(self._start_check, caller, view) if checks else _nothing
         except Exception as exc:
             # The type only: an exception's text may quote the prompt (C15).
             log.error("model action %d: the call failed (%s)", action_id, type(exc).__name__)
             self._fail_quietly(store, caller, action_id)
         finally:
             self.calls.finish(caller.id, action_id)
+            try:
+                then()
+            except Exception as exc:
+                log.error("model action %d: its check failed (%s)", action_id, type(exc).__name__)
 
     def _expired(self, caller: Account, action_id: int) -> None:
         """The call outlived its deadline and was given up (``ModelCalls``): the
@@ -959,15 +994,115 @@ class PromptFlow:
         return store.answer(caller, action_id, answer, latency_ms=latency, tokens=tokens)
 
     @staticmethod
-    def _settle(action_id: int, write: Callable[[], ModelActionView]) -> None:
+    def _settle(action_id: int, write: Callable[[], ModelActionView]) -> ModelActionView | None:
+        """The answer stored; ``None`` when it was dropped."""
         try:
             view = write()
         except ActionError as exc:
             # Aborted meanwhile: the compare-and-set lost, the late answer is dropped.
             log.info("model action %d: answer dropped (%s)", action_id, exc.code)
-            return
+            return None
         code = (view.refusal.code if view.refusal else None) or (view.error or {}).get("code")
         log.info("model action %d: %s%s", action_id, view.status, f" ({code})" if code else "")
+        return view
+
+    # --- the chain's check of a direct answer (plan-check-mode) ---------------------
+
+    def _start_check(self, caller: Account, answer: ModelActionView) -> None:
+        """Ask the prompt of a direct answer again with the chain, by the
+        application (D4: a direct answer with a query, no ``off`` class, no
+        repeat). Its mark says ``running`` until the check ends; a check that
+        cannot start (no slot, the request limit, no connection) leaves it
+        ``not_checked``. Never raises."""
+        if (
+            answer.approach != "direct"
+            or answer.compare_of is not None
+            or answer.query is None
+            or answer.status not in ("proposed", "approved")
+            or answer.governance is None
+            or answer.governance.off
+        ):
+            return
+        store = self.store
+        try:
+            if store.get(caller, answer.id).status not in ("proposed", "approved", "applied"):
+                return  # overtaken by the next prompt meanwhile
+            store.set_check(caller, answer.id, CheckMark(state="running"))
+            sent = store.sent_analysis(caller, answer.id)
+            request = PromptRequest(
+                text=answer.prompt,
+                approach="chain",
+                parent_action_id=answer.parent_action_id,
+                analysis=QueryObject.model_validate(sent) if sent is not None else None,
+            )
+            check = self._ask_model(caller, request, compare_of=answer.id, check=True)
+        except (ActionError, ConnectionProblem, ModelCallsBusy) as exc:
+            code = getattr(exc, "code", type(exc).__name__)
+            log.info("model action %d: not checked (%s)", answer.id, code)
+            store.set_check(caller, answer.id, CheckMark(state="not_checked"), unless_ended=True)
+            return
+        store.set_check(
+            caller, answer.id, CheckMark(state="running", action_id=check.id), unless_ended=True
+        )
+        log.info("model action %d: checked by %d", answer.id, check.id)
+
+    def _check_ended(self, caller: Account, action_id: int) -> None:
+        """A check that ended without a plan to compare: its direct answer
+        ``not_checked``. Nothing for a record that is no check."""
+        with suppress(ActionError):
+            view = self.store.get(caller, action_id)
+            if view.is_check and view.compare_of is not None:
+                mark = CheckMark(state="not_checked", action_id=view.id)
+                self.store.set_check(caller, view.compare_of, mark, unless_ended=True)
+
+    def _check_found(self, caller: Account, check: ModelActionView) -> None:
+        """Compare the check's plan with the direct answer it checks, by
+        feature ids, run as the caller in one of the instance's query slots
+        (review #42), as ``comparison`` does; the plan's query is its last
+        step's (D2). A check without a plan, or whose comparison fails, leaves
+        the answer ``not_checked``."""
+        assert check.compare_of is not None
+        chain = _plan_query(check)
+        mark = CheckMark(state="not_checked", action_id=check.id)
+        try:
+            answer = self.store.get(caller, check.compare_of)
+            if chain is not None and answer.query is not None:
+                view = read_view(self.backend, caller)
+                with (
+                    self.query_slot(self.limits.timeout_s) as got,
+                    TimeBudget(self.limits, "check", self.monotonic) as limits,
+                ):
+                    if got:
+                        direct = {
+                            (result_layer(answer.query), i)
+                            for i in ids_query(answer.query, view, limits(), self.unsupported)
+                        }
+                        planned = {
+                            (result_layer(chain), i)
+                            for i in ids_query(chain, view, limits(), self.unsupported)
+                        }
+                        mark = CheckMark(
+                            state="same" if direct == planned else "differs",
+                            action_id=check.id,
+                            direct_hits=len(direct),
+                            chain_hits=len(planned),
+                        )
+        except (ActionError, QueryError) as exc:
+            log.info("model action %d: check not compared (%s)", check.id, exc.code)
+        self.store.set_check(caller, check.compare_of, mark, unless_ended=True)
+        log.info("model action %d: check %s", check.compare_of, mark.state)
+
+    def _abort_checks(self, caller: Account) -> None:
+        """A new prompt goes first (D3): the account's checks still thinking
+        end ``aborted``, their direct answers ``not_checked``."""
+        for action_id in self.store.thinking_checks(caller):
+            with suppress(ActionError):  # settled meanwhile
+                view = self.store.abort(caller, action_id)
+                self.calls.cancel(action_id)
+                if view.compare_of is not None:
+                    mark = CheckMark(state="not_checked", action_id=action_id)
+                    self.store.set_check(caller, view.compare_of, mark, unless_ended=True)
+                log.info("model action %d: check aborted by a new prompt", action_id)
 
     # --- the record (D4) ---------------------------------------------------------
 
@@ -1390,7 +1525,7 @@ class PromptFlow:
         the limit."""
         with self.calls.admission:
             self.store.count_call(
-                action_id, connection.id, lambda db: self._within_limit(db, connection)
+                action_id, connection.id, lambda db: self._within_limit(db, connection=connection)
             )
 
     # --- enforcement (D2, P2, WP70) ----------------------------------------------
@@ -1540,12 +1675,27 @@ def _nothing_to_compare(action_id: int, status: str) -> ActionError:
     )
 
 
+def _nothing() -> None:
+    pass
+
+
+def _plan_query(view: ModelActionView) -> QueryObject | None:
+    """A check's plan as one query object: its last step's (plan-check-mode,
+    D2); nothing runs."""
+    if not view.steps:
+        return None
+    return max(view.steps, key=lambda step: step.position).query
+
+
 def _compared(view: ModelActionView) -> QueryObject:
     """A side's query to compare: 409 ``not_approved`` while it may still get
     one (the model thinks, a chain waits or runs), ``nothing_to_compare`` once
-    it ended without one."""
+    it ended without one. A check waiting with its plan compares the plan's
+    query (plan-check-mode, D2)."""
     if view.query is not None:
         return view.query
+    if view.is_check and view.status == "proposed" and (planned := _plan_query(view)):
+        return planned
     if view.status in PENDING:
         raise _not_runnable(view, "comparison", "has no result to compare yet")
     raise _nothing_to_compare(view.id, view.status)

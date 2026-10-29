@@ -173,6 +173,19 @@ their features, not their counts (plan-chain-eval 17). `regrade.py`
 refuses chain runs, since grading a chain again means running its steps
 again.
 
+## The chain's check (docs/plan-check-mode.md)
+
+`--approach check` asks the direct query, and for an answer with a query
+then the chain's check as the application asks it: the planning call (and
+its corrections), no step run, the plan's last step's query compared with
+the direct query by feature ids. The record is the direct one's, verdict
+included, with `check`: `state` (`same`, `differs`, `not_checked`), both
+counts, the check's calls and latency.
+
+```sh
+uv run python evals/run.py --model gemma4:12b --approach check --cases heldout --label c-gemma4_12b
+```
+
 ## Verdicts
 
 

@@ -10453,6 +10453,93 @@
         "title": "Check",
         "description": "The saved stamp against the current data (design C4, C8)."
       },
+      "CheckFigures": {
+        "properties": {
+          "checked": {
+            "type": "integer",
+            "title": "Checked"
+          },
+          "same": {
+            "type": "integer",
+            "title": "Same"
+          },
+          "differs": {
+            "type": "integer",
+            "title": "Differs"
+          },
+          "not_checked": {
+            "type": "integer",
+            "title": "Not Checked"
+          },
+          "taken": {
+            "type": "integer",
+            "title": "Taken"
+          }
+        },
+        "type": "object",
+        "required": [
+          "checked",
+          "same",
+          "differs",
+          "not_checked",
+          "taken"
+        ],
+        "title": "CheckFigures",
+        "description": "The chain's checks of direct answers (plan-check-mode, D5), counted\napart from the proposals."
+      },
+      "CheckMark": {
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "running",
+              "same",
+              "differs",
+              "not_checked"
+            ],
+            "title": "State"
+          },
+          "action_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action Id"
+          },
+          "direct_hits": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Direct Hits"
+          },
+          "chain_hits": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chain Hits"
+          }
+        },
+        "type": "object",
+        "required": [
+          "state"
+        ],
+        "title": "CheckMark",
+        "description": "What the chain's check found on a direct answer (plan-check-mode): the\napplication's, from feature ids, never the model's."
+      },
       "CheckRequest": {
         "properties": {
           "rebuilt": {
@@ -11340,6 +11427,15 @@
               "output": "constrained"
             }
           },
+          "check_mode": {
+            "type": "string",
+            "enum": [
+              "off",
+              "chain"
+            ],
+            "title": "Check Mode",
+            "default": "off"
+          },
           "price_input_per_mtok": {
             "anyOf": [
               {
@@ -11649,6 +11745,21 @@
               }
             ]
           },
+          "check_mode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "off",
+                  "chain"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Check Mode"
+          },
           "price_input_per_mtok": {
             "anyOf": [
               {
@@ -11895,6 +12006,16 @@
           "prompt_profile": {
             "$ref": "#/components/schemas/PromptProfile",
             "description": "How the direct query's prompt is written (plan E3, D9). Unset: today's."
+          },
+          "check_mode": {
+            "type": "string",
+            "enum": [
+              "off",
+              "chain"
+            ],
+            "title": "Check Mode",
+            "description": "The chain checks each direct answer (plan-check-mode, D1). Unset: off.",
+            "default": "off"
           },
           "price_input_per_mtok": {
             "anyOf": [
@@ -13596,6 +13717,16 @@
           },
           "not_counted": {
             "$ref": "#/components/schemas/NotCounted"
+          },
+          "checks": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CheckFigures"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -14439,6 +14570,28 @@
               }
             ],
             "title": "Hits"
+          },
+          "is_check": {
+            "type": "boolean",
+            "title": "Is Check",
+            "default": false
+          },
+          "check_state": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "running",
+                  "same",
+                  "differs",
+                  "not_checked"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Check State"
           }
         },
         "type": "object",
@@ -14634,6 +14787,21 @@
               }
             ],
             "title": "Compare Of"
+          },
+          "is_check": {
+            "type": "boolean",
+            "title": "Is Check",
+            "default": false
+          },
+          "check": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CheckMark"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "level": {
             "$ref": "#/components/schemas/LevelSnapshot"

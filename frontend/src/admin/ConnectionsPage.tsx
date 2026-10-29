@@ -155,6 +155,7 @@ type Form = {
   limit_enabled: boolean
   limit_per_day: string
   prompt_profile: PromptProfile
+  check_mode: ConnectionInfo['check_mode']
   price_input: string
   price_output: string
   price_currency: string
@@ -179,6 +180,7 @@ const blank: Form = {
   limit_enabled: false,
   limit_per_day: '',
   prompt_profile: DEFAULT_PROMPT_PROFILE,
+  check_mode: 'off',
   price_input: '',
   price_output: '',
   price_currency: '',
@@ -201,6 +203,7 @@ const fromConnection = (c: ConnectionInfo): Form => ({
   limit_enabled: c.request_limit_enabled,
   limit_per_day: String(c.request_limit_per_day ?? ''),
   prompt_profile: c.prompt_profile,
+  check_mode: c.check_mode,
   price_input: String(c.price_input_per_mtok ?? ''),
   price_output: String(c.price_output_per_mtok ?? ''),
   price_currency: c.price_currency ?? '',
@@ -263,6 +266,7 @@ function createBody(f: Form): ConnectionWrite {
     ...(sameProfile(f.prompt_profile, DEFAULT_PROMPT_PROFILE)
       ? {}
       : { prompt_profile: f.prompt_profile }),
+    check_mode: f.check_mode,
     ...Object.fromEntries(Object.entries(prices(f)).filter(([, v]) => v !== null)),
   }
 }
@@ -276,6 +280,7 @@ function patchBody(f: Form, c: ConnectionInfo): ConnectionPatch {
     enabled: f.enabled,
     is_default: f.is_default,
     may_receive_data: f.may_receive_data,
+    check_mode: f.check_mode,
     ...requestLimit(f),
     ...prices(f),
   }
@@ -542,6 +547,21 @@ function ConnectionForm({
           </select>
         </Field>
       </fieldset>
+      <Field
+        label={t`Prüfung durch die Werkzeugkette`}
+        hint={t`Jede Antwort der Direktabfrage wird danach mit der Werkzeugkette gefragt und verglichen; findet sie andere Objekte, ist die Antwort als unsicher markiert. Etwa doppelte Modellzeit; zählt zum Anfragelimit. Ob es einem Modell hilft, zeigt ein Bewertungslauf.`}
+      >
+        <select
+          className="input"
+          value={form.check_mode}
+          onChange={(e) =>
+            setForm((f) => ({ ...f, check_mode: e.target.value as Form['check_mode'] }))
+          }
+        >
+          <option value="off">{t`Aus`}</option>
+          <option value="chain">{t`Mit der Werkzeugkette prüfen`}</option>
+        </select>
+      </Field>
       <fieldset className="mt-3 text-sm">
         <legend className="label-caps mb-1">
           <Trans>Preise</Trans>

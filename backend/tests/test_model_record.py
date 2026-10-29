@@ -1032,7 +1032,8 @@ def test_key_figures_reproduce_the_fixture(
     new(store, beat, supersede=False)  # still thinking
 
     expect = {k: v for k, v in figures["expect"].items() if not k.startswith("_")}
-    assert store.key_figures(admin).model_dump() == expect
+    # The fixture has no checks (plan-check-mode): none was started.
+    assert store.key_figures(admin).model_dump() == expect | {"checks": None}
 
 
 def test_key_figures_follow_the_filters(

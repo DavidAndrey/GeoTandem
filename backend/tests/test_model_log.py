@@ -185,7 +185,8 @@ async def test_key_figures_through_the_api_equal_the_fixture(
     response = await client.get(f"{LOG}/key-figures")
     assert response.status_code == 200, response.text
     expect = {k: v for k, v in figures["expect"].items() if not k.startswith("_")}
-    assert response.json() == expect
+    # The fixture has no checks (plan-check-mode): none was started.
+    assert response.json() == expect | {"checks": None}
     listed = (await client.get(LOG, params={"limit": MAX_PAGE})).json()
     assert listed["total"] == sum(counts.values()) + 1
 

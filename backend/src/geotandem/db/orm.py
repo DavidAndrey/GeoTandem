@@ -287,6 +287,8 @@ class LLMConnection(Base):
     )
     """How the direct query's prompt is written (plan E3, D9), as
     ``PromptProfile`` dumps it; the default is today's prompt."""
+    check_mode: Mapped[str] = mapped_column(String(8), default="off", server_default="off")
+    """``off``, or ``chain``: the chain checks each direct answer (plan-check-mode, D1)."""
     price_input_per_mtok: Mapped[float | None]
     """Price per million input tokens (plan E3, O4); with the other two or not at all."""
     price_output_per_mtok: Mapped[float | None]
@@ -349,6 +351,11 @@ class ModelAction(Base):
     compare_of: Mapped[int | None] = mapped_column(
         ForeignKey("model_action.id", ondelete="SET NULL")
     )
+    is_check: Mapped[bool] = mapped_column(default=False, server_default=false())
+    """A repeat the application asked by itself, to check the direct answer it
+    repeats (``compare_of``, plan-check-mode); never a proposal of its own."""
+    check_result: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    """On a checked direct answer: what the check found (``CheckMark``)."""
     level_id: Mapped[int]
     level_name: Mapped[str] = mapped_column(String(60))
     level_matrix: Mapped[dict[str, str]] = mapped_column(JSON)

@@ -1528,6 +1528,10 @@ msgctxt "level cell"
 msgid "aus"
 msgstr ""
 
+#: src/admin/ConnectionsPage.tsx
+msgid "Aus"
+msgstr ""
+
 #: src/model/approval/Level.tsx
 msgid "aus = nur Vorschlag, von Hand übernehmbar · Freigabe = Sie entscheiden · auto = Modell wendet an, Sie können zurücknehmen"
 msgstr ""
@@ -3859,6 +3863,10 @@ msgstr ""
 msgid "Geplante Schritte · {n} von höchstens {max}"
 msgstr ""
 
+#: src/model/compare/Check.tsx
+msgid "Geprüft: Die Werkzeugkette findet dieselben {direct} Objekte."
+msgstr ""
+
 #: src/admin/ProfileCompleteness.tsx
 msgid "gerade importiert"
 msgstr ""
@@ -4251,6 +4259,10 @@ msgstr ""
 
 #: src/admin/LevelsPage.tsx
 msgid "Je Stufe und Art der Operation: aus (abgewiesen), mit Freigabe (der Anwender bestätigt vorher) oder automatisch (läuft sofort, sichtbar und rücknehmbar). Berührt eine Abfrage mehrere Arten, gilt die strengste. Administratoren dürfen jede Stufe verwenden."
+msgstr ""
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Jede Antwort der Direktabfrage wird danach mit der Werkzeugkette gefragt und verglichen; findet sie andere Objekte, ist die Antwort als unsicher markiert. Etwa doppelte Modellzeit; zählt zum Anfragelimit. Ob es einem Modell hilft, zeigt ein Bewertungslauf."
 msgstr ""
 
 #: src/operations/OperationDialog.tsx
@@ -5031,6 +5043,10 @@ msgstr ""
 msgid "Mit aktuellen Daten übernehmen"
 msgstr ""
 
+#: src/admin/ConnectionsPage.tsx
+msgid "Mit der Werkzeugkette prüfen"
+msgstr ""
+
 #: src/model/compare/Entry.tsx
 msgid "Mit Direktabfrage vergleichen"
 msgstr ""
@@ -5327,6 +5343,10 @@ msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
 msgid "nicht freigegeben"
+msgstr ""
+
+#: src/model/compare/Check.tsx
+msgid "Nicht geprüft."
 msgstr ""
 
 #: src/queries/SavedQueries.tsx
@@ -5800,6 +5820,10 @@ msgstr ""
 
 #: src/admin/ProfilePage.tsx
 msgid "Prüfsumme"
+msgstr ""
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Prüfung durch die Werkzeugkette"
 msgstr ""
 
 #: src/admin/evaluation/runWords.ts
@@ -6818,6 +6842,10 @@ msgstr ""
 msgid "ungültige Geometrie"
 msgstr ""
 
+#: src/model/compare/Check.tsx
+msgid "Unsicher: Die schrittweise Prüfung findet {chain} statt {direct} Objekte."
+msgstr ""
+
 #: src/model/statusKey.ts
 msgid "unterbrochen"
 msgstr ""
@@ -6892,6 +6920,7 @@ msgstr ""
 msgid "Vergleich · gleiche Frage, zwei Arbeitsweisen"
 msgstr ""
 
+#: src/model/compare/Check.tsx
 #: src/model/compare/Entry.tsx
 msgid "Vergleich ansehen"
 msgstr ""
@@ -7310,6 +7339,10 @@ msgstr ""
 
 #: src/session/SaveAsDialog.tsx
 msgid "Wird gespeichert"
+msgstr ""
+
+#: src/model/compare/Check.tsx
+msgid "Wird mit der Werkzeugkette geprüft …"
 msgstr ""
 
 #: src/admin/UsersPage.tsx

@@ -19,6 +19,7 @@ import { Approval, Approved, Rejected, Undone, UndoAction } from '../approval/Ap
 import { byHandOnly, classList, needsApproval } from '../approval/governance'
 import { ChainAnswer } from '../chain/Chain'
 import { CompareHost } from '../compare/CompareHost'
+import { CheckNote } from '../compare/Check'
 import { CompareMenu } from '../compare/Entry'
 import { useStaleLayer } from '../dialog/reference'
 import { openMyActions } from '../log/dialog'
@@ -384,6 +385,8 @@ function Proposal({ view, answer }: { view: ModelActionView; answer: QueryAnswer
         {applied && <AppliedCount />}
       </p>
       <p>{answer.explanation}</p>
+      {/* plan-check-mode: what the chain's check found. */}
+      <CheckNote view={view} />
       {answer.assumptions.length > 0 && (
         <section aria-label={t`Annahmen`} className="flex flex-col gap-0.5 text-sm">
           <p className="label-caps">{t`Annahmen · ${count}`}</p>

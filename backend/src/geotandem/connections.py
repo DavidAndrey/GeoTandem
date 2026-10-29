@@ -26,7 +26,7 @@ from geotandem.connection_check import CheckResult
 from geotandem.db.orm import LLMConnection, User
 from geotandem.db.spatialite import reading
 from geotandem.llm import Effort, Endpoint, LLMError, Locality, classify_host, host_of
-from geotandem.model.schemas import PromptProfile
+from geotandem.model.schemas import CheckMode, PromptProfile
 from geotandem.vault import CredentialsUnreadable, Vault
 
 log = logging.getLogger(__name__)
@@ -117,6 +117,10 @@ class ConnectionWrite(CallParameters):
         default_factory=PromptProfile,
         description="How the direct query's prompt is written (plan E3, D9). Unset: today's.",
     )
+    check_mode: CheckMode = Field(
+        default="off",
+        description="The chain checks each direct answer (plan-check-mode, D1). Unset: off.",
+    )
     price_input_per_mtok: PricePerMtok | None = None
     price_output_per_mtok: PricePerMtok | None = None
     price_currency: Currency | None = Field(
@@ -148,6 +152,7 @@ class ConnectionPatch(BaseModel):
     """``null`` removes the cap, allowed only while the limit is off."""
     prompt_profile: PromptProfile | None = None
     """Replaced whole: a field left out takes its default, not its stored value."""
+    check_mode: CheckMode | None = None
     price_input_per_mtok: PricePerMtok | None = None
     price_output_per_mtok: PricePerMtok | None = None
     price_currency: Currency | None = None
@@ -199,6 +204,8 @@ class ConnectionInfo(BaseModel):
     """The cap; kept while the limit is off, so switching it on again restores it."""
     prompt_profile: PromptProfile = PromptProfile()
     """How the direct query's prompt is written in operation (plan E3, D9)."""
+    check_mode: CheckMode = "off"
+    """The chain checks each direct answer (plan-check-mode, D1)."""
     price_input_per_mtok: float | None = None
     """Per million input tokens in ``price_currency`` (O4); all three or none."""
     price_output_per_mtok: float | None = None
@@ -314,6 +321,7 @@ class Connections:
             request_limit_enabled=row.request_limit_enabled,
             request_limit_per_day=row.request_limit_per_day,
             prompt_profile=stored_prompt_profile(row.prompt_profile, f"connection {row.id}"),
+            check_mode="chain" if row.check_mode == "chain" else "off",
             price_input_per_mtok=row.price_input_per_mtok,
             price_output_per_mtok=row.price_output_per_mtok,
             price_currency=row.price_currency,
@@ -507,6 +515,7 @@ class Connections:
             request_limit_enabled=bool(body.request_limit_enabled),
             request_limit_per_day=body.request_limit_per_day,
             prompt_profile=body.prompt_profile.model_dump(),
+            check_mode=body.check_mode,
             price_input_per_mtok=body.price_input_per_mtok,
             price_output_per_mtok=body.price_output_per_mtok,
             price_currency=body.price_currency,

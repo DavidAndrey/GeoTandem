@@ -4,7 +4,10 @@ The direct query as the prompt flow sends it (``direct_prompt``,
 ``DirectQuery.ask``: the real client, parser and checks), over a fresh sample
 dataset and the default level; only the grading is the harness's own. With
 ``--approach chain`` the tool chain instead, planned, run and re-planned as
-the application runs it at *Automatisch* (``evaluation.chain.drive``). See
+the application runs it at *Automatisch* (``evaluation.chain.drive``). With
+``--approach check`` the direct query, then the chain's check of an answer
+with a query as the application asks it (plan-check-mode): the plan only,
+its last step's query compared with the direct query by feature ids. See
 ``evals/README.md``.
 
     uv run python evals/run.py --model qwen3:8b --label baseline
@@ -39,6 +42,7 @@ from variants import (
 from geotandem.catalog import ModelProfile, model_profile
 from geotandem.config import Settings
 from geotandem.data import Limits
+from geotandem.engine import ids_query
 from geotandem.evaluation.chain import drive, graded
 from geotandem.evaluation.grade import PASS, Graded, errored, grade, reading_ids
 from geotandem.evaluation.profiles import PROFILES
@@ -49,7 +53,8 @@ from geotandem.levels.store import load_levels
 from geotandem.llm import Completion, Endpoint, LLMError, Message
 from geotandem.llm.hosts import host_of
 from geotandem.llm.openai_compat import OpenAICompatClient
-from geotandem.model.chain.ask import replan_message
+from geotandem.model.chain.ask import plan, replan_message
+from geotandem.model.compare import result_layer
 from geotandem.model.direct import DirectQuery, direct_prompt
 from geotandem.model.errors import ActionError
 from geotandem.model.prompt import Prompt, build_prompt
@@ -156,7 +161,52 @@ def ask_chain(
     }
 
 
-ASK = {"direct": ask_direct, "chain": ask_chain}
+def ask_check(
+    client: Recording, prompt: Prompt, case: EvalCase, world: World, readings: Readings
+) -> tuple[Graded, dict[str, Any]]:
+    """The direct query, graded, and its check by the chain as the application
+    asks it (plan-check-mode): only for an answer with a query; the plan's
+    query, its last step's (D2), compared with the direct query by feature
+    ids. The verdict is the direct answer's; ``check`` says what the check
+    found (``same``, ``differs``, ``not_checked``)."""
+    found = DirectQuery(client, world.context, world.level).ask(prompt, profile=world.profile)
+    backend = world.context.backend
+    verdict = grade(case, found.answer, found.refusal, found.query, backend, LIMITS, readings)
+    kept: dict[str, Any] = {
+        "answer": found.answer.model_dump(mode="json"),
+        "refusal": found.refusal.model_dump(mode="json") if found.refusal else None,
+        "latency_ms": found.latency_ms,
+    }
+    if found.query is None:
+        return verdict, kept
+    chain_prompt = build_prompt(
+        case.prompt, approach="chain", level=world.level, profile=world.profile
+    )
+    started = time.monotonic()
+    check: dict[str, Any] = {"state": "not_checked"}
+    try:
+        planned = plan(client, chain_prompt, world.context, world.profile, time.monotonic() + 300)
+    except (LLMError, ActionError) as exc:
+        check["error"] = exc.code
+    else:
+        steps = planned.checked if isinstance(planned.checked, list) else []
+        if steps:
+            query = max(steps, key=lambda step: step.position).query
+            direct = {
+                (result_layer(found.query), i) for i in ids_query(found.query, backend, LIMITS)
+            }
+            chain = {(result_layer(query), i) for i in ids_query(query, backend, LIMITS)}
+            check = {
+                "state": "same" if direct == chain else "differs",
+                "direct_hits": len(direct),
+                "chain_hits": len(chain),
+            }
+        check["calls"] = len(planned.calls)
+    check["latency_ms"] = round((time.monotonic() - started) * 1000)
+    return verdict, kept | {"check": check}
+
+
+ASK = {"direct": ask_direct, "chain": ask_chain, "check": ask_check}
 
 
 def total(values: Iterable[int | None]) -> int | None:
@@ -214,8 +264,9 @@ def main() -> int:
         "--approach",
         default="direct",
         choices=list(ASK),
-        help="direct (default) or chain: the tool chain, run to its end as at Automatisch "
-        "(docs/plan-chain-eval.md)",
+        help="direct (default); chain: the tool chain, run to its end as at Automatisch "
+        "(docs/plan-chain-eval.md); check: direct, then the chain's check of its answer "
+        "(docs/plan-check-mode.md)",
     )
     parser.add_argument(
         "--no-format",
@@ -281,7 +332,8 @@ def main() -> int:
     if args.only:
         cases = [c for c in cases if c.id in args.only.split(",")]
     # A case that wants this approach offered as the other one says nothing of it.
-    left_out = [c.id for c in cases if c.other_approach == args.approach]
+    approach = "direct" if args.approach == "check" else args.approach
+    left_out = [c.id for c in cases if c.other_approach == approach]
     cases = [c for c in cases if c.id not in left_out]
     if left_out:
         print(f"left out, they offer {args.approach} as the other approach: {', '.join(left_out)}")

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections import Counter
 from collections.abc import Callable, Collection, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
@@ -45,6 +46,8 @@ from geotandem.model.schemas import (
     ActionStatus,
     Approach,
     CannotAnswer,
+    CheckFigures,
+    CheckMark,
     Clarification,
     ConnectionSnapshot,
     Decision,
@@ -143,6 +146,9 @@ class NewAction:
     analysis: dict[str, Any] | None = None
     """A follow-up's analysis as sent (P6); asked with again by a repeat or a re-plan."""
     compare_of: int | None = None
+    is_check: bool = False
+    """A repeat the application asks by itself to check ``compare_of``
+    (plan-check-mode)."""
     proposal_only: bool = False
     """The model may only propose: the user applies by hand, an overtaken record
     ends ``proposal_only``, never ``superseded``, and an ``auto`` answer still
@@ -466,6 +472,8 @@ def to_view(
             "parent_action_id": row.parent_action_id,
             "reference": row.reference,
             "compare_of": row.compare_of,
+            "is_check": row.is_check,
+            "check": row.check_result,
             "level": {
                 "id": row.level_id,
                 "name": row.level_name,
@@ -517,6 +525,8 @@ def _summary(row: ModelAction) -> ModelActionSummary:
         reject_reason=row.reject_reason,
         refusal_code=(row.refusal or {}).get("code"),
         hits=row.stamp["count"] if row.stamp else None,
+        is_check=row.is_check,
+        check_state=(row.check_result or {}).get("state"),
     )
 
 
@@ -870,11 +880,13 @@ class ModelActionStore:
             "aborted": count(decision == "aborted"),
             "failed": count(decision == "failed"),
         }
+        where = self._where(caller, filters)
         stmt = select(*(c.label(name) for name, c in columns.items())).where(
-            *self._where(caller, filters)
+            *where, ModelAction.is_check.is_(False)
         )
         with Session(reading(self.engine)) as db:
             n = {name: int(value) for name, value in db.execute(stmt).one()._mapping.items()}
+            checks = self._check_figures(db, where)
         decided = n["accepted"] + n["adjusted"] + n["rejected"] + n["superseded"]
         rate = round((n["accepted"] + n["adjusted"]) / decided, 4) if decided else None
         return KeyFigures(
@@ -889,6 +901,30 @@ class ModelActionStore:
             undone_after_approval=n["undone_after_approval"],
             acceptance_rate=rate,
             not_counted=NotCounted(refused=n["refused"], aborted=n["aborted"], failed=n["failed"]),
+            checks=checks,
+        )
+
+    @staticmethod
+    def _check_figures(db: Session, where: list[ColumnElement[bool]]) -> CheckFigures | None:
+        """The checks of the filters' direct answers (plan-check-mode, D5): what
+        each found, read from the checked answers, and the checks taken."""
+        states = db.scalars(
+            select(ModelAction.check_result).where(*where, ModelAction.check_result.is_not(None))
+        ).all()
+        if not states:
+            return None
+        found = Counter((state or {}).get("state") for state in states)
+        taken = db.scalar(
+            select(func.count())
+            .select_from(ModelAction)
+            .where(*where, ModelAction.is_check.is_(True), ModelAction.decision == "accepted")
+        )
+        return CheckFigures(
+            checked=len(states),
+            same=found["same"],
+            differs=found["differs"],
+            not_checked=found["not_checked"],
+            taken=taken or 0,
         )
 
     # --- creating ------------------------------------------------------------------
@@ -927,6 +963,7 @@ class ModelActionStore:
                 parent_action_id=new.parent_action_id,
                 reference=new.reference,
                 compare_of=new.compare_of,
+                is_check=new.is_check,
                 level_id=new.level.id,
                 level_name=new.level.name,
                 level_matrix={str(k): str(v) for k, v in new.level.matrix.items()},
@@ -1030,6 +1067,7 @@ class ModelActionStore:
                 if self._settle(db, row, stale, change):
                     closed.append(row)
                     _end_steps(db, row)
+            self._checks_ended(db, closed)
         self._audit(None, [row for row in closed if row.decision is not None])
         return [row.id for row in closed]
 
@@ -1050,6 +1088,7 @@ class ModelActionStore:
             ).all()
             values = {"status": "failed", "decision": "failed", "decided_at": now, "error": error}
             closed = [row for row in rows if self._settle(db, row, ["thinking"], lambda _: values)]
+            self._checks_ended(db, closed)
         self._audit(caller.username, closed)
         return [row.id for row in closed]
 
@@ -1068,6 +1107,48 @@ class ModelActionStore:
                 .values(called_at=self.clock())
             )
         return done.rowcount == 1
+
+    # --- the chain's check of a direct answer (plan-check-mode) ----------------------
+
+    def set_check(
+        self, caller: Account, action_id: int, mark: CheckMark, *, unless_ended: bool = False
+    ) -> bool:
+        """Write what the check of the caller's direct answer ``action_id``
+        found. ``unless_ended``: only while the mark is still ``running`` (the
+        check's own end, which a newer mark must not overwrite). ``False`` when
+        nothing was written."""
+        with Session(self.engine) as db, db.begin():
+            row = self._own(db, caller, action_id)
+            if unless_ended and (row.check_result or {}).get("state") != "running":
+                return False
+            row.check_result = mark.model_dump(mode="json")
+        return True
+
+    def thinking_checks(self, caller: Account) -> list[int]:
+        """The caller's checks the model still thinks on: a new prompt aborts
+        them (D3)."""
+        with Session(reading(self.engine)) as db:
+            return list(
+                db.scalars(
+                    select(ModelAction.id).where(
+                        ModelAction.user_id == caller.id,
+                        ModelAction.status == "thinking",
+                        ModelAction.is_check.is_(True),
+                    )
+                )
+            )
+
+    @staticmethod
+    def _checks_ended(db: Session, rows: Iterable[ModelAction]) -> None:
+        """The direct answers whose check ended here without a result to
+        compare: ``not_checked``, where the mark still says ``running``."""
+        for row in rows:
+            if not row.is_check or row.compare_of is None:
+                continue
+            checked = db.get(ModelAction, row.compare_of)
+            mark = (checked.check_result if checked is not None else None) or {}
+            if checked is not None and mark.get("state") == "running":
+                checked.check_result = {**mark, "state": "not_checked", "action_id": row.id}
 
     # --- the edges of the diagram -----------------------------------------------------
 

@@ -35,6 +35,7 @@ const connection = (patch: Partial<ConnectionInfo> = {}): ConnectionInfo => ({
   request_limit_enabled: false,
   request_limit_per_day: null,
   prompt_profile: { examples: 'standard', placement: 'P0', output: 'constrained' },
+  check_mode: 'off',
   price_input_per_mtok: null,
   price_output_per_mtok: null,
   price_currency: null,
@@ -503,4 +504,23 @@ test('"Zur Anbindung" of a run: the connection named in the address is focused a
   await vi.waitFor(() => expect(row).toHaveFocus())
   expect(row).toHaveAttribute('aria-current', 'location')
   expect(screen.getByText('Ollama').closest('tr')).not.toHaveAttribute('aria-current')
+})
+
+test('the chain check is off by default and sent alone when switched on (plan-check-mode)', async () => {
+  const calls = fakeApi({
+    ...signedIn(),
+    [`GET ${URL}`]: [cloud],
+    [`PATCH ${URL}/2`]: { ...cloud, check_mode: 'chain' },
+  })
+  renderAt('/admin/modelle', <App />)
+  await openMenu('Cloud')
+  await userEvent.click(screen.getByRole('menuitem', { name: 'Bearbeiten' }))
+  const form = screen.getByRole('form', { name: 'Anbindung bearbeiten' })
+  const check = within(form).getByLabelText('Prüfung durch die Werkzeugkette')
+  expect(check).toHaveDisplayValue('Aus')
+  await userEvent.selectOptions(check, 'Mit der Werkzeugkette prüfen')
+  await userEvent.click(within(form).getByRole('button', { name: 'Speichern' }))
+
+  await vi.waitFor(() => expect(bodiesOf(calls, `PATCH ${URL}/2`)).toHaveLength(1))
+  expect(bodiesOf(calls, `PATCH ${URL}/2`)[0]).toEqual({ check_mode: 'chain' })
 })

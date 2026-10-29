@@ -1528,6 +1528,10 @@ msgctxt "level cell"
 msgid "aus"
 msgstr "aus"
 
+#: src/admin/ConnectionsPage.tsx
+msgid "Aus"
+msgstr "Aus"
+
 #: src/model/approval/Level.tsx
 msgid "aus = nur Vorschlag, von Hand übernehmbar · Freigabe = Sie entscheiden · auto = Modell wendet an, Sie können zurücknehmen"
 msgstr "aus = nur Vorschlag, von Hand übernehmbar · Freigabe = Sie entscheiden · auto = Modell wendet an, Sie können zurücknehmen"
@@ -3859,6 +3863,10 @@ msgstr "geplant"
 msgid "Geplante Schritte · {n} von höchstens {max}"
 msgstr "Geplante Schritte · {n} von höchstens {max}"
 
+#: src/model/compare/Check.tsx
+msgid "Geprüft: Die Werkzeugkette findet dieselben {direct} Objekte."
+msgstr "Geprüft: Die Werkzeugkette findet dieselben {direct} Objekte."
+
 #: src/admin/ProfileCompleteness.tsx
 msgid "gerade importiert"
 msgstr "gerade importiert"
@@ -4252,6 +4260,10 @@ msgstr "Je Spalte"
 #: src/admin/LevelsPage.tsx
 msgid "Je Stufe und Art der Operation: aus (abgewiesen), mit Freigabe (der Anwender bestätigt vorher) oder automatisch (läuft sofort, sichtbar und rücknehmbar). Berührt eine Abfrage mehrere Arten, gilt die strengste. Administratoren dürfen jede Stufe verwenden."
 msgstr "Je Stufe und Art der Operation: aus (abgewiesen), mit Freigabe (der Anwender bestätigt vorher) oder automatisch (läuft sofort, sichtbar und rücknehmbar). Berührt eine Abfrage mehrere Arten, gilt die strengste. Administratoren dürfen jede Stufe verwenden."
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Jede Antwort der Direktabfrage wird danach mit der Werkzeugkette gefragt und verglichen; findet sie andere Objekte, ist die Antwort als unsicher markiert. Etwa doppelte Modellzeit; zählt zum Anfragelimit. Ob es einem Modell hilft, zeigt ein Bewertungslauf."
+msgstr "Jede Antwort der Direktabfrage wird danach mit der Werkzeugkette gefragt und verglichen; findet sie andere Objekte, ist die Antwort als unsicher markiert. Etwa doppelte Modellzeit; zählt zum Anfragelimit. Ob es einem Modell hilft, zeigt ein Bewertungslauf."
 
 #: src/operations/OperationDialog.tsx
 msgid "Join"
@@ -5031,6 +5043,10 @@ msgstr "Minimum {field}"
 msgid "Mit aktuellen Daten übernehmen"
 msgstr "Mit aktuellen Daten übernehmen"
 
+#: src/admin/ConnectionsPage.tsx
+msgid "Mit der Werkzeugkette prüfen"
+msgstr "Mit der Werkzeugkette prüfen"
+
 #: src/model/compare/Entry.tsx
 msgid "Mit Direktabfrage vergleichen"
 msgstr "Mit Direktabfrage vergleichen"
@@ -5328,6 +5344,10 @@ msgstr "nicht den Verbund"
 #: src/admin/ConnectionsPage.tsx
 msgid "nicht freigegeben"
 msgstr "nicht freigegeben"
+
+#: src/model/compare/Check.tsx
+msgid "Nicht geprüft."
+msgstr "Nicht geprüft."
 
 #: src/queries/SavedQueries.tsx
 msgid "Nicht gespeichert"
@@ -5801,6 +5821,10 @@ msgstr "Prüffälle"
 #: src/admin/ProfilePage.tsx
 msgid "Prüfsumme"
 msgstr "Prüfsumme"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Prüfung durch die Werkzeugkette"
+msgstr "Prüfung durch die Werkzeugkette"
 
 #: src/admin/evaluation/runWords.ts
 #: src/operations/OperationDialog.tsx
@@ -6818,6 +6842,10 @@ msgstr "Ungültig: Die Referenz besteht die Prüfungen einer Modellabfrage nicht
 msgid "ungültige Geometrie"
 msgstr "ungültige Geometrie"
 
+#: src/model/compare/Check.tsx
+msgid "Unsicher: Die schrittweise Prüfung findet {chain} statt {direct} Objekte."
+msgstr "Unsicher: Die schrittweise Prüfung findet {chain} statt {direct} Objekte."
+
 #: src/model/statusKey.ts
 msgid "unterbrochen"
 msgstr "unterbrochen"
@@ -6892,6 +6920,7 @@ msgstr "Vergleich"
 msgid "Vergleich · gleiche Frage, zwei Arbeitsweisen"
 msgstr "Vergleich · gleiche Frage, zwei Arbeitsweisen"
 
+#: src/model/compare/Check.tsx
 #: src/model/compare/Entry.tsx
 msgid "Vergleich ansehen"
 msgstr "Vergleich ansehen"
@@ -7311,6 +7340,10 @@ msgstr "wird erst bei Annehmen übernommen"
 #: src/session/SaveAsDialog.tsx
 msgid "Wird gespeichert"
 msgstr "Wird gespeichert"
+
+#: src/model/compare/Check.tsx
+msgid "Wird mit der Werkzeugkette geprüft …"
+msgstr "Wird mit der Werkzeugkette geprüft …"
 
 #: src/admin/UsersPage.tsx
 msgid "Wird nur jetzt angezeigt. Bitte sicher weitergeben; es muss bei der ersten Anmeldung geändert werden."

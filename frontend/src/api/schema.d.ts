@@ -2384,6 +2384,41 @@ export interface components {
        */
       state_matches?: boolean | null
     }
+    /**
+     * CheckFigures
+     * @description The chain's checks of direct answers (plan-check-mode, D5), counted
+     *     apart from the proposals.
+     */
+    CheckFigures: {
+      /** Checked */
+      checked: number
+      /** Same */
+      same: number
+      /** Differs */
+      differs: number
+      /** Not Checked */
+      not_checked: number
+      /** Taken */
+      taken: number
+    }
+    /**
+     * CheckMark
+     * @description What the chain's check found on a direct answer (plan-check-mode): the
+     *     application's, from feature ids, never the model's.
+     */
+    CheckMark: {
+      /**
+       * State
+       * @enum {string}
+       */
+      state: 'running' | 'same' | 'differs' | 'not_checked'
+      /** Action Id */
+      action_id?: number | null
+      /** Direct Hits */
+      direct_hits?: number | null
+      /** Chain Hits */
+      chain_hits?: number | null
+    }
     /** CheckRequest */
     CheckRequest: {
       /** @description The result query the interface rebuilt from the state. */
@@ -2768,6 +2803,12 @@ export interface components {
        *     }
        */
       prompt_profile: components['schemas']['PromptProfile']
+      /**
+       * Check Mode
+       * @default off
+       * @enum {string}
+       */
+      check_mode: 'off' | 'chain'
       /** Price Input Per Mtok */
       price_input_per_mtok?: number | null
       /** Price Output Per Mtok */
@@ -2837,6 +2878,8 @@ export interface components {
       /** Request Limit Per Day */
       request_limit_per_day?: number | null
       prompt_profile?: components['schemas']['PromptProfile'] | null
+      /** Check Mode */
+      check_mode?: ('off' | 'chain') | null
       /** Price Input Per Mtok */
       price_input_per_mtok?: number | null
       /** Price Output Per Mtok */
@@ -2934,6 +2977,13 @@ export interface components {
       request_limit_per_day?: number | null
       /** @description How the direct query's prompt is written (plan E3, D9). Unset: today's. */
       prompt_profile?: components['schemas']['PromptProfile']
+      /**
+       * Check Mode
+       * @description The chain checks each direct answer (plan-check-mode, D1). Unset: off.
+       * @default off
+       * @enum {string}
+       */
+      check_mode: 'off' | 'chain'
       /** Price Input Per Mtok */
       price_input_per_mtok?: number | null
       /** Price Output Per Mtok */
@@ -3671,6 +3721,7 @@ export interface components {
       /** Acceptance Rate */
       acceptance_rate: number | null
       not_counted: components['schemas']['NotCounted']
+      checks?: components['schemas']['CheckFigures'] | null
     }
     /** KeyProposal */
     KeyProposal: {
@@ -4023,6 +4074,13 @@ export interface components {
         | null
       /** Hits */
       hits: number | null
+      /**
+       * Is Check
+       * @default false
+       */
+      is_check: boolean
+      /** Check State */
+      check_state?: ('running' | 'same' | 'differs' | 'not_checked') | null
     }
     /**
      * ModelActionView
@@ -4108,6 +4166,12 @@ export interface components {
       reference: 'none' | 'last_answer' | 'hand_edited'
       /** Compare Of */
       compare_of?: number | null
+      /**
+       * Is Check
+       * @default false
+       */
+      is_check: boolean
+      check?: components['schemas']['CheckMark'] | null
       level: components['schemas']['LevelSnapshot']
       connection: components['schemas']['ConnectionSnapshot']
       /** Profile Hash */

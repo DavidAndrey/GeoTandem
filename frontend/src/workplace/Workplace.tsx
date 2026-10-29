@@ -20,6 +20,7 @@ import { NoticeBar } from '../model/approval/NoticeBar'
 import { PendingProposal } from '../model/approval/Pending'
 import { PreviewCaption, PreviewLayer } from '../model/approval/Preview'
 import { useActionPolling } from '../model/panel/poll'
+import { useCheckPolling } from '../model/compare/checked'
 import { useActiveModel } from '../model/panel/active'
 import { PromptPanel, PromptUnavailable } from '../model/panel/PromptPanel'
 import { useModel } from '../model/store'
@@ -54,6 +55,7 @@ export function Workplace() {
   const setOpen = useModel((s) => s.setOpen)
   const client = useQueryClient()
   useActionPolling()
+  useCheckPolling()
   // Approved tool chains run as they arrive (P4).
   useChainRunner()
   // The hand-over before the approval flow, in this order (see ``watchModel``).

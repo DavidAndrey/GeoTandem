@@ -137,6 +137,7 @@ export function actionView(
     parent_action_id: 'parent' in c ? fixture.cases.findIndex((p) => p.id === c.parent) + 1 : null,
     reference: (expect.reference as ModelActionView['reference']) ?? 'none',
     compare_of: null,
+    is_check: false,
     level: level(levelName),
     connection: CONNECTION,
     profile_hash: 'sha256:profile',

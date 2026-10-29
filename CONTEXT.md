@@ -185,6 +185,14 @@ für eine Anbindung schreibt: Beispiele (Standard · 12), Platzierung (P0 · P5 
 P9) und Ausgabe (erzwungen · nur Text). Gemessene Vorgaben, kein freier Text;
 die Vorgabe ist der heutige Prompt.
 
+**Prüfung durch die Kette** (`check_mode`, plan-check-mode) — Eine Einstellung
+der Anbindung: Jede Antwort der Direktabfrage mit einer Abfrage wird danach von
+der Anwendung selbst noch einmal mit der Werkzeugkette gefragt, und das Ergebnis
+des Plans (ohne Schritte auszuführen) mit dem der Antwort nach Objekt-IDs
+verglichen. Gleich: *geprüft*; verschieden: *unsicher*, mit dem Vergleich.
+Die Antwort selbst bleibt, wie sie ist; die Prüfung ist kein eigener Vorschlag
+und zählt nicht in den Kennzahlen der Vorschläge, aber zum Anfragelimit.
+
 **Prüffall** (`EvalCase`, F-3.13) — Eine Frage, wie ein Anwender sie stellt, mit
 ihrer richtigen Antwort: eine Referenzabfrage, mehrere faire Lesarten oder
 geforderte Teile (*Abfragefall*), oder die erwartete Antwortart (*Verhaltensfall*:

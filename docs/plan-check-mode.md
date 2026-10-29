@@ -67,3 +67,32 @@ waits `proposed`, so its steps never run on their own.
 - Checking a chain answer with direct (the other direction).
 - The check for unasked conditions and the examples per question
   (plan-chain-eval 17, plan-improve-examples.md): separate work.
+
+## 6 Built (2026-10-29)
+
+- **Connection:** `check_mode` (`off` · `chain`, migration 0018), in the
+  admin form as *Prüfung durch die Werkzeugkette*.
+- **Record:** a check is a repeat with `is_check`; the direct answer keeps
+  `check` (`CheckMark`: `running`, `same`, `differs`, `not_checked`, the
+  check's id, both counts). Restart and stale closing end a running mark
+  `not_checked`.
+- **Service:** the check starts once the direct call gave its slot back,
+  takes a slot of its own but not the account (D3), is admitted by the
+  request limit alone (D5); a new prompt aborts the account's checks still
+  thinking. Its plan's query is compared as the caller in a query slot; the
+  comparison (`/comparison`) takes a check waiting with its plan.
+- **Figures:** checks are left out of the proposals and counted apart
+  (`KeyFigures.checks`).
+- **Frontend:** the mark under the answer, polled while `running`;
+  *Vergleich ansehen* brings the check into the dialogue and opens the
+  existing comparison, from which the chain's plan is approved, run and
+  adopted as any repeated chain.
+- **Harness:** `--approach check` (D6).
+
+**Differs from what `b8` measured:** H there ran the chain as fallback on
+direct's visible failures too; as built, a failed direct answer is not
+checked (the user's own *Mit Werkzeugkette wiederholen* stays the way). The
+plan's query leaves out re-plans (D2). A run of `--approach check` per local
+model confirms the numbers before an administrator turns it on.
+
+Not done: the annotation in anforderungen.md and etappen.md.

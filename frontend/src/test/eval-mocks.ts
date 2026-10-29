@@ -688,6 +688,7 @@ export const CONNECTIONS: ConnectionInfo[] = (
   request_limit_enabled: false,
   request_limit_per_day: null,
   prompt_profile: P0,
+  check_mode: 'off',
   // Prices as the estimate of V4.1 shows them (O4): Haiku and Luna in USD, gemma none.
   price_input_per_mtok: locality === 'external' ? 0.4 : null,
   price_output_per_mtok: locality === 'external' ? 1.6 : null,

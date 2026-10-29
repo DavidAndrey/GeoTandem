@@ -59,8 +59,12 @@ const PENDING: readonly ModelActionView['status'][] = [
   'running',
 ]
 
-/** Has a result to compare: a stored query, whatever the status (the server's ``_compared``). */
-export const hasResult = (view: ModelActionView): boolean => view.query != null
+/**
+ * Has a result to compare: a stored query, whatever the status (the server's
+ * ``_compared``); a check waiting with its plan has its plan's (plan-check-mode).
+ */
+export const hasResult = (view: ModelActionView): boolean =>
+  view.query != null || (view.is_check && view.status === 'proposed' && view.steps.length > 0)
 
 /** The classes ``off`` at the level the record was answered under (D1). */
 const offOf = (view: ModelActionView) => view.governance?.off ?? []

@@ -68,6 +68,10 @@ Id = Annotated[int, Field(ge=1, le=MAX_ID)]
 """A record's id as a request names it."""
 
 Approach = Literal["direct", "chain"]
+CheckMode = Literal["off", "chain"]
+"""Whether a connection's direct answers are checked by the chain
+(plan-check-mode, D1): ``off``, or ``chain``."""
+CheckState = Literal["running", "same", "differs", "not_checked"]
 """*Direktabfrage* or *Werkzeugkette* (F-5.4), chosen per request."""
 
 Reference = Literal["none", "last_answer", "hand_edited"]
@@ -454,6 +458,21 @@ class StepView(BaseModel):
         return None if query is None else compact(query)
 
 
+class CheckMark(BaseModel):
+    """What the chain's check found on a direct answer (plan-check-mode): the
+    application's, from feature ids, never the model's."""
+
+    state: CheckState
+    """``running`` while the chain plans; ``same`` or ``differs`` once both
+    results were compared; ``not_checked`` when the check ended without a
+    result to compare (aborted by the next prompt, refused, failed, busy)."""
+    action_id: int | None = None
+    """The check's own record, a repeat of this one (``compare_of``): the
+    comparison (``/comparison``) opens on it."""
+    direct_hits: int | None = None
+    chain_hits: int | None = None
+
+
 class ModelActionView(BaseModel):
     """One action record as its owner or an administrator sees it (D4). Never
     rows: those leave only in ``ExecuteResponse``."""
@@ -482,6 +501,11 @@ class ModelActionView(BaseModel):
     reference: Reference = "none"
     compare_of: int | None = None
     """The action this one repeats with the other approach (design M10)."""
+    is_check: bool = False
+    """A repeat the application asked by itself to check ``compare_of``
+    (plan-check-mode): no proposal of its own, left out of the key figures."""
+    check: CheckMark | None = None
+    """On a direct answer the chain checks: what the check found."""
     level: LevelSnapshot
     connection: ConnectionSnapshot
     profile_hash: str
@@ -545,6 +569,10 @@ class ModelActionSummary(BaseModel):
     refusal_code: RefusalCode | None
     """Why the application refused the answer (design M3), as the log's column shows it."""
     hits: int | None
+    is_check: bool = False
+    """The chain's check of a direct answer (plan-check-mode)."""
+    check_state: CheckState | None = None
+    """On a checked direct answer: what its check found."""
 
 
 class ModelActionPage(BaseModel):
@@ -615,6 +643,20 @@ class NotCounted(BaseModel):
     failed: int
 
 
+class CheckFigures(BaseModel):
+    """The chain's checks of direct answers (plan-check-mode, D5), counted
+    apart from the proposals."""
+
+    checked: int
+    """Direct answers a check was started for."""
+    same: int
+    differs: int
+    not_checked: int
+    """Started, but ended without a result to compare."""
+    taken: int
+    """Checks whose plan the user took (approved) after a difference."""
+
+
 class KeyFigures(BaseModel):
     """Plan section 2, for the filters given (design M16.1)."""
 
@@ -633,3 +675,5 @@ class KeyFigures(BaseModel):
     """(accepted + adjusted) / (accepted + adjusted + rejected + superseded),
     rounded to four decimals; ``None`` while nothing is decided."""
     not_counted: NotCounted
+    checks: CheckFigures | None = None
+    """``None`` where no check was started in the filters' records."""

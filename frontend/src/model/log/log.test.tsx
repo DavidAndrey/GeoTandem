@@ -127,6 +127,7 @@ const summary = (v: ModelActionView): ModelActionSummary => ({
   reject_reason: v.reject_reason ?? null,
   refusal_code: v.refusal?.code ?? null,
   hits: v.stamp?.count ?? null,
+  is_check: v.is_check,
 })
 
 /** Plan section 2 over the records, as ``ModelActionStore.key_figures`` counts. */
