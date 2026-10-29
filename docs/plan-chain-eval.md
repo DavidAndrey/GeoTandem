@@ -988,7 +988,7 @@ Agreement is the same count, a proxy. Pass / silent in %:
 ids (`hits`, commit `8ff8417`), so direct and chain compare on features.
 `b8-d-*` and `b8-k-*`: the four local models, the confirm sets, direct and
 chain on the same seeds 21–25. H is then read per (case, seed) pair: pass,
-silent, marks on correct and on wrong answers, model time. Proposed rule,
-to be confirmed before the reading:
+silent, marks on correct and on wrong answers, model time. Rule, agreed
+2026-10-29 after the gemma models were read and before the qwen models:
 - H is worth building for a model when its silent wrongs on A+B fall by at
   least a third against F, with marks on at most 10 % of correct answers.
