@@ -188,15 +188,27 @@ written by hand.
 - **The load-bearing check becomes a test** over every case file, so new
   and edited cases keep it.
 
+**As built (2026-10-30):** `schema/eval-cases/layer-cases.json`, 73 cases
+(`--cases layers` / `layers-heldout`): 28 with three layers from 14
+templates, 40 with two layers from 20 templates covering all ten pairs,
+5 confirm-only with three layers for group 4; 43 confirm, 30 tuning. Each
+layer is the subject of 6 to 10 confirm cases. Rules learnt while writing
+them: no «Bahnhof» (part of stop names, searched as a name in a confirm
+case), no «Autobahn» for `nationalstrasse`, «Primarschule» keeps both
+readings (`typ`, `primarstufe`) as the start set does, no «die» that can
+point to two nouns. Open: the fixed versions of `kb04`, `kb15`, `kb24`,
+`doc6`, `h14`.
+
 ### 6.4 Duplicates and groups
 
-Each reference is reduced to a signature: subject, layers, operations and
-predicates, attributes. With values: the full signature.
+Each reference is reduced to a signature (`evaluation/signature.py`):
+its layers (subject and related layers) and its shape (subject filtered or
+not; each relation's predicate, negation and whether the related layer is
+filtered), no values. With values: the full signature.
 
 - Same full signature in tuning and confirm (a paraphrase): a duplicate,
   not allowed across the splits.
-- Every confirm case is put in a **group**, by its nearest pool case,
-  stored with the case before the runs:
+- Every confirm case is put in a **group**, by its nearest pool case:
   1. same layers, same shape (another value): what a customer has once
      their own cases cover a question;
   2. same layers, other shape;
@@ -205,6 +217,16 @@ predicates, attributes. With values: the full signature.
 - About half the templates have variants in both splits (group 1), the
   rest are whole in one split (groups 2–4); each group has at least
   8 confirm cases.
+
+**As built (2026-10-30):** the groups are computed from the case files and
+their sizes pinned by a test (`test_eval_signature.py`), so a change to the
+pool or the confirm split fails the test instead of shifting the groups.
+Over all confirm cases (start set, chain, layers): group 1: 57, group 2:
+11, group 3: 14, group 4: 12, behaviour cases 12. Group 4 needed five
+confirm-only cases on layer combinations no tuning case has (ml69–ml73).
+Three confirm cases copy a tuning case in full from before the check
+(`h29` = `attr-franzoesisch`, `kb08` = `doc3`, `kb16` = `dist-nationalstrasse`);
+the measurement of examples leaves them out.
 
 ### 6.5 Arms and runs
 

@@ -1,7 +1,7 @@
 {
   "format": "geotandem-eval-cases",
   "version": 1,
-  "about": "Cases across layers (docs/plan-improve-examples.md, 6.3), over the sample dataset. Built from templates, named by the tag tpl:<shape>; every reference finds something, less than its whole layer, and every condition changes its result. Batch 1 (ml01-ml28): three layers, two relations on the subject; batch 2 (ml29-ml68): two layers, one relation, every pair of layers.",
+  "about": "Cases across layers (docs/plan-improve-examples.md, 6.3), over the sample dataset. Built from templates, named by the tag tpl:<shape>; every reference finds something, less than its whole layer, and every condition changes its result. Batch 1 (ml01-ml28): three layers, two relations on the subject; batch 2 (ml29-ml68): two layers, one relation, every pair of layers; batch 3 (ml69-ml73): confirm only, three layers no tuning case combines (group 4).",
   "cases": [
     {
       "id": "ml01-sek-bahn-ohne-nationalstrasse",
@@ -3012,6 +3012,267 @@
                 "attr": "typ",
                 "cmp": "eq",
                 "value": "haupt"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml69-bahn-fluss-nationalstrasse",
+      "prompt": "Bahnhaltestellen, die höchstens 300 m von einem Hauptgewässer und höchstens 300 m von einer Nationalstrasse liegen",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "near",
+        "lines",
+        "code",
+        "tpl:hal-near-gew-near-str"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "haltestellen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "verkehrsmittel",
+              "cmp": "eq",
+              "value": "bahn"
+            },
+            {
+              "op": "related",
+              "layer": "gewaesser",
+              "predicate": "dwithin",
+              "distance_m": 300,
+              "where": {
+                "op": "compare",
+                "attr": "typ",
+                "cmp": "eq",
+                "value": "haupt"
+              }
+            },
+            {
+              "op": "related",
+              "layer": "strassen",
+              "predicate": "dwithin",
+              "distance_m": 300,
+              "where": {
+                "op": "compare",
+                "attr": "klasse",
+                "cmp": "eq",
+                "value": "nationalstrasse"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml70-bus-fluss-nationalstrasse",
+      "prompt": "Welche Bushaltestellen liegen im Umkreis von 100 m eines Hauptgewässers und im Umkreis von 200 m einer Nationalstrasse?",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "near",
+        "lines",
+        "code",
+        "tpl:hal-near-gew-near-str"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "haltestellen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "verkehrsmittel",
+              "cmp": "eq",
+              "value": "bus"
+            },
+            {
+              "op": "related",
+              "layer": "gewaesser",
+              "predicate": "dwithin",
+              "distance_m": 100,
+              "where": {
+                "op": "compare",
+                "attr": "typ",
+                "cmp": "eq",
+                "value": "haupt"
+              }
+            },
+            {
+              "op": "related",
+              "layer": "strassen",
+              "predicate": "dwithin",
+              "distance_m": 200,
+              "where": {
+                "op": "compare",
+                "attr": "klasse",
+                "cmp": "eq",
+                "value": "nationalstrasse"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml71-schule-fluss-ohne-nationalstrasse",
+      "prompt": "Schulen höchstens 300 m von einem Hauptgewässer, aber mehr als 500 m von jeder Nationalstrasse",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "near",
+        "negation",
+        "lines",
+        "tpl:sch-near-gew-notnear-str"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "schulen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "related",
+              "layer": "gewaesser",
+              "predicate": "dwithin",
+              "distance_m": 300,
+              "where": {
+                "op": "compare",
+                "attr": "typ",
+                "cmp": "eq",
+                "value": "haupt"
+              }
+            },
+            {
+              "op": "not",
+              "arg": {
+                "op": "related",
+                "layer": "strassen",
+                "predicate": "dwithin",
+                "distance_m": 500,
+                "where": {
+                  "op": "compare",
+                  "attr": "klasse",
+                  "cmp": "eq",
+                  "value": "nationalstrasse"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml72-bach-bahn-schule",
+      "prompt": "Nebengewässer, die höchstens 300 m an einer Bahnhaltestelle und höchstens 100 m an einer Schule vorbeifliessen",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "near",
+        "lines",
+        "code",
+        "tpl:gew-near-hal-near-sch"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "gewaesser",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "typ",
+              "cmp": "eq",
+              "value": "neben"
+            },
+            {
+              "op": "related",
+              "layer": "haltestellen",
+              "predicate": "dwithin",
+              "distance_m": 300,
+              "where": {
+                "op": "compare",
+                "attr": "verkehrsmittel",
+                "cmp": "eq",
+                "value": "bahn"
+              }
+            },
+            {
+              "op": "related",
+              "layer": "schulen",
+              "predicate": "dwithin",
+              "distance_m": 100
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml73-bach-bahn-sek",
+      "prompt": "Welche Nebengewässer kommen einer Bahnhaltestelle näher als 500 m und einer Schule mit Sekundarstufe I näher als 200 m?",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "near",
+        "lines",
+        "code",
+        "tpl:gew-near-hal-near-sch"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "gewaesser",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "typ",
+              "cmp": "eq",
+              "value": "neben"
+            },
+            {
+              "op": "related",
+              "layer": "haltestellen",
+              "predicate": "dwithin",
+              "distance_m": 500,
+              "where": {
+                "op": "compare",
+                "attr": "verkehrsmittel",
+                "cmp": "eq",
+                "value": "bahn"
+              }
+            },
+            {
+              "op": "related",
+              "layer": "schulen",
+              "predicate": "dwithin",
+              "distance_m": 200,
+              "where": {
+                "op": "compare",
+                "attr": "sekundarstufe",
+                "cmp": "eq",
+                "value": true
               }
             }
           ]
