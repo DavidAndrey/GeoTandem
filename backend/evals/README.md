@@ -188,6 +188,31 @@ counts, the check's calls and latency.
 uv run python evals/run.py --model gemma4:12b --approach check --cases heldout --label c-gemma4_12b
 ```
 
+## Examples from the pool (docs/plan-improve-examples.md, 6.5)
+
+`--arm a|b|c` sends examples from the pool, [pool.py](pool.py): the tuning
+cases of all three case files whose reference the chain can write too (62 of
+69; `tests/test_eval_pool.py` pins them). Each pool case is a worked example of
+both approaches: its reference as the direct answer, and a plan derived from it
+that the application's checks pass and that selects the same features.
+
+| Arm | Examples |
+|---|---|
+| `a` | today's fixed set |
+| `b` | the rules, two fixed examples (the first, the one that declines) and three pool cases drawn at random, seeded by case and seed |
+| `c` | the same, with the three pool cases the selector chooses from the question and the layer profile |
+
+A case is never its own example, and a confirm case that copies a pool case
+(`signature.copies`) is left out of the run in every arm. The examples go to
+every call: the direct query, the chain's plan, and both calls of the check.
+The header adds `arm`, `pool` and `pool_sha256`; each record lists the pool
+ids it was given (`examples`). `--show` prints the messages of the first case,
+the check's planning call included.
+
+```sh
+uv run python evals/run.py --model gemma4:12b --approach check --cases layers-heldout --arm c --label xc-gemma4_12b
+```
+
 ## Verdicts
 
 

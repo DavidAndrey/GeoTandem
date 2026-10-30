@@ -252,6 +252,36 @@ world: if C is not better than B, the selector is not worth building.
   `same` and passes the check unmarked.
 - Each answer records the pool ids it was given.
 
+**As built (2026-10-30):** `evals/run.py --arm a|b|c`, the pool in
+`evals/pool.py`, pinned by `tests/test_eval_pool.py`.
+- **Pool:** 62 of the 69 tuning cases with a reference. Each gets its chain
+  plan by the conversion of section 1, and every plan passes `check_plan`
+  and selects the reference's features. Seven have no plan: «ohne» around
+  `contains` or `intersects` (`doc4`, `ml11`, `ml24`, `ml63`, `ml64`) has no
+  chain tool, and a road farther than a distance (`ml37`, `ml38`) needs
+  `outside` of a buffer, which takes points only. They stay out of the
+  direct pool too, so every arm sends the same examples to both calls of
+  the check.
+- **B and C** keep the rules and two fixed examples, the first and the one
+  that declines; the pool cases follow under their own line («geprüfte
+  Fragen an die Layer des Layer-Steckbriefs»). Without the declining one,
+  rule 3 would measure the loss of that example, not the choice: the pool
+  holds only queries.
+- **The explanation** of a pool example is its last step's text, written
+  from the profile's labels («Haltestellen: Bus, höchstens 50 m von
+  Strassen: Nationalstrasse»); the cases have no words of their own for it.
+- **B's draw** is seeded by case and seed, so each seed block draws anew
+  and B estimates random examples, not one draw.
+- **The selector** (section 2) ranks by the subject named first, then the
+  other layers in common, then the operations in common, and fewer
+  operations the question does not cue. Cue words for `within` and
+  `intersects` are added; the pool has those shapes. It reads only the
+  question and the profile: a name such as «Aare» or «Köniz» names no
+  layer, so «Nationalstrassen queren die Aare» is chosen by `strassen`
+  alone.
+- **Copies** (6.4) are left out of the run in every arm, found by
+  `signature.copies` and not by a list.
+
 ### 6.6 Decision rule
 
 Per model and approach, on the confirm cases, paired per case with a
