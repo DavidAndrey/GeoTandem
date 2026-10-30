@@ -8,9 +8,13 @@ as before. The cases are read by the application's own reader
 ``chain`` and ``chain-heldout`` are the two splits of the chain's cases
 (``chain-cases.json``, docs/plan-chain-eval.md 4), read by
 ``evaluation.cases.chain_set``; they are not part of the start set.
+
+``layers`` and ``layers-heldout`` are the two splits of the cases across
+layers (``layer-cases.json``, docs/plan-improve-examples.md 6.3), read by
+``evaluation.cases.layer_set``.
 """
 
-from geotandem.evaluation.cases import chain_set, start_set
+from geotandem.evaluation.cases import chain_set, layer_set, start_set
 from geotandem.evaluation.schemas import EvalCase, Split
 
 CASE_FILES: dict[str, Split] = {
@@ -18,12 +22,20 @@ CASE_FILES: dict[str, Split] = {
     "heldout": "confirm",
     "chain": "tuning",
     "chain-heldout": "confirm",
+    "layers": "tuning",
+    "layers-heldout": "confirm",
 }
 CHAIN_FILES = frozenset({"chain", "chain-heldout"})
+LAYER_FILES = frozenset({"layers", "layers-heldout"})
 
 
 def load_cases(name: str) -> list[EvalCase]:
-    """The cases of the harness file ``name`` (``cases``, ``heldout``, ``chain``
-    or ``chain-heldout``)."""
-    found = chain_set() if name in CHAIN_FILES else start_set()
+    """The cases of the harness file ``name`` (``cases``, ``heldout``, ``chain``,
+    ``chain-heldout``, ``layers`` or ``layers-heldout``)."""
+    if name in CHAIN_FILES:
+        found = chain_set()
+    elif name in LAYER_FILES:
+        found = layer_set()
+    else:
+        found = start_set()
     return [case for case in found if case.split == CASE_FILES[name]]

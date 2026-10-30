@@ -138,6 +138,8 @@ uv run python evals/run.py --model gemma4:12b --approach chain --cases heldout -
 |---|---|
 | `--cases chain` | the tuning split of the chain's cases (`schema/eval-cases/chain-cases.json`: `kb*` chain-native, `ks*` stress) |
 | `--cases chain-heldout` | their confirmation split |
+| `--cases layers` | the tuning split of the cases across layers (`schema/eval-cases/layer-cases.json`: `ml*`, docs/plan-improve-examples.md 6.3) |
+| `--cases layers-heldout` | their confirmation split |
 
 The start set's splits (`cases`, `heldout`) take the chain too, for the paired
 comparison with the direct path. A case that wants the chain offered as the

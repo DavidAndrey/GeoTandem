@@ -11,10 +11,10 @@ import pytest
 
 from geotandem.data import DataBackend, Limits
 from geotandem.evaluation.bearing import idle_conditions, label, without_one
-from geotandem.evaluation.cases import chain_set, start_set
+from geotandem.evaluation.cases import chain_set, layer_set, start_set
 
 LIMITS = Limits(max_features=10_000, timeout_s=10)
-CASES = {case.id: case for case in (*start_set(), *chain_set())}
+CASES = {case.id: case for case in (*start_set(), *chain_set(), *layer_set())}
 
 IDLE = {
     # Without the bus condition, the same 11 schools in Köniz.
