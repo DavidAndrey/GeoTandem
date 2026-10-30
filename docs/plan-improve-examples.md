@@ -182,9 +182,9 @@ written by hand.
 - **Target:** about 15 three-layer confirm cases, every layer the subject
   of at least 4 confirm cases.
 - **Own file**, beside `chain-cases.json`, so the sets of Lauf 1–11 stay
-  as they were measured. `kb04`, `kb15`, `kb24`, `doc6`, `h14` get values
-  that make their conditions bite, as new cases in that file; the old ones
-  stay unchanged.
+  as they were measured. `kb04`, `kb15`, `kb24`, `doc6`, `h14` stay
+  unchanged, their idle conditions pinned by the test; the new file's
+  cases cover their shapes with conditions that bite.
 - **The load-bearing check becomes a test** over every case file, so new
   and edited cases keep it.
 
@@ -196,8 +196,8 @@ layer is the subject of 6 to 10 confirm cases. Rules learnt while writing
 them: no «Bahnhof» (part of stop names, searched as a name in a confirm
 case), no «Autobahn» for `nationalstrasse`, «Primarschule» keeps both
 readings (`typ`, `primarstufe`) as the start set does, no «die» that can
-point to two nouns. Open: the fixed versions of `kb04`, `kb15`, `kb24`,
-`doc6`, `h14`.
+point to two nouns. No fixed versions of `kb04`, `kb15`, `kb24`, `doc6`,
+`h14` (decided 2026-10-30).
 
 ### 6.4 Duplicates and groups
 
