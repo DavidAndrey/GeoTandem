@@ -95,7 +95,7 @@ checked (the user's own *Mit Werkzeugkette wiederholen* stays the way). The
 plan's query leaves out re-plans (D2). A run of `--approach check` per local
 model confirms the numbers before an administrator turns it on.
 
-Not done: the annotation in anforderungen.md and etappen.md.
+Annotated in anforderungen.md (F-5.8) and etappen.md (after E3).
 
 ## 7 Confirmed (2026-10-30, `b9-c-*`, benchmarks.md Lauf 13)
 
@@ -106,11 +106,11 @@ correct answers rise, since the plan's query is rougher than the chain that
 ran: 11.9 %, 10.1 %, 10.1 %, 19.2 %. By the rule as agreed no model passes;
 gemma4:12b and qwen3:14b miss it by one case each.
 
-Open for the user:
-- whether 12b and qwen3:14b count as at the bar (the rule was set before the
-  build, and one case of ~200 is within noise), or stay off;
-- or a check closer to `b8`, which would run the chain's steps and so needs
-  a rule for steps the user has not approved (D2 again).
+**Decided (2026-10-30, the user):** gemma4:12b and qwen3:14b count as at the
+bar (one case over 10 % of ~200 is within noise); the check may be switched
+on for them. gemma4:e4b and qwen3.5:9b stay off. Not taken: a check closer
+to `b8` that runs the chain's steps (D2 again), and a narrower rule for
+marking.
 
 The marks sit in few cases (buffers around the Aare, «ohne», schools in
 Münsingen). They are confirm cases, so nothing is tuned on them; a narrower

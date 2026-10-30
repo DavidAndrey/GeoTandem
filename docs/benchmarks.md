@@ -796,4 +796,6 @@ Rückfall aus Lauf 12 auf denselben Saaten; dieselbe Regel.
   oder abgelehnt wurde; bei gemma4:e4b sind aber 27, bei qwen3.5:9b 26
   falsche Antworten ungeprüft und unmarkiert geblieben.
 - gemma4:12b und qwen3:14b liegen auf der Schwelle (je ein Fall über
-  10 %); die Entscheidung, ob das reicht, steht aus (plan-check-mode 7).
+  10 %). **Entschieden (2026-10-30):** Das gilt als erfüllt; für diese
+  beiden Modelle darf die Prüfung eingeschaltet werden, gemma4:e4b und
+  qwen3.5:9b bleiben aus (plan-check-mode 7).

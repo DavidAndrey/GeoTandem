@@ -189,6 +189,13 @@ dem Verbindungstest. Begründung und Konzept stehen in
 > nicht im Modellprotokoll (D9, O8). Wo der Plan das Konzept ändert, steht in
 > [bewertung.md 14](bewertung.md).
 
+> **Nach E3: Prüfung durch die Kette (2026-10-29/30).** Die Werkzeugkette
+> ist gemessen ([docs/plan-chain-eval.md](docs/plan-chain-eval.md)); als
+> Einstellung je Anbindung prüft sie die Direktabfrage und markiert
+> abweichende Antworten ([docs/plan-check-mode.md](docs/plan-check-mode.md)).
+> Bestätigt für gemma4:12b und qwen3:14b (Lauf 13, an der Schwelle);
+> gemma4:e4b und qwen3.5:9b bleiben aus.
+
 **Vorführung E3:** Zwei Modellanbindungen werden über denselben Prüffallbestand
 gefahren; die Vergleichsmatrix trägt die Freigabeentscheidung (F-3.3, F-3.8).
 Ein zweiter Lauf stellt dieselbe Anbindung mit zwei System-Prompts gegenüber —

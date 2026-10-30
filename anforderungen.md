@@ -203,6 +203,12 @@ schliessen die Lücke.*
   reproduzierbar.
 - **F-5.8** Vergleichbarkeit: Dieselbe Fragestellung lässt sich über beide Wege
   ausführen; Herleitung, Schrittzahl und Ergebnis sind nebeneinander einsehbar.
+  *Erweitert (2026-10-29, [docs/plan-check-mode.md](docs/plan-check-mode.md)):
+  Je Anbindung lässt sich die Prüfung durch die Kette einschalten; die Kette
+  plant dieselbe Frage neben der Direktabfrage, und liefert ihr Plan andere
+  Objekte, wird die Antwort als unsicher markiert. Die Prüfung wählt nichts
+  und wendet nichts an (F-5.4); eingeschaltet wird sie nur für gemessene
+  Modelle (benchmarks.md Lauf 13).*
 - **F-5.9** Ausführung ausschliesslich durch die Anwendung, nachdem das
   Abfrageobjekt bzw. der Werkzeugaufruf gegen Schema und Werkzeug-Freigaben
   validiert wurde; Abweisung ungültiger oder nicht freigegebener Abfragen mit
