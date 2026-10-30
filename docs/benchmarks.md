@@ -767,3 +767,33 @@ sinken und höchstens 10 % der richtigen Antworten markiert werden.
   vorhandene Codes oder raten Schlüssel (plan-chain-eval 17).
 - **Nächster Schritt:** H im Dienst als wählbare Einstellung bauen und wie
   jede Voreinstellung messen.
+
+## Lauf 13: die Prüfung, wie sie gebaut ist, 2026-10-30
+
+Die Prüfung durch die Kette (Commit `681e49d`, plan-check-mode) mit
+`--approach check`, die vier lokalen Modelle, die Bestätigungsfälle,
+Saaten 21–25 wie Lauf 12. Anders als H in Lauf 12 laufen die Schritte der
+Kette nicht: Verglichen wird die Abfrage ihres Plans (D2), ohne Neuplanung;
+eine sichtbar gescheiterte Direktantwort wird nicht geprüft. F ist der
+Rückfall aus Lauf 12 auf denselben Saaten; dieselbe Regel.
+
+| Modell | Still falsch A+B: F → Prüfung | Prüfung gegen F | Richtige markiert | Bestanden A+B: F / Prüfung | Nicht geprüft | Rechenzeit je Frage: direkt + Prüfung | Regel |
+|---|---|---|---|---|---|---|---|
+| gemma4:e4b | 7.9 → 4.6 % | −42 % (−78 … +12) | 11.9 % (20/168) | 76 / 70 % | 82 von 222 | 1.3 + 1.5 s | *nicht erfüllt* |
+| gemma4:12b | 7.5 → 2.1 % | −72 % (−100 … −29) | 10.1 % (21/208) | 89 / 87 % | 40 von 235 | 2.1 + 2.9 s | *nicht erfüllt*, um 0.1 Punkte |
+| qwen3:14b | 25.0 → 7.5 % | −70 % (−93 … −45) | 10.1 % (17/169) | 72 / 70 % | 51 von 243 | 4.4 + 6.5 s | *nicht erfüllt*, um 0.1 Punkte |
+| qwen3.5:9b | 13.3 → 1.2 % | −91 % (−100 … −79) | 19.2 % (29/151) | 75 / 63 % | 55 von 247 | 2.0 + 3.6 s | *nicht erfüllt* |
+
+- Die stillen Fehler sinken stärker als in Lauf 12 (gemma4:12b −72 statt
+  −44 %, qwen3:14b −70 statt −58 %), dafür werden mehr richtige Antworten
+  markiert (gemma4:e4b 7 → 12 %, gemma4:12b 3 → 10 %): Der Plan ohne
+  Schritte ist ungenauer als die gelaufene Kette.
+- Die Markierungen sammeln sich in wenigen Fällen (Puffer um die Aare,
+  «ohne», Schulen in Münsingen); ohne die drei häufigsten blieben 4–5 %
+  (qwen3.5:9b 11 %). Das sind Bestätigungsfälle: Daran wird nicht
+  nachgestellt.
+- «Nicht geprüft» ist meist eine richtige Antwort, deren Plan scheiterte
+  oder abgelehnt wurde; bei gemma4:e4b sind aber 27, bei qwen3.5:9b 26
+  falsche Antworten ungeprüft und unmarkiert geblieben.
+- gemma4:12b und qwen3:14b liegen auf der Schwelle (je ein Fall über
+  10 %); die Entscheidung, ob das reicht, steht aus (plan-check-mode 7).

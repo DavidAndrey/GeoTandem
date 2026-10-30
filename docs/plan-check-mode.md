@@ -96,3 +96,22 @@ plan's query leaves out re-plans (D2). A run of `--approach check` per local
 model confirms the numbers before an administrator turns it on.
 
 Not done: the annotation in anforderungen.md and etappen.md.
+
+## 7 Confirmed (2026-10-30, `b9-c-*`, benchmarks.md Lauf 13)
+
+`--approach check` on the four local models, confirm sets, seeds 21–25,
+against the fallback F of `b8`. Silent wrongs on A+B fall more than in `b8`
+(e4b −42 %, 12b −72 %, qwen3:14b −70 %, qwen3.5:9b −91 %), but marks on
+correct answers rise, since the plan's query is rougher than the chain that
+ran: 11.9 %, 10.1 %, 10.1 %, 19.2 %. By the rule as agreed no model passes;
+gemma4:12b and qwen3:14b miss it by one case each.
+
+Open for the user:
+- whether 12b and qwen3:14b count as at the bar (the rule was set before the
+  build, and one case of ~200 is within noise), or stay off;
+- or a check closer to `b8`, which would run the chain's steps and so needs
+  a rule for steps the user has not approved (D2 again).
+
+The marks sit in few cases (buffers around the Aare, «ohne», schools in
+Münsingen). They are confirm cases, so nothing is tuned on them; a narrower
+rule for marking would need its own tuning on the tuning split first.
