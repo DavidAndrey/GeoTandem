@@ -1,6 +1,7 @@
 # Plan: examples chosen per question, for the direct query and the chain
 
-> Stand: 2026-10-28 · proposal, not started · Bezug:
+> Stand: 2026-10-30 · proposal, not started; section 6 (the measurement)
+> worked out, the check included · Bezug:
 > [plan-chain-eval.md](plan-chain-eval.md) (sections 15, 16; F16, F17),
 > [plan-e3.md](plan-e3.md) (D2, D3, D9, F-9.3),
 > [testplan-system-context.md](testplan-system-context.md) (8.5, Phase 4)
@@ -115,26 +116,157 @@ invented and always allowed.
 
 ## 6 First step: measure before building
 
-The sample data already has the split this needs. A harness option, no
-application change:
+A harness option, no application change. The measurement decides whether
+the rest is built, so its cases, groups and decision rule (6.1–6.6) are
+fixed before the first run; nothing in them is changed after looking at
+results.
 
-1. Check for near-duplicates between tuning and confirm questions; a pair
-   would overstate the gain.
-2. Pool: the tuning cases (`start-tuning`, the tuning half of the chain
-   cases), leave one out. Measured on the confirm cases (`start-confirm`,
-   `chain-heldout`).
-3. Direct and chain, three examples chosen against the fixed set, on
-   gemma4:12b, qwen3:14b and gpt-6-luna, two seed blocks, paired per case.
+### 6.1 What the sets give today
 
-About half a day of work, then the runs. If the gain is clear, the library,
+Counted on the reference queries (2026-10-28):
+
+| | Pool (tuning) | Measured (confirm) |
+|---|---|---|
+| Cases with a reference | 35 | 50 |
+| one layer | 12 | 16 |
+| two layers | 21 | 32 |
+| three layers | 2 | 2 |
+| a relation inside a relation's filter | 0 | 0 |
+
+- 8 confirm cases use a combination of layers no pool case has
+  (`gewaesser`, `strassen`, `gewaesser+strassen`, `gewaesser+schulen`,
+  `haltestellen+strassen`); `strassen` is the subject of 6 confirm cases
+  and 1 pool case.
+- **Load-bearing check:** each condition of every reference dropped in turn
+  (202 conditions, 90 cases) and the result compared on the sample data.
+  In 5 cases a condition changes nothing, so an answer that drops it still
+  passes: `kb04-koeniz-nahe-bus` (confirm; without the bus condition, the
+  same 11 schools), `kb15-seilbahn-nahe-schule`, `kb24-sek-klein-nahe-bus`,
+  and one branch of the «oder» in `doc6-verschachtelt` and
+  `h14-sek-kg-oder-gross`. `n12-schiff-leer` is empty by design.
+
+As they stand, the sets would measure two-layer questions on schools and
+stops, and not the questions with several conditions where the chain drops
+one (F17, F21).
+
+### 6.2 Data
+
+The sample dataset is real open data (AGI Kanton Bern, opendata.swiss,
+`terms_open`). Its values may go to external connections as examples
+for this measurement (decided 2026-10-28; this widens X-1 of
+[testplan-external-models.md](testplan-external-models.md), which kept
+*darf Inhalte erhalten* off), so Luna stays in the run. The privacy rule
+of section 4 still holds for a customer's data.
+
+### 6.3 More cases across layers, from the data
+
+Cases are generated from templates; the reference is a query, its expected
+result is what the query returns on the sample data, so no count is
+written by hand.
+
+- **Template = shape + layers.** The shapes: `near`, `within`, `outside`,
+  `contains`, `intersects`, each with or without a filter on the subject
+  or the related layer. For three layers: two relations on the subject, and
+  a relation inside a relation's filter («Schulen in Gemeinden, die eine
+  Bahnhaltestelle haben»). Every pair of layers where the shape makes sense
+  (5 layers, 10 pairs).
+- **Variants** of a template change the values (distance, code,
+  municipality); the question is written in German by hand and read by a
+  person for natural wording.
+- **A case is accepted** only if its reference passes the application's
+  checks, its result is neither empty nor the whole layer, and every
+  condition is load-bearing (6.1).
+- **Target:** about 15 three-layer confirm cases, every layer the subject
+  of at least 4 confirm cases.
+- **Own file**, beside `chain-cases.json`, so the sets of Lauf 1–11 stay
+  as they were measured. `kb04`, `kb15`, `kb24`, `doc6`, `h14` get values
+  that make their conditions bite, as new cases in that file; the old ones
+  stay unchanged.
+- **The load-bearing check becomes a test** over every case file, so new
+  and edited cases keep it.
+
+### 6.4 Duplicates and groups
+
+Each reference is reduced to a signature: subject, layers, operations and
+predicates, attributes. With values: the full signature.
+
+- Same full signature in tuning and confirm (a paraphrase): a duplicate,
+  not allowed across the splits.
+- Every confirm case is put in a **group**, by its nearest pool case,
+  stored with the case before the runs:
+  1. same layers, same shape (another value): what a customer has once
+     their own cases cover a question;
+  2. same layers, other shape;
+  3. same shape, other layers;
+  4. nothing alike: the transfer, and where Risk 1 shows.
+- About half the templates have variants in both splits (group 1), the
+  rest are whole in one split (groups 2–4); each group has at least
+  8 confirm cases.
+
+### 6.5 Arms and runs
+
+| Arm | Examples |
+|---|---|
+| A | today's fixed set |
+| B | three pool cases drawn at random (seeded per case, the draw recorded) |
+| C | three pool cases chosen by the selector (section 2) |
+
+B separates the selector from the plain effect of examples from the same
+world: if C is not better than B, the selector is not worth building.
+
+- Pool: the tuning cases of all files with a reference. Leave one out on
+  tuning runs; measured on the confirm cases.
+- Direct and chain; gemma4:12b, qwen3:14b, gpt-6-luna; seed blocks from 1
+  and 6; one commit, A run fresh in the same block.
+- **Check** (`--approach check`, [plan-check-mode.md](plan-check-mode.md)):
+  on gemma4:12b and qwen3:14b, the two models it may be switched on for
+  (2026-10-30), same seeds. An arm's examples go to both calls, the direct
+  query and the check's planning call, as the application would send them.
+  The check is measured on its own because shared examples make the direct
+  answer and the plan more alike: a mistake both copy from one example is
+  `same` and passes the check unmarked.
+- Each answer records the pool ids it was given.
+
+### 6.6 Decision rule
+
+Per model and approach, on the confirm cases, paired per case with a
+bootstrap interval over cases (as F20):
+
+1. **Pass:** C − A has a lower bound above 0.
+2. **Silent wrongs:** C − A has an upper bound of at most +5 points (the
+   F20 margin).
+3. **Asking and declining** (cases with `expect`): C no more than 5 points
+   below A, since examples of queries can make a model answer where it
+   should ask.
+4. **Group 4:** C no more than 5 points below A in pass.
+5. **Selector:** C − B lower bound above 0; otherwise random examples from
+   the pool would be built instead of the selector.
+6. **Check:** with the check, 1–4 apply to the direct answer as it is
+   then shown, with silent wrongs counting only the wrong answers left
+   unmarked; marks on correct answers stay at the bar of plan-check-mode
+   (at most 10 %).
+
+A model for which 1–4 (and 6 where its check is on) do not hold gets no own examples in its profile (the
+count, section 5, is 0). If they hold for at least one model, the library,
 the flag, the privacy rule, the profile option and the query-to-plan
 conversion become an extension of E3.
+
+About a day and a half of work (templates, cases, checks, groups, the
+harness option), then the runs.
 
 ## 7 Risks
 
 - The selector misses an operation and the model sees worse examples than the
   fixed set today; the base example limits it, the tuning sets show it.
 - Sample tuning and confirm questions share one small dataset and may be
-  closer than a customer's; step 6.1 checks it.
+  closer than a customer's; the duplicate check and group 4 (6.4) show it.
+- The pool and the confirm cases share one dataset; the library will not
+  share the customer's. Groups 3 and 4 come closest to that; a second real
+  dataset with other layers (more AGI products) would measure it properly,
+  later.
+- Generated questions sound alike and easier than real ones; each is worded
+  by hand and read by a person (6.3).
 - Long examples cost tokens on every question; three examples are about the
-  size of today's set.
+  size of today's set. With the check they are sent twice.
+- Examples shared by the direct query and the check weaken the check
+  (6.5); rule 6 shows it.
