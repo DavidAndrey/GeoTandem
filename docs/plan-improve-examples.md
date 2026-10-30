@@ -166,10 +166,13 @@ written by hand.
 
 - **Template = shape + layers.** The shapes: `near`, `within`, `outside`,
   `contains`, `intersects`, each with or without a filter on the subject
-  or the related layer. For three layers: two relations on the subject, and
-  a relation inside a relation's filter («Schulen in Gemeinden, die eine
-  Bahnhaltestelle haben»). Every pair of layers where the shape makes sense
-  (5 layers, 10 pairs).
+  or the related layer. For three layers: two relations on the subject.
+  Every pair of layers where the shape makes sense (5 layers, 10 pairs).
+- **Not a relation inside a relation's filter** («Schulen in Gemeinden, die
+  eine Bahnhaltestelle haben»): the controls hold only an attribute row
+  there (filters.md 3.2), so the direct query refuses it
+  (`not_representable`, tried on 16 references, 2026-10-30). Only the chain
+  can answer it, and that needs a reference plan (section 1, later).
 - **Variants** of a template change the values (distance, code,
   municipality); the question is written in German by hand and read by a
   person for natural wording.
