@@ -84,15 +84,17 @@ check the marks on correct answers. Write the outcome under *Results*.
 | Group | Chunks done | Left | Estimate left | Commits |
 |---|---|---|---|---|
 | `check-gemma4_12b` | 18/18 | 0 | 0.0 h | fb5cca0 |
-| `check-qwen3_14b` | 0/18 | 18 | 17.2 h | - |
+| `check-qwen3_14b` | 6/18 | 12 | 6.1 h | 6a9a1d2 |
 | `direct-gemma4_12b` | 0/18 | 18 | 5.2 h | - |
 | `direct-qwen3_14b` | 0/18 | 18 | 8.6 h | - |
 | `chain-gemma4_12b` | 0/18 | 18 | 8.4 h | - |
 | `chain-qwen3_14b` | 0/18 | 18 | 15.2 h | - |
 | `direct-gpt_6_luna (external)` | 18/18 | 0 | 0.0 h | fb5cca0 |
 | `chain-gpt_6_luna (external)` | 18/18 | 0 | 0.0 h | fb5cca0 |
+| `direct-claude_haiku_5_5 (external)` | 18/18 | 0 | 0.0 h | 6a9a1d2 |
+| `chain-claude_haiku_5_5 (external)` | 15/18 | 3 | 0.8 h | 6a9a1d2 |
 
-Left in all: 54.5 h (estimate, 2026-10-31 11:37).
+Left in all: 44.2 h (estimate, 2026-10-31 14:57).
 <!-- /bench:status -->
 
 ## Results
@@ -162,3 +164,24 @@ under A and in 2 of 10 under C (8 × `kind:query`); `h33-puffer` (1 → 0) and
 `h38-je-gemeinde` (8 → 7) add the rest. The other eight behaviour cases are
 equal. The marks on correct answers stay under the bar in every arm (6
 holds). Group 4, the cases least like the pool, gains the most: 41.7 → 99.2 %.
+
+### direct-claude_haiku_5_5: does not hold (points 1 and 5)
+
+2026-10-31, commit 6a9a1d2, 18/18 chunks, 103 cases × 10 seeds per arm,
+temperature 1.
+
+| Figure | Arms | Rate | Δ points (95 %) | Cases | Rule |
+|---|---|---|---|---|---|
+| 1 pass | C − A | 92.6 → 94.3 % | +1.7 (−0.1 … +3.6) | 103 | **fails** |
+| 2 silent wrongs | C − A | 0.0 → 0.0 % | +0.0 (+0.0 … +0.0) | 103 | holds |
+| 3 asking/declining | C − A | 74.5 → 80.9 % | +6.4 (+0.0 … +17.3) | 11 | holds |
+| 4 group 4 pass | C − A | 98.3 → 100.0 % | +1.7 (+0.0 … +4.2) | 12 | holds |
+| 5 selector | C − B | 94.4 → 94.3 % | −0.1 (−1.1 … +0.9) | 103 | **fails** |
+| (B) | B − A | 92.6 → 94.4 % | +1.7 (+0.1 … +3.8) | 103 | |
+
+Haiku is near the ceiling under A already, so there is little to gain: C
+is 1.7 points better, but the interval just touches 0, and the selector is no
+better than random pool cases. Nothing gets worse: no silent wrongs in any
+arm, and point 3 rises, mostly on `h34-loeschen` (3 → 9 of 10). Under every
+arm, `ks01` and `ks03` decline but offer the chain, which the cases do not
+expect.
