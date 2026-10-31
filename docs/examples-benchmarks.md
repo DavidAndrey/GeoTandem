@@ -182,6 +182,7 @@ temperature 1.
 Haiku is near the ceiling under A already, so there is little to gain: C
 is 1.7 points better, but the interval just touches 0, and the selector is no
 better than random pool cases. Nothing gets worse: no silent wrongs in any
-arm, and point 3 rises, mostly on `h34-loeschen` (3 → 9 of 10). Under every
-arm, `ks01` and `ks03` decline but offer the chain, which the cases do not
-expect.
+arm, and point 3 rises, mostly on `h34-loeschen` (3 → 9 of 10). `ks01` and
+`ks03` pass in no arm: under C, `ks03` declines but offers the chain in all
+10 answers (the case expects no offer), and `ks01` does that in 5 and writes a
+query in the other 5.
