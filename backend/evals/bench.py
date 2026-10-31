@@ -48,6 +48,7 @@ BLOCKS: Final = (1, 6)
 REPEAT: Final = 5
 TEMPERATURE: Final = 0.3
 OPENAI: Final = ("https://api.openai.com/v1", "OPENAI_API_KEY")
+ANTHROPIC: Final = ("https://api.anthropic.com/v1", "ANTHROPIC_API_KEY")
 
 
 @dataclass(frozen=True)
@@ -59,14 +60,21 @@ class Group:
     seconds: float
     """Seconds per answer before a chunk of the group has run: a guess from
     the latencies of earlier runs, raised for the longer prompts of B and C."""
-    external: bool = False
+    endpoint: tuple[str, str] | None = None
+    """URL and key variable of a paid API; None for the local Ollama."""
+    temperature: float = TEMPERATURE
+    effort: str | None = None
+
+    @property
+    def external(self) -> bool:
+        return self.endpoint is not None
 
     @property
     def key(self) -> str:
         return f"{self.approach}-{re.sub(r'[^a-z0-9]+', '_', self.model.lower())}"
 
 
-GEMMA, QWEN, LUNA = "gemma4:12b", "qwen3:14b", "gpt-6-luna"
+GEMMA, QWEN, LUNA, HAIKU = "gemma4:12b", "qwen3:14b", "gpt-6-luna", "claude-haiku-5-5"
 GROUPS: Final = (
     Group("check", GEMMA, 12),
     Group("check", QWEN, 20),
@@ -74,10 +82,14 @@ GROUPS: Final = (
     Group("direct", QWEN, 10),
     Group("chain", GEMMA, 10),
     Group("chain", QWEN, 18),
-    Group("direct", LUNA, 4, external=True),
-    Group("chain", LUNA, 7, external=True),
+    Group("direct", LUNA, 4, OPENAI),
+    Group("chain", LUNA, 7, OPENAI),
+    Group("direct", HAIKU, 4, ANTHROPIC, 1.0, "default"),
+    Group("chain", HAIKU, 7, ANTHROPIC, 1.0, "default"),
 )
-"""In the order they run: the check first (rule 6), the external model last."""
+"""In the order they run: the check first (rule 6), the external models last.
+Haiku takes no temperature below 1 (testplan-external-models); its three arms
+run at 1 alike, so the rule compares within it as within the others."""
 
 
 @dataclass(frozen=True)
@@ -94,13 +106,15 @@ class Chunk:
     def command(self) -> list[str]:
         g = self.group
         command = [sys.executable, str(HERE / "run.py"), "--model", g.model]
-        if g.external:
-            command += ["--url", OPENAI[0], "--api-key-env", OPENAI[1]]
+        if g.endpoint:
+            command += ["--url", g.endpoint[0], "--api-key-env", g.endpoint[1]]
+        if g.effort:
+            command += ["--effort", g.effort]
         return [
             *command,
             "--approach", g.approach, "--cases", self.cases, "--arm", self.arm,
             "--seed-start", str(self.block), "--repeat", str(REPEAT),
-            "--temperature", str(TEMPERATURE), "--label", self.label,
+            "--temperature", str(g.temperature), "--label", self.label,
         ]  # fmt: skip
 
 
@@ -158,8 +172,8 @@ def commit() -> str:
             ["git", *args], cwd=HERE, capture_output=True, text=True, check=True
         ).stdout.strip()
 
-    head = git("rev-parse", "--short", "HEAD")
     paths = [str(HERE.parent / "src"), str(HERE), str(HERE.parent.parent / "schema")]
+    head = git("log", "-1", "--format=%h", "--abbrev=7", "--", *paths)
     return head + ("+dirty" if git("status", "--porcelain", "--", *paths) else "")
 
 
@@ -266,7 +280,11 @@ def main() -> int:
     step = sub.add_parser("next", help="run the next chunks that fit in --hours")
     step.add_argument("--hours", type=float, required=True)
     step.add_argument("--only", metavar="GROUP", help="one group, e.g. check-gemma4_12b")
-    step.add_argument("--external", action="store_true", help="include gpt-6-luna (paid API)")
+    step.add_argument(
+        "--external",
+        action="store_true",
+        help="include gpt-6-luna and claude-haiku-5-5 (paid APIs)",
+    )
     step.add_argument("--dry-run", action="store_true", help="print the commands only")
     report = sub.add_parser("compare", help="the compare.py command of a group, A first")
     report.add_argument("group")
@@ -295,8 +313,9 @@ def main() -> int:
         print("  " + " ".join(chunk.command()[1:]))
     if args.dry_run:
         return 0
-    if any(c.group.external for c, _ in plan) and not os.environ.get(OPENAI[1]):
-        parser.error(f"{OPENAI[1]} is not set")
+    unset = sorted({c.group.endpoint[1] for c, _ in plan if c.group.endpoint} - set(os.environ))
+    if unset:
+        parser.error(f"{', '.join(unset)} not set")
     if commit().endswith("+dirty"):
         parser.error("uncommitted changes under backend/ or schema/: commit first (6.5)")
     for chunk, wanted in plan:
