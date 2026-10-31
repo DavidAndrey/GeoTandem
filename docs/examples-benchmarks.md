@@ -84,7 +84,7 @@ check the marks on correct answers. Write the outcome under *Results*.
 | Group | Chunks done | Left | Estimate left | Commits |
 |---|---|---|---|---|
 | `check-gemma4_12b` | 18/18 | 0 | 0.0 h | fb5cca0 |
-| `check-qwen3_14b` | 7/18 | 11 | 6.5 h | 6a9a1d2 |
+| `check-qwen3_14b` | 18/18 | 0 | 0.0 h | 6a9a1d2 |
 | `direct-gemma4_12b` | 0/18 | 18 | 5.2 h | - |
 | `direct-qwen3_14b` | 0/18 | 18 | 8.6 h | - |
 | `chain-gemma4_12b` | 0/18 | 18 | 8.4 h | - |
@@ -94,7 +94,7 @@ check the marks on correct answers. Write the outcome under *Results*.
 | `direct-claude_haiku_5_5 (external)` | 18/18 | 0 | 0.0 h | 6a9a1d2 |
 | `chain-claude_haiku_5_5 (external)` | 18/18 | 0 | 0.0 h | 6a9a1d2 |
 
-Left in all: 43.8 h (estimate, 2026-10-31 15:35).
+Left in all: 37.3 h (estimate, 2026-10-31 23:17).
 <!-- /bench:status -->
 
 ## Results
@@ -207,3 +207,31 @@ better on every behaviour case. Only the selector adds nothing over random
 pool cases. `ks01` and `ks03` again pass in no arm: under C, `ks01` plans
 in all 10 answers, and `ks03` declines but offers the direct approach in 8
 (the case expects no offer).
+
+### check-qwen3_14b: holds
+
+2026-10-31, commit 6a9a1d2, 18/18 chunks, 103 cases × 10 seeds per arm.
+
+| Figure | Arms | Rate | Δ points (95 %) | Cases | Rule |
+|---|---|---|---|---|---|
+| 1 pass | C − A | 61.5 → 84.8 % | +23.3 (+14.3 … +32.4) | 103 | holds |
+| 2 silent wrongs, unmarked | C − A | 6.8 → 5.3 % | −1.5 (−6.2 … +3.2) | 103 | holds |
+| 3 asking/declining | C − A | 45.5 → 59.1 % | +13.6 (−18.2 … +45.5) | 11 | holds |
+| 4 group 4 pass | C − A | 56.7 → 75.0 % | +18.3 (+0.0 … +41.7) | 12 | holds |
+| 5 selector | C − B | 67.5 → 84.8 % | +17.3 (+11.1 … +23.7) | 103 | holds |
+| (B) | B − A | 61.5 → 67.5 % | +6.0 (−0.1 … +12.2) | 103 | |
+
+| Arm | Answers | Correct | Marked of correct (≤ 10 %) | Wrong left unmarked |
+|---|---|---|---|---|
+| A | 1030 | 583 | 88 = 15.1 % | 137 of 312 |
+| B | 1030 | 650 | 101 = 15.5 % | 133 of 232 |
+| C | 1030 | 808 | 49 = 6.1 % | 68 of 101 |
+
+The first group where rule 6.6 holds on every point. C gains the most of
+all groups so far (+23.3), and the selector clearly beats random pool cases
+(+17.3). The check marks fewer correct answers under C (6.1 %), the only arm
+under the bar of 10 %. qwen answers each behaviour case almost alike on all
+ten seeds, so point 3 moves in steps of whole cases: C gains `h33-puffer`
+(0 → 10), `ks09-spital` (0 → 10) and `h37-steueranlage` (0 → 5), and loses
+`h38-je-gemeinde` (10 → 0, all 10 answers offer the chain where the case
+expects no offer). Hence the wide interval of point 3.
