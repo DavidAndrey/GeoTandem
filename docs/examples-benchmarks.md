@@ -84,7 +84,7 @@ check the marks on correct answers. Write the outcome under *Results*.
 | Group | Chunks done | Left | Estimate left | Commits |
 |---|---|---|---|---|
 | `check-gemma4_12b` | 18/18 | 0 | 0.0 h | fb5cca0 |
-| `check-qwen3_14b` | 6/18 | 12 | 6.1 h | 6a9a1d2 |
+| `check-qwen3_14b` | 7/18 | 11 | 6.5 h | 6a9a1d2 |
 | `direct-gemma4_12b` | 0/18 | 18 | 5.2 h | - |
 | `direct-qwen3_14b` | 0/18 | 18 | 8.6 h | - |
 | `chain-gemma4_12b` | 0/18 | 18 | 8.4 h | - |
@@ -92,9 +92,9 @@ check the marks on correct answers. Write the outcome under *Results*.
 | `direct-gpt_6_luna (external)` | 18/18 | 0 | 0.0 h | fb5cca0 |
 | `chain-gpt_6_luna (external)` | 18/18 | 0 | 0.0 h | fb5cca0 |
 | `direct-claude_haiku_5_5 (external)` | 18/18 | 0 | 0.0 h | 6a9a1d2 |
-| `chain-claude_haiku_5_5 (external)` | 15/18 | 3 | 0.8 h | 6a9a1d2 |
+| `chain-claude_haiku_5_5 (external)` | 18/18 | 0 | 0.0 h | 6a9a1d2 |
 
-Left in all: 44.2 h (estimate, 2026-10-31 14:57).
+Left in all: 43.8 h (estimate, 2026-10-31 15:35).
 <!-- /bench:status -->
 
 ## Results
@@ -186,3 +186,24 @@ arm, and point 3 rises, mostly on `h34-loeschen` (3 → 9 of 10). `ks01` and
 `ks03` pass in no arm: under C, `ks03` declines but offers the chain in all
 10 answers (the case expects no offer), and `ks01` does that in 5 and writes a
 query in the other 5.
+
+### chain-claude_haiku_5_5: does not hold (point 5)
+
+2026-10-31, commit 6a9a1d2, 18/18 chunks, 101 cases × 10 seeds per arm,
+temperature 1.
+
+| Figure | Arms | Rate | Δ points (95 %) | Cases | Rule |
+|---|---|---|---|---|---|
+| 1 pass | C − A | 93.4 → 95.0 % | +1.7 (+0.3 … +3.2) | 101 | holds |
+| 2 silent wrongs | C − A | 0.0 → 0.0 % | +0.0 (+0.0 … +0.0) | 101 | holds |
+| 3 asking/declining | C − A | 77.8 → 78.9 % | +1.1 (+0.0 … +3.3) | 9 | holds |
+| 4 group 4 pass | C − A | 92.5 → 99.2 % | +6.7 (+0.8 … +15.0) | 12 | holds |
+| 5 selector | C − B | 94.8 → 95.0 % | +0.3 (−0.8 … +1.3) | 101 | **fails** |
+| (B) | B − A | 93.4 → 94.8 % | +1.4 (+0.0 … +2.9) | 101 | |
+
+C beats A, with a small but clear gain, and group 4 gains the most.
+Nothing gets worse: no silent wrongs in any arm, and point 3 is equal or
+better on every behaviour case. Only the selector adds nothing over random
+pool cases. `ks01` and `ks03` again pass in no arm: under C, `ks01` plans
+in all 10 answers, and `ks03` declines but offers the direct approach in 8
+(the case expects no offer).
