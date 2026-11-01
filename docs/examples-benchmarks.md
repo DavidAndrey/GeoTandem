@@ -87,14 +87,14 @@ check the marks on correct answers. Write the outcome under *Results*.
 | `check-qwen3_14b` | 18/18 | 0 | 0.0 h | 6a9a1d2 |
 | `direct-gemma4_12b` | 18/18 | 0 | 0.0 h | 6a9a1d2 |
 | `direct-qwen3_14b` | 0/18 | 18 | 8.6 h | - |
-| `chain-gemma4_12b` | 0/18 | 18 | 8.4 h | - |
+| `chain-gemma4_12b` | 18/18 | 0 | 0.0 h | 6a9a1d2 |
 | `chain-qwen3_14b` | 0/18 | 18 | 15.2 h | - |
 | `direct-gpt_6_luna (external)` | 18/18 | 0 | 0.0 h | fb5cca0 |
 | `chain-gpt_6_luna (external)` | 18/18 | 0 | 0.0 h | fb5cca0 |
 | `direct-claude_haiku_5_5 (external)` | 18/18 | 0 | 0.0 h | 6a9a1d2 |
 | `chain-claude_haiku_5_5 (external)` | 18/18 | 0 | 0.0 h | 6a9a1d2 |
 
-Left in all: 32.1 h (estimate, 2026-11-01 10:56).
+Left in all: 23.7 h (estimate, 2026-11-01 13:43).
 <!-- /bench:status -->
 
 ## Results
@@ -254,3 +254,24 @@ and point 3 fails on one case. `h31-naehe-wovon` asks back in 10 of 10
 answers under A and B and in none under C (10 × `kind:query`). `h37-steueranlage`
 passes 6 of 10 under B but none under A or C. `h38-je-gemeinde` (7 → 6) adds
 the rest; the other eight behaviour cases are equal.
+
+### chain-gemma4_12b: does not hold (point 4)
+
+2026-11-01, commit 6a9a1d2, 18/18 chunks, 101 cases × 10 seeds per arm.
+
+| Figure | Arms | Rate | Δ points (95 %) | Cases | Rule |
+|---|---|---|---|---|---|
+| 1 pass | C − A | 67.1 → 79.6 % | +12.5 (+6.0 … +18.8) | 101 | holds |
+| 2 silent wrongs | C − A | 4.3 → 3.1 % | −1.2 (−4.4 … +2.3) | 101 | holds |
+| 3 asking/declining | C − A | 57.8 → 71.1 % | +13.3 (−2.2 … +36.7) | 9 | holds |
+| 4 group 4 pass | C − A | 59.2 → 53.3 % | −5.8 (−35.8 … +21.7) | 12 | **fails** |
+| 5 selector | C − B | 73.4 → 79.6 % | +6.2 (+1.5 … +10.7) | 101 | holds |
+| (B) | B − A | 67.1 → 73.4 % | +6.2 (+1.5 … +11.3) | 101 | |
+
+The only group so far where group 4 falls, and by just over the bar. Two
+cases make it: `ml17-schule-klein-fluss` (9 → 0 of 10) and
+`ml18-schule-gross-fluss` (10 → 0), where under C the plans are refused,
+mostly as `not_representable`; `ml71` (7 → 2) adds to it. Others gain:
+`kb25` (3 → 10), `ml05` (0 → 4), `ml06` (2 → 6). The losses are refusals,
+not wrong counts, so silent wrongs stay flat. Point 3 rises, mainly on
+`ks09-spital` (0 → 10).
