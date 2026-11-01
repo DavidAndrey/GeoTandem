@@ -85,7 +85,7 @@ check the marks on correct answers. Write the outcome under *Results*.
 |---|---|---|---|---|
 | `check-gemma4_12b` | 18/18 | 0 | 0.0 h | fb5cca0 |
 | `check-qwen3_14b` | 18/18 | 0 | 0.0 h | 6a9a1d2 |
-| `direct-gemma4_12b` | 0/18 | 18 | 5.2 h | - |
+| `direct-gemma4_12b` | 18/18 | 0 | 0.0 h | 6a9a1d2 |
 | `direct-qwen3_14b` | 0/18 | 18 | 8.6 h | - |
 | `chain-gemma4_12b` | 0/18 | 18 | 8.4 h | - |
 | `chain-qwen3_14b` | 0/18 | 18 | 15.2 h | - |
@@ -94,7 +94,7 @@ check the marks on correct answers. Write the outcome under *Results*.
 | `direct-claude_haiku_5_5 (external)` | 18/18 | 0 | 0.0 h | 6a9a1d2 |
 | `chain-claude_haiku_5_5 (external)` | 18/18 | 0 | 0.0 h | 6a9a1d2 |
 
-Left in all: 37.3 h (estimate, 2026-10-31 23:17).
+Left in all: 32.1 h (estimate, 2026-11-01 10:56).
 <!-- /bench:status -->
 
 ## Results
@@ -235,3 +235,22 @@ ten seeds, so point 3 moves in steps of whole cases: C gains `h33-puffer`
 (0 → 10), `ks09-spital` (0 → 10) and `h37-steueranlage` (0 → 5), and loses
 `h38-je-gemeinde` (10 → 0, all 10 answers offer the chain where the case
 expects no offer). Hence the wide interval of point 3.
+
+### direct-gemma4_12b: does not hold (point 3)
+
+2026-11-01, commit 6a9a1d2, 18/18 chunks, 103 cases × 10 seeds per arm.
+
+| Figure | Arms | Rate | Δ points (95 %) | Cases | Rule |
+|---|---|---|---|---|---|
+| 1 pass | C − A | 69.7 → 87.1 % | +17.4 (+9.1 … +25.8) | 103 | holds |
+| 2 silent wrongs | C − A | 12.6 → 1.6 % | −11.1 (−17.1 … −5.7) | 103 | holds |
+| 3 asking/declining | C − A | 52.7 → 42.7 % | −10.0 (−28.2 … +0.0) | 11 | **fails** |
+| 4 group 4 pass | C − A | 41.7 → 100.0 % | +58.3 (+33.3 … +83.3) | 12 | holds |
+| 5 selector | C − B | 75.8 → 87.1 % | +11.3 (+5.3 … +17.4) | 103 | holds |
+| (B) | B − A | 69.7 → 75.8 % | +6.1 (+1.2 … +11.3) | 103 | |
+
+As for `check-gemma4_12b`: large gains on pass, silent wrongs and group 4,
+and point 3 fails on one case. `h31-naehe-wovon` asks back in 10 of 10
+answers under A and B and in none under C (10 × `kind:query`). `h37-steueranlage`
+passes 6 of 10 under B but none under A or C. `h38-je-gemeinde` (7 → 6) adds
+the rest; the other eight behaviour cases are equal.
