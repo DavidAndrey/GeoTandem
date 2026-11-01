@@ -86,7 +86,7 @@ check the marks on correct answers. Write the outcome under *Results*.
 | `check-gemma4_12b` | 18/18 | 0 | 0.0 h | fb5cca0 |
 | `check-qwen3_14b` | 18/18 | 0 | 0.0 h | 6a9a1d2 |
 | `direct-gemma4_12b` | 18/18 | 0 | 0.0 h | 6a9a1d2 |
-| `direct-qwen3_14b` | 0/18 | 18 | 8.6 h | - |
+| `direct-qwen3_14b` | 18/18 | 0 | 0.0 h | 6a9a1d2 |
 | `chain-gemma4_12b` | 18/18 | 0 | 0.0 h | 6a9a1d2 |
 | `chain-qwen3_14b` | 0/18 | 18 | 15.2 h | - |
 | `direct-gpt_6_luna (external)` | 18/18 | 0 | 0.0 h | fb5cca0 |
@@ -94,7 +94,7 @@ check the marks on correct answers. Write the outcome under *Results*.
 | `direct-claude_haiku_5_5 (external)` | 18/18 | 0 | 0.0 h | 6a9a1d2 |
 | `chain-claude_haiku_5_5 (external)` | 18/18 | 0 | 0.0 h | 6a9a1d2 |
 
-Left in all: 23.7 h (estimate, 2026-11-01 13:43).
+Left in all: 15.2 h (estimate, 2026-11-01 18:52).
 <!-- /bench:status -->
 
 ## Results
@@ -275,3 +275,22 @@ mostly as `not_representable`; `ml71` (7 → 2) adds to it. Others gain:
 `kb25` (3 → 10), `ml05` (0 → 4), `ml06` (2 → 6). The losses are refusals,
 not wrong counts, so silent wrongs stay flat. Point 3 rises, mainly on
 `ks09-spital` (0 → 10).
+
+### direct-qwen3_14b: holds
+
+2026-11-01, commit 6a9a1d2, 18/18 chunks, 103 cases × 10 seeds per arm.
+
+| Figure | Arms | Rate | Δ points (95 %) | Cases | Rule |
+|---|---|---|---|---|---|
+| 1 pass | C − A | 60.2 → 84.7 % | +24.5 (+15.8 … +33.3) | 103 | holds |
+| 2 silent wrongs | C − A | 18.3 → 7.7 % | −10.7 (−18.3 … −3.7) | 103 | holds |
+| 3 asking/declining | C − A | 44.5 → 56.4 % | +11.8 (−16.4 … +40.0) | 11 | holds |
+| 4 group 4 pass | C − A | 49.2 → 74.2 % | +25.0 (+1.7 … +49.2) | 12 | holds |
+| 5 selector | C − B | 68.4 → 84.7 % | +16.2 (+10.2 … +22.3) | 103 | holds |
+| (B) | B − A | 60.2 → 68.4 % | +8.3 (+1.8 … +14.8) | 103 | |
+
+As for `check-qwen3_14b`: every point holds, with the largest pass gain of
+all groups (+24.5). Point 3 holds on its mean only; whole cases move. C
+gains `h33-puffer` (0 → 9), `ks09-spital` (0 → 9) and `h37-steueranlage`
+(0 → 4), and loses `h38-je-gemeinde` (9 → 0, all 10 answers offer the
+chain where the case expects no offer).
