@@ -88,13 +88,13 @@ check the marks on correct answers. Write the outcome under *Results*.
 | `direct-gemma4_12b` | 18/18 | 0 | 0.0 h | 6a9a1d2 |
 | `direct-qwen3_14b` | 18/18 | 0 | 0.0 h | 6a9a1d2 |
 | `chain-gemma4_12b` | 18/18 | 0 | 0.0 h | 6a9a1d2 |
-| `chain-qwen3_14b` | 0/18 | 18 | 15.2 h | - |
+| `chain-qwen3_14b` | 10/18 | 8 | 3.0 h | 6a9a1d2 |
 | `direct-gpt_6_luna (external)` | 18/18 | 0 | 0.0 h | fb5cca0 |
 | `chain-gpt_6_luna (external)` | 18/18 | 0 | 0.0 h | fb5cca0 |
 | `direct-claude_haiku_5_5 (external)` | 18/18 | 0 | 0.0 h | 6a9a1d2 |
 | `chain-claude_haiku_5_5 (external)` | 18/18 | 0 | 0.0 h | 6a9a1d2 |
 
-Left in all: 15.2 h (estimate, 2026-11-01 18:52).
+Left in all: 3.0 h (estimate, 2026-11-01 22:41).
 <!-- /bench:status -->
 
 ## Results
