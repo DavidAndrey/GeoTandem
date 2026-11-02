@@ -28,11 +28,12 @@ import time
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import datetime
+from itertools import product
 from pathlib import Path
 from typing import Any, Final
 
 from casefiles import load_cases
-from pool import ARMS
+from pool import ARMS, Arm
 
 from geotandem.evaluation.cases import chain_set, layer_set, start_set
 from geotandem.evaluation.signature import copies
@@ -44,6 +45,10 @@ DOC = HERE.parent.parent / "docs" / "examples-benchmarks.md"
 MARK = ("<!-- bench:status -->", "<!-- /bench:status -->")
 
 FILES: Final = ("heldout", "chain-heldout", "layers-heldout")
+BEHAVIOUR: Final = "behaviour"
+"""The behaviour cases (6.7): a stage of its own after the measurement, A and
+C only (point 3), its commits apart from those of the files above."""
+BEHAVIOUR_ARMS: Final[tuple[Arm, ...]] = ("a", "c")
 BLOCKS: Final = (1, 6)
 REPEAT: Final = 5
 TEMPERATURE: Final = 0.3
@@ -103,6 +108,10 @@ class Chunk:
     def label(self) -> str:
         return f"xb-{self.group.key}-{self.cases}-{self.arm}-s{self.block}"
 
+    @property
+    def stage(self) -> str:
+        return "behaviour" if self.cases == BEHAVIOUR else "examples"
+
     def command(self) -> list[str]:
         g = self.group
         command = [sys.executable, str(HERE / "run.py"), "--model", g.model]
@@ -120,12 +129,12 @@ class Chunk:
 
 def chunks() -> Iterator[Chunk]:
     """Every chunk, in running order: per group and seed block, the arms of
-    one file together, so A runs fresh beside B and C."""
-    for group in GROUPS:
-        for block in BLOCKS:
-            for cases in FILES:
-                for arm in ARMS:
-                    yield Chunk(group, cases, arm, block)
+    one file together, so A runs fresh beside B and C; then the behaviour
+    stage, A beside C."""
+    for group, block, cases, arm in product(GROUPS, BLOCKS, FILES, ARMS):
+        yield Chunk(group, cases, arm, block)
+    for group, block, arm in product(GROUPS, BLOCKS, BEHAVIOUR_ARMS):
+        yield Chunk(group, BEHAVIOUR, arm, block)
 
 
 def expected() -> dict[tuple[str, str], int]:
@@ -134,7 +143,7 @@ def expected() -> dict[tuple[str, str], int]:
     every = (*start_set(), *chain_set(), *layer_set())
     pool = [k for k in every if k.split == "tuning"]
     found = {}
-    for name in FILES:
+    for name in (*FILES, BEHAVIOUR):
         cases = load_cases(name)
         copied = {c for c, _ in copies(cases, pool)}
         for approach in ("direct", "chain", "check"):
@@ -210,13 +219,14 @@ def status_table() -> str:
         "| Group | Chunks done | Left | Estimate left | Commits |",
         "|---|---|---|---|---|",
     ]
-    for group in GROUPS:
-        mine = [r for r in rows if r[0].group == group]
+    for stage, group in [(s, g) for s in ("examples", "behaviour") for g in GROUPS]:
+        mine = [r for r in rows if r[0].group == group and r[0].stage == stage]
         done = [r for r in mine if r[1] >= r[2]]
         left = sum(r[3] for r in mine if r[1] < r[2])
         commits = sorted({log[r[0].label]["commit"] for r in done if r[0].label in log})
         warn = " ⚠ mixed" if len(commits) > 1 else ""
         name = group.key + (" (external)" if group.external else "")
+        name += " · behaviour" if stage == "behaviour" else ""
         lines.append(
             f"| `{name}` | {len(done)}/{len(mine)} | {len(mine) - len(done)} | "
             f"{hours(left)} | {', '.join(commits) or '-'}{warn} |"
@@ -272,6 +282,12 @@ def planned(
     return plan, spent
 
 
+def labels(key: str, arm: str) -> str:
+    """The labels of one arm of group ``key`` in the measurement, joined by +."""
+    mine = (c for c in chunks() if c.group.key == key and c.stage == "examples")
+    return "+".join(c.label for c in mine if c.arm == arm)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     sub = parser.add_subparsers(dest="action", required=True)
@@ -296,10 +312,7 @@ def main() -> int:
             write_status()
         return 0
     if args.action == "compare":
-        columns = [
-            "+".join(c.label for c in chunks() if c.group.key == args.group and c.arm == arm)
-            for arm in ARMS
-        ]
+        columns = [labels(args.group, arm) for arm in ARMS]
         if not columns[0]:
             parser.error(f"no group {args.group!r}")
         print(" ".join(["uv run python evals/compare.py --stats", *columns]))

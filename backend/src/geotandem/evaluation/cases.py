@@ -126,6 +126,9 @@ part of it; the harness reads them (``chain_set``), the application not yet."""
 LAYER_FILE: Final = "layer-cases.json"
 """Cases across layers (docs/plan-improve-examples.md, 6.3): beside the start
 set and the chain's cases, read by the harness only (``layer_set``)."""
+BEHAVIOUR_FILE: Final = "behaviour-cases.json"
+"""Cases to ask back on or decline (docs/plan-improve-examples.md, 6.7):
+confirm only, read by the harness only (``behaviour_set``)."""
 
 
 class CaseError(Exception):
@@ -220,6 +223,13 @@ def chain_set(directory: Path = REPO_CASES) -> tuple[EvalCase, ...]:
 def layer_set(directory: Path = REPO_CASES) -> tuple[EvalCase, ...]:
     """The cases across layers of ``directory`` (``LAYER_FILE``), read once per process."""
     text = (directory / LAYER_FILE).read_text("utf-8")
+    return tuple(CaseFile.model_validate_json(text).cases)
+
+
+@cache
+def behaviour_set(directory: Path = REPO_CASES) -> tuple[EvalCase, ...]:
+    """The behaviour cases of ``directory`` (``BEHAVIOUR_FILE``), read once per process."""
+    text = (directory / BEHAVIOUR_FILE).read_text("utf-8")
     return tuple(CaseFile.model_validate_json(text).cases)
 
 

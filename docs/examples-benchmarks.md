@@ -66,6 +66,19 @@ uv run python evals/bench.py next --hours 3              # run it
   git-ignored, in the checkout that runs. Copy the `xb-*` files and
   `bench-log.jsonl` to the main checkout before a worktree is removed.
 
+## Behaviour stage
+
+After the measurement, each group runs the 34 cases of
+`behaviour-cases.json` with arms A and C (plan 6.7), four chunks of 170
+answers, `xb-<group>-behaviour-<arm>-s<block>`. The status lists them as
+`<group> · behaviour`, with their own commits. `decide.py` then judges
+point 3 on the old and the new behaviour cases together: the mean, and no
+case losing more than 50 points in answers of the right kind.
+
+```sh
+uv run python evals/bench.py next --hours 3 --only direct-gemma4_12b
+```
+
 ## After a group
 
 ```sh
