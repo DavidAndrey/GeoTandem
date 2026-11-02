@@ -88,13 +88,13 @@ check the marks on correct answers. Write the outcome under *Results*.
 | `direct-gemma4_12b` | 18/18 | 0 | 0.0 h | 6a9a1d2 |
 | `direct-qwen3_14b` | 18/18 | 0 | 0.0 h | 6a9a1d2 |
 | `chain-gemma4_12b` | 18/18 | 0 | 0.0 h | 6a9a1d2 |
-| `chain-qwen3_14b` | 10/18 | 8 | 3.0 h | 6a9a1d2 |
+| `chain-qwen3_14b` | 18/18 | 0 | 0.0 h | 6a9a1d2 |
 | `direct-gpt_6_luna (external)` | 18/18 | 0 | 0.0 h | fb5cca0 |
 | `chain-gpt_6_luna (external)` | 18/18 | 0 | 0.0 h | fb5cca0 |
 | `direct-claude_haiku_5_5 (external)` | 18/18 | 0 | 0.0 h | 6a9a1d2 |
 | `chain-claude_haiku_5_5 (external)` | 18/18 | 0 | 0.0 h | 6a9a1d2 |
 
-Left in all: 3.0 h (estimate, 2026-11-01 22:41).
+Left in all: 0.0 h (estimate, 2026-11-02 11:40).
 <!-- /bench:status -->
 
 ## Results
@@ -294,3 +294,21 @@ all groups (+24.5). Point 3 holds on its mean only; whole cases move. C
 gains `h33-puffer` (0 → 9), `ks09-spital` (0 → 9) and `h37-steueranlage`
 (0 → 4), and loses `h38-je-gemeinde` (9 → 0, all 10 answers offer the
 chain where the case expects no offer).
+
+### chain-qwen3_14b: holds
+
+2026-11-02, commit 6a9a1d2, 18/18 chunks, 101 cases × 10 seeds per arm.
+
+| Figure | Arms | Rate | Δ points (95 %) | Cases | Rule |
+|---|---|---|---|---|---|
+| 1 pass | C − A | 49.2 → 75.4 % | +26.2 (+17.4 … +35.1) | 101 | holds |
+| 2 silent wrongs | C − A | 11.1 → 6.1 % | −5.0 (−11.3 … +1.2) | 101 | holds |
+| 3 asking/declining | C − A | 35.6 → 64.4 % | +28.9 (+3.3 … +56.7) | 9 | holds |
+| 4 group 4 pass | C − A | 22.5 → 63.3 % | +40.8 (+19.2 … +65.0) | 12 | holds |
+| 5 selector | C − B | 56.2 → 75.4 % | +19.2 (+12.1 … +26.1) | 101 | holds |
+| (B) | B − A | 49.2 → 56.2 % | +7.0 (+1.2 … +13.0) | 101 | |
+
+Every point holds, and point 3 even with its lower bound above 0: C gains
+`h34-loeschen` (1 → 10), `ks09-spital` (1 → 10) and `h37-steueranlage`
+(0 → 7) and loses no behaviour case. The largest pass gain of all groups
+(+26.2) and the weakest arm A (49.2 %).
