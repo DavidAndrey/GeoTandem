@@ -165,6 +165,33 @@ test('a new account shows its start password once', async () => {
   })
 })
 
+test('a new account is listed from the create answer, before any refetch (risk R3)', async () => {
+  let listed = 0
+  fakeApi({
+    ...signedIn(),
+    // The refetch after the create never arrives: only the create's answer can show it.
+    'GET /api/admin/users': () =>
+      listed++ === 0 ? [account()] : new Response(new ReadableStream()),
+    'POST /api/admin/users': {
+      account: account({ id: 2, username: 'a.brun', role: 'user', must_change_password: true }),
+      start_password: 'k7-Tm4-q9xYz',
+    },
+  })
+  renderAt('/admin/benutzer', <App />)
+  await userEvent.click(await screen.findByRole('button', { name: 'Konto' }))
+  const form = screen.getByRole('form', { name: 'Neues Konto' })
+  await userEvent.type(within(form).getByLabelText('Benutzer'), 'a.brun')
+  await userEvent.click(within(form).getByRole('button', { name: 'Anlegen' }))
+
+  const table = await screen.findByRole('table')
+  const cells = within(table)
+    .getAllByRole('row')
+    .slice(1)
+    .map((row) => within(row).getAllByRole('cell')[0].textContent)
+  expect(cells[0]).toBe('a.brun')
+  expect(cells).toHaveLength(2)
+})
+
 test('the visibility matrix releases a layer for users', async () => {
   const row = (visible: boolean) => [
     { layer: 'kitas', title: 'Kitas', roles: { admin: true, user: visible } },

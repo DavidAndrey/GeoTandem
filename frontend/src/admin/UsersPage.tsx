@@ -52,6 +52,14 @@ export function UsersPage() {
           onCreated={(result) => {
             setCreating(false)
             setIssued(result)
+            // At once from the create's answer, not only from the refetch (risk R3):
+            // a list fetched before the create would otherwise stay on screen.
+            client.setQueryData<Account[]>(keys.users, (list) =>
+              list
+                ?.filter((a) => a.username !== result.account.username)
+                .concat(result.account)
+                .sort((a, b) => a.username.localeCompare(b.username)),
+            )
             void refresh()
           }}
           onCancel={() => setCreating(false)}
