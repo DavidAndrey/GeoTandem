@@ -1,0 +1,3283 @@
+{
+  "format": "geotandem-eval-cases",
+  "version": 1,
+  "about": "Cases across layers (docs/plan-improve-examples.md, 6.3), over the sample dataset. Built from templates, named by the tag tpl:<shape>; every reference finds something, less than its whole layer, and every condition changes its result. Batch 1 (ml01-ml28): three layers, two relations on the subject; batch 2 (ml29-ml68): two layers, one relation, every pair of layers; batch 3 (ml69-ml73): confirm only, three layers no tuning case combines (group 4).",
+  "cases": [
+    {
+      "id": "ml01-sek-bahn-ohne-nationalstrasse",
+      "prompt": "Schulen mit Sekundarstufe I höchstens 500 m von einer Bahnhaltestelle, aber mehr als 200 m von einer Nationalstrasse entfernt",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "near",
+        "negation",
+        "tpl:sch-near-hal-notnear-str"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "schulen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "sekundarstufe",
+              "cmp": "eq",
+              "value": true
+            },
+            {
+              "op": "related",
+              "layer": "haltestellen",
+              "predicate": "dwithin",
+              "distance_m": 500,
+              "where": {
+                "op": "compare",
+                "attr": "verkehrsmittel",
+                "cmp": "eq",
+                "value": "bahn"
+              }
+            },
+            {
+              "op": "not",
+              "arg": {
+                "op": "related",
+                "layer": "strassen",
+                "predicate": "dwithin",
+                "distance_m": 200,
+                "where": {
+                  "op": "compare",
+                  "attr": "klasse",
+                  "cmp": "eq",
+                  "value": "nationalstrasse"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml02-sek-bahn-ohne-nationalstrasse",
+      "prompt": "Welche Schulen mit Sekundarstufe I liegen nicht mehr als 300 m von einer Bahnhaltestelle und nicht innerhalb von 200 m einer Nationalstrasse?",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "near",
+        "negation",
+        "tpl:sch-near-hal-notnear-str"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "schulen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "sekundarstufe",
+              "cmp": "eq",
+              "value": true
+            },
+            {
+              "op": "related",
+              "layer": "haltestellen",
+              "predicate": "dwithin",
+              "distance_m": 300,
+              "where": {
+                "op": "compare",
+                "attr": "verkehrsmittel",
+                "cmp": "eq",
+                "value": "bahn"
+              }
+            },
+            {
+              "op": "not",
+              "arg": {
+                "op": "related",
+                "layer": "strassen",
+                "predicate": "dwithin",
+                "distance_m": 200,
+                "where": {
+                  "op": "compare",
+                  "attr": "klasse",
+                  "cmp": "eq",
+                  "value": "nationalstrasse"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml03-primar-bern-tram",
+      "prompt": "Primarschulen in der Stadt Bern, die höchstens 300 m von einer Tramhaltestelle liegen",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "in",
+        "near",
+        "name",
+        "ambiguous",
+        "tpl:sch-in-gem-near-hal"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold_any": [
+        {
+          "source": "schulen",
+          "where": {
+            "op": "and",
+            "args": [
+              {
+                "op": "compare",
+                "attr": "primarstufe",
+                "cmp": "eq",
+                "value": true
+              },
+              {
+                "op": "related",
+                "layer": "gemeinden",
+                "predicate": "within",
+                "where": {
+                  "op": "compare",
+                  "attr": "name",
+                  "cmp": "eq",
+                  "value": "Bern"
+                }
+              },
+              {
+                "op": "related",
+                "layer": "haltestellen",
+                "predicate": "dwithin",
+                "distance_m": 300,
+                "where": {
+                  "op": "compare",
+                  "attr": "verkehrsmittel",
+                  "cmp": "eq",
+                  "value": "tram"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "source": "schulen",
+          "where": {
+            "op": "and",
+            "args": [
+              {
+                "op": "compare",
+                "attr": "typ",
+                "cmp": "eq",
+                "value": "primar"
+              },
+              {
+                "op": "related",
+                "layer": "gemeinden",
+                "predicate": "within",
+                "where": {
+                  "op": "compare",
+                  "attr": "name",
+                  "cmp": "eq",
+                  "value": "Bern"
+                }
+              },
+              {
+                "op": "related",
+                "layer": "haltestellen",
+                "predicate": "dwithin",
+                "distance_m": 300,
+                "where": {
+                  "op": "compare",
+                  "attr": "verkehrsmittel",
+                  "cmp": "eq",
+                  "value": "tram"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "ml04-primar-koeniz-bahn",
+      "prompt": "Zeige die Primarschulen in Köniz mit einer Bahnhaltestelle im Umkreis von 500 m",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "in",
+        "near",
+        "name",
+        "ambiguous",
+        "tpl:sch-in-gem-near-hal"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold_any": [
+        {
+          "source": "schulen",
+          "where": {
+            "op": "and",
+            "args": [
+              {
+                "op": "compare",
+                "attr": "primarstufe",
+                "cmp": "eq",
+                "value": true
+              },
+              {
+                "op": "related",
+                "layer": "gemeinden",
+                "predicate": "within",
+                "where": {
+                  "op": "compare",
+                  "attr": "name",
+                  "cmp": "eq",
+                  "value": "Köniz"
+                }
+              },
+              {
+                "op": "related",
+                "layer": "haltestellen",
+                "predicate": "dwithin",
+                "distance_m": 500,
+                "where": {
+                  "op": "compare",
+                  "attr": "verkehrsmittel",
+                  "cmp": "eq",
+                  "value": "bahn"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "source": "schulen",
+          "where": {
+            "op": "and",
+            "args": [
+              {
+                "op": "compare",
+                "attr": "typ",
+                "cmp": "eq",
+                "value": "primar"
+              },
+              {
+                "op": "related",
+                "layer": "gemeinden",
+                "predicate": "within",
+                "where": {
+                  "op": "compare",
+                  "attr": "name",
+                  "cmp": "eq",
+                  "value": "Köniz"
+                }
+              },
+              {
+                "op": "related",
+                "layer": "haltestellen",
+                "predicate": "dwithin",
+                "distance_m": 500,
+                "where": {
+                  "op": "compare",
+                  "attr": "verkehrsmittel",
+                  "cmp": "eq",
+                  "value": "bahn"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "ml05-bus-schule-aare",
+      "prompt": "Bushaltestellen, die höchstens 300 m von einer Schule und höchstens 200 m von der Aare entfernt sind",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "near",
+        "name",
+        "lines",
+        "tpl:hal-near-sch-near-gew"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "haltestellen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "verkehrsmittel",
+              "cmp": "eq",
+              "value": "bus"
+            },
+            {
+              "op": "related",
+              "layer": "schulen",
+              "predicate": "dwithin",
+              "distance_m": 300
+            },
+            {
+              "op": "related",
+              "layer": "gewaesser",
+              "predicate": "dwithin",
+              "distance_m": 200,
+              "where": {
+                "op": "compare",
+                "attr": "name",
+                "cmp": "eq",
+                "value": "Aare"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml06-bus-schule-aare",
+      "prompt": "Welche Bushaltestellen liegen im Umkreis von 500 m einer Schule und nicht weiter als 200 m von der Aare?",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "near",
+        "name",
+        "lines",
+        "tpl:hal-near-sch-near-gew"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "haltestellen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "verkehrsmittel",
+              "cmp": "eq",
+              "value": "bus"
+            },
+            {
+              "op": "related",
+              "layer": "schulen",
+              "predicate": "dwithin",
+              "distance_m": 500
+            },
+            {
+              "op": "related",
+              "layer": "gewaesser",
+              "predicate": "dwithin",
+              "distance_m": 200,
+              "where": {
+                "op": "compare",
+                "attr": "name",
+                "cmp": "eq",
+                "value": "Aare"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml07-bahn-klein-schule",
+      "prompt": "Bahnhaltestellen in Gemeinden unter 10 km², höchstens 300 m von einer Schule",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "in",
+        "near",
+        "range",
+        "tpl:hal-in-gem-near-sch"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "haltestellen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "verkehrsmittel",
+              "cmp": "eq",
+              "value": "bahn"
+            },
+            {
+              "op": "related",
+              "layer": "gemeinden",
+              "predicate": "within",
+              "where": {
+                "op": "compare",
+                "attr": "flaeche_km2",
+                "cmp": "lt",
+                "value": 10
+              }
+            },
+            {
+              "op": "related",
+              "layer": "schulen",
+              "predicate": "dwithin",
+              "distance_m": 300
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml08-bahn-klein-schule",
+      "prompt": "Welche Bahnhaltestellen liegen in einer Gemeinde mit weniger als 10 km² Fläche und haben eine Schule in 500 m Entfernung?",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "in",
+        "near",
+        "range",
+        "tpl:hal-in-gem-near-sch"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "haltestellen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "verkehrsmittel",
+              "cmp": "eq",
+              "value": "bahn"
+            },
+            {
+              "op": "related",
+              "layer": "gemeinden",
+              "predicate": "within",
+              "where": {
+                "op": "compare",
+                "attr": "flaeche_km2",
+                "cmp": "lt",
+                "value": 10
+              }
+            },
+            {
+              "op": "related",
+              "layer": "schulen",
+              "predicate": "dwithin",
+              "distance_m": 500
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml09-gemeinde-bahn-nationalstrasse",
+      "prompt": "Gemeinden, durch die eine Nationalstrasse führt und in denen eine Bahnhaltestelle liegt",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "contains",
+        "intersects",
+        "lines",
+        "tpl:gem-contains-hal-x-str"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "gemeinden",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "related",
+              "layer": "haltestellen",
+              "predicate": "contains",
+              "where": {
+                "op": "compare",
+                "attr": "verkehrsmittel",
+                "cmp": "eq",
+                "value": "bahn"
+              }
+            },
+            {
+              "op": "related",
+              "layer": "strassen",
+              "predicate": "intersects",
+              "where": {
+                "op": "compare",
+                "attr": "klasse",
+                "cmp": "eq",
+                "value": "nationalstrasse"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml10-gemeinde-bahn-gemeindestrasse",
+      "prompt": "In welchen Gemeinden gibt es eine Bahnhaltestelle und eine wichtige Gemeindestrasse?",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "contains",
+        "intersects",
+        "lines",
+        "tpl:gem-contains-hal-x-str"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "gemeinden",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "related",
+              "layer": "haltestellen",
+              "predicate": "contains",
+              "where": {
+                "op": "compare",
+                "attr": "verkehrsmittel",
+                "cmp": "eq",
+                "value": "bahn"
+              }
+            },
+            {
+              "op": "related",
+              "layer": "strassen",
+              "predicate": "intersects",
+              "where": {
+                "op": "compare",
+                "attr": "klasse",
+                "cmp": "eq",
+                "value": "gemeindestrasse"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml11-gemeinde-sek-ohne-aare",
+      "prompt": "Gemeinden, die nicht an der Aare liegen und eine Schule mit Sekundarstufe I haben",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "contains",
+        "negation",
+        "lines",
+        "name",
+        "tpl:gem-contains-sch-notx-gew"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "gemeinden",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "related",
+              "layer": "schulen",
+              "predicate": "contains",
+              "where": {
+                "op": "compare",
+                "attr": "sekundarstufe",
+                "cmp": "eq",
+                "value": true
+              }
+            },
+            {
+              "op": "not",
+              "arg": {
+                "op": "related",
+                "layer": "gewaesser",
+                "predicate": "intersects",
+                "where": {
+                  "op": "compare",
+                  "attr": "name",
+                  "cmp": "eq",
+                  "value": "Aare"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml12-gemeinde-sek-ohne-haupt",
+      "prompt": "Welche Gemeinden haben eine Schule mit Sekundarstufe I, aber kein Hauptgewässer auf ihrem Gebiet?",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "contains",
+        "negation",
+        "lines",
+        "code",
+        "tpl:gem-contains-sch-notx-gew"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "gemeinden",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "related",
+              "layer": "schulen",
+              "predicate": "contains",
+              "where": {
+                "op": "compare",
+                "attr": "sekundarstufe",
+                "cmp": "eq",
+                "value": true
+              }
+            },
+            {
+              "op": "not",
+              "arg": {
+                "op": "related",
+                "layer": "gewaesser",
+                "predicate": "intersects",
+                "where": {
+                  "op": "compare",
+                  "attr": "typ",
+                  "cmp": "eq",
+                  "value": "haupt"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml13-nationalstrasse-fluss-bahn",
+      "prompt": "Nationalstrassen, die ein Hauptgewässer queren und höchstens 200 m an einer Bahnhaltestelle vorbeiführen",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "intersects",
+        "near",
+        "lines",
+        "code",
+        "tpl:str-x-gew-near-hal"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "strassen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "klasse",
+              "cmp": "eq",
+              "value": "nationalstrasse"
+            },
+            {
+              "op": "related",
+              "layer": "gewaesser",
+              "predicate": "intersects",
+              "where": {
+                "op": "compare",
+                "attr": "typ",
+                "cmp": "eq",
+                "value": "haupt"
+              }
+            },
+            {
+              "op": "related",
+              "layer": "haltestellen",
+              "predicate": "dwithin",
+              "distance_m": 200,
+              "where": {
+                "op": "compare",
+                "attr": "verkehrsmittel",
+                "cmp": "eq",
+                "value": "bahn"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml14-kantonsstrasse-fluss-bahn",
+      "prompt": "Welche Kantonsstrassen der Kategorie B kreuzen ein Hauptgewässer und liegen höchstens 200 m von einer Bahnhaltestelle?",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "intersects",
+        "near",
+        "lines",
+        "code",
+        "tpl:str-x-gew-near-hal"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "strassen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "klasse",
+              "cmp": "eq",
+              "value": "kantonsstrasse_b"
+            },
+            {
+              "op": "related",
+              "layer": "gewaesser",
+              "predicate": "intersects",
+              "where": {
+                "op": "compare",
+                "attr": "typ",
+                "cmp": "eq",
+                "value": "haupt"
+              }
+            },
+            {
+              "op": "related",
+              "layer": "haltestellen",
+              "predicate": "dwithin",
+              "distance_m": 200,
+              "where": {
+                "op": "compare",
+                "attr": "verkehrsmittel",
+                "cmp": "eq",
+                "value": "bahn"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml15-bach-gemeinde-schule",
+      "prompt": "Nebengewässer in Köniz, die höchstens 200 m an einer Schule vorbeifliessen",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "intersects",
+        "near",
+        "lines",
+        "name",
+        "tpl:gew-x-gem-near-sch"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "gewaesser",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "typ",
+              "cmp": "eq",
+              "value": "neben"
+            },
+            {
+              "op": "related",
+              "layer": "gemeinden",
+              "predicate": "intersects",
+              "where": {
+                "op": "compare",
+                "attr": "name",
+                "cmp": "eq",
+                "value": "Köniz"
+              }
+            },
+            {
+              "op": "related",
+              "layer": "schulen",
+              "predicate": "dwithin",
+              "distance_m": 200
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml16-bach-worb-schule",
+      "prompt": "Welche Nebengewässer fliessen durch Worb und kommen einer Schule näher als 100 m?",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "intersects",
+        "near",
+        "lines",
+        "name",
+        "tpl:gew-x-gem-near-sch"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "gewaesser",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "typ",
+              "cmp": "eq",
+              "value": "neben"
+            },
+            {
+              "op": "related",
+              "layer": "gemeinden",
+              "predicate": "intersects",
+              "where": {
+                "op": "compare",
+                "attr": "name",
+                "cmp": "eq",
+                "value": "Worb"
+              }
+            },
+            {
+              "op": "related",
+              "layer": "schulen",
+              "predicate": "dwithin",
+              "distance_m": 100
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml17-schule-klein-fluss",
+      "prompt": "Schulen, die in einer Gemeinde unter 10 km² und höchstens 300 m von einem Hauptgewässer liegen",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "in",
+        "near",
+        "range",
+        "lines",
+        "tpl:sch-in-gem-near-gew"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "schulen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "related",
+              "layer": "gemeinden",
+              "predicate": "within",
+              "where": {
+                "op": "compare",
+                "attr": "flaeche_km2",
+                "cmp": "lt",
+                "value": 10
+              }
+            },
+            {
+              "op": "related",
+              "layer": "gewaesser",
+              "predicate": "dwithin",
+              "distance_m": 300,
+              "where": {
+                "op": "compare",
+                "attr": "typ",
+                "cmp": "eq",
+                "value": "haupt"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml18-schule-gross-fluss",
+      "prompt": "Welche Schulen in Gemeinden mit mehr als 20 km² stehen höchstens 200 m von einem Hauptgewässer?",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "in",
+        "near",
+        "range",
+        "lines",
+        "tpl:sch-in-gem-near-gew"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "schulen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "related",
+              "layer": "gemeinden",
+              "predicate": "within",
+              "where": {
+                "op": "compare",
+                "attr": "flaeche_km2",
+                "cmp": "gt",
+                "value": 20
+              }
+            },
+            {
+              "op": "related",
+              "layer": "gewaesser",
+              "predicate": "dwithin",
+              "distance_m": 200,
+              "where": {
+                "op": "compare",
+                "attr": "typ",
+                "cmp": "eq",
+                "value": "haupt"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml19-kantonsstrasse-gemeinde-schule",
+      "prompt": "Kantonsstrassen der Kategorie B in Köniz, die höchstens 100 m an einer Schule vorbeiführen",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "intersects",
+        "near",
+        "lines",
+        "code",
+        "tpl:str-x-gem-near-sch"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "strassen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "klasse",
+              "cmp": "eq",
+              "value": "kantonsstrasse_b"
+            },
+            {
+              "op": "related",
+              "layer": "gemeinden",
+              "predicate": "intersects",
+              "where": {
+                "op": "compare",
+                "attr": "name",
+                "cmp": "eq",
+                "value": "Köniz"
+              }
+            },
+            {
+              "op": "related",
+              "layer": "schulen",
+              "predicate": "dwithin",
+              "distance_m": 100
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml20-kantonsstrasse-belp-schule",
+      "prompt": "Welche Kantonsstrassen der Kategorie B in Belp liegen höchstens 200 m von einer Schule?",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "intersects",
+        "near",
+        "lines",
+        "code",
+        "tpl:str-x-gem-near-sch"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "strassen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "klasse",
+              "cmp": "eq",
+              "value": "kantonsstrasse_b"
+            },
+            {
+              "op": "related",
+              "layer": "gemeinden",
+              "predicate": "intersects",
+              "where": {
+                "op": "compare",
+                "attr": "name",
+                "cmp": "eq",
+                "value": "Belp"
+              }
+            },
+            {
+              "op": "related",
+              "layer": "schulen",
+              "predicate": "dwithin",
+              "distance_m": 200
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml21-bahn-ohne-schule-nationalstrasse",
+      "prompt": "Bahnhaltestellen ohne Schule im Umkreis von 300 m, aber höchstens 500 m von einer Nationalstrasse",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "near",
+        "negation",
+        "lines",
+        "tpl:hal-notnear-sch-near-str"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "haltestellen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "verkehrsmittel",
+              "cmp": "eq",
+              "value": "bahn"
+            },
+            {
+              "op": "not",
+              "arg": {
+                "op": "related",
+                "layer": "schulen",
+                "predicate": "dwithin",
+                "distance_m": 300
+              }
+            },
+            {
+              "op": "related",
+              "layer": "strassen",
+              "predicate": "dwithin",
+              "distance_m": 500,
+              "where": {
+                "op": "compare",
+                "attr": "klasse",
+                "cmp": "eq",
+                "value": "nationalstrasse"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml22-bahn-ohne-schule-nationalstrasse",
+      "prompt": "Welche Bahnhaltestellen haben keine Schule in 500 m Entfernung, liegen aber höchstens 300 m von einer Nationalstrasse?",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "near",
+        "negation",
+        "lines",
+        "tpl:hal-notnear-sch-near-str"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "haltestellen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "verkehrsmittel",
+              "cmp": "eq",
+              "value": "bahn"
+            },
+            {
+              "op": "not",
+              "arg": {
+                "op": "related",
+                "layer": "schulen",
+                "predicate": "dwithin",
+                "distance_m": 500
+              }
+            },
+            {
+              "op": "related",
+              "layer": "strassen",
+              "predicate": "dwithin",
+              "distance_m": 300,
+              "where": {
+                "op": "compare",
+                "attr": "klasse",
+                "cmp": "eq",
+                "value": "nationalstrasse"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml23-bach-bahn-ohne-nationalstrasse",
+      "prompt": "Nebengewässer, die höchstens 200 m an einer Bahnhaltestelle vorbeifliessen und von keiner Nationalstrasse gequert werden",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "near",
+        "negation",
+        "lines",
+        "tpl:gew-near-hal-notx-str"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "gewaesser",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "typ",
+              "cmp": "eq",
+              "value": "neben"
+            },
+            {
+              "op": "related",
+              "layer": "haltestellen",
+              "predicate": "dwithin",
+              "distance_m": 200,
+              "where": {
+                "op": "compare",
+                "attr": "verkehrsmittel",
+                "cmp": "eq",
+                "value": "bahn"
+              }
+            },
+            {
+              "op": "not",
+              "arg": {
+                "op": "related",
+                "layer": "strassen",
+                "predicate": "intersects",
+                "where": {
+                  "op": "compare",
+                  "attr": "klasse",
+                  "cmp": "eq",
+                  "value": "nationalstrasse"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml24-bach-bahn-ohne-nationalstrasse",
+      "prompt": "Welche Nebengewässer kommen einer Bahnhaltestelle näher als 500 m und werden von keiner Nationalstrasse gekreuzt?",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "near",
+        "negation",
+        "lines",
+        "tpl:gew-near-hal-notx-str"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "gewaesser",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "typ",
+              "cmp": "eq",
+              "value": "neben"
+            },
+            {
+              "op": "related",
+              "layer": "haltestellen",
+              "predicate": "dwithin",
+              "distance_m": 500,
+              "where": {
+                "op": "compare",
+                "attr": "verkehrsmittel",
+                "cmp": "eq",
+                "value": "bahn"
+              }
+            },
+            {
+              "op": "not",
+              "arg": {
+                "op": "related",
+                "layer": "strassen",
+                "predicate": "intersects",
+                "where": {
+                  "op": "compare",
+                  "attr": "klasse",
+                  "cmp": "eq",
+                  "value": "nationalstrasse"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml25-schule-ausserhalb-bern-tram",
+      "prompt": "Schulen ausserhalb der Stadt Bern, die höchstens 500 m von einer Tramhaltestelle liegen",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "outside",
+        "near",
+        "name",
+        "tpl:sch-notin-gem-near-hal"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "schulen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "not",
+              "arg": {
+                "op": "related",
+                "layer": "gemeinden",
+                "predicate": "within",
+                "where": {
+                  "op": "compare",
+                  "attr": "name",
+                  "cmp": "eq",
+                  "value": "Bern"
+                }
+              }
+            },
+            {
+              "op": "related",
+              "layer": "haltestellen",
+              "predicate": "dwithin",
+              "distance_m": 500,
+              "where": {
+                "op": "compare",
+                "attr": "verkehrsmittel",
+                "cmp": "eq",
+                "value": "tram"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml26-schule-ausserhalb-koeniz-bahn",
+      "prompt": "Welche Schulen liegen nicht in Köniz, aber höchstens 300 m von einer Bahnhaltestelle?",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "outside",
+        "near",
+        "name",
+        "tpl:sch-notin-gem-near-hal"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "schulen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "not",
+              "arg": {
+                "op": "related",
+                "layer": "gemeinden",
+                "predicate": "within",
+                "where": {
+                  "op": "compare",
+                  "attr": "name",
+                  "cmp": "eq",
+                  "value": "Köniz"
+                }
+              }
+            },
+            {
+              "op": "related",
+              "layer": "haltestellen",
+              "predicate": "dwithin",
+              "distance_m": 300,
+              "where": {
+                "op": "compare",
+                "attr": "verkehrsmittel",
+                "cmp": "eq",
+                "value": "bahn"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml27-gemeinde-gross-schule-bach",
+      "prompt": "Gemeinden über 20 km², durch die ein Nebengewässer fliesst und die eine Schule mit Sekundarstufe I haben",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "contains",
+        "intersects",
+        "range",
+        "lines",
+        "tpl:gem-contains-sch-x-gew"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "gemeinden",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "flaeche_km2",
+              "cmp": "gt",
+              "value": 20
+            },
+            {
+              "op": "related",
+              "layer": "schulen",
+              "predicate": "contains",
+              "where": {
+                "op": "compare",
+                "attr": "sekundarstufe",
+                "cmp": "eq",
+                "value": true
+              }
+            },
+            {
+              "op": "related",
+              "layer": "gewaesser",
+              "predicate": "intersects",
+              "where": {
+                "op": "compare",
+                "attr": "typ",
+                "cmp": "eq",
+                "value": "neben"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml28-gemeinde-klein-sek-aare",
+      "prompt": "Welche Gemeinden unter 10 km² haben eine Schule mit Sekundarstufe I und liegen an der Aare?",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "contains",
+        "intersects",
+        "range",
+        "lines",
+        "tpl:gem-contains-sch-x-gew"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "gemeinden",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "flaeche_km2",
+              "cmp": "lt",
+              "value": 10
+            },
+            {
+              "op": "related",
+              "layer": "schulen",
+              "predicate": "contains",
+              "where": {
+                "op": "compare",
+                "attr": "sekundarstufe",
+                "cmp": "eq",
+                "value": true
+              }
+            },
+            {
+              "op": "related",
+              "layer": "gewaesser",
+              "predicate": "intersects",
+              "where": {
+                "op": "compare",
+                "attr": "name",
+                "cmp": "eq",
+                "value": "Aare"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml29-nationalstrasse-nahe-bahn",
+      "prompt": "Nationalstrassen, die höchstens 100 m an einer Bahnhaltestelle vorbeiführen",
+      "tags": [
+        "two-layers",
+        "near",
+        "lines",
+        "code",
+        "tpl:str-near-hal"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "strassen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "klasse",
+              "cmp": "eq",
+              "value": "nationalstrasse"
+            },
+            {
+              "op": "related",
+              "layer": "haltestellen",
+              "predicate": "dwithin",
+              "distance_m": 100,
+              "where": {
+                "op": "compare",
+                "attr": "verkehrsmittel",
+                "cmp": "eq",
+                "value": "bahn"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml30-nationalstrasse-nahe-bahn",
+      "prompt": "Welche Nationalstrassen liegen im Umkreis von 200 m einer Bahnhaltestelle?",
+      "tags": [
+        "two-layers",
+        "near",
+        "lines",
+        "code",
+        "tpl:str-near-hal"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "strassen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "klasse",
+              "cmp": "eq",
+              "value": "nationalstrasse"
+            },
+            {
+              "op": "related",
+              "layer": "haltestellen",
+              "predicate": "dwithin",
+              "distance_m": 200,
+              "where": {
+                "op": "compare",
+                "attr": "verkehrsmittel",
+                "cmp": "eq",
+                "value": "bahn"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml31-kantonsstrasse-nahe-schule",
+      "prompt": "Kantonsstrassen der Kategorie C, die höchstens 50 m an einer Schule vorbeiführen",
+      "tags": [
+        "two-layers",
+        "near",
+        "lines",
+        "code",
+        "tpl:str-near-sch"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "strassen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "klasse",
+              "cmp": "eq",
+              "value": "kantonsstrasse_c"
+            },
+            {
+              "op": "related",
+              "layer": "schulen",
+              "predicate": "dwithin",
+              "distance_m": 50
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml32-kantonsstrasse-nahe-schule",
+      "prompt": "Welche Kantonsstrassen der Kategorie C liegen höchstens 200 m von einer Schule?",
+      "tags": [
+        "two-layers",
+        "near",
+        "lines",
+        "code",
+        "tpl:str-near-sch"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "strassen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "klasse",
+              "cmp": "eq",
+              "value": "kantonsstrasse_c"
+            },
+            {
+              "op": "related",
+              "layer": "schulen",
+              "predicate": "dwithin",
+              "distance_m": 200
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml33-kantonsstrasse-quert-bach",
+      "prompt": "Kantonsstrassen der Kategorie B, die ein Nebengewässer kreuzen",
+      "tags": [
+        "two-layers",
+        "intersects",
+        "lines",
+        "code",
+        "tpl:str-x-gew"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "strassen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "klasse",
+              "cmp": "eq",
+              "value": "kantonsstrasse_b"
+            },
+            {
+              "op": "related",
+              "layer": "gewaesser",
+              "predicate": "intersects",
+              "where": {
+                "op": "compare",
+                "attr": "typ",
+                "cmp": "eq",
+                "value": "neben"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml34-nationalstrasse-quert-aare",
+      "prompt": "Welche Nationalstrassen queren die Aare?",
+      "tags": [
+        "two-layers",
+        "intersects",
+        "lines",
+        "name",
+        "tpl:str-x-gew"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "strassen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "klasse",
+              "cmp": "eq",
+              "value": "nationalstrasse"
+            },
+            {
+              "op": "related",
+              "layer": "gewaesser",
+              "predicate": "intersects",
+              "where": {
+                "op": "compare",
+                "attr": "name",
+                "cmp": "eq",
+                "value": "Aare"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml35-kantonsstrasse-koeniz",
+      "prompt": "Kantonsstrassen der Kategorie C, die durch Köniz führen",
+      "tags": [
+        "two-layers",
+        "intersects",
+        "lines",
+        "name",
+        "tpl:str-x-gem"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "strassen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "klasse",
+              "cmp": "eq",
+              "value": "kantonsstrasse_c"
+            },
+            {
+              "op": "related",
+              "layer": "gemeinden",
+              "predicate": "intersects",
+              "where": {
+                "op": "compare",
+                "attr": "name",
+                "cmp": "eq",
+                "value": "Köniz"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml36-kantonsstrasse-worb",
+      "prompt": "Welche Kantonsstrassen der Kategorie C führen durch Worb?",
+      "tags": [
+        "two-layers",
+        "intersects",
+        "lines",
+        "name",
+        "tpl:str-x-gem"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "strassen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "klasse",
+              "cmp": "eq",
+              "value": "kantonsstrasse_c"
+            },
+            {
+              "op": "related",
+              "layer": "gemeinden",
+              "predicate": "intersects",
+              "where": {
+                "op": "compare",
+                "attr": "name",
+                "cmp": "eq",
+                "value": "Worb"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml37-nationalstrasse-ohne-schule",
+      "prompt": "Nationalstrassen, die keiner Schule näher als 300 m kommen",
+      "tags": [
+        "two-layers",
+        "near",
+        "negation",
+        "lines",
+        "tpl:str-notnear-sch"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "strassen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "klasse",
+              "cmp": "eq",
+              "value": "nationalstrasse"
+            },
+            {
+              "op": "not",
+              "arg": {
+                "op": "related",
+                "layer": "schulen",
+                "predicate": "dwithin",
+                "distance_m": 300
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml38-kantonsstrasse-ohne-schule",
+      "prompt": "Welche Kantonsstrassen der Kategorie B haben keine Schule im Umkreis von 100 m?",
+      "tags": [
+        "two-layers",
+        "near",
+        "negation",
+        "lines",
+        "tpl:str-notnear-sch"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "strassen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "klasse",
+              "cmp": "eq",
+              "value": "kantonsstrasse_b"
+            },
+            {
+              "op": "not",
+              "arg": {
+                "op": "related",
+                "layer": "schulen",
+                "predicate": "dwithin",
+                "distance_m": 100
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml39-bach-nahe-bahn",
+      "prompt": "Nebengewässer, die höchstens 100 m an einer Bahnhaltestelle vorbeifliessen",
+      "tags": [
+        "two-layers",
+        "near",
+        "lines",
+        "code",
+        "tpl:gew-near-hal"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "gewaesser",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "typ",
+              "cmp": "eq",
+              "value": "neben"
+            },
+            {
+              "op": "related",
+              "layer": "haltestellen",
+              "predicate": "dwithin",
+              "distance_m": 100,
+              "where": {
+                "op": "compare",
+                "attr": "verkehrsmittel",
+                "cmp": "eq",
+                "value": "bahn"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml40-bach-nahe-bahn",
+      "prompt": "Welche Nebengewässer kommen einer Bahnhaltestelle näher als 200 m?",
+      "tags": [
+        "two-layers",
+        "near",
+        "lines",
+        "code",
+        "tpl:gew-near-hal"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "gewaesser",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "typ",
+              "cmp": "eq",
+              "value": "neben"
+            },
+            {
+              "op": "related",
+              "layer": "haltestellen",
+              "predicate": "dwithin",
+              "distance_m": 200,
+              "where": {
+                "op": "compare",
+                "attr": "verkehrsmittel",
+                "cmp": "eq",
+                "value": "bahn"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml41-gewaesser-nahe-sek",
+      "prompt": "Gewässer, die höchstens 50 m an einer Schule mit Sekundarstufe I vorbeifliessen",
+      "tags": [
+        "two-layers",
+        "near",
+        "lines",
+        "tpl:gew-near-sch"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "gewaesser",
+        "where": {
+          "op": "related",
+          "layer": "schulen",
+          "predicate": "dwithin",
+          "distance_m": 50,
+          "where": {
+            "op": "compare",
+            "attr": "sekundarstufe",
+            "cmp": "eq",
+            "value": true
+          }
+        }
+      }
+    },
+    {
+      "id": "ml42-gewaesser-nahe-sek",
+      "prompt": "Welche Gewässer fliessen im Umkreis von 200 m an einer Schule mit Sekundarstufe I vorbei?",
+      "tags": [
+        "two-layers",
+        "near",
+        "lines",
+        "tpl:gew-near-sch"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "gewaesser",
+        "where": {
+          "op": "related",
+          "layer": "schulen",
+          "predicate": "dwithin",
+          "distance_m": 200,
+          "where": {
+            "op": "compare",
+            "attr": "sekundarstufe",
+            "cmp": "eq",
+            "value": true
+          }
+        }
+      }
+    },
+    {
+      "id": "ml43-gewaesser-quert-nationalstrasse",
+      "prompt": "Gewässer, die von einer Nationalstrasse gequert werden",
+      "tags": [
+        "two-layers",
+        "intersects",
+        "lines",
+        "code",
+        "tpl:gew-x-str"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "gewaesser",
+        "where": {
+          "op": "related",
+          "layer": "strassen",
+          "predicate": "intersects",
+          "where": {
+            "op": "compare",
+            "attr": "klasse",
+            "cmp": "eq",
+            "value": "nationalstrasse"
+          }
+        }
+      }
+    },
+    {
+      "id": "ml44-fluss-quert-kantonsstrasse",
+      "prompt": "Welche Hauptgewässer kreuzt eine Kantonsstrasse der Kategorie B?",
+      "tags": [
+        "two-layers",
+        "intersects",
+        "lines",
+        "code",
+        "tpl:gew-x-str"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "gewaesser",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "typ",
+              "cmp": "eq",
+              "value": "haupt"
+            },
+            {
+              "op": "related",
+              "layer": "strassen",
+              "predicate": "intersects",
+              "where": {
+                "op": "compare",
+                "attr": "klasse",
+                "cmp": "eq",
+                "value": "kantonsstrasse_b"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml45-bach-bern",
+      "prompt": "Nebengewässer, die durch Bern fliessen",
+      "tags": [
+        "two-layers",
+        "intersects",
+        "lines",
+        "name",
+        "tpl:gew-x-gem"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "gewaesser",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "typ",
+              "cmp": "eq",
+              "value": "neben"
+            },
+            {
+              "op": "related",
+              "layer": "gemeinden",
+              "predicate": "intersects",
+              "where": {
+                "op": "compare",
+                "attr": "name",
+                "cmp": "eq",
+                "value": "Bern"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml46-bach-kleine-gemeinde",
+      "prompt": "Welche Nebengewässer fliessen durch eine Gemeinde unter 10 km²?",
+      "tags": [
+        "two-layers",
+        "intersects",
+        "lines",
+        "range",
+        "tpl:gew-x-gem"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "gewaesser",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "typ",
+              "cmp": "eq",
+              "value": "neben"
+            },
+            {
+              "op": "related",
+              "layer": "gemeinden",
+              "predicate": "intersects",
+              "where": {
+                "op": "compare",
+                "attr": "flaeche_km2",
+                "cmp": "lt",
+                "value": 10
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml47-primarstufe-nahe-kantonsstrasse",
+      "prompt": "Schulen mit Primarstufe höchstens 100 m von einer Kantonsstrasse der Kategorie A oder B",
+      "tags": [
+        "two-layers",
+        "near",
+        "lines",
+        "in-list",
+        "tpl:sch-near-str"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "schulen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "primarstufe",
+              "cmp": "eq",
+              "value": true
+            },
+            {
+              "op": "related",
+              "layer": "strassen",
+              "predicate": "dwithin",
+              "distance_m": 100,
+              "where": {
+                "op": "in",
+                "attr": "klasse",
+                "values": [
+                  "kantonsstrasse_a",
+                  "kantonsstrasse_b"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml48-primarstufe-nahe-kantonsstrasse",
+      "prompt": "Welche Schulen mit Primarstufe liegen im Umkreis von 300 m einer Kantonsstrasse der Kategorie A oder B?",
+      "tags": [
+        "two-layers",
+        "near",
+        "lines",
+        "in-list",
+        "tpl:sch-near-str"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "schulen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "primarstufe",
+              "cmp": "eq",
+              "value": true
+            },
+            {
+              "op": "related",
+              "layer": "strassen",
+              "predicate": "dwithin",
+              "distance_m": 300,
+              "where": {
+                "op": "in",
+                "attr": "klasse",
+                "values": [
+                  "kantonsstrasse_a",
+                  "kantonsstrasse_b"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml49-schule-nahe-fluss",
+      "prompt": "Schulen höchstens 100 m von einem Hauptgewässer",
+      "tags": [
+        "two-layers",
+        "near",
+        "lines",
+        "code",
+        "tpl:sch-near-gew"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "schulen",
+        "where": {
+          "op": "related",
+          "layer": "gewaesser",
+          "predicate": "dwithin",
+          "distance_m": 100,
+          "where": {
+            "op": "compare",
+            "attr": "typ",
+            "cmp": "eq",
+            "value": "haupt"
+          }
+        }
+      }
+    },
+    {
+      "id": "ml50-schule-nahe-fluss",
+      "prompt": "Welche Schulen stehen höchstens 300 m von einem Hauptgewässer?",
+      "tags": [
+        "two-layers",
+        "near",
+        "lines",
+        "code",
+        "tpl:sch-near-gew"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "schulen",
+        "where": {
+          "op": "related",
+          "layer": "gewaesser",
+          "predicate": "dwithin",
+          "distance_m": 300,
+          "where": {
+            "op": "compare",
+            "attr": "typ",
+            "cmp": "eq",
+            "value": "haupt"
+          }
+        }
+      }
+    },
+    {
+      "id": "ml51-schule-kleine-gemeinde",
+      "prompt": "Schulen in Gemeinden unter 5 km²",
+      "tags": [
+        "two-layers",
+        "in",
+        "range",
+        "tpl:sch-in-gem"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "schulen",
+        "where": {
+          "op": "related",
+          "layer": "gemeinden",
+          "predicate": "within",
+          "where": {
+            "op": "compare",
+            "attr": "flaeche_km2",
+            "cmp": "lt",
+            "value": 5
+          }
+        }
+      }
+    },
+    {
+      "id": "ml52-sek-grosse-gemeinde",
+      "prompt": "Welche Schulen mit Sekundarstufe I liegen in Gemeinden über 20 km²?",
+      "tags": [
+        "two-layers",
+        "in",
+        "range",
+        "tpl:sch-in-gem"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "schulen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "sekundarstufe",
+              "cmp": "eq",
+              "value": true
+            },
+            {
+              "op": "related",
+              "layer": "gemeinden",
+              "predicate": "within",
+              "where": {
+                "op": "compare",
+                "attr": "flaeche_km2",
+                "cmp": "gt",
+                "value": 20
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml53-bahn-nahe-fluss",
+      "prompt": "Bahnhaltestellen höchstens 100 m von einem Hauptgewässer",
+      "tags": [
+        "two-layers",
+        "near",
+        "lines",
+        "code",
+        "tpl:hal-near-gew"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "haltestellen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "verkehrsmittel",
+              "cmp": "eq",
+              "value": "bahn"
+            },
+            {
+              "op": "related",
+              "layer": "gewaesser",
+              "predicate": "dwithin",
+              "distance_m": 100,
+              "where": {
+                "op": "compare",
+                "attr": "typ",
+                "cmp": "eq",
+                "value": "haupt"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml54-bahn-nahe-fluss",
+      "prompt": "Welche Bahnhaltestellen liegen im Umkreis von 300 m eines Hauptgewässers?",
+      "tags": [
+        "two-layers",
+        "near",
+        "lines",
+        "code",
+        "tpl:hal-near-gew"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "haltestellen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "verkehrsmittel",
+              "cmp": "eq",
+              "value": "bahn"
+            },
+            {
+              "op": "related",
+              "layer": "gewaesser",
+              "predicate": "dwithin",
+              "distance_m": 300,
+              "where": {
+                "op": "compare",
+                "attr": "typ",
+                "cmp": "eq",
+                "value": "haupt"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml55-bus-nahe-nationalstrasse",
+      "prompt": "Bushaltestellen höchstens 50 m von einer Nationalstrasse",
+      "tags": [
+        "two-layers",
+        "near",
+        "lines",
+        "code",
+        "tpl:hal-near-str"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "haltestellen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "verkehrsmittel",
+              "cmp": "eq",
+              "value": "bus"
+            },
+            {
+              "op": "related",
+              "layer": "strassen",
+              "predicate": "dwithin",
+              "distance_m": 50,
+              "where": {
+                "op": "compare",
+                "attr": "klasse",
+                "cmp": "eq",
+                "value": "nationalstrasse"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml56-bus-nahe-nationalstrasse",
+      "prompt": "Welche Bushaltestellen liegen nicht weiter als 200 m von einer Nationalstrasse?",
+      "tags": [
+        "two-layers",
+        "near",
+        "lines",
+        "code",
+        "tpl:hal-near-str"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "haltestellen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "verkehrsmittel",
+              "cmp": "eq",
+              "value": "bus"
+            },
+            {
+              "op": "related",
+              "layer": "strassen",
+              "predicate": "dwithin",
+              "distance_m": 200,
+              "where": {
+                "op": "compare",
+                "attr": "klasse",
+                "cmp": "eq",
+                "value": "nationalstrasse"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml57-tram-koeniz",
+      "prompt": "Tramhaltestellen in Köniz",
+      "tags": [
+        "two-layers",
+        "in",
+        "name",
+        "tpl:hal-in-gem"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "haltestellen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "verkehrsmittel",
+              "cmp": "eq",
+              "value": "tram"
+            },
+            {
+              "op": "related",
+              "layer": "gemeinden",
+              "predicate": "within",
+              "where": {
+                "op": "compare",
+                "attr": "name",
+                "cmp": "eq",
+                "value": "Köniz"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml58-bahn-muensingen",
+      "prompt": "Welche Bahnhaltestellen liegen in Münsingen?",
+      "tags": [
+        "two-layers",
+        "in",
+        "name",
+        "tpl:hal-in-gem"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "haltestellen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "verkehrsmittel",
+              "cmp": "eq",
+              "value": "bahn"
+            },
+            {
+              "op": "related",
+              "layer": "gemeinden",
+              "predicate": "within",
+              "where": {
+                "op": "compare",
+                "attr": "name",
+                "cmp": "eq",
+                "value": "Münsingen"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml59-bahn-ohne-schule",
+      "prompt": "Bahnhaltestellen ohne Schule im Umkreis von 200 m",
+      "tags": [
+        "two-layers",
+        "near",
+        "negation",
+        "tpl:hal-notnear-sch"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "haltestellen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "verkehrsmittel",
+              "cmp": "eq",
+              "value": "bahn"
+            },
+            {
+              "op": "not",
+              "arg": {
+                "op": "related",
+                "layer": "schulen",
+                "predicate": "dwithin",
+                "distance_m": 200
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml60-bahn-ohne-schule",
+      "prompt": "Welche Bahnhaltestellen haben keine Schule in 500 m Entfernung?",
+      "tags": [
+        "two-layers",
+        "near",
+        "negation",
+        "tpl:hal-notnear-sch"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "haltestellen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "verkehrsmittel",
+              "cmp": "eq",
+              "value": "bahn"
+            },
+            {
+              "op": "not",
+              "arg": {
+                "op": "related",
+                "layer": "schulen",
+                "predicate": "dwithin",
+                "distance_m": 500
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml61-kleine-gemeinde-bahn",
+      "prompt": "Gemeinden unter 5 km² mit einer Bahnhaltestelle",
+      "tags": [
+        "two-layers",
+        "contains",
+        "range",
+        "tpl:gem-contains-hal"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "gemeinden",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "flaeche_km2",
+              "cmp": "lt",
+              "value": 5
+            },
+            {
+              "op": "related",
+              "layer": "haltestellen",
+              "predicate": "contains",
+              "where": {
+                "op": "compare",
+                "attr": "verkehrsmittel",
+                "cmp": "eq",
+                "value": "bahn"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml62-kleine-gemeinde-bahn",
+      "prompt": "Welche Gemeinden unter 10 km² haben eine Bahnhaltestelle?",
+      "tags": [
+        "two-layers",
+        "contains",
+        "range",
+        "tpl:gem-contains-hal"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "gemeinden",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "flaeche_km2",
+              "cmp": "lt",
+              "value": 10
+            },
+            {
+              "op": "related",
+              "layer": "haltestellen",
+              "predicate": "contains",
+              "where": {
+                "op": "compare",
+                "attr": "verkehrsmittel",
+                "cmp": "eq",
+                "value": "bahn"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml63-grosse-gemeinde-ohne-sek",
+      "prompt": "Gemeinden über 5 km² ohne Schule mit Sekundarstufe I",
+      "tags": [
+        "two-layers",
+        "contains",
+        "negation",
+        "range",
+        "tpl:gem-notcontains-sch"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "gemeinden",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "flaeche_km2",
+              "cmp": "gt",
+              "value": 5
+            },
+            {
+              "op": "not",
+              "arg": {
+                "op": "related",
+                "layer": "schulen",
+                "predicate": "contains",
+                "where": {
+                  "op": "compare",
+                  "attr": "sekundarstufe",
+                  "cmp": "eq",
+                  "value": true
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml64-grosse-gemeinde-ohne-sek",
+      "prompt": "Welche Gemeinden über 10 km² haben keine Schule mit Sekundarstufe I?",
+      "tags": [
+        "two-layers",
+        "contains",
+        "negation",
+        "range",
+        "tpl:gem-notcontains-sch"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "gemeinden",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "flaeche_km2",
+              "cmp": "gt",
+              "value": 10
+            },
+            {
+              "op": "not",
+              "arg": {
+                "op": "related",
+                "layer": "schulen",
+                "predicate": "contains",
+                "where": {
+                  "op": "compare",
+                  "attr": "sekundarstufe",
+                  "cmp": "eq",
+                  "value": true
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml65-gemeinde-nationalstrasse",
+      "prompt": "Gemeinden, durch die eine Nationalstrasse führt",
+      "tags": [
+        "two-layers",
+        "intersects",
+        "lines",
+        "code",
+        "tpl:gem-x-str"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "gemeinden",
+        "where": {
+          "op": "related",
+          "layer": "strassen",
+          "predicate": "intersects",
+          "where": {
+            "op": "compare",
+            "attr": "klasse",
+            "cmp": "eq",
+            "value": "nationalstrasse"
+          }
+        }
+      }
+    },
+    {
+      "id": "ml66-kleine-gemeinde-kantonsstrasse",
+      "prompt": "Welche Gemeinden unter 10 km² werden von einer Kantonsstrasse der Kategorie B durchquert?",
+      "tags": [
+        "two-layers",
+        "intersects",
+        "lines",
+        "range",
+        "tpl:gem-x-str"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "gemeinden",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "flaeche_km2",
+              "cmp": "lt",
+              "value": 10
+            },
+            {
+              "op": "related",
+              "layer": "strassen",
+              "predicate": "intersects",
+              "where": {
+                "op": "compare",
+                "attr": "klasse",
+                "cmp": "eq",
+                "value": "kantonsstrasse_b"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml67-kleine-gemeinde-aare",
+      "prompt": "Gemeinden unter 5 km² an der Aare",
+      "tags": [
+        "two-layers",
+        "intersects",
+        "lines",
+        "range",
+        "tpl:gem-x-gew"
+      ],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "gemeinden",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "flaeche_km2",
+              "cmp": "lt",
+              "value": 5
+            },
+            {
+              "op": "related",
+              "layer": "gewaesser",
+              "predicate": "intersects",
+              "where": {
+                "op": "compare",
+                "attr": "name",
+                "cmp": "eq",
+                "value": "Aare"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml68-kleine-gemeinde-fluss",
+      "prompt": "Welche Gemeinden unter 10 km² liegen an einem Hauptgewässer?",
+      "tags": [
+        "two-layers",
+        "intersects",
+        "lines",
+        "range",
+        "tpl:gem-x-gew"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "gemeinden",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "flaeche_km2",
+              "cmp": "lt",
+              "value": 10
+            },
+            {
+              "op": "related",
+              "layer": "gewaesser",
+              "predicate": "intersects",
+              "where": {
+                "op": "compare",
+                "attr": "typ",
+                "cmp": "eq",
+                "value": "haupt"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml69-bahn-fluss-nationalstrasse",
+      "prompt": "Bahnhaltestellen, die höchstens 300 m von einem Hauptgewässer und höchstens 300 m von einer Nationalstrasse liegen",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "near",
+        "lines",
+        "code",
+        "tpl:hal-near-gew-near-str"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "haltestellen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "verkehrsmittel",
+              "cmp": "eq",
+              "value": "bahn"
+            },
+            {
+              "op": "related",
+              "layer": "gewaesser",
+              "predicate": "dwithin",
+              "distance_m": 300,
+              "where": {
+                "op": "compare",
+                "attr": "typ",
+                "cmp": "eq",
+                "value": "haupt"
+              }
+            },
+            {
+              "op": "related",
+              "layer": "strassen",
+              "predicate": "dwithin",
+              "distance_m": 300,
+              "where": {
+                "op": "compare",
+                "attr": "klasse",
+                "cmp": "eq",
+                "value": "nationalstrasse"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml70-bus-fluss-nationalstrasse",
+      "prompt": "Welche Bushaltestellen liegen im Umkreis von 100 m eines Hauptgewässers und im Umkreis von 200 m einer Nationalstrasse?",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "near",
+        "lines",
+        "code",
+        "tpl:hal-near-gew-near-str"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "haltestellen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "verkehrsmittel",
+              "cmp": "eq",
+              "value": "bus"
+            },
+            {
+              "op": "related",
+              "layer": "gewaesser",
+              "predicate": "dwithin",
+              "distance_m": 100,
+              "where": {
+                "op": "compare",
+                "attr": "typ",
+                "cmp": "eq",
+                "value": "haupt"
+              }
+            },
+            {
+              "op": "related",
+              "layer": "strassen",
+              "predicate": "dwithin",
+              "distance_m": 200,
+              "where": {
+                "op": "compare",
+                "attr": "klasse",
+                "cmp": "eq",
+                "value": "nationalstrasse"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml71-schule-fluss-ohne-nationalstrasse",
+      "prompt": "Schulen höchstens 300 m von einem Hauptgewässer, aber mehr als 500 m von jeder Nationalstrasse",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "near",
+        "negation",
+        "lines",
+        "tpl:sch-near-gew-notnear-str"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "schulen",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "related",
+              "layer": "gewaesser",
+              "predicate": "dwithin",
+              "distance_m": 300,
+              "where": {
+                "op": "compare",
+                "attr": "typ",
+                "cmp": "eq",
+                "value": "haupt"
+              }
+            },
+            {
+              "op": "not",
+              "arg": {
+                "op": "related",
+                "layer": "strassen",
+                "predicate": "dwithin",
+                "distance_m": 500,
+                "where": {
+                  "op": "compare",
+                  "attr": "klasse",
+                  "cmp": "eq",
+                  "value": "nationalstrasse"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml72-bach-bahn-schule",
+      "prompt": "Nebengewässer, die höchstens 300 m an einer Bahnhaltestelle und höchstens 100 m an einer Schule vorbeifliessen",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "near",
+        "lines",
+        "code",
+        "tpl:gew-near-hal-near-sch"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "gewaesser",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "typ",
+              "cmp": "eq",
+              "value": "neben"
+            },
+            {
+              "op": "related",
+              "layer": "haltestellen",
+              "predicate": "dwithin",
+              "distance_m": 300,
+              "where": {
+                "op": "compare",
+                "attr": "verkehrsmittel",
+                "cmp": "eq",
+                "value": "bahn"
+              }
+            },
+            {
+              "op": "related",
+              "layer": "schulen",
+              "predicate": "dwithin",
+              "distance_m": 100
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ml73-bach-bahn-sek",
+      "prompt": "Welche Nebengewässer kommen einer Bahnhaltestelle näher als 500 m und einer Schule mit Sekundarstufe I näher als 200 m?",
+      "tags": [
+        "three-layers",
+        "two-relations",
+        "near",
+        "lines",
+        "code",
+        "tpl:gew-near-hal-near-sch"
+      ],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "authored",
+      "schema_version": "2",
+      "gold": {
+        "source": "gewaesser",
+        "where": {
+          "op": "and",
+          "args": [
+            {
+              "op": "compare",
+              "attr": "typ",
+              "cmp": "eq",
+              "value": "neben"
+            },
+            {
+              "op": "related",
+              "layer": "haltestellen",
+              "predicate": "dwithin",
+              "distance_m": 500,
+              "where": {
+                "op": "compare",
+                "attr": "verkehrsmittel",
+                "cmp": "eq",
+                "value": "bahn"
+              }
+            },
+            {
+              "op": "related",
+              "layer": "schulen",
+              "predicate": "dwithin",
+              "distance_m": 200,
+              "where": {
+                "op": "compare",
+                "attr": "sekundarstufe",
+                "cmp": "eq",
+                "value": true
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

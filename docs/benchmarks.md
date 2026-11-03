@@ -799,3 +799,48 @@ Rückfall aus Lauf 12 auf denselben Saaten; dieselbe Regel.
   10 %). **Entschieden (2026-10-30):** Das gilt als erfüllt; für diese
   beiden Modelle darf die Prüfung eingeschaltet werden, gemma4:e4b und
   qwen3.5:9b bleiben aus (plan-check-mode 7).
+
+## Lauf 14: LFM3-1.7B, Arme A und C (2026-11-02)
+
+| | |
+|---|---|
+| Stand | Commit `6a9a1d2` (letzter Stand von `backend/` und `schema/`), Arbeitsbaum sauber |
+| Ollama | **0.40.13** (vorher 0.34.0; LFM3 läuft unter Linux erst ab dieser Version) |
+| Modell | `lfm3:1.7b` (Liquid AI, 1,73 Mrd. Parameter, 1,1 GB); `lfm3:1.7b-mlx-bf16` lädt, antwortet aber nicht innert 2 Minuten (MLX ist Apples Format) |
+| Fälle | Bestätigungsfälle `heldout` (37) × Seeds 1–5 = 185 Antworten je Arm |
+| Parameter | direkt, Temperatur 0.3, Effort `none`, eingeschränkte Ausgabe |
+| Aufruf | `uv run python evals/run.py --model lfm3:1.7b --cases heldout --arm {a,c} --repeat 5 --temperature 0.3 --effort none --label lfm3_1.7b-heldout-{a,c}` |
+
+Arm A ist der heutige Prompt mit den festen Beispielen, Arm C die drei vom
+Selektor gewählten Fälle aus dem Pool ([plan-improve-examples.md](plan-improve-examples.md),
+6.5). Zum Vergleich dieselben Fälle und Seeds aus der Beispielmessung
+([examples-benchmarks.md](examples-benchmarks.md), Block 1, Ollama 0.34.0).
+
+| Modell | Arm | Bestanden /185 | C − A (95 %) | Antworten mit Beispiel-Layer | mit anderem erfundenem Layer | Erklärung englisch | Median |
+|---|---|---:|---|---:|---:|---:|---:|
+| lfm3:1.7b | A | 24 (13.0 %) | | 39 | 19 | 17 | 1,0 s |
+| lfm3:1.7b | C | 43 (23.2 %) | +10.3 (−1.1 … +22.2) | **0** | 10 | 9 | 0,9 s |
+| gemma4:12b | A / C | 157 / 149 | | | | | |
+| qwen3:14b | A / C | 139 / 161 | | | | | |
+
+- **LFM3 nimmt die Beispiel-Layer für echt**, wie lfm2.5:8b in Lauf 2: unter
+  A verwenden 39 von 185 Antworten `schulhaeuser` (21), `orte` (12) oder
+  `quartiere` (7). Unter C keine einzige; die Pool-Fälle zeigen echte Layer.
+- Dadurch sinken die Ablehnungen von 95 auf 40, aber die meisten dieser
+  Antworten werden falsch statt richtig (falsche Zählungen 31 → 67).
+  Bestanden steigt um 10 Punkte; das Intervall berührt 0. Neun bzw. 14
+  der 37 Fälle werden mindestens einmal bestanden.
+- **Es fragt nie zurück und lehnt nie ab:** Alle Verhaltensfälle (`h31`–`h38`)
+  werden zur Abfrage, in beiden Armen; bestanden wird nur `h35-injection-sql`.
+- Weitere erfundene Layer (`gemeindedaten`, `fluss`, `alle_layern…`) und
+  Erklärungen teils auf Englisch, auch unter C.
+- Ein Vorversuch auf den 33 Tuning-Fällen (Arm A, Seed 1) bestand 2 von 33.
+- **Einordnung:** Mit 13–23 % ist LFM3-1.7B für die Anwendung nicht brauchbar;
+  die Beispielmessung (Regel 6.6) läuft für dieses Modell nicht. Der Befund,
+  der bleibt: Arm C beseitigt das Kopieren der Beispiel-Layer bei einem
+  kleinen Modell vollständig.
+
+Ergebnisdateien (`backend/evals/results/`):
+`20261102-175041-lfm3_1.7b-heldout-a.jsonl`,
+`20261102-175401-lfm3_1.7b-heldout-c.jsonl`; Vorversuch
+`20261102-145209-smoke-lfm3_1.7b.jsonl`.

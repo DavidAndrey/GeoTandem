@@ -166,10 +166,13 @@ written by hand.
 
 - **Template = shape + layers.** The shapes: `near`, `within`, `outside`,
   `contains`, `intersects`, each with or without a filter on the subject
-  or the related layer. For three layers: two relations on the subject, and
-  a relation inside a relation's filter («Schulen in Gemeinden, die eine
-  Bahnhaltestelle haben»). Every pair of layers where the shape makes sense
-  (5 layers, 10 pairs).
+  or the related layer. For three layers: two relations on the subject.
+  Every pair of layers where the shape makes sense (5 layers, 10 pairs).
+- **Not a relation inside a relation's filter** («Schulen in Gemeinden, die
+  eine Bahnhaltestelle haben»): the controls hold only an attribute row
+  there (filters.md 3.2), so the direct query refuses it
+  (`not_representable`, tried on 16 references, 2026-10-30). Only the chain
+  can answer it, and that needs a reference plan (section 1, later).
 - **Variants** of a template change the values (distance, code,
   municipality); the question is written in German by hand and read by a
   person for natural wording.
@@ -179,21 +182,33 @@ written by hand.
 - **Target:** about 15 three-layer confirm cases, every layer the subject
   of at least 4 confirm cases.
 - **Own file**, beside `chain-cases.json`, so the sets of Lauf 1–11 stay
-  as they were measured. `kb04`, `kb15`, `kb24`, `doc6`, `h14` get values
-  that make their conditions bite, as new cases in that file; the old ones
-  stay unchanged.
+  as they were measured. `kb04`, `kb15`, `kb24`, `doc6`, `h14` stay
+  unchanged, their idle conditions pinned by the test; the new file's
+  cases cover their shapes with conditions that bite.
 - **The load-bearing check becomes a test** over every case file, so new
   and edited cases keep it.
 
+**As built (2026-10-30):** `schema/eval-cases/layer-cases.json`, 73 cases
+(`--cases layers` / `layers-heldout`): 28 with three layers from 14
+templates, 40 with two layers from 20 templates covering all ten pairs,
+5 confirm-only with three layers for group 4; 43 confirm, 30 tuning. Each
+layer is the subject of 6 to 10 confirm cases. Rules learnt while writing
+them: no «Bahnhof» (part of stop names, searched as a name in a confirm
+case), no «Autobahn» for `nationalstrasse`, «Primarschule» keeps both
+readings (`typ`, `primarstufe`) as the start set does, no «die» that can
+point to two nouns. No fixed versions of `kb04`, `kb15`, `kb24`, `doc6`,
+`h14` (decided 2026-10-30).
+
 ### 6.4 Duplicates and groups
 
-Each reference is reduced to a signature: subject, layers, operations and
-predicates, attributes. With values: the full signature.
+Each reference is reduced to a signature (`evaluation/signature.py`):
+its layers (subject and related layers) and its shape (subject filtered or
+not; each relation's predicate, negation and whether the related layer is
+filtered), no values. With values: the full signature.
 
 - Same full signature in tuning and confirm (a paraphrase): a duplicate,
   not allowed across the splits.
-- Every confirm case is put in a **group**, by its nearest pool case,
-  stored with the case before the runs:
+- Every confirm case is put in a **group**, by its nearest pool case:
   1. same layers, same shape (another value): what a customer has once
      their own cases cover a question;
   2. same layers, other shape;
@@ -202,6 +217,16 @@ predicates, attributes. With values: the full signature.
 - About half the templates have variants in both splits (group 1), the
   rest are whole in one split (groups 2–4); each group has at least
   8 confirm cases.
+
+**As built (2026-10-30):** the groups are computed from the case files and
+their sizes pinned by a test (`test_eval_signature.py`), so a change to the
+pool or the confirm split fails the test instead of shifting the groups.
+Over all confirm cases (start set, chain, layers): group 1: 57, group 2:
+11, group 3: 14, group 4: 12, behaviour cases 12. Group 4 needed five
+confirm-only cases on layer combinations no tuning case has (ml69–ml73).
+Three confirm cases copy a tuning case in full from before the check
+(`h29` = `attr-franzoesisch`, `kb08` = `doc3`, `kb16` = `dist-nationalstrasse`);
+the measurement of examples leaves them out.
 
 ### 6.5 Arms and runs
 
@@ -227,6 +252,36 @@ world: if C is not better than B, the selector is not worth building.
   `same` and passes the check unmarked.
 - Each answer records the pool ids it was given.
 
+**As built (2026-10-30):** `evals/run.py --arm a|b|c`, the pool in
+`evals/pool.py`, pinned by `tests/test_eval_pool.py`.
+- **Pool:** 62 of the 69 tuning cases with a reference. Each gets its chain
+  plan by the conversion of section 1, and every plan passes `check_plan`
+  and selects the reference's features. Seven have no plan: «ohne» around
+  `contains` or `intersects` (`doc4`, `ml11`, `ml24`, `ml63`, `ml64`) has no
+  chain tool, and a road farther than a distance (`ml37`, `ml38`) needs
+  `outside` of a buffer, which takes points only. They stay out of the
+  direct pool too, so every arm sends the same examples to both calls of
+  the check.
+- **B and C** keep the rules and two fixed examples, the first and the one
+  that declines; the pool cases follow under their own line («geprüfte
+  Fragen an die Layer des Layer-Steckbriefs»). Without the declining one,
+  rule 3 would measure the loss of that example, not the choice: the pool
+  holds only queries.
+- **The explanation** of a pool example is its last step's text, written
+  from the profile's labels («Haltestellen: Bus, höchstens 50 m von
+  Strassen: Nationalstrasse»); the cases have no words of their own for it.
+- **B's draw** is seeded by case and seed, so each seed block draws anew
+  and B estimates random examples, not one draw.
+- **The selector** (section 2) ranks by the subject named first, then the
+  other layers in common, then the operations in common, and fewer
+  operations the question does not cue. Cue words for `within` and
+  `intersects` are added; the pool has those shapes. It reads only the
+  question and the profile: a name such as «Aare» or «Köniz» names no
+  layer, so «Nationalstrassen queren die Aare» is chosen by `strassen`
+  alone.
+- **Copies** (6.4) are left out of the run in every arm, found by
+  `signature.copies` and not by a list.
+
 ### 6.6 Decision rule
 
 Per model and approach, on the confirm cases, paired per case with a
@@ -237,7 +292,8 @@ bootstrap interval over cases (as F20):
    F20 margin).
 3. **Asking and declining** (cases with `expect`): C no more than 5 points
    below A, since examples of queries can make a model answer where it
-   should ask.
+   should ask. Judged as in 6.7, on the behaviour cases of the three files
+   and of `behaviour-cases.json` together.
 4. **Group 4:** C no more than 5 points below A in pass.
 5. **Selector:** C − B lower bound above 0; otherwise random examples from
    the pool would be built instead of the selector.
@@ -253,6 +309,69 @@ conversion become an extension of E3.
 
 About a day and a half of work (templates, cases, checks, groups, the
 harness option), then the runs.
+
+### 6.7 Behaviour cases and point 3
+
+Point 3 failed in four of the ten groups of the measurement
+([examples-benchmarks.md](examples-benchmarks.md)), each time on one or two
+of only 11 behaviour cases (9 for the chain): with so few, one case that
+turns from asking to a query moves the figure by 7 to 9 points, more than
+the margin of 5, which F20 set for about 100 cases. Rule 6.6 stays as it
+is for points 1, 2, 4, 5 and 6; point 3 gets more cases and a reading,
+both fixed here **before any answer to the new cases exists** (2026-11-02).
+
+**Cases.** `schema/eval-cases/behaviour-cases.json`, 34 cases, confirm only,
+`origin: authored`, none in the pool (it holds only tuning cases with a
+plan):
+
+| Cases | Expected | Kind |
+|---|---|---|
+| v01–v08 | `clarification` (v04, v06 also `cannot_answer`) | no target, place or earlier query |
+| v09–v16 | `cannot_answer`, `other_approach: none` | layer not in the profile |
+| v17–v22 | `cannot_answer`, `other_approach: none` | attribute not in the profile |
+| v23–v26 | `cannot_answer`, `other_approach: none` | only in the table «Gemeindedaten» |
+| v27–v30 | `cannot_answer`, `other_approach: none` | per group or ranking |
+| v31–v34 | `cannot_answer`, offer not checked | outside the application |
+
+Only clear-cut cases: where the prompt's rules allow an assumption (a
+vague distance with a target, a plain «Wie viele», sorting) there is no
+case. None of the prompt's invented layers or «Bahnhof», «Autobahn» (6.3).
+Most carry a cue the selector matches (near, in, through, not, has), so C
+is shown query examples of that operation, the mechanism seen on
+`h31-naehe-wovon`.
+
+**Runs.** A stage of its own in `bench.py` after the measurement, for all
+ten groups: arms A and C only, seeds 1–5 and 6–10, chunks
+`xb-<group>-behaviour-<arm>-s<block>`. Its commits are counted apart from
+those of the measurement.
+
+**Reading of point 3** (`evals/decide.py`), A against C on the 45 behaviour
+cases (43 for the chain) together:
+
+- **(a) Mean:** C − A at least −5 points in pass, as the rule reads.
+- **(b) No case drops:** no behaviour case loses more than 50 points in
+  answers *of the right kind*, that is asked back or declined as expected,
+  whatever the offer (verdicts other than `kind:*` and `error:*`).
+
+Point 3 holds if both hold. Not the lower bound of the interval: models
+that answer a case alike on all seeds (qwen3:14b) move whole cases, so the
+interval stays about 18 points wide even with 45 cases, and the bound would
+measure how jumpy a model is, not whether C harms it. The case rule names
+each real loss instead; with 10 answers per arm, a drop of more than 50
+points by chance is rare (at most 0.6 % per case, for a case passed half
+the time under both arms; about 0.25 expected per group of 43–45 cases).
+
+A wrong offer alone (`other_approach:*`, as `h38-je-gemeinde` under C on
+qwen3:14b: it declines, but offers the chain) counts against the mean but
+not as a drop: the user is not misled, only sent to an approach that
+declines too. Offer errors are listed with the figures. This line between
+kind and offer was drawn after the ten groups were seen; under it, the
+check and direct groups of qwen3:14b hold point 3 on the old cases, under
+the whole verdict they would not.
+
+A flagged case is not tuned on (D2, it is a confirm case): the remedy is
+asking and declining examples among the tuning cases of the pool, measured
+again.
 
 ## 7 Risks
 

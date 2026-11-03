@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import Any
 
 from casefiles import CASE_FILES, load_cases
+from pool import ARMS, Example, choose, draw, pool_hash, pool_of, with_pool
 from variants import (
     APP_EXAMPLES,
     VARIANTS,
@@ -43,11 +44,13 @@ from geotandem.catalog import ModelProfile, model_profile
 from geotandem.config import Settings
 from geotandem.data import Limits
 from geotandem.engine import ids_query
+from geotandem.evaluation.cases import chain_set, layer_set, start_set
 from geotandem.evaluation.chain import drive, graded
 from geotandem.evaluation.grade import PASS, Graded, errored, grade, reading_ids
 from geotandem.evaluation.profiles import PROFILES
 from geotandem.evaluation.sample import build_sample
 from geotandem.evaluation.schemas import EvalCase
+from geotandem.evaluation.signature import copies
 from geotandem.levels import Level
 from geotandem.levels.store import load_levels
 from geotandem.llm import Completion, Endpoint, LLMError, Message
@@ -162,13 +165,19 @@ def ask_chain(
 
 
 def ask_check(
-    client: Recording, prompt: Prompt, case: EvalCase, world: World, readings: Readings
+    client: Recording,
+    prompt: Prompt,
+    case: EvalCase,
+    world: World,
+    readings: Readings,
+    planning: Prompt | None = None,
 ) -> tuple[Graded, dict[str, Any]]:
     """The direct query, graded, and its check by the chain as the application
     asks it (plan-check-mode): only for an answer with a query; the plan's
     query, its last step's (D2), compared with the direct query by feature
     ids. The verdict is the direct answer's; ``check`` says what the check
-    found (``same``, ``differs``, ``not_checked``)."""
+    found (``same``, ``differs``, ``not_checked``). ``planning``: the check's
+    prompt, by default the chain's as the application writes it."""
     found = DirectQuery(client, world.context, world.level).ask(prompt, profile=world.profile)
     backend = world.context.backend
     verdict = grade(case, found.answer, found.refusal, found.query, backend, LIMITS, readings)
@@ -179,7 +188,7 @@ def ask_check(
     }
     if found.query is None:
         return verdict, kept
-    chain_prompt = build_prompt(
+    chain_prompt = planning or build_prompt(
         case.prompt, approach="chain", level=world.level, profile=world.profile
     )
     started = time.monotonic()
@@ -294,6 +303,13 @@ def main() -> int:
         "application's (builder), any other examples/NAME.txt",
     )
     parser.add_argument(
+        "--arm",
+        choices=ARMS,
+        help="examples from the pool of tuning cases (docs/plan-improve-examples.md, 6.5): "
+        "a today's fixed set, b three drawn at random, c three chosen by the selector; to both "
+        "calls of the check; leaves out the confirm cases that copy a pool case",
+    )
+    parser.add_argument(
         "--profile",
         default="full",
         choices=list(PROFILES),
@@ -308,6 +324,8 @@ def main() -> int:
     if args.no_examples and (args.examples or args.variant != "p0"):
         parser.error("--no-examples takes neither --examples nor a variant")
     chain = args.approach == "chain"
+    if args.arm and (args.no_examples or args.examples or args.variant != "p0"):
+        parser.error("--arm writes the examples itself: no --examples, --no-examples or variant")
     if chain and (args.no_examples or args.examples or args.variant != "p0" or args.no_format):
         # The chain keeps the default prompt until it is evaluated (plan E3, 9).
         parser.error("--approach chain takes no prompt variant, examples or --no-format yet")
@@ -331,6 +349,13 @@ def main() -> int:
     cases = load_cases(args.cases)
     if args.only:
         cases = [c for c in cases if c.id in args.only.split(",")]
+    every = (*start_set(), *chain_set(), *layer_set())
+    if args.arm:
+        # A confirm case that copies a pool case would see its own answer (6.4).
+        copied = {c for c, _ in copies(cases, [k for k in every if k.split == "tuning"])}
+        cases = [c for c in cases if c.id not in copied]
+        if copied:
+            print(f"left out, they copy a pool case: {', '.join(sorted(copied))}")
     # A case that wants this approach offered as the other one says nothing of it.
     approach = "direct" if args.approach == "check" else args.approach
     left_out = [c.id for c in cases if c.other_approach == approach]
@@ -343,24 +368,47 @@ def main() -> int:
     profile = model_profile(engine, backend.layer_names())
     level = next(lv for lv in load_levels(engine) if lv.is_default)
     context = ToolContext(backend=backend, limits=LIMITS)
+    pool = pool_of(every, profile)
 
-    def build(text: str) -> Prompt:
+    def given(case: EvalCase, seed: int) -> list[Example]:
+        """The pool examples of ``case`` in this run's arm; none in A."""
+        if args.arm == "b":
+            return draw(pool, case.id, seed)
+        if args.arm == "c":
+            return choose(case.prompt, case.id, pool, profile)
+        return []
+
+    def planned(text: str, shown: list[Example]) -> Prompt:
+        """The chain's prompt as the application writes it, with B's or C's examples."""
+        prompt = build_prompt(text, approach="chain", level=level, profile=profile)
+        if args.arm in ("b", "c"):
+            prompt = replace(prompt, messages=tuple(with_pool(prompt.messages, shown, "chain")))
+        return prompt
+
+    def build(text: str, shown: list[Example]) -> Prompt:
         """The prompt of ``text`` as this run sends it: the builder's after the
-        prompt profile, then an example set of this directory, then a
-        measurement-only variant. The chain's as the application writes it."""
+        prompt profile, then an example set of this directory or an arm's pool
+        examples, then a measurement-only variant. The chain's as ``planned``."""
         if chain:
-            return build_prompt(text, approach="chain", level=level, profile=profile)
+            return planned(text, shown)
         prompt = direct_prompt(text, level=level, profile=profile, prompt_profile=written)
-        messages = variant(with_examples(list(prompt.messages), examples))
+        messages = list(prompt.messages)
+        if args.arm in ("b", "c"):
+            messages = with_pool(messages, shown, "direct")
+        messages = variant(with_examples(messages, examples))
         return replace(prompt, messages=tuple(messages))
 
     if args.show:
-        for message in build(cases[0].prompt).messages:
+        shown = given(cases[0], args.seed_start)
+        sent = list(build(cases[0].prompt, shown).messages)
+        if args.approach == "check":
+            sent += planned(cases[0].prompt, shown).messages
+        for message in sent:
             print(f"===== {message.role} ({len(message.content)} chars)\n{message.content}\n")
         return 0
     # Over the prompt of a placeholder question: one hash names the run's
-    # template, whatever the cases (H-5).
-    template = build("{prompt}")
+    # template, whatever the cases (H-5); an arm's without its pool examples.
+    template = build("{prompt}", [])
 
     out = HERE / "results" / f"{datetime.now():%Y%m%d-%H%M%S}-{args.label}.jsonl"
     out.parent.mkdir(exist_ok=True)
@@ -387,6 +435,8 @@ def main() -> int:
             "level": level.name,
             "approach": args.approach,
         }
+        if args.arm:
+            header |= {"arm": args.arm, "pool": len(pool), "pool_sha256": pool_hash(pool)}
         if chain:
             header["replan_sha256"] = replan_hash()
         log.write(json.dumps(header) + "\n")
@@ -405,11 +455,18 @@ def main() -> int:
                     timeout_s=300,
                     reasoning_effort=args.effort,
                 )
-                prompt = build(case.prompt)
+                shown = given(case, seed)
+                prompt = build(case.prompt, shown)
                 record: dict[str, Any] = {"case": case.id, "seed": seed}
+                if args.arm:
+                    record["examples"] = [e.case for e in shown]
                 client = Recording(endpoint)
                 try:
-                    graded_as, kept = ASK[args.approach](client, prompt, case, world, readings)
+                    if args.approach == "check":
+                        planning = planned(case.prompt, shown)
+                        graded_as, kept = ask_check(client, prompt, case, world, readings, planning)
+                    else:
+                        graded_as, kept = ASK[args.approach](client, prompt, case, world, readings)
                     verdict = graded_as.tag
                     record |= kept
                     if graded_as.flags:
