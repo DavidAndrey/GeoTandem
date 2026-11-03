@@ -106,8 +106,18 @@ check the marks on correct answers. Write the outcome under *Results*.
 | `chain-gpt_6_luna (external)` | 18/18 | 0 | 0.0 h | fb5cca0 |
 | `direct-claude_haiku_5_5 (external)` | 18/18 | 0 | 0.0 h | 6a9a1d2 |
 | `chain-claude_haiku_5_5 (external)` | 18/18 | 0 | 0.0 h | 6a9a1d2 |
+| `check-gemma4_12b · behaviour` | 4/4 | 0 | 0.0 h | b324f23 |
+| `check-qwen3_14b · behaviour` | 4/4 | 0 | 0.0 h | b324f23 |
+| `direct-gemma4_12b · behaviour` | 4/4 | 0 | 0.0 h | b324f23 |
+| `direct-qwen3_14b · behaviour` | 4/4 | 0 | 0.0 h | b324f23 |
+| `chain-gemma4_12b · behaviour` | 4/4 | 0 | 0.0 h | b324f23 |
+| `chain-qwen3_14b · behaviour` | 4/4 | 0 | 0.0 h | b324f23 |
+| `direct-gpt_6_luna (external) · behaviour` | 4/4 | 0 | 0.0 h | b324f23 |
+| `chain-gpt_6_luna (external) · behaviour` | 4/4 | 0 | 0.0 h | b324f23 |
+| `direct-claude_haiku_5_5 (external) · behaviour` | 4/4 | 0 | 0.0 h | b324f23 |
+| `chain-claude_haiku_5_5 (external) · behaviour` | 4/4 | 0 | 0.0 h | b324f23 |
 
-Left in all: 0.0 h (estimate, 2026-11-02 11:40).
+Left in all: 0.0 h (estimate, 2026-11-03 20:46).
 <!-- /bench:status -->
 
 ## Results
@@ -268,7 +278,7 @@ answers under A and B and in none under C (10 × `kind:query`). `h37-steueranlag
 passes 6 of 10 under B but none under A or C. `h38-je-gemeinde` (7 → 6) adds
 the rest; the other eight behaviour cases are equal.
 
-### chain-gemma4_12b: does not hold (point 4)
+### chain-gemma4_12b: does not hold (point 4; point 3 with the behaviour stage)
 
 2026-11-01, commit 6a9a1d2, 18/18 chunks, 101 cases × 10 seeds per arm.
 
@@ -308,7 +318,7 @@ gains `h33-puffer` (0 → 9), `ks09-spital` (0 → 9) and `h37-steueranlage`
 (0 → 4), and loses `h38-je-gemeinde` (9 → 0, all 10 answers offer the
 chain where the case expects no offer).
 
-### chain-qwen3_14b: holds
+### chain-qwen3_14b: holds on the measurement, fails point 3 with the behaviour stage
 
 2026-11-02, commit 6a9a1d2, 18/18 chunks, 101 cases × 10 seeds per arm.
 
@@ -325,3 +335,43 @@ Every point holds, and point 3 even with its lower bound above 0: C gains
 `h34-loeschen` (1 → 10), `ks09-spital` (1 → 10) and `h37-steueranlage`
 (0 → 7) and loses no behaviour case. The largest pass gain of all groups
 (+26.2) and the weakest arm A (49.2 %).
+
+## Behaviour stage: point 3 (plan 6.7)
+
+2026-11-03, commit b324f23, 4/4 chunks per group, arms A and C, blocks 1
+and 6. Ollama 0.40.13; the measurement above ran on 0.34.0, so the local
+groups' old behaviour cases (from the measurement) and new ones (from this
+stage) come from two Ollama versions. Point 3 is read over the old
+behaviour cases plus the 34 of `behaviour-cases.json`: 45 cases for direct
+and check, 43 for chain. It holds if the mean C − A is at least −5 and no
+case loses more than 50 points in answers of the right kind.
+
+| Group | Mean C − A (95 %) | Dropped cases (right kind A → C) | Point 3 | Rule 6.6 |
+|---|---|---|---|---|
+| check-qwen3_14b | +6.9 (−3.8 … +18.2) | none | holds | **holds** |
+| direct-qwen3_14b | +6.4 (−3.6 … +17.3) | none | holds | **holds** |
+| chain-qwen3_14b | +24.0 (+12.1 … +35.8) | `v22-eroeffnet` 100 → 20 % | fails | fails |
+| check-gemma4_12b | −15.1 (−25.6 … −5.8) | `h31` 100 → 20, `v02` 100 → 10, `v06` 100 → 10, `v14` 100 → 20, `v23` 100 → 0, `v24` 100 → 0, `v26` 70 → 0 % | fails | fails |
+| direct-gemma4_12b | −12.4 (−22.7 … −3.6) | `h31` 100 → 0, `v02` 100 → 10, `v06` 100 → 10, `v23` 100 → 0, `v24` 100 → 0 % | fails | fails |
+| chain-gemma4_12b | +7.7 (−2.3 … +18.1) | `v13` 100 → 20, `v14` 100 → 40, `v24` 80 → 0, `v26` 70 → 10 % | fails | fails (also point 4) |
+| direct-gpt_6_luna | −1.6 (−5.8 … +2.4) | `h33-puffer` 100 → 20 % | fails | fails |
+| chain-gpt_6_luna | −0.2 (−7.2 … +5.6) | `v06-nur-kategorie` 100 → 0 % | fails | fails |
+| direct-claude_haiku_5_5 | +1.6 (+0.0 … +4.4) | none | holds | fails (points 1 and 5) |
+| chain-claude_haiku_5_5 | +1.4 (−0.5 … +3.7) | none | holds | fails (point 5) |
+
+**gemma4:12b** loses asking back and declining broadly, not on one case.
+With direct and check, C writes a query where it should ask back (no centre
+for a radius, a category alone, «nahe» without a target) or decline (data
+only in «Gemeindedaten», a layer that does not exist). With chain the mean
+rises, but four cases where it should decline turn into a clarification or
+a plan.
+
+**chain-qwen3_14b** fails on one case, and the failure is real: for
+«Primarschulen, die dieses Jahr eröffnet wurden», 8 of 10 C answers are a
+plan whose step text says "Eröffnungsjahr ist dieses Jahr" but whose filter
+only selects `typ = primar`. That is a silent wrong, not an offer error.
+Every other figure of chain-qwen is the strongest of all groups.
+
+**Decision.** Rule 6.6 holds for check-qwen3_14b and direct-qwen3_14b only.
+If plan section 5 (examples chosen per question in the app) is built, it
+applies to qwen3:14b with direct and check only.
