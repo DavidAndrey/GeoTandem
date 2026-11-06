@@ -128,6 +128,10 @@ const schoolsIn = (of: number, inside: number): PlannedStep => ({
  * follows (P4), and the schools in those municipalities. The re-plan keeps
  * steps 1 to 5 and brings 6 and 7: over 1.6, as assumed, and the schools in
  * them, 7 steps in all (at most 8). Nothing in it names a sentinel value.
+ *
+ * No later step reads the sentinel step, so the checks pass it only as a step
+ * the result repeats (``part: unused``, plan-chain-eval F15): its condition is
+ * step 1's, typ = primar, which every planted row meets (``plantSentinel``).
  */
 const REPLAN_PLAN: PlannedStep[] = [
   ...PLAN.slice(0, 3),
@@ -136,7 +140,7 @@ const REPLAN_PLAN: PlannedStep[] = [
     tool: "filter",
     arguments: {
       layer: SENTINEL_LAYER,
-      where: { op: "compare", attr: "kategorie", cmp: "ne", value: "keine" },
+      where: PLAN[0].arguments.where as Record<string, unknown>,
     },
   },
   taxAbove(99),
@@ -410,13 +414,16 @@ async function removeConnections(request: APIRequestContext) {
   expect((await ours()).map((c) => c.name)).toEqual([]);
 }
 
-/** The planted layer: six points in Bern, each row a sentinel (D10). */
+/**
+ * The planted layer: six points in Bern, each row a sentinel (D10). Their typ,
+ * primar, is no sentinel: the plan's step on them repeats step 1 (REPLAN_PLAN).
+ */
 async function plantSentinel(request: APIRequestContext) {
   if ((await request.get(`/api/layers/${SENTINEL_LAYER}`)).ok()) return;
-  const rows = ["E,N,name,kategorie,wert"];
+  const rows = ["E,N,name,kategorie,wert,typ"];
   for (let i = 0; i < 6; i++)
     rows.push(
-      `${2600000 + i * 100},${1200000 + i * 100},${SENTINEL_NAME},${SENTINEL_CODE},${SENTINELS[2]}`,
+      `${2600000 + i * 100},${1200000 + i * 100},${SENTINEL_NAME},${SENTINEL_CODE},${SENTINELS[2]},primar`,
     );
   const upload = await request.post("/api/admin/imports", {
     multipart: {
