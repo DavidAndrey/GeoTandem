@@ -514,6 +514,30 @@ describe('M16.2 one entry', () => {
     expect(screen.queryByText(/^Promptprofil:/)).toBeNull()
   })
 
+  test('the verified cases it was given as examples, when chosen per question', async () => {
+    const withExamples = (examples: string[] | null) =>
+      records().map((v) => (v.id === 101 ? { ...v, examples } : v))
+    logServer(withExamples(['n10-strassen-durch-koeniz', 'doc1-primar-koeniz']))
+    renderAt(`${LOG_PATH}/101`, <App />)
+    const term = await screen.findByText('Beispiele')
+    const items = within(term.nextElementSibling as HTMLElement).getAllByRole('listitem')
+    expect(items.map((li) => li.textContent)).toEqual([
+      'n10-strassen-durch-koeniz',
+      'doc1-primar-koeniz',
+    ])
+    cleanup()
+    logServer(withExamples([]))
+    renderAt(`${LOG_PATH}/101`, <App />)
+    expect(
+      await screen.findByText('Eigene, aber kein passender Prüffall: die Standardbeispiele'),
+    ).toBeInTheDocument()
+    cleanup()
+    logServer(withExamples(null))
+    renderAt(`${LOG_PATH}/101`, <App />)
+    await screen.findByRole('heading', { name: /· admin$/ })
+    expect(screen.queryByText('Beispiele')).toBeNull()
+  })
+
   test('a refusal with its code and the query it refused; a chain with its steps', async () => {
     logServer(records())
     renderAt(`${LOG_PATH}/104`, <App />)

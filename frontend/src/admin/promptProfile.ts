@@ -7,9 +7,22 @@ export type ExampleSet = PromptProfile['examples']
 export type Placement = PromptProfile['placement']
 export type OutputMode = PromptProfile['output']
 
-// ``eigene`` is offered once a run can measure it (plan-improve-examples 5, WP6).
-export const EXAMPLE_SETS: ExampleSet[] = ['standard', '12']
+export const EXAMPLE_SETS: ExampleSet[] = ['standard', '12', 'eigene']
 export const PLACEMENTS: Placement[] = ['P0', 'P5', 'P9']
+
+/**
+ * The placements measured with ``examples``: ``eigene`` only at P0
+ * (plan-improve-examples 5, D5; the server refuses the others).
+ */
+export const placementsFor = (examples: ExampleSet): Placement[] =>
+  examples === 'eigene' ? ['P0'] : PLACEMENTS
+
+/** The profile with other examples, its placement moved to P0 where only that is measured. */
+export const withExamples = (p: PromptProfile, examples: ExampleSet): PromptProfile => ({
+  ...p,
+  examples,
+  placement: placementsFor(examples).includes(p.placement) ? p.placement : 'P0',
+})
 export const OUTPUT_MODES: OutputMode[] = ['constrained', 'text']
 
 /** Today's prompt, byte for byte. */
@@ -21,6 +34,9 @@ export const DEFAULT_PROMPT_PROFILE: PromptProfile = {
 
 export const examplesLabel = (e: ExampleSet) =>
   ({ standard: t`Standard`, '12': t`12 Beispiele`, eigene: t`Eigene (geprüfte Fälle je Frage)` })[e]
+
+/** "Eigene": the examples in a column head or a short line. */
+export const examplesShortLabel = (e: ExampleSet) => (e === 'eigene' ? t`Eigene` : examplesLabel(e))
 
 export const placementLabel = (p: Placement) =>
   ({

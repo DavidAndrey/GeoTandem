@@ -1712,6 +1712,7 @@ msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
 #: src/admin/evaluation/RunPage.tsx
+#: src/admin/ModelActionPage.tsx
 msgid "Beispiele"
 msgstr ""
 
@@ -2977,6 +2978,10 @@ msgstr ""
 msgid "Duplizieren"
 msgstr ""
 
+#: src/admin/promptProfile.ts
+msgid "Eigene"
+msgstr ""
+
 #: src/admin/evaluation/NewRunPage.tsx
 msgid "Eigene ({ownLive}) · Betriebsdaten"
 msgstr ""
@@ -3003,6 +3008,14 @@ msgstr ""
 
 #: src/queries/ManageQueriesDialog.tsx
 msgid "Eigene und geteilte Abfragen öffnen, umbenennen, teilen, kopieren oder löschen"
+msgstr ""
+
+#: src/admin/ModelActionPage.tsx
+msgid "Eigene, aber kein passender Prüffall: die Standardbeispiele"
+msgstr ""
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Eigene: zu jeder Frage drei passende geprüfte Abstimmungsfälle, aus dem Startbestand und den als Beispiel markierten eigenen Fällen; nur mit P0."
 msgstr ""
 
 #: src/auth/UserMenu.tsx

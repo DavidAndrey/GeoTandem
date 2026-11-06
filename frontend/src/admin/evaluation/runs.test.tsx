@@ -238,6 +238,32 @@ test("a point starts on the connection's own prompt profile; another one is sent
   await waitFor(() => expect(estimates(calls).at(-1)?.points[0].prompt_profile).toBeNull())
 })
 
+test('a point with Eigene examples is measured at P0, named Eigene', async () => {
+  const p9 = { examples: 'standard', placement: 'P9', output: 'constrained' } as const
+  const connections = CONNECTIONS.map((c) => (c.id === 1 ? { ...c, prompt_profile: p9 } : c))
+  const calls = runBackend({
+    [`GET ${RUNS_URL}`]: idle(),
+    'GET /api/admin/llm/connections': connections,
+  })
+  const u = user()
+  renderAt('/admin/bewertung/lauf/neu', <App />)
+  const examples = await screen.findByRole('combobox', { name: 'Beispiele von Messpunkt 1' })
+  await u.selectOptions(examples, 'Eigene (geprüfte Fälle je Frage)')
+  await waitFor(() =>
+    expect(estimates(calls).at(-1)?.points[0].prompt_profile).toEqual({
+      examples: 'eigene',
+      placement: 'P0',
+      output: 'constrained',
+    }),
+  )
+  const placement = screen.getByRole('combobox', { name: 'Platzierung von Messpunkt 1' })
+  expect(
+    within(placement)
+      .getAllByRole('option')
+      .map((o) => o.textContent),
+  ).toEqual(['P0'])
+})
+
 test('V4.1: a system prompt copy for this run only', async () => {
   const calls = runBackend({ [`GET ${RUNS_URL}`]: idle() })
   const u = user()

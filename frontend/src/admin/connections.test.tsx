@@ -335,6 +335,32 @@ test('the three selects and the prices send only what changed', async () => {
   })
 })
 
+test('Eigene examples are offered at P0 only (plan-improve-examples 5, D5)', async () => {
+  const calls = fakeApi({
+    ...signedIn(),
+    [`GET ${URL}`]: [cloud],
+    [`PATCH ${URL}/2`]: cloud,
+  })
+  renderAt('/admin/modelle', <App />)
+  await openMenu('Cloud')
+  await userEvent.click(screen.getByRole('menuitem', { name: 'Bearbeiten' }))
+  const form = screen.getByRole('form', { name: 'Anbindung bearbeiten' })
+  const placement = within(form).getByLabelText('Platzierung')
+  await userEvent.selectOptions(placement, 'P5 (Beispiele vor dem Steckbrief)')
+  await userEvent.selectOptions(
+    within(form).getByLabelText('Beispiele'),
+    'Eigene (geprüfte Fälle je Frage)',
+  )
+  // The placement moves to P0, the only one measured with them.
+  expect(placement).toHaveValue('P0')
+  expect(within(placement).getAllByRole('option')).toHaveLength(1)
+  await userEvent.click(within(form).getByRole('button', { name: 'Speichern' }))
+  await vi.waitFor(() => expect(bodiesOf(calls, `PATCH ${URL}/2`)).toHaveLength(1))
+  expect(bodiesOf(calls, `PATCH ${URL}/2`)[0]).toEqual({
+    prompt_profile: { examples: 'eigene', placement: 'P0', output: 'constrained' },
+  })
+})
+
 test('a half price is refused by the back end and worded by its code', async () => {
   const priced = connection({
     price_input_per_mtok: 1,

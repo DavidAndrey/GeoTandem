@@ -35,7 +35,8 @@ import {
   examplesLabel,
   OUTPUT_MODES,
   outputLabel,
-  PLACEMENTS,
+  placementsFor,
+  withExamples,
   sameProfile,
 } from '../promptProfile'
 import { connectionProfile, placementText } from './profileOptions'
@@ -262,7 +263,11 @@ function PointRow({
             className="input"
             aria-label={t`Beispiele von Messpunkt ${n}`}
             value={profile.examples}
-            onChange={(e) => setProfile({ examples: e.target.value as PromptProfile['examples'] })}
+            onChange={(e) =>
+              change({
+                profile: withExamples(profile, e.target.value as PromptProfile['examples']),
+              })
+            }
           >
             {EXAMPLE_SETS.map((v) => (
               <option key={v} value={v}>
@@ -278,7 +283,7 @@ function PointRow({
               setProfile({ placement: e.target.value as PromptProfile['placement'] })
             }
           >
-            {PLACEMENTS.map((v) => (
+            {placementsFor(profile.examples).map((v) => (
               <option key={v} value={v}>
                 {placementText(v)}
               </option>

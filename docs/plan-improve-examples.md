@@ -215,6 +215,14 @@ declines), in the place the fixed set has today (P0). The invented library
    (`case.test.tsx`).
 6. **API, contract, frontend:** the preset in the run form (V4), the matrix
    and «Promptprofil übernehmen»; the examples on the admin's action page.
+   **Built (2026-11-06):** `EXAMPLE_SETS` offers `eigene` in the connection
+   form and the run form; choosing it moves the placement to P0, the only
+   one offered with it (`placementsFor`, `withExamples`). The connection
+   form says what the examples are. A column and the short profile line
+   name it «Eigene»; «Promptprofil übernehmen» needs nothing new. The
+   action page lists the ids under «Beispiele» (`[]`: none fitted, the
+   standard examples; nothing shown without `eigene`). No backend change:
+   the API and contract came with WP3 and WP4.
 7. **Confirm:** an application run on the sample data, qwen3:14b, direct
    and check, `standard` against `eigene` on the confirm cases. **Done
    when:** pass rises with an interval that overlaps the measurement's

@@ -25,7 +25,7 @@ import { dateTimeFormat, formatNumber, parseTimestamp } from '../../i18n/locale'
 import type { Change } from '../../model/approval/changes'
 import { conditionText, type Words } from '../../model/compare/words'
 import type { StatusKey } from '../../model/statusKey'
-import { examplesLabel, outputLabel } from '../promptProfile'
+import { examplesShortLabel, outputLabel } from '../promptProfile'
 import { placementText } from './profileOptions'
 import { isBehaviour, kindText, notRun, tagText, type AnswerKind } from './words'
 
@@ -42,7 +42,7 @@ export const casePath = (run: number, caseId: string, point: number, split?: Spl
 /** The parts of a profile other than the default examples and output: "nur Text". */
 function profileExtras(p: PointLabel['prompt_profile']): string[] {
   const parts: string[] = []
-  if (p.examples !== 'standard') parts.push(examplesLabel(p.examples))
+  if (p.examples !== 'standard') parts.push(examplesShortLabel(p.examples))
   if (p.output !== 'constrained') parts.push(outputLabel(p.output))
   return parts
 }

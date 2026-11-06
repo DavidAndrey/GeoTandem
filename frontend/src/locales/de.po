@@ -1712,6 +1712,7 @@ msgstr "Beispieldatensatz „Bern-Mittelland\" laden"
 
 #: src/admin/ConnectionsPage.tsx
 #: src/admin/evaluation/RunPage.tsx
+#: src/admin/ModelActionPage.tsx
 msgid "Beispiele"
 msgstr "Beispiele"
 
@@ -2977,6 +2978,10 @@ msgstr "Drei Grossbuchstaben, z. B. CHF"
 msgid "Duplizieren"
 msgstr "Duplizieren"
 
+#: src/admin/promptProfile.ts
+msgid "Eigene"
+msgstr "Eigene"
+
 #: src/admin/evaluation/NewRunPage.tsx
 msgid "Eigene ({ownLive}) · Betriebsdaten"
 msgstr "Eigene ({ownLive}) · Betriebsdaten"
@@ -3004,6 +3009,14 @@ msgstr "Eigene Fälle prüfen, ob eine Anbindung mit <0>Ihren</0> Layern und Fra
 #: src/queries/ManageQueriesDialog.tsx
 msgid "Eigene und geteilte Abfragen öffnen, umbenennen, teilen, kopieren oder löschen"
 msgstr "Eigene und geteilte Abfragen öffnen, umbenennen, teilen, kopieren oder löschen"
+
+#: src/admin/ModelActionPage.tsx
+msgid "Eigene, aber kein passender Prüffall: die Standardbeispiele"
+msgstr "Eigene, aber kein passender Prüffall: die Standardbeispiele"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Eigene: zu jeder Frage drei passende geprüfte Abstimmungsfälle, aus dem Startbestand und den als Beispiel markierten eigenen Fällen; nur mit P0."
+msgstr "Eigene: zu jeder Frage drei passende geprüfte Abstimmungsfälle, aus dem Startbestand und den als Beispiel markierten eigenen Fällen; nur mit P0."
 
 #: src/auth/UserMenu.tsx
 msgid "Eigenes Passwort ändern"
