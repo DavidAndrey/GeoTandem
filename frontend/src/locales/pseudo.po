@@ -1110,6 +1110,10 @@ msgstr ""
 msgid "Als Abfrage ansehen"
 msgstr ""
 
+#: src/admin/evaluation/CaseDetailPage.tsx
+msgid "Als Beispiel verwenden"
+msgstr ""
+
 #: src/model/panel/Answer.tsx
 msgid "Als Direktabfrage versuchen"
 msgstr ""
@@ -1686,6 +1690,10 @@ msgstr ""
 
 #: src/i18n/errors.ts
 msgid "Beim Modell ist ein Fehler aufgetreten."
+msgstr ""
+
+#: src/admin/evaluation/CaseDetailPage.tsx
+msgid "Beispiel"
 msgstr ""
 
 #: src/admin/evaluation/words.ts
@@ -5047,6 +5055,10 @@ msgstr ""
 msgid "Mit aktuellen Daten übernehmen"
 msgstr ""
 
+#: src/admin/evaluation/CaseDetailPage.tsx
+msgid "Mit den Beispielen „Eigene“ kann das Modell diesen Fall als Beispiel erhalten: die Frage so, wie sie hier steht, auch bei externen Verbindungen. Die Referenz geht an externe Verbindungen nur, wenn sie nur Zahlen, Ja oder Nein und bestätigte Codes enthält."
+msgstr ""
+
 #: src/admin/ConnectionsPage.tsx
 msgid "Mit der Werkzeugkette prüfen"
 msgstr ""
@@ -5496,6 +5508,14 @@ msgstr ""
 
 #: src/model/log/MyActionsDialog.tsx
 msgid "Nur eigene Einträge, neueste zuerst."
+msgstr ""
+
+#: src/admin/evaluation/words.ts
+msgid "Nur ein Fall des Teils „Abstimmung“ kann als Beispiel dienen."
+msgstr ""
+
+#: src/admin/evaluation/words.ts
+msgid "Nur ein Fall mit einer Referenz kann als Beispiel dienen."
 msgstr ""
 
 #: src/i18n/errors.ts

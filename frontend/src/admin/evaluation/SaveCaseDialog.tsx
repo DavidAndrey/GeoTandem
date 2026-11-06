@@ -137,6 +137,7 @@ function SaveCaseForm({ onClose }: { onClose: () => void }) {
       schema_version: found.schemaVersion,
       also: [],
       forbid: [],
+      example: false,
       note: '',
     }
     save.mutate(body)

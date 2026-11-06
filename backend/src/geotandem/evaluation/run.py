@@ -90,7 +90,7 @@ from geotandem.connections import (
 from geotandem.data import DataBackend, Limits, Op
 from geotandem.engine import QueryError
 from geotandem.evaluation.cases import Cases, World, assess_case, sample_version
-from geotandem.evaluation.examples import example_pool, shipped_cases
+from geotandem.evaluation.examples import example_pool, flagged, shipped_cases
 from geotandem.evaluation.figures import (
     Scored,
     by_currency,
@@ -376,11 +376,11 @@ def block_of(seed: int) -> int:
 
 
 def case_set_hash(cases: Iterable[EvalCase]) -> str:
-    """Over what a case asks and demands, its tags and note left out: two runs
+    """Over what a case asks and demands, its tags, note and example flag left out: two runs
     with the same hash asked the same questions with the same references and
     splits (V5.1)."""
     body = [
-        c.model_dump(mode="json", exclude={"tags", "note"}, exclude_none=True)
+        c.model_dump(mode="json", exclude={"tags", "note", "example"}, exclude_none=True)
         for c in sorted(cases, key=lambda c: c.id)
     ]
     text = json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
@@ -460,6 +460,7 @@ class Evaluation:
         connection's locality, and its hash in their label (D7). Own cases
         join the pool with their flag (WP5)."""
         pools: dict[Locality, tuple[Example, ...]] = {}
+        own: list[EvalCase] | None = None
         found = []
         for point in points:
             if point.label.prompt_profile.examples != "eigene":
@@ -468,7 +469,8 @@ class Evaluation:
             locality = point.connection.locality
             if locality not in pools:
                 shipped = shipped_cases(self.settings)
-                pools[locality] = tuple(example_pool((), world, locality, shipped))
+                own = flagged(self.engine) if own is None else own
+                pools[locality] = tuple(example_pool(own, world, locality, shipped))
             pool = pools[locality]
             label = point.label.model_copy(update={"pool_hash": pool_hash(pool)})
             found.append(replace(point, label=label, pool=pool))

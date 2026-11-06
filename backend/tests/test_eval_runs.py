@@ -1267,3 +1267,33 @@ async def test_eigene_chooses_for_each_case_never_the_case_itself(
     sent = [messages[0].content for _, _, messages in model.calls]
     assert any(POOL_INTRO in system for system in sent)
     assert any(POOL_INTRO not in system for system in sent)
+
+
+async def test_a_flagged_own_case_joins_the_runs_pool(
+    client: httpx.AsyncClient, app: FastAPI, model: Model, two: Body
+) -> None:
+    """An own tuning case flagged «als Beispiel verwenden» joins the pool of
+    a run with ``eigene`` (D6), so the pool's hash is no longer the
+    measured one; unflagged, the pool is the measured one."""
+    own = {
+        "id": "eigene-primar",
+        "prompt": "Welche Primarschulen gibt es?",
+        "tags": ["attribute"],
+        "split": "tuning",
+        "origin": "authored",
+        "gold": {
+            "source": "schulen",
+            "where": {"op": "compare", "attr": "typ", "cmp": "eq", "value": "primar"},
+        },
+    }
+    assert (await client.post(CASES, json=own)).status_code == 201
+    eigene = {**two["points"][0], "prompt_profile": {"examples": "eigene"}}
+    request = {**two, "points": [eigene]}
+    view = await run_to_end(client, app, request)
+    assert view["points"][0]["label"]["pool_hash"].startswith(MEASURED_POOL)
+
+    flag = await client.put(f"{CASES}/eigene-primar", json={**own, "example": True})
+    assert flag.status_code == 200, flag.text
+    view = await run_to_end(client, app, request)
+    assert view["status"] == "done", view
+    assert not view["points"][0]["label"]["pool_hash"].startswith(MEASURED_POOL)

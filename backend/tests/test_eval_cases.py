@@ -199,6 +199,7 @@ def _defaults() -> dict[str, Any]:
         "expect": None,
         "also": [],
         "forbid": [],
+        "example": False,
         "other_approach": None,
         "note": "",
         "layers": [],
@@ -238,6 +239,42 @@ async def test_a_copy_of_every_start_case_is_a_valid_own_case(client: httpx.Asyn
 async def test_only_the_start_set_says_origin_start(client: httpx.AsyncClient) -> None:
     body = await refused(client, {**OWN, "origin": "start"}, 400, "case_invalid")
     assert body["details"] == {"case_id": "eigene-primar", "reason": "origin_start"}
+
+
+async def test_only_a_tuning_case_with_a_reference_is_an_example(
+    client: httpx.AsyncClient,
+) -> None:
+    """«Als Beispiel verwenden» (plan-improve-examples 5, D6): never a confirm
+    case, never one without a reference to show."""
+    body = await refused(client, {**OWN, "example": True}, 400, "case_invalid")
+    assert body["details"]["reason"] == "example_not_tuning"
+    behaviour = {
+        **{k: v for k, v in OWN.items() if k != "gold"},
+        "split": "tuning",
+        "expect": "clarification",
+        "example": True,
+    }
+    body = await refused(client, behaviour, 400, "case_invalid")
+    assert body["details"]["reason"] == "example_no_reference"
+    await created(client, {**OWN, "split": "tuning", "example": True})
+    put = await client.put(f"{CASES}/eigene-primar", json={**OWN, "example": True})
+    assert put.status_code == 400 and put.json()["details"]["reason"] == "example_not_tuning"
+
+
+async def test_the_example_flag_survives_export_and_import(client: httpx.AsyncClient) -> None:
+    case = {**OWN, "split": "tuning", "example": True}
+    await created(client, case)
+    exported = (await client.get(f"{CASES}/export")).json()
+    assert exported["cases"] == [case]
+    assert (await client.delete(f"{CASES}/eigene-primar")).status_code == 204
+    result = await client.post(f"{CASES}/import", json=exported)
+    assert result.json() == {"imported": 1, "problems": []}
+    again = (await client.get(f"{CASES}/export")).json()
+    assert again["cases"] == [{**case, "origin": "import"}]
+    # Unflagged, the case is written without the flag, as before it existed.
+    put = await client.put(f"{CASES}/eigene-primar", json={**case, "example": False})
+    assert put.status_code == 200, put.text
+    assert "example" not in (await client.get(f"{CASES}/export")).json()["cases"][0]
 
 
 @pytest.mark.parametrize(

@@ -1110,6 +1110,10 @@ msgstr "als"
 msgid "Als Abfrage ansehen"
 msgstr "Als Abfrage ansehen"
 
+#: src/admin/evaluation/CaseDetailPage.tsx
+msgid "Als Beispiel verwenden"
+msgstr "Als Beispiel verwenden"
+
 #: src/model/panel/Answer.tsx
 msgid "Als Direktabfrage versuchen"
 msgstr "Als Direktabfrage versuchen"
@@ -1687,6 +1691,10 @@ msgstr "beide {scope}"
 #: src/i18n/errors.ts
 msgid "Beim Modell ist ein Fehler aufgetreten."
 msgstr "Beim Modell ist ein Fehler aufgetreten."
+
+#: src/admin/evaluation/CaseDetailPage.tsx
+msgid "Beispiel"
+msgstr "Beispiel"
 
 #: src/admin/evaluation/words.ts
 #: src/admin/format.ts
@@ -5047,6 +5055,10 @@ msgstr "Minimum {field}"
 msgid "Mit aktuellen Daten übernehmen"
 msgstr "Mit aktuellen Daten übernehmen"
 
+#: src/admin/evaluation/CaseDetailPage.tsx
+msgid "Mit den Beispielen „Eigene“ kann das Modell diesen Fall als Beispiel erhalten: die Frage so, wie sie hier steht, auch bei externen Verbindungen. Die Referenz geht an externe Verbindungen nur, wenn sie nur Zahlen, Ja oder Nein und bestätigte Codes enthält."
+msgstr "Mit den Beispielen „Eigene“ kann das Modell diesen Fall als Beispiel erhalten: die Frage so, wie sie hier steht, auch bei externen Verbindungen. Die Referenz geht an externe Verbindungen nur, wenn sie nur Zahlen, Ja oder Nein und bestätigte Codes enthält."
+
 #: src/admin/ConnectionsPage.tsx
 msgid "Mit der Werkzeugkette prüfen"
 msgstr "Mit der Werkzeugkette prüfen"
@@ -5497,6 +5509,14 @@ msgstr "Nur der Kartenausschnitt ist geladen: der Layer hat mehr als {maxFeature
 #: src/model/log/MyActionsDialog.tsx
 msgid "Nur eigene Einträge, neueste zuerst."
 msgstr "Nur eigene Einträge, neueste zuerst."
+
+#: src/admin/evaluation/words.ts
+msgid "Nur ein Fall des Teils „Abstimmung“ kann als Beispiel dienen."
+msgstr "Nur ein Fall des Teils „Abstimmung“ kann als Beispiel dienen."
+
+#: src/admin/evaluation/words.ts
+msgid "Nur ein Fall mit einer Referenz kann als Beispiel dienen."
+msgstr "Nur ein Fall mit einer Referenz kann als Beispiel dienen."
 
 #: src/i18n/errors.ts
 msgid "Nur eine angenommene oder automatisch angewendete, nicht zurückgenommene Direktabfrage wird zum Prüffall."

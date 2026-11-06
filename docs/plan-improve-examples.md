@@ -196,6 +196,23 @@ declines), in the place the fixed set has today (P0). The invented library
    (V2) with the note that the question goes to the model as written, also
    to an external connection (D2); refused on confirm cases. **Done when:**
    round trip unchanged; a confirm case with the flag is `case_invalid`.
+   **Built (2026-11-06):** `EvalCase.example` (default false), refused by
+   `check_case` (create, edit, import) on a confirm case
+   (`example_not_tuning`) and on one without a reference
+   (`example_no_reference`). An unflagged case is stored and exported
+   without the field, so existing files and exports read as before on an
+   older instance. The flag is left out of `case_set_hash` (the pool's hash
+   covers it). `examples.flagged` gives the flagged own cases to the pool in
+   operation (`Chooser`, now given the engine) and in runs (`_with_pools`).
+   The case page shows «Als Beispiel verwenden» on an own tuning case with a
+   reference, with the note that the question goes as written, external
+   connections included, and the reference only with numbers, yes or no and
+   confirmed codes; switching to confirm drops the flag. **Tested:** the
+   rules, the round trip and the unflagged export (`test_eval_cases.py`); a
+   flagged case chosen for its question in operation, not when unflagged
+   (`test_model_check.py`); a run's pool hash leaves the measured one once a
+   case is flagged (`test_eval_runs.py`); the checkbox and its note
+   (`case.test.tsx`).
 6. **API, contract, frontend:** the preset in the run form (V4), the matrix
    and «Promptprofil übernehmen»; the examples on the admin's action page.
 7. **Confirm:** an application run on the sample data, qwen3:14b, direct

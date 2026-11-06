@@ -493,7 +493,8 @@ def assess_case(
 def check_case(case: EvalCase, world: World, *, stamp: bool) -> EvalCase:
     """The rules an own case meets before it is stored; the case as stored.
 
-    ``case_invalid``: a start case's origin, a reading the model path would
+    ``case_invalid``: a start case's origin, the example flag on a confirm
+    case or one without a reference, a reading the model path would
     refuse (the refusal's code is the reason), two readings of one canonical
     form (``duplicate_reading``), a required layer or attribute the model does
     not know, a live case whose named layers are not the layers it uses;
@@ -501,6 +502,16 @@ def check_case(case: EvalCase, world: World, *, stamp: bool) -> EvalCase:
     a live case's layers get their dataset versions of now."""
     if case.origin == "start":
         raise _invalid(case.id, "Only the start set says origin 'start'.", reason="origin_start")
+    if case.example and case.split != "tuning":
+        raise _invalid(
+            case.id, "Only a tuning case can be an example.", reason="example_not_tuning"
+        )
+    if case.example and not case.readings():
+        raise _invalid(
+            case.id,
+            "Only a case with a reference can be an example.",
+            reason="example_no_reference",
+        )
     if layers := _gone(case, world):
         raise CaseError(
             409,

@@ -73,7 +73,9 @@ def prompt_flow(state: Annotated[AppState, Depends(get_state)]) -> PromptFlow:
         limits=state.limits,
         unsupported=frozenset(state.unsupported),
         gate=state.query_slots,
-        examples=Chooser(state.settings, state.limits, frozenset(state.unsupported)),
+        examples=Chooser(
+            state.settings, state.backend.engine, state.limits, frozenset(state.unsupported)
+        ),
     )
 
 

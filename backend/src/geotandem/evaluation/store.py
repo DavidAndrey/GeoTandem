@@ -61,8 +61,11 @@ class TooManyCases(Exception):
 
 
 def body_of(case: EvalCase) -> dict[str, Any]:
-    """The case as the case file writes it: the fields it was given, no ``null``."""
+    """The case as the case file writes it: the fields it was given, no ``null``;
+    an unflagged case without ``example``, as a file of an older version reads it."""
     body: dict[str, Any] = case.model_dump(mode="json", exclude_unset=True, exclude_none=True)
+    if not case.example:
+        body.pop("example", None)
     return body
 
 

@@ -272,6 +272,11 @@ class EvalCase(_CaseBody):
     tags: list[Tag] = Field(min_length=1, max_length=MAX_TAGS)
     split: Split
     origin: Origin
+    example: bool = False
+    """«Als Beispiel verwenden» (docs/plan-improve-examples.md 5, D6): an own
+    tuning case with a reference that may be shown to a model as an example,
+    question as written. Left out of ``case_set_hash``: the pool's hash
+    covers it."""
 
     @model_validator(mode="after")
     def _rules(self) -> Self:

@@ -12847,6 +12847,11 @@
               "log"
             ],
             "title": "Origin"
+          },
+          "example": {
+            "type": "boolean",
+            "title": "Example",
+            "default": false
           }
         },
         "additionalProperties": false,

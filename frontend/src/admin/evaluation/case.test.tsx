@@ -142,6 +142,34 @@ test('V2.1: question, split, tags and note are saved with PUT, without null fiel
   })
 })
 
+test('V2.1: a tuning case is flagged as an example, with what goes to the model', async () => {
+  const calls = backend(caseView(OWN, { reference_hits: [9] }))
+  renderCase(OWN)
+  await screen.findByRole('heading', { name: OWN })
+  // A confirm case is never an example (plan-improve-examples 5, D6).
+  expect(screen.queryByRole('checkbox', { name: 'Als Beispiel verwenden' })).toBeNull()
+  await userEvent.click(screen.getByRole('button', { name: 'Abstimmung' }))
+  const flag = screen.getByRole('checkbox', { name: 'Als Beispiel verwenden' })
+  expect(flag).not.toBeChecked()
+  expect(flag).toHaveAccessibleDescription(/die Frage so, wie sie hier steht, auch bei externen/)
+  await userEvent.click(flag)
+  await userEvent.click(screen.getByRole('button', { name: 'Speichern' }))
+  expect(await screen.findByRole('status')).toHaveTextContent('Gespeichert.')
+  const put = calls.find((c) => c.key === `PUT /api/admin/evaluation/cases/${OWN}`)
+  expect(put?.body).toMatchObject({ split: 'tuning', example: true })
+  // Back to confirm: the flag goes with it.
+  await userEvent.click(screen.getByRole('button', { name: 'Bestätigung' }))
+  expect(screen.queryByRole('checkbox', { name: 'Als Beispiel verwenden' })).toBeNull()
+  await userEvent.click(screen.getByRole('button', { name: 'Speichern' }))
+  // Unflagged, the case is sent without the field, as it was written before.
+  await waitFor(() =>
+    expect(calls.filter((c) => c.key.startsWith('PUT')).at(-1)?.body).toMatchObject({
+      split: 'confirm',
+    }),
+  )
+  expect(calls.filter((c) => c.key.startsWith('PUT')).at(-1)?.body).not.toHaveProperty('example')
+})
+
 test('V2.1: a refusal of the check is shown in words; Verwerfen restores the case', async () => {
   backend(caseView(OWN), {
     [`PUT /api/admin/evaluation/cases/${OWN}`]: () =>

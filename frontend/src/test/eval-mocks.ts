@@ -38,7 +38,8 @@ const FINISHED = '2026-10-22T16:18:00'
  * unset optional field as ``null`` (a view dumps them all).
  */
 function full(
-  c: Omit<EvalCase, 'schema_version' | 'also' | 'forbid' | 'note' | 'layers'> & Partial<EvalCase>,
+  c: Omit<EvalCase, 'schema_version' | 'also' | 'forbid' | 'note' | 'layers' | 'example'> &
+    Partial<EvalCase>,
 ): EvalCase {
   return {
     schema_version: '2',
@@ -49,6 +50,7 @@ function full(
     expect: null,
     also: [],
     forbid: [],
+    example: false,
     other_approach: null,
     note: '',
     layers: [],

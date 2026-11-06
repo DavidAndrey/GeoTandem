@@ -3351,6 +3351,11 @@ export interface components {
        * @enum {string}
        */
       origin: 'start' | 'authored' | 'import' | 'log'
+      /**
+       * Example
+       * @default false
+       */
+      example: boolean
     }
     /**
      * ExecuteResponse
