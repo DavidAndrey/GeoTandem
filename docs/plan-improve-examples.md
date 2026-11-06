@@ -227,6 +227,11 @@ declines), in the place the fixed set has today (P0). The invented library
    and check, `standard` against `eigene` on the confirm cases. **Done
    when:** pass rises with an interval that overlaps the measurement's
    (+24.5 direct, +23.3 check); written into examples-benchmarks.md.
+   **Done (2026-11-06), direct only:** the app run gave +21.8
+   (+13.3 … +30.7) on 106 confirm cases × 10 seeds, overlapping +24.5. Silent
+   wrongs and behaviour moved as measured (examples-benchmarks.md,
+   *Application run*). An application run has no check mode, so the check
+   was not run again here; its figures stay those of the harness.
 8. **Docs:** CONTEXT.md (*eigene Beispiele*), plan E3 D9 annotated,
    README *Bewertung im Einsatz*, this plan's status.
 

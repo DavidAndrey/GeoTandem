@@ -375,3 +375,34 @@ Every other figure of chain-qwen is the strongest of all groups.
 **Decision.** Rule 6.6 holds for check-qwen3_14b and direct-qwen3_14b only.
 If plan section 5 (examples chosen per question in the app) is built, it
 applies to qwen3:14b with direct and check only.
+
+## Application run (plan section 5, WP7)
+
+2026-11-06, branch `examples-app` at 0475fbc. Run #1 of a fresh instance
+on the sample data. The connection is qwen3:14b on the local Ollama at
+temperature 0.3, as in the measurement. There are two points on it, P0 and
+constrained output: `standard` (reference) and `eigene`. The run covers the
+confirm cases of the measurement's three files: the start set's 38, and the
+68 of `chain-cases.json` and `layer-cases.json` imported as own cases. That
+makes 106 cases × 10 seeds per point, a full run of two blocks. The
+`eigene` point's pool hash is the measured one (`c8fd1b3e…`).
+
+| Figure | standard → eigene | Δ points (95 %) | Measurement (direct-qwen3_14b) |
+|---|---|---|---|
+| pass (confirm) | 62.7 → 84.5 % | +21.8 (+13.3 … +30.7), «besser», 33 better / 8 worse / 65 same | 60.2 → 84.7 %, +24.5 (+15.8 … +33.3) |
+| silent wrongs | 168 → 78 of 1060 (15.8 → 7.4 %) | | 18.3 → 7.7 % |
+| behaviour met | 48 → 63 of 110 (43.6 → 57.3 %) | | 44.5 → 56.4 % |
+| no hits | 68 → 20 | | |
+| median latency | 4.3 → 4.7 s | | |
+
+The interval overlaps the measurement's: WP7's done-when holds for the
+direct query. The cases moving most are those of the measurement. Many
+gain 0 → 10 (`ml44`, `ml53`, `ml54`, `ml56`, `ml60`, `ml62`, `ml69`,
+`ml73`). `h38-je-gemeinde` loses 9 → 0 again, and so do
+`ks05-ohne-hauptgewaesser` (10 → 0) and `h03-kantonsstrassen` (9 → 0).
+
+**Not measured: the check.** An application run asks the direct query
+only; the check (direct, then the chain's check) is measured by the
+harness alone (check mode H). Its figures for `eigene` stay those of
+`check-qwen3_14b` above. The builder sends the check's planning call arm
+C's messages byte for byte (`test_eval_pool.py`).
