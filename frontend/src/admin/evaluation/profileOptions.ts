@@ -8,7 +8,7 @@ import { t } from '@lingui/core/macro'
 import { api, type ConnectionInfo, type PromptProfile } from '../../api/client'
 import {
   DEFAULT_PROMPT_PROFILE,
-  examplesLabel,
+  examplesShortLabel,
   outputLabel,
   sameProfile,
   type Placement,
@@ -19,7 +19,7 @@ export const placementText = (value: Placement) => ({ P0: t`P0`, P5: t`P5`, P9: 
 
 /** "Standard · P0 · erzwungen": a profile in one short line, the placement by its name. */
 export const profileShortText = (p: PromptProfile) =>
-  [examplesLabel(p.examples), placementText(p.placement), outputLabel(p.output)].join(' · ')
+  [examplesShortLabel(p.examples), placementText(p.placement), outputLabel(p.output)].join(' · ')
 
 /** The profile the connection uses in operation (D9). */
 export const connectionProfile = (connection: ConnectionInfo | undefined): PromptProfile =>

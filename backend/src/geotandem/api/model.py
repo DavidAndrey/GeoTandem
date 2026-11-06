@@ -19,6 +19,7 @@ from geotandem.api.auth import CurrentAccount, InteractiveAccount
 from geotandem.api.errors import ErrorBody
 from geotandem.api.routes import QuerySlot
 from geotandem.api.state import AppState, get_state
+from geotandem.evaluation.examples import Chooser
 from geotandem.model.schemas import (
     MAX_ID,
     MAX_PAGE,
@@ -72,6 +73,9 @@ def prompt_flow(state: Annotated[AppState, Depends(get_state)]) -> PromptFlow:
         limits=state.limits,
         unsupported=frozenset(state.unsupported),
         gate=state.query_slots,
+        examples=Chooser(
+            state.settings, state.backend.engine, state.limits, frozenset(state.unsupported)
+        ),
     )
 
 

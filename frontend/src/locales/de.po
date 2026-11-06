@@ -1110,6 +1110,10 @@ msgstr "als"
 msgid "Als Abfrage ansehen"
 msgstr "Als Abfrage ansehen"
 
+#: src/admin/evaluation/CaseDetailPage.tsx
+msgid "Als Beispiel verwenden"
+msgstr "Als Beispiel verwenden"
+
 #: src/model/panel/Answer.tsx
 msgid "Als Direktabfrage versuchen"
 msgstr "Als Direktabfrage versuchen"
@@ -1688,6 +1692,10 @@ msgstr "beide {scope}"
 msgid "Beim Modell ist ein Fehler aufgetreten."
 msgstr "Beim Modell ist ein Fehler aufgetreten."
 
+#: src/admin/evaluation/CaseDetailPage.tsx
+msgid "Beispiel"
+msgstr "Beispiel"
+
 #: src/admin/evaluation/words.ts
 #: src/admin/format.ts
 #: src/admin/ProfilePage.tsx
@@ -1704,6 +1712,7 @@ msgstr "Beispieldatensatz „Bern-Mittelland\" laden"
 
 #: src/admin/ConnectionsPage.tsx
 #: src/admin/evaluation/RunPage.tsx
+#: src/admin/ModelActionPage.tsx
 msgid "Beispiele"
 msgstr "Beispiele"
 
@@ -2969,6 +2978,10 @@ msgstr "Drei Grossbuchstaben, z. B. CHF"
 msgid "Duplizieren"
 msgstr "Duplizieren"
 
+#: src/admin/promptProfile.ts
+msgid "Eigene"
+msgstr "Eigene"
+
 #: src/admin/evaluation/NewRunPage.tsx
 msgid "Eigene ({ownLive}) · Betriebsdaten"
 msgstr "Eigene ({ownLive}) · Betriebsdaten"
@@ -2981,6 +2994,10 @@ msgstr "Eigene ({ownSample}) · Beispieldaten"
 msgid "Eigene ({ownTotal})"
 msgstr "Eigene ({ownTotal})"
 
+#: src/admin/promptProfile.ts
+msgid "Eigene (geprüfte Fälle je Frage)"
+msgstr "Eigene (geprüfte Fälle je Frage)"
+
 #: src/admin/evaluation/NewRunPage.tsx
 msgid "Eigene Fälle laufen auf Betriebsdaten; ein Lauf hat einen Datenstand, der Startbestand die Beispieldaten."
 msgstr "Eigene Fälle laufen auf Betriebsdaten; ein Lauf hat einen Datenstand, der Startbestand die Beispieldaten."
@@ -2992,6 +3009,14 @@ msgstr "Eigene Fälle prüfen, ob eine Anbindung mit <0>Ihren</0> Layern und Fra
 #: src/queries/ManageQueriesDialog.tsx
 msgid "Eigene und geteilte Abfragen öffnen, umbenennen, teilen, kopieren oder löschen"
 msgstr "Eigene und geteilte Abfragen öffnen, umbenennen, teilen, kopieren oder löschen"
+
+#: src/admin/ModelActionPage.tsx
+msgid "Eigene, aber kein passender Prüffall: die Standardbeispiele"
+msgstr "Eigene, aber kein passender Prüffall: die Standardbeispiele"
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Eigene: zu jeder Frage drei passende geprüfte Abstimmungsfälle, aus dem Startbestand und den als Beispiel markierten eigenen Fällen; nur mit P0."
+msgstr "Eigene: zu jeder Frage drei passende geprüfte Abstimmungsfälle, aus dem Startbestand und den als Beispiel markierten eigenen Fällen; nur mit P0."
 
 #: src/auth/UserMenu.tsx
 msgid "Eigenes Passwort ändern"
@@ -5043,6 +5068,10 @@ msgstr "Minimum {field}"
 msgid "Mit aktuellen Daten übernehmen"
 msgstr "Mit aktuellen Daten übernehmen"
 
+#: src/admin/evaluation/CaseDetailPage.tsx
+msgid "Mit den Beispielen „Eigene“ kann das Modell diesen Fall als Beispiel erhalten: die Frage so, wie sie hier steht, auch bei externen Verbindungen. Die Referenz geht an externe Verbindungen nur, wenn sie nur Zahlen, Ja oder Nein und bestätigte Codes enthält."
+msgstr "Mit den Beispielen „Eigene“ kann das Modell diesen Fall als Beispiel erhalten: die Frage so, wie sie hier steht, auch bei externen Verbindungen. Die Referenz geht an externe Verbindungen nur, wenn sie nur Zahlen, Ja oder Nein und bestätigte Codes enthält."
+
 #: src/admin/ConnectionsPage.tsx
 msgid "Mit der Werkzeugkette prüfen"
 msgstr "Mit der Werkzeugkette prüfen"
@@ -5493,6 +5522,14 @@ msgstr "Nur der Kartenausschnitt ist geladen: der Layer hat mehr als {maxFeature
 #: src/model/log/MyActionsDialog.tsx
 msgid "Nur eigene Einträge, neueste zuerst."
 msgstr "Nur eigene Einträge, neueste zuerst."
+
+#: src/admin/evaluation/words.ts
+msgid "Nur ein Fall des Teils „Abstimmung“ kann als Beispiel dienen."
+msgstr "Nur ein Fall des Teils „Abstimmung“ kann als Beispiel dienen."
+
+#: src/admin/evaluation/words.ts
+msgid "Nur ein Fall mit einer Referenz kann als Beispiel dienen."
+msgstr "Nur ein Fall mit einer Referenz kann als Beispiel dienen."
 
 #: src/i18n/errors.ts
 msgid "Nur eine angenommene oder automatisch angewendete, nicht zurückgenommene Direktabfrage wird zum Prüffall."

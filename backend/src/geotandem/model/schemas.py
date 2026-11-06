@@ -354,9 +354,11 @@ class LevelSnapshot(BaseModel):
 
 # --- prompt profiles (plan E3, D9) ----------------------------------------------
 
-ExampleSet = Literal["standard", "12"]
-"""The worked examples of the prompt: today's set, or the twelve of
-``model/examples/12.txt`` (testplan-system-context, P6)."""
+ExampleSet = Literal["standard", "12", "eigene"]
+"""The worked examples of the prompt: today's set, the twelve of
+``model/examples/12.txt`` (testplan-system-context, P6), or ``eigene``: two of
+today's and three verified cases chosen per question (``model.pool``,
+plan-improve-examples 5)."""
 
 Placement = Literal["P0", "P5", "P9"]
 """Where the prompt puts its parts (testplan-system-context, 5): ``P0`` as
@@ -377,6 +379,13 @@ class PromptProfile(BaseModel):
     examples: ExampleSet = "standard"
     placement: Placement = "P0"
     output: OutputMode = "constrained"
+
+    @model_validator(mode="after")
+    def _measured(self) -> Self:
+        # Only P0 was measured with examples chosen per question (D5).
+        if self.examples == "eigene" and self.placement != "P0":
+            raise ValueError("the examples 'eigene' are offered with the placement P0 only")
+        return self
 
 
 class ConnectionSnapshot(BaseModel):
@@ -506,6 +515,10 @@ class ModelActionView(BaseModel):
     (plan-check-mode): no proposal of its own, left out of the key figures."""
     check: CheckMark | None = None
     """On a direct answer the chain checks: what the check found."""
+    examples: list[str] | None = None
+    """The ids of the verified cases the prompt was given as examples
+    (``eigene``, plan-improve-examples 5); ``None``: none were chosen, ``[]``:
+    none fitted the account's world, so the fixed set."""
     level: LevelSnapshot
     connection: ConnectionSnapshot
     profile_hash: str

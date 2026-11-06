@@ -9264,6 +9264,20 @@
             ],
             "title": "Raw"
           },
+          "examples": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Examples"
+          },
           "reading": {
             "anyOf": [
               {
@@ -12833,6 +12847,11 @@
               "log"
             ],
             "title": "Origin"
+          },
+          "example": {
+            "type": "boolean",
+            "title": "Example",
+            "default": false
           }
         },
         "additionalProperties": false,
@@ -14803,6 +14822,20 @@
               }
             ]
           },
+          "examples": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Examples"
+          },
           "level": {
             "$ref": "#/components/schemas/LevelSnapshot"
           },
@@ -15877,6 +15910,17 @@
               }
             ],
             "title": "System Prompt"
+          },
+          "pool_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pool Hash"
           }
         },
         "type": "object",
@@ -16254,7 +16298,8 @@
             "type": "string",
             "enum": [
               "standard",
-              "12"
+              "12",
+              "eigene"
             ],
             "title": "Examples",
             "default": "standard"

@@ -140,4 +140,6 @@ test('a column by connection and the parts of its profile that differ from the d
   expect(pointName(gemma)).toBe('gemma4:12b P0')
   expect(pointName(haiku)).toBe('Claude Haiku 5.5 P0 · nur Text')
   expect(pointName(lunaP9)).toBe('gpt-6-luna P9')
+  const eigene = { ...gemma.prompt_profile, examples: 'eigene' } as const
+  expect(pointName({ ...gemma, prompt_profile: eigene })).toBe('gemma4:12b P0 · Eigene')
 })

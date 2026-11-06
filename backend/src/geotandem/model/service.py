@@ -139,7 +139,7 @@ from geotandem.engine import (
 )
 from geotandem.engine.errors import QueryTimedOut, ResultTooLarge
 from geotandem.levels import CellMode, Level, OpClass, active_level
-from geotandem.llm import ClientFactory, Endpoint, LLMClient, LLMError
+from geotandem.llm import ClientFactory, Endpoint, LLMClient, LLMError, Locality
 from geotandem.model.chain.ask import (
     ChainState,
     ask,
@@ -162,6 +162,7 @@ from geotandem.model.chain.view import restored
 from geotandem.model.compare import name_attribute, reason, result_layer
 from geotandem.model.direct import DirectAnswer, DirectQuery, governance
 from geotandem.model.errors import ActionError
+from geotandem.model.pool import Example
 from geotandem.model.prompt import DEFAULT_PROMPT_PROFILE, FollowUp, Prompt, Turn, build_prompt
 from geotandem.model.record import (
     COMPLETE,
@@ -362,6 +363,11 @@ class QueryGate(Protocol):
     def take_thread(self, wait_s: float, stop: Callable[[], bool] = ...) -> bool: ...
 
     def give_back_thread(self) -> None: ...
+
+
+ExamplesFor = Callable[[DataBackend, ModelProfile, Locality, str], list[Example]]
+"""A question's examples on the view and the layer profile its prompt is
+written with, for the connection's locality (``evaluation.examples.Chooser``)."""
 
 
 class ModelCalls:
@@ -624,6 +630,9 @@ class PromptFlow:
     gate: QueryGate | None = None
     """The instance's count of queries at once, which a chain's steps and stamps
     take from (review #42); ``None``: not counted (unit tests)."""
+    examples: ExamplesFor | None = None
+    """Chooses a question's examples for the prompt profile ``eigene``
+    (plan-improve-examples 5); ``None``: none, so the fixed set (unit tests)."""
 
     @contextmanager
     def query_slot(self, wait_s: float, stop: Callable[[], bool] = lambda: False) -> Iterator[bool]:
@@ -693,6 +702,17 @@ class PromptFlow:
         written = (
             connection.prompt_profile if request.approach == "direct" else DEFAULT_PROMPT_PROFILE
         )
+        # Examples chosen per question go to the direct query and to its check's
+        # planning call, as measured; a chain answer keeps the fixed ones (D4).
+        chosen = None
+        if connection.prompt_profile.examples == "eigene" and (
+            request.approach == "direct" or check
+        ):
+            chosen = (
+                self.examples(view, profile, connection.locality, request.text)
+                if self.examples
+                else []
+            )
         prompt = build_prompt(
             request.text,
             approach=request.approach,
@@ -701,6 +721,7 @@ class PromptFlow:
             follow_up=follow_up,
             context_length=connection.context_length,
             prompt_profile=written,
+            chosen=chosen,
         )
         timeout_s = min(endpoint.timeout_s, MODEL_CALL_S)
         call = _Call(
@@ -729,6 +750,7 @@ class PromptFlow:
             level_prompt=level.system_prompt,
             compare_of=compare_of,
             is_check=check,
+            examples=None if chosen is None else [e.case for e in chosen],
         )
         # The account's own call first (review #36): an account that waits for
         # its answer gets 409 and never holds a slot, even for a moment, that

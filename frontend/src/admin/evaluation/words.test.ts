@@ -165,6 +165,8 @@ test('the rules of a case have their own words', () => {
     /höchstens 429 eigene Prüffälle/,
   )
   expect(refused({ case_id: 'e', reason: 'origin_start' })).toMatch(/Herkunft „Start"/)
+  expect(refused({ case_id: 'e', reason: 'example_not_tuning' })).toMatch(/„Abstimmung“/)
+  expect(refused({ case_id: 'e', reason: 'example_no_reference' })).toMatch(/mit einer Referenz/)
   expect(refused({ case_id: 'e', reason: 'layer_not_listed', layer: 'gemeinden' })).toMatch(
     /nutzt den Layer „gemeinden", der Fall nennt ihn aber nicht/,
   )

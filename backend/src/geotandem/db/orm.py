@@ -356,6 +356,9 @@ class ModelAction(Base):
     repeats (``compare_of``, plan-check-mode); never a proposal of its own."""
     check_result: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     """On a checked direct answer: what the check found (``CheckMark``)."""
+    examples: Mapped[list[str] | None] = mapped_column(JSON)
+    """The ids of the verified cases the prompt was given as examples
+    (plan-improve-examples 5, D7); ``None``: none were chosen."""
     level_id: Mapped[int]
     level_name: Mapped[str] = mapped_column(String(60))
     level_matrix: Mapped[dict[str, str]] = mapped_column(JSON)
@@ -531,6 +534,8 @@ class EvalAnswer(Base):
     only_answer_count: Mapped[int] = mapped_column(default=0, server_default="0")
     only_reference: Mapped[list[int]] = mapped_column(JSON)
     only_reference_count: Mapped[int] = mapped_column(default=0, server_default="0")
+    examples: Mapped[list[str] | None] = mapped_column(JSON)
+    """The ids of the cases the question was given as examples (``eigene``)."""
 
 
 class AppMeta(Base):

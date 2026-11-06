@@ -227,6 +227,11 @@
           ],
           "title": "Origin",
           "type": "string"
+        },
+        "example": {
+          "default": false,
+          "title": "Example",
+          "type": "boolean"
         }
       },
       "required": [

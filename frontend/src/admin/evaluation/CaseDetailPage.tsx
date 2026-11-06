@@ -114,7 +114,7 @@ export function CaseFromLogPage() {
 /** A draft as the form edits a case: an id proposed from its question, no tags yet. */
 function draftView(draft: CaseDraft): CaseView {
   return {
-    case: { ...draft, id: idFrom(draft.prompt), tags: [] },
+    case: { ...draft, id: idFrom(draft.prompt), tags: [], example: false },
     status: 'ok',
     status_layers: [],
     read_only: false,
@@ -261,6 +261,7 @@ function CaseForm({
   const questionId = 'case-question'
   const noteId = 'case-note'
   const help = 'case-question-help'
+  const exampleHelp = 'case-example-help'
   const title = fresh ? t`Neuer Prüffall` : original.id
   const kind = caseKindText(form)
   const count = docs.length
@@ -456,10 +457,34 @@ function CaseForm({
               <SplitChoice
                 label={t`Teil`}
                 value={form.split}
-                onChange={(split) => patch({ split })}
+                // Only a tuning case is an example (D6): a confirm case drops the flag.
+                onChange={(split) =>
+                  patch(split === 'tuning' ? { split } : { split, example: false })
+                }
               />
             )}
           </Field>
+          {!readOnly && !behaviour && docs.length > 0 && form.split === 'tuning' && (
+            <Field label={t`Beispiel`}>
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={form.example === true}
+                  aria-describedby={exampleHelp}
+                  onChange={(e) => patch({ example: e.target.checked })}
+                />
+                <Trans>Als Beispiel verwenden</Trans>
+              </label>
+              <p id={exampleHelp} className="text-muted mt-0.5 text-xs">
+                <Trans>
+                  Mit den Beispielen „Eigene“ kann das Modell diesen Fall als Beispiel erhalten: die
+                  Frage so, wie sie hier steht, auch bei externen Verbindungen. Die Referenz geht an
+                  externe Verbindungen nur, wenn sie nur Zahlen, Ja oder Nein und bestätigte Codes
+                  enthält.
+                </Trans>
+              </p>
+            </Field>
+          )}
           <Field label={t`Stichwörter`}>
             {readOnly ? (
               <ul className="flex flex-wrap gap-1.5">

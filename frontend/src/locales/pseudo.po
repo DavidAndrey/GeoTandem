@@ -1110,6 +1110,10 @@ msgstr ""
 msgid "Als Abfrage ansehen"
 msgstr ""
 
+#: src/admin/evaluation/CaseDetailPage.tsx
+msgid "Als Beispiel verwenden"
+msgstr ""
+
 #: src/model/panel/Answer.tsx
 msgid "Als Direktabfrage versuchen"
 msgstr ""
@@ -1688,6 +1692,10 @@ msgstr ""
 msgid "Beim Modell ist ein Fehler aufgetreten."
 msgstr ""
 
+#: src/admin/evaluation/CaseDetailPage.tsx
+msgid "Beispiel"
+msgstr ""
+
 #: src/admin/evaluation/words.ts
 #: src/admin/format.ts
 #: src/admin/ProfilePage.tsx
@@ -1704,6 +1712,7 @@ msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
 #: src/admin/evaluation/RunPage.tsx
+#: src/admin/ModelActionPage.tsx
 msgid "Beispiele"
 msgstr ""
 
@@ -2969,6 +2978,10 @@ msgstr ""
 msgid "Duplizieren"
 msgstr ""
 
+#: src/admin/promptProfile.ts
+msgid "Eigene"
+msgstr ""
+
 #: src/admin/evaluation/NewRunPage.tsx
 msgid "Eigene ({ownLive}) · Betriebsdaten"
 msgstr ""
@@ -2981,6 +2994,10 @@ msgstr ""
 msgid "Eigene ({ownTotal})"
 msgstr ""
 
+#: src/admin/promptProfile.ts
+msgid "Eigene (geprüfte Fälle je Frage)"
+msgstr ""
+
 #: src/admin/evaluation/NewRunPage.tsx
 msgid "Eigene Fälle laufen auf Betriebsdaten; ein Lauf hat einen Datenstand, der Startbestand die Beispieldaten."
 msgstr ""
@@ -2991,6 +3008,14 @@ msgstr ""
 
 #: src/queries/ManageQueriesDialog.tsx
 msgid "Eigene und geteilte Abfragen öffnen, umbenennen, teilen, kopieren oder löschen"
+msgstr ""
+
+#: src/admin/ModelActionPage.tsx
+msgid "Eigene, aber kein passender Prüffall: die Standardbeispiele"
+msgstr ""
+
+#: src/admin/ConnectionsPage.tsx
+msgid "Eigene: zu jeder Frage drei passende geprüfte Abstimmungsfälle, aus dem Startbestand und den als Beispiel markierten eigenen Fällen; nur mit P0."
 msgstr ""
 
 #: src/auth/UserMenu.tsx
@@ -5043,6 +5068,10 @@ msgstr ""
 msgid "Mit aktuellen Daten übernehmen"
 msgstr ""
 
+#: src/admin/evaluation/CaseDetailPage.tsx
+msgid "Mit den Beispielen „Eigene“ kann das Modell diesen Fall als Beispiel erhalten: die Frage so, wie sie hier steht, auch bei externen Verbindungen. Die Referenz geht an externe Verbindungen nur, wenn sie nur Zahlen, Ja oder Nein und bestätigte Codes enthält."
+msgstr ""
+
 #: src/admin/ConnectionsPage.tsx
 msgid "Mit der Werkzeugkette prüfen"
 msgstr ""
@@ -5492,6 +5521,14 @@ msgstr ""
 
 #: src/model/log/MyActionsDialog.tsx
 msgid "Nur eigene Einträge, neueste zuerst."
+msgstr ""
+
+#: src/admin/evaluation/words.ts
+msgid "Nur ein Fall des Teils „Abstimmung“ kann als Beispiel dienen."
+msgstr ""
+
+#: src/admin/evaluation/words.ts
+msgid "Nur ein Fall mit einer Referenz kann als Beispiel dienen."
 msgstr ""
 
 #: src/i18n/errors.ts

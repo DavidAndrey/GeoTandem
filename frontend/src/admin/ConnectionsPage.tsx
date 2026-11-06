@@ -32,7 +32,8 @@ import {
   examplesLabel,
   OUTPUT_MODES,
   outputLabel,
-  PLACEMENTS,
+  placementsFor,
+  withExamples,
   placementLabel,
   sameProfile,
 } from './promptProfile'
@@ -502,11 +503,22 @@ function ConnectionForm({
             Standard. Welche Variante einem Modell hilft, zeigt ein Bewertungslauf.
           </Trans>
         </p>
-        <Field label={t`Beispiele`}>
+        <Field
+          label={t`Beispiele`}
+          hint={t`Eigene: zu jeder Frage drei passende geprüfte Abstimmungsfälle, aus dem Startbestand und den als Beispiel markierten eigenen Fällen; nur mit P0.`}
+        >
           <select
             className="input"
             value={form.prompt_profile.examples}
-            onChange={(e) => setProfile({ examples: e.target.value as PromptProfile['examples'] })}
+            onChange={(e) =>
+              setForm((f) => ({
+                ...f,
+                prompt_profile: withExamples(
+                  f.prompt_profile,
+                  e.target.value as PromptProfile['examples'],
+                ),
+              }))
+            }
           >
             {EXAMPLE_SETS.map((e) => (
               <option key={e} value={e}>
@@ -523,7 +535,7 @@ function ConnectionForm({
               setProfile({ placement: e.target.value as PromptProfile['placement'] })
             }
           >
-            {PLACEMENTS.map((p) => (
+            {placementsFor(form.prompt_profile.examples).map((p) => (
               <option key={p} value={p}>
                 {placementLabel(p)}
               </option>

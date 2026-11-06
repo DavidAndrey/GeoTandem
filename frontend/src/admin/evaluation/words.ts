@@ -162,6 +162,7 @@ export function caseBody(c: EvalCase): EvalCase {
     if (['also', 'forbid', 'layers'].includes(key) && Array.isArray(value) && !value.length)
       continue
     if (key === 'note' && value === '') continue
+    if (key === 'example' && value === false) continue
     body[key] = value
   }
   return body as unknown as EvalCase
@@ -224,6 +225,10 @@ function reasonText(reason: string, d: Details): string | null {
     }
     case 'origin_start':
       return t`Nur Fälle des Startbestands haben die Herkunft „Start".`
+    case 'example_not_tuning':
+      return t`Nur ein Fall des Teils „Abstimmung“ kann als Beispiel dienen.`
+    case 'example_no_reference':
+      return t`Nur ein Fall mit einer Referenz kann als Beispiel dienen.`
     case 'origin_action': {
       const action = count(d.origin_action)
       return action === null ? null : t`Den Eintrag ${action} im Modellprotokoll gibt es nicht.`

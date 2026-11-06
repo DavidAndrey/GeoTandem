@@ -130,6 +130,20 @@ function Entry({ view }: { view: ModelActionView }) {
           {approachText(view.approach)}
           {latency !== null && ` · ${seconds(latency)}`}
         </Row>
+        {/* plan-improve-examples 5, D7: the verified cases the prompt was given. */}
+        {view.examples != null && (
+          <Row label={t`Beispiele`}>
+            {view.examples.length ? (
+              <ul className="font-mono text-xs">
+                {view.examples.map((id) => (
+                  <li key={id}>{id}</li>
+                ))}
+              </ul>
+            ) : (
+              t`Eigene, aber kein passender Prüffall: die Standardbeispiele`
+            )}
+          </Row>
+        )}
         {parent != null && (
           <Row label={t`Folgt auf`}>
             <Link to={`/admin/modellprotokoll/${parent}`} className="text-accent-700">

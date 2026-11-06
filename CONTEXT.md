@@ -181,9 +181,22 @@ Bezug und die aktuelle Analyse. Im Arbeitsplatz flüchtig: weder Teil der Sitzun
 noch nach dem Neuladen wieder da; die dauerhafte Spur ist das Protokoll.
 
 **Promptprofil** (`PromptProfile`, plan E3 D9) — Wie die Anwendung den Prompt
-für eine Anbindung schreibt: Beispiele (Standard · 12), Platzierung (P0 · P5 ·
-P9) und Ausgabe (erzwungen · nur Text). Gemessene Vorgaben, kein freier Text;
-die Vorgabe ist der heutige Prompt.
+für eine Anbindung schreibt: Beispiele (Standard · 12 · Eigene), Platzierung
+(P0 · P5 · P9) und Ausgabe (erzwungen · nur Text). Gemessene Vorgaben, kein
+freier Text; die Vorgabe ist der heutige Prompt. *Eigene* gibt es nur mit P0.
+
+**Eigene Beispiele** (`eigene`, plan-improve-examples 5) — Beispiele des
+Promptprofils, die die Anwendung zu jeder Frage wählt: drei geprüfte
+Abstimmungsfälle, deren Layer und Bedingungen der Frage am nächsten sind,
+statt der festen Beispiele auf erfundenen Daten. Sie kommen aus dem
+Startbestand und den eigenen Fällen mit *Als Beispiel verwenden*. Ein Fall
+kommt nur dazu, wenn er auf der Sicht der Anbindung läuft. An eine externe
+Anbindung geht ein eigener Fall nur, wenn seine Referenz nur Zahlen, Ja/Nein
+und bestätigte Codes enthält; die Frage geht so, wie sie dasteht. Nur die
+Direktabfrage und die Prüfung durch die Kette erhalten sie; die
+Werkzeugkette behält ihre Beispiele. Die Modellaktion hält fest, welche Fälle
+gezeigt wurden. Die Entscheidungsregel der Messung hält nur für qwen3:14b
+(Direktabfrage und Prüfung).
 
 **Prüfung durch die Kette** (`check_mode`, plan-check-mode) — Eine Einstellung
 der Anbindung: Jede Antwort der Direktabfrage mit einer Abfrage wird danach von
