@@ -269,12 +269,15 @@ async def test_eigene_sends_the_same_chosen_examples_to_the_answer_and_its_check
     assert "JSON-Schema der Antwort" in chain and '"steps"' in chain
     assert answer["connection"]["prompt_profile"]["examples"] == "eigene"
     assert check["connection"]["prompt_profile"]["examples"] == "standard"
+    assert len(answer["examples"]) == COUNT
+    assert check["examples"] == answer["examples"]
 
 
 async def test_a_chain_answer_keeps_the_fixed_examples_under_eigene(
     client: httpx.AsyncClient, app: FastAPI, model: Model, levels: dict[str, int]
 ) -> None:
     await check_mode(client, "off", prompt_profile={"examples": "eigene"})
-    await ask(client, app, model, CHAIN, approach="chain")
+    answer = await ask(client, app, model, CHAIN, approach="chain")
     [call] = model.fake.calls
     assert chosen_questions(call.messages[0].content) == []
+    assert (await record(client, answer["id"]))["examples"] is None

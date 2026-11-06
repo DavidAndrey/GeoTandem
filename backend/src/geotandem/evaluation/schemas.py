@@ -508,6 +508,9 @@ class PointLabel(BaseModel):
     system_prompt_hash: str
     system_prompt: str | None = None
     """The edited copy this run used (D10); ``None``: the level's own."""
+    pool_hash: str | None = None
+    """With the examples ``eigene``: the hash of the pool they were chosen
+    from (``model.pool.pool_hash``, plan-improve-examples 5, D7)."""
 
 
 class RunCase(BaseModel):
@@ -710,6 +713,9 @@ class AnswerView(BaseModel):
     refusal: Refusal | None = None
     raw: str | None = None
     """The verbatim text of an unreadable answer (V7.4)."""
+    examples: list[str] | None = None
+    """The ids of the cases the question was given as examples (``eigene``);
+    never the case itself (plan-improve-examples 3)."""
     reading: int | None = None
     """The reading the diff and ``reference_hits`` refer to: the one passed, or
     the nearest; ``None`` for a case without readings."""

@@ -750,6 +750,7 @@ class PromptFlow:
             level_prompt=level.system_prompt,
             compare_of=compare_of,
             is_check=check,
+            examples=None if chosen is None else [e.case for e in chosen],
         )
         # The account's own call first (review #36): an account that waits for
         # its answer gets 409 and never holds a slot, even for a moment, that

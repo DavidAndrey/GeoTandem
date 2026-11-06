@@ -515,6 +515,10 @@ class ModelActionView(BaseModel):
     (plan-check-mode): no proposal of its own, left out of the key figures."""
     check: CheckMark | None = None
     """On a direct answer the chain checks: what the check found."""
+    examples: list[str] | None = None
+    """The ids of the verified cases the prompt was given as examples
+    (``eigene``, plan-improve-examples 5); ``None``: none were chosen, ``[]``:
+    none fitted the account's world, so the fixed set."""
     level: LevelSnapshot
     connection: ConnectionSnapshot
     profile_hash: str

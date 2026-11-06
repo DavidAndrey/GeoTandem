@@ -1912,6 +1912,8 @@ export interface components {
       refusal?: components['schemas']['Refusal'] | null
       /** Raw */
       raw?: string | null
+      /** Examples */
+      examples?: string[] | null
       /** Reading */
       reading?: number | null
       /** Diff */
@@ -4172,6 +4174,8 @@ export interface components {
        */
       is_check: boolean
       check?: components['schemas']['CheckMark'] | null
+      /** Examples */
+      examples?: string[] | null
       level: components['schemas']['LevelSnapshot']
       connection: components['schemas']['ConnectionSnapshot']
       /** Profile Hash */
@@ -4628,6 +4632,8 @@ export interface components {
       system_prompt_hash: string
       /** System Prompt */
       system_prompt?: string | null
+      /** Pool Hash */
+      pool_hash?: string | null
     }
     /** PointView */
     PointView: {

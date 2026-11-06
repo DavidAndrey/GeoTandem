@@ -42,10 +42,13 @@ from geotandem.evaluation.store import CaseStore
 from geotandem.importing.run import ImportDecisions, XYReference, run_import
 from geotandem.levels import load_levels
 from geotandem.llm import Completion, Endpoint, LLMError, Message, ModelInfo, ToolSpec
+from geotandem.model.pool import COUNT, POOL_INTRO
 from geotandem.model.prompt import FIRST
 from geotandem.model.schemas import Refusal
 
 RUNS = "/api/admin/evaluation/runs"
+MEASURED_POOL = "c8fd1b3e8b23a6f54fa9b979d43a724a4aea1c17"
+"""The start of the pool's hash in every arm C run of the measurement."""
 CASES = "/api/admin/evaluation/cases"
 CONNECTIONS = "/api/admin/llm/connections"
 EVALUATION = "/api/admin/evaluation"
@@ -1238,3 +1241,29 @@ async def test_a_run_without_tuning_cases_heads_with_its_confirmation_rate(
     newest = (await client.get(RUNS)).json()["items"][0]
     assert newest["id"] == full["id"]
     assert (newest["reference_rate"], newest["reference_split"]) == (90.0, "tuning")
+
+
+async def test_eigene_chooses_for_each_case_never_the_case_itself(
+    client: httpx.AsyncClient, app: FastAPI, model: Model, two: Body
+) -> None:
+    """A point with ``eigene`` asks each case with three examples chosen for it
+    from the pool of the run's world, whose hash its label keeps; a tuning case
+    in the pool is never its own example (plan-improve-examples 3, 5). A point
+    without keeps the fixed set and records none."""
+    eigene = {**two["points"][0], "prompt_profile": {"examples": "eigene"}}
+    view = await run_to_end(client, app, {**two, "points": [eigene, two["points"][1]]})
+    assert view["status"] == "done", view
+    chosen, fixed = (p["label"] for p in view["points"])
+    assert chosen["pool_hash"].startswith(MEASURED_POOL)
+    assert fixed["pool_hash"] is None
+    url = f"{RUNS}/{view['id']}/answers"
+    for case_id in ("text-beginnt-bern", "h10-name-bahnhof"):
+        found = (await client.get(url, params={"case_id": case_id, "point": 0})).json()
+        assert found and all(len(a["examples"]) == COUNT for a in found)
+        assert all(case_id not in a["examples"] for a in found)
+        assert len({tuple(a["examples"]) for a in found}) == 1  # chosen, not drawn
+        other = (await client.get(url, params={"case_id": case_id, "point": 1})).json()
+        assert all(a["examples"] is None for a in other)
+    sent = [messages[0].content for _, _, messages in model.calls]
+    assert any(POOL_INTRO in system for system in sent)
+    assert any(POOL_INTRO not in system for system in sent)

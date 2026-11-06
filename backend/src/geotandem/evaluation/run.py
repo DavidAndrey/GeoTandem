@@ -90,6 +90,7 @@ from geotandem.connections import (
 from geotandem.data import DataBackend, Limits, Op
 from geotandem.engine import QueryError
 from geotandem.evaluation.cases import Cases, World, assess_case, sample_version
+from geotandem.evaluation.examples import example_pool, shipped_cases
 from geotandem.evaluation.figures import (
     Scored,
     by_currency,
@@ -137,11 +138,13 @@ from geotandem.llm import (
     Endpoint,
     LLMClient,
     LLMError,
+    Locality,
     Message,
     ToolSpec,
 )
 from geotandem.model.direct import DirectAnswer, DirectQuery, direct_prompt
 from geotandem.model.errors import ActionError
+from geotandem.model.pool import Example, choose, pool_hash
 from geotandem.model.prompt import ANSWER_TOKENS, Prompt
 from geotandem.model.record.store import bounded, text_hash, utc_now
 from geotandem.model.schemas import PromptProfile
@@ -218,6 +221,9 @@ class Point:
     label: PointLabel
     price: Price | None
     endpoint: Endpoint | None = field(default=None, repr=False)
+    pool: tuple[Example, ...] | None = field(default=None, repr=False)
+    """With the examples ``eigene``: the pool of the run's world for the
+    connection's locality, chosen from per case (plan-improve-examples 5)."""
 
 
 def _prompt_for(point: Point, case: EvalCase, world: World) -> Prompt:
@@ -225,14 +231,22 @@ def _prompt_for(point: Point, case: EvalCase, world: World) -> Prompt:
     one place a run builds a prompt): the level and its system prompt, the
     layer profile of the data state, the connection's context length
     (``context_too_large``) and the point's prompt profile (D9); its output
-    mode reaches the client through ``DirectQuery.ask`` (``Prompt.constrained``)."""
+    mode reaches the client through ``DirectQuery.ask`` (``Prompt.constrained``).
+    With ``eigene`` the examples are chosen for the case, never the case itself."""
     return direct_prompt(
         case.prompt,
         level=point.level,
         profile=world.profile,
         context_length=point.connection.context_length,
         prompt_profile=point.label.prompt_profile,
+        chosen=_chosen(point, case, world),
     )
+
+
+def _chosen(point: Point, case: EvalCase, world: World) -> list[Example] | None:
+    if point.pool is None:
+        return None
+    return choose(case.prompt, case.id, point.pool, world.profile)
 
 
 # --- the run's background thread -------------------------------------------------
@@ -441,6 +455,25 @@ class Evaluation:
             )
         return found, world
 
+    def _with_pools(self, points: list[Point], world: World) -> list[Point]:
+        """The points with ``eigene`` get the pool of ``world`` for their
+        connection's locality, and its hash in their label (D7). Own cases
+        join the pool with their flag (WP5)."""
+        pools: dict[Locality, tuple[Example, ...]] = {}
+        found = []
+        for point in points:
+            if point.label.prompt_profile.examples != "eigene":
+                found.append(point)
+                continue
+            locality = point.connection.locality
+            if locality not in pools:
+                shipped = shipped_cases(self.settings)
+                pools[locality] = tuple(example_pool((), world, locality, shipped))
+            pool = pools[locality]
+            label = point.label.model_copy(update={"pool_hash": pool_hash(pool)})
+            found.append(replace(point, label=label, pool=pool))
+        return found
+
     def _points(self, request: RunRequest, *, endpoints: bool) -> list[Point]:
         """Each measuring point with its connection and level as they are now;
         with ``endpoints`` the endpoint too, its key decrypted (C8)."""
@@ -516,10 +549,11 @@ class Evaluation:
         """Requests, tokens, cost and duration per connection before the start;
         no model call. As the run asks (D8, ``queue_of``): the connections of
         one model host one after another, the hosts at the same time."""
-        per: dict[int, list[Point]] = defaultdict(list)
-        for point in self._points(request, endpoints=False):
-            per[point.connection.id].append(point)
+        points = self._points(request, endpoints=False)
         run_cases, world = self._run_cases(request)
+        per: dict[int, list[Point]] = defaultdict(list)
+        for point in self._with_pools(points, world):
+            per[point.connection.id].append(point)
         asked = [rc.case for rc in run_cases if rc.status in RUNNABLE]
         repeats = len(seeds_of(request))
         estimates = []
@@ -596,6 +630,7 @@ class Evaluation:
             for point in points:
                 _confirmed(point.connection, request)
             run_cases, world = self._run_cases(request)
+            points = self._with_pools(points, world)
             now = self.clock()
             label = self._label(request, run_cases, world, now)
             seeds = seeds_of(request)
@@ -791,6 +826,7 @@ def _snapshot(label: PointLabel) -> tuple[Any, ...]:
         label.prompt_profile,
         label.level_id,
         label.system_prompt_hash,
+        label.pool_hash,
     )
 
 
@@ -1119,7 +1155,14 @@ class _Work:
         repeat; it is sent only to a connection that sends a seed at all (an
         endpoint with ``seed: null`` gets none, as in operation)."""
         assert point.endpoint is not None
-        base = {"case_id": case.id, "point": point.index, "block": block_of(seed), "seed": seed}
+        base: dict[str, Any] = {
+            "case_id": case.id,
+            "point": point.index,
+            "block": block_of(seed),
+            "seed": seed,
+        }
+        if (chosen := _chosen(point, case, self.world)) is not None:
+            base["examples"] = [e.case for e in chosen]
         try:
             prompt = _prompt_for(point, case, self.world)
         except ActionError as exc:  # context_too_large: never sent

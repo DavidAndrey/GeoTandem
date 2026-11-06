@@ -179,6 +179,18 @@ declines), in the place the fixed set has today (P0). The invented library
    (migration); the pool hash in the run label; leave one out in runs.
    **Done when:** an action's view shows its examples; a tuning case run
    with `eigene` never sees itself.
+   **Built (2026-11-06):** migration 0019, `examples` (JSON) on
+   `model_action` and `eval_answer`: `None` none chosen, `[]` none fitted.
+   The action view and a run's answers show the ids. The pool hash sits on
+   the point's label (`PointLabel.pool_hash`), as the pool follows the
+   connection's locality, and is part of what makes two runs' points the
+   same measurement (`_snapshot`). A run builds each locality's pool once at
+   its start (and for the estimate) on the run's world; each case is chosen
+   for with its own id, so it is never its own example. **Tested:** a run
+   with an `eigene` point (`test_eval_runs.py`): the measured pool hash,
+   three ids per answer, never the case's own, the same for every repeat; a
+   point without records none. Through the API the answer and its check
+   record the same ids, a chain answer none (`test_model_check.py`).
 5. **The case flag** (D6): `example` on own tuning cases, in the case file
    format (export and import round trip), the checkbox on the case page
    (V2) with the note that the question goes to the model as written, also

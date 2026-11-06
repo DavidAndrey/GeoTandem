@@ -108,6 +108,7 @@ def _answer_view(row: EvalAnswer) -> AnswerView:
             "answer": row.answer,
             "refusal": row.refusal,
             "raw": row.raw,
+            "examples": row.examples,
             "reading": row.reading,
             "diff": row.diff,
             "hits": row.hits,

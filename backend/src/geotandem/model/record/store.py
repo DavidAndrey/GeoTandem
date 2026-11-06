@@ -149,6 +149,8 @@ class NewAction:
     is_check: bool = False
     """A repeat the application asks by itself to check ``compare_of``
     (plan-check-mode)."""
+    examples: list[str] | None = None
+    """The ids of the examples chosen for the prompt (plan-improve-examples 5, D7)."""
     proposal_only: bool = False
     """The model may only propose: the user applies by hand, an overtaken record
     ends ``proposal_only``, never ``superseded``, and an ``auto`` answer still
@@ -474,6 +476,7 @@ def to_view(
             "compare_of": row.compare_of,
             "is_check": row.is_check,
             "check": row.check_result,
+            "examples": row.examples,
             "level": {
                 "id": row.level_id,
                 "name": row.level_name,
@@ -964,6 +967,7 @@ class ModelActionStore:
                 reference=new.reference,
                 compare_of=new.compare_of,
                 is_check=new.is_check,
+                examples=new.examples,
                 level_id=new.level.id,
                 level_name=new.level.name,
                 level_matrix={str(k): str(v) for k, v in new.level.matrix.items()},
