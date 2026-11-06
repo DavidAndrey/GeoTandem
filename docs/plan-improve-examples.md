@@ -2,7 +2,8 @@
 
 > Stand: 2026-11-06 · section 6 (the measurement) done: rule 6.6 holds for
 > qwen3:14b with direct and check only ([examples-benchmarks.md](examples-benchmarks.md));
-> section 5 (in the app) planned 2026-11-06, not built · Bezug:
+> section 5 (in the app) built 2026-11-06, WP1–WP8, branch `examples-app`;
+> the app run confirms the direct query (+21.8, WP7) · Bezug:
 > [plan-chain-eval.md](plan-chain-eval.md) (sections 15, 16; F16, F17),
 > [plan-e3.md](plan-e3.md) (D2, D3, D9, F-9.3),
 > [testplan-system-context.md](testplan-system-context.md) (8.5, Phase 4)
@@ -234,6 +235,9 @@ declines), in the place the fixed set has today (P0). The invented library
    was not run again here; its figures stay those of the harness.
 8. **Docs:** CONTEXT.md (*eigene Beispiele*), plan E3 D9 annotated,
    README *Bewertung im Einsatz*, this plan's status.
+   **Done (2026-11-06):** CONTEXT.md (*Promptprofil*, *Eigene Beispiele*),
+   plan-e3.md D9 annotated, README (*Stand*, the flag under *Prüffälle*,
+   *Eigene Beispiele*), the status above.
 
 ### 5.3 Out of scope
 

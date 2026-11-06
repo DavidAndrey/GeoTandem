@@ -8,8 +8,9 @@ in welcher Reihenfolge in [etappen.md](etappen.md), womit in
 Stand: **Etappen E1 und E2 abgeschlossen** (Modus A ohne LLM, Modus B mit
 LLM); E3, die Bewertung der Modellanbindungen, ist umgesetzt (Gate E3 bestanden, 2026-10-25).
 Nach E3 ist die Werkzeugkette gemessen; sie kann je Anbindung die Direktabfrage
-prüfen. Gemessen, aber noch nicht gebaut: Beispiele je Frage
-([docs/plan-improve-examples.md](docs/plan-improve-examples.md)).
+prüfen. Beispiele je Frage (*Eigene*) sind gemessen und als Promptprofil
+wählbar ([docs/plan-improve-examples.md](docs/plan-improve-examples.md));
+die Entscheidungsregel hält für qwen3:14b.
 Die Anwendung kann:
 
 - Vektordaten und Tabellen importieren, Layer verwalten, Metadaten pflegen
@@ -473,6 +474,14 @@ Sie hat zwei Reiter: *Läufe* und *Prüffälle*.
     einen Protokolleintrag einer anderen Instanz fällt weg. *Exportieren*
     schreibt die eigenen Fälle in dieselbe Form.
 
+  Ein eigener Fall der *Abstimmung* mit Referenz lässt sich mit *Als
+  Beispiel verwenden* markieren. Dann kann ihn das Modell bei den
+  Beispielen *Eigene* (unten) als Beispiel erhalten. Die Frage geht so mit,
+  wie sie dasteht, auch an externe Anbindungen; die Referenz an externe
+  nur, wenn sie nur Zahlen, Ja/Nein und bestätigte Codes enthält. Ein Fall
+  der *Bestätigung* kann kein Beispiel sein (`case_invalid`). Export und
+  Import behalten die Markierung.
+
   Ein Fall auf Betriebsdaten nennt seine Layer. Fehlt einer, ist er nicht
   sichtbar oder nicht für das Modell freigegeben, ist der Fall *veraltet*.
   Besteht die Referenz die Prüfungen nicht mehr oder lässt sie sich nicht mehr
@@ -583,6 +592,20 @@ Sie hat zwei Reiter: *Läufe* und *Prüffälle*.
   Sicherheitsprotokoll, als `llm_connection_changed` mit den Werten des
   Profils (siehe *Sicherheitsprotokoll* oben). Von Hand lässt sich das
   Promptprofil im Formular der Anbindung wählen, ebenfalls mit Protokoll.
+- **Eigene Beispiele.** Mit den Beispielen *Eigene* (nur mit P0) wählt die
+  Anwendung zu jeder Frage drei geprüfte Abstimmungsfälle, die ihr am
+  nächsten sind: aus dem Startbestand und den als Beispiel markierten
+  eigenen Fällen, nur solche, die auf der Sicht der Anbindung laufen. Sie
+  gelten für die Direktabfrage und ihre Prüfung durch die Kette; die
+  Werkzeugkette behält ihre Beispiele. Im Lauf ist ein Fall nie sein eigenes
+  Beispiel, und die Beschriftung hält den Hash der Beispielmenge fest. Der
+  Eintrag im Modellprotokoll nennt die gezeigten Fälle unter *Beispiele*.
+  Die Quote steigt bei allen gemessenen Modellen, die Entscheidungsregel
+  hält aber nur für qwen3:14b mit Direktabfrage und Prüfung (Direktabfrage
+  im Lauf der Anwendung: 62.7 → 84.5 % auf den Bestätigungsfällen); bei den
+  anderen leiden Rückfragen und Ablehnungen oder eine Gruppe von Fällen,
+  oder die gewählten Beispiele schlagen zufällige nicht
+  ([docs/examples-benchmarks.md](docs/examples-benchmarks.md)).
 - **Zuerst der Steckbrief.** Auf eigenen Daten entscheiden die Metadaten so
   viel wie das Modell: Ein schlichter Import kostet mehr als die Wahl des
   Modells ([docs/testplan-system-context.md](docs/testplan-system-context.md)
