@@ -9,6 +9,7 @@ from typing import Any
 
 import pytest
 from model_fixtures import REPO, case, scripted
+from pydantic import ValidationError
 
 from geotandem.catalog import ModelProfile, model_profile
 from geotandem.data import DataBackend, Limits
@@ -169,6 +170,24 @@ def test_the_chain_keeps_the_default(template: tuple[ModelProfile, Level]) -> No
             profile=bare(),
             prompt_profile=PromptProfile(placement="P9"),
         )
+
+
+@pytest.mark.parametrize("placement", ["P5", "P9"])
+def test_eigene_is_offered_at_p0_only(placement: str) -> None:
+    with pytest.raises(ValidationError, match="P0 only"):
+        PromptProfile.model_validate({"examples": "eigene", "placement": placement})
+
+
+def test_eigene_needs_the_questions_examples_and_without_any_is_the_fixed_set(
+    template: tuple[ModelProfile, Level],
+) -> None:
+    """``eigene`` without ``chosen`` is a caller's mistake; with none chosen
+    (no case fits the account's world) the prompt is today's, byte for byte."""
+    _, level = template
+    eigene = PromptProfile(examples="eigene")
+    with pytest.raises(ValueError, match="chosen examples"):
+        built(level, prompt_profile=eigene)
+    assert built(level, prompt_profile=eigene, chosen=[]) == built(level)
 
 
 @pytest.mark.parametrize("output", ["constrained", "text"])

@@ -16254,7 +16254,8 @@
             "type": "string",
             "enum": [
               "standard",
-              "12"
+              "12",
+              "eigene"
             ],
             "title": "Examples",
             "default": "standard"

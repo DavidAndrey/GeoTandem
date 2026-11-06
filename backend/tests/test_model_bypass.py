@@ -975,6 +975,10 @@ READ_ONLY_IMPORTS: dict[str, set[str]] = {
     "geotandem.api.errors": {"ErrorBody", "Problem"},
     "geotandem.api.routes": {"QuerySlot"},
     "geotandem.api.state": {"AppState", "get_state"},
+    # Examples chosen per question (plan-improve-examples 5): the shipped case
+    # files, read; each reference checked, never run, on the prompt's own
+    # read-only view (``prompt_world``). The case store is not touched.
+    "geotandem.evaluation.examples": {"Chooser"},
 }
 """Every name the model path imports from the rest of the application, each
 one that reads. A new one fails ``test_the_model_path_imports_only_what_reads``

@@ -2981,6 +2981,10 @@ msgstr ""
 msgid "Eigene ({ownTotal})"
 msgstr ""
 
+#: src/admin/promptProfile.ts
+msgid "Eigene (geprüfte Fälle je Frage)"
+msgstr ""
+
 #: src/admin/evaluation/NewRunPage.tsx
 msgid "Eigene Fälle laufen auf Betriebsdaten; ein Lauf hat einen Datenstand, der Startbestand die Beispieldaten."
 msgstr ""

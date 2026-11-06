@@ -19,7 +19,14 @@ from model_fixtures import REPO
 from geotandem.config import Settings
 from geotandem.data import Limits
 from geotandem.engine import ids_query
-from geotandem.evaluation.cases import World, chain_set, layer_set, sample_world, start_set
+from geotandem.evaluation.cases import (
+    World,
+    behaviour_set,
+    chain_set,
+    layer_set,
+    sample_world,
+    start_set,
+)
 from geotandem.evaluation.grade import query_of
 from geotandem.levels.store import load_levels
 from geotandem.llm import Completion, Message
@@ -37,7 +44,7 @@ from geotandem.model.pool import (
 )
 from geotandem.model.prompt import build_prompt
 from geotandem.model.result import parse_answer
-from geotandem.model.schemas import PlannedStep, Refusal
+from geotandem.model.schemas import Approach, PlannedStep, PromptProfile, Refusal
 
 LIMITS = Limits(max_features=10_000, timeout_s=10)
 CASES = (*start_set(), *chain_set(), *layer_set())
@@ -148,3 +155,29 @@ def test_b_and_c_keep_the_rules_and_two_fixed_examples(pool: Pool, world: World)
     assert "Öffentliche Sekundarschulhäuser" not in section
     assert all(e.question in section for e in pool[:3])
     assert sent[1:] == [Message(m.role, m.content) for m in prompt.messages[1:]]
+
+
+@pytest.mark.parametrize("approach", ["direct", "chain"])
+def test_the_application_writes_the_measured_prompt(
+    pool: Pool, world: World, approach: Approach
+) -> None:
+    """For every measured question: the builder with the chosen examples sends
+    what arm C sent, the default prompt with its examples rebuilt by
+    ``with_pool`` (plan-improve-examples 5, WP3). The chain's prompt is the
+    check's planning call."""
+    level = next(lv for lv in load_levels(world.context.backend.engine) if lv.is_default)
+    eigene = PromptProfile(examples="eigene") if approach == "direct" else PromptProfile()
+    measured = [c for c in (*CASES, *behaviour_set()) if c.split == "confirm"]
+    for case in measured:
+        chosen = choose(case.prompt, case.id, pool, world.profile)
+        default = build_prompt(case.prompt, approach=approach, level=level, profile=world.profile)
+        sent = build_prompt(
+            case.prompt,
+            approach=approach,
+            level=level,
+            profile=world.profile,
+            prompt_profile=eigene,
+            chosen=chosen,
+        )
+        expected = pool_module.with_pool(list(default.messages), chosen, approach)
+        assert [Message(m.role, m.content) for m in sent.messages] == expected, case.id

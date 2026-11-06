@@ -27,7 +27,10 @@ the conversation (testplan V-3).
 The direct query is written after the connection's **prompt profile** (plan
 E3, D9), measured presets of ``evals/`` (testplan-system-context 5, 8.2):
 
-- *examples* ``standard`` (``_EXAMPLES``) or ``12`` (``examples/12.txt``, P6);
+- *examples* ``standard`` (``_EXAMPLES``), ``12`` (``examples/12.txt``, P6) or
+  ``eigene``: the first and the declining one of ``_EXAMPLES``, then the
+  verified cases chosen for the question (``chosen``, ``model.pool``), at
+  ``P0`` only (plan-improve-examples 5, D5);
 - *placement* ``P0`` as above; ``P5`` the examples right after the level's
   system prompt, before the layer profile; ``P9`` ``FIRST`` as a system
   message of its own right before the question (three messages, not two). The
@@ -37,7 +40,9 @@ E3, D9), measured presets of ``evals/`` (testplan-system-context 5, 8.2):
   text, ``text`` only as text in the prompt (``Prompt.constrained``, H-8).
 
 ``DEFAULT_PROMPT_PROFILE`` is the prompt above byte for byte; the chain keeps it
-until the chain is evaluated (plan E3, 9).
+until the chain is evaluated (plan E3, 9). The check's planning call is a
+chain prompt with the direct query's ``chosen`` examples, as measured
+(plan-improve-examples 5, D4); a chain answer gets none.
 
 The size is estimated as the layer profile is (S5, ``CHARS_PER_TOKEN``, erring
 high) over every message, plus ``ANSWER_TOKENS`` for the answer. Over the
@@ -59,6 +64,7 @@ from geotandem.levels import Level
 from geotandem.llm import Message
 from geotandem.model.chain.tools import tool_list
 from geotandem.model.errors import ActionError
+from geotandem.model.pool import Example, section
 from geotandem.model.represent import ALLOWED_FIELDS
 from geotandem.model.result import answer_format, format_text
 from geotandem.model.schemas import (
@@ -360,7 +366,7 @@ EXAMPLES_HEADING: Final = "# Beispiele"
 
 
 @cache
-def examples_section(examples: ExampleSet) -> str:
+def examples_section(examples: Literal["standard", "12"]) -> str:
     """The ``# Beispiele`` section of a direct query for the profile's example
     set: ``_EXAMPLES`` or ``examples/<name>.txt`` of this package, invented
     layers alike (S3). Every worked answer of a set is a valid answer (tested)."""
@@ -452,22 +458,35 @@ def prompt_hash(messages: Sequence[Message], schema: object) -> str:
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()
 
 
+def _examples(approach: Approach, examples: ExampleSet, chosen: Sequence[Example] | None) -> str:
+    """The ``# Beispiele`` section: the profile's set, or with ``chosen`` (also
+    for the check's chain prompt) two fixed examples and the chosen ones. No
+    case fits the account's world: the fixed set, as ``standard``."""
+    if examples == "eigene" and chosen is None:
+        raise ValueError("the examples 'eigene' need the question's chosen examples")
+    if approach != "direct":
+        return section(_EXAMPLES["chain"], chosen, "chain") if chosen else _EXAMPLES["chain"]
+    if examples == "eigene":
+        return section(_EXAMPLES["direct"], chosen, "direct") if chosen else _EXAMPLES["direct"]
+    return examples_section(examples)
+
+
 def system_message(
     level: Level,
     profile: ModelProfile,
     approach: Approach,
     prompt_profile: PromptProfile = DEFAULT_PROMPT_PROFILE,
+    chosen: Sequence[Example] | None = None,
 ) -> str:
     """The first system message, without ``FIRST``; ``prompt_profile`` chooses
-    the examples and, for ``P5``, puts them before the layer profile."""
+    the examples and, for ``P5``, puts them before the layer profile;
+    ``chosen`` are the question's examples (``eigene``, and the check's)."""
     if not profile.text:
         raise ValueError("the profile carries its text only from catalog.model_profile")
     if approach != "direct" and prompt_profile != DEFAULT_PROMPT_PROFILE:
         raise ValueError("a prompt profile other than the default is for the direct query only")
     sections = [level.system_prompt.strip()] if level.system_prompt.strip() else []
-    examples = [
-        examples_section(prompt_profile.examples) if approach == "direct" else _EXAMPLES["chain"]
-    ]
+    examples = [_examples(approach, prompt_profile.examples, chosen)]
     if prompt_profile.placement == "P5":
         sections += examples
     sections.append(
@@ -550,10 +569,12 @@ def build_prompt(
     follow_up: FollowUp | None = None,
     context_length: int | None = None,
     prompt_profile: PromptProfile = DEFAULT_PROMPT_PROFILE,
+    chosen: Sequence[Example] | None = None,
 ) -> Prompt:
     """The messages for ``text``; ``context_too_large`` if they do not fit. A
-    prompt profile other than the default is for the direct query only."""
-    system = system_message(level, profile, approach, prompt_profile)
+    prompt profile other than the default is for the direct query only;
+    ``chosen`` are the question's examples (``eigene``, and the check's)."""
+    system = system_message(level, profile, approach, prompt_profile, chosen)
     first = not (follow_up and (follow_up.turns or follow_up.analysis is not None))
     apart = prompt_profile.placement == "P9"
     if first and not apart:

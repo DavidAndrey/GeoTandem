@@ -15,21 +15,24 @@ D6): the pool of ``model.pool``, built for one prompt's world.
 """
 
 from collections.abc import Iterable, Sequence
+from dataclasses import dataclass
 from typing import Any, Final
 
 from geotandem.catalog import ModelProfile
 from geotandem.config import Settings
+from geotandem.data import DataBackend, Limits, Op
 from geotandem.evaluation.cases import (
     World,
     assess_case,
     cases_dir,
     chain_set,
     layer_set,
+    prompt_world,
     start_cases,
 )
 from geotandem.evaluation.schemas import CaseStatus, EvalCase
 from geotandem.llm import Locality
-from geotandem.model.pool import Example, pool_of
+from geotandem.model.pool import Example, choose, pool_of
 
 SHOWN: Final[frozenset[CaseStatus]] = frozenset({"ok", "dataset_changed"})
 """The statuses of a case that may be an example (D6)."""
@@ -113,3 +116,21 @@ def example_pool(
 
     own = [case for case in cases if case.id not in shipped_ids]
     return pool_of([case for case in (*shipped, *own) if admits(case)], world.profile)
+
+
+@dataclass(frozen=True)
+class Chooser:
+    """The examples of a question in operation (``PromptFlow.examples``): the
+    pool of the prompt's world, then ``choose``. A question is no case, so no
+    example is left out for it."""
+
+    settings: Settings
+    limits: Limits
+    unsupported: frozenset[Op]
+
+    def __call__(
+        self, view: DataBackend, profile: ModelProfile, locality: Locality, question: str
+    ) -> list[Example]:
+        world = prompt_world(view, profile, self.limits, self.unsupported)
+        pool = example_pool((), world, locality, shipped_cases(self.settings))
+        return choose(question, "", pool, profile)

@@ -59,8 +59,9 @@ def join(sections: Sections) -> str:
     return "\n\n".join(text for text in sections.values() if text)
 
 
-APP_EXAMPLES: frozenset[str] = frozenset(get_args(AppExamples)) - {"standard"}
-"""Example sets the application offers (``--examples 12``): its builder writes them."""
+APP_EXAMPLES: frozenset[str] = frozenset(get_args(AppExamples)) - {"standard", "eigene"}
+"""Example sets the application offers (``--examples 12``): its builder writes them.
+``eigene`` is chosen per question: ``--arm c``."""
 
 PLACEMENTS: dict[str, Placement] = {"p0": "P0", "p5": "P5", "p9": "P9"}
 """``--variant`` names of the placements the application offers."""

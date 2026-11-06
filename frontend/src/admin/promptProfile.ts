@@ -7,6 +7,7 @@ export type ExampleSet = PromptProfile['examples']
 export type Placement = PromptProfile['placement']
 export type OutputMode = PromptProfile['output']
 
+// ``eigene`` is offered once a run can measure it (plan-improve-examples 5, WP6).
 export const EXAMPLE_SETS: ExampleSet[] = ['standard', '12']
 export const PLACEMENTS: Placement[] = ['P0', 'P5', 'P9']
 export const OUTPUT_MODES: OutputMode[] = ['constrained', 'text']
@@ -19,7 +20,7 @@ export const DEFAULT_PROMPT_PROFILE: PromptProfile = {
 }
 
 export const examplesLabel = (e: ExampleSet) =>
-  ({ standard: t`Standard`, '12': t`12 Beispiele` })[e]
+  ({ standard: t`Standard`, '12': t`12 Beispiele`, eigene: t`Eigene (geprüfte Fälle je Frage)` })[e]
 
 export const placementLabel = (p: Placement) =>
   ({

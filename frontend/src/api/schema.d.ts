@@ -4748,7 +4748,7 @@ export interface components {
        * @default standard
        * @enum {string}
        */
-      examples: 'standard' | '12'
+      examples: 'standard' | '12' | 'eigene'
       /**
        * Placement
        * @default P0

@@ -30,6 +30,7 @@ from test_model_compare import CHAIN, DIFFERS, REFERENCE, ask, compared
 from test_model_enforcement import PROMPT, url
 
 from geotandem.llm import Completion
+from geotandem.model.pool import COUNT, POOL_INTRO
 
 CONNECTIONS = "/api/admin/llm/connections"
 FIGURES = "/api/admin/model-actions/key-figures"
@@ -238,3 +239,42 @@ async def test_a_check_is_no_repeat_target_of_its_own(
     assert (repeat["is_check"], repeat["compare_of"]) == (False, answer["id"])
     assert repeat["check"] is None
     assert len(model.fake.calls) == 3
+
+
+# --- examples chosen per question (plan-improve-examples 5, D4) --------------------
+
+
+def chosen_questions(system: str) -> list[str]:
+    """The questions of the examples after the pool's line, in order."""
+    if POOL_INTRO not in system:
+        return []
+    after = system.split(POOL_INTRO, 1)[1].split("\n\n# ", 1)[0]
+    return [
+        line.removeprefix("Frage: ") for line in after.split("\n") if line.startswith("Frage: ")
+    ]
+
+
+async def test_eigene_sends_the_same_chosen_examples_to_the_answer_and_its_check(
+    client: httpx.AsyncClient, app: FastAPI, model: Model, levels: dict[str, int]
+) -> None:
+    """With ``eigene`` the direct query and its check's planning call carry the
+    same three verified cases, chosen for the question; the check is still a
+    chain prompt with the default profile in its record."""
+    await check_mode(client, "chain", prompt_profile={"examples": "eigene"})
+    answer, check = await checked(client, app, model, REFERENCE, CHAIN)
+
+    direct, chain = (call.messages[0].content for call in model.fake.calls)
+    assert len(chosen_questions(direct)) == COUNT
+    assert chosen_questions(chain) == chosen_questions(direct)
+    assert "JSON-Schema der Antwort" in chain and '"steps"' in chain
+    assert answer["connection"]["prompt_profile"]["examples"] == "eigene"
+    assert check["connection"]["prompt_profile"]["examples"] == "standard"
+
+
+async def test_a_chain_answer_keeps_the_fixed_examples_under_eigene(
+    client: httpx.AsyncClient, app: FastAPI, model: Model, levels: dict[str, int]
+) -> None:
+    await check_mode(client, "off", prompt_profile={"examples": "eigene"})
+    await ask(client, app, model, CHAIN, approach="chain")
+    [call] = model.fake.calls
+    assert chosen_questions(call.messages[0].content) == []

@@ -364,6 +364,15 @@ def live_world(
     return _world("live", view, profile, limits, unsupported)
 
 
+def prompt_world(
+    view: DataBackend, profile: ModelProfile, limits: Limits, unsupported: Iterable[Op]
+) -> World:
+    """The live world a prompt is written for: the view and the profile the
+    prompt flow already holds (``profile_for``), so the examples chosen for it
+    fit the layer profile it sends (plan-improve-examples 5)."""
+    return _world("live", view, profile, limits, unsupported)
+
+
 # --- a case on its data state ------------------------------------------------------
 
 

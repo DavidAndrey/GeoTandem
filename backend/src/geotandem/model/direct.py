@@ -14,11 +14,13 @@ the classes and the strictest cell at the level; a class that is ``off``
 makes a proposal the user applies by hand, never a refusal.
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from geotandem.catalog import ModelProfile
 from geotandem.levels import CellMode, Level, OpClass, strictest
 from geotandem.llm import LLMClient
+from geotandem.model.pool import Example
 from geotandem.model.prompt import DEFAULT_PROMPT_PROFILE, FollowUp, Prompt, build_prompt
 from geotandem.model.result import Tokens, parse_answer
 from geotandem.model.schemas import (
@@ -54,9 +56,11 @@ def direct_prompt(
     follow_up: FollowUp | None = None,
     context_length: int | None = None,
     prompt_profile: PromptProfile = DEFAULT_PROMPT_PROFILE,
+    chosen: Sequence[Example] | None = None,
 ) -> Prompt:
     """The messages of a direct query written after ``prompt_profile``, the
-    connection's or a run's (D9); ``context_too_large`` before any call."""
+    connection's or a run's (D9), with the question's ``chosen`` examples for
+    ``eigene``; ``context_too_large`` before any call."""
     return build_prompt(
         text,
         approach="direct",
@@ -65,6 +69,7 @@ def direct_prompt(
         follow_up=follow_up,
         context_length=context_length,
         prompt_profile=prompt_profile,
+        chosen=chosen,
     )
 
 

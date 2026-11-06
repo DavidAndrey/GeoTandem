@@ -161,6 +161,20 @@ declines), in the place the fixed set has today (P0). The invented library
    examples; the check's planning call is written with them, a chain answer
    without. **Done when:** prompt hash tests per preset (the default still
    byte for byte); a check's two calls carry the same pool ids.
+   **Built (2026-11-06):** `build_prompt(…, chosen=)`: with `eigene` the
+   direct query's section is `pool.section` of the fixed set; a chain prompt
+   with `chosen` is the check's. No case fitting the account's world
+   (`chosen=[]`) gives today's prompt; `eigene` without `chosen` is an
+   error. The prompt flow gets `examples` (`evaluation.examples.Chooser`,
+   wired in `api/model.py`, so the model package imports no evaluation):
+   the pool of the prompt's own view and profile (`prompt_world`), then
+   `choose`. The record keeps `eigene` for the answer and the default for
+   the check, as before. **Tested:** for every confirm and behaviour
+   question of the measurement, the builder sends arm C's messages, direct
+   and chain (`test_eval_pool.py`); through the API the answer and its
+   check carry the same three cases, a chain answer none
+   (`test_model_check.py`). The frontend names `eigene` but does not offer
+   it yet (WP6); until WP4 an application run with `eigene` fails.
 4. **Record and runs** (D6, D7): the example ids on the model action
    (migration); the pool hash in the run label; leave one out in runs.
    **Done when:** an action's view shows its examples; a tuning case run
