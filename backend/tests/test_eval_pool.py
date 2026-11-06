@@ -1,5 +1,5 @@
-"""The pool of the measurement of examples (docs/plan-improve-examples.md 6.5;
-``evals/pool.py``).
+"""The pool of examples chosen per question (docs/plan-improve-examples.md 5
+and 6.5; ``geotandem.model.pool``, the arms in ``evals/pool.py``).
 
 Every pool example teaches what its case's reference does: its direct answer
 and its plan read as answers, the plan passes the application's checks and
@@ -12,7 +12,6 @@ import importlib.util
 import json
 import sys
 from types import ModuleType
-from typing import Any
 
 import pytest
 from model_fixtures import REPO
@@ -25,6 +24,17 @@ from geotandem.evaluation.grade import query_of
 from geotandem.levels.store import load_levels
 from geotandem.llm import Completion, Message
 from geotandem.model.chain.plan import check_plan
+from geotandem.model.pool import (
+    COUNT,
+    Example,
+    Words,
+    as_plan,
+    choose,
+    cued,
+    named,
+    pool_hash,
+    pool_of,
+)
 from geotandem.model.prompt import build_prompt
 from geotandem.model.result import parse_answer
 from geotandem.model.schemas import PlannedStep, Refusal
@@ -44,13 +54,15 @@ NO_PLAN = [
     "ml38-kantonsstrasse-ohne-schule",
 ]
 POOL_SIZE = 62
+MEASURED = "c8fd1b3e8b23a6f54fa9b979d43a724a4aea1c17"
+"""The start of the pool's hash in every arm C run of the measurement
+(``pool_sha256``, examples-benchmarks.md): the application's pool is that one."""
 
-Pool = list[Any]
-"""``pool.Example``s: the harness module is loaded from its path."""
+Pool = list[Example]
 
 
 def harness() -> ModuleType:
-    """``evals/pool.py``, as ``evals/run.py`` imports it."""
+    """``evals/pool.py``, as ``evals/run.py`` imports it: the arms."""
     evals = REPO / "backend" / "evals"
     sys.path.insert(0, str(evals))
     try:
@@ -73,19 +85,19 @@ def world() -> World:
 
 @pytest.fixture(scope="module")
 def pool(world: World) -> Pool:
-    found: Pool = pool_module.pool_of(CASES, world.profile)
-    return found
+    return pool_of(CASES, world.profile)
 
 
 def test_the_pool_is_every_tuning_case_with_a_reference_the_chain_can_write(
     pool: Pool, world: World
 ) -> None:
-    words = pool_module.Words(world.profile)
+    words = Words(world.profile)
     tuning = [c for c in CASES if c.split == "tuning" and c.readings()]
-    left = [c.id for c in tuning if pool_module.as_plan(c.readings()[0], words) is None]
+    left = [c.id for c in tuning if as_plan(c.readings()[0], words) is None]
     assert sorted(left) == sorted(NO_PLAN)
     assert len(pool) == POOL_SIZE == len(tuning) - len(NO_PLAN)
     assert {e.case for e in pool} <= {c.id for c in tuning}
+    assert pool_hash(pool).startswith(MEASURED)
 
 
 def test_every_example_reads_and_its_plan_selects_the_reference(pool: Pool, world: World) -> None:
@@ -104,7 +116,7 @@ def test_every_example_reads_and_its_plan_selects_the_reference(pool: Pool, worl
 def test_a_case_never_gets_itself_and_the_draw_is_fixed_per_case_and_seed(pool: Pool) -> None:
     for example in pool:
         drawn = pool_module.draw(pool, example.case, 1)
-        assert len(drawn) == pool_module.COUNT
+        assert len(drawn) == COUNT
         assert example not in drawn
         assert drawn == pool_module.draw(pool, example.case, 1)
     assert pool_module.draw(pool, pool[0].case, 1) != pool_module.draw(pool, pool[0].case, 2)
@@ -112,14 +124,14 @@ def test_a_case_never_gets_itself_and_the_draw_is_fixed_per_case_and_seed(pool: 
 
 def test_the_selector_reads_the_question_and_the_profile_only(pool: Pool, world: World) -> None:
     question = "Welche Bushaltestellen liegen höchstens 200 m von einer Nationalstrasse?"
-    assert pool_module.named(question, world.profile) == ["haltestellen", "strassen"]
-    assert pool_module.cued(question, ["haltestellen", "strassen"], world.profile) == {
+    assert named(question, world.profile) == ["haltestellen", "strassen"]
+    assert cued(question, ["haltestellen", "strassen"], world.profile) == {
         "filter-subject",
         "near",
     }
-    chosen = pool_module.choose(question, "any", pool, world.profile)
+    chosen = choose(question, "any", pool, world.profile)
     assert chosen[0].case == "ml55-bus-nahe-nationalstrasse"
-    own = pool_module.choose(question, "ml55-bus-nahe-nationalstrasse", pool, world.profile)
+    own = choose(question, "ml55-bus-nahe-nationalstrasse", pool, world.profile)
     assert "ml55-bus-nahe-nationalstrasse" not in [e.case for e in own]
 
 

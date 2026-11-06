@@ -114,7 +114,7 @@ declines), in the place the fixed set has today (P0). The invented library
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| D1 | Where the selector lives | One module in the application (`geotandem/model/examples.py`): the conversion to a plan, the pool, the selector, the section. `evals/pool.py` keeps only the arms (A, B's draw) and imports the rest | What was measured is what ships; two copies would drift. Pinned by rebuilding arm C prompts of recorded runs (`prompt_sha256`) |
+| D1 | Where the selector lives | One module in the application (`geotandem/model/pool.py`; `model/examples/` holds the example files): the conversion to a plan, the pool, the selector, the section. `evals/pool.py` keeps only the arms (A, B's draw) and imports the rest | What was measured is what ships; two copies would drift. Pinned by the pool's hash of the measurement |
 | D2 | Privacy (section 4) | An own case goes to an **external** connection only if every value in its reference is a code of a confirmed code list or a number; otherwise it is an example for local connections only. The start set's sample cases are open data (6.2) and go to both. Every connection, local or not, gets only cases whose layers are all in the profile the prompt is written with (S3) | F-9.3: data contents never leave the house; an account must not learn of a layer it cannot see |
 | D3 | Scope | `eigene` is a preset like the others (D9 of plan E3): offered on every connection, measured in a run, adopted with «Promptprofil übernehmen». Nothing changes by default. The run matrix shows the outcome per connection | The measurement found it model-specific; an administrator decides per connection on their own figures, as for every preset |
 | D4 | Which approaches | The direct query and the check's planning call get the chosen examples (as measured, 6.5). An answer of the **chain** approach keeps its fixed examples | chain-qwen3_14b fails point 3 (`v22-eroeffnet`, examples-benchmarks.md); the check sends the same examples to both calls or its figures do not apply |
@@ -126,9 +126,18 @@ declines), in the place the fixed set has today (P0). The invented library
 
 1. **Selector into the application** (D1): move the conversion, `Example`,
    `pool_of`, `pool_hash`, the cues and `choose`, and `section` from
-   `evals/pool.py`; the harness imports them. **Done when:** the harness's
-   arm C, rebuilt through the module, gives the `prompt_sha256` of recorded
-   `xb-*-c-*` answers; `tests/test_eval_pool.py` passes unchanged.
+   `evals/pool.py`; the harness imports them. **Done when:** the module
+   gives the pool, the choice and the section of the measurement.
+   **Built (2026-11-06):** `geotandem/model/pool.py`, with `ExampleText`
+   (the harness's `ExampleSet`, renamed beside the profile's `ExampleSet`);
+   `pool_of` reads any case with `id`, `prompt`, `split` and `readings()`,
+   so the model package does not import the evaluation's. Checked once
+   against the measurement's records (the answers keep the ids they were
+   given, not a prompt hash): the same 62 examples and hash `c8fd1b3e…` as
+   all 80 arm C files, the recorded ids for all 13 620 arm C answers, and
+   for the 60 distinct choices the old code's section byte for byte in
+   both approaches. `tests/test_eval_pool.py` tests the module and pins the
+   hash; the records are not in the repository, so the replay is not a test.
 2. **The pool** (D2, D6): built per prompt from the start set and own cases,
    filtered by split, flag, status, the profile's layers and, for an
    external connection, the values. **Done when:** tests for each filter; a

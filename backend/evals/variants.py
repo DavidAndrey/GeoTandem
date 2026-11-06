@@ -19,11 +19,11 @@ example set of this directory (``examples/<name>.txt``, H-2) replaces the
 import json
 import re
 from collections.abc import Callable
-from dataclasses import dataclass
 from pathlib import Path
 from typing import cast, get_args
 
 from geotandem.llm import Completion, Message
+from geotandem.model.pool import ExampleText
 from geotandem.model.prompt import prompt_hash
 from geotandem.model.result import parse_answer
 from geotandem.model.schemas import ExampleSet as AppExamples
@@ -39,7 +39,6 @@ FORMAT = "# Antwortformat"
 EXAMPLES = "# Beispiele"
 TALK = "# Gespräch"
 SCHEMA_MARK = "\nJSON-Schema der Antwort:\n"
-QUESTION = "\n\nFrage: "
 
 Sections = dict[str, str]
 """Heading line → the section's text, heading included, in prompt order."""
@@ -58,36 +57,6 @@ def split(system: str) -> Sections:
 
 def join(sections: Sections) -> str:
     return "\n\n".join(text for text in sections.values() if text)
-
-
-@dataclass(frozen=True)
-class ExampleSet:
-    """A ``# Beispiele`` section taken apart: intro, rules, worked examples."""
-
-    intro: str
-    """The heading and the text before the rules (the invented layer profile)."""
-    rules: tuple[str, ...]
-    """The rule lines (``- …``), V-2 to V-7."""
-    shots: tuple[tuple[str, str], ...]
-    """(question, answer JSON) per worked example, in order."""
-
-    @classmethod
-    def parse(cls, section: str) -> "ExampleSet":
-        head, *rest = section.split(QUESTION)
-        lines = head.split("\n")
-        intro = [line for line in lines if not line.startswith("- ")]
-        rules = [line for line in lines if line.startswith("- ")]
-        shots = []
-        for block in rest:
-            question, answer = block.split("\n", 1)
-            shots.append((question, answer.strip()))
-        return cls("\n".join(intro).rstrip(), tuple(rules), tuple(shots))
-
-    def text(self, *, rules: bool = True, shots: bool = True) -> str:
-        parts = [self.intro + ("\n" + "\n".join(self.rules) if rules and self.rules else "")]
-        if shots:
-            parts += [f"Frage: {q}\n{a}" for q, a in self.shots]
-        return "\n\n".join(parts)
 
 
 APP_EXAMPLES: frozenset[str] = frozenset(get_args(AppExamples)) - {"standard"}
@@ -121,7 +90,7 @@ def load_examples(name: str) -> str:
     text = path.read_text("utf-8").strip()
     if not text.startswith(EXAMPLES + "\n"):
         raise SystemExit(f"{path} must start with the line {EXAMPLES!r}")
-    for question, answer in ExampleSet.parse(text).shots:
+    for question, answer in ExampleText.parse(text).shots:
         try:
             parsed = parse_answer(Completion(text=answer, parsed=json.loads(answer)), "direct")
             if isinstance(parsed, QueryAnswer):
@@ -154,7 +123,7 @@ def p0(messages: list[Message]) -> list[Message]:
 def p1(messages: list[Message]) -> list[Message]:
     """No worked examples; the rules stay."""
     sections, user = _system(messages)
-    sections[EXAMPLES] = ExampleSet.parse(sections[EXAMPLES]).text(shots=False)
+    sections[EXAMPLES] = ExampleText.parse(sections[EXAMPLES]).text(shots=False)
     return _sent(sections, user)
 
 
@@ -162,7 +131,7 @@ def p2(messages: list[Message]) -> list[Message]:
     """The worked examples as user/assistant turns before the question; the
     rules stay in the system message (measurement only: E-8)."""
     sections, user = _system(messages)
-    examples = ExampleSet.parse(sections[EXAMPLES])
+    examples = ExampleText.parse(sections[EXAMPLES])
     sections[EXAMPLES] = examples.text(shots=False)
     turns = []
     for question, answer in examples.shots:
@@ -181,7 +150,7 @@ def p3(messages: list[Message]) -> list[Message]:
 def p4(messages: list[Message]) -> list[Message]:
     """The worked examples without the rules V-2 to V-7."""
     sections, user = _system(messages)
-    sections[EXAMPLES] = ExampleSet.parse(sections[EXAMPLES]).text(rules=False)
+    sections[EXAMPLES] = ExampleText.parse(sections[EXAMPLES]).text(rules=False)
     return _sent(sections, user)
 
 
