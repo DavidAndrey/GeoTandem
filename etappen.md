@@ -195,6 +195,15 @@ dem Verbindungstest. Begründung und Konzept stehen in
 > abweichende Antworten ([docs/plan-check-mode.md](docs/plan-check-mode.md)).
 > Bestätigt für gemma4:12b und qwen3:14b (Lauf 13, an der Schwelle);
 > gemma4:e4b und qwen3.5:9b bleiben aus.
+>
+> **Nach E3: Beispiele je Frage gemessen (2026-11-03).** Drei vom Selektor
+> gewählte Fälle statt der festen Beispiele heben die Quote in allen zehn
+> Gruppen ([docs/examples-benchmarks.md](docs/examples-benchmarks.md)). Die
+> Entscheidungsregel (6.6) hält aber nur für qwen3:14b mit Direktabfrage und
+> Prüfung; die übrigen verlieren bei Rückfragen und Ablehnungen, auf neuen
+> Layerkombinationen (chain-gemma4:12b) oder schlagen zufällige Beispiele nicht
+> (Haiku). In der Anwendung noch nicht gebaut
+> ([docs/plan-improve-examples.md](docs/plan-improve-examples.md), Abschnitt 5).
 
 **Vorführung E3:** Zwei Modellanbindungen werden über denselben Prüffallbestand
 gefahren; die Vergleichsmatrix trägt die Freigabeentscheidung (F-3.3, F-3.8).

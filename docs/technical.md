@@ -1,6 +1,6 @@
 # GeoTandem : comment ça marche vraiment
 
-*Vue d'ensemble technique pour Product Owners et Product Managers. Aucune connaissance en développement ni en cartographie n'est nécessaire. L'objectif est double : comprendre le produit, et pouvoir discuter d'égal à égal avec l'équipe de développement, comprendre ses besoins et ses limites. État du projet au 25 octobre 2026 : les étapes E1, E2 et E3 sont construites ; la validation finale de l'étape E3 (le « gate E3 ») est encore ouverte.*
+*Vue d'ensemble technique pour Product Owners et Product Managers. Aucune connaissance en développement ni en cartographie n'est nécessaire. L'objectif est double : comprendre le produit, et pouvoir discuter d'égal à égal avec l'équipe de développement, comprendre ses besoins et ses limites. État du projet au 6 novembre 2026 : les étapes E1, E2 et E3 sont construites et validées (gate E3 passé le 25 octobre). Depuis, la chaîne d'outils a été mesurée et peut vérifier la requête directe ; des exemples choisis selon la question ont été mesurés, mais pas encore construits.*
 
 ---
 
@@ -207,6 +207,8 @@ Une précision utile : dans GeoTandem, la chaîne d'outils **n'est pas une boucl
 
 À chaque étape, l'application ne **compte** que les résultats. Aucun objet, aucune valeur, aucun identifiant ne revient au modèle ; il apprend le nombre de résultats et, en cas d'erreur, le code et le nom de ce qui est en cause. Limites : **huit étapes** au plus, **deux replanifications** au plus. Une chaîne qui finit sur un tampon seul est refusée, car l'interface ne saurait pas l'afficher.
 
+Chaque étape est produite en **sortie contrainte** selon l'outil qu'elle nomme (section 4.7). Un plan que les contrôles refusent, par exemple parce qu'il laisse tomber une condition nommée dans la question, a droit à **une correction** ; les erreurs les plus fréquentes relevées pendant l'évaluation (section 7) sont devenues des règles et des exemples de plan.
+
 Comme chaque étape reste un objet de requête, toute chaîne se réexprime en un objet unique et reste reproductible sans modèle.
 
 ### 4.10 Les niveaux d'assistance, concrètement
@@ -252,9 +254,11 @@ Cette matrice sait exprimer les trois designs envisagés au départ. Et comme to
 
 **La requête directe.** Le modèle produit un seul objet de requête, complet et lisible. Une étape, une affirmation, peu de surface d'erreur. Adapté aux questions bien délimitées. C'est le chemin mesuré en détail.
 
-**La chaîne d'outils.** Le modèle planifie plusieurs étapes (section 4.9). Plus expressive, notamment pour les tampons, les jointures et les enchaînements, au prix d'un plan à relire. Son évaluation n'est pas encore faite : elle est reportée après le gate E3.
+**La chaîne d'outils.** Le modèle planifie plusieurs étapes (section 4.9). Plus expressive, notamment pour les tampons, les jointures et les enchaînements, au prix d'un plan à relire. Mesurée depuis le gate E3 (section 7) : pour les modèles locaux, elle réussit moins souvent que la requête directe.
 
-L'application ne choisit pas à la place de l'utilisateur. C'est volontaire : comparer les deux chemins sur la même question est un des enseignements recherchés.
+**La vérification par la chaîne.** Réglage par connexion, désactivé par défaut. Après chaque réponse directe, l'application pose la même question à la chaîne, en arrière-plan, et compare les objets trouvés. Si les deux diffèrent, la réponse est marquée « incertaine » (« la vérification pas à pas trouve N objets au lieu de M »), et l'utilisateur peut ouvrir la comparaison et reprendre le plan de la chaîne. La vérification ne choisit rien et n'applique rien. Coût : environ deux fois le temps de modèle, et chaque vérification compte dans la limite de requêtes de la connexion.
+
+L'application ne choisit toujours pas à la place de l'utilisateur. C'est volontaire : comparer les deux chemins sur la même question est un des enseignements recherchés.
 
 ---
 
@@ -279,6 +283,13 @@ Un petit modèle local bien choisi tient donc la comparaison avec un modèle ext
 **Un même prompt ne convient pas à tous les modèles.** Dix variantes de placement et de contenu ont été testées. Aucune ne bat la version de base pour les quatre modèles locaux à la fois. La meilleure variante change selon le modèle. Une phrase ajoutée en un endroit peut faire basculer entièrement un cas sans rapport (de 5 réussites sur 5 à 0 sur 5). D'où l'approche : un prompt commun comme référence, puis un profil par connexion.
 
 **Le danger le plus insidieux : l'erreur silencieuse.** Un modèle peut répondre faux sans le dire. Exemple : une requête sans filtre, alors que l'explication affirme « plus de 10 000 habitants ». Quand on retire les listes de codes, les petits modèles inventent des valeurs sans le signaler, alors que Haiku annonce ses suppositions. Environ deux tiers des mauvaises réponses renvoient zéro résultat, un signal que l'application pourrait détecter. Le verdict « faux en silence » est donc une catégorie à part dans l'évaluation.
+
+
+**La chaîne d'outils, mesurée après le gate E3.** Sur les questions de confirmation, la chaîne réussit moins souvent que la requête directe pour les modèles locaux (Gemma 4 12B : 75 % contre 85 % sur les questions du jeu de départ), autant pour Haiku (98 %), et Luna est le premier modèle dont la chaîne fait moins d'erreurs silencieuses que sa requête directe (2 % contre 7 %). Une série de corrections (règles, exemples de plan, contrôle du plan contre la question) a été mesurée une à une. Conclusion : la chaîne ne remplace pas la requête directe, mais elle sert à la **vérifier**.
+
+**La vérification par la chaîne divise les erreurs silencieuses.** Mesurée sur les quatre modèles locaux : les erreurs silencieuses baissent de 42 % (Gemma 4 e4B) à 91 % (Qwen3.5 9B), mais 10 à 19 % des réponses justes reçoivent à tort une marque « incertaine ». La règle fixée d'avance (au plus 10 %) n'est tenue par aucun modèle ; Gemma 4 12B et Qwen3 14B la manquent d'un cas chacun, ce qui est dans le bruit. Décision : la vérification peut être activée pour ces deux modèles, pas pour les deux autres.
+
+**Des exemples choisis selon la question.** Au lieu des sept exemples fixes, trois exemples tirés d'un réservoir de cas vérifiés sur les données d'exemple, choisis selon les opérations de la question. Mesuré sur dix combinaisons de modèle et de chemin : la réussite monte partout (Qwen3 14B en requête directe : de 60 % à 85 %). Mais la règle de décision exige aussi qu'aucune question où le modèle doit demander une précision ou refuser ne se dégrade ; elle n'est tenue que pour Qwen3 14B, en requête directe et en vérification. Gemma et Luna perdent sur ces questions de comportement : ils répondent là où ils devraient demander ou refuser. Pour Haiku, déjà proche du plafond, le choix selon la question ne fait pas mieux que trois exemples tirés au hasard. L'application ne propose pas encore ce réglage.
 
 ---
 
@@ -312,14 +323,14 @@ Une observation importante : **les modèles forts sont peu sensibles.** Haiku pe
 |---|---|---|---|
 | **Cache de prompt** (le fournisseur ou le serveur local réutilise la partie identique d'un appel à l'autre) | Moins de coût et de latence sans toucher au contenu | Ne réduit pas l'attention diluée. Pas disponible via la couche de compatibilité d'Anthropic ; automatique chez OpenAI ; la fiche étant propre à chaque compte, le socle commun doit rester en tête du prompt | Oui |
 | **Sélection des couches avant le prompt** (une première étape, par mots-clés, recherche sémantique ou petit appel, choisit les couches pertinentes ; seules celles-ci entrent dans la fiche) | Attaque la vraie croissance du prompt. Indispensable au-delà de quelques dizaines de couches | Si la sélection se trompe, le modèle ne voit pas la bonne couche. Une étape de plus à mesurer. Non construit | Oui, la fiche resterait de métadonnées pures |
-| **Exemples choisis dynamiquement** (les 3 ou 4 exemples les plus proches de la question, au lieu de 7 fixes) | Prompt plus court et exemples plus pertinents | Les exemples actuels sont fictifs pour respecter la visibilité des couches. Des exemples sur de vraies couches exigent une génération par compte. C'est la piste P7, reportée à E-7 | Oui, si générés par compte |
+| **Exemples choisis dynamiquement** (les 3 ou 4 exemples les plus proches de la question, au lieu de 7 fixes) | Prompt plus court et exemples plus pertinents | Les exemples actuels sont fictifs pour respecter la visibilité des couches. Mesuré depuis (section 7) : la réussite monte pour tous les modèles, mais la règle de décision n'est tenue que pour Qwen3 14B. Pas encore construit | Oui, avec une bibliothèque commune et les cas propres de l'administrateur |
 | **Prompt allégé pour les modèles forts** (profil par connexion) | Réduit le coût externe sans rien perdre, d'après les mesures (Haiku) | Un prompt de plus à maintenir et à mesurer | Oui ; la mécanique des profils existe depuis E3 |
 | **Schéma plus compact** (notation condensée à la place du JSON Schema de 8 600 caractères, ou schéma réduit par type de question) | Le schéma est le plus gros bloc | Non testé. Le retirer entièrement échoue (P8). La contrainte de sortie reste calée sur le vrai schéma | Oui, mais à mesurer |
 | **Découper en plusieurs petits appels** (choisir les couches, puis construire les conditions, puis les valeurs) | Chaque appel a un prompt court et ciblé | Plus de latence, plus de coût cumulé, plus de points de défaillance, et un risque de dérive d'une étape à l'autre | Oui |
 | **Affiner (fine-tuner) un petit modèle** | Les exemples et règles sortent du prompt, qui devient très court | Exclu par le cadrage du projet (aucun entraînement de modèle) | Non, hors périmètre |
 | **Augmenter le contexte** | Simple marge de sécurité | N'a amélioré aucun résultat mesuré, coûte de la mémoire | Oui, mais sans gain démontré |
 
-*Recommandation de lecture :* à court terme, le meilleur rapport gain/effort est le **prompt par connexion** (déjà construit) combiné au **cache de prompt** là où il existe. La **sélection des couches** est le chantier à prévoir avant de brancher des données clients volumineuses. Les exemples dynamiques viennent après, car ils demandent la brique E-7.
+*Recommandation de lecture :* à court terme, le meilleur rapport gain/effort est le **prompt par connexion** (déjà construit) combiné au **cache de prompt** là où il existe. La **sélection des couches** est le chantier à prévoir avant de brancher des données clients volumineuses. Les exemples dynamiques sont mesurés ; ils ne valent la construction que pour les modèles où la règle tient.
 
 Un point d'organisation à ne pas oublier : toute réduction doit passer par le banc d'essai, car les mesures montrent qu'une coupe qui aide un modèle en dégrade un autre.
 
@@ -339,17 +350,15 @@ Promettre qu'une analyse donne le même résultat sur SpatiaLite et sur PostGIS 
 
 Les fichiers sont lus par du code natif (la bibliothèque GDAL notamment). Un fichier piégé ou mal formé peut épuiser la mémoire, boucler ou déclencher un bug. La solution : lecture dans un processus enfant, avec plafonds, et un simple « fichier illisible » côté serveur quoi qu'il arrive. Ce n'est pas un bac à sable de sécurité (l'enfant tourne avec les mêmes droits), mais cela borne les pannes les plus probables.
 
-### 9.4 Le crash intermittent à l'import (risque R1)
+### 9.4 Le crash intermittent (risque R1)
 
-C'est le défi le plus récent, et il est instructif parce qu'il n'est pas entièrement élucidé.
+C'est le défi le plus instructif, parce que la première explication était fausse.
 
-**Ce qui s'est passé.** Pendant les tests d'acceptation de l'étape E3, le conteneur s'est arrêté brutalement à plusieurs reprises, avec une corruption de mémoire (« double free or corruption », code de sortie 139). Trois fois sur trois sur une version intermédiaire, puis deux fois sur trois sur un autre lot. Les crashs survenaient quand **plusieurs imports arrivaient en même temps**, en particulier quand les premiers démarraient le « forkserver » (le petit processus qui fabrique les processus enfants de lecture).
+**Ce qui s'est passé.** Pendant les tests d'acceptation de l'étape E3, le conteneur s'est arrêté brutalement à plusieurs reprises, avec une corruption de mémoire (« double free or corruption », code de sortie 139), sous des rafales de requêtes simultanées. Le premier soupçon portait sur les imports concurrents ; les lectures d'import ont d'abord été sérialisées, sans preuve que ce fût la cause.
 
-**Ce qu'on sait, et ce qu'on ne sait pas.** Le problème apparaît sous concurrence. On ne sait **pas** quelle ligne de code native en est responsable. Des exécutions suivantes ont passé sans problème, ce qui peut tout autant signifier « corrigé » que « chanceux ».
+**Ce qui l'a résolu.** Le conteneur active un gestionnaire de fautes (`PYTHONFAULTHANDLER=1`), et le gate enregistre l'état du conteneur quand un passage échoue. La trace a montré la vraie cause : deux fils de requêtes qui fermaient en même temps des connexions SpatiaLite. Désormais, les connexions se ferment sous un verrou commun à tout le processus, qui protège aussi leur préparation à l'ouverture. Coût : environ 80 ms pour quinze connexions froides ouvertes en même temps. La sérialisation des imports a été retirée. Cinq passages du gate après la correction : aucun crash.
 
-**Ce qui a été décidé.** Supprimer la condition qui déclenche le problème : les lectures sont **sérialisées pour tout le serveur**, un fichier à la fois, avec un verrou qui protège aussi la création du forkserver. Le coût est une attente, acceptable car l'import est une action rare d'administrateur. En complément, le conteneur active un gestionnaire de fautes (`PYTHONFAULTHANDLER=1`) : si le crash revient, la trace de la pile fautive sera enregistrée.
-
-**La leçon.** C'est une décision de risque, pas une correction de cause. Le risque R1 est *contenu*, pas *résolu*. Et la règle qui rend ce choix gratuit (import rare et mono-administrateur) est une hypothèse produit à surveiller.
+**La leçon.** Une mesure de prudence n'est pas une correction. C'est l'instrumentation (trace de la pile fautive, état du conteneur à l'échec) qui a permis de trouver la cause, pas le contournement. Le risque R1 est *résolu*.
 
 ### 9.5 Un prompt fragile
 
@@ -383,7 +392,7 @@ Voici comment les alternatives les plus courantes se situent.
 
 **Le modèle écrit directement du SQL (« text-to-SQL »).** *Verdict : incompatible tel quel.* Il faudrait valider le SQL produit, empêcher toute écriture, et assurer la même sémantique sur deux dialectes. On reconstruirait un second langage de requête à valider, avec moins de garanties que l'objet de requête actuel. C'est l'alternative la plus répandue et celle que le projet a explicitement écartée.
 
-**Appel d'outils « natif » en boucle (le modèle appelle un outil, lit le résultat, enchaîne).** *Verdict : compatible.* C'est possible dans le cadre des exigences, à condition de ne renvoyer que des comptages et pas de contenu (F-9.3). La planification en un appel, choisie ici, rend le plan visible et validable avant exécution, et réduit le nombre d'appels. Revers : le modèle ne peut pas s'adapter à un résultat intermédiaire sans replanifier (deux replanifications au plus). La boucle native serait plus souple mais plus chère et plus difficile à auditer, et les modèles locaux y sont moins fiables. Une évaluation de la chaîne (reportée) dira si ce coût se justifie.
+**Appel d'outils « natif » en boucle (le modèle appelle un outil, lit le résultat, enchaîne).** *Verdict : compatible.* C'est possible dans le cadre des exigences, à condition de ne renvoyer que des comptages et pas de contenu (F-9.3). La planification en un appel, choisie ici, rend le plan visible et validable avant exécution, et réduit le nombre d'appels. Revers : le modèle ne peut pas s'adapter à un résultat intermédiaire sans replanifier (deux replanifications au plus). La boucle native serait plus souple mais plus chère et plus difficile à auditer, et les modèles locaux y sont moins fiables. L'évaluation de la chaîne (section 7) montre que les modèles locaux se trompent déjà souvent en planifiant en un appel ; une boucle native ne se justifie pas pour eux aujourd'hui.
 
 **Un framework d'agents du marché (LangChain et équivalents).** *Verdict : compatible, mais contraire à l'intention.* Il apporterait une boucle d'outils clé en main. Le projet veut justement étudier et montrer cette boucle, donc il la garde en interne. Pour un produit, ce serait un choix légitime à rouvrir.
 
@@ -403,7 +412,7 @@ Voici comment les alternatives les plus courantes se situent.
 
 **Une carte plus moderne (MapLibre, WebGL).** *Verdict : compatible.* Meilleure pour de gros volumes, inutile tant que les résultats sont plafonnés à 10 000 objets. Le choix de Leaflet est aussi dicté par une question de licence de l'alternative la plus répandue.
 
-**Pour le crash à l'import.** On aurait pu garder les imports concurrents et chercher la cause native (long, incertain), déplacer la lecture dans un service séparé ou une file de tâches (plus de composants), l'isoler dans un vrai bac à sable (plus sûr, plus lourd), ou remplacer GDAL par des lecteurs en Python pur (perte de formats). La sérialisation a été préférée parce qu'elle est peu coûteuse, supprime la condition de déclenchement et se défait facilement.
+**Pour le crash.** On aurait pu garder le contournement (sérialiser les imports) sans chercher plus loin, déplacer la lecture dans un service séparé (plus de composants), ou l'isoler dans un vrai bac à sable (plus lourd). L'instrumentation a été préférée : elle a désigné la cause, et la correction tient dans un verrou.
 
 ---
 
@@ -411,7 +420,7 @@ Voici comment les alternatives les plus courantes se situent.
 
 Sujets explicitement reportés :
 
-- **L'évaluation de la chaîne d'outils** (seule la requête directe est mesurée aujourd'hui).
+- **Les exemples choisis selon la question** dans l'application (mesurés ; à construire seulement pour les modèles où la règle tient, aujourd'hui Qwen3 14B).
 - **Les synonymes et valeurs de noms propres dans la fiche** (« Bevölkerung », « Bahnhof »), là où les modèles locaux perdent encore après l'ajout des listes de codes.
 - **Un indicateur « zéro résultat »** en exploitation, pour signaler les erreurs silencieuses probables.
 - **La correction manuelle de cas** comme source de nouveaux tests.
@@ -425,4 +434,4 @@ Quatre messages à retenir :
 1. **Le produit n'est pas un chatbot sur un SIG.** C'est une machine à requêtes vérifiables, avec un contrôle humain réglable, dont l'IA est un des deux guichets d'entrée.
 2. **Le choix du modèle compte moins que la qualité des métadonnées.** Le budget le mieux investi sur des données clients est la documentation des couches, en particulier les listes de codes.
 3. **La longueur du prompt est un compromis mesuré, pas un oubli.** La couper fait presque toujours perdre de la qualité aux petits modèles. Le vrai risque est la croissance de la fiche avec le nombre de couches.
-4. **Ce qui n'est pas encore sûr est dit comme tel.** Le crash à l'import est contenu mais sa cause n'est pas prouvée, et les chiffres de comparaison sont des mesures de développement, à refaire sur les données du client.
+4. **Ce qui n'est pas encore sûr est dit comme tel.** La vérification par la chaîne marque encore environ une réponse juste sur dix, et les chiffres de comparaison sont des mesures de développement, à refaire sur les données du client.

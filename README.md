@@ -7,6 +7,9 @@ in welcher Reihenfolge in [etappen.md](etappen.md), womit in
 
 Stand: **Etappen E1 und E2 abgeschlossen** (Modus A ohne LLM, Modus B mit
 LLM); E3, die Bewertung der Modellanbindungen, ist umgesetzt (Gate E3 bestanden, 2026-10-25).
+Nach E3 ist die Werkzeugkette gemessen; sie kann je Anbindung die Direktabfrage
+prüfen. Gemessen, aber noch nicht gebaut: Beispiele je Frage
+([docs/plan-improve-examples.md](docs/plan-improve-examples.md)).
 Die Anwendung kann:
 
 - Vektordaten und Tabellen importieren, Layer verwalten, Metadaten pflegen
@@ -33,6 +36,9 @@ Die Anwendung kann:
 - Modellanbindungen auf eigenen Daten und Fragen messen und vergleichen, mit
   Prüffällen, Bewertungsläufen, Vergleichsmatrix und Promptprofilen je
   Anbindung (E3, *Bewertung im Einsatz*)
+- die Antwort der Direktabfrage je Anbindung durch die Werkzeugkette prüfen
+  lassen; findet die Kette andere Objekte, ist die Antwort als unsicher
+  markiert (nach E3, [docs/plan-check-mode.md](docs/plan-check-mode.md))
 
 Pläne und Befunde je Etappe liegen in [docs/](docs/) (`plan-e1.*.md`); wie
 Bedingungen, Einschränkung und Abfrageobjekt zusammenhängen, steht in
@@ -336,6 +342,19 @@ Layer-Steckbrief des Kontos an das Modell (nur Metadaten, nie Zeileninhalte).
   Die *Werkzeugkette* plant mehrere Schritte (Puffer, Zählen je Gruppe …),
   zeigt den Plan vor dem Lauf und führt ihn Schritt für Schritt aus; das
   Modell sieht je Schritt nur ok/Fehler, leer/nicht leer und die Trefferzahl.
+- **Prüfung durch die Werkzeugkette.** Im Formular der Anbindung wählt der
+  Administrator *Prüfung durch die Werkzeugkette* (Vorgabe *Aus*). Dann fragt
+  die Anwendung nach jeder Antwort der Direktabfrage dieselbe Frage mit der
+  Werkzeugkette und vergleicht die Objekte, ohne den Anwender warten zu
+  lassen. Unter der Antwort steht *Wird mit der Werkzeugkette geprüft …*,
+  dann *Geprüft* oder *Unsicher: Die schrittweise Prüfung findet N statt M
+  Objekte*; *Vergleich ansehen* öffnet den Vergleich, aus dem sich der Plan
+  der Kette freigeben und übernehmen lässt. Die Prüfung wählt nichts und
+  wendet nichts an. Eine neue Frage bricht eine laufende Prüfung ab (*Nicht
+  geprüft*), eine gescheiterte Direktabfrage wird nicht geprüft. Kosten: etwa
+  doppelte Modellzeit, jede Prüfung zählt zum Anfragelimit. Nach der Messung
+  einzuschalten für gemma4:12b und qwen3:14b, nicht für gemma4:e4b und
+  qwen3.5:9b ([docs/benchmarks.md](docs/benchmarks.md), Lauf 13).
 - **Stufen in der Praxis.** *Assistenz*: Das Modell schlägt vor, der Anwender
   übernimmt von Hand in den Editor. *Prüfen*: Jede Antwort wartet auf
   *Annehmen* oder *Ablehnen*, mit Änderungsliste und Vorschau der

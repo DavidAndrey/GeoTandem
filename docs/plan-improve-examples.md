@@ -1,7 +1,8 @@
 # Plan: examples chosen per question, for the direct query and the chain
 
-> Stand: 2026-10-30 · proposal, not started; section 6 (the measurement)
-> worked out, the check included · Bezug:
+> Stand: 2026-11-03 · section 6 (the measurement) done: rule 6.6 holds for
+> qwen3:14b with direct and check only ([examples-benchmarks.md](examples-benchmarks.md));
+> section 5 (in the app) not started · Bezug:
 > [plan-chain-eval.md](plan-chain-eval.md) (sections 15, 16; F16, F17),
 > [plan-e3.md](plan-e3.md) (D2, D3, D9, F-9.3),
 > [testplan-system-context.md](testplan-system-context.md) (8.5, Phase 4)
