@@ -115,11 +115,11 @@ declines), in the place the fixed set has today (P0). The invented library
 | # | Question | Decision | Why |
 |---|---|---|---|
 | D1 | Where the selector lives | One module in the application (`geotandem/model/pool.py`; `model/examples/` holds the example files): the conversion to a plan, the pool, the selector, the section. `evals/pool.py` keeps only the arms (A, B's draw) and imports the rest | What was measured is what ships; two copies would drift. Pinned by the pool's hash of the measurement |
-| D2 | Privacy (section 4) | An own case goes to an **external** connection only if every value in its reference is a code of a confirmed code list or a number; otherwise it is an example for local connections only. The start set's sample cases are open data (6.2) and go to both. Every connection, local or not, gets only cases whose layers are all in the profile the prompt is written with (S3) | F-9.3: data contents never leave the house; an account must not learn of a layer it cannot see |
+| D2 | Privacy (section 4) | An own case goes to an **external** connection only if every value in its reference is a code of a confirmed code list or a number; otherwise it is an example for local connections only. The question goes as written, unchecked (decided 2026-11-06): the case page says so beside the flag (WP5). The start set's sample cases are open data (6.2) and go to both. Every connection, local or not, gets only cases whose layers are all in the profile the prompt is written with (S3) | F-9.3: data contents never leave the house; an account must not learn of a layer it cannot see |
 | D3 | Scope | `eigene` is a preset like the others (D9 of plan E3): offered on every connection, measured in a run, adopted with «Promptprofil übernehmen». Nothing changes by default. The run matrix shows the outcome per connection | The measurement found it model-specific; an administrator decides per connection on their own figures, as for every preset |
 | D4 | Which approaches | The direct query and the check's planning call get the chosen examples (as measured, 6.5). An answer of the **chain** approach keeps its fixed examples | chain-qwen3_14b fails point 3 (`v22-eroeffnet`, examples-benchmarks.md); the check sends the same examples to both calls or its figures do not apply |
 | D5 | Presets offered | `eigene` with three examples, placement `P0`; any output mode. No count setting, no `P5`/`P9` with `eigene` (the profile refuses them) | Only measured presets (D9); three at P0 is all that was measured |
-| D6 | The pool | Start-set tuning cases with a reference, and own tuning cases marked **«als Beispiel verwenden»** (section 3, offered on tuning cases only); status `ok` (not `stale`, `invalid`; `dataset_changed` stays in); a reference the chain can write (`as_plan`), so the check's two calls get the same examples. Confirm cases never; a case is never its own example in a run | Sections 3 and 6.5; D3 of plan E3 keeps broken cases out by itself |
+| D6 | The pool | The tuning cases with a reference of the files the measurement drew from (the start set, `chain-cases.json`, `layer-cases.json`; WP2), and own tuning cases marked **«als Beispiel verwenden»** (section 3, offered on tuning cases only); status `ok` (not `stale`, `invalid`; `dataset_changed` stays in); a reference the chain can write (`as_plan`), so the check's two calls get the same examples. Confirm cases never; a case is never its own example in a run | Sections 3 and 6.5; D3 of plan E3 keeps broken cases out by itself |
 | D7 | Recording | Each model action records the ids of the examples it was given; a run label carries the pool's hash | Section 5 as planned; an answer can be traced to what it was shown |
 
 ### 5.2 Work packages
@@ -138,11 +138,24 @@ declines), in the place the fixed set has today (P0). The invented library
    for the 60 distinct choices the old code's section byte for byte in
    both approaches. `tests/test_eval_pool.py` tests the module and pins the
    hash; the records are not in the repository, so the replay is not a test.
-2. **The pool** (D2, D6): built per prompt from the start set and own cases,
-   filtered by split, flag, status, the profile's layers and, for an
-   external connection, the values. **Done when:** tests for each filter; a
-   case on a layer the account cannot see is never chosen; an own case with
-   a name in its reference never reaches an external connection.
+2. **The pool** (D2, D6): built per prompt from the shipped and own cases,
+   filtered by split, status, the profile's layers and, for an external
+   connection, the values (the flag joins with WP5). **Done when:** tests
+   for each filter; a case on a layer the account cannot see is never
+   chosen; an own case with a name in its reference never reaches an
+   external connection.
+   **Built (2026-11-06):** `evaluation/examples.py`. The shipped cases are
+   the three files the measurement drew from (`start-*`, `chain-cases`,
+   `layer-cases`, all in the image): the start set alone gives 24 of the
+   62. Status, the account's layers and validity are one test: each case is
+   assessed on the prompt's world (`assess_case`), so a case on a layer the
+   account cannot see is `invalid` there. A reference goes out when every
+   value is a number, a yes or no, or a key of the attribute's codes in the
+   profile (confirmed only, S2); a text, a geometry, a feature id, a box or
+   any key beside `source` and `where` keeps it local. An own case with a
+   shipped case's id is left out (the shipped one wins, as on read). About
+   80 ms per pool on the sample data. `tests/test_eval_examples.py`: the
+   measured pool and hash on the sample data, on both localities.
 3. **Profile and builder** (D3–D5): `ExampleSet` gains `eigene`; the profile
    refuses it with `P5` or `P9`; `build_prompt` takes the question's
    examples; the check's planning call is written with them, a chain answer
@@ -154,8 +167,9 @@ declines), in the place the fixed set has today (P0). The invented library
    with `eigene` never sees itself.
 5. **The case flag** (D6): `example` on own tuning cases, in the case file
    format (export and import round trip), the checkbox on the case page
-   (V2), refused on confirm cases. **Done when:** round trip unchanged; a
-   confirm case with the flag is `case_invalid`.
+   (V2) with the note that the question goes to the model as written, also
+   to an external connection (D2); refused on confirm cases. **Done when:**
+   round trip unchanged; a confirm case with the flag is `case_invalid`.
 6. **API, contract, frontend:** the preset in the run form (V4), the matrix
    and «Promptprofil übernehmen»; the examples on the admin's action page.
 7. **Confirm:** an application run on the sample data, qwen3:14b, direct
