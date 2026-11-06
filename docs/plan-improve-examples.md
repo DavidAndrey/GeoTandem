@@ -1,8 +1,8 @@
 # Plan: examples chosen per question, for the direct query and the chain
 
-> Stand: 2026-11-03 · section 6 (the measurement) done: rule 6.6 holds for
+> Stand: 2026-11-06 · section 6 (the measurement) done: rule 6.6 holds for
 > qwen3:14b with direct and check only ([examples-benchmarks.md](examples-benchmarks.md));
-> section 5 (in the app) not started · Bezug:
+> section 5 (in the app) planned 2026-11-06, not built · Bezug:
 > [plan-chain-eval.md](plan-chain-eval.md) (sections 15, 16; F16, F17),
 > [plan-e3.md](plan-e3.md) (D2, D3, D9, F-9.3),
 > [testplan-system-context.md](testplan-system-context.md) (8.5, Phase 4)
@@ -101,19 +101,69 @@ invented and always allowed.
 
 ## 5 Integration
 
-- **Prompt profile (D9):** *Beispiele* gains `eigene` (library plus own
-  cases) beside `standard` and `12`, with a count. Measured like every preset
-  in the run matrix, adopted with «Promptprofil übernehmen».
-- **Placement:** the examples go after the fixed part of the prompt (system
-  prompt, layer profile), right before the question, so the prompt cache of
-  external models keeps the long prefix (the builder already places examples,
-  P5/P9).
-- **Upkeep:** a stale or invalid case (D3) drops out of the pool by itself;
-  the pool's hash is part of the run label, so runs stay comparable. The
-  prompt hash test pins the library and the selector instead of one prompt.
-- **Per model:** the library is shared; the count is per profile, e.g. three
-  for small models, fewer or none for Haiku (Phase 4 of the chain).
-- **Recording:** each answer records which examples it was given.
+> Planned 2026-11-06, after the measurement (6.6, 6.7): rule 6.6 holds for
+> qwen3:14b with direct and check, nowhere else. D1–D3 decided by the user
+> as recommended (2026-11-06); D4–D7 follow from the measurement.
+
+What ships is what was measured: arm C, three pool cases chosen by the
+selector, after the two fixed examples kept (the first and the one that
+declines), in the place the fixed set has today (P0). The invented library
+(section 1) was not measured and is not part of this.
+
+### 5.1 Decisions
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| D1 | Where the selector lives | One module in the application (`geotandem/model/examples.py`): the conversion to a plan, the pool, the selector, the section. `evals/pool.py` keeps only the arms (A, B's draw) and imports the rest | What was measured is what ships; two copies would drift. Pinned by rebuilding arm C prompts of recorded runs (`prompt_sha256`) |
+| D2 | Privacy (section 4) | An own case goes to an **external** connection only if every value in its reference is a code of a confirmed code list or a number; otherwise it is an example for local connections only. The start set's sample cases are open data (6.2) and go to both. Every connection, local or not, gets only cases whose layers are all in the profile the prompt is written with (S3) | F-9.3: data contents never leave the house; an account must not learn of a layer it cannot see |
+| D3 | Scope | `eigene` is a preset like the others (D9 of plan E3): offered on every connection, measured in a run, adopted with «Promptprofil übernehmen». Nothing changes by default. The run matrix shows the outcome per connection | The measurement found it model-specific; an administrator decides per connection on their own figures, as for every preset |
+| D4 | Which approaches | The direct query and the check's planning call get the chosen examples (as measured, 6.5). An answer of the **chain** approach keeps its fixed examples | chain-qwen3_14b fails point 3 (`v22-eroeffnet`, examples-benchmarks.md); the check sends the same examples to both calls or its figures do not apply |
+| D5 | Presets offered | `eigene` with three examples, placement `P0`; any output mode. No count setting, no `P5`/`P9` with `eigene` (the profile refuses them) | Only measured presets (D9); three at P0 is all that was measured |
+| D6 | The pool | Start-set tuning cases with a reference, and own tuning cases marked **«als Beispiel verwenden»** (section 3, offered on tuning cases only); status `ok` (not `stale`, `invalid`; `dataset_changed` stays in); a reference the chain can write (`as_plan`), so the check's two calls get the same examples. Confirm cases never; a case is never its own example in a run | Sections 3 and 6.5; D3 of plan E3 keeps broken cases out by itself |
+| D7 | Recording | Each model action records the ids of the examples it was given; a run label carries the pool's hash | Section 5 as planned; an answer can be traced to what it was shown |
+
+### 5.2 Work packages
+
+1. **Selector into the application** (D1): move the conversion, `Example`,
+   `pool_of`, `pool_hash`, the cues and `choose`, and `section` from
+   `evals/pool.py`; the harness imports them. **Done when:** the harness's
+   arm C, rebuilt through the module, gives the `prompt_sha256` of recorded
+   `xb-*-c-*` answers; `tests/test_eval_pool.py` passes unchanged.
+2. **The pool** (D2, D6): built per prompt from the start set and own cases,
+   filtered by split, flag, status, the profile's layers and, for an
+   external connection, the values. **Done when:** tests for each filter; a
+   case on a layer the account cannot see is never chosen; an own case with
+   a name in its reference never reaches an external connection.
+3. **Profile and builder** (D3–D5): `ExampleSet` gains `eigene`; the profile
+   refuses it with `P5` or `P9`; `build_prompt` takes the question's
+   examples; the check's planning call is written with them, a chain answer
+   without. **Done when:** prompt hash tests per preset (the default still
+   byte for byte); a check's two calls carry the same pool ids.
+4. **Record and runs** (D6, D7): the example ids on the model action
+   (migration); the pool hash in the run label; leave one out in runs.
+   **Done when:** an action's view shows its examples; a tuning case run
+   with `eigene` never sees itself.
+5. **The case flag** (D6): `example` on own tuning cases, in the case file
+   format (export and import round trip), the checkbox on the case page
+   (V2), refused on confirm cases. **Done when:** round trip unchanged; a
+   confirm case with the flag is `case_invalid`.
+6. **API, contract, frontend:** the preset in the run form (V4), the matrix
+   and «Promptprofil übernehmen»; the examples on the admin's action page.
+7. **Confirm:** an application run on the sample data, qwen3:14b, direct
+   and check, `standard` against `eigene` on the confirm cases. **Done
+   when:** pass rises with an interval that overlaps the measurement's
+   (+24.5 direct, +23.3 check); written into examples-benchmarks.md.
+8. **Docs:** CONTEXT.md (*eigene Beispiele*), plan E3 D9 annotated,
+   README *Bewertung im Einsatz*, this plan's status.
+
+### 5.3 Out of scope
+
+- The invented library (section 1) and counts other than three: not
+  measured.
+- Examples per question for the chain approach (D4). chain-qwen's
+  `v22-eroeffnet` (a plan whose step text names a condition its filter
+  does not apply) is a finding for plan-chain-eval, not for this plan.
+- Reference plans for questions only the chain can answer (section 1).
 
 ## 6 First step: measure before building
 
