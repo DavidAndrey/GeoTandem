@@ -285,6 +285,12 @@ llama.cpp, OpenAI, Anthropics Kompatibilitätsschnittstelle): Adresse mit `/v1`,
 Modellname, optional ein API-Schlüssel, Parameter. Ohne Anbindung bleibt die
 klassische Bedienung (Modus A) vollständig nutzbar.
 
+Die Seite listet die Anbindungen; jede wird auf ihrer eigenen Seite bearbeitet
+(`/admin/modelle/<id>`, neu: `/admin/modelle/neu`). Oben wechselt eine Auswahl
+zu einer anderen Anbindung; ungespeicherte Änderungen werden vorher bestätigt.
+Das Formular hat fünf Gruppen: *Verbindung*, *Nutzung und Datenschutz*,
+*Antwortverhalten*, *Prompt und Prüfung*, *Kosten und Grenzen*.
+
 - **Lokal oder extern** ergibt sich aus dem Host, nicht aus einem Häkchen:
   `127.0.0.1`, `::1`, `localhost`, `host.docker.internal` und die Namen in
   `GEOTANDEM_LLM_LOCAL_HOSTS` sind lokal, alles andere extern. Eine lokale
@@ -344,7 +350,7 @@ Layer-Steckbrief des Kontos an das Modell (nur Metadaten, nie Zeileninhalte).
   zeigt den Plan vor dem Lauf und führt ihn Schritt für Schritt aus; das
   Modell sieht je Schritt nur ok/Fehler, leer/nicht leer und die Trefferzahl.
 - **Prüfung durch die Werkzeugkette.** Im Formular der Anbindung wählt der
-  Administrator *Prüfung durch die Werkzeugkette* (Vorgabe *Aus*). Dann fragt
+  Administrator unter *Gegenprüfung* *Mit der Werkzeugkette prüfen* (Vorgabe *Aus*). Dann fragt
   die Anwendung nach jeder Antwort der Direktabfrage dieselbe Frage mit der
   Werkzeugkette und vergleicht die Objekte, ohne den Anwender warten zu
   lassen. Unter der Antwort steht *Wird mit der Werkzeugkette geprüft …*,
@@ -490,8 +496,8 @@ Sie hat zwei Reiter: *Läufe* und *Prüffälle*.
   läuft der Fall und trägt *Datenstand geändert*. Das Referenzergebnis wird
   nicht gespeichert; es entsteht in jedem Lauf aus der Referenzabfrage.
 - **Ein Lauf** (*Läufe › Neuer Lauf*, eine Seite in vier Schritten):
-  1. *Messpunkte*: je eine Anbindung mit Promptprofil (Beispiele, Platzierung,
-     Ausgabe; vorbelegt mit dem der Anbindung), Stufe und wahlweise einem
+  1. *Messpunkte*: je eine Anbindung mit Promptprofil (Beispiele, Reihenfolge,
+     Antwortformat; vorbelegt mit dem der Anbindung), Stufe und wahlweise einem
      System-Prompt, der nur für diesen Lauf geändert ist (*System-Prompt
      ändern*; der Betrieb bleibt unberührt, die Beschriftung hält ihn mit
      Hash fest). Ein Messpunkt ist die *Vergleichsbasis*.
@@ -580,8 +586,8 @@ Sie hat zwei Reiter: *Läufe* und *Prüffälle*.
   Referenz und Antwort öffnen sich je im Arbeitsplatz. Bei einer unlesbaren
   Antwort steht der Rohtext unter *Technisch*.
 - **Freigeben und Promptprofil übernehmen.** Die Matrix trägt die
-  Entscheidung, freigegeben und voreingestellt wird aber auf der Seite
-  *Modellanbindungen* (*Zur Anbindung*). Dort steht je Anbindung *zuletzt
+  Entscheidung, freigegeben und voreingestellt wird aber auf der Seite der
+  Anbindung (*Zur Anbindung*). Dort und in der Liste steht *zuletzt
   bewertet* mit einem Verweis auf den Lauf. *Promptprofil übernehmen*
   erscheint nur bei einem fertigen, vollständigen Lauf. Es setzt das Profil
   eines Messpunkts auf seiner Anbindung in Betrieb, nach einem Dialog mit der
