@@ -226,7 +226,7 @@ test("a point starts on the connection's own prompt profile; another one is sent
   })
   const u = user()
   renderAt('/admin/bewertung/lauf/neu', <App />)
-  const placement = await screen.findByRole('combobox', { name: 'Platzierung von Messpunkt 1' })
+  const placement = await screen.findByRole('combobox', { name: 'Reihenfolge von Messpunkt 1' })
   // The connection's own profile is shown and sent as null ("as in operation").
   expect(placement).toHaveValue('P9')
   await waitFor(() => expect(estimates(calls).at(-1)?.points[0].prompt_profile).toBeNull())
@@ -256,7 +256,7 @@ test('a point with Eigene examples is measured at P0, named Eigene', async () =>
       output: 'constrained',
     }),
   )
-  const placement = screen.getByRole('combobox', { name: 'Platzierung von Messpunkt 1' })
+  const placement = screen.getByRole('combobox', { name: 'Reihenfolge von Messpunkt 1' })
   expect(
     within(placement)
       .getAllByRole('option')

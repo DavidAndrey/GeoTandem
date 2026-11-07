@@ -38,14 +38,24 @@ export const examplesLabel = (e: ExampleSet) =>
 /** "Eigene": the examples in a column head or a short line. */
 export const examplesShortLabel = (e: ExampleSet) => (e === 'eigene' ? t`Eigene` : examplesLabel(e))
 
+/** "Reihenfolge im Prompt": in words, the measured code in brackets (plan-connection-detail 3). */
 export const placementLabel = (p: Placement) =>
   ({
-    P0: t`P0 (wie bisher)`,
-    P5: t`P5 (Beispiele vor dem Steckbrief)`,
-    P9: t`P9 (Hinweis „erste Frage" als eigene Systemnachricht)`,
+    P0: t`Standard (P0)`,
+    P5: t`Beispiele vor dem Steckbrief (P5)`,
+    P9: t`Hinweis „erste Frage" als eigene Systemnachricht (P9)`,
   })[p]
 
-export const outputLabel = (o: OutputMode) => ({ constrained: t`erzwungen`, text: t`nur Text` })[o]
+/** What the chosen order does, in one sentence under the select. */
+export const placementHint = (p: Placement) =>
+  ({
+    P0: t`Wie bisher: Steckbrief der Layer und Antwortformat zuerst, die Beispiele am Schluss.`,
+    P5: t`Die Beispiele kommen vor dem Steckbrief der Layer, direkt nach den Anweisungen der Stufe.`,
+    P9: t`Wie Standard, aber der Hinweis „erste Frage des Gesprächs" steht als eigene Systemnachricht direkt vor der Frage.`,
+  })[p]
+
+export const outputLabel = (o: OutputMode) =>
+  ({ constrained: t`Schema erzwungen`, text: t`Schema nur im Prompt` })[o]
 
 export const sameProfile = (a: PromptProfile, b: PromptProfile) =>
   a.examples === b.examples && a.placement === b.placement && a.output === b.output

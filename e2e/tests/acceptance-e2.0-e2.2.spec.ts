@@ -59,13 +59,16 @@ test(
     const name = `Abnahme ${model}`
     try {
       await page.goto('/admin/modelle')
-      await page.getByRole('button', { name: 'Anbindung', exact: true }).click()
+      await page.getByRole('link', { name: 'Anbindung', exact: true }).click()
       const form = page.getByRole('form', { name: 'Neue Anbindung' })
       await form.getByLabel('Name').fill(name)
       await form.getByLabel('Adresse').fill(url!)
       await form.getByLabel('Modell').fill(model!)
       await form.getByLabel('Für Anwender freigegeben').check()
       await form.getByRole('button', { name: 'Speichern' }).click()
+      // Saved, the new connection is on its own page (plan-connection-detail, D4).
+      await expect(page.getByText('Gespeichert', { exact: true })).toBeVisible()
+      await page.getByRole('link', { name: 'Alle Anbindungen' }).click()
 
       const row = page.getByRole('row', { name: new RegExp(name) })
       await expect(row.getByText('lokal')).toBeVisible()

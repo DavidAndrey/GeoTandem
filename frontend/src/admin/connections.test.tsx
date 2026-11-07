@@ -110,7 +110,7 @@ test('a new connection is created; an empty key and automatic defaults are not s
   })
   renderAt('/admin/modelle', <App />)
 
-  await userEvent.click(await screen.findByRole('button', { name: 'Anbindung' }))
+  await userEvent.click(await screen.findByRole('link', { name: 'Anbindung' }))
   const form = screen.getByRole('form', { name: 'Neue Anbindung' })
   await userEvent.type(within(form).getByLabelText('Name'), 'Ollama')
   await userEvent.type(within(form).getByLabelText('Modell'), 'qwen3:8b')
@@ -161,7 +161,7 @@ test('the request limit: a switch, and a number enabled and required only while 
     [`POST ${URL}`]: connection(),
   })
   renderAt('/admin/modelle', <App />)
-  await userEvent.click(await screen.findByRole('button', { name: 'Anbindung' }))
+  await userEvent.click(await screen.findByRole('link', { name: 'Anbindung' }))
   const form = screen.getByRole('form', { name: 'Neue Anbindung' })
   await userEvent.type(within(form).getByLabelText('Name'), 'Ollama')
   await userEvent.type(within(form).getByLabelText('Modell'), 'qwen3:8b')
@@ -218,11 +218,11 @@ test('a new connection leaves out today’s prompt and an empty price', async ()
     [`POST ${URL}`]: connection(),
   })
   renderAt('/admin/modelle', <App />)
-  await userEvent.click(await screen.findByRole('button', { name: 'Anbindung' }))
+  await userEvent.click(await screen.findByRole('link', { name: 'Anbindung' }))
   const form = screen.getByRole('form', { name: 'Neue Anbindung' })
-  expect(within(form).getByLabelText('Beispiele')).toHaveDisplayValue('Standard')
-  expect(within(form).getByLabelText('Platzierung')).toHaveDisplayValue('P0 (wie bisher)')
-  expect(within(form).getByLabelText('Ausgabeformat')).toHaveDisplayValue('erzwungen')
+  expect(within(form).getByLabelText('Beispiele im Prompt')).toHaveDisplayValue('Standard')
+  expect(within(form).getByLabelText('Reihenfolge im Prompt')).toHaveDisplayValue('Standard (P0)')
+  expect(within(form).getByLabelText('Antwortformat')).toHaveDisplayValue('Schema erzwungen')
   await userEvent.type(within(form).getByLabelText('Name'), 'Ollama')
   await userEvent.type(within(form).getByLabelText('Modell'), 'qwen3:8b')
   await userEvent.click(within(form).getByRole('button', { name: 'Speichern' }))
@@ -246,13 +246,13 @@ test('a chosen profile and a price are sent with a new connection', async () => 
     [`POST ${URL}`]: connection(),
   })
   renderAt('/admin/modelle', <App />)
-  await userEvent.click(await screen.findByRole('button', { name: 'Anbindung' }))
+  await userEvent.click(await screen.findByRole('link', { name: 'Anbindung' }))
   const form = screen.getByRole('form', { name: 'Neue Anbindung' })
   await userEvent.type(within(form).getByLabelText('Name'), 'Luna')
   await userEvent.type(within(form).getByLabelText('Modell'), 'gpt-6-luna')
   await userEvent.selectOptions(
-    within(form).getByLabelText('Platzierung'),
-    'P5 (Beispiele vor dem Steckbrief)',
+    within(form).getByLabelText('Reihenfolge im Prompt'),
+    'Beispiele vor dem Steckbrief (P5)',
   )
   await userEvent.type(within(form).getByLabelText('Eingabe je Mio. Tokens'), '0.5')
   await userEvent.type(within(form).getByLabelText('Ausgabe je Mio. Tokens'), '2')
@@ -308,19 +308,22 @@ test('the three selects and the prices send only what changed', async () => {
   await userEvent.click(screen.getByRole('menuitem', { name: 'Bearbeiten' }))
   const form = screen.getByRole('form', { name: 'Anbindung bearbeiten' })
   // Only the measured presets are offered (D9).
-  const placement = within(form).getByLabelText('Platzierung')
+  const placement = within(form).getByLabelText('Reihenfolge im Prompt')
   expect(
     within(placement)
       .getAllByRole('option')
       .map((o) => o.textContent),
   ).toEqual([
-    'P0 (wie bisher)',
-    'P5 (Beispiele vor dem Steckbrief)',
-    'P9 (Hinweis „erste Frage" als eigene Systemnachricht)',
+    'Standard (P0)',
+    'Beispiele vor dem Steckbrief (P5)',
+    'Hinweis „erste Frage" als eigene Systemnachricht (P9)',
   ])
-  await userEvent.selectOptions(within(form).getByLabelText('Beispiele'), '12 Beispiele')
-  await userEvent.selectOptions(placement, 'P9 (Hinweis „erste Frage" als eigene Systemnachricht)')
-  await userEvent.selectOptions(within(form).getByLabelText('Ausgabeformat'), 'nur Text')
+  await userEvent.selectOptions(within(form).getByLabelText('Beispiele im Prompt'), '12 Beispiele')
+  await userEvent.selectOptions(placement, 'Hinweis „erste Frage" als eigene Systemnachricht (P9)')
+  await userEvent.selectOptions(
+    within(form).getByLabelText('Antwortformat'),
+    'Schema nur im Prompt',
+  )
   await userEvent.type(within(form).getByLabelText('Eingabe je Mio. Tokens'), '0.8')
   await userEvent.type(within(form).getByLabelText('Ausgabe je Mio. Tokens'), '4')
   await userEvent.type(within(form).getByLabelText('Währung'), 'usd')
@@ -345,10 +348,10 @@ test('Eigene examples are offered at P0 only (plan-improve-examples 5, D5)', asy
   await openMenu('Cloud')
   await userEvent.click(screen.getByRole('menuitem', { name: 'Bearbeiten' }))
   const form = screen.getByRole('form', { name: 'Anbindung bearbeiten' })
-  const placement = within(form).getByLabelText('Platzierung')
-  await userEvent.selectOptions(placement, 'P5 (Beispiele vor dem Steckbrief)')
+  const placement = within(form).getByLabelText('Reihenfolge im Prompt')
+  await userEvent.selectOptions(placement, 'Beispiele vor dem Steckbrief (P5)')
   await userEvent.selectOptions(
-    within(form).getByLabelText('Beispiele'),
+    within(form).getByLabelText('Beispiele im Prompt'),
     'Eigene (geprüfte Fälle je Frage)',
   )
   // The placement moves to P0, the only one measured with them.
@@ -519,19 +522,6 @@ test('"zuletzt bewertet": the newest run that measured a connection, with a link
   expect(asked).toHaveLength(2)
 })
 
-test('"Zur Anbindung" of a run: the connection named in the address is focused and marked', async () => {
-  fakeApi({
-    ...signedIn(),
-    [`GET ${URL}`]: [connection(), cloud],
-    'GET /api/admin/evaluation/runs': { items: [], total: 0 },
-  })
-  renderAt('/admin/modelle#anbindung-2', <App />)
-  const row = (await screen.findByText('Cloud')).closest('tr')
-  await vi.waitFor(() => expect(row).toHaveFocus())
-  expect(row).toHaveAttribute('aria-current', 'location')
-  expect(screen.getByText('Ollama').closest('tr')).not.toHaveAttribute('aria-current')
-})
-
 test('the chain check is off by default and sent alone when switched on (plan-check-mode)', async () => {
   const calls = fakeApi({
     ...signedIn(),
@@ -542,11 +532,122 @@ test('the chain check is off by default and sent alone when switched on (plan-ch
   await openMenu('Cloud')
   await userEvent.click(screen.getByRole('menuitem', { name: 'Bearbeiten' }))
   const form = screen.getByRole('form', { name: 'Anbindung bearbeiten' })
-  const check = within(form).getByLabelText('Prüfung durch die Werkzeugkette')
+  const check = within(form).getByLabelText('Gegenprüfung')
   expect(check).toHaveDisplayValue('Aus')
   await userEvent.selectOptions(check, 'Mit der Werkzeugkette prüfen')
   await userEvent.click(within(form).getByRole('button', { name: 'Speichern' }))
 
   await vi.waitFor(() => expect(bodiesOf(calls, `PATCH ${URL}/2`)).toHaveLength(1))
   expect(bodiesOf(calls, `PATCH ${URL}/2`)[0]).toEqual({ check_mode: 'chain' })
+})
+
+// plan-connection-detail: each connection on its own page.
+test('the name in the list opens the connection on its own page', async () => {
+  fakeApi({ ...signedIn(), [`GET ${URL}`]: [connection(), cloud] })
+  renderAt('/admin/modelle', <App />)
+  await userEvent.click(await screen.findByRole('link', { name: 'Cloud' }))
+  expect(await screen.findByRole('heading', { name: 'Cloud' })).toBeInTheDocument()
+  expect(screen.getByRole('form', { name: 'Anbindung bearbeiten' })).toBeInTheDocument()
+  expect(screen.queryByRole('table')).not.toBeInTheDocument()
+  expect(screen.getByText('extern · api.openai.com')).toBeInTheDocument()
+})
+
+test('the dropdown switches to another connection or to a new one', async () => {
+  fakeApi({ ...signedIn(), [`GET ${URL}`]: [connection(), cloud] })
+  renderAt('/admin/modelle/2', <App />)
+  const choose = await screen.findByLabelText('Anbindung wählen')
+  expect(choose).toHaveDisplayValue('Cloud')
+  expect(
+    within(choose)
+      .getAllByRole('option')
+      .map((o) => o.textContent),
+  ).toEqual(['Ollama', 'Cloud', 'Neue Anbindung …'])
+  await userEvent.selectOptions(choose, 'Ollama')
+  expect(await screen.findByRole('heading', { name: 'Ollama' })).toBeInTheDocument()
+  expect(screen.getByLabelText('Modell')).toHaveValue('qwen3:8b')
+  await userEvent.selectOptions(screen.getByLabelText('Anbindung wählen'), 'Neue Anbindung …')
+  expect(await screen.findByRole('form', { name: 'Neue Anbindung' })).toBeInTheDocument()
+})
+
+test('unsaved changes are confirmed before switching; keeping them stays', async () => {
+  fakeApi({ ...signedIn(), [`GET ${URL}`]: [connection(), cloud] })
+  renderAt('/admin/modelle/2', <App />)
+  const model = await screen.findByLabelText('Modell')
+  await userEvent.type(model, '-x')
+
+  await userEvent.selectOptions(screen.getByLabelText('Anbindung wählen'), 'Ollama')
+  const ask = await screen.findByRole('alertdialog', {
+    name: 'Ungespeicherte Änderungen an der Anbindung verwerfen?',
+  })
+  await userEvent.click(within(ask).getByRole('button', { name: 'Abbrechen' }))
+  expect(screen.getByRole('heading', { name: 'Cloud' })).toBeInTheDocument()
+  expect(screen.getByLabelText('Anbindung wählen')).toHaveDisplayValue('Cloud')
+  expect(screen.getByLabelText('Modell')).toHaveValue('gpt-5-mini-x')
+
+  // The back link asks too; discarding goes.
+  await userEvent.click(screen.getByRole('link', { name: 'Alle Anbindungen' }))
+  await userEvent.click(
+    within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Verwerfen' }),
+  )
+  expect(await screen.findByRole('table')).toBeInTheDocument()
+})
+
+test('without changes, Abbrechen goes back to the list at once', async () => {
+  fakeApi({ ...signedIn(), [`GET ${URL}`]: [cloud] })
+  renderAt('/admin/modelle/2', <App />)
+  const form = await screen.findByRole('form', { name: 'Anbindung bearbeiten' })
+  await userEvent.click(within(form).getByRole('button', { name: 'Abbrechen' }))
+  expect(await screen.findByRole('table')).toBeInTheDocument()
+  expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+})
+
+test('a saved edit stays on the page and says so', async () => {
+  fakeApi({
+    ...signedIn(),
+    [`GET ${URL}`]: [cloud],
+    [`PATCH ${URL}/2`]: { ...cloud, model: 'gpt-5' },
+  })
+  renderAt('/admin/modelle/2', <App />)
+  const model = await screen.findByLabelText('Modell')
+  await userEvent.clear(model)
+  await userEvent.type(model, 'gpt-5')
+  await userEvent.click(screen.getByRole('button', { name: 'Speichern' }))
+  expect(await screen.findByRole('status')).toHaveTextContent('Gespeichert')
+  expect(screen.getByRole('form', { name: 'Anbindung bearbeiten' })).toBeInTheDocument()
+  // Saved: leaving does not ask.
+  await userEvent.click(screen.getByRole('link', { name: 'Alle Anbindungen' }))
+  expect(await screen.findByRole('table')).toBeInTheDocument()
+})
+
+test('a new connection, once saved, goes to its own page', async () => {
+  let stored: ConnectionInfo[] = []
+  fakeApi({
+    ...signedIn(),
+    [`GET ${URL}`]: () => stored,
+    [`POST ${URL}`]: () => {
+      stored = [connection({ id: 7 })]
+      return stored[0]
+    },
+  })
+  renderAt('/admin/modelle/neu', <App />)
+  const form = await screen.findByRole('form', { name: 'Neue Anbindung' })
+  await userEvent.type(within(form).getByLabelText('Name'), 'Ollama')
+  await userEvent.type(within(form).getByLabelText('Modell'), 'qwen3:8b')
+  await userEvent.click(within(form).getByRole('button', { name: 'Speichern' }))
+
+  expect(await screen.findByRole('form', { name: 'Anbindung bearbeiten' })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Ollama' })).toBeInTheDocument()
+  expect(screen.getByRole('status')).toHaveTextContent('Gespeichert')
+  expect(screen.getByLabelText('Darf Dateninhalte erhalten (sonst nur Metadaten)')).toBeChecked()
+})
+
+test('an unknown connection says so and links back to the list', async () => {
+  fakeApi({ ...signedIn(), [`GET ${URL}`]: [cloud] })
+  renderAt('/admin/modelle/99', <App />)
+  expect(await screen.findByText(/Anbindung nicht gefunden/)).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Zur Liste der Anbindungen' })).toHaveAttribute(
+    'href',
+    '/admin/modelle',
+  )
+  expect(screen.queryByRole('form')).not.toBeInTheDocument()
 })

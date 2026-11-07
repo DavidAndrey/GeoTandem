@@ -17,7 +17,7 @@ import {
 /** "P9": the short name; the connection form explains it in full (``placementLabel``). */
 export const placementText = (value: Placement) => ({ P0: t`P0`, P5: t`P5`, P9: t`P9` })[value]
 
-/** "Standard · P0 · erzwungen": a profile in one short line, the placement by its name. */
+/** "Standard · P0 · Schema erzwungen": a profile in one short line, the placement by its name. */
 export const profileShortText = (p: PromptProfile) =>
   [examplesShortLabel(p.examples), placementText(p.placement), outputLabel(p.output)].join(' · ')
 

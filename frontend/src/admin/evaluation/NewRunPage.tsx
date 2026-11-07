@@ -277,7 +277,7 @@ function PointRow({
           </select>
           <select
             className="input"
-            aria-label={t`Platzierung von Messpunkt ${n}`}
+            aria-label={t`Reihenfolge von Messpunkt ${n}`}
             value={profile.placement}
             onChange={(e) =>
               setProfile({ placement: e.target.value as PromptProfile['placement'] })
@@ -291,7 +291,7 @@ function PointRow({
           </select>
           <select
             className="input"
-            aria-label={t`Ausgabe von Messpunkt ${n}`}
+            aria-label={t`Antwortformat von Messpunkt ${n}`}
             value={profile.output}
             onChange={(e) => setProfile({ output: e.target.value as PromptProfile['output'] })}
           >
@@ -654,7 +654,7 @@ function RunFormView({
                 <Trans>Anbindung</Trans>
               </th>
               <th scope="col">
-                <Trans>Promptprofil · Beispiele · Platzierung · Ausgabe</Trans>
+                <Trans>Promptprofil · Beispiele · Reihenfolge · Antwortformat</Trans>
               </th>
               <th scope="col">
                 <Trans>Stufe</Trans>

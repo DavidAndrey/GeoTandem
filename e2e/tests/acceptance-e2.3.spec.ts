@@ -122,13 +122,16 @@ async function choose(context: BrowserContext, connection: number) {
 /** Creates a connection in the admin page, released for users. */
 async function createInUi(page: Page, name: string, url: string) {
   await page.goto('/admin/modelle')
-  await page.getByRole('button', { name: 'Anbindung', exact: true }).click()
+  await page.getByRole('link', { name: 'Anbindung', exact: true }).click()
   const form = page.getByRole('form', { name: 'Neue Anbindung' })
   await form.getByLabel('Name').fill(name)
   await form.getByLabel('Adresse').fill(url)
   await form.getByLabel('Modell').fill(MODEL)
   await form.getByLabel('Für Anwender freigegeben').check()
   await form.getByRole('button', { name: 'Speichern' }).click()
+  // Saved, the new connection is on its own page (plan-connection-detail, D4).
+  await expect(page.getByText('Gespeichert', { exact: true })).toBeVisible()
+  await page.getByRole('link', { name: 'Alle Anbindungen' }).click()
   return page.getByRole('row', { name: new RegExp(name) })
 }
 

@@ -181,9 +181,10 @@ Bezug und die aktuelle Analyse. Im Arbeitsplatz flüchtig: weder Teil der Sitzun
 noch nach dem Neuladen wieder da; die dauerhafte Spur ist das Protokoll.
 
 **Promptprofil** (`PromptProfile`, plan E3 D9) — Wie die Anwendung den Prompt
-für eine Anbindung schreibt: Beispiele (Standard · 12 · Eigene), Platzierung
-(P0 · P5 · P9) und Ausgabe (erzwungen · nur Text). Gemessene Vorgaben, kein
-freier Text; die Vorgabe ist der heutige Prompt. *Eigene* gibt es nur mit P0.
+für eine Anbindung schreibt: Beispiele (Standard · 12 · Eigene), Reihenfolge
+im Prompt (Platzierung: P0 · P5 · P9) und Antwortformat (Schema erzwungen ·
+Schema nur im Prompt). Gemessene Vorgaben, kein freier Text; die Vorgabe ist
+der heutige Prompt. *Eigene* gibt es nur mit P0.
 
 **Eigene Beispiele** (`eigene`, plan-improve-examples 5) — Beispiele des
 Promptprofils, die die Anwendung zu jeder Frage wählt: drei geprüfte
@@ -199,7 +200,7 @@ gezeigt wurden. Die Entscheidungsregel der Messung hält nur für qwen3:14b
 (Direktabfrage und Prüfung).
 
 **Prüfung durch die Kette** (`check_mode`, plan-check-mode) — Eine Einstellung
-der Anbindung: Jede Antwort der Direktabfrage mit einer Abfrage wird danach von
+der Anbindung, im Formular *Gegenprüfung*: Jede Antwort der Direktabfrage mit einer Abfrage wird danach von
 der Anwendung selbst noch einmal mit der Werkzeugkette gefragt, und das Ergebnis
 des Plans (ohne Schritte auszuführen) mit dem der Antwort nach Objekt-IDs
 verglichen. Gleich: *geprüft*; verschieden: *unsicher*, mit dem Vergleich.

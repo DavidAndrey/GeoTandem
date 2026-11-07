@@ -9,21 +9,14 @@
 import { Trans } from '@lingui/react/macro'
 import { t } from '@lingui/core/macro'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-  useEffect,
-  useRef,
-  useState,
-  type Dispatch,
-  type FormEvent,
-  type RefObject,
-  type SetStateAction,
-} from 'react'
+import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { useShallow } from 'zustand/react/shallow'
 import { canonicalQuery } from '../../analysis/query'
 import { useAnalysis } from '../../analysis/store'
 import { api, type CaseDraft, type CaseView, type EvalCase } from '../../api/client'
 import { useLayers } from '../../api/queries'
+import { useAskBeforeLeaving } from '../../components/askBeforeLeaving'
 import { ConfirmDialog, ErrorNotice, Loading, Modal } from '../../components/ui'
 import { errorText } from '../../i18n/errors'
 import { formatDateTime } from '../format'
@@ -123,40 +116,6 @@ function draftView(draft: CaseDraft): CaseView {
 }
 
 const LIST = '/admin/bewertung/faelle'
-
-/**
- * While ``dirty``: a click on any link of this application asks first
- * (``ask`` holds where to go), and closing or reloading the tab asks the browser's question.
- * The router is a ``BrowserRouter``, which has no ``useBlocker``; links of the
- * page and of the navigation are caught in the capture phase, before the
- * router follows them. The browser's back button is not caught.
- */
-function useAskBeforeLeaving(dirty: boolean, ask: Dispatch<SetStateAction<(() => void) | null>>) {
-  const navigate = useNavigate()
-  useEffect(() => {
-    if (!dirty) return
-    const click = (event: MouseEvent) => {
-      if (event.defaultPrevented || event.button !== 0) return
-      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
-      const target = event.target instanceof Element ? event.target : null
-      const anchor = target?.closest('a[href]')
-      if (!(anchor instanceof HTMLAnchorElement) || anchor.target === '_blank') return
-      const url = new URL(anchor.href, window.location.href)
-      if (url.origin !== window.location.origin) return
-      event.preventDefault()
-      event.stopPropagation()
-      const go = () => navigate(url.pathname + url.search + url.hash)
-      ask(() => go)
-    }
-    const unload = (event: BeforeUnloadEvent) => event.preventDefault()
-    document.addEventListener('click', click, true)
-    window.addEventListener('beforeunload', unload)
-    return () => {
-      document.removeEventListener('click', click, true)
-      window.removeEventListener('beforeunload', unload)
-    }
-  }, [dirty, ask, navigate])
-}
 
 /** "Bewertung › Prüffälle ›"; ``guard`` asks before leaving unsaved edits. */
 function Breadcrumb({ guard }: { guard?: (go: () => void) => void }) {

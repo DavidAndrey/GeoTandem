@@ -136,7 +136,9 @@ test("V6.3: the run's label with the state of the profile and every point", asyn
   expect(screen.getByText('#b20a')).toBeInTheDocument()
   expect(screen.getByText(/Seeds 1–10/)).toBeInTheDocument()
   const p9 = screen.getAllByText('gpt-6-luna P9').find((e) => e.tagName === 'DT')
-  expect(p9?.nextElementSibling).toHaveTextContent(/Temperatur 0.3 .* Standard · P9 · erzwungen/)
+  expect(p9?.nextElementSibling).toHaveTextContent(
+    /Temperatur 0.3 .* Standard · P9 · Schema erzwungen/,
+  )
   // V8.1 in the label: the completeness table of the run's profile.
   await user.click(screen.getByText('Vollständigkeit im Einzelnen'))
   expect(screen.getByText('Vollständigkeit beim Lauf')).toBeInTheDocument()
@@ -154,7 +156,7 @@ test('V6.4: "Promptprofil übernehmen" lists the change and the drawback, then s
   await user.click(screen.getByRole('menuitem', { name: 'gpt-6-luna P9' }))
   const dialog = await screen.findByRole('dialog', { name: 'Promptprofil übernehmen?' })
   expect(within(dialog).getByRole('list', { name: 'Änderungen' })).toHaveTextContent(
-    '~ Platzierung: P0 → P9',
+    '~ Reihenfolge: P0 → P9',
   )
   expect(dialog).toHaveTextContent('Beispiele: Standard (unverändert)')
   expect(dialog).toHaveTextContent(
@@ -171,14 +173,14 @@ test('V6.4: "Promptprofil übernehmen" lists the change and the drawback, then s
   })
 })
 
-test('V6.2: "Zur Anbindung" leads to the connections page', async () => {
+test('V6.2: "Zur Anbindung" leads to the page of the connection', async () => {
   runBackend()
   const user = userEvent.setup()
   renderAt('/admin/bewertung/lauf/13', <App />)
   await user.click(await screen.findByRole('button', { name: 'Zur Anbindung ▾' }))
   expect(screen.getByRole('menuitem', { name: 'Claude Haiku 5.5' })).toHaveAttribute(
     'href',
-    '/admin/modelle#anbindung-2',
+    '/admin/modelle/2',
   )
   // Three connections, the two Luna points under one.
   expect(screen.getAllByRole('menuitem')).toHaveLength(3)
