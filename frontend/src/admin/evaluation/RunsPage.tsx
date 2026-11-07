@@ -1,7 +1,9 @@
 // Bewertung › Läufe (design V5): the runs with what they measured, their
 // status in the language of E2, the reference column's rate and the cost; two
-// complete runs over the same cases can be put side by side (D7). Empty: the
-// smallest sensible first run (V5.2).
+// complete runs over the same cases can be put side by side (D7): once one is
+// marked, the runs it cannot be compared with are locked, with the reason.
+// Each row names its connections and opens its run on a click anywhere in
+// it. Empty: the smallest sensible first run (V5.2).
 import { Trans } from '@lingui/react/macro'
 import { t } from '@lingui/core/macro'
 import { useId, useState } from 'react'
@@ -14,6 +16,8 @@ import { StatusLabel } from '../../model/status'
 import { useRun, useRuns } from './runs'
 import {
   comparable,
+  connectionNames,
+  markBlocked,
   NEW_RUN,
   runPath,
   moniesText,
@@ -22,6 +26,7 @@ import {
   runStatusKey,
   scopeShort,
 } from './runWords'
+import { rowOpener } from './rowOpener'
 import { dataStateText } from './words'
 
 /** A run's status as a label; a running one with its progress in percent. */
@@ -107,12 +112,14 @@ export function RunsPage() {
     .map((id) => items.find((r) => r.id === id))
     .filter((r): r is RunSummary => r !== undefined)
   const count = chosen.length
-  const reason =
-    chosen.length === 2
-      ? comparable(chosen[0], chosen[1])
+  const ready = chosen.length === 2 && comparable(chosen[0], chosen[1]) === null
+  const hint = ready
+    ? t`Bereit zum Gegenüberstellen.`
+    : chosen.length === 1
+      ? t`Einen zweiten fertigen Lauf mit gleichen Fällen markieren; die übrigen sind gesperrt.`
       : t`Zwei fertige Läufe mit gleichen Fällen markieren.`
   const toggle = (id: number) =>
-    setMarked((m) => (m.includes(id) ? m.filter((x) => x !== id) : [...m.slice(-1), id]))
+    setMarked((m) => (m.includes(id) ? m.filter((x) => x !== id) : [...m, id]))
   return (
     <div className="max-w-6xl">
       {runs.isPending && <Loading />}
@@ -125,21 +132,16 @@ export function RunsPage() {
             <button
               type="button"
               className="btn"
-              disabled={chosen.length !== 2 || reason !== null}
+              disabled={!ready}
               aria-describedby={why}
-              onClick={() =>
-                chosen.length === 2 && navigate(`${runPath(chosen[0].id)}/gegen/${chosen[1].id}`)
-              }
+              onClick={() => ready && navigate(`${runPath(chosen[0].id)}/gegen/${chosen[1].id}`)}
             >
               <Trans>Gegenüberstellen</Trans>
             </button>
-            <span className="text-muted ml-auto text-xs">
-              <Trans>
-                Vergleichsbasis = Quote Abstimmung des Basis-Messpunkts (ohne Abstimmungsfälle:
-                Quote Bestätigung)
-              </Trans>
+            <span id={why} className="text-muted text-xs" aria-live="polite">
+              {hint}
             </span>
-            <Link to={NEW_RUN} className="btn btn-primary">
+            <Link to={NEW_RUN} className="btn btn-primary ml-auto">
               <Trans>Neuer Lauf</Trans>
             </Link>
           </div>
@@ -158,13 +160,17 @@ export function RunsPage() {
                   <Trans>Wann · wer</Trans>
                 </th>
                 <th scope="col">
-                  <Trans>Messpunkte · Fälle · Datenstand · Umfang</Trans>
+                  <Trans>Anbindungen</Trans>
+                  <span className="text-muted block text-xs font-normal">
+                    <Trans>Messpunkte · Fälle · Datenstand · Umfang</Trans>
+                  </span>
                 </th>
                 <th scope="col">
                   <Trans>Status</Trans>
                 </th>
                 <th scope="col">
                   <Trans>Vergleichsbasis</Trans>
+                  <sup aria-hidden="true">*</sup>
                 </th>
                 <th scope="col">
                   <Trans>Kosten</Trans>
@@ -174,13 +180,17 @@ export function RunsPage() {
             <tbody>
               {items.map((r) => {
                 const id = r.id
+                const blocked = markBlocked(r, chosen)
+                const names = connectionNames(r.connection_ids, connections)
                 return (
-                  <tr key={r.id}>
+                  <tr key={r.id} {...rowOpener(() => navigate(runPath(r.id)))}>
                     <td>
                       <input
                         type="checkbox"
                         aria-label={t`Lauf #${id} markieren`}
                         checked={marked.includes(r.id)}
+                        disabled={blocked !== null}
+                        title={blocked ?? undefined}
                         onChange={() => toggle(r.id)}
                       />
                     </td>
@@ -192,7 +202,10 @@ export function RunsPage() {
                     <td className="tabular-nums">
                       {formatDateTime(r.started_at)} · {r.started_by}
                     </td>
-                    <td>{measured(r)}</td>
+                    <td>
+                      <span title={names.all}>{names.short}</span>
+                      <span className="text-muted block text-xs">{measured(r)}</span>
+                    </td>
                     <td>
                       {r.status === 'running' ? (
                         <RunningLabel id={r.id} />
@@ -212,8 +225,11 @@ export function RunsPage() {
               })}
             </tbody>
           </table>
-          <p id={why} className="text-muted mt-2 text-xs">
-            {reason ?? t`Bereit zum Gegenüberstellen.`}
+          <p className="text-muted mt-2 text-xs">
+            <Trans>
+              * Vergleichsbasis = Quote Abstimmung des Basis-Messpunkts (ohne Abstimmungsfälle:
+              Quote Bestätigung)
+            </Trans>
           </p>
         </>
       )}

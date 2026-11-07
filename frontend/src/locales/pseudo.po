@@ -577,6 +577,10 @@ msgstr ""
 msgid "{shown} %"
 msgstr ""
 
+#: src/admin/evaluation/runWords.ts
+msgid "{shown} + {more}"
+msgstr ""
+
 #: src/model/compare/words.ts
 msgid "{shown} und {count} weitere"
 msgstr ""
@@ -587,6 +591,10 @@ msgstr ""
 
 #: src/i18n/phrases.ts
 msgid "{shown} von {all}"
+msgstr ""
+
+#: src/admin/evaluation/CasesPage.tsx
+msgid "{shownCount} von {allCount} Prüffällen"
 msgstr ""
 
 #: src/admin/ProfilePage.tsx
@@ -677,8 +685,16 @@ msgstr ""
 msgid "{words} Nach mehreren solchen Antworten in Folge von {named} wurde der ganze Lauf angehalten; keine weitere Frage ging hinaus."
 msgstr ""
 
+#: src/admin/evaluation/RunsPage.tsx
+msgid "* Vergleichsbasis = Quote Abstimmung des Basis-Messpunkts (ohne Abstimmungsfälle: Quote Bestätigung)"
+msgstr ""
+
 #: src/admin/evaluation/runWords.ts
 msgid "#{first} und #{second} haben andere Prüffälle; Gegenüberstellen nur bei gleichen Fällen."
+msgstr ""
+
+#: src/admin/evaluation/runWords.ts
+msgid "#{id} hat andere Prüffälle als #{first}; Gegenüberstellen nur bei gleichen Fällen."
 msgstr ""
 
 #: src/admin/evaluation/runWords.ts
@@ -1210,6 +1226,10 @@ msgstr ""
 msgid "Anbindung {connectionId}"
 msgstr ""
 
+#: src/admin/evaluation/runWords.ts
+msgid "Anbindung {id}"
+msgstr ""
+
 #: src/admin/ConnectionForm.tsx
 msgid "Anbindung bearbeiten"
 msgstr ""
@@ -1228,6 +1248,10 @@ msgstr ""
 
 #: src/model/panel/Problem.tsx
 msgid "Anbindung wechseln"
+msgstr ""
+
+#: src/admin/evaluation/RunsPage.tsx
+msgid "Anbindungen"
 msgstr ""
 
 #: src/admin/evaluation/runWords.ts
@@ -3095,6 +3119,10 @@ msgstr ""
 msgid "Ein Lauf stellt dieselben Fragen an eine oder mehrere Anbindungen und zählt, wie oft die Antwort stimmt. Für einen ersten Eindruck: Startbestand, eine Anbindung, Schnelltest (≈ 5 min lokal)."
 msgstr ""
 
+#: src/admin/evaluation/CasesPage.tsx
+msgid "Ein Lauf wählt Fälle nur nach Herkunft (Start oder eigene), Datenstand, Teil und Stichwort."
+msgstr ""
+
 #: src/admin/evaluation/words.ts
 msgid "Ein Layer der Referenz fehlt oder ist für Sie nicht sichtbar"
 msgstr ""
@@ -3198,6 +3226,10 @@ msgstr ""
 
 #: src/i18n/errors.ts
 msgid "Einen Prüffall „{id}\" gibt es schon."
+msgstr ""
+
+#: src/admin/evaluation/RunsPage.tsx
+msgid "Einen zweiten fertigen Lauf mit gleichen Fällen markieren; die übrigen sind gesperrt."
 msgstr ""
 
 #: src/model/panel/PromptPanel.tsx
@@ -3721,6 +3753,10 @@ msgstr ""
 msgid "Filter Konto {account} entfernen"
 msgstr ""
 
+#: src/admin/evaluation/CasesPage.tsx
+msgid "Filter zurücksetzen"
+msgstr ""
+
 #: src/map/Measurement.tsx
 #: src/queries/part.ts
 #: src/workplace/QueryPanel.tsx
@@ -3744,7 +3780,7 @@ msgid "Frage"
 msgstr ""
 
 #: src/admin/evaluation/CasesPage.tsx
-msgid "Frage suchen"
+msgid "Frage oder Stichwort suchen"
 msgstr ""
 
 #: src/model/panel/PromptPanel.tsx
@@ -4527,6 +4563,10 @@ msgstr ""
 
 #: src/i18n/errors.ts
 msgid "Keiner der gewählten Prüffälle kann laufen: Keiner passt zur Auswahl, oder alle sind veraltet oder ungültig."
+msgstr ""
+
+#: src/admin/evaluation/CasesPage.tsx
+msgid "Keiner der gezeigten Fälle läuft."
 msgstr ""
 
 #: src/admin/evaluation/runWords.ts
@@ -5365,6 +5405,10 @@ msgstr ""
 msgid "Neuer Lauf"
 msgstr ""
 
+#: src/admin/evaluation/CasesPage.tsx
+msgid "Neuer Lauf mit diesen Fällen"
+msgstr ""
+
 #: src/queries/ManageQueriesDialog.tsx
 #: src/session/SessionsDialog.tsx
 msgid "Neuer Name"
@@ -6129,6 +6173,10 @@ msgstr ""
 
 #: src/model/compare/Entry.tsx
 msgid "Schon wiederholt: Der Vergleich steht bei der Antwort."
+msgstr ""
+
+#: src/admin/evaluation/runWords.ts
+msgid "Schon zwei Läufe markiert; zuerst eine Markierung lösen."
 msgstr ""
 
 #: src/admin/evaluation/SaveCaseDialog.tsx
@@ -7056,10 +7104,6 @@ msgstr ""
 #: src/admin/evaluation/RunPage.tsx
 #: src/admin/evaluation/RunsPage.tsx
 msgid "Vergleichsbasis"
-msgstr ""
-
-#: src/admin/evaluation/RunsPage.tsx
-msgid "Vergleichsbasis = Quote Abstimmung des Basis-Messpunkts (ohne Abstimmungsfälle: Quote Bestätigung)"
 msgstr ""
 
 #: src/admin/evaluation/CasesPage.tsx

@@ -495,6 +495,13 @@ Sie hat zwei Reiter: *Läufe* und *Prüffälle*.
   sind. Wurde ein Layer seit der letzten Prüfung der Referenz neu importiert,
   läuft der Fall und trägt *Datenstand geändert*. Das Referenzergebnis wird
   nicht gespeichert; es entsteht in jedem Lauf aus der Referenzabfrage.
+
+  Die Liste filtert nach Art, Teil, Stichwort, Herkunft und Datenstand; die
+  Suche findet Kennung, Frage und Stichwörter. Gefiltert sagt sie, wie viele
+  Fälle sie zeigt (*Filter zurücksetzen* leert alle Filter). Beschreibt der
+  Filter genau die Fälle, die ein Lauf nehmen kann (Startbestand oder eigene,
+  ein Datenstand, Teil, Stichwort), öffnet *Neuer Lauf mit diesen Fällen* den
+  neuen Lauf mit dieser Auswahl; sonst ist der Knopf gesperrt.
 - **Ein Lauf** (*Läufe › Neuer Lauf*, eine Seite in vier Schritten):
   1. *Messpunkte*: je eine Anbindung mit Promptprofil (Beispiele, Reihenfolge,
      Antwortformat; vorbelegt mit dem der Anbindung), Stufe und wahlweise einem
@@ -565,7 +572,9 @@ Sie hat zwei Reiter: *Läufe* und *Prüffälle*.
   - Seeds, Fälle, wessen Sicht, wann und durch wen.
 
   Zwei fertige Läufe über dieselben Fälle lassen sich nebeneinander stellen:
-  in der Liste zwei markieren und *Gegenüberstellen*, oder aus der Matrix
+  in der Liste zwei markieren und *Gegenüberstellen* (ist einer markiert,
+  sind die Läufe gesperrt, die nicht dazu passen; der Grund steht am
+  Kästchen), oder aus der Matrix
   *Lauf gegen anderen stellen*. Eine Vergleichsaussage gibt es dabei nur,
   wenn beide Läufe vollständig sind (kein Schnelltest). Die Messpunkte werden
   dabei nach der ganzen Momentaufnahme zugeordnet: Anbindung mit Modell,

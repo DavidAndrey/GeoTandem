@@ -3,18 +3,22 @@
 // cases on live data" is one row. Stale and re-imported own cases carry their
 // status (V1.2); import is all or nothing (V1.3); without own cases the three
 // ways to make one stand where they would be (V1.4). Filters live in the
-// address, as in the model log.
+// address, as in the model log; filtered, the list says how many it shows and
+// hands the filter to a new run when a run would take exactly these cases.
 import { Trans } from '@lingui/react/macro'
 import { t } from '@lingui/core/macro'
 import { useQueryClient } from '@tanstack/react-query'
 import { useMemo, useRef, useState, type RefObject } from 'react'
-import { Link, useSearchParams } from 'react-router'
+import { Link, useNavigate, useSearchParams } from 'react-router'
 import { api, type CaseView, type DataState, type Split, type CaseOrigin } from '../../api/client'
 import { useLayers, useMe } from '../../api/queries'
 import { ErrorNotice, Loading, Modal } from '../../components/ui'
 import { formatNumber } from '../../i18n/locale'
 import { importCases, type Outcome } from './importFile'
+import { choiceForList, choiceParams } from './caseChoice'
 import { CaseStatusLabel } from './parts'
+import { rowOpener } from './rowOpener'
+import { NEW_RUN } from './runWords'
 import { caseKeys, useCases } from './queries'
 import {
   caseKindShort,
@@ -46,7 +50,10 @@ interface Filters {
 
 function matches(view: CaseView, f: Filters): boolean {
   const c = view.case
-  if (f.q && !`${c.id} ${c.prompt}`.toLowerCase().includes(f.q.toLowerCase())) return false
+  if (f.q) {
+    const text = `${c.id} ${c.prompt} ${c.tags.map(tagText).join(' ')}`.toLowerCase()
+    if (!text.includes(f.q.toLowerCase())) return false
+  }
   if (f.kind && (f.kind === 'behaviour') !== isBehaviour(c)) return false
   if (f.split && c.split !== f.split) return false
   if (f.tag && !c.tags.includes(f.tag)) return false
@@ -89,6 +96,8 @@ export function CasesPage() {
   const hidden = foldable && !expanded ? start.length - START_SHOWN : 0
   const startRows = hidden ? start.slice(0, START_SHOWN) : start
   const more = formatNumber(hidden)
+  const shownCount = formatNumber(shown.length)
+  const allCount = formatNumber(all.length)
 
   const select = (
     label: string,
@@ -99,7 +108,7 @@ export function CasesPage() {
     <label className="flex items-center gap-1.5 text-sm">
       <span>{label}</span>
       <select
-        className="input max-w-40 py-0.5"
+        className={`input max-w-40 py-0.5 ${value ? 'border-accent-700 text-accent-700' : ''}`}
         value={value ?? ''}
         onChange={(e) => setFilter(key, e.target.value || undefined)}
       >
@@ -119,8 +128,8 @@ export function CasesPage() {
         <input
           type="search"
           className="input w-44"
-          placeholder={t`Frage suchen`}
-          aria-label={t`Frage suchen`}
+          placeholder={t`Frage oder Stichwort suchen`}
+          aria-label={t`Frage oder Stichwort suchen`}
           value={filters.q}
           onChange={(e) => setFilter('suche', e.target.value || undefined)}
         />
@@ -171,7 +180,25 @@ export function CasesPage() {
       <ErrorNotice error={cases.error} />
       {cases.data && (
         <>
-          <Summary all={all} />
+          <div className="mb-2 flex flex-wrap items-center gap-3">
+            {filtered ? (
+              <p className="text-xs" aria-live="polite">
+                <Trans>
+                  {shownCount} von {allCount} Prüffällen
+                </Trans>{' '}
+                <button
+                  type="button"
+                  className="text-accent-700 ml-1"
+                  onClick={() => setParams(new URLSearchParams(), { replace: true })}
+                >
+                  <Trans>Filter zurücksetzen</Trans>
+                </button>
+              </p>
+            ) : (
+              <Summary all={all} />
+            )}
+            {filtered && <RunWithThese all={all} shown={shown} filters={filters} />}
+          </div>
           <table className="data-table">
             <thead>
               <tr>
@@ -245,6 +272,47 @@ export function CasesPage() {
   )
 }
 
+/**
+ * The filtered cases as a new run (design V4 step 2), when origin, data state,
+ * split and tag describe exactly the listed cases that run; otherwise the
+ * button stays, locked, with the reason.
+ */
+function RunWithThese({
+  all,
+  shown,
+  filters,
+}: {
+  all: CaseView[]
+  shown: CaseView[]
+  filters: Filters
+}) {
+  const choice = choiceForList(all, shown, filters)
+  const label = t`Neuer Lauf mit diesen Fällen`
+  if (choice)
+    return (
+      <Link to={`${NEW_RUN}?${choiceParams(choice).toString()}`} className="btn ml-auto text-sm">
+        {label}
+      </Link>
+    )
+  return (
+    <span className="ml-auto flex items-center gap-2">
+      <span className="text-muted text-xs">
+        {shown.some((v) => !notRun(v.status)) ? (
+          <Trans>
+            Ein Lauf wählt Fälle nur nach Herkunft (Start oder eigene), Datenstand, Teil und
+            Stichwort.
+          </Trans>
+        ) : (
+          <Trans>Keiner der gezeigten Fälle läuft.</Trans>
+        )}
+      </span>
+      <button type="button" className="btn text-sm" disabled>
+        {label}
+      </button>
+    </span>
+  )
+}
+
 /** "71 Startfälle (nur lesbar) · 3 eigene · Abstimmung 33 · Bestätigung 41". */
 function Summary({ all }: { all: CaseView[] }) {
   const start = formatNumber(all.filter((v) => v.read_only).length)
@@ -252,7 +320,7 @@ function Summary({ all }: { all: CaseView[] }) {
   const tuning = formatNumber(all.filter((v) => v.case.split === 'tuning').length)
   const confirm = formatNumber(all.filter((v) => v.case.split === 'confirm').length)
   return (
-    <p className="text-muted mb-2 text-xs">
+    <p className="text-muted text-xs">
       <Trans>
         {start} Startfälle (nur lesbar) · {own} eigene · Abstimmung {tuning} · Bestätigung {confirm}
       </Trans>
@@ -268,10 +336,17 @@ const rowKey = (view: CaseView) => `${view.case.origin}|${view.case.id}`
 
 function CaseRow({ view }: { view: CaseView }) {
   const c = view.case
+  const navigate = useNavigate()
+  const path = `/admin/bewertung/faelle/${c.id}`
+  const opener = rowOpener(() => navigate(path))
   return (
-    <tr className={notRun(view.status) ? 'text-muted' : undefined} data-status={view.status}>
+    <tr
+      {...opener}
+      className={`${opener.className} ${notRun(view.status) ? 'text-muted' : ''}`}
+      data-status={view.status}
+    >
       <td className="font-mono text-xs whitespace-nowrap">
-        <Link to={`/admin/bewertung/faelle/${c.id}`} className="hover:text-accent-700">
+        <Link to={path} className="hover:text-accent-700">
           {c.id}
         </Link>
       </td>

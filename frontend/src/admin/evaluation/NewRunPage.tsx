@@ -19,13 +19,11 @@ import {
   type CaseView,
   type ConnectionInfo,
   type CostEstimate,
-  type DataState,
   type Level,
   type PromptProfile,
   type RunRequest,
   type RunView,
   type RunScope,
-  type Split,
 } from '../../api/client'
 import { useConnections, useLevels } from '../../api/queries'
 import { ErrorNotice, Loading } from '../../components/ui'
@@ -39,6 +37,7 @@ import {
   withExamples,
   sameProfile,
 } from '../promptProfile'
+import { type CaseChoice, choiceFromParams, choiceState, chosenCases } from './caseChoice'
 import { connectionProfile, placementText } from './profileOptions'
 import { useCases } from './queries'
 import { runKeys, useRun, useRuns } from './runs'
@@ -74,15 +73,9 @@ interface PointForm {
   systemPrompt: string | null
 }
 
-interface RunForm {
+interface RunForm extends CaseChoice {
   points: PointForm[]
   reference: number
-  start: boolean
-  own: boolean
-  /** Only when own cases run alone: the data state they run on. */
-  ownState: DataState
-  split: Split | null
-  tag: string | null
   scope: RunScope
 }
 
@@ -127,20 +120,20 @@ function formOf(run: RunView): RunForm {
   }
 }
 
-function freshForm(connections: ConnectionInfo[], levels: Level[], scope: RunScope): RunForm {
+/** A new run; its cases as the address names them (handed over by the case list), else the start set. */
+function freshForm(
+  connections: ConnectionInfo[],
+  levels: Level[],
+  scope: RunScope,
+  choice: CaseChoice | null,
+): RunForm {
   return {
     points: [newPoint(connections, levels)],
     reference: 0,
-    start: true,
-    own: false,
-    ownState: 'live',
-    split: null,
-    tag: null,
+    ...(choice ?? { start: true, own: false, ownState: 'live', split: null, tag: null }),
     scope,
   }
 }
-
-const dataStateOf = (f: RunForm): DataState => (f.start ? 'sample' : f.ownState)
 
 /**
  * The request the form describes; ``null`` without a case origin or a point.
@@ -172,7 +165,7 @@ function requestOf(
     }),
     reference: Math.min(f.reference, f.points.length - 1),
     cases: { origins, split: f.split, tags: f.tag ? [f.tag] : [] },
-    data_state: dataStateOf(f),
+    data_state: choiceState(f),
     scope: f.scope,
     confirm_external: confirm.ids,
     confirm_external_hosts: confirm.hosts,
@@ -180,19 +173,6 @@ function requestOf(
 }
 
 /** The cases the selection runs, as the list counts them (the estimate's count decides). */
-function selected(cases: CaseView[], f: RunForm): CaseView[] {
-  const state = dataStateOf(f)
-  return cases.filter((v) => {
-    if (notRun(v.status)) return false
-    const start = v.read_only
-    if (start ? !f.start : !f.own) return false
-    if ((v.case.data_state ?? 'sample') !== state) return false
-    if (f.split && v.case.split !== f.split) return false
-    if (f.tag && !v.case.tags.includes(f.tag)) return false
-    return true
-  })
-}
-
 function useDebounced<T>(value: T, ms: number): T {
   const [settled, setSettled] = useState(value)
   useEffect(() => {
@@ -580,9 +560,9 @@ function RunFormView({
   const ownTotal = ownCases.length
   const hostNames = hostList(hosts)
   const startCount = cases.filter((v) => v.read_only && !notRun(v.status)).length
-  const chosen = selected(cases, form)
+  const chosen = chosenCases(cases, form)
   const tags = [...new Set(cases.flatMap((v) => v.case.tags))].sort()
-  const state = dataStateText(dataStateOf(form))
+  const state = dataStateText(choiceState(form))
   const count = current && settled ? current.cases : chosen.length
   const problem = request && estimate.error ? estimate.error.message : null
   const canStart =
@@ -903,10 +883,10 @@ export function NewRunPage() {
   const levelList = levels.data.levels.filter((l) => l.id != null)
   const initial = source.data
     ? formOf(source.data)
-    : freshForm(connections.data, levelList, quick ? 'quick' : 'full')
+    : freshForm(connections.data, levelList, quick ? 'quick' : 'full', choiceFromParams(params))
   return (
     <RunFormView
-      key={`${NEW_RUN}-${from}`}
+      key={`${NEW_RUN}-${from}-${params.toString()}`}
       initial={initial}
       connections={connections.data}
       levels={levelList}

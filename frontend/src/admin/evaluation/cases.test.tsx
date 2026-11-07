@@ -129,7 +129,10 @@ test('V1.1: filters by origin, split, kind and question, kept in the address', a
   expect(rowIds()).toContain('n15-je-gemeinde')
   expect(rowIds()).not.toContain('doc1-primar-koeniz')
   await userEvent.selectOptions(screen.getByLabelText('Art'), '')
-  await userEvent.type(screen.getByRole('searchbox', { name: 'Frage suchen' }), 'Turnhalle')
+  await userEvent.type(
+    screen.getByRole('searchbox', { name: 'Frage oder Stichwort suchen' }),
+    'Turnhalle',
+  )
   expect(rowIds()).toEqual(['e-turnhalle-ostermundigen'])
   await userEvent.selectOptions(screen.getByLabelText('Stichwort'), 'near')
   expect(screen.getByText('Kein Prüffall passt zu diesen Filtern.')).toBeInTheDocument()
@@ -337,7 +340,7 @@ test('the list reads every page of a long list', async () => {
 test('keyboard: the filters, import and export are reached in reading order', async () => {
   backend()
   renderAt('/admin/bewertung/faelle', <App />)
-  const search = await screen.findByRole('searchbox', { name: 'Frage suchen' })
+  const search = await screen.findByRole('searchbox', { name: 'Frage oder Stichwort suchen' })
   await screen.findByText('doc1-primar-koeniz')
   search.focus()
   const order: string[] = []
@@ -406,4 +409,48 @@ test('V1.4: an import from the hint keeps its message when the hint goes away', 
   await waitFor(() => expect(screen.queryByText('Noch keine eigenen Prüffälle')).toBeNull())
   expect(screen.getByRole('status')).toHaveTextContent('3 Prüffälle übernommen.')
   expect(screen.getByText('e-schulweg-import')).toBeInTheDocument()
+})
+
+test('filtered, the list counts what it shows and resets in one click; tags are searched', async () => {
+  backend()
+  renderAt('/admin/bewertung/faelle', <App />)
+  await screen.findByText('doc1-primar-koeniz')
+  expect(screen.queryByRole('button', { name: 'Filter zurücksetzen' })).not.toBeInTheDocument()
+  await userEvent.selectOptions(screen.getByLabelText('Datenstand'), 'live')
+  expect(screen.getByText('3 von 74 Prüffällen')).toBeInTheDocument()
+  expect(screen.getByLabelText('Datenstand').className).toMatch(/border-accent-700/)
+  await userEvent.click(screen.getByRole('button', { name: 'Filter zurücksetzen' }))
+  expect(screen.getByLabelText('Datenstand')).toHaveValue('')
+  expect(rowIds()).toHaveLength(8)
+  // A tag is found by its word, as the list shows it.
+  await userEvent.type(
+    screen.getByRole('searchbox', { name: 'Frage oder Stichwort suchen' }),
+    'nähe',
+  )
+  expect(rowIds()).toContain('e-kitas-bahnhof')
+})
+
+test('a filter a run can take is handed to a new run; one it cannot is locked, with the reason', async () => {
+  backend()
+  renderAt('/admin/bewertung/faelle', <App />)
+  await screen.findByText('doc1-primar-koeniz')
+  // Own cases on live data: the run takes the two that run (the stale one stays out).
+  await userEvent.selectOptions(screen.getByLabelText('Datenstand'), 'live')
+  expect(screen.getByRole('link', { name: 'Neuer Lauf mit diesen Fällen' })).toHaveAttribute(
+    'href',
+    '/admin/bewertung/lauf/neu?faelle=eigene&datenstand=live',
+  )
+  // Only the imported ones: a run cannot tell them from the other own cases.
+  await userEvent.selectOptions(screen.getByLabelText('Herkunft'), 'import')
+  expect(screen.getByRole('button', { name: 'Neuer Lauf mit diesen Fällen' })).toBeDisabled()
+  expect(screen.getByText(/Ein Lauf wählt Fälle nur nach Herkunft/)).toBeInTheDocument()
+})
+
+test('a click anywhere in a row opens the case', async () => {
+  backend()
+  renderAt('/admin/bewertung/faelle', <App />)
+  await userEvent.click(await screen.findByText('Welche Primarschulen gibt es in Köniz?'))
+  await waitFor(() =>
+    expect(screen.queryByRole('searchbox', { name: /suchen/ })).not.toBeInTheDocument(),
+  )
 })

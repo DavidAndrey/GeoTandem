@@ -577,6 +577,10 @@ msgstr "{shown} / max. {max}"
 msgid "{shown} %"
 msgstr "{shown} %"
 
+#: src/admin/evaluation/runWords.ts
+msgid "{shown} + {more}"
+msgstr "{shown} + {more}"
+
 #: src/model/compare/words.ts
 msgid "{shown} und {count} weitere"
 msgstr "{shown} und {count} weitere"
@@ -588,6 +592,10 @@ msgstr "{shown} und {n} weitere"
 #: src/i18n/phrases.ts
 msgid "{shown} von {all}"
 msgstr "{shown} von {all}"
+
+#: src/admin/evaluation/CasesPage.tsx
+msgid "{shownCount} von {allCount} Prüffällen"
+msgstr "{shownCount} von {allCount} Prüffällen"
 
 #: src/admin/ProfilePage.tsx
 msgid "{size} Zeichen, geschätzt {tokens} Token"
@@ -677,9 +685,17 @@ msgstr "{words} Der Lauf wurde angehalten."
 msgid "{words} Nach mehreren solchen Antworten in Folge von {named} wurde der ganze Lauf angehalten; keine weitere Frage ging hinaus."
 msgstr "{words} Nach mehreren solchen Antworten in Folge von {named} wurde der ganze Lauf angehalten; keine weitere Frage ging hinaus."
 
+#: src/admin/evaluation/RunsPage.tsx
+msgid "* Vergleichsbasis = Quote Abstimmung des Basis-Messpunkts (ohne Abstimmungsfälle: Quote Bestätigung)"
+msgstr "* Vergleichsbasis = Quote Abstimmung des Basis-Messpunkts (ohne Abstimmungsfälle: Quote Bestätigung)"
+
 #: src/admin/evaluation/runWords.ts
 msgid "#{first} und #{second} haben andere Prüffälle; Gegenüberstellen nur bei gleichen Fällen."
 msgstr "#{first} und #{second} haben andere Prüffälle; Gegenüberstellen nur bei gleichen Fällen."
+
+#: src/admin/evaluation/runWords.ts
+msgid "#{id} hat andere Prüffälle als #{first}; Gegenüberstellen nur bei gleichen Fällen."
+msgstr "#{id} hat andere Prüffälle als #{first}; Gegenüberstellen nur bei gleichen Fällen."
 
 #: src/admin/evaluation/runWords.ts
 msgid "#{id} ist nicht fertig; Gegenüberstellen nur bei fertigen Läufen."
@@ -1210,6 +1226,10 @@ msgstr "Anbindung „{name}\" löschen?"
 msgid "Anbindung {connectionId}"
 msgstr "Anbindung {connectionId}"
 
+#: src/admin/evaluation/runWords.ts
+msgid "Anbindung {id}"
+msgstr "Anbindung {id}"
+
 #: src/admin/ConnectionForm.tsx
 msgid "Anbindung bearbeiten"
 msgstr "Anbindung bearbeiten"
@@ -1229,6 +1249,10 @@ msgstr "Anbindung wählen"
 #: src/model/panel/Problem.tsx
 msgid "Anbindung wechseln"
 msgstr "Anbindung wechseln"
+
+#: src/admin/evaluation/RunsPage.tsx
+msgid "Anbindungen"
+msgstr "Anbindungen"
 
 #: src/admin/evaluation/runWords.ts
 msgid "andere Antwortart"
@@ -3095,6 +3119,10 @@ msgstr "Ein Lauf läuft schon"
 msgid "Ein Lauf stellt dieselben Fragen an eine oder mehrere Anbindungen und zählt, wie oft die Antwort stimmt. Für einen ersten Eindruck: Startbestand, eine Anbindung, Schnelltest (≈ 5 min lokal)."
 msgstr "Ein Lauf stellt dieselben Fragen an eine oder mehrere Anbindungen und zählt, wie oft die Antwort stimmt. Für einen ersten Eindruck: Startbestand, eine Anbindung, Schnelltest (≈ 5 min lokal)."
 
+#: src/admin/evaluation/CasesPage.tsx
+msgid "Ein Lauf wählt Fälle nur nach Herkunft (Start oder eigene), Datenstand, Teil und Stichwort."
+msgstr "Ein Lauf wählt Fälle nur nach Herkunft (Start oder eigene), Datenstand, Teil und Stichwort."
+
 #: src/admin/evaluation/words.ts
 msgid "Ein Layer der Referenz fehlt oder ist für Sie nicht sichtbar"
 msgstr "Ein Layer der Referenz fehlt oder ist für Sie nicht sichtbar"
@@ -3199,6 +3227,10 @@ msgstr "Einen Layer „{layer}\" gibt es schon."
 #: src/i18n/errors.ts
 msgid "Einen Prüffall „{id}\" gibt es schon."
 msgstr "Einen Prüffall „{id}\" gibt es schon."
+
+#: src/admin/evaluation/RunsPage.tsx
+msgid "Einen zweiten fertigen Lauf mit gleichen Fällen markieren; die übrigen sind gesperrt."
+msgstr "Einen zweiten fertigen Lauf mit gleichen Fällen markieren; die übrigen sind gesperrt."
 
 #: src/model/panel/PromptPanel.tsx
 msgid "Eingabe gesperrt, solange das Modell arbeitet"
@@ -3721,6 +3753,10 @@ msgstr "Filter entfernen"
 msgid "Filter Konto {account} entfernen"
 msgstr "Filter Konto {account} entfernen"
 
+#: src/admin/evaluation/CasesPage.tsx
+msgid "Filter zurücksetzen"
+msgstr "Filter zurücksetzen"
+
 #: src/map/Measurement.tsx
 #: src/queries/part.ts
 #: src/workplace/QueryPanel.tsx
@@ -3744,8 +3780,8 @@ msgid "Frage"
 msgstr "Frage"
 
 #: src/admin/evaluation/CasesPage.tsx
-msgid "Frage suchen"
-msgstr "Frage suchen"
+msgid "Frage oder Stichwort suchen"
+msgstr "Frage oder Stichwort suchen"
 
 #: src/model/panel/PromptPanel.tsx
 msgid "Frage zu den sichtbaren Layern …"
@@ -4528,6 +4564,10 @@ msgstr "keiner"
 #: src/i18n/errors.ts
 msgid "Keiner der gewählten Prüffälle kann laufen: Keiner passt zur Auswahl, oder alle sind veraltet oder ungültig."
 msgstr "Keiner der gewählten Prüffälle kann laufen: Keiner passt zur Auswahl, oder alle sind veraltet oder ungültig."
+
+#: src/admin/evaluation/CasesPage.tsx
+msgid "Keiner der gezeigten Fälle läuft."
+msgstr "Keiner der gezeigten Fälle läuft."
 
 #: src/admin/evaluation/runWords.ts
 msgid "Keiner der Prüffälle liess sich beim Lauf lesen; der Lauf hat nichts gemessen."
@@ -5365,6 +5405,10 @@ msgstr "Neue Stufe"
 msgid "Neuer Lauf"
 msgstr "Neuer Lauf"
 
+#: src/admin/evaluation/CasesPage.tsx
+msgid "Neuer Lauf mit diesen Fällen"
+msgstr "Neuer Lauf mit diesen Fällen"
+
 #: src/queries/ManageQueriesDialog.tsx
 #: src/session/SessionsDialog.tsx
 msgid "Neuer Name"
@@ -6130,6 +6174,10 @@ msgstr "schon im Betrieb"
 #: src/model/compare/Entry.tsx
 msgid "Schon wiederholt: Der Vergleich steht bei der Antwort."
 msgstr "Schon wiederholt: Der Vergleich steht bei der Antwort."
+
+#: src/admin/evaluation/runWords.ts
+msgid "Schon zwei Läufe markiert; zuerst eine Markierung lösen."
+msgstr "Schon zwei Läufe markiert; zuerst eine Markierung lösen."
 
 #: src/admin/evaluation/SaveCaseDialog.tsx
 msgid "Schreiben Sie die Frage so, wie ein Anwender sie stellen würde: in eigenen Worten, ohne Feldnamen und ohne Werte, die er nicht kennt. Schlecht: „schulart = Primarschule AND gemeinde = Köniz\"."
@@ -7057,10 +7105,6 @@ msgstr "Vergleich: keine Bestätigungsfälle"
 #: src/admin/evaluation/RunsPage.tsx
 msgid "Vergleichsbasis"
 msgstr "Vergleichsbasis"
-
-#: src/admin/evaluation/RunsPage.tsx
-msgid "Vergleichsbasis = Quote Abstimmung des Basis-Messpunkts (ohne Abstimmungsfälle: Quote Bestätigung)"
-msgstr "Vergleichsbasis = Quote Abstimmung des Basis-Messpunkts (ohne Abstimmungsfälle: Quote Bestätigung)"
 
 #: src/admin/evaluation/CasesPage.tsx
 #: src/admin/evaluation/runWords.ts
