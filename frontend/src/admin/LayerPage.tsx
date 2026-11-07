@@ -1,4 +1,5 @@
-// Layer detail (design D3): description, fields and preview. The tabs
+// Layer detail (design D3): description, fields, preview and what a model
+// reads from the profile (plan-attribute-metadata C). The tabs
 // Verlauf, Darstellung and Verwendung follow with E1.5/E1.7 (plan WP15).
 import { objectCount } from '../i18n/phrases'
 import { i18n } from '@lingui/core'
@@ -21,12 +22,14 @@ import {
 import { ErrorNotice, Loading } from '../components/ui'
 import { formatCodes, parseCodes } from './codes'
 import { DeleteLayerDialog } from './DeleteLayerDialog'
+import { ProbeTab } from './ProbeTab'
 import { fieldLabels, formatDateTime, layerType, sourceLabel, typeLabel } from './format'
 
 const TABS = [
   { value: 'beschreibung', label: msg`Beschreibung` },
   { value: 'felder', label: msg`Felder` },
   { value: 'vorschau', label: msg`Vorschau` },
+  { value: 'verstaendnis', label: msg`Verständnis` },
 ]
 
 export function LayerPage() {
@@ -84,6 +87,9 @@ export function LayerPage() {
         </Tabs.Content>
         <Tabs.Content value="vorschau">
           <PreviewTab layer={info} />
+        </Tabs.Content>
+        <Tabs.Content value="verstaendnis">
+          <ProbeTab layer={info} />
         </Tabs.Content>
       </Tabs.Root>
       {deleting && (

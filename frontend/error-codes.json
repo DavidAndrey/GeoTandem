@@ -51,6 +51,7 @@
   "key_type_mismatch": "The join keys differ in type.",
   "last_admin": "The last active administrator cannot be demoted, locked or deleted.",
   "layer_exists": "A layer of that name exists.",
+  "layer_not_for_model": "The layer is not offered to the model, so it has no profile to probe.",
   "level_count": "There must be details.min to details.max levels.",
   "level_name_taken": "Two levels share the name details.name.",
   "level_not_available": "The level does not exist or users may not choose it.",

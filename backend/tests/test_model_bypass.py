@@ -930,8 +930,9 @@ READ_ONLY_IMPORTS: dict[str, set[str]] = {
     "geotandem.data": {"DataBackend", "Limits", "Op"},
     "geotandem.data.view": {"LayerView"},
     "geotandem.db.spatialite": {"reading"},
-    # The model's own record, a chain's steps with it: the tables the path writes.
-    "geotandem.db.orm": {"ModelAction", "ModelActionStep", "ModelCall"},
+    # The model's own record, a chain's steps with it: the tables the path writes;
+    # the layer probes, only counted for the request limit (plan-attribute-metadata C).
+    "geotandem.db.orm": {"MetadataProbe", "ModelAction", "ModelActionStep", "ModelCall"},
     # The engine: compiles and runs queries on a read-only connection.
     "geotandem.engine": {
         "QueryError",

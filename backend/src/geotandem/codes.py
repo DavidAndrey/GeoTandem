@@ -134,6 +134,7 @@ CODES: dict[str, str] = {
     "too_many_pending_imports": "Too many uploaded files wait for their import.",
     "invalid_layer_name": "Not a valid layer name.",
     "layer_exists": "A layer of that name exists.",
+    "layer_not_for_model": "The layer is not offered to the model, so it has no profile to probe.",
     "unsupported_format": "The file format is not supported.",
     "unreadable": "The file is damaged or of another format.",
     "unreadable_encoding": "The file cannot be decoded with the chosen encoding.",

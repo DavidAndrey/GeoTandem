@@ -213,6 +213,13 @@ export function useConnectionChange<T, R>(change: (args: T) => Promise<R>) {
   })
 }
 
+/** What a model reads from a layer's profile (plan-attribute-metadata C). Not
+ * cached: every probe is a model call the administrator asked for. */
+export const useProbeLayer = (name: string) =>
+  useMutation({
+    mutationFn: (connectionId: number | null) => api.admin.probe(name, connectionId),
+  })
+
 /** What the account may choose for model support, and its choice (plan E2.1, C14). */
 export const useLLMOptions = () => useQuery({ queryKey: keys.llmOptions, queryFn: api.llm.options })
 

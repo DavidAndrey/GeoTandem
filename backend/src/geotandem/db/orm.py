@@ -450,6 +450,34 @@ class ModelCall(Base):
     """Naive UTC from the application's clock, like the record's times."""
 
 
+class MetadataProbe(Base):
+    """One comprehension probe of a layer (plan-attribute-metadata C, Q5): not a
+    model action, its own entry, so the request limit (P5) counts it beside
+    them. Who, which connection, which layer and the tokens; not the answer,
+    which the administrator reads once and nobody grades. ``account`` and
+    ``layer`` are the names then, as in the action log."""
+
+    __tablename__ = "metadata_probe"
+    __table_args__ = (
+        Index("ix_metadata_probe_connection_id_called_at", "connection_id", "called_at"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("app_user.id", ondelete="SET NULL"))
+    account: Mapped[str] = mapped_column(String(63))
+    connection_id: Mapped[int]
+    layer: Mapped[str] = mapped_column(String(63))
+    called_at: Mapped[datetime]
+    """Naive UTC from the application's clock; recorded before the call, so a
+    probe counts once it may reach the model."""
+    status: Mapped[str] = mapped_column(String(16))
+    """``asked`` until the answer, then ``ok`` or ``failed``."""
+    error_code: Mapped[str | None] = mapped_column(String(63))
+    prompt_tokens: Mapped[int | None]
+    completion_tokens: Mapped[int | None]
+    latency_ms: Mapped[int | None]
+
+
 class OwnCase(Base):
     """An own case of the evaluation (plan E3, D2): authored, imported or taken
     from the log. The start set stays files (``schema/eval-cases``). ``body`` is

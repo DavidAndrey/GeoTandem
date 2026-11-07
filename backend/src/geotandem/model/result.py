@@ -287,6 +287,15 @@ def _first_object(text: str) -> Any:
         return value
 
 
+def loose_json(completion: Completion) -> Any:
+    """The completion's JSON as an unconstrained endpoint writes it: parsed
+    already, or the text without its fence and what follows the object;
+    ``json.JSONDecodeError`` when it is none."""
+    if completion.parsed is not None:
+        return completion.parsed
+    return _first_object(_unfenced(completion.text))
+
+
 def _parse(completion: Completion, approach: Approach) -> Answer:
     try:
         data = completion.parsed

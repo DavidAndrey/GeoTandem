@@ -608,6 +608,17 @@ class Connections:
             key = self.vault.decrypt(row.api_key) if row.api_key else None
             return self._info(row), self._endpoint(row, key)
 
+    def enabled_call(self, connection_id: int) -> tuple[ConnectionInfo, Endpoint] | None:
+        """A chosen connection and its endpoint for a call, read together like
+        ``active_call``; ``None`` when it does not exist or is disabled. Raises
+        ``CredentialsUnreadable`` when the key cannot be opened."""
+        with Session(reading(self.engine)) as session:
+            row = session.get(LLMConnection, connection_id)
+            if row is None or not row.enabled:
+                return None
+            key = self.vault.decrypt(row.api_key) if row.api_key else None
+            return self._info(row), self._endpoint(row, key)
+
     def options(self, user_id: int) -> ConnectionChoice:
         with Session(reading(self.engine)) as session:
             chosen = session.scalar(select(User.llm_connection_id).where(User.id == user_id))

@@ -2,7 +2,8 @@
 
 > Status: decided 2026-11-07 (Q1–Q9, section 6). A done on branch
 > `attribute-metadata`: no effect of units, roles or real references
-> (testplan 8.6); E and the `identifier` role dropped (section 7). B, C, D open.
+> (testplan 8.6); E and the `identifier` role dropped (section 7). C built
+> (section 4 C). B, D open.
 > Bezug: [memo.md](../memo.md) (Phase 4 result), [testplan-system-context.md 8.5](testplan-system-context.md),
 > [plan-e3.md](plan-e3.md) D11 / WP94, `backend/src/geotandem/catalog.py`,
 > `backend/src/geotandem/evaluation/profiles.py`, `schema/eval-cases/`.
@@ -107,6 +108,15 @@ Result in `testplan-system-context.md` as 8.6, decision in this plan.
 - Shown side by side with the curated metadata; the administrator reads where they differ. No grade, no stored verdict.
 - Optional second probe: a few user words («Einwohner», «Bahnhof», «gross») → which attribute the model would use. It reuses the same view.
 - Metadata only, so allowed on external connections without Datenfreigabe. Any approved connection (Q9). Counts toward the connection's daily limit; logged as its own audit-log entry, not a Modellaktion (Q5).
+
+**Built** (2026-11-07):
+
+- `POST /api/admin/layers/{name}/probe` (`connection_id`, `null` = the account's active one; any enabled connection), in [layer_probe.py](../backend/src/geotandem/layer_probe.py). Synchronous within the connection's timeout, holding one of the instance's model-call slots; the answer is laid over the profile (every attribute once, in order; names the profile lacks listed apart; readings without names taken by place only when there is one per attribute). Texts cut at 400 characters.
+- Its own entry: table `metadata_probe` (migration 0020: who, connection, layer, status, error code, tokens, latency; not the answer) and the security event `layer_probed`. `service.within_limit` counts probes beside prompts and re-plans.
+- Errors: `connection_not_available` (409), `quota_exceeded` (429), `layer_not_for_model` (400), the seam's `llm_*` and `model_unreadable` / `model_truncated` (502).
+- `LayerPage`, tab «Verständnis» ([ProbeTab.tsx](../frontend/src/admin/ProbeTab.tsx)): connection select (the active one preset), a note on external connections, then per field «Hinterlegt» (label, unit, description, confirmed codes) beside meaning, unit, values and identifier as read.
+- Not built: the second probe (user words → attribute). It needs the whole profile, not one layer's, and is closer to E-7.
+- Tried on the sample: gemma4:12b 4–14 s per layer, Haiku 5.5 about 6 s (≈ 1300 output tokens). Haiku through Anthropic's compatibility endpoint gets the schema only as text: it fenced the JSON in 2 of 4 runs and once dropped the names, hence the tolerant reading. On the bare import (`raw`) both leave the values of `typ` and `sprache` empty (no code list), and gemma4:12b reads `kindergarten` as «is a kindergarten» instead of «offers one»: the kind of gap the probe is for. Haiku marked `name` an identifier once in four runs: the identifier column is a hint, not a verdict.
 
 ### D — Proposed metadata
 
