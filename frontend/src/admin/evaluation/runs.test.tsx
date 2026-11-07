@@ -11,6 +11,12 @@ import { renderAt } from '../../test/render'
 import { refused, runBackend, RUNS_URL } from '../../test/run-api'
 import { poll } from './runs'
 
+/** The element a test relies on; a clear failure instead of ``!``. */
+function must<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) throw new Error('expected an element')
+  return value
+}
+
 beforeEach(() => {
   vi.stubGlobal('scrollTo', () => undefined)
   poll.ms = 20
@@ -64,21 +70,61 @@ test('V5.1: the runs with status, the reference rate and the cost', async () => 
   ).toHaveAttribute('data-line', 'void')
 })
 
-test('V5.1: two complete runs over the same cases are put side by side, others not', async () => {
-  runBackend()
+/** The runs with a third finished one, #11, over the same cases unless ``hash`` says otherwise. */
+const withEleven = (hash?: string): RunPage => {
+  const items = runPage().items
+  const done = items.find((r) => r.id === 13)
+  if (!done) throw new Error('no #13')
+  const eleven = { ...done, id: 11, case_set_hash: hash ?? done.case_set_hash }
+  return { items: [...items, eleven], total: items.length + 1 }
+}
+
+test('V5.1: two complete runs over the same cases are put side by side, others locked', async () => {
+  runBackend({ [`GET ${RUNS_URL}`]: withEleven() })
   const user = userEvent.setup()
   renderAt('/admin/bewertung', <App />)
   const compare = await screen.findByRole('button', { name: 'Gegenüberstellen' })
+  const box = (id: number) => screen.getByRole('checkbox', { name: `Lauf #${id} markieren` })
   expect(compare).toBeDisabled()
-  await user.click(screen.getByRole('checkbox', { name: 'Lauf #13 markieren' }))
-  await user.click(screen.getByRole('checkbox', { name: 'Lauf #10 markieren' }))
-  expect(compare).toBeDisabled()
-  expect(screen.getByText(/#10 ist nicht fertig/)).toBeInTheDocument()
-  // A third mark replaces the older one: #10 out, #12 in.
-  await user.click(screen.getByRole('checkbox', { name: 'Lauf #12 markieren' }))
-  expect(screen.getByRole('checkbox', { name: 'Lauf #13 markieren' })).not.toBeChecked()
-  await user.click(screen.getByRole('checkbox', { name: 'Lauf #13 markieren' }))
+  // Unfinished runs cannot be marked; the reason is on the box.
+  expect(box(10)).toBeDisabled()
+  expect(box(10)).toHaveAttribute('title', expect.stringMatching(/#10 ist nicht fertig/))
+  await user.click(box(13))
+  expect(
+    screen.getByText(/Einen zweiten fertigen Lauf mit gleichen Fällen markieren/),
+  ).toBeInTheDocument()
+  await user.click(box(12))
   expect(compare).toBeEnabled()
+  expect(screen.getByText('Bereit zum Gegenüberstellen.')).toBeInTheDocument()
+  // Two are the most: a third finished run is locked until a mark is undone.
+  expect(box(11)).toBeDisabled()
+  expect(box(11)).toHaveAttribute('title', expect.stringMatching(/Schon zwei Läufe markiert/))
+  await user.click(box(12))
+  expect(box(11)).toBeEnabled()
+  await user.click(compare)
+})
+
+test('V5.1: a run with other cases than the marked one is locked', async () => {
+  runBackend({ [`GET ${RUNS_URL}`]: withEleven('other') })
+  const user = userEvent.setup()
+  renderAt('/admin/bewertung', <App />)
+  await user.click(await screen.findByRole('checkbox', { name: 'Lauf #13 markieren' }))
+  const other = screen.getByRole('checkbox', { name: 'Lauf #11 markieren' })
+  expect(other).toBeDisabled()
+  expect(other).toHaveAttribute('title', expect.stringMatching(/andere Prüffälle als #13/))
+})
+
+test('V5.1: a row names its connections and opens its run on a click anywhere', async () => {
+  runBackend()
+  const user = userEvent.setup()
+  renderAt('/admin/bewertung', <App />)
+  const row13 = must((await screen.findByRole('link', { name: '#13' })).closest('tr'))
+  const names = within(row13).getByText('gemma4:12b, Claude Haiku 5.5 + 1')
+  expect(names).toHaveAttribute('title', 'gemma4:12b, Claude Haiku 5.5, gpt-6-luna')
+  await user.click(names)
+  await waitFor(() =>
+    expect(screen.queryByRole('button', { name: 'Gegenüberstellen' })).not.toBeInTheDocument(),
+  )
 })
 
 test('V5.2: no runs yet proposes the smallest first run', async () => {
@@ -123,6 +169,16 @@ test('V4.1: the estimate follows every change at once', async () => {
   await waitFor(() => expect(estimates(calls).at(-1)?.points).toHaveLength(2))
   await user.click(screen.getAllByRole('radio')[1])
   await waitFor(() => expect(estimates(calls).at(-1)?.reference).toBe(1))
+})
+
+test('V4.1: the cases a list filter handed over are the new run cases', async () => {
+  const calls = runBackend({ [`GET ${RUNS_URL}`]: idle() })
+  renderAt('/admin/bewertung/lauf/neu?faelle=eigene&datenstand=live&teil=confirm', <App />)
+  await waitFor(() => expect(estimates(calls)).toHaveLength(1))
+  expect(estimates(calls)[0]).toMatchObject({
+    cases: { origins: ['authored', 'import', 'log'], split: 'confirm', tags: [] },
+    data_state: 'live',
+  })
 })
 
 test('V4.1: an external host needs the confirmation; it is sent as confirm_external', async () => {
@@ -410,4 +466,59 @@ test('V4.1: a duration without a measurement says it is a rough guess', async ()
   )
   const haiku = within(table).getByRole('rowheader', { name: 'Claude Haiku 5.5' }).closest('tr')
   expect(haiku).not.toHaveTextContent('ohne Messung')
+})
+
+test('a run note: in the list under the run, edited in place on the run page', async () => {
+  const calls = runBackend({
+    [`PATCH ${RUNS_URL}/13`]: (init: RequestInit | undefined) => ({
+      ...runView('done'),
+      note: JSON.parse(String(init?.body)).note,
+    }),
+  })
+  const user = userEvent.setup()
+  renderAt('/admin/bewertung', <App />)
+  const row13 = must((await screen.findByRole('link', { name: '#13' })).closest('tr'))
+  expect(within(row13).getByText('Grundlinie P0')).toBeInTheDocument()
+  await user.click(screen.getByRole('link', { name: '#13' }))
+  expect(await screen.findByRole('heading', { name: 'Lauf #13' })).toBeInTheDocument()
+  expect(screen.getByText('Grundlinie P0')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Notiz ändern' }))
+  const input = screen.getByRole('textbox', { name: 'Notiz zum Lauf' })
+  expect(input).toHaveFocus()
+  await user.clear(input)
+  await user.type(input, '  P9 mit eigenen Beispielen {Enter}')
+  await waitFor(() =>
+    expect(calls.find((c) => c.key === `PATCH ${RUNS_URL}/13`)?.body).toEqual({
+      note: 'P9 mit eigenen Beispielen',
+    }),
+  )
+  expect(await screen.findByText('P9 mit eigenen Beispielen')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Notiz ändern' })).toHaveFocus()
+  // Escape leaves without saving.
+  await user.click(screen.getByRole('button', { name: 'Notiz ändern' }))
+  await user.keyboard('{Escape}')
+  expect(screen.queryByRole('textbox', { name: 'Notiz zum Lauf' })).not.toBeInTheDocument()
+  expect(calls.filter((c) => c.key === `PATCH ${RUNS_URL}/13`)).toHaveLength(1)
+})
+
+test('V4.1: the note goes with the start, never with the estimate', async () => {
+  const calls = runBackend({
+    [`GET ${RUNS_URL}`]: idle(),
+    [`POST ${RUNS_URL}`]: { ...runView('running'), id: 15 },
+    [`GET ${RUNS_URL}/15`]: { ...runView('running'), id: 15 },
+  })
+  const user = userEvent.setup()
+  renderAt('/admin/bewertung/lauf/neu?umfang=schnell', <App />)
+  await waitFor(() => expect(estimates(calls)).toHaveLength(1))
+  await user.type(screen.getByLabelText('Notiz'), ' Grundlinie ')
+  // The mocked estimate names external hosts: confirm them, as for any start.
+  await user.click(screen.getByRole('checkbox', { name: 'Verstanden, extern senden' }))
+  await waitFor(() => expect(startButtons()).toBeEnabled())
+  await user.click(startButtons())
+  await waitFor(() =>
+    expect(calls.find((c) => c.key === `POST ${RUNS_URL}`)?.body).toMatchObject({
+      note: 'Grundlinie',
+    }),
+  )
+  expect(estimates(calls).every((b) => b.note === '')).toBe(true)
 })

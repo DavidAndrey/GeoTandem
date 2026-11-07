@@ -260,6 +260,10 @@ msgstr ""
 msgid "{conditions} Bed."
 msgstr ""
 
+#: src/admin/evaluation/CasesPage.tsx
+msgid "{count, plural, one {# eigener Prüffall läuft nicht mit, bis er bearbeitet ist.} other {# eigene Prüffälle laufen nicht mit, bis sie bearbeitet sind.}}"
+msgstr ""
+
 #: src/admin/connectionParts.tsx
 msgid "{count, plural, one {# Modell angeboten} other {# Modelle angeboten}}"
 msgstr ""
@@ -394,6 +398,14 @@ msgstr ""
 
 #: src/admin/ImportWizard.tsx
 msgid "{layer}: {objects} → {read} in der Datei. Felder: {changes}"
+msgstr ""
+
+#: src/admin/evaluation/CasesPage.tsx
+msgid "{layers} wurde seit der letzten Prüfung der Referenz neu importiert. Die Referenz gilt weiter; die Trefferzahl wird beim nächsten Lauf neu bestimmt."
+msgstr ""
+
+#: src/admin/evaluation/CasesPage.tsx
+msgid "{layers} wurden seit der letzten Prüfung der Referenz neu importiert. Die Referenz gilt weiter; die Trefferzahl wird beim nächsten Lauf neu bestimmt."
 msgstr ""
 
 #: src/admin/evaluation/ComparisonPage.tsx
@@ -577,6 +589,10 @@ msgstr ""
 msgid "{shown} %"
 msgstr ""
 
+#: src/admin/evaluation/runWords.ts
+msgid "{shown} + {more}"
+msgstr ""
+
 #: src/model/compare/words.ts
 msgid "{shown} und {count} weitere"
 msgstr ""
@@ -587,6 +603,10 @@ msgstr ""
 
 #: src/i18n/phrases.ts
 msgid "{shown} von {all}"
+msgstr ""
+
+#: src/admin/evaluation/CasesPage.tsx
+msgid "{shownCount} von {allCount} Prüffällen"
 msgstr ""
 
 #: src/admin/ProfilePage.tsx
@@ -677,8 +697,16 @@ msgstr ""
 msgid "{words} Nach mehreren solchen Antworten in Folge von {named} wurde der ganze Lauf angehalten; keine weitere Frage ging hinaus."
 msgstr ""
 
+#: src/admin/evaluation/RunsPage.tsx
+msgid "* Vergleichsbasis = Quote Abstimmung des Basis-Messpunkts (ohne Abstimmungsfälle: Quote Bestätigung)"
+msgstr ""
+
 #: src/admin/evaluation/runWords.ts
 msgid "#{first} und #{second} haben andere Prüffälle; Gegenüberstellen nur bei gleichen Fällen."
+msgstr ""
+
+#: src/admin/evaluation/runWords.ts
+msgid "#{id} hat andere Prüffälle als #{first}; Gegenüberstellen nur bei gleichen Fällen."
 msgstr ""
 
 #: src/admin/evaluation/runWords.ts
@@ -723,26 +751,6 @@ msgstr ""
 
 #: src/admin/evaluation/CasesPage.tsx
 msgid "<0>{file}</0> lässt sich nicht übernehmen. Es wurde <1>{nothing}</1> übernommen."
-msgstr ""
-
-#: src/admin/evaluation/CasesPage.tsx
-msgid "<0>{word}</0> ({id}): {layers} wurde seit der letzten Prüfung der Referenz neu importiert. Die Referenz gilt weiter; die Trefferzahl wird beim nächsten Lauf neu bestimmt."
-msgstr ""
-
-#: src/admin/evaluation/CasesPage.tsx
-msgid "<0>{word}</0> ({id}): {layers} wurden seit der letzten Prüfung der Referenz neu importiert. Die Referenz gilt weiter; die Trefferzahl wird beim nächsten Lauf neu bestimmt."
-msgstr ""
-
-#: src/admin/evaluation/CasesPage.tsx
-msgid "<0>{word}</0> ({id}): Der Layer {layers} ist gelöscht oder für {me} nicht mehr sichtbar. Der Fall wird in keinem Lauf verwendet, bis er bearbeitet ist."
-msgstr ""
-
-#: src/admin/evaluation/CasesPage.tsx
-msgid "<0>{word}</0> ({id}): Die Layer {layers} sind gelöscht oder für {me} nicht mehr sichtbar. Der Fall wird in keinem Lauf verwendet, bis er bearbeitet ist."
-msgstr ""
-
-#: src/admin/evaluation/CasesPage.tsx
-msgid "<0>{word}</0> ({id}): Die Referenz besteht die Prüfungen einer Modellabfrage nicht mehr, etwa weil ein Feld nicht mehr für das Modell freigegeben ist. Der Fall wird in keinem Lauf verwendet, bis er bearbeitet ist."
 msgstr ""
 
 #: src/admin/evaluation/RunCasePage.tsx
@@ -1210,6 +1218,10 @@ msgstr ""
 msgid "Anbindung {connectionId}"
 msgstr ""
 
+#: src/admin/evaluation/runWords.ts
+msgid "Anbindung {id}"
+msgstr ""
+
 #: src/admin/ConnectionForm.tsx
 msgid "Anbindung bearbeiten"
 msgstr ""
@@ -1228,6 +1240,10 @@ msgstr ""
 
 #: src/model/panel/Problem.tsx
 msgid "Anbindung wechseln"
+msgstr ""
+
+#: src/admin/evaluation/RunsPage.tsx
+msgid "Anbindungen"
 msgstr ""
 
 #: src/admin/evaluation/runWords.ts
@@ -2237,7 +2253,6 @@ msgstr ""
 msgid "Datenstand anders"
 msgstr ""
 
-#: src/admin/evaluation/CasesPage.tsx
 #: src/admin/evaluation/parts.tsx
 msgid "Datenstand geändert"
 msgstr ""
@@ -2370,6 +2385,10 @@ msgstr ""
 
 #: src/model/chain/Chain.tsx
 msgid "Der Lauf wurde unterbrochen: Die Anwendung wurde neu gestartet, oder der Lauf selbst ist fehlgeschlagen."
+msgstr ""
+
+#: src/admin/evaluation/CasesPage.tsx
+msgid "Der Layer {layers} ist gelöscht oder für {me} nicht mehr sichtbar. Der Fall läuft nicht mit, bis er bearbeitet ist."
 msgstr ""
 
 #: src/admin/wizard.ts
@@ -2781,6 +2800,10 @@ msgstr ""
 msgid "Die Laufzeit ist angehalten, solange die Freigabe offen ist."
 msgstr ""
 
+#: src/admin/evaluation/CasesPage.tsx
+msgid "Die Layer {layers} sind gelöscht oder für {me} nicht mehr sichtbar. Der Fall läuft nicht mit, bis er bearbeitet ist."
+msgstr ""
+
 #: src/model/compare/flow.ts
 msgid "Die Layerliste fehlt noch; Übernehmen geht erst danach."
 msgstr ""
@@ -2795,6 +2818,10 @@ msgstr ""
 
 #: src/model/chain/Chain.tsx
 msgid "Die Neuplanung brachte keinen brauchbaren Plan: {reason}"
+msgstr ""
+
+#: src/admin/evaluation/CasesPage.tsx
+msgid "Die Referenz besteht die Prüfungen einer Modellabfrage nicht mehr, etwa weil ein Feld nicht mehr für das Modell freigegeben ist. Der Fall läuft nicht mit, bis er bearbeitet ist."
 msgstr ""
 
 #: src/admin/evaluation/words.ts
@@ -3047,6 +3074,10 @@ msgstr ""
 msgid "Eigene Fälle prüfen, ob eine Anbindung mit <0>Ihren</0> Layern und Fragen zurechtkommt. Drei Wege:"
 msgstr ""
 
+#: src/admin/evaluation/CasesPage.tsx
+msgid "Eigene Prüffälle · {ownCount}"
+msgstr ""
+
 #: src/queries/ManageQueriesDialog.tsx
 msgid "Eigene und geteilte Abfragen öffnen, umbenennen, teilen, kopieren oder löschen"
 msgstr ""
@@ -3093,6 +3124,10 @@ msgstr ""
 
 #: src/admin/evaluation/RunsPage.tsx
 msgid "Ein Lauf stellt dieselben Fragen an eine oder mehrere Anbindungen und zählt, wie oft die Antwort stimmt. Für einen ersten Eindruck: Startbestand, eine Anbindung, Schnelltest (≈ 5 min lokal)."
+msgstr ""
+
+#: src/admin/evaluation/CasesPage.tsx
+msgid "Ein Lauf wählt Fälle nur nach Herkunft (Start oder eigene), Datenstand, Teil und Stichwort."
 msgstr ""
 
 #: src/admin/evaluation/words.ts
@@ -3198,6 +3233,10 @@ msgstr ""
 
 #: src/i18n/errors.ts
 msgid "Einen Prüffall „{id}\" gibt es schon."
+msgstr ""
+
+#: src/admin/evaluation/RunsPage.tsx
+msgid "Einen zweiten fertigen Lauf mit gleichen Fällen markieren; die übrigen sind gesperrt."
 msgstr ""
 
 #: src/model/panel/PromptPanel.tsx
@@ -3721,6 +3760,10 @@ msgstr ""
 msgid "Filter Konto {account} entfernen"
 msgstr ""
 
+#: src/admin/evaluation/CasesPage.tsx
+msgid "Filter zurücksetzen"
+msgstr ""
+
 #: src/map/Measurement.tsx
 #: src/queries/part.ts
 #: src/workplace/QueryPanel.tsx
@@ -3744,7 +3787,7 @@ msgid "Frage"
 msgstr ""
 
 #: src/admin/evaluation/CasesPage.tsx
-msgid "Frage suchen"
+msgid "Frage oder Stichwort suchen"
 msgstr ""
 
 #: src/model/panel/PromptPanel.tsx
@@ -4527,6 +4570,10 @@ msgstr ""
 
 #: src/i18n/errors.ts
 msgid "Keiner der gewählten Prüffälle kann laufen: Keiner passt zur Auswahl, oder alle sind veraltet oder ungültig."
+msgstr ""
+
+#: src/admin/evaluation/CasesPage.tsx
+msgid "Keiner der gezeigten Fälle läuft."
 msgstr ""
 
 #: src/admin/evaluation/runWords.ts
@@ -5365,6 +5412,10 @@ msgstr ""
 msgid "Neuer Lauf"
 msgstr ""
 
+#: src/admin/evaluation/CasesPage.tsx
+msgid "Neuer Lauf mit diesen Fällen"
+msgstr ""
+
 #: src/queries/ManageQueriesDialog.tsx
 #: src/session/SessionsDialog.tsx
 msgid "Neuer Name"
@@ -5558,8 +5609,24 @@ msgstr ""
 msgid "none (ohne Nachdenken)"
 msgstr ""
 
+#: src/admin/evaluation/NewRunPage.tsx
+msgid "Notiz"
+msgstr ""
+
 #: src/session/SaveAsDialog.tsx
 msgid "Notiz (optional)"
+msgstr ""
+
+#: src/admin/evaluation/RunPage.tsx
+msgid "Notiz ändern"
+msgstr ""
+
+#: src/admin/evaluation/RunPage.tsx
+msgid "Notiz hinzufügen"
+msgstr ""
+
+#: src/admin/evaluation/RunPage.tsx
+msgid "Notiz zum Lauf"
 msgstr ""
 
 #: src/model/compare/CompareDialog.tsx
@@ -5584,6 +5651,10 @@ msgstr ""
 
 #: src/table/TableDock.tsx
 msgid "Nur der Kartenausschnitt ist geladen: der Layer hat mehr als {maxFeatures} Objekte."
+msgstr ""
+
+#: src/admin/evaluation/CasesPage.tsx
+msgid "Nur diese zeigen"
 msgstr ""
 
 #: src/model/log/MyActionsDialog.tsx
@@ -5764,6 +5835,10 @@ msgstr ""
 
 #: src/editor/EditorPanel.tsx
 msgid "Operator"
+msgstr ""
+
+#: src/admin/evaluation/NewRunPage.tsx
+msgid "optional, etwa „P9 mit eigenen Beispielen“"
 msgstr ""
 
 #: src/admin/ConnectionForm.tsx
@@ -6131,6 +6206,10 @@ msgstr ""
 msgid "Schon wiederholt: Der Vergleich steht bei der Antwort."
 msgstr ""
 
+#: src/admin/evaluation/runWords.ts
+msgid "Schon zwei Läufe markiert; zuerst eine Markierung lösen."
+msgstr ""
+
 #: src/admin/evaluation/SaveCaseDialog.tsx
 msgid "Schreiben Sie die Frage so, wie ein Anwender sie stellen würde: in eigenen Worten, ohne Feldnamen und ohne Werte, die er nicht kennt. Schlecht: „schulart = Primarschule AND gemeinde = Köniz\"."
 msgstr ""
@@ -6342,6 +6421,7 @@ msgstr ""
 
 #: src/admin/ConnectionForm.tsx
 #: src/admin/evaluation/CaseDetailPage.tsx
+#: src/admin/evaluation/RunPage.tsx
 #: src/admin/evaluation/SaveCaseDialog.tsx
 #: src/admin/LayerPage.tsx
 #: src/admin/LevelsPage.tsx
@@ -6418,6 +6498,10 @@ msgstr ""
 msgid "Start"
 msgstr ""
 
+#: src/admin/evaluation/CasesPage.tsx
+msgid "Startbestand · {startCount} (nur lesbar)"
+msgstr ""
+
 #: src/admin/evaluation/NewRunPage.tsx
 msgid "Startbestand ({startCount})"
 msgstr ""
@@ -6476,6 +6560,10 @@ msgstr ""
 
 #: src/auth/SetupPage.tsx
 msgid "Steht beim ersten Start im Protokoll der Installation (<0>docker logs</0>) oder ist dort als <1>GEOTANDEM_SETUP_TOKEN</1> gesetzt."
+msgstr ""
+
+#: src/admin/evaluation/NewRunPage.tsx
+msgid "Steht in der Liste der Läufe; später änderbar."
 msgstr ""
 
 #: src/model/panel/Answer.tsx
@@ -6936,7 +7024,6 @@ msgstr ""
 msgid "Ungespeicherte Änderungen an der Anbindung verwerfen?"
 msgstr ""
 
-#: src/admin/evaluation/CasesPage.tsx
 #: src/admin/evaluation/parts.tsx
 msgid "ungültig"
 msgstr ""
@@ -6986,7 +7073,6 @@ msgstr ""
 msgid "Urteil"
 msgstr ""
 
-#: src/admin/evaluation/CasesPage.tsx
 #: src/model/statusKey.ts
 msgid "veraltet"
 msgstr ""
@@ -7058,8 +7144,8 @@ msgstr ""
 msgid "Vergleichsbasis"
 msgstr ""
 
-#: src/admin/evaluation/RunsPage.tsx
-msgid "Vergleichsbasis = Quote Abstimmung des Basis-Messpunkts (ohne Abstimmungsfälle: Quote Bestätigung)"
+#: src/admin/evaluation/CasesPage.tsx
+msgid "Vergleichsbasis von Lauf #{run}, {when}{quick}"
 msgstr ""
 
 #: src/admin/evaluation/CasesPage.tsx
@@ -7200,6 +7286,10 @@ msgstr ""
 #: src/editor/describe.ts
 msgctxt "date"
 msgid "vor"
+msgstr ""
+
+#: src/admin/evaluation/CasesPage.tsx
+msgid "vor Änderung"
 msgstr ""
 
 #: src/admin/ConnectionDetailPage.tsx
@@ -7640,6 +7730,7 @@ msgstr ""
 msgid "Zugang angenommen"
 msgstr ""
 
+#: src/admin/evaluation/CasesPage.tsx
 #: src/session/SessionMenu.tsx
 msgid "Zuletzt"
 msgstr ""

@@ -1,6 +1,6 @@
 // The runs from the server (plan E3, WP90): the list, one run polled while it
 // runs (D8), the answers of a cell, the comparison of two runs.
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, type RunPage, type RunView } from '../../api/client'
 
 /** How often a running run is asked again; tests shorten it. */
@@ -44,6 +44,7 @@ export const runKeys = {
     ['eval-runs', 'answers', id, caseId, point] as const,
   byConnection: (id: number) => ['eval-runs', 'connection', id] as const,
   comparison: (run: number, against: number) => ['eval-runs', 'comparison', run, against] as const,
+  caseResults: ['eval-runs', 'case-results'] as const,
 }
 
 /** The newest runs (a page of 50): V5 and "a run is running" of V4.2. */
@@ -87,3 +88,19 @@ export const useLastRun = (connectionId: number) =>
     queryFn: () => api.evaluation.runs({ connectionId, limit: 1 }),
     select: (page) => page.items[0] ?? null,
   })
+
+/** Each case's last result (Prüffälle, *Zuletzt*); under ``runKeys.all``, so a new run refreshes it. */
+export const useCaseResults = () =>
+  useQuery({ queryKey: runKeys.caseResults, queryFn: () => api.evaluation.caseResults() })
+
+/** Sets a run's note and refreshes the list and the run. */
+export function useRunNote(id: number) {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (note: string) => api.evaluation.setNote(id, note),
+    onSuccess: (view) => {
+      client.setQueryData(runKeys.one(id), view)
+      return client.invalidateQueries({ queryKey: runKeys.list })
+    },
+  })
+}

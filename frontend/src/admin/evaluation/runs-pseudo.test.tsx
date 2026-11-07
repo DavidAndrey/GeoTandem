@@ -75,6 +75,8 @@ const DATA = [
   'code',
   'query',
   'Nur Vorschlag',
+  // A run's note is what the administrator typed.
+  'Grundlinie P0',
 ].filter((x): x is string => Boolean(x))
 
 const settle = async () => {

@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Engine, and_, func, or_, select, update
+from sqlalchemy import Engine, and_, case, func, or_, select, update
 from sqlalchemy.orm import Session
 
 from geotandem.connections import Price
@@ -31,6 +31,7 @@ from geotandem.evaluation.schemas import (
     RunCase,
     RunLabel,
     RunRequest,
+    RunScope,
     RunStatus,
 )
 from geotandem.model.record.store import utc_now
@@ -52,10 +53,22 @@ class StoredRun:
     progress: Progress
     error: str | None
     finished_at: datetime | None
+    note: str = ""
 
     @property
     def connection_ids(self) -> list[int]:
         return sorted({p.label.connection_id for p in self.points})
+
+
+@dataclass(frozen=True)
+class FinishedRun:
+    """A finished run as the last results read it: its cases as (id, start case)."""
+
+    id: int
+    reference: int
+    started_at: datetime
+    scope: RunScope
+    cases: list[tuple[str, bool]]
 
 
 @dataclass(frozen=True)
@@ -85,6 +98,7 @@ def _stored(row: EvalRun) -> StoredRun:
         progress=Progress(done=row.progress_done, total=row.progress_total),
         error=row.error,
         finished_at=row.finished_at,
+        note=row.note,
     )
 
 
@@ -134,7 +148,8 @@ class RunStore:
             status="running",
             scope=new.request.scope,
             data_state=new.request.data_state,
-            request=new.request.model_dump(mode="json"),
+            # The note lives in its own column, editable; the request keeps what was asked.
+            request=new.request.model_dump(mode="json", exclude={"note"}),
             label=new.label.model_dump(mode="json"),
             cases=_dump(new.cases),
             points=_dump(new.points),
@@ -146,6 +161,7 @@ class RunStore:
             progress_total=new.total,
             started_by=started_by,
             started_at=started_at,
+            note=new.request.note,
         )
         with Session(self.engine) as db, db.begin():
             db.add(row)
@@ -168,6 +184,40 @@ class RunStore:
             total = db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
             rows = db.scalars(stmt.order_by(EvalRun.id.desc()).offset(offset).limit(limit))
             return [_stored(row) for row in rows], total
+
+    def set_note(self, run_id: int, note: str) -> bool:
+        """The run's note; ``False`` for an unknown run."""
+        with Session(self.engine) as db, db.begin():
+            found = db.execute(update(EvalRun).where(EvalRun.id == run_id).values(note=note))
+            return bool(found.rowcount)  # type: ignore[attr-defined]
+
+    def finished(self) -> Iterator[FinishedRun]:
+        """The ``done`` runs, newest first: what the last result of a case needs."""
+        stmt = (
+            select(EvalRun.id, EvalRun.reference, EvalRun.cases, EvalRun.started_at, EvalRun.scope)
+            .where(EvalRun.status == "done")
+            .order_by(EvalRun.id.desc())
+        )
+        with Session(reading(self.engine)) as db:
+            for row in db.execute(stmt):
+                yield FinishedRun(
+                    id=row.id,
+                    reference=row.reference,
+                    started_at=row.started_at,
+                    scope=row.scope,
+                    cases=[(c["case"]["id"], c["case"]["origin"] == "start") for c in row.cases],
+                )
+
+    def tallies(self, run_id: int, point: int) -> dict[str, tuple[int, int]]:
+        """Case → (passed, answers) of one run at one point."""
+        passed = func.sum(case((EvalAnswer.verdict == "pass", 1), else_=0))
+        stmt = (
+            select(EvalAnswer.case_id, passed, func.count())
+            .where(EvalAnswer.run_id == run_id, EvalAnswer.point == point)
+            .group_by(EvalAnswer.case_id)
+        )
+        with Session(reading(self.engine)) as db:
+            return {c: (int(p or 0), int(n)) for c, p, n in db.execute(stmt)}
 
     def set_cases(self, run_id: int, cases: Sequence[RunCase], total: int, label: RunLabel) -> None:
         """The cases after their readings were read, with the total they leave

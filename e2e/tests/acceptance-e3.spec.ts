@@ -850,9 +850,8 @@ test.describe('E3 against the model stub', { tag: '@stub' }, () => {
     await expect(staleRow).toHaveAttribute('data-status', 'stale')
     await expect(staleRow).toContainText('veraltet')
     await expect(rowOf(FRESH_ID)).toHaveAttribute('data-status', 'ok')
-    await expect(
-      page.getByText(`(${STALE_ID}): Der Layer „${COPY}" ist gelöscht`, { exact: false }),
-    ).toBeVisible()
+    // The reason stands in the case's own row, under its question.
+    await expect(staleRow).toContainText(`Der Layer „${COPY}" ist gelöscht`)
 
     // V4: the tag selects both, the stale one is not counted; the run asks the other only.
     await freshConnection(request, LOG, LOGGED)

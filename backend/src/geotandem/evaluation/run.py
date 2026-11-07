@@ -107,6 +107,8 @@ from geotandem.evaluation.schemas import (
     BLOCK,
     GRADING_VERSION,
     AnswerView,
+    CaseResult,
+    CaseResults,
     CompareRequest,
     ConnectionEstimate,
     CostEstimate,
@@ -714,6 +716,7 @@ class Evaluation:
             error=stored.error,
             stopped=_stops(stored, scored),
             finished_at=stored.finished_at,
+            note=stored.note,
         )
 
     def page(self, connection_id: int | None, offset: int, limit: int) -> RunPage:
@@ -737,9 +740,42 @@ class Evaluation:
                     reference_rate=rate,
                     reference_split=split,
                     cost=self._cost(stored, tokens.get(stored.id, {})),
+                    note=stored.note,
                 )
             )
         return RunPage(items=items, total=total)
+
+    def set_note(self, run_id: int, note: str) -> RunView:
+        """The run's note, in any status; ``not_found`` for an unknown run."""
+        if not self.store.set_note(run_id, note):
+            raise _not_found(run_id)
+        return self.view(run_id)
+
+    def case_results(self) -> CaseResults:
+        """Each case's last result: its answers at the reference point of the
+        newest ``done`` run that asked it. A start case and an own case with the
+        same id are told apart; within a run an id is one case. Runs are read
+        newest first, and one without a case still open is not counted."""
+        items: dict[tuple[str, bool], CaseResult] = {}
+        for run in self.store.finished():
+            fresh = [key for key in run.cases if key not in items]
+            if not fresh:
+                continue
+            tallies = self.store.tallies(run.id, run.reference)
+            for case_id, start in fresh:
+                if case_id not in tallies:
+                    continue
+                passed, answers = tallies[case_id]
+                items[case_id, start] = CaseResult(
+                    case_id=case_id,
+                    start=start,
+                    run=run.id,
+                    started_at=run.started_at,
+                    scope=run.scope,
+                    passed=passed,
+                    answers=answers,
+                )
+        return CaseResults(items=list(items.values()))
 
     def answers(self, run_id: int, case_id: str, point: int) -> list[AnswerView]:
         """The repeats of one case at one point (V7); ``not_found`` for a case or

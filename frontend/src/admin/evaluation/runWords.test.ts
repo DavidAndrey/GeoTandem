@@ -8,6 +8,7 @@ import { labelsFor } from '../../editor/fields'
 import { catalogLayer } from '../../model/approval/changes'
 import {
   comparable,
+  connectionNames,
   diffChange,
   differenceText,
   groupCases,
@@ -142,4 +143,18 @@ test('a column by connection and the parts of its profile that differ from the d
   expect(pointName(lunaP9)).toBe('gpt-6-luna P9')
   const eigene = { ...gemma.prompt_profile, examples: 'eigene' } as const
   expect(pointName({ ...gemma, prompt_profile: eigene })).toBe('gemma4:12b P0 · Eigene')
+})
+
+test('a run names its connections; a deleted one by its number', () => {
+  const list = [
+    { id: 1, name: 'gemma4:12b' },
+    { id: 2, name: 'Claude Haiku 5.5' },
+    { id: 3, name: 'gpt-6-luna' },
+  ]
+  expect(connectionNames([1, 2], list)).toEqual({
+    short: 'gemma4:12b, Claude Haiku 5.5',
+    all: 'gemma4:12b, Claude Haiku 5.5',
+  })
+  expect(connectionNames([1, 1, 3, 2, 7], list).short).toBe('gemma4:12b, gpt-6-luna + 2')
+  expect(connectionNames([7], list).all).toBe('Anbindung 7')
 })

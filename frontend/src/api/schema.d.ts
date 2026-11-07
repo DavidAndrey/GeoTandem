@@ -1595,6 +1595,32 @@ export interface paths {
     delete?: never
     options?: never
     head?: never
+    /**
+     * Update Run
+     * @description The run's note, in any status; empty clears it. Nothing else of a run
+     *     changes after its start.
+     */
+    patch: operations['update_run_api_admin_evaluation_runs__run_id__patch']
+    trace?: never
+  }
+  '/api/admin/evaluation/case-results': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Case Results
+     * @description Each case's last result (Prüffälle, *Zuletzt*): its answers at the
+     *     reference point of the newest finished run that asked it.
+     */
+    get: operations['case_results_api_admin_evaluation_case_results_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
     patch?: never
     trace?: never
   }
@@ -2272,6 +2298,39 @@ export interface components {
       items: components['schemas']['CaseView'][]
       /** Total */
       total: number
+    }
+    /**
+     * CaseResult
+     * @description A case's last result (Prüffälle, column *Zuletzt*): its answers at the
+     *     reference point of the newest finished run that asked it. The run asked the
+     *     case as it was then; a case edited since says so by its ``updated_at``.
+     */
+    CaseResult: {
+      /** Case Id */
+      case_id: string
+      /** Start */
+      start: boolean
+      /** Run */
+      run: number
+      /**
+       * Started At
+       * Format: date-time
+       */
+      started_at: string
+      /**
+       * Scope
+       * @enum {string}
+       */
+      scope: 'full' | 'quick'
+      /** Passed */
+      passed: number
+      /** Answers */
+      answers: number
+    }
+    /** CaseResults */
+    CaseResults: {
+      /** Items */
+      items: components['schemas']['CaseResult'][]
     }
     /** CaseView */
     CaseView: {
@@ -5393,6 +5452,14 @@ export interface components {
       /** Started By */
       started_by: string
     }
+    /**
+     * RunNoteBody
+     * @description ``PATCH /runs/{id}``: the run's note; empty clears it.
+     */
+    RunNoteBody: {
+      /** Note */
+      note: string
+    }
     /** RunPage */
     RunPage: {
       /** Items */
@@ -5434,6 +5501,11 @@ export interface components {
        * @enum {string}
        */
       scope: 'full' | 'quick'
+      /**
+       * Note
+       * @default
+       */
+      note: string
       /**
        * Confirm External
        * @default []
@@ -5488,6 +5560,11 @@ export interface components {
        * @default []
        */
       cost: components['schemas']['Money'][]
+      /**
+       * Note
+       * @default
+       */
+      note: string
     }
     /** RunView */
     RunView: {
@@ -5523,6 +5600,11 @@ export interface components {
       stopped: components['schemas']['QueueStop'][]
       /** Finished At */
       finished_at?: string | null
+      /**
+       * Note
+       * @default
+       */
+      note: string
     }
     /** SavedQueryDetail */
     SavedQueryDetail: {
@@ -12587,6 +12669,124 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['RunView']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  update_run_api_admin_evaluation_runs__run_id__patch: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        run_id: number
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['RunNoteBody']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['RunView']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  case_results_api_admin_evaluation_case_results_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CaseResults']
         }
       }
       /** @description Bad Request */

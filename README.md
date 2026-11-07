@@ -495,6 +495,22 @@ Sie hat zwei Reiter: *Läufe* und *Prüffälle*.
   sind. Wurde ein Layer seit der letzten Prüfung der Referenz neu importiert,
   läuft der Fall und trägt *Datenstand geändert*. Das Referenzergebnis wird
   nicht gespeichert; es entsteht in jedem Lauf aus der Referenzabfrage.
+
+  Die Liste zeigt zuerst die eigenen Fälle, darunter den Startbestand
+  (ungefiltert auf fünf Fälle eingeklappt). Eigene Fälle, die bearbeitet
+  werden müssen, stehen zuoberst, der Grund unter der Frage; eine Zeile über
+  der Liste zählt sie und zeigt mit *Nur diese zeigen* nur sie. Ein Klick auf
+  einen Spaltenkopf sortiert beide Teile auf, ab und wieder zurück. Die
+  Spalte *Zuletzt* zeigt je Fall, wie viele Antworten der Vergleichsbasis im
+  neuesten fertigen Lauf mit diesem Fall richtig waren (etwa *7 von 10*,
+  dazu der Lauf als Verweis); *vor Änderung* heisst, der Fall wurde seither
+  bearbeitet. Aufsteigend sortiert stehen die schwierigsten Fälle oben. Die Liste
+  filtert nach Art, Teil, Stichwort, Herkunft und Datenstand; die
+  Suche findet Kennung, Frage und Stichwörter. Gefiltert sagt sie, wie viele
+  Fälle sie zeigt (*Filter zurücksetzen* leert alle Filter). Beschreibt der
+  Filter genau die Fälle, die ein Lauf nehmen kann (Startbestand oder eigene,
+  ein Datenstand, Teil, Stichwort), öffnet *Neuer Lauf mit diesen Fällen* den
+  neuen Lauf mit dieser Auswahl; sonst ist der Knopf gesperrt.
 - **Ein Lauf** (*Läufe › Neuer Lauf*, eine Seite in vier Schritten):
   1. *Messpunkte*: je eine Anbindung mit Promptprofil (Beispiele, Reihenfolge,
      Antwortformat; vorbelegt mit dem der Anbindung), Stufe und wahlweise einem
@@ -512,6 +528,9 @@ Sie hat zwei Reiter: *Läufe* und *Prüffälle*.
      1–5) für einen ersten Blick: Quoten und Urteile, aber keine
      Vergleichsaussage und kein Promptprofil zum Übernehmen. *Als
      vollständigen Lauf wiederholen* öffnet ihn danach vorbefüllt.
+     Eine *Notiz* (höchstens 200 Zeichen, etwa «P9 mit eigenen Beispielen»)
+     steht in der Liste unter der Nummer des Laufs; auf der Seite des Laufs
+     lässt sie sich jederzeit ändern. Ein wiederholter Lauf beginnt ohne sie.
   4. *Abschätzung vor dem Start*: Anfragen, Tokens, Dauer und Kosten. Kosten
      erscheinen, wenn an der Anbindung Preise stehen (*Preise*: je Mio. Tokens
      für Ein- und Ausgabe, mit Währung); ohne Preise bleibt es bei Tokens. Die
@@ -565,7 +584,9 @@ Sie hat zwei Reiter: *Läufe* und *Prüffälle*.
   - Seeds, Fälle, wessen Sicht, wann und durch wen.
 
   Zwei fertige Läufe über dieselben Fälle lassen sich nebeneinander stellen:
-  in der Liste zwei markieren und *Gegenüberstellen*, oder aus der Matrix
+  in der Liste zwei markieren und *Gegenüberstellen* (ist einer markiert,
+  sind die Läufe gesperrt, die nicht dazu passen; der Grund steht am
+  Kästchen), oder aus der Matrix
   *Lauf gegen anderen stellen*. Eine Vergleichsaussage gibt es dabei nur,
   wenn beide Läufe vollständig sind (kein Schnelltest). Die Messpunkte werden
   dabei nach der ganzen Momentaufnahme zugeordnet: Anbindung mit Modell,

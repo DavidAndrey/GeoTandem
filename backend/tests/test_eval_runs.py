@@ -1297,3 +1297,69 @@ async def test_a_flagged_own_case_joins_the_runs_pool(
     view = await run_to_end(client, app, request)
     assert view["status"] == "done", view
     assert not view["points"][0]["label"]["pool_hash"].startswith(MEASURED_POOL)
+
+
+# --- a run's note and each case's last result (Bewertung usability) -----------------
+
+
+async def test_a_run_keeps_its_note_apart_from_its_request_and_it_can_be_edited(
+    client: httpx.AsyncClient, app: FastAPI, model: Model, two: Body
+) -> None:
+    view = await run_to_end(client, app, {**two, "scope": "quick", "note": "  P9 test  "})
+    assert view["note"] == "P9 test"
+    # A repeat ("Als vollständigen Lauf wiederholen") starts from the request: without the note.
+    assert "note" not in view["request"] or view["request"]["note"] == ""
+    listed = (await client.get(RUNS)).json()["items"][0]
+    assert listed["note"] == "P9 test"
+    edited = await client.patch(f"{RUNS}/{view['id']}", json={"note": "Grundlinie"})
+    assert edited.status_code == 200, edited.text
+    assert edited.json()["note"] == "Grundlinie"
+    assert (await client.get(RUNS)).json()["items"][0]["note"] == "Grundlinie"
+    cleared = await client.patch(f"{RUNS}/{view['id']}", json={"note": ""})
+    assert cleared.json()["note"] == ""
+    assert (await client.patch(f"{RUNS}/999", json={"note": "x"})).status_code == 404
+    too_long = await client.patch(f"{RUNS}/{view['id']}", json={"note": "x" * 201})
+    assert too_long.status_code == 422
+    other = await client.patch(f"{RUNS}/{view['id']}", json={"note": "x", "status": "done"})
+    assert other.status_code == 422
+
+
+async def test_each_case_has_its_last_result_at_the_reference_point(
+    client: httpx.AsyncClient, app: FastAPI, model: Model, two: Body
+) -> None:
+    good, weak = two["points"]
+    # Older: all four cases, the weak model alone. Newer: the per-group cases, weak against good.
+    older = await run_to_end(client, app, {**two, "points": [weak], "scope": "quick"})
+    newer = await run_to_end(
+        client,
+        app,
+        {**two, "points": [weak, good], "reference": 1, "cases": {"tags": ["per-group"]}},
+    )
+    newer_ids = {rc["case"]["id"] for rc in newer["cases"]}
+    assert newer_ids and newer_ids < set(PROMPTS)
+    response = await client.get(f"{EVALUATION}/case-results")
+    assert response.status_code == 200, response.text
+    found = {item["case_id"]: item for item in response.json()["items"]}
+    assert set(found) == set(PROMPTS)
+    for case_id, item in found.items():
+        run, point = (newer, 1) if case_id in newer_ids else (older, 0)
+        cell = cell_of(run, case_id, point)
+        assert item["run"] == run["id"], case_id
+        assert (item["passed"], item["answers"]) == (cell["passed"], cell["answers"]), case_id
+        assert item["start"] is True
+        assert item["scope"] == ("full" if run is newer else "quick")
+
+
+async def test_an_unfinished_run_gives_no_last_result(
+    client: httpx.AsyncClient, app: FastAPI, model: Model, two: Body
+) -> None:
+    assert (await client.get(f"{EVALUATION}/case-results")).json() == {"items": []}
+    model.hold_from = 5
+    model.released.clear()
+    started = await client.post(RUNS, json=two)
+    assert await asyncio.to_thread(model.asked.wait, 10)
+    aborted = await client.post(f"{RUNS}/{started.json()['id']}/abort")
+    assert aborted.json()["status"] == "aborted"
+    model.released.set()
+    await finished(app)
+    assert (await client.get(f"{EVALUATION}/case-results")).json() == {"items": []}

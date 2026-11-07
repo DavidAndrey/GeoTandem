@@ -1,20 +1,36 @@
-// Prüffälle (design V1): the start set (read only) above the own cases, with
-// split, tags, origin and data state as columns, so a filter such as "only own
-// cases on live data" is one row. Stale and re-imported own cases carry their
-// status (V1.2); import is all or nothing (V1.3); without own cases the three
-// ways to make one stand where they would be (V1.4). Filters live in the
-// address, as in the model log.
+// Prüffälle (design V1, reworked for use): own cases first, then the start set
+// (read only, folded to five while no filter is set), each part under its own
+// heading; split, tags, origin and data state as columns, so a filter such as
+// "only own cases on live data" is one row. Columns sort within each part; own
+// cases that need editing come first, with the reason under the question, and
+// a line above the list shows only them (V1.2). Import is all or nothing
+// (V1.3); without own cases the three ways to make one stand above the list
+// (V1.4). Filters and sort live in the address, as in the model log; filtered,
+// the list says how many it shows and hands the filter to a new run when a run
+// would take exactly these cases.
 import { Trans } from '@lingui/react/macro'
-import { t } from '@lingui/core/macro'
+import { plural, t } from '@lingui/core/macro'
 import { useQueryClient } from '@tanstack/react-query'
-import { useMemo, useRef, useState, type RefObject } from 'react'
-import { Link, useSearchParams } from 'react-router'
-import { api, type CaseView, type DataState, type Split, type CaseOrigin } from '../../api/client'
+import { useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router'
+import {
+  api,
+  type CaseResult,
+  type CaseView,
+  type DataState,
+  type Split,
+  type CaseOrigin,
+} from '../../api/client'
 import { useLayers, useMe } from '../../api/queries'
 import { ErrorNotice, Loading, Modal } from '../../components/ui'
-import { formatNumber } from '../../i18n/locale'
+import { formatNumber, parseTimestamp } from '../../i18n/locale'
+import { formatDateTime } from '../format'
 import { importCases, type Outcome } from './importFile'
+import { choiceForList, choiceParams } from './caseChoice'
 import { CaseStatusLabel } from './parts'
+import { rowOpener } from './rowOpener'
+import { NEW_RUN, ofText, runPath, scopeShort } from './runWords'
+import { useCaseResults } from './runs'
 import { caseKeys, useCases } from './queries'
 import {
   caseKindShort,
@@ -32,6 +48,87 @@ import {
 
 /** Start cases shown before "… weitere Startfälle" while no filter is set (V1.1). */
 const START_SHOWN = 5
+/** The list's columns, for rows that span them. */
+const COLUMNS = 9
+/** ``?zustand=bearbeiten``: only own cases that need editing. */
+const ATTENTION = 'bearbeiten'
+
+const SORT_KEYS = [
+  'kennung',
+  'frage',
+  'art',
+  'teil',
+  'herkunft',
+  'datenstand',
+  'zuletzt',
+  'zustand',
+] as const
+type SortKey = (typeof SORT_KEYS)[number]
+/** ``?sortierung=teil`` up, ``-teil`` down; within own cases and the start set each. */
+interface Sort {
+  key: SortKey
+  down: boolean
+}
+
+const sortOf = (value: string | null): Sort | null => {
+  const down = value?.startsWith('-') ?? false
+  const key = SORT_KEYS.find((k) => k === value?.replace(/^-/, ''))
+  return key ? { key, down } : null
+}
+
+/** Cases needing editing first, then a changed data state, then the rest. */
+const statusRank = (view: CaseView) =>
+  notRun(view.status) ? 0 : view.status === 'dataset_changed' ? 1 : 2
+
+/** A case's last result by its origin and id (a start and an own case may share an id). */
+type Results = Map<string, CaseResult>
+const resultKey = (start: boolean, id: string) => `${start ? 'start' : 'own'}|${id}`
+const resultOf = (results: Results, view: CaseView) =>
+  results.get(resultKey(view.read_only, view.case.id))
+
+const sortValue = (view: CaseView, key: SortKey, results: Results): string | number | null => {
+  const c = view.case
+  switch (key) {
+    case 'zuletzt': {
+      // The share of right answers; a case never run has none and goes last.
+      const r = resultOf(results, view)
+      return r && r.answers > 0 ? r.passed / r.answers : null
+    }
+    case 'kennung':
+      return c.id
+    case 'frage':
+      return c.prompt
+    case 'art':
+      return caseKindShort(c)
+    case 'teil':
+      return splitText(c.split)
+    case 'herkunft':
+      return originText(c.origin)
+    case 'datenstand':
+      return dataStateText(c.data_state ?? 'sample')
+    case 'zustand':
+      return statusRank(view)
+  }
+}
+
+/**
+ * A stable sort, so equal cases keep the list's own order; ``null`` keeps it.
+ * A case without a value (never run) is last either way.
+ */
+function sorted(views: CaseView[], sort: Sort | null, results: Results): CaseView[] {
+  if (!sort) return views
+  const sign = sort.down ? -1 : 1
+  return [...views].sort((a, b) => {
+    const x = sortValue(a, sort.key, results)
+    const y = sortValue(b, sort.key, results)
+    if (x === null || y === null) return x === y ? 0 : x === null ? 1 : -1
+    const order =
+      typeof x === 'number' && typeof y === 'number'
+        ? x - y
+        : String(x).localeCompare(String(y), 'de')
+    return sign * order
+  })
+}
 
 type Kind = 'query' | 'behaviour'
 
@@ -42,16 +139,22 @@ interface Filters {
   tag?: string
   origin?: CaseOrigin
   dataState?: DataState
+  /** Only own cases that need editing before they run again (*veraltet*, *ungültig*). */
+  attention?: boolean
 }
 
 function matches(view: CaseView, f: Filters): boolean {
   const c = view.case
-  if (f.q && !`${c.id} ${c.prompt}`.toLowerCase().includes(f.q.toLowerCase())) return false
+  if (f.q) {
+    const text = `${c.id} ${c.prompt} ${c.tags.map(tagText).join(' ')}`.toLowerCase()
+    if (!text.includes(f.q.toLowerCase())) return false
+  }
   if (f.kind && (f.kind === 'behaviour') !== isBehaviour(c)) return false
   if (f.split && c.split !== f.split) return false
   if (f.tag && !c.tags.includes(f.tag)) return false
   if (f.origin && c.origin !== f.origin) return false
   if (f.dataState && (c.data_state ?? 'sample') !== f.dataState) return false
+  if (f.attention && !notRun(view.status)) return false
   return true
 }
 
@@ -68,7 +171,9 @@ export function CasesPage() {
     tag: params.get('stichwort') ?? undefined,
     origin: pick(ORIGINS, params.get('herkunft')),
     dataState: pick(DATA_STATES, params.get('datenstand')),
+    attention: params.get('zustand') === ATTENTION || undefined,
   }
+  const sort = sortOf(params.get('sortierung'))
   const filtered = Object.entries(filters).some(([, v]) => v)
   const [expanded, setExpanded] = useState(false)
   const importer = useImport()
@@ -80,15 +185,35 @@ export function CasesPage() {
   }
 
   const all = useMemo(() => cases.data?.items ?? [], [cases.data])
+  const lastResults = useCaseResults().data
+  const results: Results = useMemo(
+    () => new Map((lastResults?.items ?? []).map((r) => [resultKey(r.start, r.case_id), r])),
+    [lastResults],
+  )
   const tags = useMemo(() => [...new Set(all.flatMap((v) => v.case.tags))].sort(), [all])
   const shown = all.filter((v) => matches(v, filters))
-  const start = shown.filter((v) => v.read_only)
-  const own = shown.filter((v) => !v.read_only)
+  const start = sorted(
+    shown.filter((v) => v.read_only),
+    sort,
+    results,
+  )
+  const own = sorted(
+    shown.filter((v) => !v.read_only),
+    sort ?? { key: 'zustand', down: false },
+    results,
+  )
   const ownTotal = all.filter((v) => !v.read_only).length
+  const needEditing = all.filter((v) => !v.read_only && notRun(v.status)).length
   const foldable = !filtered && start.length > START_SHOWN
   const hidden = foldable && !expanded ? start.length - START_SHOWN : 0
   const startRows = hidden ? start.slice(0, START_SHOWN) : start
   const more = formatNumber(hidden)
+  const shownCount = formatNumber(shown.length)
+  const ownCount = formatNumber(own.length)
+  const startCount = formatNumber(start.length)
+  const setSort = (next: Sort | null) =>
+    setFilter('sortierung', next ? `${next.down ? '-' : ''}${next.key}` : undefined)
+  const allCount = formatNumber(all.length)
 
   const select = (
     label: string,
@@ -99,7 +224,7 @@ export function CasesPage() {
     <label className="flex items-center gap-1.5 text-sm">
       <span>{label}</span>
       <select
-        className="input max-w-40 py-0.5"
+        className={`input max-w-40 py-0.5 ${value ? 'border-accent-700 text-accent-700' : ''}`}
         value={value ?? ''}
         onChange={(e) => setFilter(key, e.target.value || undefined)}
       >
@@ -119,8 +244,8 @@ export function CasesPage() {
         <input
           type="search"
           className="input w-44"
-          placeholder={t`Frage suchen`}
-          aria-label={t`Frage suchen`}
+          placeholder={t`Frage oder Stichwort suchen`}
+          aria-label={t`Frage oder Stichwort suchen`}
           value={filters.q}
           onChange={(e) => setFilter('suche', e.target.value || undefined)}
         />
@@ -171,77 +296,159 @@ export function CasesPage() {
       <ErrorNotice error={cases.error} />
       {cases.data && (
         <>
-          <Summary all={all} />
+          <div className="mb-2 flex flex-wrap items-center gap-3">
+            {filtered ? (
+              <p className="text-xs" aria-live="polite">
+                <Trans>
+                  {shownCount} von {allCount} Prüffällen
+                </Trans>{' '}
+                <button
+                  type="button"
+                  className="text-accent-700 ml-1"
+                  onClick={() => {
+                    // The sort is no filter: it stays.
+                    const next = new URLSearchParams()
+                    const by = params.get('sortierung')
+                    if (by) next.set('sortierung', by)
+                    setParams(next, { replace: true })
+                  }}
+                >
+                  <Trans>Filter zurücksetzen</Trans>
+                </button>
+              </p>
+            ) : (
+              <Summary all={all} />
+            )}
+            {filtered && <RunWithThese all={all} shown={shown} filters={filters} />}
+          </div>
+          {needEditing > 0 && !filters.attention && (
+            <NeedEditing count={needEditing} onShow={() => setFilter('zustand', ATTENTION)} />
+          )}
+          {ownTotal === 0 && <NoOwnCases onImport={importer.choose} busy={importer.busy} />}
           <table className="data-table">
             <thead>
               <tr>
-                <th>
+                <SortHeader by="kennung" sort={sort} onSort={setSort}>
                   <Trans>Kennung</Trans>
-                </th>
-                <th>
+                </SortHeader>
+                <SortHeader by="frage" sort={sort} onSort={setSort}>
                   <Trans>Frage</Trans>
-                </th>
-                <th>
+                </SortHeader>
+                <SortHeader by="art" sort={sort} onSort={setSort}>
                   <Trans>Art</Trans>
-                </th>
-                <th>
+                </SortHeader>
+                <SortHeader by="teil" sort={sort} onSort={setSort}>
                   <Trans>Teil</Trans>
-                </th>
-                <th>
+                </SortHeader>
+                <th scope="col">
                   <Trans>Stichwörter</Trans>
                 </th>
-                <th>
+                <SortHeader by="herkunft" sort={sort} onSort={setSort}>
                   <Trans>Herkunft</Trans>
-                </th>
-                <th>
+                </SortHeader>
+                <SortHeader by="datenstand" sort={sort} onSort={setSort}>
                   <Trans>Datenstand</Trans>
-                </th>
-                <th>
-                  <span className="sr-only">
-                    <Trans>Status</Trans>
-                  </span>
-                </th>
+                </SortHeader>
+                <SortHeader by="zuletzt" sort={sort} onSort={setSort}>
+                  <Trans>Zuletzt</Trans>
+                </SortHeader>
+                <SortHeader by="zustand" sort={sort} onSort={setSort}>
+                  <Trans>Status</Trans>
+                </SortHeader>
               </tr>
             </thead>
-            <tbody>
-              {startRows.map((view) => (
-                <CaseRow key={rowKey(view)} view={view} />
-              ))}
-              {foldable && (
+            {own.length > 0 && (
+              <tbody>
+                <SectionRow>
+                  <Trans>Eigene Prüffälle · {ownCount}</Trans>
+                </SectionRow>
+                {own.map((view) => (
+                  <CaseRow key={rowKey(view)} view={view} result={resultOf(results, view)} />
+                ))}
+              </tbody>
+            )}
+            {start.length > 0 && (
+              <tbody>
+                <SectionRow>
+                  <Trans>Startbestand · {startCount} (nur lesbar)</Trans>
+                </SectionRow>
+                {startRows.map((view) => (
+                  <CaseRow key={rowKey(view)} view={view} result={resultOf(results, view)} />
+                ))}
+                {foldable && (
+                  <tr>
+                    <td colSpan={COLUMNS}>
+                      <button
+                        type="button"
+                        className="text-muted hover:text-accent-700 text-sm"
+                        aria-expanded={expanded}
+                        onClick={() => setExpanded(!expanded)}
+                      >
+                        {expanded ? (
+                          <Trans>Startfälle wieder einklappen</Trans>
+                        ) : (
+                          <Trans>… {more} weitere Startfälle</Trans>
+                        )}
+                      </button>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            )}
+            {shown.length === 0 && (
+              <tbody>
                 <tr>
-                  <td colSpan={8}>
-                    <button
-                      type="button"
-                      className="text-muted hover:text-accent-700 text-sm"
-                      aria-expanded={expanded}
-                      onClick={() => setExpanded(!expanded)}
-                    >
-                      {expanded ? (
-                        <Trans>Startfälle wieder einklappen</Trans>
-                      ) : (
-                        <Trans>… {more} weitere Startfälle</Trans>
-                      )}
-                    </button>
-                  </td>
-                </tr>
-              )}
-              {own.map((view) => (
-                <CaseRow key={rowKey(view)} view={view} />
-              ))}
-              {shown.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="text-muted py-4 text-center">
+                  <td colSpan={COLUMNS} className="text-muted py-4 text-center">
                     <Trans>Kein Prüffall passt zu diesen Filtern.</Trans>
                   </td>
                 </tr>
-              )}
-            </tbody>
+              </tbody>
+            )}
           </table>
-          <StatusNotes views={own} />
-          {ownTotal === 0 && <NoOwnCases onImport={importer.choose} busy={importer.busy} />}
         </>
       )}
     </div>
+  )
+}
+
+/**
+ * The filtered cases as a new run (design V4 step 2), when origin, data state,
+ * split and tag describe exactly the listed cases that run; otherwise the
+ * button stays, locked, with the reason.
+ */
+function RunWithThese({
+  all,
+  shown,
+  filters,
+}: {
+  all: CaseView[]
+  shown: CaseView[]
+  filters: Filters
+}) {
+  const choice = choiceForList(all, shown, filters)
+  const label = t`Neuer Lauf mit diesen Fällen`
+  if (choice)
+    return (
+      <Link to={`${NEW_RUN}?${choiceParams(choice).toString()}`} className="btn ml-auto text-sm">
+        {label}
+      </Link>
+    )
+  return (
+    <span className="ml-auto flex items-center gap-2">
+      <span className="text-muted text-xs">
+        {shown.some((v) => !notRun(v.status)) ? (
+          <Trans>
+            Ein Lauf wählt Fälle nur nach Herkunft (Start oder eigene), Datenstand, Teil und
+            Stichwort.
+          </Trans>
+        ) : (
+          <Trans>Keiner der gezeigten Fälle läuft.</Trans>
+        )}
+      </span>
+      <button type="button" className="btn text-sm" disabled>
+        {label}
+      </button>
+    </span>
   )
 }
 
@@ -252,7 +459,7 @@ function Summary({ all }: { all: CaseView[] }) {
   const tuning = formatNumber(all.filter((v) => v.case.split === 'tuning').length)
   const confirm = formatNumber(all.filter((v) => v.case.split === 'confirm').length)
   return (
-    <p className="text-muted mb-2 text-xs">
+    <p className="text-muted text-xs">
       <Trans>
         {start} Startfälle (nur lesbar) · {own} eigene · Abstimmung {tuning} · Bestätigung {confirm}
       </Trans>
@@ -266,21 +473,34 @@ function Summary({ all }: { all: CaseView[] }) {
  */
 const rowKey = (view: CaseView) => `${view.case.origin}|${view.case.id}`
 
-function CaseRow({ view }: { view: CaseView }) {
+function CaseRow({ view, result }: { view: CaseView; result: CaseResult | undefined }) {
   const c = view.case
+  const navigate = useNavigate()
+  const path = `/admin/bewertung/faelle/${c.id}`
+  const opener = rowOpener(() => navigate(path))
   return (
-    <tr className={notRun(view.status) ? 'text-muted' : undefined} data-status={view.status}>
+    <tr
+      {...opener}
+      className={`${opener.className} ${notRun(view.status) ? 'text-muted' : ''}`}
+      data-status={view.status}
+    >
       <td className="font-mono text-xs whitespace-nowrap">
-        <Link to={`/admin/bewertung/faelle/${c.id}`} className="hover:text-accent-700">
+        <Link to={path} className="hover:text-accent-700">
           {c.id}
         </Link>
       </td>
-      <td>{c.prompt}</td>
+      <td>
+        {c.prompt}
+        {view.status && view.status !== 'ok' && <StatusNote view={view} />}
+      </td>
       <td>{caseKindShort(c)}</td>
       <td>{splitText(c.split)}</td>
       <td>{tagList(c.tags)}</td>
       <td>{originText(c.origin)}</td>
       <td className="whitespace-nowrap">{dataStateText(c.data_state ?? 'sample')}</td>
+      <td className="whitespace-nowrap">
+        <LastResult result={result} updatedAt={view.updated_at} />
+      </td>
       <td className="whitespace-nowrap">
         <CaseStatusLabel status={view.status ?? 'ok'} />
       </td>
@@ -288,78 +508,142 @@ function CaseRow({ view }: { view: CaseView }) {
   )
 }
 
-/** What *veraltet*, *ungültig* and *Datenstand geändert* mean for the cases that have them (V1.2). */
-function StatusNotes({ views }: { views: CaseView[] }) {
+/**
+ * The case's last result: "7 von 10" right at the reference point of the
+ * newest finished run that asked it, the run as a link; "vor Änderung" when the
+ * case was edited after that run. "–" for a case never run.
+ */
+function LastResult({
+  result,
+  updatedAt,
+}: {
+  result: CaseResult | undefined
+  updatedAt: string | null | undefined
+}) {
+  if (!result) return <span className="text-muted">–</span>
+  const run = result.run
+  const when = formatDateTime(result.started_at)
+  const quick = result.scope === 'quick' ? ` · ${scopeShort('quick')}` : ''
+  const before = updatedAt && parseTimestamp(updatedAt) > parseTimestamp(result.started_at)
+  return (
+    <span title={t`Vergleichsbasis von Lauf #${run}, ${when}${quick}`}>
+      <span className="tabular-nums">{ofText(result.passed, result.answers)}</span>{' '}
+      <Link to={runPath(run)} className="text-muted hover:text-accent-700 text-xs tabular-nums">
+        #{run}
+      </Link>
+      {before && (
+        <span className="text-muted block text-xs">
+          <Trans>vor Änderung</Trans>
+        </span>
+      )}
+    </span>
+  )
+}
+
+/**
+ * What *veraltet*, *ungültig* and *Datenstand geändert* mean for this case
+ * (V1.2), under its question, so the reason stands next to the case.
+ */
+function StatusNote({ view }: { view: CaseView }) {
   const me = useMe().data?.username ?? ''
   const catalog = useLayers().data
   const title = (name: string) => catalog?.find((l) => l.name === name)?.title ?? name
-  const names = (view: CaseView) =>
-    (view.status_layers ?? []).map((n) => `„${title(n)}"`).join(', ')
-  const several = (view: CaseView) => (view.status_layers ?? []).length > 1
-  const stale = views.filter((v) => v.status === 'stale')
-  const invalid = views.filter((v) => v.status === 'invalid')
-  const changed = views.filter((v) => v.status === 'dataset_changed')
-  if (!stale.length && !invalid.length && !changed.length) return null
+  const layers = (view.status_layers ?? []).map((n) => `„${title(n)}"`).join(', ')
+  const several = (view.status_layers ?? []).length > 1
+  let text: ReactNode = null
+  if (view.status === 'stale')
+    text = several ? (
+      <Trans>
+        Die Layer {layers} sind gelöscht oder für {me} nicht mehr sichtbar. Der Fall läuft nicht
+        mit, bis er bearbeitet ist.
+      </Trans>
+    ) : (
+      <Trans>
+        Der Layer {layers} ist gelöscht oder für {me} nicht mehr sichtbar. Der Fall läuft nicht mit,
+        bis er bearbeitet ist.
+      </Trans>
+    )
+  else if (view.status === 'invalid')
+    text = (
+      <Trans>
+        Die Referenz besteht die Prüfungen einer Modellabfrage nicht mehr, etwa weil ein Feld nicht
+        mehr für das Modell freigegeben ist. Der Fall läuft nicht mit, bis er bearbeitet ist.
+      </Trans>
+    )
+  else if (view.status === 'dataset_changed')
+    text = several ? (
+      <Trans>
+        {layers} wurden seit der letzten Prüfung der Referenz neu importiert. Die Referenz gilt
+        weiter; die Trefferzahl wird beim nächsten Lauf neu bestimmt.
+      </Trans>
+    ) : (
+      <Trans>
+        {layers} wurde seit der letzten Prüfung der Referenz neu importiert. Die Referenz gilt
+        weiter; die Trefferzahl wird beim nächsten Lauf neu bestimmt.
+      </Trans>
+    )
+  if (!text) return null
+  return <span className="text-ink mt-0.5 block text-xs">{text}</span>
+}
+
+/** Above the list: own cases that do not run until edited, one click to show only them. */
+function NeedEditing({ count, onShow }: { count: number; onShow: () => void }) {
+  const text = plural(count, {
+    one: '# eigener Prüffall läuft nicht mit, bis er bearbeitet ist.',
+    other: '# eigene Prüffälle laufen nicht mit, bis sie bearbeitet sind.',
+  })
   return (
-    <div className="mt-3 flex max-w-3xl flex-col gap-1 text-sm">
-      {stale.map((view) => {
-        const id = view.case.id
-        const layers = names(view)
-        const word = t`veraltet`
-        return (
-          <p key={id}>
-            {several(view) ? (
-              <Trans>
-                <span className="font-semibold">{word}</span> ({id}): Die Layer {layers} sind
-                gelöscht oder für {me} nicht mehr sichtbar. Der Fall wird in keinem Lauf verwendet,
-                bis er bearbeitet ist.
-              </Trans>
-            ) : (
-              <Trans>
-                <span className="font-semibold">{word}</span> ({id}): Der Layer {layers} ist
-                gelöscht oder für {me} nicht mehr sichtbar. Der Fall wird in keinem Lauf verwendet,
-                bis er bearbeitet ist.
-              </Trans>
-            )}
-          </p>
-        )
-      })}
-      {invalid.map((view) => {
-        const id = view.case.id
-        const word = t`ungültig`
-        return (
-          <p key={`${view.case.origin}|${id}`}>
-            <Trans>
-              <span className="font-semibold">{word}</span> ({id}): Die Referenz besteht die
-              Prüfungen einer Modellabfrage nicht mehr, etwa weil ein Feld nicht mehr für das Modell
-              freigegeben ist. Der Fall wird in keinem Lauf verwendet, bis er bearbeitet ist.
-            </Trans>
-          </p>
-        )
-      })}
-      {changed.map((view) => {
-        const id = view.case.id
-        const layers = names(view)
-        const word = t`Datenstand geändert`
-        return (
-          <p key={id}>
-            {several(view) ? (
-              <Trans>
-                <span className="font-semibold">{word}</span> ({id}): {layers} wurden seit der
-                letzten Prüfung der Referenz neu importiert. Die Referenz gilt weiter; die
-                Trefferzahl wird beim nächsten Lauf neu bestimmt.
-              </Trans>
-            ) : (
-              <Trans>
-                <span className="font-semibold">{word}</span> ({id}): {layers} wurde seit der
-                letzten Prüfung der Referenz neu importiert. Die Referenz gilt weiter; die
-                Trefferzahl wird beim nächsten Lauf neu bestimmt.
-              </Trans>
-            )}
-          </p>
-        )
-      })}
-    </div>
+    <p className="border-ink mb-2 flex max-w-3xl items-center gap-2 rounded-[var(--radius-md)] border px-3 py-1.5 text-sm">
+      <span>{text}</span>
+      <button type="button" className="text-accent-700 ml-auto" onClick={onShow}>
+        <Trans>Nur diese zeigen</Trans>
+      </button>
+    </p>
+  )
+}
+
+/** A heading row over a part of the list: own cases, start set. */
+function SectionRow({ children }: { children: ReactNode }) {
+  return (
+    <tr>
+      <th
+        scope="rowgroup"
+        colSpan={COLUMNS}
+        className="border-b-0 pt-4 pb-1 text-left text-sm font-semibold"
+      >
+        {children}
+      </th>
+    </tr>
+  )
+}
+
+/** A column header that sorts the list: up, down, back to the list's own order. */
+function SortHeader({
+  by,
+  sort,
+  onSort,
+  children,
+}: {
+  by: SortKey
+  sort: Sort | null
+  onSort: (next: Sort | null) => void
+  children: ReactNode
+}) {
+  const active = sort?.key === by
+  const next = !active ? { key: by, down: false } : !sort.down ? { key: by, down: true } : null
+  return (
+    <th scope="col" aria-sort={active ? (sort.down ? 'descending' : 'ascending') : undefined}>
+      <button
+        type="button"
+        className={`inline-flex items-center gap-1 font-semibold ${active ? 'text-accent-700' : 'hover:text-accent-700'}`}
+        onClick={() => onSort(next)}
+      >
+        {children}
+        <span aria-hidden="true" className={active ? '' : 'text-muted'}>
+          {active ? (sort.down ? '↓' : '↑') : '↕'}
+        </span>
+      </button>
+    </th>
   )
 }
 

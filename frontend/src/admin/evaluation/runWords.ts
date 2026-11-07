@@ -34,6 +34,8 @@ import { isBehaviour, kindText, notRun, tagText, type AnswerKind } from './words
 export const RUNS = '/admin/bewertung'
 export const runPath = (id: number) => `/admin/bewertung/lauf/${id}`
 export const NEW_RUN = '/admin/bewertung/lauf/neu'
+/** The longest run note (``MAX_RUN_NOTE`` of ``evaluation/schemas.py``). */
+export const MAX_RUN_NOTE = 200
 /** A cell's case in a run (V7); ``split`` keeps the matrix's part for ‹ ›. */
 export const casePath = (run: number, caseId: string, point: number, split?: Split | null) =>
   `${runPath(run)}/fall/${encodeURIComponent(caseId)}?punkt=${point}` +
@@ -427,4 +429,44 @@ export function idsText(ids: readonly number[], count: number): string {
   if (more <= 0) return shown
   const n = formatNumber(more)
   return t`${shown} und ${n} weitere`
+}
+
+/** Connection names shown in a run's row before "+ n"; all of them in its tooltip. */
+const NAMES_SHOWN = 2
+
+/**
+ * The connections a run measured, by name: "gemma4:12b, Claude Haiku 5.5 + 2";
+ * ``all`` for the tooltip. A deleted connection keeps its number: "Anbindung 7".
+ */
+export function connectionNames(
+  ids: readonly number[],
+  connections: readonly { id: number; name: string }[] | undefined,
+): { short: string; all: string } {
+  const names = [...new Set(ids)].map((id) => {
+    const found = connections?.find((c) => c.id === id)?.name
+    return found ?? t`Anbindung ${id}`
+  })
+  const rest = names.length - NAMES_SHOWN
+  const shown = names.slice(0, NAMES_SHOWN).join(', ')
+  const more = formatNumber(rest)
+  return { short: rest > 0 ? t`${shown} + ${more}` : shown, all: names.join(', ') }
+}
+
+/**
+ * Why a run cannot be marked for "Gegenüberstellen" next to those already
+ * marked; ``null`` when it can (or is marked). Two at most, both finished,
+ * over the same cases (D7).
+ */
+export function markBlocked(run: RunSummary, marked: readonly RunSummary[]): string | null {
+  if (marked.some((m) => m.id === run.id)) return null
+  const id = run.id
+  if (marked.length >= 2) return t`Schon zwei Läufe markiert; zuerst eine Markierung lösen.`
+  if (run.status !== 'done')
+    return t`#${id} ist nicht fertig; Gegenüberstellen nur bei fertigen Läufen.`
+  const other = marked[0]
+  if (other && other.case_set_hash !== run.case_set_hash) {
+    const first = other.id
+    return t`#${id} hat andere Prüffälle als #${first}; Gegenüberstellen nur bei gleichen Fällen.`
+  }
+  return null
 }

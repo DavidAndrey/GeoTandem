@@ -10,7 +10,7 @@ import { Trans } from '@lingui/react/macro'
 import { t } from '@lingui/core/macro'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { DropdownMenu } from 'radix-ui'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router'
 import {
   api,
@@ -34,7 +34,7 @@ import {
   placementText,
   profileShortText,
 } from './profileOptions'
-import { runKeys, useRun, useRuns } from './runs'
+import { runKeys, useRun, useRunNote, useRuns } from './runs'
 import { RunStatusLabel } from './RunsPage'
 import { Choice, StillWrong } from './runParts'
 import {
@@ -42,6 +42,7 @@ import {
   cellKey,
   cellMap,
   clock,
+  MAX_RUN_NOTE,
   NEW_RUN,
   pointName,
   pointSub,
@@ -717,6 +718,69 @@ function CompareMenu({ run }: { run: RunView }) {
 
 // --- the page -----------------------------------------------------------------------
 
+/** The run's note beside its title: a few words, edited in place (Enter saves, Escape leaves). */
+function RunNote({ run }: { run: RunView }) {
+  const [draft, setDraft] = useState<string | null>(null)
+  const save = useRunNote(run.id)
+  const opener = useRef<HTMLButtonElement>(null)
+  const returning = useRef(false)
+  // Back to the control that opened the editor, once it is there again.
+  useEffect(() => {
+    if (draft === null && returning.current) {
+      returning.current = false
+      opener.current?.focus()
+    }
+  }, [draft])
+  const close = () => {
+    returning.current = true
+    setDraft(null)
+    save.reset()
+  }
+  if (draft === null)
+    return (
+      <span className="flex items-center gap-2">
+        {run.note && <span className="text-lg">{run.note}</span>}
+        <button
+          ref={opener}
+          type="button"
+          className="text-muted hover:text-accent-700 text-sm"
+          onClick={() => setDraft(run.note)}
+        >
+          {run.note ? <Trans>Notiz ändern</Trans> : <Trans>Notiz hinzufügen</Trans>}
+        </button>
+      </span>
+    )
+  const submit = () => save.mutate(draft.trim(), { onSuccess: close })
+  return (
+    <form
+      className="flex flex-wrap items-center gap-2 text-sm"
+      onSubmit={(e) => {
+        e.preventDefault()
+        submit()
+      }}
+    >
+      <input
+        className="input w-72"
+        aria-label={t`Notiz zum Lauf`}
+        maxLength={MAX_RUN_NOTE}
+        autoFocus
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') close()
+        }}
+      />
+      <button type="submit" className="btn btn-primary" disabled={save.isPending}>
+        <Trans>Speichern</Trans>
+      </button>
+      <button type="button" className="btn" onClick={close}>
+        <Trans>Abbrechen</Trans>
+      </button>
+      <ErrorNotice error={save.error} />
+    </form>
+  )
+}
+
 function RunHeader({
   run,
   split,
@@ -747,6 +811,7 @@ function RunHeader({
         <h2 className="text-2xl">
           <Trans>Lauf #{id}</Trans>
         </h2>
+        <RunNote run={run} />
         <span className="ml-auto" />
         <RunStatusLabel status={run.status} quick={quick} live />
         {run.status === 'done' && !quick && <CompareMenu run={run} />}

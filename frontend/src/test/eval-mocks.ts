@@ -381,6 +381,7 @@ export function runView(status: RunStatus = 'done', scope: 'full' | 'quick' = 'f
       cases: { origins: ['start'], split: null, tags: [] },
       data_state: 'sample',
       scope,
+      note: '',
       confirm_external: [2, 3],
       confirm_external_hosts: ['api.anthropic.com', 'api.openai.com'],
     },
@@ -394,6 +395,7 @@ export function runView(status: RunStatus = 'done', scope: 'full' | 'quick' = 'f
     error: null,
     stopped: [],
     finished_at: done ? FINISHED : null,
+    note: status === 'done' && scope === 'full' ? 'Grundlinie P0' : '',
   }
 }
 
@@ -418,6 +420,7 @@ export function runPage(): RunPage {
     reference_rate: rate,
     reference_split: rate === null ? null : ('tuning' as const),
     cost: [{ amount: cost, currency: 'USD' }],
+    note: id === 13 ? 'Grundlinie P0' : '',
   })
   const items = [
     summary(14, 'running', 'full', null, 0.84),

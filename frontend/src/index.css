@@ -152,6 +152,13 @@
     padding: 0.3rem 0.5rem;
     vertical-align: top;
   }
+  /* A row that opens its page on a click anywhere in it (rowOpener). */
+  .data-table tr.row-link {
+    cursor: pointer;
+  }
+  .data-table tr.row-link:hover td {
+    background: var(--color-neutral-100);
+  }
   .tab {
     padding: 0.2rem 0.1rem;
     border-bottom: 2px solid transparent;
