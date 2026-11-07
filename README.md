@@ -500,7 +500,11 @@ Sie hat zwei Reiter: *Läufe* und *Prüffälle*.
   (ungefiltert auf fünf Fälle eingeklappt). Eigene Fälle, die bearbeitet
   werden müssen, stehen zuoberst, der Grund unter der Frage; eine Zeile über
   der Liste zählt sie und zeigt mit *Nur diese zeigen* nur sie. Ein Klick auf
-  einen Spaltenkopf sortiert beide Teile auf, ab und wieder zurück. Die Liste
+  einen Spaltenkopf sortiert beide Teile auf, ab und wieder zurück. Die
+  Spalte *Zuletzt* zeigt je Fall, wie viele Antworten der Vergleichsbasis im
+  neuesten fertigen Lauf mit diesem Fall richtig waren (etwa *7 von 10*,
+  dazu der Lauf als Verweis); *vor Änderung* heisst, der Fall wurde seither
+  bearbeitet. Aufsteigend sortiert stehen die schwierigsten Fälle oben. Die Liste
   filtert nach Art, Teil, Stichwort, Herkunft und Datenstand; die
   Suche findet Kennung, Frage und Stichwörter. Gefiltert sagt sie, wie viele
   Fälle sie zeigt (*Filter zurücksetzen* leert alle Filter). Beschreibt der
@@ -524,6 +528,9 @@ Sie hat zwei Reiter: *Läufe* und *Prüffälle*.
      1–5) für einen ersten Blick: Quoten und Urteile, aber keine
      Vergleichsaussage und kein Promptprofil zum Übernehmen. *Als
      vollständigen Lauf wiederholen* öffnet ihn danach vorbefüllt.
+     Eine *Notiz* (höchstens 200 Zeichen, etwa «P9 mit eigenen Beispielen»)
+     steht in der Liste unter der Nummer des Laufs; auf der Seite des Laufs
+     lässt sie sich jederzeit ändern. Ein wiederholter Lauf beginnt ohne sie.
   4. *Abschätzung vor dem Start*: Anfragen, Tokens, Dauer und Kosten. Kosten
      erscheinen, wenn an der Anbindung Preise stehen (*Preise*: je Mio. Tokens
      für Ein- und Ausgabe, mit Währung); ohne Preise bleibt es bei Tokens. Die

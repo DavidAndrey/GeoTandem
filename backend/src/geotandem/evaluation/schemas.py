@@ -64,6 +64,8 @@ MAX_WORD = 64
 MAX_LAYERS = 32
 """Layers a live case names."""
 MAX_NOTE = 2000
+MAX_RUN_NOTE = 200
+"""A run's note: a few words such as "P9 test", not a report."""
 MAX_ABOUT = 4000
 """The ``about`` text of a case file."""
 MAX_POINTS = 8
@@ -393,6 +395,17 @@ class CaseFilter(BaseModel):
     """Any of them; empty: all."""
 
 
+RunNote = Annotated[str, StringConstraints(strip_whitespace=True, max_length=MAX_RUN_NOTE)]
+
+
+class RunNoteBody(BaseModel):
+    """``PATCH /runs/{id}``: the run's note; empty clears it."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    note: RunNote
+
+
 class RunRequest(BaseModel):
     """A run as V4 composes it; the run keeps it (``RunView.request``), so
     "Als vollständigen Lauf wiederholen" opens V4 with it."""
@@ -405,6 +418,9 @@ class RunRequest(BaseModel):
     cases: CaseFilter = CaseFilter()
     data_state: DataState = "sample"
     scope: RunScope = "full"
+    note: RunNote = ""
+    """A few words to tell the run apart in the list; kept with the run, not
+    with its request (a repeat starts without it), and editable later."""
     confirm_external: list[Id] = Field(default=[], max_length=MAX_POINTS)
     """Ids of the external connections the administrator confirmed sending to
     (F-9.4, D12); a run with an external connection not listed is refused."""
@@ -660,6 +676,7 @@ class RunView(BaseModel):
     stopped: list[QueueStop] = []
     """For a run the circuit breaker stopped: the hosts whose answers tripped it."""
     finished_at: datetime | None = None
+    note: str = ""
 
 
 class RunSummary(BaseModel):
@@ -680,11 +697,31 @@ class RunSummary(BaseModel):
     reference_split: Split | None = None
     """The split ``reference_rate`` is taken on; ``None`` without a rate."""
     cost: list[Money] = []
+    note: str = ""
 
 
 class RunPage(BaseModel):
     items: list[RunSummary]
     total: int
+
+
+class CaseResult(BaseModel):
+    """A case's last result (Prüffälle, column *Zuletzt*): its answers at the
+    reference point of the newest finished run that asked it. The run asked the
+    case as it was then; a case edited since says so by its ``updated_at``."""
+
+    case_id: str
+    start: bool
+    """A start case, or an own one: an own case may share its id with a start case."""
+    run: int
+    started_at: datetime
+    scope: RunScope
+    passed: int
+    answers: int
+
+
+class CaseResults(BaseModel):
+    items: list[CaseResult]
 
 
 class DiffEntry(BaseModel):

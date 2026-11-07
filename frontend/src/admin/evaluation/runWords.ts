@@ -34,6 +34,8 @@ import { isBehaviour, kindText, notRun, tagText, type AnswerKind } from './words
 export const RUNS = '/admin/bewertung'
 export const runPath = (id: number) => `/admin/bewertung/lauf/${id}`
 export const NEW_RUN = '/admin/bewertung/lauf/neu'
+/** The longest run note (``MAX_RUN_NOTE`` of ``evaluation/schemas.py``). */
+export const MAX_RUN_NOTE = 200
 /** A cell's case in a run (V7); ``split`` keeps the matrix's part for ‹ ›. */
 export const casePath = (run: number, caseId: string, point: number, split?: Split | null) =>
   `${runPath(run)}/fall/${encodeURIComponent(caseId)}?punkt=${point}` +

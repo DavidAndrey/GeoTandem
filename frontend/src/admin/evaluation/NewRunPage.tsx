@@ -44,6 +44,7 @@ import { runKeys, useRun, useRuns } from './runs'
 import { Choice } from './runParts'
 import {
   clock,
+  MAX_RUN_NOTE,
   NEW_RUN,
   RUNS,
   runPath,
@@ -167,6 +168,8 @@ function requestOf(
     cases: { origins, split: f.split, tags: f.tag ? [f.tag] : [] },
     data_state: choiceState(f),
     scope: f.scope,
+    // The note is not part of what is estimated; the start adds it.
+    note: '',
     confirm_external: confirm.ids,
     confirm_external_hosts: confirm.hosts,
   }
@@ -522,6 +525,8 @@ function RunFormView({
 }) {
   const [form, setForm] = useState(initial)
   const [confirmedHosts, setConfirmedHosts] = useState<string | null>(null)
+  const [note, setNote] = useState('')
+  const noteId = useId()
   const navigate = useNavigate()
   const client = useQueryClient()
   const runs = useRuns()
@@ -599,7 +604,7 @@ function RunFormView({
           levels,
           confirmed ? { ids: externalIds, hosts } : undefined,
         )
-        if (body) start.mutate(body)
+        if (body) start.mutate({ ...body, note: note.trim() })
       }}
     >
       <Trans>Lauf starten</Trans>
@@ -808,6 +813,22 @@ function RunFormView({
           />
           <span className="text-muted">
             <Trans>Schnelltest: ein Block, ohne Vergleichsaussage</Trans>
+          </span>
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+          <label htmlFor={noteId}>
+            <Trans>Notiz</Trans>
+          </label>
+          <input
+            id={noteId}
+            className="input w-80"
+            maxLength={MAX_RUN_NOTE}
+            placeholder={t`optional, etwa „P9 mit eigenen Beispielen“`}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+          />
+          <span className="text-muted text-xs">
+            <Trans>Steht in der Liste der Läufe; später änderbar.</Trans>
           </span>
         </div>
       </section>

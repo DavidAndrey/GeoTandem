@@ -467,3 +467,58 @@ test('V4.1: a duration without a measurement says it is a rough guess', async ()
   const haiku = within(table).getByRole('rowheader', { name: 'Claude Haiku 5.5' }).closest('tr')
   expect(haiku).not.toHaveTextContent('ohne Messung')
 })
+
+test('a run note: in the list under the run, edited in place on the run page', async () => {
+  const calls = runBackend({
+    [`PATCH ${RUNS_URL}/13`]: (init: RequestInit | undefined) => ({
+      ...runView('done'),
+      note: JSON.parse(String(init?.body)).note,
+    }),
+  })
+  const user = userEvent.setup()
+  renderAt('/admin/bewertung', <App />)
+  const row13 = must((await screen.findByRole('link', { name: '#13' })).closest('tr'))
+  expect(within(row13).getByText('Grundlinie P0')).toBeInTheDocument()
+  await user.click(screen.getByRole('link', { name: '#13' }))
+  expect(await screen.findByRole('heading', { name: 'Lauf #13' })).toBeInTheDocument()
+  expect(screen.getByText('Grundlinie P0')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Notiz ändern' }))
+  const input = screen.getByRole('textbox', { name: 'Notiz zum Lauf' })
+  expect(input).toHaveFocus()
+  await user.clear(input)
+  await user.type(input, '  P9 mit eigenen Beispielen {Enter}')
+  await waitFor(() =>
+    expect(calls.find((c) => c.key === `PATCH ${RUNS_URL}/13`)?.body).toEqual({
+      note: 'P9 mit eigenen Beispielen',
+    }),
+  )
+  expect(await screen.findByText('P9 mit eigenen Beispielen')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Notiz ändern' })).toHaveFocus()
+  // Escape leaves without saving.
+  await user.click(screen.getByRole('button', { name: 'Notiz ändern' }))
+  await user.keyboard('{Escape}')
+  expect(screen.queryByRole('textbox', { name: 'Notiz zum Lauf' })).not.toBeInTheDocument()
+  expect(calls.filter((c) => c.key === `PATCH ${RUNS_URL}/13`)).toHaveLength(1)
+})
+
+test('V4.1: the note goes with the start, never with the estimate', async () => {
+  const calls = runBackend({
+    [`GET ${RUNS_URL}`]: idle(),
+    [`POST ${RUNS_URL}`]: { ...runView('running'), id: 15 },
+    [`GET ${RUNS_URL}/15`]: { ...runView('running'), id: 15 },
+  })
+  const user = userEvent.setup()
+  renderAt('/admin/bewertung/lauf/neu?umfang=schnell', <App />)
+  await waitFor(() => expect(estimates(calls)).toHaveLength(1))
+  await user.type(screen.getByLabelText('Notiz'), ' Grundlinie ')
+  // The mocked estimate names external hosts: confirm them, as for any start.
+  await user.click(screen.getByRole('checkbox', { name: 'Verstanden, extern senden' }))
+  await waitFor(() => expect(startButtons()).toBeEnabled())
+  await user.click(startButtons())
+  await waitFor(() =>
+    expect(calls.find((c) => c.key === `POST ${RUNS_URL}`)?.body).toMatchObject({
+      note: 'Grundlinie',
+    }),
+  )
+  expect(estimates(calls).every((b) => b.note === '')).toBe(true)
+})

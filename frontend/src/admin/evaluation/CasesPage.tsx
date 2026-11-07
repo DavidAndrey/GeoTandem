@@ -13,15 +13,24 @@ import { plural, t } from '@lingui/core/macro'
 import { useQueryClient } from '@tanstack/react-query'
 import { useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
-import { api, type CaseView, type DataState, type Split, type CaseOrigin } from '../../api/client'
+import {
+  api,
+  type CaseResult,
+  type CaseView,
+  type DataState,
+  type Split,
+  type CaseOrigin,
+} from '../../api/client'
 import { useLayers, useMe } from '../../api/queries'
 import { ErrorNotice, Loading, Modal } from '../../components/ui'
-import { formatNumber } from '../../i18n/locale'
+import { formatNumber, parseTimestamp } from '../../i18n/locale'
+import { formatDateTime } from '../format'
 import { importCases, type Outcome } from './importFile'
 import { choiceForList, choiceParams } from './caseChoice'
 import { CaseStatusLabel } from './parts'
 import { rowOpener } from './rowOpener'
-import { NEW_RUN } from './runWords'
+import { NEW_RUN, ofText, runPath, scopeShort } from './runWords'
+import { useCaseResults } from './runs'
 import { caseKeys, useCases } from './queries'
 import {
   caseKindShort,
@@ -40,11 +49,20 @@ import {
 /** Start cases shown before "… weitere Startfälle" while no filter is set (V1.1). */
 const START_SHOWN = 5
 /** The list's columns, for rows that span them. */
-const COLUMNS = 8
+const COLUMNS = 9
 /** ``?zustand=bearbeiten``: only own cases that need editing. */
 const ATTENTION = 'bearbeiten'
 
-const SORT_KEYS = ['kennung', 'frage', 'art', 'teil', 'herkunft', 'datenstand', 'zustand'] as const
+const SORT_KEYS = [
+  'kennung',
+  'frage',
+  'art',
+  'teil',
+  'herkunft',
+  'datenstand',
+  'zuletzt',
+  'zustand',
+] as const
 type SortKey = (typeof SORT_KEYS)[number]
 /** ``?sortierung=teil`` up, ``-teil`` down; within own cases and the start set each. */
 interface Sort {
@@ -62,9 +80,20 @@ const sortOf = (value: string | null): Sort | null => {
 const statusRank = (view: CaseView) =>
   notRun(view.status) ? 0 : view.status === 'dataset_changed' ? 1 : 2
 
-const sortValue = (view: CaseView, key: SortKey): string | number => {
+/** A case's last result by its origin and id (a start and an own case may share an id). */
+type Results = Map<string, CaseResult>
+const resultKey = (start: boolean, id: string) => `${start ? 'start' : 'own'}|${id}`
+const resultOf = (results: Results, view: CaseView) =>
+  results.get(resultKey(view.read_only, view.case.id))
+
+const sortValue = (view: CaseView, key: SortKey, results: Results): string | number | null => {
   const c = view.case
   switch (key) {
+    case 'zuletzt': {
+      // The share of right answers; a case never run has none and goes last.
+      const r = resultOf(results, view)
+      return r && r.answers > 0 ? r.passed / r.answers : null
+    }
     case 'kennung':
       return c.id
     case 'frage':
@@ -82,13 +111,17 @@ const sortValue = (view: CaseView, key: SortKey): string | number => {
   }
 }
 
-/** A stable sort, so equal cases keep the list's own order; ``null`` keeps it. */
-function sorted(views: CaseView[], sort: Sort | null): CaseView[] {
+/**
+ * A stable sort, so equal cases keep the list's own order; ``null`` keeps it.
+ * A case without a value (never run) is last either way.
+ */
+function sorted(views: CaseView[], sort: Sort | null, results: Results): CaseView[] {
   if (!sort) return views
   const sign = sort.down ? -1 : 1
   return [...views].sort((a, b) => {
-    const x = sortValue(a, sort.key)
-    const y = sortValue(b, sort.key)
+    const x = sortValue(a, sort.key, results)
+    const y = sortValue(b, sort.key, results)
+    if (x === null || y === null) return x === y ? 0 : x === null ? 1 : -1
     const order =
       typeof x === 'number' && typeof y === 'number'
         ? x - y
@@ -152,15 +185,22 @@ export function CasesPage() {
   }
 
   const all = useMemo(() => cases.data?.items ?? [], [cases.data])
+  const lastResults = useCaseResults().data
+  const results: Results = useMemo(
+    () => new Map((lastResults?.items ?? []).map((r) => [resultKey(r.start, r.case_id), r])),
+    [lastResults],
+  )
   const tags = useMemo(() => [...new Set(all.flatMap((v) => v.case.tags))].sort(), [all])
   const shown = all.filter((v) => matches(v, filters))
   const start = sorted(
     shown.filter((v) => v.read_only),
     sort,
+    results,
   )
   const own = sorted(
     shown.filter((v) => !v.read_only),
     sort ?? { key: 'zustand', down: false },
+    results,
   )
   const ownTotal = all.filter((v) => !v.read_only).length
   const needEditing = all.filter((v) => !v.read_only && notRun(v.status)).length
@@ -309,6 +349,9 @@ export function CasesPage() {
                 <SortHeader by="datenstand" sort={sort} onSort={setSort}>
                   <Trans>Datenstand</Trans>
                 </SortHeader>
+                <SortHeader by="zuletzt" sort={sort} onSort={setSort}>
+                  <Trans>Zuletzt</Trans>
+                </SortHeader>
                 <SortHeader by="zustand" sort={sort} onSort={setSort}>
                   <Trans>Status</Trans>
                 </SortHeader>
@@ -320,7 +363,7 @@ export function CasesPage() {
                   <Trans>Eigene Prüffälle · {ownCount}</Trans>
                 </SectionRow>
                 {own.map((view) => (
-                  <CaseRow key={rowKey(view)} view={view} />
+                  <CaseRow key={rowKey(view)} view={view} result={resultOf(results, view)} />
                 ))}
               </tbody>
             )}
@@ -330,7 +373,7 @@ export function CasesPage() {
                   <Trans>Startbestand · {startCount} (nur lesbar)</Trans>
                 </SectionRow>
                 {startRows.map((view) => (
-                  <CaseRow key={rowKey(view)} view={view} />
+                  <CaseRow key={rowKey(view)} view={view} result={resultOf(results, view)} />
                 ))}
                 {foldable && (
                   <tr>
@@ -430,7 +473,7 @@ function Summary({ all }: { all: CaseView[] }) {
  */
 const rowKey = (view: CaseView) => `${view.case.origin}|${view.case.id}`
 
-function CaseRow({ view }: { view: CaseView }) {
+function CaseRow({ view, result }: { view: CaseView; result: CaseResult | undefined }) {
   const c = view.case
   const navigate = useNavigate()
   const path = `/admin/bewertung/faelle/${c.id}`
@@ -456,9 +499,44 @@ function CaseRow({ view }: { view: CaseView }) {
       <td>{originText(c.origin)}</td>
       <td className="whitespace-nowrap">{dataStateText(c.data_state ?? 'sample')}</td>
       <td className="whitespace-nowrap">
+        <LastResult result={result} updatedAt={view.updated_at} />
+      </td>
+      <td className="whitespace-nowrap">
         <CaseStatusLabel status={view.status ?? 'ok'} />
       </td>
     </tr>
+  )
+}
+
+/**
+ * The case's last result: "7 von 10" right at the reference point of the
+ * newest finished run that asked it, the run as a link; "vor Änderung" when the
+ * case was edited after that run. "–" for a case never run.
+ */
+function LastResult({
+  result,
+  updatedAt,
+}: {
+  result: CaseResult | undefined
+  updatedAt: string | null | undefined
+}) {
+  if (!result) return <span className="text-muted">–</span>
+  const run = result.run
+  const when = formatDateTime(result.started_at)
+  const quick = result.scope === 'quick' ? ` · ${scopeShort('quick')}` : ''
+  const before = updatedAt && parseTimestamp(updatedAt) > parseTimestamp(result.started_at)
+  return (
+    <span title={t`Vergleichsbasis von Lauf #${run}, ${when}${quick}`}>
+      <span className="tabular-nums">{ofText(result.passed, result.answers)}</span>{' '}
+      <Link to={runPath(run)} className="text-muted hover:text-accent-700 text-xs tabular-nums">
+        #{run}
+      </Link>
+      {before && (
+        <span className="text-muted block text-xs">
+          <Trans>vor Änderung</Trans>
+        </span>
+      )}
+    </span>
   )
 }
 

@@ -30,6 +30,7 @@ from geotandem.evaluation.schemas import (
     CaseFile,
     CaseId,
     CasePage,
+    CaseResults,
     CaseView,
     CompareRequest,
     CostEstimate,
@@ -40,6 +41,7 @@ from geotandem.evaluation.schemas import (
     ProfileSummary,
     RunComparison,
     RunExport,
+    RunNoteBody,
     RunPage,
     RunRequest,
     RunView,
@@ -218,6 +220,20 @@ def runs(
 def run(run_id: Id, service: RunService) -> RunView:
     """Polled while the run runs; figures and comparisons once it is done."""
     return service.view(run_id)
+
+
+@router.patch("/runs/{run_id}", responses=ERRORS)
+def update_run(run_id: Id, body: RunNoteBody, service: RunService) -> RunView:
+    """The run's note, in any status; empty clears it. Nothing else of a run
+    changes after its start."""
+    return service.set_note(run_id, body.note)
+
+
+@router.get("/case-results", responses=ERRORS)
+def case_results(service: RunService) -> CaseResults:
+    """Each case's last result (Prüffälle, *Zuletzt*): its answers at the
+    reference point of the newest finished run that asked it."""
+    return service.case_results()
 
 
 @router.post("/runs/{run_id}/abort", responses=ERRORS)

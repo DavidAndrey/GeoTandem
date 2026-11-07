@@ -5609,8 +5609,24 @@ msgstr ""
 msgid "none (ohne Nachdenken)"
 msgstr ""
 
+#: src/admin/evaluation/NewRunPage.tsx
+msgid "Notiz"
+msgstr ""
+
 #: src/session/SaveAsDialog.tsx
 msgid "Notiz (optional)"
+msgstr ""
+
+#: src/admin/evaluation/RunPage.tsx
+msgid "Notiz ändern"
+msgstr ""
+
+#: src/admin/evaluation/RunPage.tsx
+msgid "Notiz hinzufügen"
+msgstr ""
+
+#: src/admin/evaluation/RunPage.tsx
+msgid "Notiz zum Lauf"
 msgstr ""
 
 #: src/model/compare/CompareDialog.tsx
@@ -5819,6 +5835,10 @@ msgstr ""
 
 #: src/editor/EditorPanel.tsx
 msgid "Operator"
+msgstr ""
+
+#: src/admin/evaluation/NewRunPage.tsx
+msgid "optional, etwa „P9 mit eigenen Beispielen“"
 msgstr ""
 
 #: src/admin/ConnectionForm.tsx
@@ -6401,6 +6421,7 @@ msgstr ""
 
 #: src/admin/ConnectionForm.tsx
 #: src/admin/evaluation/CaseDetailPage.tsx
+#: src/admin/evaluation/RunPage.tsx
 #: src/admin/evaluation/SaveCaseDialog.tsx
 #: src/admin/LayerPage.tsx
 #: src/admin/LevelsPage.tsx
@@ -6539,6 +6560,10 @@ msgstr ""
 
 #: src/auth/SetupPage.tsx
 msgid "Steht beim ersten Start im Protokoll der Installation (<0>docker logs</0>) oder ist dort als <1>GEOTANDEM_SETUP_TOKEN</1> gesetzt."
+msgstr ""
+
+#: src/admin/evaluation/NewRunPage.tsx
+msgid "Steht in der Liste der Läufe; später änderbar."
 msgstr ""
 
 #: src/model/panel/Answer.tsx
@@ -7120,6 +7145,10 @@ msgid "Vergleichsbasis"
 msgstr ""
 
 #: src/admin/evaluation/CasesPage.tsx
+msgid "Vergleichsbasis von Lauf #{run}, {when}{quick}"
+msgstr ""
+
+#: src/admin/evaluation/CasesPage.tsx
 #: src/admin/evaluation/runWords.ts
 #: src/admin/evaluation/words.ts
 msgid "Verhalten"
@@ -7257,6 +7286,10 @@ msgstr ""
 #: src/editor/describe.ts
 msgctxt "date"
 msgid "vor"
+msgstr ""
+
+#: src/admin/evaluation/CasesPage.tsx
+msgid "vor Änderung"
 msgstr ""
 
 #: src/admin/ConnectionDetailPage.tsx
@@ -7697,6 +7730,7 @@ msgstr ""
 msgid "Zugang angenommen"
 msgstr ""
 
+#: src/admin/evaluation/CasesPage.tsx
 #: src/session/SessionMenu.tsx
 msgid "Zuletzt"
 msgstr ""

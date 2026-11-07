@@ -48,15 +48,18 @@ ROUTES: dict[tuple[str, str], str] = {
     ("POST", "/api/admin/evaluation/runs"): "WP90",
     ("GET", "/api/admin/evaluation/runs"): "WP90",
     ("GET", "/api/admin/evaluation/runs/1"): "WP90",
+    ("PATCH", "/api/admin/evaluation/runs/1"): "usability",
     ("POST", "/api/admin/evaluation/runs/1/abort"): "WP90",
     ("GET", "/api/admin/evaluation/runs/1/answers?case_id=doc1-primar-koeniz&point=0"): "WP90",
     ("GET", "/api/admin/evaluation/runs/1/export"): "WP90",
     ("POST", "/api/admin/evaluation/comparison"): "WP90",
+    ("GET", "/api/admin/evaluation/case-results"): "usability",
     ("GET", "/api/admin/evaluation/profile-summary?account=admin"): "WP94",
 }
 """Every route of section 6 with the WP that built it; its behaviour is tested
 in the WP's own tests (WP87: ``test_eval_cases.py``, WP90: ``test_eval_runs.py``,
-WP92: ``test_eval_from_log.py``, WP94: ``test_eval_summary.py``)."""
+WP92: ``test_eval_from_log.py``, WP94: ``test_eval_summary.py``; the run's
+note and each case's last result, "usability": ``test_eval_runs.py``)."""
 
 POINT = {"connection_id": 1, "level_id": 1}
 CASE = {
@@ -72,6 +75,7 @@ BODIES: dict[str, Any] = {
     "/api/admin/evaluation/cases/import": {"cases": []},
     "/api/admin/evaluation/runs/estimate": {"points": [POINT]},
     "/api/admin/evaluation/runs": {"points": [POINT]},
+    "/api/admin/evaluation/runs/1": {"note": "P9"},
     "/api/admin/evaluation/comparison": {"run": 1, "against": 2},
 }
 

@@ -8236,6 +8236,151 @@
             "description": "Unprocessable Content"
           }
         }
+      },
+      "patch": {
+        "tags": [
+          "evaluation"
+        ],
+        "summary": "Update Run",
+        "description": "The run's note, in any status; empty clears it. Nothing else of a run\nchanges after its start.",
+        "operationId": "update_run_api_admin_evaluation_runs__run_id__patch",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "title": "Run Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunNoteBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunView"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
+    },
+    "/api/admin/evaluation/case-results": {
+      "get": {
+        "tags": [
+          "evaluation"
+        ],
+        "summary": "Case Results",
+        "description": "Each case's last result (Prüffälle, *Zuletzt*): its answers at the\nreference point of the newest finished run that asked it.",
+        "operationId": "case_results_api_admin_evaluation_case_results_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseResults"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/admin/evaluation/runs/{run_id}/abort": {
@@ -10202,6 +10347,71 @@
           "total"
         ],
         "title": "CasePage"
+      },
+      "CaseResult": {
+        "properties": {
+          "case_id": {
+            "type": "string",
+            "title": "Case Id"
+          },
+          "start": {
+            "type": "boolean",
+            "title": "Start"
+          },
+          "run": {
+            "type": "integer",
+            "title": "Run"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Started At"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "full",
+              "quick"
+            ],
+            "title": "Scope"
+          },
+          "passed": {
+            "type": "integer",
+            "title": "Passed"
+          },
+          "answers": {
+            "type": "integer",
+            "title": "Answers"
+          }
+        },
+        "type": "object",
+        "required": [
+          "case_id",
+          "start",
+          "run",
+          "started_at",
+          "scope",
+          "passed",
+          "answers"
+        ],
+        "title": "CaseResult",
+        "description": "A case's last result (Prüffälle, column *Zuletzt*): its answers at the\nreference point of the newest finished run that asked it. The run asked the\ncase as it was then; a case edited since says so by its ``updated_at``."
+      },
+      "CaseResults": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CaseResult"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "CaseResults"
       },
       "CaseView": {
         "properties": {
@@ -17882,6 +18092,22 @@
         "title": "RunLabel",
         "description": "What a run measured against (F-3.18): without it a figure is worthless\nafter the next version change."
       },
+      "RunNoteBody": {
+        "properties": {
+          "note": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Note"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "note"
+        ],
+        "title": "RunNoteBody",
+        "description": "``PATCH /runs/{id}``: the run's note; empty clears it."
+      },
       "RunPage": {
         "properties": {
           "items": {
@@ -17945,6 +18171,12 @@
             ],
             "title": "Scope",
             "default": "full"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Note",
+            "default": ""
           },
           "confirm_external": {
             "items": {
@@ -18070,6 +18302,11 @@
             "type": "array",
             "title": "Cost",
             "default": []
+          },
+          "note": {
+            "type": "string",
+            "title": "Note",
+            "default": ""
           }
         },
         "type": "object",
@@ -18177,6 +18414,11 @@
               }
             ],
             "title": "Finished At"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note",
+            "default": ""
           }
         },
         "type": "object",

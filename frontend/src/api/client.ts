@@ -100,6 +100,8 @@ export type RunView = Schemas['RunView']
 export type RunStatus = RunView['status']
 export type RunLabel = Schemas['RunLabel']
 export type RunSummary = Schemas['RunSummary']
+export type CaseResult = Schemas['CaseResult']
+export type CaseResults = Schemas['CaseResults']
 export type RunPage = Schemas['RunPage']
 export type PointView = Schemas['PointView']
 export type PointLabel = Schemas['PointLabel']
@@ -333,6 +335,11 @@ export const api = {
     run: (id: number) => request<RunView>(`/api/admin/evaluation/runs/${id}`),
     abort: (id: number) =>
       request<RunView>(`/api/admin/evaluation/runs/${id}/abort`, { method: 'POST' }),
+    /** The run's note, in any status; empty clears it. */
+    setNote: (id: number, note: string) =>
+      request<RunView>(`/api/admin/evaluation/runs/${id}`, json('PATCH', { note })),
+    /** Each case's last result: its answers at the reference point of the newest finished run. */
+    caseResults: () => request<CaseResults>('/api/admin/evaluation/case-results'),
     /** The repeats of one case at one measuring point (V7). */
     answers: (id: number, caseId: string, point: number) =>
       request<AnswerView[]>(

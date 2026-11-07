@@ -5609,9 +5609,25 @@ msgstr "Noch wie im Betrieb (Stufe {levelName})."
 msgid "none (ohne Nachdenken)"
 msgstr "none (ohne Nachdenken)"
 
+#: src/admin/evaluation/NewRunPage.tsx
+msgid "Notiz"
+msgstr "Notiz"
+
 #: src/session/SaveAsDialog.tsx
 msgid "Notiz (optional)"
 msgstr "Notiz (optional)"
+
+#: src/admin/evaluation/RunPage.tsx
+msgid "Notiz ändern"
+msgstr "Notiz ändern"
+
+#: src/admin/evaluation/RunPage.tsx
+msgid "Notiz hinzufügen"
+msgstr "Notiz hinzufügen"
+
+#: src/admin/evaluation/RunPage.tsx
+msgid "Notiz zum Lauf"
+msgstr "Notiz zum Lauf"
 
 #: src/model/compare/CompareDialog.tsx
 msgid "Nur {leftName}: {leftNames}"
@@ -5820,6 +5836,10 @@ msgstr "Operation nicht möglich"
 #: src/editor/EditorPanel.tsx
 msgid "Operator"
 msgstr "Operator"
+
+#: src/admin/evaluation/NewRunPage.tsx
+msgid "optional, etwa „P9 mit eigenen Beispielen“"
+msgstr "optional, etwa „P9 mit eigenen Beispielen“"
 
 #: src/admin/ConnectionForm.tsx
 msgid "Optional. Mit Preisen zeigt die Bewertung Schätzung und Kosten in Geld, sonst in Tokens."
@@ -6401,6 +6421,7 @@ msgstr "Später"
 
 #: src/admin/ConnectionForm.tsx
 #: src/admin/evaluation/CaseDetailPage.tsx
+#: src/admin/evaluation/RunPage.tsx
 #: src/admin/evaluation/SaveCaseDialog.tsx
 #: src/admin/LayerPage.tsx
 #: src/admin/LevelsPage.tsx
@@ -6540,6 +6561,10 @@ msgstr "Steckbrief und Fragen gehen an <0>{hostNames}</0>; <1>keine Geodaten-Inh
 #: src/auth/SetupPage.tsx
 msgid "Steht beim ersten Start im Protokoll der Installation (<0>docker logs</0>) oder ist dort als <1>GEOTANDEM_SETUP_TOKEN</1> gesetzt."
 msgstr "Steht beim ersten Start im Protokoll der Installation (<0>docker logs</0>) oder ist dort als <1>GEOTANDEM_SETUP_TOKEN</1> gesetzt."
+
+#: src/admin/evaluation/NewRunPage.tsx
+msgid "Steht in der Liste der Läufe; später änderbar."
+msgstr "Steht in der Liste der Läufe; später änderbar."
 
 #: src/model/panel/Answer.tsx
 msgid "Stellt den Schalter auf Direktabfrage und setzt denselben Prompt ins Feld. Gesendet wird erst mit Senden."
@@ -7120,6 +7145,10 @@ msgid "Vergleichsbasis"
 msgstr "Vergleichsbasis"
 
 #: src/admin/evaluation/CasesPage.tsx
+msgid "Vergleichsbasis von Lauf #{run}, {when}{quick}"
+msgstr "Vergleichsbasis von Lauf #{run}, {when}{quick}"
+
+#: src/admin/evaluation/CasesPage.tsx
 #: src/admin/evaluation/runWords.ts
 #: src/admin/evaluation/words.ts
 msgid "Verhalten"
@@ -7258,6 +7287,10 @@ msgstr "von Hand übernommen"
 msgctxt "date"
 msgid "vor"
 msgstr "vor"
+
+#: src/admin/evaluation/CasesPage.tsx
+msgid "vor Änderung"
+msgstr "vor Änderung"
 
 #: src/admin/ConnectionDetailPage.tsx
 #: src/admin/ConnectionsPage.tsx
@@ -7697,6 +7730,7 @@ msgstr "Zugang"
 msgid "Zugang angenommen"
 msgstr "Zugang angenommen"
 
+#: src/admin/evaluation/CasesPage.tsx
 #: src/session/SessionMenu.tsx
 msgid "Zuletzt"
 msgstr "Zuletzt"

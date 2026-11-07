@@ -2,8 +2,8 @@
 // status in the language of E2, the reference column's rate and the cost; two
 // complete runs over the same cases can be put side by side (D7): once one is
 // marked, the runs it cannot be compared with are locked, with the reason.
-// Each row names its connections and opens its run on a click anywhere in
-// it. Empty: the smallest sensible first run (V5.2).
+// Each row names its connections, shows the run's note under its number and
+// opens its run on a click anywhere in it. Empty: the smallest sensible first run (V5.2).
 import { Trans } from '@lingui/react/macro'
 import { t } from '@lingui/core/macro'
 import { useId, useState } from 'react'
@@ -198,6 +198,7 @@ export function RunsPage() {
                       <Link to={runPath(r.id)} className="text-accent-700 tabular-nums">
                         #{r.id}
                       </Link>
+                      {r.note && <span className="block max-w-48 text-xs">{r.note}</span>}
                     </td>
                     <td className="tabular-nums">
                       {formatDateTime(r.started_at)} · {r.started_by}

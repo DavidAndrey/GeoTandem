@@ -498,6 +498,8 @@ class EvalRun(Base):
     started_at: Mapped[datetime]
     finished_at: Mapped[datetime | None]
     """Naive UTC from the application's clock."""
+    note: Mapped[str] = mapped_column(String(200), default="", server_default="")
+    """A few words to tell the run apart (``RunRequest.note``), editable later."""
 
 
 class EvalAnswer(Base):

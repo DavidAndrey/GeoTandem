@@ -38,7 +38,8 @@ const rowIds = () =>
   screen
     .getAllByRole('row')
     .slice(1)
-    .map((row) => within(row).queryByRole('link')?.textContent)
+    // The first link is the case's id; a row may link its last run as well.
+    .map((row) => within(row).queryAllByRole('link')[0]?.textContent)
     .filter(Boolean)
 
 beforeEach(() => vi.stubGlobal('scrollTo', () => undefined))
@@ -499,4 +500,55 @@ test('a column sorts each part up, down and back; the sort survives the filter r
   expect(header()).toHaveAttribute('aria-sort', 'descending')
   await userEvent.click(screen.getByRole('button', { name: 'Herkunft' }))
   expect(header()).not.toHaveAttribute('aria-sort')
+})
+
+const RESULTS = '/api/admin/evaluation/case-results'
+const result = (case_id: string, start: boolean, passed: number, run = 13) => ({
+  case_id,
+  start,
+  run,
+  started_at: '2026-10-22T15:30:00',
+  scope: 'full' as const,
+  passed,
+  answers: 10,
+})
+
+test('Zuletzt: each case with its last result, the run as a link, sortable by the share right', async () => {
+  const page = casePage()
+  // e-turnhalle was edited after the run; doc1 as an own copy shares its id with the start case.
+  const items = page.items.map((v) =>
+    v.case.id === 'e-turnhalle-ostermundigen' ? { ...v, updated_at: '2026-10-23T08:00:00' } : v,
+  )
+  backend(
+    { ...page, items },
+    {
+      [`GET ${RESULTS}`]: {
+        items: [
+          result('doc1-primar-koeniz', true, 9),
+          result('n03-einwohner-tabelle', true, 3, 12),
+          result('e-turnhalle-ostermundigen', false, 7),
+          result('e-schulweg-import', false, 10),
+        ],
+      },
+    },
+  )
+  renderAt('/admin/bewertung/faelle', <App />)
+  const doc1 = must((await screen.findByText('doc1-primar-koeniz')).closest('tr'))
+  expect(await within(doc1).findByText('9 von 10')).toBeInTheDocument()
+  expect(within(doc1).getByRole('link', { name: '#13' })).toHaveAttribute(
+    'href',
+    '/admin/bewertung/lauf/13',
+  )
+  const edited = must(screen.getByText('e-turnhalle-ostermundigen').closest('tr'))
+  expect(within(edited).getByText('vor Änderung')).toBeInTheDocument()
+  const stale = must(screen.getByText('e-kitas-bahnhof').closest('tr'))
+  expect(within(stale).getByText('–')).toBeInTheDocument()
+  // Ascending: the hardest first in each part; a case never run last.
+  await userEvent.click(screen.getByRole('button', { name: 'Zuletzt' }))
+  expect(rowIds().slice(0, 3)).toEqual([
+    'e-turnhalle-ostermundigen',
+    'e-schulweg-import',
+    'e-kitas-bahnhof',
+  ])
+  expect(rowIds()[3]).toBe('n03-einwohner-tabelle')
 })
