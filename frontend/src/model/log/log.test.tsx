@@ -504,7 +504,7 @@ describe('M16.2 one entry', () => {
     renderAt(`${LOG_PATH}/101`, <App />)
     expect(
       await screen.findByText(
-        'Promptprofil: 12 Beispiele · P9 (Hinweis „erste Frage" als eigene Systemnachricht) · nur Text',
+        'Promptprofil: 12 Beispiele · Hinweis „erste Frage" als eigene Systemnachricht (P9) · Schema nur im Prompt',
       ),
     ).toBeInTheDocument()
     cleanup()

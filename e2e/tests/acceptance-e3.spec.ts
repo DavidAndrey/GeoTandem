@@ -257,13 +257,16 @@ async function callsFor(model: string): Promise<Call[]> {
 /** Creates a connection in the admin page, not released for users. */
 async function createInUi(page: Page, name: string, model: string, external = false) {
   await page.goto('/admin/modelle')
-  await page.getByRole('button', { name: 'Anbindung', exact: true }).click()
+  await page.getByRole('link', { name: 'Anbindung', exact: true }).click()
   const form = page.getByRole('form', { name: 'Neue Anbindung' })
   await form.getByLabel('Name').fill(name)
   await form.getByLabel('Adresse').fill(STUB!)
   await form.getByLabel('Modell').fill(model)
   if (external) await form.getByLabel('Als extern behandeln, obwohl der Host lokal ist').check()
   await form.getByRole('button', { name: 'Speichern' }).click()
+  // Saved, the new connection is on its own page (plan-connection-detail, D4).
+  await expect(page.getByText('Gespeichert', { exact: true })).toBeVisible()
+  await page.getByRole('link', { name: 'Alle Anbindungen' }).click()
   const row = page.getByRole('row', { name: new RegExp(name) })
   await expect(row).toBeVisible()
   return row
@@ -498,20 +501,17 @@ test.describe('E3 against the model stub', { tag: '@stub' }, () => {
       const ids = Object.fromEntries((await connections(request)).map((c) => [c.name, c.id]))
       await page.getByRole('button', { name: 'Zur Anbindung ▾' }).click()
       await page.getByRole('menuitem', { name: DEMO_A }).click()
-      await expect(page).toHaveURL(new RegExp(`/admin/modelle#anbindung-${ids[DEMO_A]}$`))
-      const target = page.locator(`#anbindung-${ids[DEMO_A]}`)
-      await expect(target).toHaveAttribute('aria-current', 'location')
+      await expect(page).toHaveURL(new RegExp(`/admin/modelle/${ids[DEMO_A]}$`))
+      await expect(page.getByRole('heading', { name: DEMO_A })).toBeVisible()
       // "zuletzt bewertet" (O7) names this run.
-      await expect(target.getByRole('link', { name: `Lauf #${id}` })).toBeVisible()
-      await target.getByRole('button', { name: `Aktionen für ${DEMO_A}` }).click()
-      await page.getByRole('menuitem', { name: 'Bearbeiten' }).click()
+      await expect(page.getByRole('link', { name: `Lauf #${id}` })).toBeVisible()
       const form = page.getByRole('form', { name: 'Anbindung bearbeiten' })
       await form.getByLabel('Für Anwender freigegeben').check()
       await form.getByLabel('Voreingestellt').check()
       await form.getByRole('button', { name: 'Speichern' }).click()
-      await expect(form).toHaveCount(0)
-      await expect(target.getByRole('cell', { name: 'freigegeben', exact: true })).toBeVisible()
-      await expect(target.getByText('voreingestellt', { exact: true })).toBeVisible()
+      await expect(form.getByText('Gespeichert', { exact: true })).toBeVisible()
+      await expect(page.getByText('freigegeben', { exact: true })).toBeVisible()
+      await expect(page.getByText('voreingestellt', { exact: true })).toBeVisible()
       const after = await connections(request)
       expect(after.find((c) => c.name === DEMO_A)).toMatchObject({
         enabled: true,
@@ -890,7 +890,7 @@ test.describe('E3 against the model stub', { tag: '@stub' }, () => {
       count: CODE_CASES.length,
     })
     // Point 2 measures P9 without changing the connection (D9).
-    await page.getByLabel('Platzierung von Messpunkt 2').selectOption({ label: 'P9' })
+    await page.getByLabel('Reihenfolge von Messpunkt 2').selectOption({ label: 'P9' })
     const id = await startAndFinish(page, start)
     await expect(head(page, PROFILE, 1)).toContainText('P9')
     expect(
@@ -917,7 +917,7 @@ test.describe('E3 against the model stub', { tag: '@stub' }, () => {
     await page.getByRole('menuitem', { name: `${PROFILE} P9` }).click()
     const dialog = page.getByRole('dialog', { name: 'Promptprofil übernehmen?' })
     await expect(dialog.getByRole('list', { name: 'Änderungen' })).toContainText(
-      '~ Platzierung: P0 → P9',
+      '~ Reihenfolge: P0 → P9',
     )
     await expect(dialog.getByRole('list', { name: 'Änderungen' })).toContainText(
       'Beispiele: Standard (unverändert)',

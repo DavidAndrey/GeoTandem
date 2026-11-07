@@ -260,7 +260,7 @@ msgstr "{conditions} · Vorschau {count}"
 msgid "{conditions} Bed."
 msgstr "{conditions} Bed."
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/connectionParts.tsx
 msgid "{count, plural, one {# Modell angeboten} other {# Modelle angeboten}}"
 msgstr "{count, plural, one {# Modell angeboten} other {# Modelle angeboten}}"
 
@@ -296,7 +296,7 @@ msgstr "{decision} {decided}"
 msgid "{describedDone} von {partCount} (fehlt: {names})"
 msgstr "{describedDone} von {partCount} (fehlt: {names})"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/connectionParts.tsx
 msgid "{digest} · {gb} GB"
 msgstr "{digest} · {gb} GB"
 
@@ -561,7 +561,7 @@ msgstr "{question} bei {name}:"
 msgid "{run} + {plan} Planung"
 msgstr "{run} + {plan} Planung"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/connectionParts.tsx
 #: src/admin/ModelActionPage.tsx
 #: src/model/panel/time.ts
 msgid "{s} s"
@@ -789,6 +789,10 @@ msgstr "▸ {more} weitere"
 msgid "▾ weniger"
 msgstr "▾ weniger"
 
+#: src/admin/ConnectionForm.tsx
+msgid "0: immer gleich; höher: vielfältiger."
+msgstr "0: immer gleich; höher: vielfältiger."
+
 #: src/admin/evaluation/NewRunPage.tsx
 msgid "1 · Messpunkte"
 msgstr "1 · Messpunkte"
@@ -838,7 +842,7 @@ msgstr "ab {stage}"
 msgid "ab E2.5"
 msgstr "ab E2.5"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 #: src/admin/DuplicateLayerDialog.tsx
 #: src/admin/evaluation/CaseDetailPage.tsx
 #: src/admin/evaluation/RunPage.tsx
@@ -1003,11 +1007,11 @@ msgstr "Administration"
 msgid "Administrator"
 msgstr "Administrator"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "Adresse"
 msgstr "Adresse"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/connectionParts.tsx
 msgid "Adresse gültig"
 msgstr "Adresse gültig"
 
@@ -1076,6 +1080,10 @@ msgstr "Alle"
 msgid "Alle ({allShown})"
 msgstr "Alle ({allShown})"
 
+#: src/admin/ConnectionDetailPage.tsx
+msgid "Alle Anbindungen"
+msgstr "Alle Anbindungen"
+
 #: src/admin/ProfileCompleteness.tsx
 msgid "Alle Attribute beschriftet, alle Codelisten bestätigt, alle Beschreibungen vorhanden."
 msgstr "Alle Attribute beschriftet, alle Codelisten bestätigt, alle Beschreibungen vorhanden."
@@ -1130,7 +1138,7 @@ msgstr "Als eigenen Fall kopieren"
 msgid "Als Ergebnis-Layer"
 msgstr "Als Ergebnis-Layer"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "Als extern behandeln, obwohl der Host lokal ist"
 msgstr "Als extern behandeln, obwohl der Host lokal ist"
 
@@ -1185,6 +1193,7 @@ msgstr "Analyse unter einem Namen speichern"
 msgid "Analyse unverändert"
 msgstr "Analyse unverändert"
 
+#: src/admin/ConnectionDetailPage.tsx
 #: src/admin/ConnectionsPage.tsx
 #: src/admin/evaluation/NewRunPage.tsx
 #: src/admin/ModelActionPage.tsx
@@ -1201,13 +1210,21 @@ msgstr "Anbindung „{name}\" löschen?"
 msgid "Anbindung {connectionId}"
 msgstr "Anbindung {connectionId}"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "Anbindung bearbeiten"
 msgstr "Anbindung bearbeiten"
+
+#: src/admin/ConnectionDetailPage.tsx
+msgid "Anbindung nicht gefunden. Vielleicht wurde sie gelöscht. <0>Zur Liste der Anbindungen</0>"
+msgstr "Anbindung nicht gefunden. Vielleicht wurde sie gelöscht. <0>Zur Liste der Anbindungen</0>"
 
 #: src/admin/evaluation/NewRunPage.tsx
 msgid "Anbindung von Messpunkt {n}"
 msgstr "Anbindung von Messpunkt {n}"
+
+#: src/admin/ConnectionDetailPage.tsx
+msgid "Anbindung wählen"
+msgstr "Anbindung wählen"
 
 #: src/model/panel/Problem.tsx
 msgid "Anbindung wechseln"
@@ -1267,16 +1284,15 @@ msgstr "Änderungen übernehmen"
 msgid "Anfrage nicht ausgeführt"
 msgstr "Anfrage nicht ausgeführt"
 
-#: src/admin/ConnectionsPage.tsx
 #: src/admin/evaluation/NewRunPage.tsx
 msgid "Anfragen"
 msgstr "Anfragen"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "Anfragen pro Tag"
 msgstr "Anfragen pro Tag"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "Anfragen pro Tag begrenzen"
 msgstr "Anfragen pro Tag begrenzen"
 
@@ -1375,7 +1391,7 @@ msgstr "Antwort abgeschnitten"
 msgid "Antwort im Arbeitsplatz"
 msgstr "Antwort im Arbeitsplatz"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/connectionParts.tsx
 msgid "Antwort nach JSON-Schema"
 msgstr "Antwort nach JSON-Schema"
 
@@ -1400,6 +1416,19 @@ msgstr "Antworten · {rightCount} richtig · {wrongCount} falsch, alle still"
 #: src/admin/evaluation/CaseDetailPage.tsx
 msgid "Antworten mit diesen Wörtern:"
 msgstr "Antworten mit diesen Wörtern:"
+
+#: src/admin/ConnectionForm.tsx
+#: src/admin/evaluation/RunPage.tsx
+msgid "Antwortformat"
+msgstr "Antwortformat"
+
+#: src/admin/evaluation/NewRunPage.tsx
+msgid "Antwortformat von Messpunkt {n}"
+msgstr "Antwortformat von Messpunkt {n}"
+
+#: src/admin/ConnectionForm.tsx
+msgid "Antwortverhalten"
+msgstr "Antwortverhalten"
 
 #: src/model/approval/Approval.tsx
 msgid "Anwenden"
@@ -1426,7 +1455,7 @@ msgstr "Anzeige"
 msgid "Anzeigename"
 msgstr "Anzeigename"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "API-Schlüssel"
 msgstr "API-Schlüssel"
 
@@ -1442,6 +1471,7 @@ msgstr "Arbeitsplatz"
 msgid "Arbeitsweise"
 msgstr "Arbeitsweise"
 
+#: src/admin/ConnectionDetailPage.tsx
 #: src/admin/ConnectionsPage.tsx
 #: src/admin/evaluation/CaseDetailPage.tsx
 #: src/admin/evaluation/CasesPage.tsx
@@ -1532,7 +1562,7 @@ msgctxt "level cell"
 msgid "aus"
 msgstr "aus"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "Aus"
 msgstr "Aus"
 
@@ -1557,21 +1587,9 @@ msgstr "Aus der Frage vorgeschlagen; eindeutig unter allen Prüffällen."
 msgid "aus Raumfilter"
 msgstr "aus Raumfilter"
 
-#: src/admin/evaluation/RunPage.tsx
-msgid "Ausgabe"
-msgstr "Ausgabe"
-
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "Ausgabe je Mio. Tokens"
 msgstr "Ausgabe je Mio. Tokens"
-
-#: src/admin/evaluation/NewRunPage.tsx
-msgid "Ausgabe von Messpunkt {n}"
-msgstr "Ausgabe von Messpunkt {n}"
-
-#: src/admin/ConnectionsPage.tsx
-msgid "Ausgabeformat"
-msgstr "Ausgabeformat"
 
 #: src/admin/evaluation/ComparisonPage.tsx
 msgid "Aussage"
@@ -1688,6 +1706,10 @@ msgstr "beide"
 msgid "beide {scope}"
 msgstr "beide {scope}"
 
+#: src/admin/ConnectionForm.tsx
+msgid "Beide Beträge und die Währung, oder keines davon."
+msgstr "Beide Beträge und die Währung, oder keines davon."
+
 #: src/i18n/errors.ts
 msgid "Beim Modell ist ein Fehler aufgetreten."
 msgstr "Beim Modell ist ein Fehler aufgetreten."
@@ -1710,7 +1732,6 @@ msgstr "Beispieldatensatz"
 msgid "Beispieldatensatz „Bern-Mittelland\" laden"
 msgstr "Beispieldatensatz „Bern-Mittelland\" laden"
 
-#: src/admin/ConnectionsPage.tsx
 #: src/admin/evaluation/RunPage.tsx
 #: src/admin/ModelActionPage.tsx
 msgid "Beispiele"
@@ -1720,9 +1741,17 @@ msgstr "Beispiele"
 msgid "Beispiele aus den sichtbaren Layern"
 msgstr "Beispiele aus den sichtbaren Layern"
 
+#: src/admin/ConnectionForm.tsx
+msgid "Beispiele im Prompt"
+msgstr "Beispiele im Prompt"
+
 #: src/admin/evaluation/NewRunPage.tsx
 msgid "Beispiele von Messpunkt {n}"
 msgstr "Beispiele von Messpunkt {n}"
+
+#: src/admin/promptProfile.ts
+msgid "Beispiele vor dem Steckbrief (P5)"
+msgstr "Beispiele vor dem Steckbrief (P5)"
 
 #: src/admin/AdminLayout.tsx
 #: src/admin/UsersPage.tsx
@@ -1791,7 +1820,7 @@ msgstr "Beschriftungen {labels} · Codelisten {codes} · Beschreibungen {describ
 msgid "besser"
 msgstr "besser"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/connectionParts.tsx
 msgid "bestanden"
 msgstr "bestanden"
 
@@ -1922,7 +1951,7 @@ msgstr "Braucht Freigabe: {needs}. Die strengste Festlegung gilt für die ganze 
 msgid "braucht Werte"
 msgstr "braucht Werte"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "Budget für den Layer-Steckbrief; wird nicht gesendet."
 msgstr "Budget für den Layer-Steckbrief; wird nicht gesendet."
 
@@ -1967,7 +1996,7 @@ msgstr "danach von Hand geändert"
 msgid "danach von Hand geändert {touched}"
 msgstr "danach von Hand geändert {touched}"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "Darf Dateninhalte erhalten (sonst nur Metadaten)"
 msgstr "Darf Dateninhalte erhalten (sonst nur Metadaten)"
 
@@ -2193,6 +2222,10 @@ msgstr "Datenkatalog"
 msgid "Datenkern"
 msgstr "Datenkern"
 
+#: src/admin/ConnectionForm.tsx
+msgid "Datenschutz"
+msgstr "Datenschutz"
+
 #: src/admin/evaluation/CaseDetailPage.tsx
 #: src/admin/evaluation/CasesPage.tsx
 #: src/admin/evaluation/NewRunPage.tsx
@@ -2239,7 +2272,7 @@ msgstr "Deckkraft"
 msgid "Deckkraft {title}"
 msgstr "Deckkraft {title}"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "default (nichts senden)"
 msgstr "default (nichts senden)"
 
@@ -2263,7 +2296,7 @@ msgstr "Den Layer „{layer}\" gibt es nicht, er ist nicht sichtbar oder nicht f
 msgid "Den Startfall unter einer neuen Kennung als eigenen Fall anlegen"
 msgstr "Den Startfall unter einer neuen Kennung als eigenen Fall anlegen"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "Denkaufwand"
 msgstr "Denkaufwand"
 
@@ -2411,7 +2444,7 @@ msgstr "Der Steckbrief enthält keinen Layer."
 msgid "Der Steckbrief ist voraussichtlich grösser als die Kontextlänge von „{connection}“. Er wird nicht gekürzt: Ab der Direktabfrage wird eine Modellaktion für dieses Konto abgelehnt. Weniger Layer oder Felder für das Modell freigeben oder eine Anbindung mit grösserem Kontext wählen."
 msgstr "Der Steckbrief ist voraussichtlich grösser als die Kontextlänge von „{connection}“. Er wird nicht gekürzt: Ab der Direktabfrage wird eine Modellaktion für dieses Konto abgelehnt. Weniger Layer oder Felder für das Modell freigeben oder eine Anbindung mit grösserem Kontext wählen."
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "Der Text der Anfrage geht in jedem Fall an das Modell."
 msgstr "Der Text der Anfrage geht in jedem Fall an das Modell."
 
@@ -2564,6 +2597,10 @@ msgstr "Die Anbindung sendet inzwischen an {host}, nicht an den bestätigten Hos
 msgid "Die Änderungen an diesem Prüffall sind nicht gespeichert und gehen verloren."
 msgstr "Die Änderungen an diesem Prüffall sind nicht gespeichert und gehen verloren."
 
+#: src/admin/ConnectionDetailPage.tsx
+msgid "Die Änderungen an dieser Anbindung sind nicht gespeichert und gehen verloren."
+msgstr "Die Änderungen an dieser Anbindung sind nicht gespeichert und gehen verloren."
+
 #: src/i18n/errors.ts
 msgid "Die Anfrage hat nicht die erwartete Form."
 msgstr "Die Anfrage hat nicht die erwartete Form."
@@ -2623,6 +2660,10 @@ msgstr "Die beiden Läufe haben keinen gleichen Messpunkt (gleiche Anbindung mit
 #: src/i18n/errors.ts
 msgid "Die beiden Schlüssel sind verschiedenen Typs (Text und Zahl)."
 msgstr "Die beiden Schlüssel sind verschiedenen Typs (Text und Zahl)."
+
+#: src/admin/promptProfile.ts
+msgid "Die Beispiele kommen vor dem Steckbrief der Layer, direkt nach den Anweisungen der Stufe."
+msgstr "Die Beispiele kommen vor dem Steckbrief der Layer, direkt nach den Anweisungen der Stufe."
 
 #: src/i18n/errors.ts
 msgid "Die Datei braucht zum Lesen mehr Speicher, als ein Import haben darf."
@@ -2963,11 +3004,11 @@ msgstr "Distanz {title}"
 msgid "Distanz in Metern"
 msgstr "Distanz in Metern"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "Drei Buchstaben, z. B. CHF, EUR, USD."
 msgstr "Drei Buchstaben, z. B. CHF, EUR, USD."
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "Drei Grossbuchstaben, z. B. CHF"
 msgstr "Drei Grossbuchstaben, z. B. CHF"
 
@@ -3014,9 +3055,9 @@ msgstr "Eigene und geteilte Abfragen öffnen, umbenennen, teilen, kopieren oder 
 msgid "Eigene, aber kein passender Prüffall: die Standardbeispiele"
 msgstr "Eigene, aber kein passender Prüffall: die Standardbeispiele"
 
-#: src/admin/ConnectionsPage.tsx
-msgid "Eigene: zu jeder Frage drei passende geprüfte Abstimmungsfälle, aus dem Startbestand und den als Beispiel markierten eigenen Fällen; nur mit P0."
-msgstr "Eigene: zu jeder Frage drei passende geprüfte Abstimmungsfälle, aus dem Startbestand und den als Beispiel markierten eigenen Fällen; nur mit P0."
+#: src/admin/ConnectionForm.tsx
+msgid "Eigene: zu jeder Frage drei passende geprüfte Abstimmungsfälle, aus dem Startbestand und den als Beispiel markierten eigenen Fällen; nur mit der Standard-Reihenfolge."
+msgstr "Eigene: zu jeder Frage drei passende geprüfte Abstimmungsfälle, aus dem Startbestand und den als Beispiel markierten eigenen Fällen; nur mit der Standard-Reihenfolge."
 
 #: src/auth/UserMenu.tsx
 msgid "Eigenes Passwort ändern"
@@ -3070,7 +3111,7 @@ msgstr "Ein Preis braucht beide Beträge (Eingabe und Ausgabe) und die Währung,
 msgid "Ein Prüffall passt nicht: Das Format stimmt nicht, oder seine Referenzabfrage besteht die Prüfung nicht."
 msgstr "Ein Prüffall passt nicht: Das Format stimmt nicht, oder seine Referenzabfrage besteht die Prüfung nicht."
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "Ein Schlüssel ist gespeichert. Leer lassen, um ihn zu behalten."
 msgstr "Ein Schlüssel ist gespeichert. Leer lassen, um ihn zu behalten."
 
@@ -3163,7 +3204,7 @@ msgstr "Einen Prüffall „{id}\" gibt es schon."
 msgid "Eingabe gesperrt, solange das Modell arbeitet"
 msgstr "Eingabe gesperrt, solange das Modell arbeitet"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "Eingabe je Mio. Tokens"
 msgstr "Eingabe je Mio. Tokens"
 
@@ -3294,7 +3335,7 @@ msgstr "Ergebnis"
 msgid "Ergebnis {shown} · vorgemerkt"
 msgstr "Ergebnis {shown} · vorgemerkt"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "Ergebnis des Verbindungstests"
 msgstr "Ergebnis des Verbindungstests"
 
@@ -3410,7 +3451,7 @@ msgstr "Erneut vermerken"
 msgid "Erneut versuchen"
 msgstr "Erneut versuchen"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/connectionParts.tsx
 msgid "Erreichbar"
 msgstr "Erreichbar"
 
@@ -3457,13 +3498,9 @@ msgstr "Ersteinrichtung"
 msgid "Erwartet"
 msgstr "Erwartet"
 
-#: src/admin/promptProfile.ts
-msgid "erzwungen"
-msgstr "erzwungen"
-
-#: src/admin/ConnectionsPage.tsx
-msgid "Erzwungen: das Antwortschema geht auch als eingeschränkte Ausgabe mit. Nur Text: das Schema steht nur im Prompt."
-msgstr "Erzwungen: das Antwortschema geht auch als eingeschränkte Ausgabe mit. Nur Text: das Schema steht nur im Prompt."
+#: src/admin/ConnectionForm.tsx
+msgid "Erzwungen: das Modell kann nur nach dem Antwortschema antworten. Nur im Prompt: das Schema steht als Text im Prompt."
+msgstr "Erzwungen: das Modell kann nur nach dem Antwortschema antworten. Nur im Prompt: das Schema steht als Text im Prompt."
 
 #: src/i18n/errors.ts
 msgid "Es braucht mindestens {min} und höchstens {max} Stufen."
@@ -3598,10 +3635,14 @@ msgctxt "model sees"
 msgid "Fehler"
 msgstr "Fehler"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/connectionParts.tsx
 #: src/admin/format.ts
 msgid "fehlgeschlagen"
 msgstr "fehlgeschlagen"
+
+#: src/admin/ConnectionForm.tsx
+msgid "Feinabstimmung der Direktabfrage; die Werkzeugkette nutzt immer den Standard. Welche Einstellung einem Modell hilft, zeigt ein Bewertungslauf."
+msgstr "Feinabstimmung der Direktabfrage; die Werkzeugkette nutzt immer den Standard. Welche Einstellung einem Modell hilft, zeigt ein Bewertungslauf."
 
 #: src/admin/LayerPage.tsx
 #: src/admin/ProfilePage.tsx
@@ -3726,7 +3767,6 @@ msgstr "Fragen Sie in eigenen Worten nach den sichtbaren Layern. Das Modell schl
 msgid "Fragestellung, Annahmen …"
 msgstr "Fragestellung, Annahmen …"
 
-#: src/admin/ConnectionsPage.tsx
 #: src/model/approval/Approval.tsx
 #: src/model/chain/Chain.tsx
 msgid "Freigabe"
@@ -3749,6 +3789,7 @@ msgstr "Freigeben und als Standard setzen auf der Seite Modellanbindungen."
 msgid "Freigeben und fortsetzen"
 msgstr "Freigeben und fortsetzen"
 
+#: src/admin/ConnectionDetailPage.tsx
 #: src/admin/ConnectionsPage.tsx
 #: src/model/statusKey.ts
 msgid "freigegeben"
@@ -3762,11 +3803,12 @@ msgstr "Freigegeben: Die Kette startet …"
 msgid "Funktion"
 msgstr "Funktion"
 
+#: src/admin/ConnectionDetailPage.tsx
 #: src/admin/ConnectionsPage.tsx
 msgid "Für Anwender"
 msgstr "Für Anwender"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "Für Anwender freigegeben"
 msgstr "Für Anwender freigegeben"
 
@@ -3835,6 +3877,10 @@ msgstr "Gegeben"
 msgid "Gegeben: {given}"
 msgstr "Gegeben: {given}"
 
+#: src/admin/ConnectionForm.tsx
+msgid "Gegenprüfung"
+msgstr "Gegenprüfung"
+
 #: src/admin/evaluation/RunsPage.tsx
 msgid "Gegenüberstellen"
 msgstr "Gegenüberstellen"
@@ -3850,10 +3896,6 @@ msgstr "Gemessen in Lauf #{id}: <0>{word}</0> als {refName}, {diff} auf Bestäti
 #: src/admin/evaluation/measured.ts
 msgid "Gemessen: {point} hatte auf diesem Layer {right} von {total} Antworten richtig (Lauf #{id}, {cases})."
 msgstr "Gemessen: {point} hatte auf diesem Layer {right} von {total} Antworten richtig (Lauf #{id}, {cases})."
-
-#: src/admin/ConnectionsPage.tsx
-msgid "Gemessene Varianten des Prompts der Direktabfrage; die Werkzeugkette nutzt immer den Standard. Welche Variante einem Modell hilft, zeigt ein Bewertungslauf."
-msgstr "Gemessene Varianten des Prompts der Direktabfrage; die Werkzeugkette nutzt immer den Standard. Welche Variante einem Modell hilft, zeigt ein Bewertungslauf."
 
 #: src/i18n/errors.ts
 msgid "Genau eine Stufe muss voreingestellt sein."
@@ -3908,6 +3950,7 @@ msgstr "Gesamt"
 msgid "Gesamter Zeitraum"
 msgstr "Gesamter Zeitraum"
 
+#: src/admin/ConnectionForm.tsx
 #: src/queries/SavedQueries.tsx
 msgid "Gespeichert"
 msgstr "Gespeichert"
@@ -3978,7 +4021,7 @@ msgstr "Geteilt: für alle Anwender lesbar (Ändern erzeugt bei ihnen eine Kopie
 msgid "Geteilt: für alle Anwender sichtbar, die ihre Layer sehen — nur lesend, Ändern erzeugt eine Kopie."
 msgstr "Geteilt: für alle Anwender sichtbar, die ihre Layer sehen — nur lesend, Ändern erzeugt eine Kopie."
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "Gezählt über alle Konten je Kalendertag; eine Anfrage zählt, sobald sie das Modell erreicht. Ist die Grenze erreicht, wird die Anbindung bis zum nächsten Tag abgewiesen."
 msgstr "Gezählt über alle Konten je Kalendertag; eine Anfrage zählt, sobald sie das Modell erreicht. Ist die Grenze erreicht, wird die Anbindung bis zum nächsten Tag abgewiesen."
 
@@ -4001,6 +4044,10 @@ msgstr "Gleiche {cases} Fälle"
 #: src/operations/OperationDialog.tsx
 msgid "gleiche Intervalle"
 msgstr "gleiche Intervalle"
+
+#: src/admin/ConnectionForm.tsx
+msgid "Gleicher Wert: wiederholbare Antworten. Leer: es wird keiner gesendet."
+msgstr "Gleicher Wert: wiederholbare Antworten. Leer: es wird keiner gesendet."
 
 #: src/operations/OperationDialog.tsx
 msgid "Gleichnamige Felder erhalten das Präfix „{prefix}\"."
@@ -4080,7 +4127,7 @@ msgstr "heute {time}"
 msgid "Hier gibt es nichts zurückzunehmen."
 msgstr "Hier gibt es nichts zurückzunehmen."
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "high"
 msgstr "high"
 
@@ -4099,6 +4146,10 @@ msgstr "Hintergrundkarte"
 #: src/map/MapView.tsx
 msgid "Hintergrundkarte ein/aus"
 msgstr "Hintergrundkarte ein/aus"
+
+#: src/admin/promptProfile.ts
+msgid "Hinweis „erste Frage\" als eigene Systemnachricht (P9)"
+msgstr "Hinweis „erste Frage\" als eigene Systemnachricht (P9)"
 
 #: src/model/approval/NoticeBar.tsx
 msgid "Hinweis ausblenden"
@@ -4121,11 +4172,11 @@ msgstr "Hinzufügen"
 msgid "Höhe der Tabelle"
 msgstr "Höhe der Tabelle"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "Ich bestätige: Dateninhalte dürfen an {host} gehen."
 msgstr "Ich bestätige: Dateninhalte dürfen an {host} gehen."
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "Ich bestätige: Dateninhalte dürfen nach aussen gehen."
 msgstr "Ich bestätige: Dateninhalte dürfen nach aussen gehen."
 
@@ -4227,7 +4278,7 @@ msgstr "Importprotokoll"
 msgid "In Editor übernehmen"
 msgstr "In Editor übernehmen"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/connectionParts.tsx
 msgid "in Ordnung"
 msgstr "in Ordnung"
 
@@ -4286,9 +4337,9 @@ msgstr "Je Spalte"
 msgid "Je Stufe und Art der Operation: aus (abgewiesen), mit Freigabe (der Anwender bestätigt vorher) oder automatisch (läuft sofort, sichtbar und rücknehmbar). Berührt eine Abfrage mehrere Arten, gilt die strengste. Administratoren dürfen jede Stufe verwenden."
 msgstr "Je Stufe und Art der Operation: aus (abgewiesen), mit Freigabe (der Anwender bestätigt vorher) oder automatisch (läuft sofort, sichtbar und rücknehmbar). Berührt eine Abfrage mehrere Arten, gilt die strengste. Administratoren dürfen jede Stufe verwenden."
 
-#: src/admin/ConnectionsPage.tsx
-msgid "Jede Antwort der Direktabfrage wird danach mit der Werkzeugkette gefragt und verglichen; findet sie andere Objekte, ist die Antwort als unsicher markiert. Etwa doppelte Modellzeit; zählt zum Anfragelimit. Ob es einem Modell hilft, zeigt ein Bewertungslauf."
-msgstr "Jede Antwort der Direktabfrage wird danach mit der Werkzeugkette gefragt und verglichen; findet sie andere Objekte, ist die Antwort als unsicher markiert. Etwa doppelte Modellzeit; zählt zum Anfragelimit. Ob es einem Modell hilft, zeigt ein Bewertungslauf."
+#: src/admin/ConnectionForm.tsx
+msgid "Jede Antwort der Direktabfrage wird zusätzlich mit der Werkzeugkette gefragt; findet sie andere Objekte, ist die Antwort als unsicher markiert. Etwa doppelte Modellzeit; zählt zum Anfragelimit."
+msgstr "Jede Antwort der Direktabfrage wird zusätzlich mit der Werkzeugkette gefragt; findet sie andere Objekte, ist die Antwort als unsicher markiert. Etwa doppelte Modellzeit; zählt zum Anfragelimit."
 
 #: src/operations/OperationDialog.tsx
 msgid "Join"
@@ -4349,7 +4400,7 @@ msgstr "Kein Layer passt."
 msgid "Kein Objekt im Kartenausschnitt."
 msgstr "Kein Objekt im Kartenausschnitt."
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/connectionParts.tsx
 msgid "kein Ollama"
 msgstr "kein Ollama"
 
@@ -4597,10 +4648,13 @@ msgstr "Komma"
 msgid "Kontext"
 msgstr "Kontext"
 
-#: src/admin/ConnectionsPage.tsx
 #: src/admin/ProfilePage.tsx
 msgid "Kontextlänge"
 msgstr "Kontextlänge"
+
+#: src/admin/ConnectionForm.tsx
+msgid "Kontextlänge (Tokens)"
+msgstr "Kontextlänge (Tokens)"
 
 #: src/admin/ModelLogPage.tsx
 #: src/admin/ProfilePage.tsx
@@ -4668,6 +4722,10 @@ msgstr "Kosten #{b}"
 msgid "Kosten geschätzt"
 msgstr "Kosten geschätzt"
 
+#: src/admin/ConnectionForm.tsx
+msgid "Kosten und Grenzen"
+msgstr "Kosten und Grenzen"
+
 #: src/components/ui.tsx
 #: src/table/TableDock.tsx
 msgid "Lädt …"
@@ -4677,7 +4735,7 @@ msgstr "Lädt …"
 msgid "Lauf"
 msgstr "Lauf"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/connectionParts.tsx
 #: src/admin/evaluation/RunCasePage.tsx
 #: src/admin/evaluation/RunPage.tsx
 msgid "Lauf #{id}"
@@ -4908,6 +4966,7 @@ msgstr "Letzte Anmeldung"
 msgid "Letzter Import"
 msgstr "Letzter Import"
 
+#: src/admin/ConnectionDetailPage.tsx
 #: src/admin/ConnectionsPage.tsx
 msgid "Letzter Test"
 msgstr "Letzter Test"
@@ -4941,7 +5000,7 @@ msgstr "lokal · kein Preis"
 msgid "Lokal: {host}"
 msgstr "Lokal: {host}"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "Lokale Anbindungen dürfen Dateninhalte erhalten, externe nur Metadaten; nach dem Speichern änderbar."
 msgstr "Lokale Anbindungen dürfen Dateninhalte erhalten, externe nur Metadaten; nach dem Speichern änderbar."
 
@@ -4957,7 +5016,7 @@ msgstr "Lokale Anbindungen dürfen Dateninhalte erhalten, externe nur Metadaten;
 msgid "Löschen"
 msgstr "Löschen"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "low"
 msgstr "low"
 
@@ -4985,7 +5044,7 @@ msgstr "Maximum"
 msgid "Maximum {field}"
 msgstr "Maximum {field}"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "medium"
 msgstr "medium"
 
@@ -5072,7 +5131,7 @@ msgstr "Mit aktuellen Daten übernehmen"
 msgid "Mit den Beispielen „Eigene“ kann das Modell diesen Fall als Beispiel erhalten: die Frage so, wie sie hier steht, auch bei externen Verbindungen. Die Referenz geht an externe Verbindungen nur, wenn sie nur Zahlen, Ja oder Nein und bestätigte Codes enthält."
 msgstr "Mit den Beispielen „Eigene“ kann das Modell diesen Fall als Beispiel erhalten: die Frage so, wie sie hier steht, auch bei externen Verbindungen. Die Referenz geht an externe Verbindungen nur, wenn sie nur Zahlen, Ja oder Nein und bestätigte Codes enthält."
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "Mit der Werkzeugkette prüfen"
 msgstr "Mit der Werkzeugkette prüfen"
 
@@ -5113,6 +5172,7 @@ msgid "Mittelwert"
 msgstr "Mittelwert"
 
 #: src/admin/AdminLayout.tsx
+#: src/admin/ConnectionForm.tsx
 #: src/admin/ConnectionsPage.tsx
 msgid "Modell"
 msgstr "Modell"
@@ -5152,7 +5212,7 @@ msgstr "Modell nicht erreichbar"
 msgid "Modell sieht: {seen}"
 msgstr "Modell sieht: {seen}"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/connectionParts.tsx
 msgid "Modell vorhanden"
 msgstr "Modell vorhanden"
 
@@ -5192,7 +5252,7 @@ msgstr "nach"
 msgid "Nach {max} kam keine Antwort. Die Anfrage wurde abgebrochen."
 msgstr "Nach {max} kam keine Antwort. Die Anfrage wurde abgebrochen."
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "nach Art (lokal: none, extern: default)"
 msgstr "nach Art (lokal: none, extern: default)"
 
@@ -5220,6 +5280,7 @@ msgstr "Nächster Messpunkt"
 msgid "Nähe"
 msgstr "Nähe"
 
+#: src/admin/ConnectionForm.tsx
 #: src/admin/ConnectionsPage.tsx
 #: src/admin/LayerPage.tsx
 #: src/admin/LevelsPage.tsx
@@ -5270,13 +5331,18 @@ msgstr "neu:"
 msgid "Neue Abfrage (leer)"
 msgstr "Neue Abfrage (leer)"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "Neue Adresse: den Schlüssel neu eintragen oder entfernen. Der gespeicherte geht nur an die bisherige."
 msgstr "Neue Adresse: den Schlüssel neu eintragen oder entfernen. Der gespeicherte geht nur an die bisherige."
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionDetailPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "Neue Anbindung"
 msgstr "Neue Anbindung"
+
+#: src/admin/ConnectionDetailPage.tsx
+msgid "Neue Anbindung …"
+msgstr "Neue Anbindung …"
 
 #: src/workplace/AddLayers.tsx
 msgid "Neue Daten importieren"
@@ -5358,7 +5424,7 @@ msgstr "Nicht beantwortbar"
 msgid "nicht belegt"
 msgstr "nicht belegt"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/connectionParts.tsx
 msgid "nicht bestanden"
 msgstr "nicht bestanden"
 
@@ -5370,6 +5436,7 @@ msgstr "nicht darstellbar"
 msgid "nicht den Verbund"
 msgstr "nicht den Verbund"
 
+#: src/admin/ConnectionDetailPage.tsx
 #: src/admin/ConnectionsPage.tsx
 msgid "nicht freigegeben"
 msgstr "nicht freigegeben"
@@ -5479,7 +5546,7 @@ msgstr "Noch keine Sitzung gespeichert."
 msgid "Noch nicht in der Analyse. „Übernehmen“ gilt als Ihre Änderung."
 msgstr "Noch nicht in der Analyse. „Übernehmen“ gilt als Ihre Änderung."
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/connectionParts.tsx
 msgid "noch nie"
 msgstr "noch nie"
 
@@ -5487,7 +5554,7 @@ msgstr "noch nie"
 msgid "Noch wie im Betrieb (Stufe {levelName})."
 msgstr "Noch wie im Betrieb (Stufe {levelName})."
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "none (ohne Nachdenken)"
 msgstr "none (ohne Nachdenken)"
 
@@ -5575,10 +5642,6 @@ msgstr "Nur in:"
 msgid "nur Metadaten"
 msgstr "nur Metadaten"
 
-#: src/admin/promptProfile.ts
-msgid "nur Text"
-msgstr "nur Text"
-
 #: src/model/log/words.ts
 msgid "nur Vorschlag"
 msgstr "nur Vorschlag"
@@ -5586,6 +5649,10 @@ msgstr "nur Vorschlag"
 #: src/queries/ManageQueriesDialog.tsx
 msgid "Nur wer sie gespeichert hat, teilt sie."
 msgstr "Nur wer sie gespeichert hat, teilt sie."
+
+#: src/admin/ConnectionForm.tsx
+msgid "Nutzung und Datenschutz"
+msgstr "Nutzung und Datenschutz"
 
 #: src/editor/describe.ts
 msgid "Objekt {fid}"
@@ -5679,15 +5746,15 @@ msgstr "ok"
 msgid "OK"
 msgstr "OK"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/connectionParts.tsx
 msgid "Ollama {version}"
 msgstr "Ollama {version}"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/connectionParts.tsx
 msgid "Ollama-Version"
 msgstr "Ollama-Version"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "OpenAI-kompatibel, mit /v1. Lokal sind 127.0.0.1, localhost, host.docker.internal und die Namen in GEOTANDEM_LLM_LOCAL_HOSTS; alles andere ist extern."
 msgstr "OpenAI-kompatibel, mit /v1. Lokal sind 127.0.0.1, localhost, host.docker.internal und die Namen in GEOTANDEM_LLM_LOCAL_HOSTS; alles andere ist extern."
 
@@ -5699,33 +5766,21 @@ msgstr "Operation nicht möglich"
 msgid "Operator"
 msgstr "Operator"
 
-#: src/admin/ConnectionsPage.tsx
-msgid "Optional, je Million Tokens: Damit zeigt die Bewertung Schätzung und Kosten in Geld, sonst in Tokens. Beide Beträge und die Währung, oder keines davon."
-msgstr "Optional, je Million Tokens: Damit zeigt die Bewertung Schätzung und Kosten in Geld, sonst in Tokens. Beide Beträge und die Währung, oder keines davon."
+#: src/admin/ConnectionForm.tsx
+msgid "Optional. Mit Preisen zeigt die Bewertung Schätzung und Kosten in Geld, sonst in Tokens."
+msgstr "Optional. Mit Preisen zeigt die Bewertung Schätzung und Kosten in Geld, sonst in Tokens."
 
 #: src/admin/evaluation/profileOptions.ts
 msgid "P0"
 msgstr "P0"
 
-#: src/admin/promptProfile.ts
-msgid "P0 (wie bisher)"
-msgstr "P0 (wie bisher)"
-
 #: src/admin/evaluation/profileOptions.ts
 msgid "P5"
 msgstr "P5"
 
-#: src/admin/promptProfile.ts
-msgid "P5 (Beispiele vor dem Steckbrief)"
-msgstr "P5 (Beispiele vor dem Steckbrief)"
-
 #: src/admin/evaluation/profileOptions.ts
 msgid "P9"
 msgstr "P9"
-
-#: src/admin/promptProfile.ts
-msgid "P9 (Hinweis „erste Frage\" als eigene Systemnachricht)"
-msgstr "P9 (Hinweis „erste Frage\" als eigene Systemnachricht)"
 
 #: src/auth/LoginPage.tsx
 #: src/auth/SetupPage.tsx
@@ -5752,19 +5807,6 @@ msgstr "Passwort zurücksetzen"
 #: src/model/chain/PlanEditor.tsx
 msgid "Plan anpassen"
 msgstr "Plan anpassen"
-
-#: src/admin/ConnectionsPage.tsx
-#: src/admin/evaluation/RunPage.tsx
-msgid "Platzierung"
-msgstr "Platzierung"
-
-#: src/admin/evaluation/NewRunPage.tsx
-msgid "Platzierung von Messpunkt {n}"
-msgstr "Platzierung von Messpunkt {n}"
-
-#: src/admin/ConnectionsPage.tsx
-msgid "Preise"
-msgstr "Preise"
 
 #: src/admin/ModelActionPage.tsx
 #: src/admin/ModelLogPage.tsx
@@ -5796,17 +5838,17 @@ msgstr "Prompt erneut senden"
 msgid "Prompt nicht verfügbar: keine Modellanbindung aktiv. Klassik ist voll nutzbar."
 msgstr "Prompt nicht verfügbar: keine Modellanbindung aktiv. Klassik ist voll nutzbar."
 
+#: src/admin/ConnectionForm.tsx
+msgid "Prompt und Prüfung"
+msgstr "Prompt und Prüfung"
+
 #: src/admin/ModelActionPage.tsx
 msgid "Prompt-Hash"
 msgstr "Prompt-Hash"
 
-#: src/admin/ConnectionsPage.tsx
-msgid "Promptprofil"
-msgstr "Promptprofil"
-
 #: src/admin/evaluation/NewRunPage.tsx
-msgid "Promptprofil · Beispiele · Platzierung · Ausgabe"
-msgstr "Promptprofil · Beispiele · Platzierung · Ausgabe"
+msgid "Promptprofil · Beispiele · Reihenfolge · Antwortformat"
+msgstr "Promptprofil · Beispiele · Reihenfolge · Antwortformat"
 
 #: src/admin/evaluation/RunPage.tsx
 msgid "Promptprofil übernehmen ▾"
@@ -5858,10 +5900,6 @@ msgstr "Prüffälle"
 #: src/admin/ProfilePage.tsx
 msgid "Prüfsumme"
 msgstr "Prüfsumme"
-
-#: src/admin/ConnectionsPage.tsx
-msgid "Prüfung durch die Werkzeugkette"
-msgstr "Prüfung durch die Werkzeugkette"
 
 #: src/admin/evaluation/runWords.ts
 #: src/operations/OperationDialog.tsx
@@ -5959,6 +5997,18 @@ msgstr "Referenz im Arbeitsplatz"
 msgid "Referenzabfrage ungültig oder Fall unvollständig"
 msgstr "Referenzabfrage ungültig oder Fall unvollständig"
 
+#: src/admin/evaluation/RunPage.tsx
+msgid "Reihenfolge"
+msgstr "Reihenfolge"
+
+#: src/admin/ConnectionForm.tsx
+msgid "Reihenfolge im Prompt"
+msgstr "Reihenfolge im Prompt"
+
+#: src/admin/evaluation/NewRunPage.tsx
+msgid "Reihenfolge von Messpunkt {n}"
+msgstr "Reihenfolge von Messpunkt {n}"
+
 #: src/table/TableDock.tsx
 msgid "Reine Anzeige: blendet Zeilen ausserhalb des Kartenausschnitts aus, ändert den Filter nicht."
 msgstr "Reine Anzeige: blendet Zeilen ausserhalb des Kartenausschnitts aus, ändert den Filter nicht."
@@ -5989,6 +6039,14 @@ msgstr "Rückgängig"
 #: src/admin/evaluation/RunPage.tsx
 msgid "Schema"
 msgstr "Schema"
+
+#: src/admin/promptProfile.ts
+msgid "Schema erzwungen"
+msgstr "Schema erzwungen"
+
+#: src/admin/promptProfile.ts
+msgid "Schema nur im Prompt"
+msgstr "Schema nur im Prompt"
 
 #: src/admin/evaluation/runWords.ts
 msgid "schlechter"
@@ -6024,7 +6082,7 @@ msgstr "Schlüssel auf <0>{target}</0>"
 msgid "Schlüssel auf vorhandenen Layer"
 msgstr "Schlüssel auf vorhandenen Layer"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "Schlüssel entfernen"
 msgstr "Schlüssel entfernen"
 
@@ -6153,7 +6211,7 @@ msgstr "Schritte"
 msgid "Schrittzahl erreicht"
 msgstr "Schrittzahl erreicht"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "Seed"
 msgstr "Seed"
 
@@ -6246,6 +6304,10 @@ msgstr "Sitzungsmenü"
 msgid "So formulieren, wie ein Anwender fragen würde, nicht wie die Abfrage aussieht."
 msgstr "So formulieren, wie ein Anwender fragen würde, nicht wie die Abfrage aussieht."
 
+#: src/admin/ConnectionForm.tsx
+msgid "So lange wartet die Anwendung auf eine Antwort des Modells."
+msgstr "So lange wartet die Anwendung auf eine Antwort des Modells."
+
 #: src/admin/VisibilityPage.tsx
 msgid "sofort sichtbar"
 msgstr "sofort sichtbar"
@@ -6278,7 +6340,7 @@ msgstr "Spaltenkopf: Quote Abstimmung · Vergleich auf Bestätigung"
 msgid "Später"
 msgstr "Später"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 #: src/admin/evaluation/CaseDetailPage.tsx
 #: src/admin/evaluation/SaveCaseDialog.tsx
 #: src/admin/LayerPage.tsx
@@ -6343,6 +6405,10 @@ msgstr "Stand von Hand geändert"
 #: src/admin/promptProfile.ts
 msgid "Standard"
 msgstr "Standard"
+
+#: src/admin/promptProfile.ts
+msgid "Standard (P0)"
+msgstr "Standard (P0)"
 
 #: src/admin/ProfileCompleteness.tsx
 msgid "stärkste Wirkung"
@@ -6660,7 +6726,7 @@ msgstr "Technischer Name"
 msgid "Teil"
 msgstr "Teil"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "Temperatur"
 msgstr "Temperatur"
 
@@ -6668,7 +6734,7 @@ msgstr "Temperatur"
 msgid "Temperatur {temperature}"
 msgstr "Temperatur {temperature}"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "Testet …"
 msgstr "Testet …"
 
@@ -6809,7 +6875,7 @@ msgstr "Übernommen"
 msgid "Überschreiben"
 msgstr "Überschreiben"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/connectionParts.tsx
 msgid "übersprungen"
 msgstr "übersprungen"
 
@@ -6866,6 +6932,10 @@ msgstr "Ungespeicherte Änderungen"
 msgid "Ungespeicherte Änderungen am Prüffall verwerfen?"
 msgstr "Ungespeicherte Änderungen am Prüffall verwerfen?"
 
+#: src/admin/ConnectionDetailPage.tsx
+msgid "Ungespeicherte Änderungen an der Anbindung verwerfen?"
+msgstr "Ungespeicherte Änderungen an der Anbindung verwerfen?"
+
 #: src/admin/evaluation/CasesPage.tsx
 #: src/admin/evaluation/parts.tsx
 msgid "ungültig"
@@ -6908,7 +6978,7 @@ msgstr "Unvollständig"
 msgid "unzulässig"
 msgstr "unzulässig"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/connectionParts.tsx
 msgid "Ursache"
 msgstr "Ursache"
 
@@ -6933,6 +7003,11 @@ msgstr "Veraltet: Die Layer {layers} sind gelöscht oder für Sie nicht mehr sic
 msgid "Verbinde …"
 msgstr "Verbinde …"
 
+#: src/admin/ConnectionForm.tsx
+msgid "Verbindung"
+msgstr "Verbindung"
+
+#: src/admin/ConnectionForm.tsx
 #: src/admin/ConnectionsPage.tsx
 msgid "Verbindung testen"
 msgstr "Verbindung testen"
@@ -6941,13 +7016,17 @@ msgstr "Verbindung testen"
 msgid "Verbindungstest „{name}\""
 msgstr "Verbindungstest „{name}\""
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/connectionParts.tsx
 msgid "Verbindungstest bestanden"
 msgstr "Verbindungstest bestanden"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/connectionParts.tsx
 msgid "Verbindungstest nicht bestanden"
 msgstr "Verbindungstest nicht bestanden"
+
+#: src/admin/ConnectionForm.tsx
+msgid "Verfügbarkeit"
+msgstr "Verfügbarkeit"
 
 #: src/admin/evaluation/NewRunPage.tsx
 msgid "Vergleich"
@@ -7039,6 +7118,7 @@ msgstr "Verstanden, extern senden"
 msgid "Verwalten …"
 msgstr "Verwalten …"
 
+#: src/admin/ConnectionDetailPage.tsx
 #: src/admin/evaluation/CaseDetailPage.tsx
 #: src/admin/LevelsPage.tsx
 #: src/editor/EditorPanel.tsx
@@ -7122,11 +7202,12 @@ msgctxt "date"
 msgid "vor"
 msgstr "vor"
 
+#: src/admin/ConnectionDetailPage.tsx
 #: src/admin/ConnectionsPage.tsx
 msgid "voreingestellt"
 msgstr "voreingestellt"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 #: src/admin/LevelsPage.tsx
 msgid "Voreingestellt"
 msgstr "Voreingestellt"
@@ -7192,7 +7273,7 @@ msgstr "w"
 msgid "Wählen Sie Startbestand oder eigene Fälle."
 msgstr "Wählen Sie Startbestand oder eigene Fälle."
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "Währung"
 msgstr "Währung"
 
@@ -7280,11 +7361,15 @@ msgstr "Welche {a} liegen nahe an {b}?"
 msgid "Weniger als die Hälfte der Schlüssel findet einen Treffer."
 msgstr "Weniger als die Hälfte der Schlüssel findet einen Treffer."
 
+#: src/admin/ConnectionForm.tsx
+msgid "Wer die Anbindung wählen kann und was sie erhält."
+msgstr "Wer die Anbindung wählen kann und was sie erhält."
+
 #: src/admin/ConnectionsPage.tsx
 msgid "Wer sie gewählt hatte, arbeitet mit der voreingestellten Anbindung weiter."
 msgstr "Wer sie gewählt hatte, arbeitet mit der voreingestellten Anbindung weiter."
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/connectionParts.tsx
 msgid "Werkzeugaufruf"
 msgstr "Werkzeugaufruf"
 
@@ -7330,6 +7415,14 @@ msgstr "Wertebereiche und Codelisten schlägt der Import aus den Daten vor. Das 
 msgid "Werteliste"
 msgstr "Werteliste"
 
+#: src/admin/promptProfile.ts
+msgid "Wie bisher: Steckbrief der Layer und Antwortformat zuerst, die Beispiele am Schluss."
+msgstr "Wie bisher: Steckbrief der Layer und Antwortformat zuerst, die Beispiele am Schluss."
+
+#: src/admin/ConnectionForm.tsx
+msgid "Wie das Modell antwortet."
+msgstr "Wie das Modell antwortet."
+
 #: src/operations/OperationDialog.tsx
 msgid "Wie der Layer auf der Karte erscheint (F-4.8)."
 msgstr "Wie der Layer auf der Karte erscheint (F-4.8)."
@@ -7337,6 +7430,14 @@ msgstr "Wie der Layer auf der Karte erscheint (F-4.8)."
 #: src/admin/ImportWizard.tsx
 msgid "Wie ist der Raumbezug angegeben?"
 msgstr "Wie ist der Raumbezug angegeben?"
+
+#: src/admin/promptProfile.ts
+msgid "Wie Standard, aber der Hinweis „erste Frage des Gesprächs\" steht als eigene Systemnachricht direkt vor der Frage."
+msgstr "Wie Standard, aber der Hinweis „erste Frage des Gesprächs\" steht als eigene Systemnachricht direkt vor der Frage."
+
+#: src/admin/ConnectionForm.tsx
+msgid "Wie viel das Modell vor der Antwort nachdenken darf; nur bei Modellen, die es unterstützen."
+msgstr "Wie viel das Modell vor der Antwort nachdenken darf; nur bei Modellen, die es unterstützen."
 
 #: src/model/panel/Problem.tsx
 msgid "Wieder verfügbar ab 00:00 (Zeit des Servers)."
@@ -7395,7 +7496,7 @@ msgstr "Wird übernommen …"
 msgid "Wird übernommen, sobald der Editor geschlossen ist."
 msgstr "Wird übernommen, sobald der Editor geschlossen ist."
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "Wird verschlüsselt gespeichert und nie wieder angezeigt."
 msgstr "Wird verschlüsselt gespeichert und nie wieder angezeigt."
 
@@ -7406,6 +7507,10 @@ msgstr "Wird zurückgenommen, sobald der Editor geschlossen ist."
 #: src/editor/EditorPanel.tsx
 msgid "wo"
 msgstr "wo"
+
+#: src/admin/ConnectionForm.tsx
+msgid "Wo das Modell läuft und wie man es erreicht."
+msgstr "Wo das Modell läuft und wie man es erreicht."
 
 #: src/admin/evaluation/runWords.ts
 msgid "x"
@@ -7453,7 +7558,7 @@ msgstr "Zeit Median · oberes Zehntel #{a}"
 msgid "Zeit Median · oberes Zehntel #{b}"
 msgstr "Zeit Median · oberes Zehntel #{b}"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/ConnectionForm.tsx
 msgid "Zeitlimit (s)"
 msgstr "Zeitlimit (s)"
 
@@ -7531,7 +7636,7 @@ msgstr "zu viele Schritte"
 msgid "Zugang"
 msgstr "Zugang"
 
-#: src/admin/ConnectionsPage.tsx
+#: src/admin/connectionParts.tsx
 msgid "Zugang angenommen"
 msgstr "Zugang angenommen"
 
@@ -7539,6 +7644,7 @@ msgstr "Zugang angenommen"
 msgid "Zuletzt"
 msgstr "Zuletzt"
 
+#: src/admin/ConnectionDetailPage.tsx
 #: src/admin/ConnectionsPage.tsx
 msgid "Zuletzt bewertet"
 msgstr "Zuletzt bewertet"

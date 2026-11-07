@@ -531,9 +531,9 @@ function ApplyProfileDialog({
   const refName = pointName(reference.label)
   const c = point.comparison
   const lines = [
-    [t`Platzierung`, placementText(now.placement), placementText(next.placement)],
+    [t`Reihenfolge`, placementText(now.placement), placementText(next.placement)],
     [t`Beispiele`, examplesLabel(now.examples), examplesLabel(next.examples)],
-    [t`Ausgabe`, outputLabel(now.output), outputLabel(next.output)],
+    [t`Antwortformat`, outputLabel(now.output), outputLabel(next.output)],
   ]
   const silentlyCount = point.figures?.silently_wrong ?? 0
   const refCount = reference.figures?.silently_wrong ?? 0
@@ -657,7 +657,7 @@ function ColumnActions({ run }: { run: RunView }) {
           <DropdownMenu.Content align="start" className={menu}>
             {linked.map((p) => (
               <DropdownMenu.Item key={p.label.connection_id} asChild className={item}>
-                <Link to={`/admin/modelle#anbindung-${p.label.connection_id}`}>
+                <Link to={`/admin/modelle/${p.label.connection_id}`}>
                   {p.label.connection_name}
                 </Link>
               </DropdownMenu.Item>

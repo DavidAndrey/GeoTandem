@@ -39,7 +39,7 @@ export const casePath = (run: number, caseId: string, point: number, split?: Spl
   `${runPath(run)}/fall/${encodeURIComponent(caseId)}?punkt=${point}` +
   (split ? `&teil=${split}` : '')
 
-/** The parts of a profile other than the default examples and output: "nur Text". */
+/** The parts of a profile other than the default examples and output: "Schema nur im Prompt". */
 function profileExtras(p: PointLabel['prompt_profile']): string[] {
   const parts: string[] = []
   if (p.examples !== 'standard') parts.push(examplesShortLabel(p.examples))
@@ -47,13 +47,13 @@ function profileExtras(p: PointLabel['prompt_profile']): string[] {
   return parts
 }
 
-/** "gpt-6-luna P9", "Claude Haiku 5.5 P0 · nur Text": a column by connection and profile. */
+/** "gpt-6-luna P9", "Claude Haiku 5.5 P0 · Schema nur im Prompt": a column by connection and profile. */
 export function pointName(label: PointLabel): string {
   const p = label.prompt_profile
   return [`${label.connection_name} ${placementText(p.placement)}`, ...profileExtras(p)].join(' · ')
 }
 
-/** "lokal · P0", "api.anthropic.com · P0 · nur Text": the line under a column's name. */
+/** "lokal · P0", "api.anthropic.com · P0 · Schema nur im Prompt": the line under a column's name. */
 export function pointSub(label: PointLabel): string {
   const where = label.locality === 'local' ? t`lokal` : label.host
   const parts = [where, placementText(label.prompt_profile.placement)]

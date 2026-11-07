@@ -11,7 +11,7 @@ const NAME = `e2e-anbindung-${Date.now().toString(36)}`
 test('a connection is created, tested and shows its failed step', async ({ page, request }) => {
   try {
     await page.goto('/admin/modelle')
-    await page.getByRole('button', { name: 'Anbindung', exact: true }).click()
+    await page.getByRole('link', { name: 'Anbindung', exact: true }).click()
     const form = page.getByRole('form', { name: 'Neue Anbindung' })
     await form.getByLabel('Name').fill(NAME)
     await form.getByLabel('Adresse').fill('http://127.0.0.1:9/v1')
@@ -23,6 +23,10 @@ test('a connection is created, tested and shows its failed step', async ({ page,
     await expect(draft.getByText('Das Modell ist nicht erreichbar.')).toBeVisible()
 
     await form.getByRole('button', { name: 'Speichern' }).click()
+    // Saved, the new connection is on its own page (plan-connection-detail, D4).
+    await expect(page.getByRole('heading', { name: NAME })).toBeVisible()
+    await expect(page.getByText('Gespeichert', { exact: true })).toBeVisible()
+    await page.getByRole('link', { name: 'Alle Anbindungen' }).click()
     const row = page.getByRole('row', { name: new RegExp(NAME) })
     await expect(row.getByText('lokal')).toBeVisible()
     await expect(row.getByText('nicht freigegeben')).toBeVisible()
