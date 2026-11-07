@@ -2030,6 +2030,8 @@ export interface components {
       } | null
       /** References */
       references?: string | null
+      /** Role */
+      role?: 'identifier' | null
     }
     /** AttributeUpdate */
     AttributeUpdate: {

@@ -1,0 +1,121 @@
+{
+  "format": "geotandem-eval-cases",
+  "version": 1,
+  "about": "Cases on units and keys (docs/plan-attribute-metadata.md, A1), over the sample dataset, for the ablation modes no-units, refs and refs-role. 'unit': the question asks in another unit than the attribute holds (ha or m² for flaeche_km2, m for laenge_km), so the query must convert. 'key': the question names a municipality; a school's gem_nr is its municipality's BFS number, so the name through gemeinden and a right gem_nr select the same schools, a guessed number does not. 'key-value': the question gives the number itself, so a role must not stop the model from using it. A question on the table gemeindedaten is not here: the direct query declines it (n03, h37).",
+  "cases": [
+    {
+      "id": "md01-hektaren",
+      "prompt": "Gemeinden mit mehr als 2000 Hektaren Fläche",
+      "tags": ["attribute", "range", "unit"],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
+      "gold": {
+        "source": "gemeinden",
+        "where": {"op": "compare", "attr": "flaeche_km2", "cmp": "gt", "value": 20}
+      }
+    },
+    {
+      "id": "md02-meter",
+      "prompt": "Welche Gewässer sind im Gebiet länger als 10 000 m?",
+      "tags": ["attribute", "range", "unit"],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
+      "gold": {
+        "source": "gewaesser",
+        "where": {"op": "compare", "attr": "laenge_km", "cmp": "gt", "value": 10}
+      }
+    },
+    {
+      "id": "md03-schulen-koeniz",
+      "prompt": "Zeig mir die Schulen der Gemeinde Köniz",
+      "tags": ["spatial", "in", "key"],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
+      "gold": {
+        "source": "schulen",
+        "where": {
+          "op": "related",
+          "layer": "gemeinden",
+          "predicate": "within",
+          "where": {"op": "compare", "attr": "name", "cmp": "eq", "value": "Köniz"}
+        }
+      }
+    },
+    {
+      "id": "md04-gemeindenummer-616",
+      "prompt": "Schulen mit der Gemeindenummer 616",
+      "tags": ["attribute", "key-value"],
+      "split": "tuning",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
+      "gold": {
+        "source": "schulen",
+        "where": {"op": "compare", "attr": "gem_nr", "cmp": "eq", "value": 616}
+      }
+    },
+    {
+      "id": "md05-quadratmeter",
+      "prompt": "Gemeinden, die kleiner als 3 000 000 m² sind",
+      "tags": ["attribute", "range", "unit"],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
+      "gold": {
+        "source": "gemeinden",
+        "where": {"op": "compare", "attr": "flaeche_km2", "cmp": "lt", "value": 3}
+      }
+    },
+    {
+      "id": "md06-hektaren-bereich",
+      "prompt": "Gemeinden zwischen 500 und 1000 ha",
+      "tags": ["attribute", "range", "unit"],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
+      "gold": {
+        "source": "gemeinden",
+        "where": {"op": "between", "attr": "flaeche_km2", "min": 5, "max": 10}
+      }
+    },
+    {
+      "id": "md07-schulen-worb",
+      "prompt": "Welche Schulen gehören zur Gemeinde Worb?",
+      "tags": ["spatial", "in", "key"],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
+      "gold": {
+        "source": "schulen",
+        "where": {
+          "op": "related",
+          "layer": "gemeinden",
+          "predicate": "within",
+          "where": {"op": "compare", "attr": "name", "cmp": "eq", "value": "Worb"}
+        }
+      }
+    },
+    {
+      "id": "md08-gemeinde-351",
+      "prompt": "Welche Gemeinde hat die BFS-Nummer 351?",
+      "tags": ["attribute", "key-value"],
+      "split": "confirm",
+      "data_state": "sample",
+      "origin": "start",
+      "schema_version": "2",
+      "gold": {
+        "source": "gemeinden",
+        "where": {"op": "compare", "attr": "gem_nr", "cmp": "eq", "value": 351}
+      }
+    }
+  ]
+}

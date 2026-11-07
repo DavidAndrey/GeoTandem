@@ -9612,6 +9612,18 @@
               }
             ],
             "title": "References"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "identifier"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
           }
         },
         "type": "object",

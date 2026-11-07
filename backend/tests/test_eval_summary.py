@@ -6,6 +6,7 @@ sample's, or the live catalog's as an account sees it, and a proposed code list
 not yet confirmed shows as the first gap although the profile never carries it.
 """
 
+import json
 import shutil
 from pathlib import Path
 
@@ -17,7 +18,7 @@ from test_profile import SENTINELS, import_sentinels, sentinel_csv
 from geotandem.catalog import model_profile
 from geotandem.config import Settings
 from geotandem.db.bootstrap import bootstrap
-from geotandem.evaluation.profiles import PROFILES, strip
+from geotandem.evaluation.profiles import KEYS, PROFILES, model_profile_for, strip
 from geotandem.evaluation.schemas import LayerGaps, ProfileSummary
 from geotandem.evaluation.summary import profile_summary
 
@@ -86,7 +87,11 @@ TOTALS = {
     "no-domains": (21, 0, 11),
     "raw": (0, 0, 0),
     "raw-codes": (0, 6, 0),
+    "no-units": (21, 6, 11),
+    "refs": (21, 6, 10),
+    "refs-role": (21, 6, 10),
 }
+"""``refs``: gemeindedaten.gem_nr said only its join, so it has no description left."""
 
 
 def expected_gaps(mode: str) -> list[LayerGaps]:
@@ -96,6 +101,8 @@ def expected_gaps(mode: str) -> list[LayerGaps]:
     gaps = []
     for layer, names in ATTRIBUTES.items():
         described = [] if no_desc else DESCRIBED.get(layer, [])
+        if mode in ("refs", "refs-role") and layer == "gemeindedaten":
+            described = [n for n in described if n != "gem_nr"]
         gap = LayerGaps(
             layer=layer,
             title=layer if mode in ("raw", "raw-codes") else TITLES[layer],
@@ -134,6 +141,41 @@ def test_the_summary_of_each_mode_matches_the_count_by_hand(stripped: Engine, mo
         described=described,
         gaps=expected_gaps(mode),
     )
+
+
+def attribute(profile_text: str, layer: str, name: str) -> dict[str, object]:
+    """One attribute as the model reads it in the profile's canonical text."""
+    layers = {entry["name"]: entry for entry in json.loads(profile_text)["layers"]}
+    return next(a for a in layers[layer]["attributes"] if a["name"] == name)
+
+
+def test_no_units_leaves_only_the_units_out(stripped: Engine) -> None:
+    full = model_profile(stripped, list(TITLES))
+    strip(stripped, "no-units")
+    bare = model_profile(stripped, list(TITLES))
+    assert attribute(full.text, "gemeinden", "flaeche_km2")["unit"] == "km²"
+    assert "unit" not in attribute(bare.text, "gemeinden", "flaeche_km2")
+    assert '"unit"' not in bare.text
+    assert len(bare.text) < len(full.text)
+
+
+@pytest.mark.parametrize("mode", ["refs", "refs-role"])
+def test_refs_names_the_join_as_a_reference_not_in_prose(stripped: Engine, mode: str) -> None:
+    strip(stripped, mode)
+    text = model_profile_for(stripped, list(TITLES), mode).text
+    assert "Schlüssel" not in text
+    for (layer, name), (description, references) in KEYS.items():
+        found = attribute(text, layer, name)
+        assert found.get("description") == (description or None)
+        assert found.get("references") == references
+        assert found.get("role") == ("identifier" if mode == "refs-role" else None)
+
+
+def test_the_role_is_absent_from_every_other_mode(stripped: Engine) -> None:
+    """``role`` is not stored, so the production profile and its hash stay as they were."""
+    plain = model_profile(stripped, list(TITLES))
+    assert model_profile_for(stripped, list(TITLES), "full").hash == plain.hash
+    assert '"role"' not in plain.text
 
 
 def test_the_sample_lacks_descriptions_and_some_labels(stripped: Engine) -> None:

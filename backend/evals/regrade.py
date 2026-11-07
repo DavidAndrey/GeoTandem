@@ -18,10 +18,11 @@ from casefiles import load_cases
 from compare import newest
 from run import HERE, LIMITS
 
-from geotandem.catalog import ModelProfile, model_profile
+from geotandem.catalog import ModelProfile
 from geotandem.config import Settings
 from geotandem.data.spatialite import SpatiaLiteBackend
 from geotandem.evaluation.grade import grade, reading_ids
+from geotandem.evaluation.profiles import model_profile_for
 from geotandem.evaluation.sample import build_sample
 from geotandem.llm import Completion
 from geotandem.model.errors import ActionError
@@ -43,7 +44,7 @@ def main() -> int:
         if mode not in worlds:
             built = build_sample(Settings(), prefix="geotandem-regrade-", profile=mode)
             backend = built.backend
-            profile = model_profile(built.engine, backend.layer_names())
+            profile = model_profile_for(built.engine, backend.layer_names(), mode)
             worlds[mode] = backend, profile, ToolContext(backend=backend, limits=LIMITS)
         return worlds[mode]
 
