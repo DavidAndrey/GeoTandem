@@ -68,12 +68,14 @@ test('the Läufe tab is the default of Bewertung', async () => {
   expect(entry).toHaveAttribute('aria-current', 'page')
 })
 
-test('V1.1: start cases first, five of them until expanded, own cases below', async () => {
+test('own cases first, then the start set, five of them until expanded', async () => {
   backend()
   renderAt('/admin/bewertung/faelle', <App />)
   await screen.findByText('doc1-primar-koeniz')
   expect(screen.getByText(/71 Startfälle \(nur lesbar\) · 3 eigene/)).toBeInTheDocument()
-  const headers = screen.getAllByRole('columnheader').map((h) => h.textContent)
+  const headers = screen
+    .getAllByRole('columnheader')
+    .map((h) => h.textContent?.replace(/[↕↑↓]/, ''))
   expect(headers.slice(0, 7)).toEqual([
     'Kennung',
     'Frage',
@@ -83,13 +85,18 @@ test('V1.1: start cases first, five of them until expanded, own cases below', as
     'Herkunft',
     'Datenstand',
   ])
+  // Own cases: the stale one first (it needs editing), then the changed data state, then the rest.
   expect(rowIds()).toEqual([
-    ...START_CASES.slice(0, 5).map((c) => c.id),
-    'e-turnhalle-ostermundigen',
     'e-kitas-bahnhof',
     'e-schulweg-import',
+    'e-turnhalle-ostermundigen',
+    ...START_CASES.slice(0, 5).map((c) => c.id),
   ])
-  const first = must(screen.getAllByRole('row')[1])
+  expect(screen.getByRole('rowheader', { name: 'Eigene Prüffälle · 3' })).toBeInTheDocument()
+  expect(
+    screen.getByRole('rowheader', { name: 'Startbestand · 71 (nur lesbar)' }),
+  ).toBeInTheDocument()
+  const first = must(screen.getByText('doc1-primar-koeniz').closest('tr'))
   expect(within(first).getByText('Welche Primarschulen gibt es in Köniz?')).toBeInTheDocument()
   expect(within(first).getByText('Abstimmung')).toBeInTheDocument()
   expect(within(first).getByText('Beispieldaten')).toBeInTheDocument()
@@ -122,7 +129,7 @@ test('V1.1: filters by origin, split, kind and question, kept in the address', a
   await userEvent.selectOptions(screen.getByLabelText('Herkunft'), '')
   await userEvent.selectOptions(screen.getByLabelText('Datenstand'), 'live')
   await userEvent.selectOptions(screen.getByLabelText('Teil'), 'confirm')
-  expect(rowIds()).toEqual(['e-turnhalle-ostermundigen', 'e-kitas-bahnhof', 'e-schulweg-import'])
+  expect(rowIds()).toEqual(['e-kitas-bahnhof', 'e-schulweg-import', 'e-turnhalle-ostermundigen'])
   await userEvent.selectOptions(screen.getByLabelText('Datenstand'), '')
   await userEvent.selectOptions(screen.getByLabelText('Teil'), '')
   await userEvent.selectOptions(screen.getByLabelText('Art'), 'behaviour')
@@ -150,12 +157,12 @@ test('V1.2: stale grey with a struck-through label, a changed data state as a me
   const message = must(within(changed).getByText('Datenstand geändert').closest('[data-status]'))
   expect(message).toHaveAttribute('data-line', 'message')
   expect(message.className).not.toMatch(/line-through/)
-  // Both explained below the list, in words.
-  expect(screen.getByText(/ist gelöscht oder für admin nicht mehr sichtbar/)).toHaveTextContent(
-    'e-kitas-bahnhof',
-  )
+  // Both explained in words, under the case's question.
   expect(
-    screen.getByText(/wurde seit der letzten Prüfung der Referenz neu importiert/),
+    within(stale).getByText(/ist gelöscht oder für admin nicht mehr sichtbar/),
+  ).toBeInTheDocument()
+  expect(
+    within(changed).getByText(/wurde seit der letzten Prüfung der Referenz neu importiert/),
   ).toHaveTextContent('„schulwege"')
   // An ok case has no label.
   const ok = must(screen.getByText('e-turnhalle-ostermundigen').closest('tr'))
@@ -175,8 +182,8 @@ test('an invalid case is worded and shown like a stale one: left out of runs', a
   expect(label.className).toMatch(/line-through/)
   expect(row.className).toMatch(/text-muted/)
   expect(
-    screen.getByText(/besteht die Prüfungen einer Modellabfrage nicht mehr/),
-  ).toHaveTextContent('e-turnhalle-ostermundigen')
+    within(row).getByText(/besteht die Prüfungen einer Modellabfrage nicht mehr/),
+  ).toBeInTheDocument()
 })
 
 test('an own case sharing its id with a start case is listed beside it', async () => {
@@ -188,12 +195,12 @@ test('an own case sharing its id with a start case is listed beside it', async (
   await screen.findByText('e-schulweg-import')
   const rows = screen.getAllByRole('row').filter((row) => row.textContent?.includes('doc1-primar'))
   expect(rows.map((row) => within(row).getAllByRole('cell')[5].textContent)).toEqual([
-    'Start',
     'Arbeitsplatz',
+    'Start',
   ])
 })
 
-test('V1.4: without own cases the start set stays and the three ways stand below it', async () => {
+test('V1.4: without own cases the start set stays and the three ways stand above it', async () => {
   backend(onlyStart())
   renderAt('/admin/bewertung/faelle', <App />)
   const hint = must((await screen.findByText('Noch keine eigenen Prüffälle')).parentElement)
@@ -337,20 +344,20 @@ test('the list reads every page of a long list', async () => {
   expect(call).toBe(2)
 })
 
-test('keyboard: the filters, import and export are reached in reading order', async () => {
+test('keyboard: the filters, import, export, the editing line and the sort are reached in reading order', async () => {
   backend()
   renderAt('/admin/bewertung/faelle', <App />)
   const search = await screen.findByRole('searchbox', { name: 'Frage oder Stichwort suchen' })
   await screen.findByText('doc1-primar-koeniz')
   search.focus()
   const order: string[] = []
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 10; i++) {
     await userEvent.tab()
     const el = document.activeElement as HTMLElement
     order.push(
       el.getAttribute('aria-label') ??
         el.closest('label')?.firstChild?.textContent ??
-        el.textContent ??
+        el.textContent?.replace(/[↕↑↓]/, '') ??
         '',
     )
   }
@@ -362,7 +369,9 @@ test('keyboard: the filters, import and export are reached in reading order', as
     'Datenstand',
     'Importieren',
     'Exportieren',
-    'doc1-primar-koeniz',
+    'Nur diese zeigen',
+    'Kennung',
+    'Frage',
   ])
 })
 
@@ -453,4 +462,41 @@ test('a click anywhere in a row opens the case', async () => {
   await waitFor(() =>
     expect(screen.queryByRole('searchbox', { name: /suchen/ })).not.toBeInTheDocument(),
   )
+})
+
+test('own cases that need editing: a line above the list shows only them', async () => {
+  backend()
+  renderAt('/admin/bewertung/faelle', <App />)
+  await screen.findByText('doc1-primar-koeniz')
+  expect(
+    screen.getByText('1 eigener Prüffall läuft nicht mit, bis er bearbeitet ist.'),
+  ).toBeInTheDocument()
+  await userEvent.click(screen.getByRole('button', { name: 'Nur diese zeigen' }))
+  expect(rowIds()).toEqual(['e-kitas-bahnhof'])
+  expect(screen.getByText('1 von 74 Prüffällen')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Nur diese zeigen' })).not.toBeInTheDocument()
+  expect(screen.getByText('Keiner der gezeigten Fälle läuft.')).toBeInTheDocument()
+})
+
+test('a column sorts each part up, down and back; the sort survives the filter reset', async () => {
+  backend()
+  renderAt('/admin/bewertung/faelle', <App />)
+  await screen.findByText('doc1-primar-koeniz')
+  const header = () => must(screen.getByRole('button', { name: 'Herkunft' }).closest('th'))
+  await userEvent.click(screen.getByRole('button', { name: 'Herkunft' }))
+  expect(header()).toHaveAttribute('aria-sort', 'ascending')
+  // Arbeitsplatz, Import, Protokoll; the start set stays below.
+  expect(rowIds().slice(0, 3)).toEqual([
+    'e-turnhalle-ostermundigen',
+    'e-schulweg-import',
+    'e-kitas-bahnhof',
+  ])
+  await userEvent.click(screen.getByRole('button', { name: 'Herkunft' }))
+  expect(header()).toHaveAttribute('aria-sort', 'descending')
+  expect(rowIds()[0]).toBe('e-kitas-bahnhof')
+  await userEvent.selectOptions(screen.getByLabelText('Teil'), 'confirm')
+  await userEvent.click(screen.getByRole('button', { name: 'Filter zurücksetzen' }))
+  expect(header()).toHaveAttribute('aria-sort', 'descending')
+  await userEvent.click(screen.getByRole('button', { name: 'Herkunft' }))
+  expect(header()).not.toHaveAttribute('aria-sort')
 })

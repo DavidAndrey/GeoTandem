@@ -496,7 +496,12 @@ Sie hat zwei Reiter: *Läufe* und *Prüffälle*.
   läuft der Fall und trägt *Datenstand geändert*. Das Referenzergebnis wird
   nicht gespeichert; es entsteht in jedem Lauf aus der Referenzabfrage.
 
-  Die Liste filtert nach Art, Teil, Stichwort, Herkunft und Datenstand; die
+  Die Liste zeigt zuerst die eigenen Fälle, darunter den Startbestand
+  (ungefiltert auf fünf Fälle eingeklappt). Eigene Fälle, die bearbeitet
+  werden müssen, stehen zuoberst, der Grund unter der Frage; eine Zeile über
+  der Liste zählt sie und zeigt mit *Nur diese zeigen* nur sie. Ein Klick auf
+  einen Spaltenkopf sortiert beide Teile auf, ab und wieder zurück. Die Liste
+  filtert nach Art, Teil, Stichwort, Herkunft und Datenstand; die
   Suche findet Kennung, Frage und Stichwörter. Gefiltert sagt sie, wie viele
   Fälle sie zeigt (*Filter zurücksetzen* leert alle Filter). Beschreibt der
   Filter genau die Fälle, die ein Lauf nehmen kann (Startbestand oder eigene,

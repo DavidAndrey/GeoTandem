@@ -260,6 +260,10 @@ msgstr ""
 msgid "{conditions} Bed."
 msgstr ""
 
+#: src/admin/evaluation/CasesPage.tsx
+msgid "{count, plural, one {# eigener Prüffall läuft nicht mit, bis er bearbeitet ist.} other {# eigene Prüffälle laufen nicht mit, bis sie bearbeitet sind.}}"
+msgstr ""
+
 #: src/admin/connectionParts.tsx
 msgid "{count, plural, one {# Modell angeboten} other {# Modelle angeboten}}"
 msgstr ""
@@ -394,6 +398,14 @@ msgstr ""
 
 #: src/admin/ImportWizard.tsx
 msgid "{layer}: {objects} → {read} in der Datei. Felder: {changes}"
+msgstr ""
+
+#: src/admin/evaluation/CasesPage.tsx
+msgid "{layers} wurde seit der letzten Prüfung der Referenz neu importiert. Die Referenz gilt weiter; die Trefferzahl wird beim nächsten Lauf neu bestimmt."
+msgstr ""
+
+#: src/admin/evaluation/CasesPage.tsx
+msgid "{layers} wurden seit der letzten Prüfung der Referenz neu importiert. Die Referenz gilt weiter; die Trefferzahl wird beim nächsten Lauf neu bestimmt."
 msgstr ""
 
 #: src/admin/evaluation/ComparisonPage.tsx
@@ -739,26 +751,6 @@ msgstr ""
 
 #: src/admin/evaluation/CasesPage.tsx
 msgid "<0>{file}</0> lässt sich nicht übernehmen. Es wurde <1>{nothing}</1> übernommen."
-msgstr ""
-
-#: src/admin/evaluation/CasesPage.tsx
-msgid "<0>{word}</0> ({id}): {layers} wurde seit der letzten Prüfung der Referenz neu importiert. Die Referenz gilt weiter; die Trefferzahl wird beim nächsten Lauf neu bestimmt."
-msgstr ""
-
-#: src/admin/evaluation/CasesPage.tsx
-msgid "<0>{word}</0> ({id}): {layers} wurden seit der letzten Prüfung der Referenz neu importiert. Die Referenz gilt weiter; die Trefferzahl wird beim nächsten Lauf neu bestimmt."
-msgstr ""
-
-#: src/admin/evaluation/CasesPage.tsx
-msgid "<0>{word}</0> ({id}): Der Layer {layers} ist gelöscht oder für {me} nicht mehr sichtbar. Der Fall wird in keinem Lauf verwendet, bis er bearbeitet ist."
-msgstr ""
-
-#: src/admin/evaluation/CasesPage.tsx
-msgid "<0>{word}</0> ({id}): Die Layer {layers} sind gelöscht oder für {me} nicht mehr sichtbar. Der Fall wird in keinem Lauf verwendet, bis er bearbeitet ist."
-msgstr ""
-
-#: src/admin/evaluation/CasesPage.tsx
-msgid "<0>{word}</0> ({id}): Die Referenz besteht die Prüfungen einer Modellabfrage nicht mehr, etwa weil ein Feld nicht mehr für das Modell freigegeben ist. Der Fall wird in keinem Lauf verwendet, bis er bearbeitet ist."
 msgstr ""
 
 #: src/admin/evaluation/RunCasePage.tsx
@@ -2261,7 +2253,6 @@ msgstr ""
 msgid "Datenstand anders"
 msgstr ""
 
-#: src/admin/evaluation/CasesPage.tsx
 #: src/admin/evaluation/parts.tsx
 msgid "Datenstand geändert"
 msgstr ""
@@ -2394,6 +2385,10 @@ msgstr ""
 
 #: src/model/chain/Chain.tsx
 msgid "Der Lauf wurde unterbrochen: Die Anwendung wurde neu gestartet, oder der Lauf selbst ist fehlgeschlagen."
+msgstr ""
+
+#: src/admin/evaluation/CasesPage.tsx
+msgid "Der Layer {layers} ist gelöscht oder für {me} nicht mehr sichtbar. Der Fall läuft nicht mit, bis er bearbeitet ist."
 msgstr ""
 
 #: src/admin/wizard.ts
@@ -2805,6 +2800,10 @@ msgstr ""
 msgid "Die Laufzeit ist angehalten, solange die Freigabe offen ist."
 msgstr ""
 
+#: src/admin/evaluation/CasesPage.tsx
+msgid "Die Layer {layers} sind gelöscht oder für {me} nicht mehr sichtbar. Der Fall läuft nicht mit, bis er bearbeitet ist."
+msgstr ""
+
 #: src/model/compare/flow.ts
 msgid "Die Layerliste fehlt noch; Übernehmen geht erst danach."
 msgstr ""
@@ -2819,6 +2818,10 @@ msgstr ""
 
 #: src/model/chain/Chain.tsx
 msgid "Die Neuplanung brachte keinen brauchbaren Plan: {reason}"
+msgstr ""
+
+#: src/admin/evaluation/CasesPage.tsx
+msgid "Die Referenz besteht die Prüfungen einer Modellabfrage nicht mehr, etwa weil ein Feld nicht mehr für das Modell freigegeben ist. Der Fall läuft nicht mit, bis er bearbeitet ist."
 msgstr ""
 
 #: src/admin/evaluation/words.ts
@@ -3069,6 +3072,10 @@ msgstr ""
 
 #: src/admin/evaluation/CasesPage.tsx
 msgid "Eigene Fälle prüfen, ob eine Anbindung mit <0>Ihren</0> Layern und Fragen zurechtkommt. Drei Wege:"
+msgstr ""
+
+#: src/admin/evaluation/CasesPage.tsx
+msgid "Eigene Prüffälle · {ownCount}"
 msgstr ""
 
 #: src/queries/ManageQueriesDialog.tsx
@@ -5630,6 +5637,10 @@ msgstr ""
 msgid "Nur der Kartenausschnitt ist geladen: der Layer hat mehr als {maxFeatures} Objekte."
 msgstr ""
 
+#: src/admin/evaluation/CasesPage.tsx
+msgid "Nur diese zeigen"
+msgstr ""
+
 #: src/model/log/MyActionsDialog.tsx
 msgid "Nur eigene Einträge, neueste zuerst."
 msgstr ""
@@ -6466,6 +6477,10 @@ msgstr ""
 msgid "Start"
 msgstr ""
 
+#: src/admin/evaluation/CasesPage.tsx
+msgid "Startbestand · {startCount} (nur lesbar)"
+msgstr ""
+
 #: src/admin/evaluation/NewRunPage.tsx
 msgid "Startbestand ({startCount})"
 msgstr ""
@@ -6984,7 +6999,6 @@ msgstr ""
 msgid "Ungespeicherte Änderungen an der Anbindung verwerfen?"
 msgstr ""
 
-#: src/admin/evaluation/CasesPage.tsx
 #: src/admin/evaluation/parts.tsx
 msgid "ungültig"
 msgstr ""
@@ -7034,7 +7048,6 @@ msgstr ""
 msgid "Urteil"
 msgstr ""
 
-#: src/admin/evaluation/CasesPage.tsx
 #: src/model/statusKey.ts
 msgid "veraltet"
 msgstr ""
