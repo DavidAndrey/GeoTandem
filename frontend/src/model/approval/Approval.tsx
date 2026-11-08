@@ -342,8 +342,8 @@ export function Approved({ view }: { view: ModelActionView }) {
       <div className="flex flex-col gap-1">
         <p role="status" className="text-sm">
           <Trans>
-            Seit dem Prompt von Hand geändert: nicht automatisch angewendet. Die Antwort bezieht
-            sich auf den Stand davor.
+            Seit der Frage von Hand geändert: nicht automatisch angewendet. Die Antwort bezieht sich
+            auf den Stand davor.
           </Trans>
         </p>
         <button type="button" className="btn self-start" onClick={() => void applyHeld(view)}>

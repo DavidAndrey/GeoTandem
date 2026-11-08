@@ -29,7 +29,7 @@ test('a connection is created, tested and shows its failed step', async ({ page,
     await page.getByRole('link', { name: 'Alle Anbindungen' }).click()
     const row = page.getByRole('row', { name: new RegExp(NAME) })
     await expect(row.getByText('lokal')).toBeVisible()
-    await expect(row.getByText('nicht freigegeben')).toBeVisible()
+    await expect(row.getByText('nicht verfügbar')).toBeVisible()
 
     await row.getByRole('button', { name: `Aktionen für ${NAME}` }).click()
     await page.getByRole('menuitem', { name: 'Verbindung testen' }).click()

@@ -64,7 +64,7 @@ test(
       await form.getByLabel('Name').fill(name)
       await form.getByLabel('Adresse').fill(url!)
       await form.getByLabel('Modell').fill(model!)
-      await form.getByLabel('Für Anwender freigegeben').check()
+      await form.getByLabel('Für Anwender verfügbar').check()
       await form.getByRole('button', { name: 'Speichern' }).click()
       // Saved, the new connection is on its own page (plan-connection-detail, D4).
       await expect(page.getByText('Gespeichert', { exact: true })).toBeVisible()

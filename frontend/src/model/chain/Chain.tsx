@@ -889,7 +889,7 @@ function StoppedActions({ view }: { view: ModelActionView }) {
             className="btn btn-primary"
             onClick={() => prefill(view.prompt, view.approach)}
           >
-            <Trans>Prompt ändern</Trans>
+            <Trans>Frage ändern</Trans>
           </button>
         )}
         {adoptButton}

@@ -1759,7 +1759,7 @@ msgid "Beispiele"
 msgstr ""
 
 #: src/model/panel/PromptPanel.tsx
-msgid "Beispiele aus den sichtbaren Layern"
+msgid "Beispiele aus den Layern auf der Karte"
 msgstr ""
 
 #: src/admin/ConnectionForm.tsx
@@ -2157,7 +2157,7 @@ msgid "Das Modell ruft keine Werkzeuge auf; für Werkzeugketten ist es so nicht 
 msgstr ""
 
 #: src/model/panel/PromptPanel.tsx
-msgid "Das Modell sieht Layer- und Feldnamen sowie die freigegebenen Wertelisten und Wertebereiche, keine einzelnen Objekte oder Geometrien."
+msgid "Das Modell sieht Layer- und Feldnamen sowie die bestätigten Wertelisten und Wertebereiche, keine einzelnen Objekte oder Geometrien."
 msgstr ""
 
 #: src/auth/rules.ts
@@ -2314,7 +2314,7 @@ msgid "Den Layer „{layer}\" gibt es nicht oder er ist nicht sichtbar."
 msgstr ""
 
 #: src/admin/evaluation/words.ts
-msgid "Den Layer „{layer}\" gibt es nicht, er ist nicht sichtbar oder nicht für das Modell freigegeben."
+msgid "Den Layer „{layer}\" gibt es nicht, oder er ist für Sie oder für das Modell nicht sichtbar."
 msgstr ""
 
 #: src/admin/evaluation/CaseDetailPage.tsx
@@ -2418,7 +2418,7 @@ msgid "Der Layer wird in einer Bedingung verwendet; die Bedingung wirkt weiter, 
 msgstr ""
 
 #: src/admin/ProfilePage.tsx
-msgid "Der Layer-Steckbrief, den ein Modell für ein Konto erhält: nur Metadaten, nur Layer, die das Konto sieht und die für das Modell freigegeben sind. Keine Objektzahlen, keine Ausdehnung, keine Werte aus den Daten ausser bestätigten Codelisten."
+msgid "Der Layer-Steckbrief, den ein Modell für ein Konto erhält: nur Metadaten, nur Layer, die das Konto sieht und die für das Modell sichtbar sind. Keine Objektzahlen, keine Ausdehnung, keine Werte aus den Daten ausser bestätigten Codelisten."
 msgstr ""
 
 #: src/admin/wizard.ts
@@ -2439,10 +2439,6 @@ msgstr ""
 
 #: src/i18n/errors.ts
 msgid "Der Name „{attribute}\" ist schon vergeben; bitte einen anderen Namen oder ein Präfix wählen."
-msgstr ""
-
-#: src/model/panel/PromptPanel.tsx
-msgid "Der Prompt-Text verlässt das Haus"
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -2470,11 +2466,15 @@ msgid "Der Steckbrief enthält keinen Layer."
 msgstr ""
 
 #: src/admin/ProfilePage.tsx
-msgid "Der Steckbrief ist voraussichtlich grösser als die Kontextlänge von „{connection}“. Er wird nicht gekürzt: Ab der Direktabfrage wird eine Modellaktion für dieses Konto abgelehnt. Weniger Layer oder Felder für das Modell freigeben oder eine Anbindung mit grösserem Kontext wählen."
+msgid "Der Steckbrief ist voraussichtlich grösser als die Kontextlänge von „{connection}“. Er wird nicht gekürzt: Ab der Direktabfrage wird eine Modellaktion für dieses Konto abgelehnt. Weniger Layer oder Felder für das Modell sichtbar lassen oder eine Anbindung mit grösserem Kontext wählen."
 msgstr ""
 
 #: src/admin/ConnectionForm.tsx
 msgid "Der Text der Anfrage geht in jedem Fall an das Modell."
+msgstr ""
+
+#: src/model/panel/PromptPanel.tsx
+msgid "Der Text der Frage verlässt das Haus"
 msgstr ""
 
 #: src/admin/ImportWizard.tsx
@@ -2835,7 +2835,7 @@ msgid "Die Neuplanung brachte keinen brauchbaren Plan: {reason}"
 msgstr ""
 
 #: src/admin/evaluation/CasesPage.tsx
-msgid "Die Referenz besteht die Prüfungen einer Modellabfrage nicht mehr, etwa weil ein Feld nicht mehr für das Modell freigegeben ist. Der Fall läuft nicht mit, bis er bearbeitet ist."
+msgid "Die Referenz besteht die Prüfungen einer Modellabfrage nicht mehr, etwa weil ein Feld nicht mehr für das Modell sichtbar ist. Der Fall läuft nicht mit, bis er bearbeitet ist."
 msgstr ""
 
 #: src/admin/evaluation/words.ts
@@ -2875,7 +2875,7 @@ msgid "Die Treffer sind Objekte verschiedener Layer: {leftSide} liefert „{left
 msgstr ""
 
 #: src/i18n/errors.ts
-msgid "Die voreingestellte Anbindung muss für Anwender freigegeben sein."
+msgid "Die voreingestellte Anbindung muss für Anwender verfügbar sein."
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -3543,7 +3543,7 @@ msgid "Erst einen Layer hinzufügen; er wird Ergebnis-Layer."
 msgstr ""
 
 #: src/admin/VisibilityPage.tsx
-msgid "erst nach Freigabe"
+msgid "erst wenn hier angehakt"
 msgstr ""
 
 #: src/admin/LayerPage.tsx
@@ -3793,7 +3793,28 @@ msgstr ""
 #: src/admin/evaluation/CasesPage.tsx
 #: src/admin/evaluation/RunCasePage.tsx
 #: src/admin/evaluation/SaveCaseDialog.tsx
+#: src/model/log/MyActionsDialog.tsx
+#: src/model/panel/Answer.tsx
+#: src/model/panel/PromptPanel.tsx
+#: src/workplace/Workplace.tsx
 msgid "Frage"
+msgstr ""
+
+#: src/model/panel/Answer.tsx
+msgid "Frage · {time}"
+msgstr ""
+
+#: src/model/chain/Chain.tsx
+#: src/model/panel/Answer.tsx
+msgid "Frage ändern"
+msgstr ""
+
+#: src/model/panel/PromptPanel.tsx
+msgid "Frage eingeben"
+msgstr ""
+
+#: src/model/panel/Answer.tsx
+msgid "Frage erneut senden"
 msgstr ""
 
 #: src/admin/evaluation/CasesPage.tsx
@@ -3801,7 +3822,7 @@ msgid "Frage oder Stichwort suchen"
 msgstr ""
 
 #: src/model/panel/PromptPanel.tsx
-msgid "Frage zu den sichtbaren Layern …"
+msgid "Frage zu den verfügbaren Layern …"
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -3813,7 +3834,11 @@ msgid "Frage, Referenz, Stichwörter und Anmerkung werden übernommen; der Start
 msgstr ""
 
 #: src/model/panel/PromptPanel.tsx
-msgid "Fragen Sie in eigenen Worten nach den sichtbaren Layern. Das Modell schlägt eine Abfrage vor. Je nach Stufe geben Sie den Vorschlag frei, übernehmen ihn im Editor, oder das Modell wendet ihn an und Sie können ihn zurücknehmen."
+msgid "Fragen nicht möglich: keine Modellanbindung aktiv. Klassik ist voll nutzbar."
+msgstr ""
+
+#: src/model/panel/PromptPanel.tsx
+msgid "Fragen Sie in eigenen Worten nach den verfügbaren Layern. Das Modell schlägt eine Abfrage vor. Je nach Stufe geben Sie den Vorschlag frei, übernehmen ihn im Editor, oder das Modell wendet ihn an und Sie können ihn zurücknehmen."
 msgstr ""
 
 #: src/session/SaveAsDialog.tsx
@@ -3842,8 +3867,6 @@ msgstr ""
 msgid "Freigeben und fortsetzen"
 msgstr ""
 
-#: src/admin/ConnectionDetailPage.tsx
-#: src/admin/ConnectionsPage.tsx
 #: src/model/statusKey.ts
 msgid "freigegeben"
 msgstr ""
@@ -3861,12 +3884,12 @@ msgstr ""
 msgid "Für Anwender"
 msgstr ""
 
-#: src/admin/ConnectionForm.tsx
-msgid "Für Anwender freigegeben"
-msgstr ""
-
 #: src/admin/LayerPage.tsx
 msgid "Für Anwender sichtbar"
+msgstr ""
+
+#: src/admin/ConnectionForm.tsx
+msgid "Für Anwender verfügbar"
 msgstr ""
 
 #: src/admin/LevelsPage.tsx
@@ -3923,7 +3946,7 @@ msgid "Geänderte Fälle · {n}"
 msgstr ""
 
 #: src/model/chain/PlanEditor.tsx
-msgid "Geänderte Werte verlieren das ≈ der Annahme. Neue Schritte kommen nur über einen neuen Prompt."
+msgid "Geänderte Werte verlieren das ≈ der Annahme. Neue Schritte kommen nur über eine neue Frage."
 msgstr ""
 
 #: src/operations/OperationDialog.tsx
@@ -4270,7 +4293,7 @@ msgid "Ihre Eingaben werden protokolliert"
 msgstr ""
 
 #: src/model/log/MyActionsDialog.tsx
-msgid "Ihre Eingaben werden protokolliert. Administratoren sehen alle Einträge samt Prompt."
+msgid "Ihre Eingaben werden protokolliert. Administratoren sehen alle Einträge samt Frage."
 msgstr ""
 
 #: src/model/chain/Chain.tsx
@@ -4543,7 +4566,7 @@ msgid "keine Koordinaten"
 msgstr ""
 
 #: src/workplace/AddLayers.tsx
-msgid "Keine Layer freigegeben."
+msgid "Keine Layer verfügbar."
 msgstr ""
 
 #: src/admin/ModelLogPage.tsx
@@ -5316,7 +5339,7 @@ msgid "Modellanbindungen ›"
 msgstr ""
 
 #: src/admin/ConnectionsPage.tsx
-msgid "Modelle hinter einer OpenAI-kompatiblen Schnittstelle (Ollama, vLLM, llama.cpp, Cloud). Anwender wählen unter den freigegebenen; eine nicht freigegebene nutzt niemand, auch kein Administrator."
+msgid "Modelle hinter einer OpenAI-kompatiblen Schnittstelle (Ollama, vLLM, llama.cpp, Cloud). Anwender wählen unter den verfügbaren; eine nicht verfügbare nutzt niemand, auch kein Administrator."
 msgstr ""
 
 #: src/admin/AdminLayout.tsx
@@ -5534,11 +5557,6 @@ msgstr ""
 msgid "nicht den Verbund"
 msgstr ""
 
-#: src/admin/ConnectionDetailPage.tsx
-#: src/admin/ConnectionsPage.tsx
-msgid "nicht freigegeben"
-msgstr ""
-
 #: src/model/compare/Check.tsx
 msgid "Nicht geprüft."
 msgstr ""
@@ -5574,6 +5592,11 @@ msgstr ""
 
 #: src/admin/evaluation/SaveCaseDialog.tsx
 msgid "Nicht speicherbar"
+msgstr ""
+
+#: src/admin/ConnectionDetailPage.tsx
+#: src/admin/ConnectionsPage.tsx
+msgid "nicht verfügbar"
 msgstr ""
 
 #: src/admin/evaluation/CaseDetailPage.tsx
@@ -5944,32 +5967,7 @@ msgstr ""
 
 #: src/admin/ModelActionPage.tsx
 #: src/admin/ModelLogPage.tsx
-#: src/model/log/MyActionsDialog.tsx
-#: src/model/panel/Answer.tsx
-#: src/model/panel/PromptPanel.tsx
-#: src/workplace/Workplace.tsx
 msgid "Prompt"
-msgstr ""
-
-#: src/model/panel/Answer.tsx
-msgid "Prompt · {time}"
-msgstr ""
-
-#: src/model/chain/Chain.tsx
-#: src/model/panel/Answer.tsx
-msgid "Prompt ändern"
-msgstr ""
-
-#: src/model/panel/PromptPanel.tsx
-msgid "Prompt eingeben"
-msgstr ""
-
-#: src/model/panel/Answer.tsx
-msgid "Prompt erneut senden"
-msgstr ""
-
-#: src/model/panel/PromptPanel.tsx
-msgid "Prompt nicht verfügbar: keine Modellanbindung aktiv. Klassik ist voll nutzbar."
 msgstr ""
 
 #: src/admin/ConnectionForm.tsx
@@ -6364,7 +6362,7 @@ msgid "seit {since}"
 msgstr ""
 
 #: src/model/approval/Approval.tsx
-msgid "Seit dem Prompt von Hand geändert: nicht automatisch angewendet. Die Antwort bezieht sich auf den Stand davor."
+msgid "Seit der Frage von Hand geändert: nicht automatisch angewendet. Die Antwort bezieht sich auf den Stand davor."
 msgstr ""
 
 #: src/model/approval/Approval.tsx
@@ -6453,7 +6451,7 @@ msgid "sofort sichtbar"
 msgstr ""
 
 #: src/i18n/errors.ts
-msgid "Solange andere Anbindungen freigegeben sind, braucht es eine voreingestellte. Bitte zuerst eine andere voreinstellen."
+msgid "Solange andere Anbindungen verfügbar sind, braucht es eine voreingestellte. Bitte zuerst eine andere voreinstellen."
 msgstr ""
 
 #: src/table/TableDock.tsx
@@ -6624,11 +6622,11 @@ msgid "Steht in der Liste der Läufe; später änderbar."
 msgstr ""
 
 #: src/model/panel/Answer.tsx
-msgid "Stellt den Schalter auf Direktabfrage und setzt denselben Prompt ins Feld. Gesendet wird erst mit Senden."
+msgid "Stellt den Schalter auf Direktabfrage und setzt dieselbe Frage ins Feld. Gesendet wird erst mit Senden."
 msgstr ""
 
 #: src/model/panel/Answer.tsx
-msgid "Stellt den Schalter auf Werkzeugkette und setzt denselben Prompt ins Feld. Gesendet wird erst mit Senden."
+msgid "Stellt den Schalter auf Werkzeugkette und setzt dieselbe Frage ins Feld. Gesendet wird erst mit Senden."
 msgstr ""
 
 #: src/admin/evaluation/CasesPage.tsx
@@ -7090,7 +7088,7 @@ msgid "ungültig"
 msgstr ""
 
 #: src/admin/evaluation/CaseDetailPage.tsx
-msgid "Ungültig: Die Referenz besteht die Prüfungen einer Modellabfrage nicht mehr oder lässt sich nicht mehr ausführen, etwa weil ein Feld nicht mehr für das Modell freigegeben ist. Der Fall wird in keinem Lauf verwendet, bis er bearbeitet ist."
+msgid "Ungültig: Die Referenz besteht die Prüfungen einer Modellabfrage nicht mehr oder lässt sich nicht mehr ausführen, etwa weil ein Feld nicht mehr für das Modell sichtbar ist. Der Fall wird in keinem Lauf verwendet, bis er bearbeitet ist."
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -7169,6 +7167,11 @@ msgstr ""
 
 #: src/admin/connectionParts.tsx
 msgid "Verbindungstest nicht bestanden"
+msgstr ""
+
+#: src/admin/ConnectionDetailPage.tsx
+#: src/admin/ConnectionsPage.tsx
+msgid "verfügbar"
 msgstr ""
 
 #: src/admin/ConnectionForm.tsx

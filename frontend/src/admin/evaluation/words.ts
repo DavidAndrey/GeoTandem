@@ -257,7 +257,7 @@ function reasonText(reason: string, d: Details): string | null {
       const layer = text(d.layer)
       return layer === null
         ? null
-        : t`Den Layer „${layer}" gibt es nicht, er ist nicht sichtbar oder nicht für das Modell freigegeben.`
+        : t`Den Layer „${layer}" gibt es nicht, oder er ist für Sie oder für das Modell nicht sichtbar.`
     }
     case 'limit_exceeded': {
       const value = count(d.value)

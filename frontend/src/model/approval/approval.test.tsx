@@ -319,7 +319,7 @@ describe('approval (M5)', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Annehmen' })).toHaveFocus())
     await user.keyboard('{Escape}')
     await waitFor(() => expect(bodies(calls, 'reject')).toEqual([{ reason: null }]))
-    expect(screen.getByRole('region', { name: 'Prompt' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Frage' })).toBeInTheDocument()
     await waitFor(() => expect(card).toHaveTextContent('Ohne Grund abgelehnt.'))
   })
 
@@ -467,7 +467,7 @@ describe('approval (M5)', () => {
     await tick()
     expect(useApproval.getState().last?.touched).toBe(false)
     expect(calls.filter((c) => c.key.endsWith('/touched'))).toEqual([])
-    await user.click(screen.getByRole('tab', { name: 'Prompt' }))
+    await user.click(screen.getByRole('tab', { name: 'Frage' }))
     const again = await screen.findByRole('region', { name: 'Freigabe' })
     expect(within(again).queryByText(/Stand hat sich seit dem Vorschlag geändert/)).toBeNull()
 

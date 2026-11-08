@@ -32,13 +32,13 @@ export function PromptPanel() {
   return (
     <section
       id="prompt-panel"
-      aria-label={t`Prompt`}
+      aria-label={t`Frage`}
       className="card flex min-h-0 min-w-0 flex-col overflow-hidden"
       onKeyDown={close}
     >
       <div className="border-divider flex items-center gap-2 border-b px-4 py-2">
         <h2 className="flex-1 text-xl">
-          <Trans>Prompt</Trans>
+          <Trans>Frage</Trans>
         </h2>
         <button
           type="button"
@@ -67,7 +67,7 @@ function ExternalNotice({ host }: { host: string }) {
       className="card border-ink flex flex-col gap-1 border p-3 text-sm"
     >
       <p className="flex items-center gap-1.5 font-semibold">
-        <Globe size={14} aria-hidden /> <Trans>Der Prompt-Text verlässt das Haus</Trans>
+        <Globe size={14} aria-hidden /> <Trans>Der Text der Frage verlässt das Haus</Trans>
       </p>
       <p>
         <Trans>
@@ -89,7 +89,7 @@ function ExternalNotice({ host }: { host: string }) {
 function DataRelease() {
   return (
     <Trans>
-      Das Modell sieht Layer- und Feldnamen sowie die freigegebenen Wertelisten und Wertebereiche,
+      Das Modell sieht Layer- und Feldnamen sowie die bestätigten Wertelisten und Wertebereiche,
       keine einzelnen Objekte oder Geometrien.
     </Trans>
   )
@@ -105,7 +105,7 @@ function Intro() {
     <div className="flex flex-col gap-3 text-sm">
       <p>
         <Trans>
-          Fragen Sie in eigenen Worten nach den sichtbaren Layern. Das Modell schlägt eine Abfrage
+          Fragen Sie in eigenen Worten nach den verfügbaren Layern. Das Modell schlägt eine Abfrage
           vor. Je nach Stufe geben Sie den Vorschlag frei, übernehmen ihn im Editor, oder das Modell
           wendet ihn an und Sie können ihn zurücknehmen.
         </Trans>{' '}
@@ -114,7 +114,7 @@ function Intro() {
       {examples.length > 0 ? (
         <section aria-labelledby="examples-title" className="flex flex-col items-start gap-1.5">
           <h3 id="examples-title" className="label-caps">
-            <Trans>Beispiele aus den sichtbaren Layern</Trans>
+            <Trans>Beispiele aus den Layern auf der Karte</Trans>
           </h3>
           {examples.map((example) => (
             <button
@@ -183,7 +183,7 @@ function Composer() {
       : name
   return (
     <form
-      aria-label={t`Prompt eingeben`}
+      aria-label={t`Frage eingeben`}
       className="border-divider flex flex-col gap-2 border-t px-4 py-3"
       onSubmit={(e) => {
         e.preventDefault()
@@ -202,12 +202,12 @@ function Composer() {
         className="input min-h-16 w-full resize-y"
         rows={3}
         maxLength={4000}
-        aria-label={t`Prompt`}
+        aria-label={t`Frage`}
         aria-keyshortcuts="Control+Enter Meta+Enter"
         placeholder={
           locked
             ? t`Eingabe gesperrt, solange das Modell arbeitet`
-            : t`Frage zu den sichtbaren Layern …`
+            : t`Frage zu den verfügbaren Layern …`
         }
         // Locked, the field is empty; the prompt comes back if nothing is answered (M14).
         // Read-only rather than disabled: the focus stays, so Esc still reaches the panel.
@@ -273,7 +273,7 @@ export function PromptUnavailable() {
   const me = useMe()
   return (
     <p className="text-muted mt-auto pt-4 text-xs">
-      <Trans>Prompt nicht verfügbar: keine Modellanbindung aktiv. Klassik ist voll nutzbar.</Trans>
+      <Trans>Fragen nicht möglich: keine Modellanbindung aktiv. Klassik ist voll nutzbar.</Trans>
       {me.data?.role === 'admin' && (
         <>
           {' '}

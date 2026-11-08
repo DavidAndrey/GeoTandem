@@ -114,7 +114,7 @@ test('a new connection is created; an empty key and automatic defaults are not s
   const form = screen.getByRole('form', { name: 'Neue Anbindung' })
   await userEvent.type(within(form).getByLabelText('Name'), 'Ollama')
   await userEvent.type(within(form).getByLabelText('Modell'), 'qwen3:8b')
-  await userEvent.click(within(form).getByLabelText('Für Anwender freigegeben'))
+  await userEvent.click(within(form).getByLabelText('Für Anwender verfügbar'))
   await userEvent.click(within(form).getByRole('button', { name: 'Speichern' }))
 
   await vi.waitFor(() => expect(bodiesOf(calls, `POST ${URL}`)).toHaveLength(1))

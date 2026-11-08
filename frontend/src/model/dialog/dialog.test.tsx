@@ -144,7 +144,7 @@ describe('M11.3 a stale answer', () => {
     expect(within(card).queryByRole('button', { name: /Editor/ })).toBeNull()
     expect(screen.queryByText(/^Bezug:/)).toBeNull()
 
-    await user.click(within(card).getByRole('button', { name: 'Prompt erneut senden' }))
+    await user.click(within(card).getByRole('button', { name: 'Frage erneut senden' }))
     await waitFor(() => expect(posts(calls)).toHaveLength(2))
     expect(posts(calls)[1]).toEqual({ text: answer.prompt, approach: 'direct' })
   })

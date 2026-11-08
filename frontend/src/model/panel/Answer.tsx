@@ -103,7 +103,7 @@ function PromptLine({
   repeat?: ModelActionView['approach'] | null
 }) {
   const time = clockTime(at)
-  const label = time ? t`Prompt · ${time}` : t`Prompt`
+  const label = time ? t`Frage · ${time}` : t`Frage`
   const again =
     repeat === 'chain'
       ? t`wiederholt mit Werkzeugkette`
@@ -298,7 +298,7 @@ function Refusal({ view }: { view: ModelActionView }) {
       )}
       <div className="flex flex-wrap gap-2">
         <button type="button" className="btn btn-primary" onClick={() => prefill(view.prompt)}>
-          <Trans>Prompt ändern</Trans>
+          <Trans>Frage ändern</Trans>
         </button>
         <button
           type="button"
@@ -338,7 +338,7 @@ function Stale({ view, layer }: { view: ModelActionView; layer: string }) {
           className="btn"
           onClick={() => void send(view.prompt, view.approach, null)}
         >
-          <Trans>Prompt erneut senden</Trans>
+          <Trans>Frage erneut senden</Trans>
         </button>
         <button type="button" className="btn" onClick={openMyActions}>
           <Trans>Protokoll</Trans>
@@ -684,8 +684,8 @@ function CannotAnswer({
           </p>
           <p id={hint} className="text-muted text-xs">
             {offer === 'chain'
-              ? t`Stellt den Schalter auf Werkzeugkette und setzt denselben Prompt ins Feld. Gesendet wird erst mit Senden.`
-              : t`Stellt den Schalter auf Direktabfrage und setzt denselben Prompt ins Feld. Gesendet wird erst mit Senden.`}
+              ? t`Stellt den Schalter auf Werkzeugkette und setzt dieselbe Frage ins Feld. Gesendet wird erst mit Senden.`
+              : t`Stellt den Schalter auf Direktabfrage und setzt dieselbe Frage ins Feld. Gesendet wird erst mit Senden.`}
           </p>
         </>
       )}

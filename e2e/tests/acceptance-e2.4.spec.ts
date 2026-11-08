@@ -206,14 +206,14 @@ async function chooseLevel(page: Page, name: string) {
 }
 
 const hits = (page: Page) => page.getByLabel('Trefferzahl', { exact: true })
-const panelOf = (page: Page) => page.getByRole('region', { name: 'Prompt', exact: true })
+const panelOf = (page: Page) => page.getByRole('region', { name: 'Frage', exact: true })
 
 /** Sends ``text``; the answer card once the model has answered, and the record's id. */
 async function ask(page: Page, text: string): Promise<{ card: Locator; id: number }> {
   const panel = panelOf(page)
   const items = panel.getByRole('list', { name: 'Verlauf' }).locator(':scope > li')
   const before = await items.count()
-  await panel.getByRole('textbox', { name: 'Prompt' }).fill(text)
+  await panel.getByRole('textbox', { name: 'Frage' }).fill(text)
   const posted = page.waitForResponse(
     (r) => r.request().method() === 'POST' && r.url().endsWith('/api/model/prompt'),
   )
@@ -325,7 +325,7 @@ test.describe('E2.4 against the model stub', { tag: '@stub' }, () => {
     await expect(hits(page)).toHaveText('137 von 137')
     await chooseLevel(page, 'Assistenz')
 
-    await page.getByRole('tab', { name: 'Prompt' }).click()
+    await page.getByRole('tab', { name: 'Frage' }).click()
     const { card, id } = await ask(page, PROMPT)
     records.assistenz = id
     await expect(card.getByRole('status').first()).toContainText('von Hand übernehmen')
@@ -557,7 +557,7 @@ test.describe('E2.4 against the model stub', { tag: '@stub' }, () => {
       await expect(page.getByRole('menuitemradio', { name: /^Automatisch/ })).toHaveCount(0)
       await page.keyboard.press('Escape')
 
-      await page.getByRole('tab', { name: 'Prompt' }).click()
+      await page.getByRole('tab', { name: 'Frage' }).click()
       const overtaken = await ask(page, PROMPT)
       await expect(overtaken.card.getByRole('region', { name: 'Freigabe' })).toBeVisible()
       // A new prompt without a decision: the first is superseded (section 2).

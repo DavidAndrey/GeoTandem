@@ -222,7 +222,7 @@ test('new layers follow the visibility setting (design D10)', async () => {
     'PUT /api/admin/visibility/default': (init) => JSON.parse(String(init?.body)),
   })
   renderAt('/admin/sichtbarkeit', <App />)
-  const later = await screen.findByRole('radio', { name: 'erst nach Freigabe' })
+  const later = await screen.findByRole('radio', { name: 'erst wenn hier angehakt' })
   expect(later).toBeChecked()
   await userEvent.click(screen.getByRole('radio', { name: 'sofort sichtbar' }))
   expect(await screen.findByRole('radio', { name: 'sofort sichtbar' })).toBeChecked()

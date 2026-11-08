@@ -640,9 +640,7 @@ describe('M16.3 my model actions', () => {
     expect(within(dialog).queryByText('Grundschulen nahe Hauptstrasse')).toBeNull()
     expect(within(dialog).queryByRole('columnheader', { name: 'Konto' })).toBeNull()
     expect(rows[0]).toHaveTextContent('abgelehnt')
-    expect(
-      within(dialog).getByText(/Administratoren sehen alle Einträge samt Prompt/),
-    ).toBeVisible()
+    expect(within(dialog).getByText(/Administratoren sehen alle Einträge samt Frage/)).toBeVisible()
     const urls = vi.mocked(fetch).mock.calls.map(([url]) => String(url))
     expect(urls.some((u) => u.includes('/api/admin/'))).toBe(false)
   })

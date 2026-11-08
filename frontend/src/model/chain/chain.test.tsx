@@ -358,7 +358,7 @@ describe('plan (M8)', () => {
     await user.click(within(card).getByRole('button', { name: 'Anpassen …' }))
     const form = within(card).getByRole('form', { name: 'Plan anpassen' })
     expect(within(form).queryByRole('button', { name: /hinzufügen|neuer Schritt/i })).toBeNull()
-    expect(form).toHaveTextContent('Neue Schritte kommen nur über einen neuen Prompt.')
+    expect(form).toHaveTextContent('Neue Schritte kommen nur über eine neue Frage.')
 
     const distance = within(form).getByRole('textbox', { name: 'Distanz (m) in Schritt 2' })
     expect(distance).toHaveValue('500')
@@ -473,7 +473,7 @@ describe('run (M9)', () => {
     expect(stepItem(3)).toHaveAttribute('data-status', 'running')
     expect(stepItem(3)).toHaveTextContent('läuft …')
     // Input locked while the chain runs; the analysis untouched.
-    expect(screen.getByRole('textbox', { name: 'Prompt' })).toHaveAttribute('readonly')
+    expect(screen.getByRole('textbox', { name: 'Frage' })).toHaveAttribute('readonly')
     unchanged()
 
     // The steps' results, run as the user through Modus A (ids), dimmed, with the
@@ -711,8 +711,8 @@ describe('run (M9)', () => {
       expect(
         within(end).getByRole('button', { name: `Zwischenstand übernehmen (${last})` }),
       ).toBeEnabled()
-      await user.click(within(end).getByRole('button', { name: 'Prompt ändern' }))
-      expect(screen.getByRole('textbox', { name: 'Prompt' })).toHaveValue(CASE.prompt)
+      await user.click(within(end).getByRole('button', { name: 'Frage ändern' }))
+      expect(screen.getByRole('textbox', { name: 'Frage' })).toHaveValue(CASE.prompt)
       expect(screen.getByRole('radio', { name: 'Werkzeugkette' })).toBeChecked()
     },
   )
@@ -1453,7 +1453,7 @@ describe('entry', () => {
     await isThinking()
     await tick()
     await user.click(await screen.findByRole('button', { name: 'Mit Werkzeugkette versuchen ›' }))
-    expect(screen.getByRole('textbox', { name: 'Prompt' })).toHaveValue(refused.prompt)
+    expect(screen.getByRole('textbox', { name: 'Frage' })).toHaveValue(refused.prompt)
     expect(chain).toBeChecked()
     await tick(3000)
     expect(hits(calls, 'prompt')).toHaveLength(1)

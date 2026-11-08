@@ -88,7 +88,7 @@ export function Workplace() {
               className={`tab text-sm ${available ? '' : 'text-muted'}`}
               disabled={!available}
             >
-              <Trans>Prompt</Trans>
+              <Trans>Frage</Trans>
             </Tabs.Trigger>
           </Tabs.List>
           <Tabs.Content value="klassik" className="flex flex-col gap-5 pt-3">

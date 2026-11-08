@@ -73,7 +73,7 @@ export function VisibilityPage() {
         {fallback.data && (
           <div className="flex gap-4">
             {[
-              { value: false, label: t`erst nach Freigabe` },
+              { value: false, label: t`erst wenn hier angehakt` },
               { value: true, label: t`sofort sichtbar` },
             ].map((option) => (
               <label key={option.label} className="flex items-center gap-1.5">

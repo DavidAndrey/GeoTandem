@@ -191,8 +191,8 @@ export function PlanEditor({ view }: { view: ModelActionView }) {
       </ol>
       <p className="text-muted text-xs">
         <Trans>
-          Geänderte Werte verlieren das ≈ der Annahme. Neue Schritte kommen nur über einen neuen
-          Prompt.
+          Geänderte Werte verlieren das ≈ der Annahme. Neue Schritte kommen nur über eine neue
+          Frage.
         </Trans>
       </p>
       {failure !== null && (

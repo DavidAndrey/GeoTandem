@@ -300,9 +300,9 @@ Das Formular hat fünf Gruppen: *Verbindung*, *Nutzung und Datenschutz*,
   standardmässig nur Metadaten; die Freigabe für eine externe verlangt eine
   ausdrückliche Bestätigung. Der Text einer Anfrage geht in jedem Fall an das
   Modell.
-- **Freigabe für Anwender.** Eine neue Anbindung ist nicht freigegeben; eine
-  nicht freigegebene nutzt niemand, auch kein Administrator. Die erste
-  freigegebene wird voreingestellt.
+- **Für Anwender verfügbar.** Eine neue Anbindung ist nicht verfügbar; eine
+  nicht verfügbare nutzt niemand, auch kein Administrator. Die erste
+  verfügbare wird voreingestellt.
 - **Verbindungstest.** Prüft Schritt für Schritt Adresse, Erreichbarkeit,
   Zugang, Modell, Ollama-Version, eine Antwort nach JSON-Schema und einen
   Werkzeugaufruf, mit erfundenen Fragen, ohne Daten. Grün heisst: das Modell
@@ -338,8 +338,8 @@ Werkzeugaufruf grün.
 
 ### Modus B im Einsatz
 
-Der Reiter *Prompt* neben *Klassik* öffnet das Eingabefeld; er ist nur
-wählbar, wenn eine Anbindung freigegeben ist. Die Frage geht mit dem
+Der Reiter *Frage* neben *Klassik* öffnet das Eingabefeld; er ist nur
+wählbar, wenn eine Anbindung verfügbar ist. Die Frage geht mit dem
 Layer-Steckbrief des Kontos an das Modell (nur Metadaten, nie Zeileninhalte).
 
 - **Zwei Arbeitsweisen.** Die *Direktabfrage* lässt das Modell ein

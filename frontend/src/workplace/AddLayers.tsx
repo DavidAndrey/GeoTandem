@@ -88,7 +88,7 @@ export function AddLayers() {
             })}
             {catalog.data && shown.length === 0 && (
               <li className="text-muted py-2">
-                {catalog.data.length === 0 ? t`Keine Layer freigegeben.` : t`Kein Layer passt.`}
+                {catalog.data.length === 0 ? t`Keine Layer verfügbar.` : t`Kein Layer passt.`}
               </li>
             )}
           </ul>
