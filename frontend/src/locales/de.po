@@ -636,6 +636,10 @@ msgstr "{title} · Treffer"
 msgid "{title} · übrige"
 msgstr "{title} · übrige"
 
+#: src/model/approval/references.ts
+msgid "{title} (alle)"
+msgstr "{title} (alle)"
+
 #: src/admin/DuplicateLayerDialog.tsx
 msgid "{title} (Kopie)"
 msgstr "{title} (Kopie)"
@@ -1908,6 +1912,18 @@ msgstr "Beziehung"
 #: src/editor/EditorPanel.tsx
 msgid "Bezug"
 msgstr "Bezug"
+
+#: src/model/approval/Preview.tsx
+msgid "Bezug grau: {text}"
+msgstr "Bezug grau: {text}"
+
+#: src/model/approval/Preview.tsx
+msgid "Bezug grau: {text} · im Kartenausschnitt"
+msgstr "Bezug grau: {text} · im Kartenausschnitt"
+
+#: src/model/approval/Preview.tsx
+msgid "Bezug: {text}"
+msgstr "Bezug: {text}"
 
 #: src/model/dialog/ReferenceMark.tsx
 msgid "Bezug: aktuelle Abfrage"
@@ -7425,6 +7441,7 @@ msgstr "Voriger Messpunkt"
 
 #: src/admin/ImportWizard.tsx
 #: src/admin/LayerPage.tsx
+#: src/model/approval/Preview.tsx
 msgid "Vorschau"
 msgstr "Vorschau"
 

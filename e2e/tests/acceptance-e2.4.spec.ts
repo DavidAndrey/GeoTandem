@@ -367,6 +367,11 @@ test.describe('E2.4 against the model stub', { tag: '@stub' }, () => {
     const approval = card.getByRole('region', { name: 'Freigabe' })
     await expect(approval).toBeVisible()
     await expect(approval.getByLabel('Trefferzahl der Vorschau')).toContainText('Treffer: 137 → 10')
+    // Review #4d: what the conditions refer to is drawn grey and named on the map.
+    const caption = page.getByRole('note', { name: 'Vorschau' })
+    await expect(caption.getByText(/^Bezug grau: /)).toHaveCount(2)
+    await expect(caption).toContainText('Bezug grau: ≤ 500 m zu Strassen')
+    await expect(page.locator('.leaflet-model-reference-pane path').first()).toBeAttached()
     await expect(approval).toContainText(
       'Braucht Freigabe: Attributfilter, Raumfilter (Stufe Prüfen)',
     )

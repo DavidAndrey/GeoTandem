@@ -341,6 +341,39 @@ describe('approval (M5)', () => {
     await waitFor(() => expect(card).toHaveTextContent('Ohne Grund abgelehnt.'))
   })
 
+  test('#4d: the preview draws what the conditions refer to, grey, and the caption names it', async () => {
+    const { calls } = await answered()
+    const caption = await screen.findByRole('note', { name: 'Vorschau' })
+    await waitFor(() => expect(within(caption).getAllByText(/^Bezug grau: /)).toHaveLength(2))
+    // In the editor's words, the filter on the related layer included.
+    expect(
+      within(caption).getByText(
+        'Bezug grau: ≤ 500 m zu Strassen (Strassenklasse = kantonsstrasse_b)',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      within(caption).getByText('Bezug grau: liegt in Gemeinden · Steuern (Steueranlage > 1.6)'),
+    ).toBeInTheDocument()
+    // The objects of each filtered relation, loaded for the map by the user's own session.
+    await waitFor(() => {
+      const loaded = calls
+        .filter((c) => c.key === 'POST /api/query')
+        .map((c) => c.body as { source: string; where?: unknown })
+      expect(loaded).toContainEqual(
+        expect.objectContaining({
+          source: 'strassen',
+          where: { op: 'compare', attr: 'klasse', cmp: 'eq', value: 'kantonsstrasse_b' },
+        }),
+      )
+      expect(loaded).toContainEqual(
+        expect.objectContaining({
+          source: 'gemeinden_steuern',
+          where: { op: 'compare', attr: 'steueranlage', cmp: 'gt', value: 1.6 },
+        }),
+      )
+    })
+  })
+
   test('Esc that closes the ⋯ menu stays with the menu: no reason step, nothing rejected', async () => {
     const { user, calls, card } = await answered()
     const approval = within(card).getByRole('region', { name: 'Freigabe' })
