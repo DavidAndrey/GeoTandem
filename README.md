@@ -572,6 +572,12 @@ Sie hat zwei Reiter: *Läufe* und *Prüffälle*.
   Unterschied in Punkten und der 95-%-Spanne, gepaart je Fall gerechnet.
   *Nicht belegt* heisst, die Spanne schliesst 0 ein. Das ist kein Fehler,
   sondern ein fehlender Beleg. Ohne Bestätigungsfälle gibt es keine Aussage.
+  Je Gruppe stehen zuerst zwei Fälle; *Alle Gruppen aufklappen* zeigt alle.
+  *Nur Fälle mit Fehlern* lässt die Fälle stehen, die an einem Messpunkt
+  mindestens eine nicht richtige Antwort haben, ungefaltet; die Summen bleiben
+  die der ganzen Gruppe. Teil und Filter stehen in der Adresse und bleiben auf
+  dem Weg in eine Zelle und zurück. *Wiederholen …* öffnet einen neuen Lauf
+  mit denselben Messpunkten und Fällen, vor dem Start änderbar.
   Die *Beschriftung des Laufs* hält fest, wogegen gemessen wurde:
   - Version von Abfrageschema und Bewertungsregeln;
   - der Datenstand: Fassung der Beispieldaten oder die Datensatzversion jedes
@@ -593,7 +599,11 @@ Sie hat zwei Reiter: *Läufe* und *Prüffälle*.
   Host, Temperatur und Denkaufwand, Promptprofil, Stufe und System-Prompt;
   eine dazwischen geänderte Anbindung ist ein anderer Messpunkt. Haben die
   beiden Läufe einen anderen Steckbrief oder Datenstand, sagt es der Kopf der
-  Gegenüberstellung (*Steckbrief anders*, *Datenstand anders*). *Exportieren*
+  Gegenüberstellung (*Steckbrief anders*, *Datenstand anders*). Unter den
+  Quoten listet *Geänderte Fälle* die Fälle, deren Anteil richtiger Antworten
+  sich an einem gemeinsamen Messpunkt verändert hat (*besser* oder
+  *schlechter*, vom ersten zum zweiten Lauf); jede Seite öffnet ihre Zelle.
+  *Exportieren*
   liefert den Lauf mit allen Antworten als JSON.
 - **Der Fall im Lauf** (Klick oder Enter auf eine Zelle). Links stehen Frage
   und Referenz, rechts jede Antwort mit Urteil, Erklärung, Annahmen und Zeit.
@@ -604,8 +614,11 @@ Sie hat zwei Reiter: *Läufe* und *Prüffälle*.
   - beide Ergebnismengen als Trefferzahl und die abweichenden Objekte (*Nur
     in Antwort*, *Nur in Referenz*).
 
-  Referenz und Antwort öffnen sich je im Arbeitsplatz. Bei einer unlesbaren
-  Antwort steht der Rohtext unter *Technisch*.
+  Die erste nicht richtige Antwort ist schon geöffnet. Referenz und Antwort
+  öffnen sich je im Arbeitsplatz. Bei einer unlesbaren Antwort steht der
+  Rohtext unter *Technisch*. Oben rechts führen ‹ › zum vorigen und nächsten
+  Fall, zum vorigen und nächsten *Fehler* (Fälle mit einer nicht richtigen
+  Antwort an diesem Messpunkt) und zum Nachbarmesspunkt.
 - **Freigeben und Promptprofil übernehmen.** Die Matrix trägt die
   Entscheidung, freigegeben und voreingestellt wird aber auf der Seite der
   Anbindung (*Zur Anbindung*). Dort und in der Liste steht *zuletzt

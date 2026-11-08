@@ -29,13 +29,16 @@ import {
   casePath,
   pointName,
   RUNS,
-  runPath,
+  runSplitPath,
   diffChange,
   givenKind,
   idsText,
   isSilentlyWrong,
   latencyText,
   matrixOrder,
+  failingCases,
+  nearestFailure,
+  FAILURES,
   repeatNames,
 } from './runWords'
 import { isBehaviour, kindText, readingName, readings } from './words'
@@ -267,14 +270,20 @@ function Neighbours({
   caseId,
   point,
   split,
+  only,
 }: {
   run: RunView
   caseId: string
   point: number
   /** The matrix's part the cell was opened from: ‹ › stay in it. */
   split: Split | null
+  /** The matrix showed only failing cases: kept on the way. */
+  only: boolean
 }) {
   const ids = matrixOrder(run.cases, split)
+  const failing = failingCases(run.cells, point)
+  const prevFailure = nearestFailure(ids, caseId, failing, -1)
+  const nextFailure = nearestFailure(ids, caseId, failing, 1)
   const at = ids.indexOf(caseId)
   const prev = at > 0 ? ids[at - 1] : null
   const next = at >= 0 && at < ids.length - 1 ? ids[at + 1] : null
@@ -285,7 +294,7 @@ function Neighbours({
     <nav aria-label={t`Weitere Zellen`} className="ml-auto flex items-center gap-1 text-sm">
       {prev ? (
         <Link
-          to={casePath(run.id, prev, point, split)}
+          to={casePath(run.id, prev, point, split, only)}
           className={link}
           aria-label={t`Voriger Fall`}
         >
@@ -297,7 +306,7 @@ function Neighbours({
       <Trans>Fall</Trans>
       {next ? (
         <Link
-          to={casePath(run.id, next, point, split)}
+          to={casePath(run.id, next, point, split, only)}
           className={link}
           aria-label={t`Nächster Fall`}
         >
@@ -307,9 +316,33 @@ function Neighbours({
         <span className={off}>›</span>
       )}
       <span aria-hidden>·</span>
+      {prevFailure ? (
+        <Link
+          to={casePath(run.id, prevFailure, point, split, only)}
+          className={link}
+          aria-label={t`Voriger Fall mit Fehler`}
+        >
+          ‹
+        </Link>
+      ) : (
+        <span className={off}>‹</span>
+      )}
+      <Trans>Fehler</Trans>
+      {nextFailure ? (
+        <Link
+          to={casePath(run.id, nextFailure, point, split, only)}
+          className={link}
+          aria-label={t`Nächster Fall mit Fehler`}
+        >
+          ›
+        </Link>
+      ) : (
+        <span className={off}>›</span>
+      )}
+      <span aria-hidden>·</span>
       {point > 0 ? (
         <Link
-          to={casePath(run.id, caseId, point - 1, split)}
+          to={casePath(run.id, caseId, point - 1, split, only)}
           className={link}
           aria-label={t`Voriger Messpunkt`}
         >
@@ -321,7 +354,7 @@ function Neighbours({
       <Trans>Messpunkt</Trans>
       {point < points - 1 ? (
         <Link
-          to={casePath(run.id, caseId, point + 1, split)}
+          to={casePath(run.id, caseId, point + 1, split, only)}
           className={link}
           aria-label={t`Nächster Messpunkt`}
         >
@@ -345,9 +378,11 @@ function Answers({
   words: Words
   docs: Record<string, unknown>[]
 }) {
-  const [opened, setOpened] = useState<number | null>(null)
   const names = repeatNames(answers)
   const sorted = [...answers].sort((a, b) => a.block - b.block || a.seed - b.seed)
+  // The first answer that is not right opens by itself: that is what one came for.
+  const firstMiss = sorted.findIndex((a) => a.verdict !== 'pass')
+  const [opened, setOpened] = useState<number | null>(firstMiss >= 0 ? firstMiss : null)
   const right = sorted.filter((a) => a.verdict === 'pass').length
   const wrong = sorted.filter((a) => a.verdict === 'wrong').length
   const silent = sorted.filter(isSilentlyWrong).length
@@ -432,11 +467,13 @@ function CaseInRun({
   caseId,
   point,
   split,
+  only,
 }: {
   run: RunView
   caseId: string
   point: number
   split: Split | null
+  only: boolean
 }) {
   const rc = run.cases.find((x) => x.case.id === caseId)
   const view = run.points[point]
@@ -470,7 +507,7 @@ function CaseInRun({
           <Trans>Bewertung › Läufe</Trans>
         </Link>{' '}
         ›{' '}
-        <Link to={runPath(run.id)} className="hover:text-accent-700">
+        <Link to={runSplitPath(run.id, split, only)} className="hover:text-accent-700">
           <Trans>Lauf #{id}</Trans>
         </Link>{' '}
         ›
@@ -481,7 +518,7 @@ function CaseInRun({
             Lauf #{id} › <code className="font-mono text-xl">{caseId}</code> › {name}
           </Trans>
         </h2>
-        <Neighbours run={run} caseId={caseId} point={point} split={split} />
+        <Neighbours run={run} caseId={caseId} point={point} split={split} only={only} />
       </div>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
         <section aria-label={t`Prüffall`} className="flex flex-col gap-2">
@@ -522,7 +559,13 @@ function CaseInRun({
             </p>
           )}
           {answers.data && answers.data.length > 0 && (
-            <Answers answers={answers.data} c={c} words={words} docs={docs} />
+            <Answers
+              key={`${caseId}-${point}`}
+              answers={answers.data}
+              c={c}
+              words={words}
+              docs={docs}
+            />
           )}
         </div>
       </div>
@@ -537,11 +580,18 @@ export function RunCasePage() {
   const point = Number(search.get('punkt') ?? 0)
   const part = search.get('teil')
   const split = part === 'tuning' || part === 'confirm' ? part : null
+  const only = search.get('nur') === FAILURES
   if (!run.data) return run.error ? <ErrorNotice error={run.error} /> : <Loading />
   return (
     <>
       <ErrorNotice error={run.error} />
-      <CaseInRun run={run.data} caseId={params.fall ?? ''} point={point} split={split} />
+      <CaseInRun
+        run={run.data}
+        caseId={params.fall ?? ''}
+        point={point}
+        split={split}
+        only={only}
+      />
     </>
   )
 }

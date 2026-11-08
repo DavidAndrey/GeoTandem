@@ -130,9 +130,13 @@ test.each([
   const user = userEvent.setup()
   renderAt(`/admin/bewertung/lauf/13/fall/${id}?punkt=${point}`, <App />)
   await settle()
-  const toggles = await screen.findAllByRole('button', { expanded: false })
-  const answerToggles = toggles.filter((b) => b.closest('tbody'))
-  await user.click(answerToggles[open])
+  // The first answer that is not right opens by itself; open the one named unless it is.
+  const toggle = await waitFor(() => {
+    const found = document.querySelectorAll<HTMLButtonElement>('tbody button[aria-expanded]')[open]
+    if (!found) throw new Error('no answer toggle yet')
+    return found
+  })
+  if (toggle.getAttribute('aria-expanded') !== 'true') await user.click(toggle)
   for (const details of Array.from(document.querySelectorAll('summary'))) await user.click(details)
   await waitFor(() => expect(strays(DATA)).toEqual([]))
 })

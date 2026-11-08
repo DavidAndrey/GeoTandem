@@ -701,6 +701,14 @@ msgstr ""
 msgid "* Vergleichsbasis = Quote Abstimmung des Basis-Messpunkts (ohne Abstimmungsfälle: Quote Bestätigung)"
 msgstr ""
 
+#: src/admin/evaluation/ComparisonPage.tsx
+msgid "#{a}: {before}"
+msgstr ""
+
+#: src/admin/evaluation/ComparisonPage.tsx
+msgid "#{b}: {after}"
+msgstr ""
+
 #: src/admin/evaluation/runWords.ts
 msgid "#{first} und #{second} haben andere Prüffälle; Gegenüberstellen nur bei gleichen Fällen."
 msgstr ""
@@ -791,6 +799,14 @@ msgstr ""
 
 #: src/admin/evaluation/RunPage.tsx
 msgid "▸ {more} weitere"
+msgstr ""
+
+#: src/admin/evaluation/RunPage.tsx
+msgid "▸ Alle Gruppen aufklappen"
+msgstr ""
+
+#: src/admin/evaluation/RunPage.tsx
+msgid "▾ Alle Gruppen zuklappen"
 msgstr ""
 
 #: src/admin/evaluation/RunPage.tsx
@@ -1187,6 +1203,10 @@ msgstr ""
 msgid "an einer Grenze {limited}"
 msgstr ""
 
+#: src/admin/evaluation/ComparisonPage.tsx
+msgid "An keinem gemeinsamen Messpunkt hat sich ein Fall verändert."
+msgstr ""
+
 #: src/model/chain/Chain.tsx
 #: src/model/panel/Answer.tsx
 msgid "Analyse bleibt unverändert"
@@ -1383,6 +1403,10 @@ msgstr ""
 
 #: src/admin/evaluation/SaveCaseDialog.tsx
 msgid "Ansehen ›"
+msgstr ""
+
+#: src/admin/evaluation/ComparisonPage.tsx
+msgid "Anteil richtiger Antworten je Fall, #{a} → #{b}: {worse} schlechter, {better} besser. Beide Teile; jede Seite öffnet ihre Zelle."
 msgstr ""
 
 #: src/model/chain/Chain.tsx
@@ -1832,6 +1856,7 @@ msgstr ""
 msgid "Beschriftungen {labels} · Codelisten {codes} · Beschreibungen {described}"
 msgstr ""
 
+#: src/admin/evaluation/ComparisonPage.tsx
 #: src/admin/evaluation/runWords.ts
 msgid "besser"
 msgstr ""
@@ -3138,6 +3163,10 @@ msgstr ""
 msgid "Ein Layer fehlt oder ist nicht sichtbar."
 msgstr ""
 
+#: src/admin/evaluation/RunPage.tsx
+msgid "Ein neuer Lauf mit denselben Messpunkten und Fällen, vor dem Start änderbar"
+msgstr ""
+
 #: src/i18n/errors.ts
 msgid "Ein Preis braucht beide Beträge (Eingabe und Ausgabe) und die Währung, oder keinen davon."
 msgstr ""
@@ -3661,6 +3690,7 @@ msgstr ""
 msgid "fehlende Bedingung: {text}"
 msgstr ""
 
+#: src/admin/evaluation/RunCasePage.tsx
 #: src/admin/ImportRunPage.tsx
 #: src/admin/ModelActionPage.tsx
 #: src/model/chain/steps.ts
@@ -3904,6 +3934,14 @@ msgstr ""
 msgid "geändert:"
 msgstr ""
 
+#: src/admin/evaluation/ComparisonPage.tsx
+msgid "Geänderte Fälle"
+msgstr ""
+
+#: src/admin/evaluation/ComparisonPage.tsx
+msgid "Geänderte Fälle · {n}"
+msgstr ""
+
 #: src/model/chain/PlanEditor.tsx
 msgid "Geänderte Werte verlieren das ≈ der Annahme. Neue Schritte kommen nur über einen neuen Prompt."
 msgstr ""
@@ -4074,6 +4112,10 @@ msgstr ""
 
 #: src/admin/evaluation/NewRunPage.tsx
 msgid "Gilt nur für diesen Lauf; ändert den Betrieb nicht. In der Beschriftung des Laufs mit Hash festgehalten."
+msgstr ""
+
+#: src/admin/evaluation/ComparisonPage.tsx
+msgid "gleich"
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -4315,6 +4357,10 @@ msgstr ""
 #: src/admin/AdminLayout.tsx
 #: src/admin/ImportLogPage.tsx
 msgid "Importprotokoll"
+msgstr ""
+
+#: src/admin/evaluation/RunPage.tsx
+msgid "In diesem Teil hat kein Fall eine Antwort, die nicht richtig ist."
 msgstr ""
 
 #: src/model/panel/Answer.tsx
@@ -5162,6 +5208,10 @@ msgstr ""
 msgid "mindestens eine"
 msgstr ""
 
+#: src/admin/evaluation/RunPage.tsx
+msgid "mindestens eine Antwort nicht richtig, an einem der Messpunkte"
+msgstr ""
+
 #: src/operations/OperationDialog.tsx
 msgid "Minimum"
 msgstr ""
@@ -5317,6 +5367,10 @@ msgstr ""
 
 #: src/admin/evaluation/RunCasePage.tsx
 msgid "Nächster Fall"
+msgstr ""
+
+#: src/admin/evaluation/RunCasePage.tsx
+msgid "Nächster Fall mit Fehler"
 msgstr ""
 
 #: src/admin/evaluation/RunCasePage.tsx
@@ -5681,6 +5735,10 @@ msgstr ""
 msgid "Nur Fälle des Startbestands haben die Herkunft „Start\"."
 msgstr ""
 
+#: src/admin/evaluation/RunPage.tsx
+msgid "Nur Fälle mit Fehlern ({count})"
+msgstr ""
+
 #: src/operations/OperationDialog.tsx
 msgid "Nur gefilterte Objekte (Treffer der Abfrage)"
 msgstr ""
@@ -5951,6 +6009,7 @@ msgstr ""
 msgid "Prüfen und übernehmen"
 msgstr ""
 
+#: src/admin/evaluation/ComparisonPage.tsx
 #: src/admin/evaluation/RunCasePage.tsx
 #: src/admin/evaluation/RunPage.tsx
 msgid "Prüffall"
@@ -6123,6 +6182,7 @@ msgstr ""
 msgid "Schema nur im Prompt"
 msgstr ""
 
+#: src/admin/evaluation/ComparisonPage.tsx
 #: src/admin/evaluation/runWords.ts
 msgid "schlechter"
 msgstr ""
@@ -7319,6 +7379,10 @@ msgid "Voriger Fall"
 msgstr ""
 
 #: src/admin/evaluation/RunCasePage.tsx
+msgid "Voriger Fall mit Fehler"
+msgstr ""
+
+#: src/admin/evaluation/RunCasePage.tsx
 msgid "Voriger Messpunkt"
 msgstr ""
 
@@ -7535,6 +7599,10 @@ msgstr ""
 
 #: src/session/notice.ts
 msgid "Wiederhergestellt · {count}, identisch mit dem Speicherstand"
+msgstr ""
+
+#: src/admin/evaluation/RunPage.tsx
+msgid "Wiederholen …"
 msgstr ""
 
 #: src/model/panel/Answer.tsx

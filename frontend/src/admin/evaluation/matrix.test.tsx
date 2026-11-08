@@ -199,6 +199,7 @@ test('V6.5: a quick test shows rates without comparison, and offers the full run
     'href',
     '/admin/bewertung/lauf/neu?von=12',
   )
+  expect(screen.queryByRole('link', { name: 'Wiederholen …' })).toBeNull()
   expect(screen.getByText('fertig').closest('[data-status]')).toHaveTextContent(
     'fertig· Schnelltest',
   )
@@ -274,6 +275,30 @@ test('V6.6: two runs side by side', async () => {
   expect(
     await screen.findByRole('heading', { name: 'Lauf #12 gegen Lauf #13' }),
   ).toBeInTheDocument()
+})
+
+test('V6.6: the cases that changed between the runs, each side opening its cell', async () => {
+  runBackend({ 'POST /api/admin/evaluation/comparison': RUN_COMPARISON })
+  renderAt('/admin/bewertung/lauf/13/gegen/12', <App />)
+  const changed = await screen.findByRole('table', { name: 'Geänderte Fälle' })
+  expect(screen.getByRole('heading', { name: /^Geänderte Fälle · \d+$/ })).toBeInTheDocument()
+  const row = within(changed)
+    .getByRole('rowheader', { name: /doc1-primar-koeniz/ })
+    .closest('tr')
+  if (!row) throw new Error('no row')
+  const [before, after] = within(row).getAllByRole('link')
+  expect(before).toHaveTextContent('9 von 10')
+  expect(before).toHaveAttribute(
+    'href',
+    '/admin/bewertung/lauf/13/fall/doc1-primar-koeniz?punkt=0&teil=tuning',
+  )
+  expect(after).toHaveAttribute(
+    'href',
+    '/admin/bewertung/lauf/12/fall/doc1-primar-koeniz?punkt=0&teil=tuning',
+  )
+  expect(row).toHaveTextContent('besser')
+  expect(within(row).getAllByText('gleich').length).toBeGreaterThan(0)
+  expect(within(changed).queryByRole('rowheader', { name: /attr-franzoesisch/ })).toBeNull()
 })
 
 test('V6.6: runs that are not comparable are refused in words', async () => {
@@ -446,4 +471,59 @@ test('a case whose dataset changed runs and is marked in its row (D3)', async ()
   expect(row).toHaveTextContent('· Datenstand geändert')
   // It ran: its cells are there, as any case's.
   expect(row.closest('tr')?.querySelectorAll('a')).toHaveLength(run.points.length)
+})
+
+// --- review aids ------------------------------------------------------------------
+
+const caseRows = (table: HTMLElement) =>
+  within(table)
+    .getAllByRole('rowheader')
+    .filter((h) => h.getAttribute('scope') === 'row')
+    .map((h) => h.querySelector('code')?.textContent)
+
+test('only the cases with failures; the filter and the part stay in the address', async () => {
+  runBackend()
+  const user = userEvent.setup()
+  renderAt('/admin/bewertung/lauf/13', <App />)
+  const all = caseRows(await matrix())
+  expect(all).toContain('doc1-primar-koeniz')
+  await user.click(screen.getByRole('checkbox', { name: /^Nur Fälle mit Fehlern \(\d+\)$/ }))
+  const only = caseRows(await matrix())
+  // Rows of a filtered matrix are not folded; a case right everywhere is gone.
+  expect(only).toContain('doc1-primar-koeniz')
+  expect(only).toContain('n13-bahnhof-bern')
+  expect(only).not.toContain('doc3-weit-von-bahn')
+  expect(screen.queryByRole('button', { name: /weitere$/ })).toBeNull()
+  // Into a cell and back by the breadcrumb: the filter is kept.
+  await user.click(within(await matrix()).getAllByRole('link')[0])
+  await user.click(await screen.findByRole('link', { name: 'Lauf #13' }))
+  expect(await screen.findByRole('checkbox', { name: /^Nur Fälle mit Fehlern/ })).toBeChecked()
+  expect(caseRows(await matrix())).not.toContain('doc3-weit-von-bahn')
+})
+
+test('the part is read from the address', async () => {
+  runBackend()
+  renderAt('/admin/bewertung/lauf/13?teil=confirm', <App />)
+  expect(caseRows(await matrix())).not.toContain('n13-bahnhof-bern')
+})
+
+test('all groups open at once, and closed again', async () => {
+  runBackend()
+  const user = userEvent.setup()
+  renderAt('/admin/bewertung/lauf/13', <App />)
+  await matrix()
+  expect(screen.getAllByRole('button', { name: /weitere$/ }).length).toBeGreaterThan(0)
+  await user.click(screen.getByRole('button', { name: '▸ Alle Gruppen aufklappen' }))
+  expect(screen.queryByRole('button', { name: /weitere$/ })).toBeNull()
+  await user.click(screen.getByRole('button', { name: '▾ Alle Gruppen zuklappen' }))
+  expect(screen.getAllByRole('button', { name: /weitere$/ }).length).toBeGreaterThan(0)
+})
+
+test('a finished full run can be repeated: the form starts from it', async () => {
+  runBackend()
+  renderAt('/admin/bewertung/lauf/13', <App />)
+  expect(await screen.findByRole('link', { name: 'Wiederholen …' })).toHaveAttribute(
+    'href',
+    '/admin/bewertung/lauf/neu?von=13',
+  )
 })
