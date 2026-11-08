@@ -228,7 +228,8 @@ test.describe('E2.3 against the model stub', { tag: '@stub' }, () => {
 
     const panel = await openPanel(page)
     // A local connection: no notice that the prompt leaves the house.
-    await expect(panel.getByText(new RegExp(`${LOCAL} · Stufe`))).toBeVisible()
+    // The header names the active connection (no status line under the field).
+    await expect(page.getByRole('button', { name: 'Modellunterstützung wählen' })).toContainText(LOCAL)
     await expect(panel.getByRole('complementary', { name: 'Externe Anbindung' })).toHaveCount(0)
 
     const expected = fixture('reference')
@@ -372,7 +373,7 @@ test.describe('E2.3 against the model stub', { tag: '@stub' }, () => {
     // M14.1: another connection from the card, then the same prompt again.
     await card.getByRole('button', { name: 'Anbindung wechseln' }).click()
     await page.getByRole('menuitem', { name: SLOW }).click()
-    await expect(panel.getByText(new RegExp(`${SLOW} · Stufe`))).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Modellunterstützung wählen' })).toContainText(SLOW)
     const slow = await ask(page, prompt)
     await expect(slow.card.getByRole('alert')).toContainText('Zeitüberschreitung')
     await expect(slow.card.getByRole('alert')).toContainText('Ihr Stand ist unverändert.')
@@ -400,7 +401,9 @@ test.describe('E2.3 against the model stub', { tag: '@stub' }, () => {
     const notice = panel.getByRole('complementary', { name: 'Externe Anbindung' })
     await expect(notice).toContainText('Der Text der Frage verlässt das Haus')
     await expect(notice).toContainText(`Er geht an ${host}.`)
-    await expect(panel.getByText(`${EXTERN} · extern · ${host}`, { exact: false })).toBeVisible()
+    const header = panel.page().getByRole('button', { name: 'Modellunterstützung wählen' })
+    await expect(header).toContainText(EXTERN)
+    await expect(header).toContainText(`extern · ${host}`)
 
     // It answers like any other: a clarification (M12.2), the analysis untouched.
     const { card } = await ask(userPage, fixture('clarification').prompt)

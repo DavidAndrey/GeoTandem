@@ -167,21 +167,12 @@ function Composer() {
   const question = useModel(openQuestion)
   const referenced = useModel((s) => (s.reference === null ? undefined : s.views[s.reference]))
   const stale = useStaleLayer(referenced) !== null
-  const { connection, level } = useActiveModel()
   const locked = running !== null || sending
   // While the latest answer asks back, the field gives the free answer (M12.2);
   // otherwise the prompt follows the reference, unless × took it away or its
   // layer is gone (P6, M11.1, M11.3).
   const reference = referenced && !stale ? referenced : undefined
   const submit = () => void send(draft, approach, question ?? reference?.id ?? null)
-  const levelName = level?.name ?? ''
-  const name = connection?.name ?? ''
-  const host = connection?.host ?? ''
-  const where = !connection
-    ? ''
-    : connection.locality === 'external'
-      ? t`${name} · extern · ${host}`
-      : name
   return (
     <form
       aria-label={t`Frage eingeben`}
@@ -223,10 +214,8 @@ function Composer() {
         }}
       />
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <span id="approach-label" className="label-caps">
-          <Trans>Arbeitsweise</Trans>
-        </span>
-        <div className="flex" role="radiogroup" aria-labelledby="approach-label">
+        {/* Named for screen readers; the ⓘ beside it says what each choice does. */}
+        <div className="flex" role="radiogroup" aria-label={t`Arbeitsweise`}>
           {(['direct', 'chain'] as const).map((value) => (
             <button
               key={value}
@@ -266,11 +255,6 @@ function Composer() {
           </span>
         </div>
       </div>
-      <p className="text-muted min-w-0 text-xs break-words">
-        {where && `${where} · `}
-        {levelName && `${t`Stufe ${levelName}`} · `}
-        <Trans>Ihre Eingaben werden protokolliert</Trans>
-      </p>
     </form>
   )
 }

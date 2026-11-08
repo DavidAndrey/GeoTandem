@@ -384,8 +384,8 @@ Layer-Steckbrief des Kontos an das Modell (nur Metadaten, nie Zeileninhalte).
 - **Protokoll.** Jede Anfrage wird mit Prompt, Antwort, Abfrage, Stufe und
   Entscheid protokolliert. Anwender sehen ihre eigenen Einträge (*Meine
   Modellaktionen*), Administratoren alle, mit Kennzahlen zur Annahmequote
-  und CSV-Export (*Administration › Modell › Modellprotokoll*). Das Eingabefeld sagt,
-  dass Eingaben protokolliert werden.
+  und CSV-Export (*Administration › Modell › Modellprotokoll*). Dass Eingaben
+  protokolliert werden, sagt der Dialog *Meine Modellaktionen*.
 - **Fehler** (Modell nicht erreichbar, Zeitüberschreitung, unlesbare Antwort,
   Grenzwert) lassen Analyse, Editor und Verlauf unverändert; der Prompt bleibt
   im Feld. Wer das Fenster schliesst, während eine Werkzeugkette läuft, hält

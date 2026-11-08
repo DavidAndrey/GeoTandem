@@ -507,10 +507,6 @@ msgstr ""
 msgid "{name} · {mode}"
 msgstr ""
 
-#: src/model/panel/PromptPanel.tsx
-msgid "{name} · extern · {host}"
-msgstr ""
-
 #: src/admin/evaluation/NewRunPage.tsx
 msgid "{name} · lokal"
 msgstr ""
@@ -4336,10 +4332,6 @@ msgstr ""
 msgid "Ihre Eingabe beantwortet die Rückfrage."
 msgstr ""
 
-#: src/model/panel/PromptPanel.tsx
-msgid "Ihre Eingaben werden protokolliert"
-msgstr ""
-
 #: src/model/log/MyActionsDialog.tsx
 msgid "Ihre Eingaben werden protokolliert. Administratoren sehen alle Einträge samt Frage."
 msgstr ""
@@ -6759,10 +6751,6 @@ msgstr ""
 
 #: src/admin/ModelLogPage.tsx
 msgid "Stufe {levelId}"
-msgstr ""
-
-#: src/model/panel/PromptPanel.tsx
-msgid "Stufe {levelName}"
 msgstr ""
 
 #: src/model/approval/Level.tsx

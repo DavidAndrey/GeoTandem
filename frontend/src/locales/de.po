@@ -507,10 +507,6 @@ msgstr "{n} Treffer"
 msgid "{name} · {mode}"
 msgstr "{name} · {mode}"
 
-#: src/model/panel/PromptPanel.tsx
-msgid "{name} · extern · {host}"
-msgstr "{name} · extern · {host}"
-
 #: src/admin/evaluation/NewRunPage.tsx
 msgid "{name} · lokal"
 msgstr "{name} · lokal"
@@ -4336,10 +4332,6 @@ msgstr "Ihre eigenen Anfragen an das Modell und wie sie ausgingen"
 msgid "Ihre Eingabe beantwortet die Rückfrage."
 msgstr "Ihre Eingabe beantwortet die Rückfrage."
 
-#: src/model/panel/PromptPanel.tsx
-msgid "Ihre Eingaben werden protokolliert"
-msgstr "Ihre Eingaben werden protokolliert"
-
 #: src/model/log/MyActionsDialog.tsx
 msgid "Ihre Eingaben werden protokolliert. Administratoren sehen alle Einträge samt Frage."
 msgstr "Ihre Eingaben werden protokolliert. Administratoren sehen alle Einträge samt Frage."
@@ -6760,10 +6752,6 @@ msgstr "Stufe {level}: Das Modell darf hier nur vorschlagen. Übernehmen geht nu
 #: src/admin/ModelLogPage.tsx
 msgid "Stufe {levelId}"
 msgstr "Stufe {levelId}"
-
-#: src/model/panel/PromptPanel.tsx
-msgid "Stufe {levelName}"
-msgstr "Stufe {levelName}"
 
 #: src/model/approval/Level.tsx
 msgid "Stufe {name} · nur lesbar; geändert wird sie in der Administration."

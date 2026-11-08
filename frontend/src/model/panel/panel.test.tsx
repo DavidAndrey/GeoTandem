@@ -124,24 +124,21 @@ describe('entry (M1)', () => {
     expect(chain.className).not.toMatch(/\bborder-b-2\b/)
     expect(chain).toBeEnabled()
     expect(screen.queryByText('ab E2.5')).toBeNull()
-    expect(
-      screen.getByText(/Lokales Modell · Stufe Prüfen · Ihre Eingaben werden protokolliert/),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('radiogroup', { name: 'Arbeitsweise' })).toBeInTheDocument()
+    // No status line under the field: the header names connection and level.
+    expect(screen.queryByText(/protokolliert/)).toBeNull()
     // Sidebar and map stay (design M1.1).
     expect(screen.getByRole('region', { name: 'Karte' })).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Layer' })).toBeInTheDocument()
   })
 
-  test('M1.2: an external connection names its host in the notice and the status line', async () => {
+  test('M1.2: an external connection names its host in the notice', async () => {
     backend({}, { ...llmOptions(), active_connection_id: EXTERNAL.id })
     const { panel } = await openPanel()
     const notice = await within(panel).findByRole('complementary', { name: 'Externe Anbindung' })
     expect(notice).toHaveTextContent('Der Text der Frage verlässt das Haus')
     expect(notice).toHaveTextContent('Er geht an api.anbieter.example.')
     expect(notice).toHaveTextContent('bestätigten Wertelisten und Wertebereiche')
-    expect(
-      screen.getByText(/Extern · extern · api\.anbieter\.example · Stufe Prüfen/),
-    ).toBeInTheDocument()
   })
 
   test('M1.3: without a connection the tab is disabled; the admin gets the link', async () => {
