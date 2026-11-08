@@ -13,6 +13,9 @@ import { ErrorNotice, Loading } from '../../components/ui'
 import { formatNumber } from '../../i18n/locale'
 import { useComparison, useRun } from './runs'
 import {
+  caseChanges,
+  casePath,
+  ofText,
   differenceText,
   labelDifferences,
   latencyText,
@@ -24,7 +27,7 @@ import {
   scopeShort,
   wordText,
 } from './runWords'
-import { dataStateText } from './words'
+import { dataStateText, splitText } from './words'
 
 /** "#13: System-Prompt geändert bei gpt-6-luna P0" or "… wie im Betrieb". */
 function systemPromptNote(run: RunView): string {
@@ -35,6 +38,107 @@ function systemPromptNote(run: RunView): string {
   if (!edited.length) return t`#${id}: System-Prompt wie im Betrieb`
   const names = edited.join(', ')
   return t`#${id}: System-Prompt geändert bei ${names}`
+}
+
+/**
+ * The cases whose share of right answers moved between the runs, per matched
+ * point: what the rates do not say. Each side opens its cell in its run.
+ */
+function ChangedCases({
+  rows,
+  mine,
+  theirs,
+}: {
+  rows: RunComparisonRow[]
+  mine: RunView
+  theirs: RunView
+}) {
+  const changed = caseChanges(mine.cases, mine.cells, theirs.cells, rows)
+  const all = changed.flatMap((c) => c.changes).filter((c) => c !== null)
+  const worse = formatNumber(all.filter((c) => c.direction === 'worse').length)
+  const better = formatNumber(all.filter((c) => c.direction === 'better').length)
+  const a = mine.id
+  const b = theirs.id
+  const n = formatNumber(changed.length)
+  return (
+    <section aria-labelledby="changed-cases" className="mt-4">
+      <h3 id="changed-cases" className="label-caps mb-1 font-normal">
+        {t`Geänderte Fälle · ${n}`}
+      </h3>
+      {changed.length === 0 ? (
+        <p className="text-muted text-sm">
+          <Trans>An keinem gemeinsamen Messpunkt hat sich ein Fall verändert.</Trans>
+        </p>
+      ) : (
+        <>
+          <p className="text-muted mb-1 text-xs">
+            {t`Anteil richtiger Antworten je Fall, #${a} → #${b}: ${worse} schlechter, ${better} besser. Beide Teile; jede Seite öffnet ihre Zelle.`}
+          </p>
+          <div className="overflow-x-auto">
+            <table className="data-table" aria-label={t`Geänderte Fälle`}>
+              <thead>
+                <tr>
+                  <th scope="col">
+                    <Trans>Prüffall</Trans>
+                  </th>
+                  {rows.map((row, i) => (
+                    <th key={i} scope="col">
+                      {pointName(row.label)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {changed.map(({ case: rc, changes }) => (
+                  <tr key={rc.case.id}>
+                    <th scope="row" className="border-divider font-normal">
+                      <span className="block">{rc.case.prompt}</span>
+                      <code className="text-muted text-xs">{rc.case.id}</code>{' '}
+                      <span className="text-muted text-xs">· {splitText(rc.case.split)}</span>
+                    </th>
+                    {changes.map((change, i) => {
+                      const row = rows[i]
+                      if (!change)
+                        return (
+                          <td key={i} className="text-muted">
+                            {t`gleich`}
+                          </td>
+                        )
+                      const split = rc.case.split
+                      const before = ofText(change.mine.passed, change.mine.answers)
+                      const after = ofText(change.theirs.passed, change.theirs.answers)
+                      return (
+                        <td key={i} className="tabular-nums whitespace-nowrap">
+                          <Link
+                            to={casePath(a, rc.case.id, row.point, split)}
+                            className="hover:text-accent-700"
+                            aria-label={t`#${a}: ${before}`}
+                          >
+                            {before}
+                          </Link>{' '}
+                          →{' '}
+                          <Link
+                            to={casePath(b, rc.case.id, row.point_against, split)}
+                            className="hover:text-accent-700"
+                            aria-label={t`#${b}: ${after}`}
+                          >
+                            {after}
+                          </Link>{' '}
+                          <strong>
+                            {change.direction === 'worse' ? t`schlechter` : t`besser`}
+                          </strong>
+                        </td>
+                      )
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </section>
+  )
 }
 
 /** Still falsch, time and cost of one point in both runs ("Details je Messpunkt"). */
@@ -225,6 +329,7 @@ export function ComparisonPage() {
               Schnelltest).
             </Trans>
           </p>
+          {mine && theirs && <ChangedCases rows={data.points} mine={mine} theirs={theirs} />}
           {mine && theirs && <Details rows={data.points} mine={mine} theirs={theirs} />}
         </>
       )}

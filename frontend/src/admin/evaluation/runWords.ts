@@ -36,10 +36,31 @@ export const runPath = (id: number) => `/admin/bewertung/lauf/${id}`
 export const NEW_RUN = '/admin/bewertung/lauf/neu'
 /** The longest run note (``MAX_RUN_NOTE`` of ``evaluation/schemas.py``). */
 export const MAX_RUN_NOTE = 200
-/** A cell's case in a run (V7); ``split`` keeps the matrix's part for ‹ ›. */
-export const casePath = (run: number, caseId: string, point: number, split?: Split | null) =>
+/** ``?nur=`` of a run's matrix showing only the cases with failures. */
+// An address value, not text.
+export const FAILURES = 'fehler'
+/**
+ * A cell's case in a run (V7); ``split`` keeps the matrix's part for ‹ ›,
+ * ``only`` its filter on failures, both for the way back.
+ */
+export const casePath = (
+  run: number,
+  caseId: string,
+  point: number,
+  split?: Split | null,
+  only = false,
+) =>
   `${runPath(run)}/fall/${encodeURIComponent(caseId)}?punkt=${point}` +
-  (split ? `&teil=${split}` : '')
+  (split ? `&teil=${split}` : '') +
+  (only ? `&nur=${FAILURES}` : '')
+/** A run on one part of its matrix: part and filter are in the address, so back and reload keep them. */
+export function runSplitPath(id: number, split: Split | null, only = false) {
+  const params = new URLSearchParams()
+  if (split) params.set('teil', split)
+  if (only) params.set('nur', FAILURES)
+  const query = params.toString()
+  return query ? `${runPath(id)}?${query}` : runPath(id)
+}
 
 /** The parts of a profile other than the default examples and output: "Schema nur im Prompt". */
 function profileExtras(p: PointLabel['prompt_profile']): string[] {
@@ -350,6 +371,72 @@ export const cellMap = (cells: readonly Cell[]) =>
 /** The case ids in the matrix's order (groups, then their rows) for ‹ › of V7. */
 export const matrixOrder = (cases: readonly RunCase[], split: Split | null) =>
   groupCases(cases, split).flatMap((g) => g.cases.map((rc) => rc.case.id))
+
+/** A cell with an answer that is not right (wrong, refused, unreadable …). */
+export const failed = (c: Pick<Cell, 'passed' | 'answers'>) => c.passed < c.answers
+
+/** The cases with such a cell, at one point or (``undefined``) at any. */
+export function failingCases(cells: readonly Cell[], point?: number): Set<string> {
+  const ids = new Set<string>()
+  for (const c of cells)
+    if ((point === undefined || c.point === point) && failed(c)) ids.add(c.case_id)
+  return ids
+}
+
+/** The next (``step`` 1) or previous (−1) failing case after ``from`` in ``order``, else ``null``. */
+export function nearestFailure(
+  order: readonly string[],
+  from: string,
+  failing: ReadonlySet<string>,
+  step: 1 | -1,
+): string | null {
+  const at = order.indexOf(from)
+  if (at < 0) return null
+  for (let i = at + step; i >= 0 && i < order.length; i += step)
+    if (failing.has(order[i])) return order[i]
+  return null
+}
+
+/** Right answers of a cell as a share; ``null`` without answers. */
+const share = (c: Cell | undefined) => (c && c.answers > 0 ? c.passed / c.answers : null)
+
+export type CaseChange = {
+  /** Index into the comparison's rows. */
+  row: number
+  mine: Cell
+  theirs: Cell
+  direction: 'better' | 'worse'
+}
+
+/**
+ * The cases whose share of right answers differs between two runs at a
+ * matched point (rows of the comparison: ``point`` in the first run,
+ * ``point_against`` in the second), in the matrix's order. ``better`` is the
+ * second run against the first.
+ */
+export function caseChanges(
+  cases: readonly RunCase[],
+  mine: readonly Cell[],
+  theirs: readonly Cell[],
+  rows: readonly { point: number; point_against: number }[],
+): { case: RunCase; changes: (CaseChange | null)[] }[] {
+  const a = cellMap(mine)
+  const b = cellMap(theirs)
+  const out: { case: RunCase; changes: (CaseChange | null)[] }[] = []
+  for (const group of groupCases(cases, null))
+    for (const rc of group.cases) {
+      const changes = rows.map((row, i): CaseChange | null => {
+        const left = a.get(cellKey(rc.case.id, row.point))
+        const right = b.get(cellKey(rc.case.id, row.point_against))
+        const x = share(left)
+        const y = share(right)
+        if (!left || !right || x === null || y === null || x === y) return null
+        return { row: i, mine: left, theirs: right, direction: y > x ? 'better' : 'worse' }
+      })
+      if (changes.some(Boolean)) out.push({ case: rc, changes })
+    }
+  return out
+}
 
 /** The cells of one point summed over cases: "86 von 110". */
 export function sumCells(cells: readonly Cell[], caseIds: ReadonlySet<string>, point: number) {

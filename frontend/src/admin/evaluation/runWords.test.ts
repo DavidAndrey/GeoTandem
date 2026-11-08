@@ -7,12 +7,15 @@ import { measuredText } from './measured'
 import { labelsFor } from '../../editor/fields'
 import { catalogLayer } from '../../model/approval/changes'
 import {
+  caseChanges,
   comparable,
   connectionNames,
   diffChange,
   differenceText,
   groupCases,
+  failingCases,
   idsText,
+  nearestFailure,
   mixText,
   pointName,
   progressPercent,
@@ -157,4 +160,41 @@ test('a run names its connections; a deleted one by its number', () => {
   })
   expect(connectionNames([1, 1, 3, 2, 7], list).short).toBe('gemma4:12b, gpt-6-luna + 2')
   expect(connectionNames([7], list).all).toBe('Anbindung 7')
+})
+
+test('failing cases and the nearest one either way', () => {
+  const cell = (case_id: string, point: number, passed: number) => ({
+    case_id,
+    point,
+    passed,
+    answers: 10,
+    verdicts: {},
+    silently_wrong: 0,
+  })
+  const cells = [cell('a', 0, 10), cell('b', 0, 9), cell('c', 1, 3), cell('d', 0, 0)]
+  expect([...failingCases(cells)].sort()).toEqual(['b', 'c', 'd'])
+  expect([...failingCases(cells, 0)].sort()).toEqual(['b', 'd'])
+  const order = ['a', 'b', 'c', 'd']
+  const at0 = failingCases(cells, 0)
+  expect(nearestFailure(order, 'a', at0, 1)).toBe('b')
+  expect(nearestFailure(order, 'b', at0, 1)).toBe('d')
+  expect(nearestFailure(order, 'd', at0, 1)).toBeNull()
+  expect(nearestFailure(order, 'c', at0, -1)).toBe('b')
+  expect(nearestFailure(order, 'a', at0, -1)).toBeNull()
+  expect(nearestFailure(order, 'x', at0, 1)).toBeNull()
+})
+
+test('changed cases between two runs: by share of right answers, per matched point', () => {
+  const run = runView()
+  const quick = runView('done', 'quick')
+  const rows = run.points.map((_, i) => ({ point: i, point_against: i }))
+  const changed = caseChanges(run.cases, run.cells, quick.cells, rows)
+  const doc1 = changed.find((c) => c.case.case.id === 'doc1-primar-koeniz')
+  // 9 of 10 against 5 of 5 (rounded half), 10 of 10 against 5 of 5: better, then the same.
+  expect(doc1?.changes[0]).toMatchObject({ direction: 'better' })
+  expect(doc1?.changes[0]?.mine).toMatchObject({ passed: 9, answers: 10 })
+  expect(doc1?.changes[1]).toBeNull()
+  // A case right everywhere in both is not listed; nor one without cells.
+  expect(changed.find((c) => c.case.case.id === 'attr-franzoesisch')).toBeUndefined()
+  expect(caseChanges(run.cases, run.cells, run.cells, rows)).toEqual([])
 })

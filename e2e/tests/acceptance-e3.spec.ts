@@ -489,13 +489,14 @@ test.describe('E3 against the model stub', { tag: '@stub' }, () => {
         .getByRole('group', { name: 'Teil' })
         .getByRole('button', { name: 'Bestätigung' })
         .click()
-      for (const more of await matrix.getByRole('button', { name: /weitere$/ }).all())
-        await more.click()
+      // The part is in the address: wait for it before opening the groups.
+      await expect(page).toHaveURL(/teil=confirm/)
+      await expect(matrix).not.toContainText(CODE_CASES[0].prompt)
+      await page.getByRole('button', { name: '▸ Alle Gruppen aufklappen' }).click()
       for (const c of CODE_CASES.filter((c) => c.split === 'confirm'))
         await expect(matrix.getByRole('row').filter({ hasText: c.prompt })).toContainText(
           '10 von 10',
         )
-      await expect(matrix).not.toContainText(CODE_CASES[0].prompt)
 
       // The release decision: from the matrix to the connection (design review 6).
       const ids = Object.fromEntries((await connections(request)).map((c) => [c.name, c.id]))

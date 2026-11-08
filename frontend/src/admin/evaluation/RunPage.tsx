@@ -11,7 +11,7 @@ import { t } from '@lingui/core/macro'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { DropdownMenu } from 'radix-ui'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { Link, useParams } from 'react-router'
+import { Link, useParams, useSearchParams } from 'react-router'
 import {
   api,
   type Cell,
@@ -41,6 +41,8 @@ import {
   casePath,
   cellKey,
   cellMap,
+  failingCases,
+  FAILURES,
   clock,
   MAX_RUN_NOTE,
   NEW_RUN,
@@ -172,6 +174,7 @@ function CellView({
   question,
   point,
   split,
+  only,
 }: {
   cell: Cell | undefined
   run: RunView
@@ -179,6 +182,8 @@ function CellView({
   question: string
   point: PointView
   split: Split
+  /** The matrix shows only failing cases: kept for the way back. */
+  only: boolean
 }) {
   const expected = run.label.seeds.length
   if (!cell || cell.answers === 0)
@@ -189,7 +194,7 @@ function CellView({
   const answers = formatNumber(cell.answers)
   return (
     <Link
-      to={casePath(run.id, caseId, cell.point, split)}
+      to={casePath(run.id, caseId, cell.point, split, only)}
       className={`hover:text-accent-700 block tabular-nums whitespace-nowrap ${cell.silently_wrong ? 'border-ink border border-dashed p-0.5' : ''}`}
     >
       <span className="sr-only">{t`${question} bei ${name}:`}</span>{' '}
@@ -213,16 +218,24 @@ function GroupRows({
   run,
   cells,
   split,
+  only,
+  allOpen,
 }: {
   group: Group
   run: RunView
   cells: Map<string, Cell>
   split: Split
+  /** The failing cases when the matrix shows only those, else ``null``. */
+  only: ReadonlySet<string> | null
+  allOpen: boolean
 }) {
-  const [open, setOpen] = useState(false)
+  // Failing rows only are few: shown all at once.
+  const [open, setOpen] = useState(allOpen || only !== null)
+  // The sums stay those of the whole group, also when only failing rows show.
   const ids = new Set(group.cases.map((rc) => rc.case.id))
-  const shown = open ? group.cases : group.cases.slice(0, SHOWN)
-  const more = group.cases.length - SHOWN
+  const rows = only ? group.cases.filter((rc) => only.has(rc.case.id)) : group.cases
+  const shown = open ? rows : rows.slice(0, SHOWN)
+  const more = rows.length - SHOWN
   const done = run.status === 'done'
   return (
     <tbody>
@@ -259,6 +272,7 @@ function GroupRows({
                 question={rc.case.prompt}
                 point={p}
                 split={split}
+                only={only !== null}
               />
             </td>
           ))}
@@ -282,8 +296,20 @@ function GroupRows({
   )
 }
 
-function Matrix({ run, split }: { run: RunView; split: Split }) {
-  const groups = groupCases(run.cases, split)
+function Matrix({
+  run,
+  split,
+  only,
+  allOpen,
+}: {
+  run: RunView
+  split: Split
+  only: ReadonlySet<string> | null
+  allOpen: boolean
+}) {
+  const groups = groupCases(run.cases, split).filter(
+    (g) => !only || g.cases.some((rc) => only.has(rc.case.id)),
+  )
   const cells = cellMap(run.cells)
   return (
     <div className="overflow-x-auto">
@@ -302,14 +328,27 @@ function Matrix({ run, split }: { run: RunView; split: Split }) {
           </tr>
         </thead>
         {groups.map((g) => (
-          <GroupRows key={g.key} group={g} run={run} cells={cells} split={split} />
+          <GroupRows
+            key={`${g.key}-${allOpen}-${only !== null}`}
+            group={g}
+            run={run}
+            cells={cells}
+            split={split}
+            only={only}
+            allOpen={allOpen}
+          />
         ))}
       </table>
-      {groups.length === 0 && (
-        <p className="text-muted text-sm">
-          <Trans>Keine Prüffälle in diesem Teil.</Trans>
-        </p>
-      )}
+      {groups.length === 0 &&
+        (only ? (
+          <p className="text-muted text-sm">
+            <Trans>In diesem Teil hat kein Fall eine Antwort, die nicht richtig ist.</Trans>
+          </p>
+        ) : (
+          <p className="text-muted text-sm">
+            <Trans>Keine Prüffälle in diesem Teil.</Trans>
+          </p>
+        ))}
     </div>
   )
 }
@@ -820,6 +859,15 @@ function RunHeader({
             <Trans>Als vollständigen Lauf wiederholen</Trans>
           </Link>
         )}
+        {!quick && run.status !== 'running' && (
+          <Link
+            to={`${NEW_RUN}?von=${run.id}`}
+            className="btn"
+            title={t`Ein neuer Lauf mit denselben Messpunkten und Fällen, vor dem Start änderbar`}
+          >
+            <Trans>Wiederholen …</Trans>
+          </Link>
+        )}
         {run.status !== 'running' && (
           <a
             href={api.evaluation.exportRunUrl(run.id)}
@@ -853,10 +901,77 @@ function RunHeader({
   )
 }
 
-function RunBody({ run }: { run: RunView }) {
+/** Only failing cases, all groups open: the controls above the matrix. */
+function MatrixTools({
+  failing,
+  only,
+  setOnly,
+  allOpen,
+  setAllOpen,
+}: {
+  failing: number
+  only: boolean
+  setOnly: (on: boolean) => void
+  allOpen: boolean
+  setAllOpen: (on: boolean) => void
+}) {
+  const count = formatNumber(failing)
+  return (
+    <div className="mb-2 flex flex-wrap items-center gap-3 text-sm">
+      <label className="flex items-center gap-1">
+        <input type="checkbox" checked={only} onChange={(e) => setOnly(e.target.checked)} />
+        {t`Nur Fälle mit Fehlern (${count})`}
+      </label>
+      <span className="text-muted text-xs">
+        <Trans>mindestens eine Antwort nicht richtig, an einem der Messpunkte</Trans>
+      </span>
+      <button
+        type="button"
+        className="text-muted hover:text-accent-700 ml-auto text-xs"
+        onClick={() => setAllOpen(!allOpen)}
+      >
+        {allOpen ? t`▾ Alle Gruppen zuklappen` : t`▸ Alle Gruppen aufklappen`}
+      </button>
+    </div>
+  )
+}
+
+/** The part and the filter of the matrix, in the address (``?teil=``, ``?nur=fehler``). */
+function useMatrixView(run: RunView) {
+  const [params, setParams] = useSearchParams()
   const hasTuning = run.cases.some((rc) => rc.case.split === 'tuning')
-  const [split, setSplit] = useState<Split>(hasTuning ? 'tuning' : 'confirm')
+  const part = params.get('teil')
+  const split: Split =
+    part === 'tuning' || part === 'confirm' ? part : hasTuning ? 'tuning' : 'confirm'
+  const only = params.get('nur') === FAILURES
+  const change = (key: string, value: string | null) =>
+    setParams(
+      (p) => {
+        const next = new URLSearchParams(p)
+        if (value === null) next.delete(key)
+        else next.set(key, value)
+        return next
+      },
+      { replace: true },
+    )
+  return {
+    split,
+    setSplit: (s: Split) => change('teil', s),
+    only,
+    setOnly: (on: boolean) => change('nur', on ? FAILURES : null),
+  }
+}
+
+function RunBody({ run }: { run: RunView }) {
+  const { split, setSplit, only, setOnly } = useMatrixView(run)
+  const [allOpen, setAllOpen] = useState(false)
   const quick = run.label.scope === 'quick'
+  const failing = failingCases(run.cells)
+  const inPart = new Set(
+    run.cases
+      .filter((rc) => rc.case.split === split && failing.has(rc.case.id))
+      .map((rc) => rc.case.id),
+  )
   return (
     <div className="max-w-7xl">
       <RunHeader run={run} split={split} setSplit={setSplit} />
@@ -896,7 +1011,16 @@ function RunBody({ run }: { run: RunView }) {
           </span>
         )}
       </p>
-      <Matrix run={run} split={split} />
+      {run.cells.length > 0 && (
+        <MatrixTools
+          failing={inPart.size}
+          only={only}
+          setOnly={setOnly}
+          allOpen={allOpen}
+          setAllOpen={setAllOpen}
+        />
+      )}
+      <Matrix run={run} split={split} only={only ? inPart : null} allOpen={allOpen} />
       <ColumnActions run={run} />
     </div>
   )

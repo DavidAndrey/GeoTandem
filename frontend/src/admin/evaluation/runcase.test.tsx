@@ -35,6 +35,7 @@ test('V7.1: question and reference left, the ten repeats right', async () => {
   ).toBeInTheDocument()
   const names = within(answers)
     .getAllByRole('button', { name: /^Antwort / })
+    .filter((b) => b.hasAttribute('aria-expanded'))
     .map((b) => b.textContent)
   expect(names).toEqual(['1.1', '1.2', '1.3', '1.4', '1.5', '2.1', '2.2', '2.3', '2.4', '2.5'])
   expect(within(answers).getAllByText('falsch · still')).toHaveLength(6)
@@ -46,9 +47,13 @@ test('V7.2: a wrong answer opened shows the difference in words, both sets and t
   runBackend({ [ANSWERS]: answerViews() })
   const user = userEvent.setup()
   renderAt('/admin/bewertung/lauf/13/fall/n13-bahnhof-bern?punkt=3', <App />)
+  // 1.2 is the first answer that is not right: open without a click.
   const toggle = await screen.findByRole('button', { name: 'Antwort 1.2' })
-  await user.click(toggle)
   expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  expect(screen.getByRole('button', { name: 'Antwort 1.1' })).toHaveAttribute(
+    'aria-expanded',
+    'false',
+  )
   const detail = document.getElementById(toggle.getAttribute('aria-controls') ?? '')
   if (!detail) throw new Error('no detail')
   expect(within(detail).getByText('Antwort 1.2 · Unterschied zur Referenz')).toBeInTheDocument()
@@ -79,8 +84,7 @@ test('V7.2: opening an answer in the workplace asks before unsaved conditions ar
   s.apply()
   const user = userEvent.setup()
   renderAt('/admin/bewertung/lauf/13/fall/n13-bahnhof-bern?punkt=3', <App />)
-  await user.click(await screen.findByRole('button', { name: 'Antwort 1.2' }))
-  await user.click(screen.getByRole('button', { name: 'Antwort im Arbeitsplatz' }))
+  await user.click(await screen.findByRole('button', { name: 'Antwort im Arbeitsplatz' }))
   const dialog = await screen.findByRole('alertdialog', {
     name: 'Abfrage im Arbeitsplatz ersetzen?',
   })
@@ -123,10 +127,13 @@ test('V7.4: refused and unreadable: the code in words, the raw text under "Techn
 
 test('V7.5: a behaviour case, expected against given', async () => {
   runBackend({ [ANSWERS]: [behaviourAnswer()] })
-  const user = userEvent.setup()
   renderAt('/admin/bewertung/lauf/13/fall/n15-je-gemeinde?punkt=2', <App />)
   expect(await screen.findByText('Verhaltensfall')).toBeInTheDocument()
-  await user.click(await screen.findByRole('button', { name: 'Antwort 1.1' }))
+  // The only answer is not right: open already.
+  expect(await screen.findByRole('button', { name: 'Antwort 1.1' })).toHaveAttribute(
+    'aria-expanded',
+    'true',
+  )
   const verdict = screen
     .getAllByText('andere Antwortart')
     .find((e) => e.hasAttribute('data-verdict'))
@@ -158,6 +165,22 @@ test("V7: ‹ › follow the matrix's order within the part it was opened from",
   expect(within(nav).getByRole('link', { name: 'Nächster Fall' })).toHaveAttribute(
     'href',
     '/admin/bewertung/lauf/13/fall/doc3-weit-von-bahn?punkt=0&teil=tuning',
+  )
+})
+
+test('V7: ‹ › Fehler skip the cases right at this point', async () => {
+  runBackend({ [ANSWERS]: answerViews() })
+  renderAt('/admin/bewertung/lauf/13/fall/doc1-primar-koeniz?punkt=0&teil=tuning', <App />)
+  const nav = await screen.findByRole('navigation', { name: 'Weitere Zellen' })
+  expect(within(nav).queryByRole('link', { name: 'Voriger Fall mit Fehler' })).toBeNull()
+  const next = within(nav).getByRole('link', { name: 'Nächster Fall mit Fehler' })
+  // doc3 follows doc1 but is right everywhere: the next failure is further on.
+  expect(next.getAttribute('href')).toMatch(/\?punkt=0&teil=tuning$/)
+  expect(next.getAttribute('href')).not.toContain('doc3-weit-von-bahn')
+  // Back to the run in the same part.
+  expect(screen.getByRole('link', { name: 'Lauf #13' })).toHaveAttribute(
+    'href',
+    '/admin/bewertung/lauf/13?teil=tuning',
   )
 })
 
