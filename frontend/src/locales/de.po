@@ -2397,10 +2397,6 @@ msgstr "Der gespeicherte Zugangsschlüssel lässt sich nicht mehr öffnen (secre
 msgid "Der gespeicherte Zustand ergibt nicht mehr genau die gespeicherte Abfrage."
 msgstr "Der gespeicherte Zustand ergibt nicht mehr genau die gespeicherte Abfrage."
 
-#: src/model/approval/Approval.tsx
-msgid "Der Grund geht ins Protokoll. Die Analyse bleibt unverändert."
-msgstr "Der Grund geht ins Protokoll. Die Analyse bleibt unverändert."
-
 #: src/admin/CatalogPage.tsx
 msgid "Der Katalog ist leer."
 msgstr "Der Katalog ist leer."
@@ -3617,14 +3613,18 @@ msgstr "Es sind schon so viele Sitzungen gespeichert wie erlaubt. Bitte zuerst e
 msgid "Es wurde nur eine Spalte gefunden; vielleicht stimmt das Trennzeichen nicht."
 msgstr "Es wurde nur eine Spalte gefunden; vielleicht stimmt das Trennzeichen nicht."
 
-#: src/model/approval/Approval.tsx
-#: src/model/chain/Chain.tsx
-msgid "Esc = Ablehnen"
-msgstr "Esc = Ablehnen"
-
 #: src/model/chain/Chain.tsx
 msgid "Esc = Kette abbrechen"
 msgstr "Esc = Kette abbrechen"
+
+#: src/model/approval/Approval.tsx
+msgid "Esc sendet. Der Grund geht ins Protokoll, die Abfrage bleibt unverändert."
+msgstr "Esc sendet. Der Grund geht ins Protokoll, die Abfrage bleibt unverändert."
+
+#: src/model/approval/Approval.tsx
+#: src/model/chain/Chain.tsx
+msgid "Esc, Esc = Ablehnen"
+msgstr "Esc, Esc = Ablehnen"
 
 #: src/admin/evaluation/CasesPage.tsx
 #: src/admin/evaluation/RunPage.tsx

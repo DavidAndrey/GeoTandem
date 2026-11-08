@@ -187,7 +187,7 @@ export function Approval({ view }: { view: ModelActionView }) {
     <section
       aria-label={t`Freigabe`}
       className="border-divider flex flex-col gap-2 border-t pt-2"
-      onKeyDown={escapeRejects(view, rejecting?.reason ?? null)}
+      onKeyDown={escapeRejects(view)}
     >
       <p className="label-caps">
         <Trans>Freigabe · Änderung gegenüber jetzt</Trans>
@@ -258,7 +258,7 @@ export function Approval({ view }: { view: ModelActionView }) {
           {/* The answer's ⋯ (Protokoll, repeat): one row of actions while waiting. */}
           <CompareMenu view={view} />
           <span id={`esc-${view.id}`} className="text-muted ml-auto text-xs">
-            <Trans>Esc = Ablehnen</Trans>
+            <Trans>Esc, Esc = Ablehnen</Trans>
           </span>
         </div>
       )}
@@ -321,7 +321,7 @@ export function RejectStep({
           <Trans>Zurück</Trans>
         </button>
         <span className="text-muted text-xs">
-          <Trans>Der Grund geht ins Protokoll. Die Analyse bleibt unverändert.</Trans>
+          <Trans>Esc sendet. Der Grund geht ins Protokoll, die Abfrage bleibt unverändert.</Trans>
         </span>
       </div>
     </div>

@@ -508,7 +508,7 @@ function PlanActions({ view }: { view: ModelActionView }) {
     <section
       aria-label={t`Freigabe`}
       className="border-divider flex flex-col gap-2 border-t pt-2"
-      onKeyDown={escapeRejects(view, rejecting?.reason ?? null)}
+      onKeyDown={escapeRejects(view)}
     >
       <p className="text-muted text-xs">
         {whole
@@ -550,7 +550,7 @@ function PlanActions({ view }: { view: ModelActionView }) {
             <Trans>Ablehnen</Trans>
           </button>
           <span id={`esc-${view.id}`} className="text-muted ml-auto text-xs">
-            <Trans>Esc = Ablehnen</Trans>
+            <Trans>Esc, Esc = Ablehnen</Trans>
           </span>
         </div>
       )}

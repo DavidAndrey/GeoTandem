@@ -231,18 +231,22 @@ describe('plan (M8)', () => {
       expect(screen.getByRole('button', { name: 'Kette freigeben und starten' })).toHaveFocus(),
     )
     expect(within(card).getByRole('button', { name: 'Ablehnen' })).toHaveAccessibleDescription(
-      'Esc = Ablehnen',
+      'Esc, Esc = Ablehnen',
     )
     expect(hits(calls, 'approve')).toEqual([])
     expect(hits(calls, 'run')).toEqual([])
     unchanged()
   })
 
-  test('M8.1: Esc rejects the plan; the analysis stays as it is', async () => {
+  test('M8.1: Esc, Esc rejects the plan; the analysis stays as it is', async () => {
     const { user, calls, card } = await planned()
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Kette freigeben und starten' })).toHaveFocus(),
     )
+    // The first Esc only opens the reason step.
+    await user.keyboard('{Escape}')
+    expect(within(card).getByRole('group', { name: 'Grund (optional)' })).toBeInTheDocument()
+    expect(hits(calls, 'reject')).toEqual([])
     await user.keyboard('{Escape}')
     await waitFor(() => expect(card).toHaveTextContent('abgelehnt'))
     expect(hits(calls, 'reject').map((c) => c.body)).toEqual([{ reason: null }])

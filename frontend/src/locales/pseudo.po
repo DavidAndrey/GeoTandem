@@ -2397,10 +2397,6 @@ msgstr ""
 msgid "Der gespeicherte Zustand ergibt nicht mehr genau die gespeicherte Abfrage."
 msgstr ""
 
-#: src/model/approval/Approval.tsx
-msgid "Der Grund geht ins Protokoll. Die Analyse bleibt unverändert."
-msgstr ""
-
 #: src/admin/CatalogPage.tsx
 msgid "Der Katalog ist leer."
 msgstr ""
@@ -3617,13 +3613,17 @@ msgstr ""
 msgid "Es wurde nur eine Spalte gefunden; vielleicht stimmt das Trennzeichen nicht."
 msgstr ""
 
-#: src/model/approval/Approval.tsx
-#: src/model/chain/Chain.tsx
-msgid "Esc = Ablehnen"
-msgstr ""
-
 #: src/model/chain/Chain.tsx
 msgid "Esc = Kette abbrechen"
+msgstr ""
+
+#: src/model/approval/Approval.tsx
+msgid "Esc sendet. Der Grund geht ins Protokoll, die Abfrage bleibt unverändert."
+msgstr ""
+
+#: src/model/approval/Approval.tsx
+#: src/model/chain/Chain.tsx
+msgid "Esc, Esc = Ablehnen"
 msgstr ""
 
 #: src/admin/evaluation/CasesPage.tsx

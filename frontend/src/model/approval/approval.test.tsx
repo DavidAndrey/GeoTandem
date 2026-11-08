@@ -191,7 +191,7 @@ describe('approval (M5)', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Annehmen' })).toHaveFocus())
     const reject = within(card).getByRole('button', { name: 'Ablehnen' })
     expect(reject).toHaveAttribute('aria-keyshortcuts', 'Escape')
-    expect(reject).toHaveAccessibleDescription('Esc = Ablehnen')
+    expect(reject).toHaveAccessibleDescription('Esc, Esc = Ablehnen')
     // One row of actions while waiting: the answer's ⋯ sits in the approval, no second row.
     expect(within(approval).getByRole('button', { name: 'Weitere Aktionen' })).toBeInTheDocument()
     expect(within(card).getAllByRole('button', { name: 'Weitere Aktionen' })).toHaveLength(1)
@@ -322,13 +322,34 @@ describe('approval (M5)', () => {
     expect(keys(calls)).toEqual([`POST /api/model/actions/${actionView('reference').id}/reject`])
   })
 
-  test('Esc rejects at once, without a reason, and leaves the panel open', async () => {
+  test('one Esc only opens the reason step; Esc there rejects; the panel stays open', async () => {
     const { user, calls, card } = await answered()
     await waitFor(() => expect(screen.getByRole('button', { name: 'Annehmen' })).toHaveFocus())
+    await user.keyboard('{Escape}')
+    // Nothing decided yet: the reason step, its Ablehnen focused, Zurück leads back.
+    expect(within(card).getByRole('group', { name: 'Grund (optional)' })).toBeInTheDocument()
+    expect(within(card).getByRole('button', { name: 'Ablehnen' })).toHaveFocus()
+    expect(bodies(calls, 'reject')).toEqual([])
+    await user.click(within(card).getByRole('button', { name: 'Zurück' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Annehmen' })).toHaveFocus())
+    expect(bodies(calls, 'reject')).toEqual([])
+    // Esc, Esc rejects, without a reason.
+    await user.keyboard('{Escape}')
     await user.keyboard('{Escape}')
     await waitFor(() => expect(bodies(calls, 'reject')).toEqual([{ reason: null }]))
     expect(screen.getByRole('region', { name: 'Frage' })).toBeInTheDocument()
     await waitFor(() => expect(card).toHaveTextContent('Ohne Grund abgelehnt.'))
+  })
+
+  test('Esc that closes the ⋯ menu stays with the menu: no reason step, nothing rejected', async () => {
+    const { user, calls, card } = await answered()
+    const approval = within(card).getByRole('region', { name: 'Freigabe' })
+    await user.click(within(approval).getByRole('button', { name: 'Weitere Aktionen' }))
+    expect(await screen.findByRole('menuitem', { name: 'Protokoll' })).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
+    expect(within(card).queryByRole('group', { name: 'Grund (optional)' })).toBeNull()
+    expect(bodies(calls, 'reject')).toEqual([])
   })
 
   test('Anpassen … opens B2 with the draft; what it applies is reported as adjusted', async () => {
