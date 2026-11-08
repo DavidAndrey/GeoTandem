@@ -7,7 +7,7 @@ import { Trans } from '@lingui/react/macro'
 import { msg, t } from '@lingui/core/macro'
 import { Crosshair, Plus, X } from 'lucide-react'
 import { DropdownMenu } from 'radix-ui'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import type {
   AttributeRow,
@@ -56,19 +56,26 @@ export function EditorPanel() {
     if (keep) apply()
     else discard()
   }
+  const panel = useRef<HTMLElement>(null)
   // Opened at one condition (design M12.1 "ändern"): its first control gets the focus.
+  // Otherwise the panel itself: the entry that opened it is gone, and without the
+  // focus inside, Esc would not reach the panel.
   useEffect(() => {
     const row = useMapView.getState().activeRow
-    if (row)
-      document
-        .querySelector<HTMLElement>(`[data-row-id="${row}"] select, [data-row-id="${row}"] input`)
-        ?.focus()
+    const control = row
+      ? document.querySelector<HTMLElement>(
+          `[data-row-id="${row}"] select, [data-row-id="${row}"] input`,
+        )
+      : null
+    ;(control ?? panel.current)?.focus()
   }, [])
 
   return (
     <section
+      ref={panel}
+      tabIndex={-1}
       aria-label={t`Abfrage-Editor`}
-      className="card flex min-h-0 flex-col overflow-hidden"
+      className="card flex min-h-0 flex-col overflow-hidden outline-none"
       onKeyDown={(e) => e.key === 'Escape' && close(false)}
     >
       <div className="border-divider flex items-center gap-2 border-b px-4 py-2">

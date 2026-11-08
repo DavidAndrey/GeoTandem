@@ -70,16 +70,18 @@ export function lineStyle(key: StatusKey): LineStyle {
     case 'rejected':
     case 'superseded':
     case 'undone':
-    case 'refused':
     case 'stale':
     case 'aborted':
     case 'interrupted':
     case 'limited':
       // M9.5 (limited) as M9.4 (aborted): its last result stays adoptable all the same.
       return 'void'
+    // refused: announced as an error is (status.tsx ALERT), and drawn as one;
+    // struck through, "abgewiesen" read as "not refused".
     case 'clarification':
     case 'message':
     case 'error':
+    case 'refused':
       return 'message'
     default:
       return 'dashed'

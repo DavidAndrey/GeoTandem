@@ -1,5 +1,5 @@
 // The level in the header (design M7): what the model may do here (M7.1, a
-// read-only matrix), the short column of each level in the choice (M7.2),
+// read-only matrix), each level's summary in words in the choice (M7.2),
 // and the question before a change while a proposal waits (M7.3). Level
 // names are the administrator's free text: shown, never keyed on.
 import { Trans } from '@lingui/react/macro'
@@ -7,7 +7,7 @@ import { t } from '@lingui/core/macro'
 import { Info } from 'lucide-react'
 import { AlertDialog, Popover } from 'radix-ui'
 import type { LevelOption, ModelActionView } from '../../api/client'
-import { cellLabel, cellShort, classLabel, OP_CLASSES, type Matrix } from './governance'
+import { cellLabel, classLabel, levelSummary, OP_CLASSES, type Matrix } from './governance'
 
 /** M7.1: ⓘ beside the level opens "Was darf das Modell hier?"; read only. */
 export function LevelInfo({ level }: { level: LevelOption }) {
@@ -46,7 +46,7 @@ export function LevelInfo({ level }: { level: LevelOption }) {
               {OP_CLASSES.map((k) => (
                 <tr key={k} className="border-divider border-b">
                   <th scope="row" className="py-0.5 font-normal">
-                    {classLabel(k)} <span className="text-muted font-mono text-xs">{k}</span>
+                    {classLabel(k)}
                   </th>
                   <td className="py-0.5">{cellLabel(matrix[k])}</td>
                 </tr>
@@ -65,24 +65,9 @@ export function LevelInfo({ level }: { level: LevelOption }) {
   )
 }
 
-/**
- * M7.2: "F F F F F", the cells in the order of the columns; a screen reader
- * hears them in words ("Katalog lesen: Freigabe, …").
- */
-export function ShortColumn({ matrix }: { matrix: Matrix }) {
-  const said = OP_CLASSES.map((k) => {
-    const name = classLabel(k)
-    const cell = cellLabel(matrix[k])
-    return t`${name}: ${cell}`
-  }).join(', ')
-  return (
-    <>
-      <span aria-hidden className="text-muted font-mono text-xs whitespace-pre">
-        {OP_CLASSES.map((k) => cellShort(matrix[k])).join(' ')}
-      </span>
-      <span className="sr-only">{said}</span>
-    </>
-  )
+/** M7.2: what each level in the choice lets the model do, in words, never in codes. */
+export function LevelSummary({ matrix }: { matrix: Matrix }) {
+  return <span className="block text-xs">{levelSummary(matrix)}</span>
 }
 
 /**

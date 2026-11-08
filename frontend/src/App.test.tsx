@@ -109,6 +109,8 @@ test('without the token the setup cannot be sent', async () => {
   await userEvent.type(screen.getByLabelText('Passwort'), 'aare-bruecke-morgen-1')
   await userEvent.type(screen.getByLabelText('Passwort wiederholen'), 'aare-bruecke-morgen-1')
   expect(screen.getByRole('button', { name: 'Einrichten' })).toBeDisabled()
+  // The form says why.
+  expect(screen.getByText('Noch auszufüllen: Einrichtungscode')).toBeInTheDocument()
 })
 
 test('signing in with a start password leads to the mandatory password page', async () => {

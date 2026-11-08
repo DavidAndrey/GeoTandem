@@ -138,6 +138,20 @@ test('V5.2: no runs yet proposes the smallest first run', async () => {
   )
 })
 
+test('V5.2 without a connection: the first step is a connection, not a run that cannot start', async () => {
+  runBackend({
+    [`GET ${RUNS_URL}`]: { items: [], total: 0 },
+    'GET /api/admin/llm/connections': [],
+  })
+  renderAt('/admin/bewertung', <App />)
+  expect(await screen.findByText('Noch keine Bewertung')).toBeInTheDocument()
+  expect(screen.queryByRole('link', { name: 'Neuer Lauf' })).toBeNull()
+  expect(screen.getByRole('link', { name: 'Modellanbindung einrichten' })).toHaveAttribute(
+    'href',
+    '/admin/modelle/neu',
+  )
+})
+
 // --- V4 -------------------------------------------------------------------------------
 
 test('V4.1: the estimate follows every change at once', async () => {

@@ -19,11 +19,6 @@ msgstr " (Tabelle)"
 msgid " und "
 msgstr " und "
 
-#. Short level cell: off
-#: src/model/approval/governance.ts
-msgid "–"
-msgstr "–"
-
 #: src/admin/ProfilePage.tsx
 msgid "– wählen –"
 msgstr "– wählen –"
@@ -528,10 +523,6 @@ msgstr "{name} entfernen"
 msgid "{name} in Schritt {n}"
 msgstr "{name} in Schritt {n}"
 
-#: src/model/approval/Level.tsx
-msgid "{name}: {cell}"
-msgstr "{name}: {cell}"
-
 #. Spatial condition: relation ("liegt in"), layer
 #: src/editor/describe.ts
 msgid "{op} {layer}"
@@ -842,24 +833,14 @@ msgid "a"
 msgstr "a"
 
 #. Badge: attribute condition
-#. Short level cell: auto
 #: src/editor/CompactTree.tsx
-#: src/model/approval/governance.ts
 msgid "A"
 msgstr "A"
-
-#: src/workplace/ModelChoice.tsx
-msgid "A = auto · F = Freigabe · – = aus; Spalten: catalog · query · spatial · derive · display"
-msgstr "A = auto · F = Freigabe · – = aus; Spalten: catalog · query · spatial · derive · display"
 
 #: src/editor/describe.ts
 msgctxt "date"
 msgid "ab"
 msgstr "ab"
-
-#: src/admin/AdminLayout.tsx
-msgid "ab {stage}"
-msgstr "ab {stage}"
 
 #: src/model/panel/Answer.tsx
 #: src/model/panel/PromptPanel.tsx
@@ -2029,6 +2010,10 @@ msgstr "Ctrl+S"
 msgid "Dafür braucht es die Rolle Administrator."
 msgstr "Dafür braucht es die Rolle Administrator."
 
+#: src/admin/evaluation/RunsPage.tsx
+msgid "Dafür braucht es zuerst eine Modellanbindung."
+msgstr "Dafür braucht es zuerst eine Modellanbindung."
+
 #: src/model/panel/Answer.tsx
 msgid "danach von Hand geändert"
 msgstr "danach von Hand geändert"
@@ -2837,6 +2822,10 @@ msgstr "Die Layerliste fehlt noch; Übernehmen geht erst danach."
 msgid "Die Layerliste fehlt; ob sich die Abfrage im Editor darstellen lässt, ist darum offen."
 msgstr "Die Layerliste fehlt; ob sich die Abfrage im Editor darstellen lässt, ist darum offen."
 
+#: src/admin/LevelsPage.tsx
+msgid "Die letzte Stufe bleibt."
+msgstr "Die letzte Stufe bleibt."
+
 #: src/model/chain/Chain.tsx
 msgid "Die Neuplanung brachte keinen brauchbaren Plan (Schritt {at}): {reason}"
 msgstr "Die Neuplanung brachte keinen brauchbaren Plan (Schritt {at}): {reason}"
@@ -2896,6 +2885,10 @@ msgstr "Die voreingestellte Stufe „{name}\" kann nicht entfernt werden. Bitte 
 #: src/i18n/errors.ts
 msgid "Die voreingestellte Stufe „{name}\" muss für Anwender wählbar sein."
 msgstr "Die voreingestellte Stufe „{name}\" muss für Anwender wählbar sein."
+
+#: src/admin/LevelsPage.tsx
+msgid "Die voreingestellte Stufe lässt sich nicht entfernen. Zuerst eine andere voreinstellen."
+msgstr "Die voreingestellte Stufe lässt sich nicht entfernen. Zuerst eine andere voreinstellen."
 
 #: src/i18n/errors.ts
 msgid "Die Werkzeugkette braucht mehr als {max} Schritte."
@@ -3603,14 +3596,6 @@ msgstr "Esc = Ablehnen"
 msgid "Esc = Kette abbrechen"
 msgstr "Esc = Kette abbrechen"
 
-#: src/table/TableDock.tsx
-msgid "Export · ab E5"
-msgstr "Export · ab E5"
-
-#: src/table/TableDock.tsx
-msgid "Export der Ergebnisdaten folgt in E5 (F-8.6)"
-msgstr "Export der Ergebnisdaten folgt in E5 (F-8.6)"
-
 #: src/admin/evaluation/CasesPage.tsx
 #: src/admin/evaluation/RunPage.tsx
 msgid "Exportieren"
@@ -3631,11 +3616,6 @@ msgstr "Externe Anbindung"
 #: src/admin/evaluation/runWords.ts
 msgid "f"
 msgstr "f"
-
-#. Short level cell: Freigabe (approval)
-#: src/model/approval/governance.ts
-msgid "F"
-msgstr "F"
 
 #: src/table/TableDock.tsx
 msgid "Fachliche Namen aus dem Datenkatalog · Auswahl wird mit der Sitzung gespeichert"
@@ -3895,8 +3875,8 @@ msgstr "Für Anwender wählbar"
 
 #: src/admin/ImportWizard.tsx
 #: src/admin/LayerPage.tsx
-msgid "Für das Modell sichtbar (wirkt ab E2)"
-msgstr "Für das Modell sichtbar (wirkt ab E2)"
+msgid "Für das Modell sichtbar"
+msgstr "Für das Modell sichtbar"
 
 #: src/admin/evaluation/RunPage.tsx
 msgid "Für die Anbindung <0>{name}</0> (<1>{host}</1>) gilt im Betrieb ab sofort:"
@@ -3907,8 +3887,8 @@ msgid "Für dieses Konto kennt das Modell keinen Layer."
 msgstr "Für dieses Konto kennt das Modell keinen Layer."
 
 #: src/admin/evaluation/NewRunPage.tsx
-msgid "Für einen Lauf braucht es eine Modellanbindung. <0>Modellanbindungen</0>"
-msgstr "Für einen Lauf braucht es eine Modellanbindung. <0>Modellanbindungen</0>"
+msgid "Für einen Lauf braucht es eine Modellanbindung."
+msgstr "Für einen Lauf braucht es eine Modellanbindung."
 
 #: src/admin/CatalogPage.tsx
 #: src/admin/ImportWizard.tsx
@@ -4253,6 +4233,10 @@ msgstr "Hinweis schliessen"
 msgid "Hinzufügen"
 msgstr "Hinzufügen"
 
+#: src/admin/LevelsPage.tsx
+msgid "Höchstens {MAX_LEVELS} Stufen"
+msgstr "Höchstens {MAX_LEVELS} Stufen"
+
 #: src/table/TableDock.tsx
 msgid "Höhe der Tabelle"
 msgstr "Höhe der Tabelle"
@@ -4425,6 +4409,10 @@ msgstr "Je Spalte"
 #: src/admin/LevelsPage.tsx
 msgid "Je Stufe und Art der Operation: aus (abgewiesen), mit Freigabe (der Anwender bestätigt vorher) oder automatisch (läuft sofort, sichtbar und rücknehmbar). Berührt eine Abfrage mehrere Arten, gilt die strengste. Administratoren dürfen jede Stufe verwenden."
 msgstr "Je Stufe und Art der Operation: aus (abgewiesen), mit Freigabe (der Anwender bestätigt vorher) oder automatisch (läuft sofort, sichtbar und rücknehmbar). Berührt eine Abfrage mehrere Arten, gilt die strengste. Administratoren dürfen jede Stufe verwenden."
+
+#: src/model/approval/governance.ts
+msgid "jede Änderung erst nach Ihrer Freigabe"
+msgstr "jede Änderung erst nach Ihrer Freigabe"
 
 #: src/admin/ConnectionForm.tsx
 msgid "Jede Antwort der Direktabfrage wird zusätzlich mit der Werkzeugkette gefragt; findet sie andere Objekte, ist die Antwort als unsicher markiert. Etwa doppelte Modellzeit; zählt zum Anfragelimit."
@@ -5196,8 +5184,8 @@ msgid "Methode"
 msgstr "Methode"
 
 #: src/auth/rules.ts
-msgid "Mindestens {MIN_PASSWORD_LENGTH} Zeichen, Sonderzeichen sind nicht nötig. Ein Satz aus mehreren Wörtern ist sicher und gut zu merken."
-msgstr "Mindestens {MIN_PASSWORD_LENGTH} Zeichen, Sonderzeichen sind nicht nötig. Ein Satz aus mehreren Wörtern ist sicher und gut zu merken."
+msgid "Mindestens {MIN_PASSWORD_LENGTH} Zeichen, Sonderzeichen sind nicht nötig. Benutzername, Anzeigename und «GeoTandem» dürfen nicht darin vorkommen. Ein Satz aus mehreren Wörtern ist sicher und gut zu merken."
+msgstr "Mindestens {MIN_PASSWORD_LENGTH} Zeichen, Sonderzeichen sind nicht nötig. Benutzername, Anzeigename und «GeoTandem» dürfen nicht darin vorkommen. Ein Satz aus mehreren Wörtern ist sicher und gut zu merken."
 
 #: src/admin/evaluation/CaseDetailPage.tsx
 #: src/admin/evaluation/SaveCaseDialog.tsx
@@ -5312,6 +5300,11 @@ msgstr "Modell sieht: {seen}"
 #: src/admin/connectionParts.tsx
 msgid "Modell vorhanden"
 msgstr "Modell vorhanden"
+
+#: src/admin/evaluation/NewRunPage.tsx
+#: src/admin/evaluation/RunsPage.tsx
+msgid "Modellanbindung einrichten"
+msgstr "Modellanbindung einrichten"
 
 #: src/admin/AdminLayout.tsx
 #: src/admin/ConnectionsPage.tsx
@@ -5607,6 +5600,10 @@ msgstr "Nichts zu übernehmen: Der letzte vollständige Zwischenstand hat mehr O
 msgid "noch {remaining}"
 msgstr "noch {remaining}"
 
+#: src/auth/rules.ts
+msgid "Noch auszufüllen: {list}"
+msgstr "Noch auszufüllen: {list}"
+
 #: src/auth/SetupPage.tsx
 msgid "Noch gibt es kein Konto. Das erste Konto wird Administrator und legt weitere Konten an."
 msgstr "Noch gibt es kein Konto. Das erste Konto wird Administrator und legt weitere Konten an."
@@ -5774,6 +5771,10 @@ msgstr "nur Metadaten"
 #: src/model/log/words.ts
 msgid "nur Vorschlag"
 msgstr "nur Vorschlag"
+
+#: src/model/approval/governance.ts
+msgid "nur Vorschläge, Sie übernehmen von Hand"
+msgstr "nur Vorschläge, Sie übernehmen von Hand"
 
 #: src/queries/ManageQueriesDialog.tsx
 msgid "Nur wer sie gespeichert hat, teilt sie."
@@ -6475,10 +6476,6 @@ msgstr "Spalten"
 msgid "Spaltenkopf: Quote Abstimmung · Vergleich auf Bestätigung"
 msgstr "Spaltenkopf: Quote Abstimmung · Vergleich auf Bestätigung"
 
-#: src/admin/AdminLayout.tsx
-msgid "Später"
-msgstr "Später"
-
 #: src/admin/ConnectionForm.tsx
 #: src/admin/evaluation/CaseDetailPage.tsx
 #: src/admin/evaluation/RunPage.tsx
@@ -7057,6 +7054,10 @@ msgstr "unbekannter Layer"
 msgid "unbekanntes Feld"
 msgstr "unbekanntes Feld"
 
+#: src/session/SessionMenu.tsx
+msgid "Unbenannte Sitzung"
+msgstr "Unbenannte Sitzung"
+
 #: src/editor/EditorPanel.tsx
 #: src/model/approval/changes.ts
 #: src/model/tree.tsx
@@ -7510,6 +7511,10 @@ msgstr "Welche {a} liegen in {b}?"
 #: src/model/panel/examples.ts
 msgid "Welche {a} liegen nahe an {b}?"
 msgstr "Welche {a} liegen nahe an {b}?"
+
+#: src/model/approval/governance.ts
+msgid "wendet sofort an, Sie können zurücknehmen"
+msgstr "wendet sofort an, Sie können zurücknehmen"
 
 #: src/admin/ImportWizard.tsx
 msgid "Weniger als die Hälfte der Schlüssel findet einen Treffer."

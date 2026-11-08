@@ -19,11 +19,6 @@ msgstr ""
 msgid " und "
 msgstr ""
 
-#. Short level cell: off
-#: src/model/approval/governance.ts
-msgid "–"
-msgstr ""
-
 #: src/admin/ProfilePage.tsx
 msgid "– wählen –"
 msgstr ""
@@ -528,10 +523,6 @@ msgstr ""
 msgid "{name} in Schritt {n}"
 msgstr ""
 
-#: src/model/approval/Level.tsx
-msgid "{name}: {cell}"
-msgstr ""
-
 #. Spatial condition: relation ("liegt in"), layer
 #: src/editor/describe.ts
 msgid "{op} {layer}"
@@ -842,23 +833,13 @@ msgid "a"
 msgstr ""
 
 #. Badge: attribute condition
-#. Short level cell: auto
 #: src/editor/CompactTree.tsx
-#: src/model/approval/governance.ts
 msgid "A"
-msgstr ""
-
-#: src/workplace/ModelChoice.tsx
-msgid "A = auto · F = Freigabe · – = aus; Spalten: catalog · query · spatial · derive · display"
 msgstr ""
 
 #: src/editor/describe.ts
 msgctxt "date"
 msgid "ab"
-msgstr ""
-
-#: src/admin/AdminLayout.tsx
-msgid "ab {stage}"
 msgstr ""
 
 #: src/model/panel/Answer.tsx
@@ -2029,6 +2010,10 @@ msgstr ""
 msgid "Dafür braucht es die Rolle Administrator."
 msgstr ""
 
+#: src/admin/evaluation/RunsPage.tsx
+msgid "Dafür braucht es zuerst eine Modellanbindung."
+msgstr ""
+
 #: src/model/panel/Answer.tsx
 msgid "danach von Hand geändert"
 msgstr ""
@@ -2837,6 +2822,10 @@ msgstr ""
 msgid "Die Layerliste fehlt; ob sich die Abfrage im Editor darstellen lässt, ist darum offen."
 msgstr ""
 
+#: src/admin/LevelsPage.tsx
+msgid "Die letzte Stufe bleibt."
+msgstr ""
+
 #: src/model/chain/Chain.tsx
 msgid "Die Neuplanung brachte keinen brauchbaren Plan (Schritt {at}): {reason}"
 msgstr ""
@@ -2895,6 +2884,10 @@ msgstr ""
 
 #: src/i18n/errors.ts
 msgid "Die voreingestellte Stufe „{name}\" muss für Anwender wählbar sein."
+msgstr ""
+
+#: src/admin/LevelsPage.tsx
+msgid "Die voreingestellte Stufe lässt sich nicht entfernen. Zuerst eine andere voreinstellen."
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -3603,14 +3596,6 @@ msgstr ""
 msgid "Esc = Kette abbrechen"
 msgstr ""
 
-#: src/table/TableDock.tsx
-msgid "Export · ab E5"
-msgstr ""
-
-#: src/table/TableDock.tsx
-msgid "Export der Ergebnisdaten folgt in E5 (F-8.6)"
-msgstr ""
-
 #: src/admin/evaluation/CasesPage.tsx
 #: src/admin/evaluation/RunPage.tsx
 msgid "Exportieren"
@@ -3630,11 +3615,6 @@ msgstr ""
 
 #: src/admin/evaluation/runWords.ts
 msgid "f"
-msgstr ""
-
-#. Short level cell: Freigabe (approval)
-#: src/model/approval/governance.ts
-msgid "F"
 msgstr ""
 
 #: src/table/TableDock.tsx
@@ -3895,7 +3875,7 @@ msgstr ""
 
 #: src/admin/ImportWizard.tsx
 #: src/admin/LayerPage.tsx
-msgid "Für das Modell sichtbar (wirkt ab E2)"
+msgid "Für das Modell sichtbar"
 msgstr ""
 
 #: src/admin/evaluation/RunPage.tsx
@@ -3907,7 +3887,7 @@ msgid "Für dieses Konto kennt das Modell keinen Layer."
 msgstr ""
 
 #: src/admin/evaluation/NewRunPage.tsx
-msgid "Für einen Lauf braucht es eine Modellanbindung. <0>Modellanbindungen</0>"
+msgid "Für einen Lauf braucht es eine Modellanbindung."
 msgstr ""
 
 #: src/admin/CatalogPage.tsx
@@ -4253,6 +4233,10 @@ msgstr ""
 msgid "Hinzufügen"
 msgstr ""
 
+#: src/admin/LevelsPage.tsx
+msgid "Höchstens {MAX_LEVELS} Stufen"
+msgstr ""
+
 #: src/table/TableDock.tsx
 msgid "Höhe der Tabelle"
 msgstr ""
@@ -4424,6 +4408,10 @@ msgstr ""
 
 #: src/admin/LevelsPage.tsx
 msgid "Je Stufe und Art der Operation: aus (abgewiesen), mit Freigabe (der Anwender bestätigt vorher) oder automatisch (läuft sofort, sichtbar und rücknehmbar). Berührt eine Abfrage mehrere Arten, gilt die strengste. Administratoren dürfen jede Stufe verwenden."
+msgstr ""
+
+#: src/model/approval/governance.ts
+msgid "jede Änderung erst nach Ihrer Freigabe"
 msgstr ""
 
 #: src/admin/ConnectionForm.tsx
@@ -5196,7 +5184,7 @@ msgid "Methode"
 msgstr ""
 
 #: src/auth/rules.ts
-msgid "Mindestens {MIN_PASSWORD_LENGTH} Zeichen, Sonderzeichen sind nicht nötig. Ein Satz aus mehreren Wörtern ist sicher und gut zu merken."
+msgid "Mindestens {MIN_PASSWORD_LENGTH} Zeichen, Sonderzeichen sind nicht nötig. Benutzername, Anzeigename und «GeoTandem» dürfen nicht darin vorkommen. Ein Satz aus mehreren Wörtern ist sicher und gut zu merken."
 msgstr ""
 
 #: src/admin/evaluation/CaseDetailPage.tsx
@@ -5311,6 +5299,11 @@ msgstr ""
 
 #: src/admin/connectionParts.tsx
 msgid "Modell vorhanden"
+msgstr ""
+
+#: src/admin/evaluation/NewRunPage.tsx
+#: src/admin/evaluation/RunsPage.tsx
+msgid "Modellanbindung einrichten"
 msgstr ""
 
 #: src/admin/AdminLayout.tsx
@@ -5607,6 +5600,10 @@ msgstr ""
 msgid "noch {remaining}"
 msgstr ""
 
+#: src/auth/rules.ts
+msgid "Noch auszufüllen: {list}"
+msgstr ""
+
 #: src/auth/SetupPage.tsx
 msgid "Noch gibt es kein Konto. Das erste Konto wird Administrator und legt weitere Konten an."
 msgstr ""
@@ -5773,6 +5770,10 @@ msgstr ""
 
 #: src/model/log/words.ts
 msgid "nur Vorschlag"
+msgstr ""
+
+#: src/model/approval/governance.ts
+msgid "nur Vorschläge, Sie übernehmen von Hand"
 msgstr ""
 
 #: src/queries/ManageQueriesDialog.tsx
@@ -6475,10 +6476,6 @@ msgstr ""
 msgid "Spaltenkopf: Quote Abstimmung · Vergleich auf Bestätigung"
 msgstr ""
 
-#: src/admin/AdminLayout.tsx
-msgid "Später"
-msgstr ""
-
 #: src/admin/ConnectionForm.tsx
 #: src/admin/evaluation/CaseDetailPage.tsx
 #: src/admin/evaluation/RunPage.tsx
@@ -7057,6 +7054,10 @@ msgstr ""
 msgid "unbekanntes Feld"
 msgstr ""
 
+#: src/session/SessionMenu.tsx
+msgid "Unbenannte Sitzung"
+msgstr ""
+
 #: src/editor/EditorPanel.tsx
 #: src/model/approval/changes.ts
 #: src/model/tree.tsx
@@ -7509,6 +7510,10 @@ msgstr ""
 
 #: src/model/panel/examples.ts
 msgid "Welche {a} liegen nahe an {b}?"
+msgstr ""
+
+#: src/model/approval/governance.ts
+msgid "wendet sofort an, Sie können zurücknehmen"
 msgstr ""
 
 #: src/admin/ImportWizard.tsx

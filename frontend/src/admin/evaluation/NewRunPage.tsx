@@ -613,12 +613,7 @@ function RunFormView({
   const ownStateFixed = ownLive === 0 ? 'sample' : ownSample === 0 ? 'live' : null
   return (
     <div className="max-w-6xl">
-      <p className="text-muted mb-1 text-sm">
-        <Link to={RUNS} className="hover:text-accent-700">
-          <Trans>Bewertung › Läufe</Trans>
-        </Link>{' '}
-        ›
-      </p>
+      <RunsCrumb />
       <div className="mb-3 flex items-center gap-3">
         <h2 className="text-2xl">
           <Trans>Neuer Lauf</Trans>
@@ -892,14 +887,18 @@ export function NewRunPage() {
   if (!ready || !connections.data || !levels.data || !cases.data) return <Loading />
   if (connections.data.length === 0)
     return (
-      <p className="text-sm">
-        <Trans>
-          Für einen Lauf braucht es eine Modellanbindung.{' '}
-          <Link to="/admin/modelle" className="text-accent-700">
-            Modellanbindungen
-          </Link>
-        </Trans>
-      </p>
+      <div className="max-w-6xl">
+        <RunsCrumb />
+        <h2 className="mb-3 text-2xl">
+          <Trans>Neuer Lauf</Trans>
+        </h2>
+        <p className="mb-3 text-sm">
+          <Trans>Für einen Lauf braucht es eine Modellanbindung.</Trans>
+        </p>
+        <Link to="/admin/modelle/neu" className="btn btn-primary">
+          <Trans>Modellanbindung einrichten</Trans>
+        </Link>
+      </div>
     )
   const levelList = levels.data.levels.filter((l) => l.id != null)
   const initial = source.data
@@ -913,5 +912,17 @@ export function NewRunPage() {
       levels={levelList}
       cases={cases.data.items}
     />
+  )
+}
+
+/** "Bewertung › Läufe ›" above the page, back to the list. */
+function RunsCrumb() {
+  return (
+    <p className="text-muted mb-1 text-sm">
+      <Link to={RUNS} className="hover:text-accent-700">
+        <Trans>Bewertung › Läufe</Trans>
+      </Link>{' '}
+      ›
+    </p>
   )
 }

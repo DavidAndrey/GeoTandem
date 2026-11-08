@@ -606,18 +606,6 @@ function ColumnMenu({
 
 function Footer({ layer }: { layer: DisplayLayer }) {
   const count = useSelection((st) => (st.layer === layer.id ? st.fids.length : 0))
-  return (
-    <div className="flex items-center gap-2 text-sm">
-      <button
-        type="button"
-        className="btn text-sm"
-        disabled
-        title={t`Export der Ergebnisdaten folgt in E5 (F-8.6)`}
-      >
-        <Trans>Export · ab E5</Trans>
-      </button>
-      <span className="flex-1" />
-      {count > 0 && <span className="text-muted">{count} ausgewählt</span>}
-    </div>
-  )
+  if (count === 0) return null
+  return <p className="text-muted text-right text-sm">{count} ausgewählt</p>
 }

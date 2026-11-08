@@ -51,6 +51,16 @@ function backend() {
   })
 }
 
+test('opened by "Bearbeiten", the editor takes the focus, so Esc closes it', async () => {
+  backend()
+  renderAt('/', <App />)
+  await userEvent.click(await screen.findByRole('button', { name: 'Bearbeiten ›' }))
+  const editor = await screen.findByRole('region', { name: 'Abfrage-Editor' })
+  await waitFor(() => expect(editor).toHaveFocus())
+  await userEvent.keyboard('{Escape}')
+  expect(screen.queryByRole('region', { name: 'Abfrage-Editor' })).not.toBeInTheDocument()
+})
+
 test('an attribute and a spatial condition become one valid query (B2)', async () => {
   const calls = backend()
   renderAt('/', <App />)

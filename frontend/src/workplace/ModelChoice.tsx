@@ -16,7 +16,7 @@ import { Link } from 'react-router'
 import type { LevelOption } from '../api/client'
 import { useChooseLLM, useLLMOptions, useMe } from '../api/queries'
 import { LocalityBadge } from '../components/LocalityBadge'
-import { LevelInfo, LevelSwitchDialog, ShortColumn } from '../model/approval/Level'
+import { LevelInfo, LevelSummary, LevelSwitchDialog } from '../model/approval/Level'
 import { awaiting } from '../model/approval/waiting'
 import { useModel } from '../model/store'
 
@@ -140,17 +140,11 @@ export function ModelChoice() {
                     {l.description && (
                       <span className="text-muted block text-xs">{l.description}</span>
                     )}
+                    <LevelSummary matrix={l.matrix} />
                   </span>
-                  <ShortColumn matrix={l.matrix} />
                 </DropdownMenu.RadioItem>
               ))}
             </DropdownMenu.RadioGroup>
-            <p className="text-muted px-3 pt-1 text-xs">
-              <Trans>
-                A = auto · F = Freigabe · – = aus; Spalten: catalog · query · spatial · derive ·
-                display
-              </Trans>
-            </p>
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu.Root>

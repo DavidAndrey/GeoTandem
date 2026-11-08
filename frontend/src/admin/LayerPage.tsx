@@ -143,7 +143,7 @@ function DescriptionTab({ layer }: { layer: LayerInfo }) {
             checked={forModel}
             onChange={(e) => setForModel(e.target.checked)}
           />
-          <Trans>Für das Modell sichtbar (wirkt ab E2)</Trans>
+          <Trans>Für das Modell sichtbar</Trans>
         </label>
         <UserVisibility layer={layer.name} />
         <div className="flex items-center gap-3">

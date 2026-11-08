@@ -91,8 +91,6 @@ export function QueryPanel() {
           )}
         </div>
       )}
-      {/* Administrators only (design V3): the analysis as the reference of a new case. */}
-      {result && !draft && <SaveAsCase />}
       {result && (
         <div
           className="mt-2 flex flex-wrap items-center gap-1.5 text-xs"
@@ -138,6 +136,9 @@ export function QueryPanel() {
           )}
         </div>
       )}
+      {/* Administrators only (design V3): the analysis as the reference of a new case;
+          after the query and its restriction, not between them: it is no step of the analysis. */}
+      {result && !draft && <SaveAsCase />}
       <ErrorNotice error={counts.error} />
     </section>
   )

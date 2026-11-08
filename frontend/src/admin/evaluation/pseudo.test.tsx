@@ -105,10 +105,10 @@ test.each([
   await waitFor(() => expect(strays(DATA)).toEqual([]))
 })
 
-/** The entry under the query; its words are pseudo here, so found by its place. */
+/** The entry at the end of the query section; its words are pseudo here, so found by its mark. */
 const saveEntry = () =>
   waitFor(() => {
-    const found = document.querySelector<HTMLButtonElement>('section > div.mt-1\\.5 > button')
+    const found = document.querySelector<HTMLButtonElement>('[data-entry="save-case"]')
     if (!found) throw new Error('no entry')
     return found
   })

@@ -818,17 +818,17 @@ describe('level display (M7)', () => {
       .slice(1)
       .map((r) => r.textContent)
     expect(cells).toEqual([
-      'Katalog lesen catalogauto',
-      'Attributfilter queryauto',
-      'Raumfilter spatialauto',
-      'Abgeleitete Layer deriveFreigabe',
-      'Darstellung displayauto',
+      'Katalog lesenauto',
+      'Attributfilterauto',
+      'Raumfilterauto',
+      'Abgeleitete LayerFreigabe',
+      'Darstellungauto',
     ])
     expect(within(popover).queryByRole('button')).toBeNull()
     expect(within(popover).queryByRole('textbox')).toBeNull()
   })
 
-  test('M7.2: each level shows its short column; the matrix decides, never the name', async () => {
+  test('M7.2: each level says in words what the model may; the matrix decides, never the name', async () => {
     // Names are free admin text: "Automatisch" here is a level that may do nothing.
     const options: LLMOptions = {
       ...llmOptions(),
@@ -842,14 +842,14 @@ describe('level display (M7)', () => {
     renderAt('/', <ModelChoice />)
     await userEvent.click(await screen.findByRole('button', { name: 'Modellunterstützung wählen' }))
     const item = (name: RegExp) => screen.getByRole('menuitemradio', { name })
-    expect(item(/Automatisch/)).toHaveTextContent('– – – – –')
-    expect(item(/Prüfen/)).toHaveTextContent('F F F F F')
-    expect(item(/Teilautonom/)).toHaveTextContent('A A A F A')
-    // A screen reader hears the cells in words.
-    expect(item(/Teilautonom/)).toHaveAccessibleName(/Abgeleitete Layer: Freigabe/)
-    expect(
-      screen.getByText(/A = auto · F = Freigabe · – = aus; Spalten: catalog · query/),
-    ).toBeInTheDocument()
+    expect(item(/Automatisch/)).toHaveTextContent('nur Vorschläge, Sie übernehmen von Hand')
+    expect(item(/Prüfen/)).toHaveTextContent('jede Änderung erst nach Ihrer Freigabe')
+    expect(item(/Teilautonom/)).toHaveTextContent(
+      'auto: Katalog lesen, Attributfilter, Raumfilter, Darstellung · Freigabe: Abgeleitete Layer',
+    )
+    // No internal codes: neither the old letter column nor the class identifiers.
+    const menu = screen.getByRole('menu')
+    expect(menu).not.toHaveTextContent(/\bF F\b|catalog|spatial/)
   })
 
   test('M7.3: a change with an open approval asks in a focus-trapped dialog; the proposal stays bound', async () => {
