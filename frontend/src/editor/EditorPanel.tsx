@@ -23,7 +23,7 @@ import { currentAnalysis, useAnalysis } from '../analysis/store'
 import { newAttributeRow, newGroup, newReferenceRow, newSpatialRow } from '../analysis/tree'
 import type { LayerInfo } from '../api/client'
 import { useLayers } from '../api/queries'
-import { ErrorNotice } from '../components/ui'
+import { ErrorNotice, Labelled } from '../components/ui'
 import { useMapView } from '../map/view'
 import { HandoverNotice } from '../model/panel/HandoverNotice'
 import { isMarked } from '../model/origin'
@@ -92,7 +92,17 @@ export function EditorPanel() {
         </button>
       </div>
       <div className="flex-1 overflow-auto px-4 py-3">
+        <p className="mb-1 text-sm">
+          <Trans>Die Abfrage bezieht sich auf den Layer</Trans>
+        </p>
         <ResultSelect hint />
+        <p className="text-muted mt-2 text-sm">
+          <Trans>
+            Mit dem ausgewählten Layer können Sie nun eine Abfrage mit UND- oder ODER-Verknüpfung
+            machen, die Sie über Gruppen strukturieren können. Das Ergebnis der Abfrage wird in der
+            Karte und in der Tabelle unter «Datendetails» vom ausgewählten Layer dargestellt.
+          </Trans>
+        </p>
         {fields.length === 0 && analysis.result === null ? (
           <p className="text-muted mt-3 text-sm">
             <Trans>Erst einen Ergebnis-Layer wählen.</Trans>
@@ -256,7 +266,7 @@ function RowEditor({
       role="group"
       aria-label={t`Bedingung ${badge}`}
       data-row-id={row.id}
-      className={`flex flex-wrap items-center gap-1.5 rounded-[var(--radius-md)] border px-2 py-1 text-sm ${activeRow === row.id ? 'border-accent' : 'border-transparent'}`}
+      className={`flex flex-wrap items-end gap-1.5 rounded-[var(--radius-md)] border px-2 py-1 text-sm ${activeRow === row.id ? 'border-accent' : 'border-transparent'}`}
       onFocus={() => setActiveRow(row.id)}
     >
       <span className="text-muted rounded-full border border-dashed border-neutral-400 px-1.5 text-[11px]">
@@ -310,46 +320,50 @@ export function AttributeEditor({
   const bound = (text: string) => (text === '' ? null : dated ? text : Number(text))
   return (
     <>
-      <select
-        className="input"
-        aria-label={t`Feld`}
-        value={row.attr}
-        onChange={(e) => {
-          const next = fields.find((f) => f.name === e.target.value)
-          const ops = operatorsFor(next?.type)
-          change({
-            attr: e.target.value,
-            operator: ops.includes(row.operator) ? row.operator : 'eq',
-            value: null,
-            values: [],
-            min: null,
-            max: null,
-          })
-        }}
-      >
-        {!field && (
-          <option value="">
-            <Trans>Feld …</Trans>
-          </option>
-        )}
-        {fields.map((f) => (
-          <option key={f.name} value={f.name}>
-            {f.label}
-          </option>
-        ))}
-      </select>
-      <select
-        className="input"
-        aria-label={t`Operator`}
-        value={row.operator}
-        onChange={(e) => change({ operator: e.target.value as AttributeRow['operator'] })}
-      >
-        {operators.map((op) => (
-          <option key={op} value={op}>
-            {operatorLabel(op, field?.type)}
-          </option>
-        ))}
-      </select>
+      <Labelled label={t`Attribut`}>
+        <select
+          className="input"
+          aria-label={t`Attribut`}
+          value={row.attr}
+          onChange={(e) => {
+            const next = fields.find((f) => f.name === e.target.value)
+            const ops = operatorsFor(next?.type)
+            change({
+              attr: e.target.value,
+              operator: ops.includes(row.operator) ? row.operator : 'eq',
+              value: null,
+              values: [],
+              min: null,
+              max: null,
+            })
+          }}
+        >
+          {!field && (
+            <option value="">
+              <Trans>Attribut …</Trans>
+            </option>
+          )}
+          {fields.map((f) => (
+            <option key={f.name} value={f.name}>
+              {f.label}
+            </option>
+          ))}
+        </select>
+      </Labelled>
+      <Labelled label={t`Operator`}>
+        <select
+          className="input"
+          aria-label={t`Operator`}
+          value={row.operator}
+          onChange={(e) => change({ operator: e.target.value as AttributeRow['operator'] })}
+        >
+          {operators.map((op) => (
+            <option key={op} value={op}>
+              {operatorLabel(op, field?.type)}
+            </option>
+          ))}
+        </select>
+      </Labelled>
       {field?.codes && (
         <datalist id={listId}>
           {field.codes.map((c) => (
@@ -359,21 +373,24 @@ export function AttributeEditor({
       )}
       {row.operator === 'between' && (
         <>
-          <input
-            className={`input ${dated ? 'w-36' : 'w-20'}`}
-            type={dated ? 'date' : 'number'}
-            aria-label={t`von`}
-            value={row.min ?? ''}
-            onChange={(e) => change({ min: bound(e.target.value) })}
-          />
-          –
-          <input
-            className={`input ${dated ? 'w-36' : 'w-20'}`}
-            type={dated ? 'date' : 'number'}
-            aria-label={t({ message: 'bis', context: 'range' })}
-            value={row.max ?? ''}
-            onChange={(e) => change({ max: bound(e.target.value) })}
-          />
+          <Labelled label={t`von`}>
+            <input
+              className={`input ${dated ? 'w-36' : 'w-20'}`}
+              type={dated ? 'date' : 'number'}
+              aria-label={t`von`}
+              value={row.min ?? ''}
+              onChange={(e) => change({ min: bound(e.target.value) })}
+            />
+          </Labelled>
+          <Labelled label={t({ message: 'bis', context: 'range' })}>
+            <input
+              className={`input ${dated ? 'w-36' : 'w-20'}`}
+              type={dated ? 'date' : 'number'}
+              aria-label={t({ message: 'bis', context: 'range' })}
+              value={row.max ?? ''}
+              onChange={(e) => change({ max: bound(e.target.value) })}
+            />
+          </Labelled>
         </>
       )}
       {row.operator === 'in' && (
@@ -381,27 +398,31 @@ export function AttributeEditor({
       )}
       {!['between', 'in', 'is_empty'].includes(row.operator) &&
         (field?.type === 'boolean' ? (
-          <select
-            className="input"
-            aria-label={t`Wert`}
-            value={row.value === null ? '' : String(row.value)}
-            onChange={(e) =>
-              change({ value: e.target.value === '' ? null : e.target.value === 'true' })
-            }
-          >
-            <option value="">…</option>
-            <option value="true">{t`ja`}</option>
-            <option value="false">{t`nein`}</option>
-          </select>
+          <Labelled label={t`Wert`}>
+            <select
+              className="input"
+              aria-label={t`Wert`}
+              value={row.value === null ? '' : String(row.value)}
+              onChange={(e) =>
+                change({ value: e.target.value === '' ? null : e.target.value === 'true' })
+              }
+            >
+              <option value="">…</option>
+              <option value="true">{t`ja`}</option>
+              <option value="false">{t`nein`}</option>
+            </select>
+          </Labelled>
         ) : (
-          <input
-            className={`input ${numeric ? 'w-24' : dated ? 'w-36' : 'w-32'}`}
-            type={numeric ? 'number' : dated ? 'date' : 'text'}
-            aria-label={t`Wert`}
-            list={field?.codes ? listId : undefined}
-            value={row.value === null ? '' : String(row.value)}
-            onChange={(e) => change({ value: parseValue(e.target.value, field) })}
-          />
+          <Labelled label={t`Wert`}>
+            <input
+              className={`input ${numeric ? 'w-24' : dated ? 'w-36' : 'w-32'}`}
+              type={numeric ? 'number' : dated ? 'date' : 'text'}
+              aria-label={t`Wert`}
+              list={field?.codes ? listId : undefined}
+              value={row.value === null ? '' : String(row.value)}
+              onChange={(e) => change({ value: parseValue(e.target.value, field) })}
+            />
+          </Labelled>
         ))}
       {field?.unit && !['in', 'is_empty'].includes(row.operator) && (
         <span className="text-muted text-xs">{field.unit}</span>
@@ -428,7 +449,7 @@ function ValueList({
     setText('')
   }
   return (
-    <span className="flex flex-wrap items-center gap-1">
+    <span className="flex flex-wrap items-end gap-1">
       {row.values.map((v) => (
         <span key={String(v)} className="chip chip-active text-xs">
           {formatScalar(v)}
@@ -441,20 +462,22 @@ function ValueList({
           </button>
         </span>
       ))}
-      <input
-        className="input w-28"
-        aria-label={t`Wert hinzufügen`}
-        list={field?.codes ? listId : undefined}
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault()
-            add()
-          }
-        }}
-        onBlur={() => text && add()}
-      />
+      <Labelled label={t`Werte`}>
+        <input
+          className="input w-28"
+          aria-label={t`Wert hinzufügen`}
+          list={field?.codes ? listId : undefined}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              add()
+            }
+          }}
+          onBlur={() => text && add()}
+        />
+      </Labelled>
     </span>
   )
 }
@@ -475,23 +498,25 @@ function LayerSelect({
   const result = useAnalysis((s) => s.result)
   const layers = (catalog ?? []).filter((l) => l.kind === 'vector' && l.name !== result)
   return (
-    <select
-      className="input"
-      aria-label={label}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-    >
-      {!value && (
-        <option value="">
-          <Trans>Layer …</Trans>
-        </option>
-      )}
-      {layers.map((l) => (
-        <option key={l.name} value={l.name}>
-          {l.title}
-        </option>
-      ))}
-    </select>
+    <Labelled label={label}>
+      <select
+        className="input"
+        aria-label={label}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        {!value && (
+          <option value="">
+            <Trans>Layer …</Trans>
+          </option>
+        )}
+        {layers.map((l) => (
+          <option key={l.name} value={l.name}>
+            {l.title}
+          </option>
+        ))}
+      </select>
+    </Labelled>
   )
 }
 
@@ -503,7 +528,7 @@ function DistanceInput({
   onChange: (m: number | null) => void
 }): ReactNode {
   return (
-    <span className="flex items-center gap-1">
+    <Labelled label={t`Distanz (m)`}>
       <input
         className="input w-20"
         type="number"
@@ -512,8 +537,7 @@ function DistanceInput({
         value={value ?? ''}
         onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
       />
-      <span className="text-xs">m</span>
-    </span>
+    </Labelled>
   )
 }
 
@@ -523,18 +547,20 @@ function SpatialEditor({ row, catalog }: { row: SpatialRow; catalog: LayerInfo[]
   const filterFields = catalogFields(row.layer, catalog)
   return (
     <>
-      <select
-        className="input"
-        aria-label={t`Beziehung`}
-        value={row.operator}
-        onChange={(e) => change({ operator: e.target.value as SpatialOperator })}
-      >
-        {SPATIAL_OPERATOR_LIST.map((op) => (
-          <option key={op} value={op}>
-            {spatialLabel(op)}
-          </option>
-        ))}
-      </select>
+      <Labelled label={t`Beziehung`}>
+        <select
+          className="input"
+          aria-label={t`Beziehung`}
+          value={row.operator}
+          onChange={(e) => change({ operator: e.target.value as SpatialOperator })}
+        >
+          {SPATIAL_OPERATOR_LIST.map((op) => (
+            <option key={op} value={op}>
+              {spatialLabel(op)}
+            </option>
+          ))}
+        </select>
+      </Labelled>
       {needsDistance(row.operator) && (
         <DistanceInput value={row.distance_m} onChange={(distance_m) => change({ distance_m })} />
       )}
@@ -545,7 +571,7 @@ function SpatialEditor({ row, catalog }: { row: SpatialRow; catalog: LayerInfo[]
         onChange={(layer) => change({ layer, filter: null })}
       />
       {row.filter ? (
-        <span className="flex w-full flex-wrap items-center gap-1.5 pl-6 text-xs">
+        <span className="flex w-full flex-wrap items-end gap-1.5 pl-6 text-xs">
           <span className="text-muted">
             <Trans>wo</Trans>
           </span>

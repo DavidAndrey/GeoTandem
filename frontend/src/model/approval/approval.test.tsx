@@ -192,6 +192,14 @@ describe('approval (M5)', () => {
     const reject = within(card).getByRole('button', { name: 'Ablehnen' })
     expect(reject).toHaveAttribute('aria-keyshortcuts', 'Escape')
     expect(reject).toHaveAccessibleDescription('Esc = Ablehnen')
+    // One row of actions while waiting: the answer's ⋯ sits in the approval, no second row.
+    expect(within(approval).getByRole('button', { name: 'Weitere Aktionen' })).toBeInTheDocument()
+    expect(within(card).getAllByRole('button', { name: 'Weitere Aktionen' })).toHaveLength(1)
+    // The change list is the answer; the whole query (tree, JSON) folds away.
+    const whole = within(card).getByText('Ganze Abfrage ansehen').closest('details')
+    expect(whole).not.toBeNull()
+    expect(whole).not.toHaveAttribute('open')
+    expect(whole).toHaveTextContent('Technisch (Abfrageobjekt JSON)')
     // The map says the dashed layer is a preview, nothing is applied yet.
     expect(screen.getByText('Vorschau gestrichelt · noch nicht angewendet')).toBeInTheDocument()
     expect(calls.filter((c) => c.key.endsWith('/preview'))).toHaveLength(1)
@@ -744,7 +752,7 @@ describe('auto (M6)', () => {
 
   test('a level with off parts keeps the hand-over (M4): no approval, no preview, no run', async () => {
     const { card, calls } = await answered('Assistenz')
-    expect(within(card).getByRole('button', { name: 'In Editor übernehmen' })).toBeEnabled()
+    expect(within(card).getByRole('button', { name: 'Als Abfrage übernehmen' })).toBeEnabled()
     expect(within(card).queryByRole('region', { name: 'Freigabe' })).toBeNull()
     await tick(2000)
     expect(calls.filter((c) => /preview|approve|execute/.test(c.key))).toEqual([])

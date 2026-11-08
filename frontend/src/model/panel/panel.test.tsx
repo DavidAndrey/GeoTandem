@@ -84,7 +84,7 @@ async function takenOver(routes = {}, answer = REFERENCE) {
   await openPanel()
   await ask(user)
   await tick()
-  await user.click(await screen.findByRole('button', { name: 'In Editor übernehmen' }))
+  await user.click(await screen.findByRole('button', { name: 'Als Abfrage übernehmen' }))
   const editor = await screen.findByRole('region', { name: 'Abfrage-Editor' })
   return { user, calls, editor }
 }
@@ -240,7 +240,7 @@ describe('request (P7)', () => {
     expect(screen.queryByRole('alert')).toBeNull()
     expect(screen.getByText(PROMPT)).toBeInTheDocument()
     await tick()
-    expect(await screen.findByRole('button', { name: 'In Editor übernehmen' })).toBeEnabled()
+    expect(await screen.findByRole('button', { name: 'Als Abfrage übernehmen' })).toBeEnabled()
     // The text typed meanwhile is the next prompt: the old answer leaves it in the field.
     expect(screen.getByRole('textbox', { name: 'Frage' })).toHaveValue('Und nur die öffentlichen?')
   })
@@ -297,7 +297,7 @@ describe('request (P7)', () => {
     const before = polls(calls, thinking.id).length
     await tick()
     expect(polls(calls, thinking.id).length).toBeGreaterThan(before)
-    expect(await screen.findByRole('button', { name: 'In Editor übernehmen' })).toBeEnabled()
+    expect(await screen.findByRole('button', { name: 'Als Abfrage übernehmen' })).toBeEnabled()
     expect(usePanel.getState().pollError).toBeNull()
   })
 
@@ -321,7 +321,7 @@ describe('request (P7)', () => {
     usePanel.setState({ aborting: null })
     await tick()
     expect(polls(calls, thinking.id)).toHaveLength(2)
-    expect(await screen.findByRole('button', { name: 'In Editor übernehmen' })).toBeEnabled()
+    expect(await screen.findByRole('button', { name: 'Als Abfrage übernehmen' })).toBeEnabled()
   })
 })
 
@@ -329,6 +329,8 @@ describe('answer (M2, M4)', () => {
   test('explanation, assumptions with ≈, the readable query, the status; no undo yet', async () => {
     const { user } = await answered('reference', { latency_ms: null })
     const card = await screen.findByRole('article', { name: 'Antwort' })
+    // Headed "Antwort" as the question is headed "Frage"; no duration known, no time.
+    expect(screen.getByText('Antwort')).toHaveClass('label-caps')
     // M4.1: proposal-only in E2.3 (P1).
     expect(within(card).getByRole('status')).toHaveTextContent('Vorschlag· von Hand übernehmen')
     // No duration known: the approach alone.
@@ -348,7 +350,7 @@ describe('answer (M2, M4)', () => {
     expect(within(card).getByText('Abfrage · Ergebnis Schulen')).toBeInTheDocument()
     expect(within(card).getByRole('group', { name: 'Bedingungen' })).toBeInTheDocument()
     expect(within(card).getByText('Technisch (Abfrageobjekt JSON)')).toBeInTheDocument()
-    expect(within(card).getByRole('button', { name: 'In Editor übernehmen' })).toBeEnabled()
+    expect(within(card).getByRole('button', { name: 'Als Abfrage übernehmen' })).toBeEnabled()
     // A proposal only has no approval, preview or undo (M4.1).
     expect(within(card).queryByRole('button', { name: 'Zurücknehmen' })).toBeNull()
     expect(within(card).queryByRole('button', { name: 'Annehmen' })).toBeNull()
@@ -360,11 +362,13 @@ describe('answer (M2, M4)', () => {
     expect(useAnalysis.getState().tree.children).toEqual([])
     // "Protokoll" opens the account's own log (M16.3, WP73).
     expect(useMyActionsDialog.getState().open).toBe(false)
-    await user.click(within(card).getByRole('button', { name: 'Protokoll' }))
+    // In the answer's ⋯ (with the repeat).
+    await user.click(within(card).getByRole('button', { name: 'Weitere Aktionen' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Protokoll' }))
     expect(useMyActionsDialog.getState().open).toBe(true)
   })
 
-  test('In Editor übernehmen → B2 with marks; only Übernehmen applies, reported as proposal_only', async () => {
+  test('Als Abfrage übernehmen → B2 with marks; only Übernehmen applies, reported as proposal_only', async () => {
     const { user, calls, editor } = await takenOver()
     // B2 in place of the panel, Klassik chosen (design M4.2).
     expect(screen.queryByRole('region', { name: 'Frage' })).toBeNull()
@@ -390,7 +394,7 @@ describe('answer (M2, M4)', () => {
     await user.click(screen.getByRole('tab', { name: 'Frage' }))
     const card = await screen.findByRole('article', { name: 'Antwort' })
     expect(within(card).getByRole('status')).toHaveTextContent('von Hand übernommen')
-    expect(within(card).getByRole('button', { name: 'Im Editor öffnen' })).toBeEnabled()
+    expect(within(card).getByRole('button', { name: 'Als Abfrage bearbeiten' })).toBeEnabled()
     // Applied: the analysis's hits (M2.2); the fake counts 10 of 137.
     expect(await within(card).findByLabelText('Trefferzahl der Analyse')).toHaveTextContent(
       '10 von 137',
@@ -401,7 +405,7 @@ describe('answer (M2, M4)', () => {
     await answered('reference', { query: serverShape(REFERENCE.query) })
     const card = await screen.findByRole('article', { name: 'Antwort' })
     expect(within(card).queryByText(/Ausserdem/)).toBeNull()
-    expect(within(card).getByRole('button', { name: 'In Editor übernehmen' })).toBeEnabled()
+    expect(within(card).getByRole('button', { name: 'Als Abfrage übernehmen' })).toBeEnabled()
   })
 
   test("taken over in a full dump's shape and applied unchanged: proposal_only, by hand", async () => {
@@ -493,7 +497,7 @@ describe('answer (M2, M4)', () => {
     await user.click(screen.getByRole('tab', { name: 'Frage' }))
     const card = await screen.findByRole('article', { name: 'Antwort' })
     expect(await within(card).findByRole('button', { name: 'Erneut vermerken' })).toBeEnabled()
-    expect(within(card).getByRole('button', { name: 'In Editor übernehmen' })).toBeDisabled()
+    expect(within(card).getByRole('button', { name: 'Als Abfrage übernehmen' })).toBeDisabled()
     expect(within(card).queryByRole('button', { name: /^Annahme ändern/ })).toBeNull()
     await user.click(within(card).getByRole('button', { name: 'Erneut vermerken' }))
     await waitFor(() => expect(decides(calls)).toHaveLength(2))
@@ -515,7 +519,7 @@ describe('refusal (M3)', () => {
     expect(within(card).getByText(/code: unknown_layer/)).toBeVisible()
     await user.click(within(card).getByText('Abgewiesene Abfrage ansehen'))
     expect(within(card).getByRole('group', { name: 'Bedingungen' })).toBeVisible()
-    expect(within(card).queryByRole('button', { name: 'In Editor übernehmen' })).toBeNull()
+    expect(within(card).queryByRole('button', { name: 'Als Abfrage übernehmen' })).toBeNull()
 
     // Prompt ändern: the text back in the field, nothing sent.
     await user.click(within(card).getByRole('button', { name: 'Frage ändern' }))
@@ -635,13 +639,13 @@ describe('errors (M14)', () => {
     await openPanel()
     await ask(user)
     await tick()
-    await screen.findByRole('button', { name: 'In Editor übernehmen' })
+    await screen.findByRole('button', { name: 'Als Abfrage übernehmen' })
     const before = workplace()
     await ask(user, 'Und die Kitas?')
     expect(await screen.findByRole('alert')).toHaveTextContent('Grenzwert erreicht')
     expectUnchanged(before)
     // "Ihr Stand ist unverändert" includes the dialogue: the proposal is still takeable.
-    expect(screen.getByRole('button', { name: 'In Editor übernehmen' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Als Abfrage übernehmen' })).toBeEnabled()
     expect(screen.getAllByRole('article', { name: 'Antwort' })).toHaveLength(2)
   })
 })
@@ -663,7 +667,14 @@ describe('keyboard', () => {
     await user.tab()
     expect(screen.getByRole('radio', { name: 'Werkzeugkette' })).toHaveFocus()
     await user.tab()
+    expect(screen.getByRole('button', { name: 'Was ist der Unterschied?' })).toHaveFocus()
+    await user.tab()
     expect(screen.getByRole('button', { name: /Senden/ })).toHaveFocus()
+    // The shortcut is a hint under the button, not part of its name.
+    expect(screen.getByRole('button', { name: 'Senden' })).toHaveAccessibleDescription(
+      'oder Strg+Enter',
+    )
+    await user.tab({ shift: true })
     await user.tab({ shift: true })
     await user.tab({ shift: true })
     await user.tab({ shift: true })
@@ -775,7 +786,7 @@ describe('between the modes (WP80, M15.1)', () => {
   const middle = () =>
     screen.getByRole('complementary', { name: 'Seitenleiste' }).nextElementSibling
 
-  test('Im Editor öffnen: B2 in the panel\'s place, the rows marked "Modell", the dialogue kept', async () => {
+  test('Als Abfrage bearbeiten: B2 in the panel\'s place, the rows marked "Modell", the dialogue kept', async () => {
     const { user, calls, editor } = await takenOver()
     await user.click(within(editor).getByRole('button', { name: 'Übernehmen' }))
     await waitFor(() => expect(decides(calls)).toHaveLength(1))
@@ -783,7 +794,7 @@ describe('between the modes (WP80, M15.1)', () => {
     const card = await screen.findByRole('article', { name: 'Antwort' })
     expect(middle()).toBe(screen.getByRole('region', { name: 'Frage' }))
 
-    await user.click(within(card).getByRole('button', { name: 'Im Editor öffnen' }))
+    await user.click(within(card).getByRole('button', { name: 'Als Abfrage bearbeiten' }))
     // B2 takes the panel's column, Klassik is chosen; the applied rows keep their mark (P3).
     const opened = await screen.findByRole('region', { name: 'Abfrage-Editor' })
     expect(screen.queryByRole('region', { name: 'Frage' })).toBeNull()
@@ -817,7 +828,7 @@ describe('between the modes (WP80, M15.1)', () => {
       'Welche davon haben mehr als einen Standort?',
     )
     const card = await screen.findByRole('article', { name: 'Antwort' })
-    expect(within(card).getByRole('button', { name: 'In Editor übernehmen' })).toBeEnabled()
+    expect(within(card).getByRole('button', { name: 'Als Abfrage übernehmen' })).toBeEnabled()
     expect(useModel.getState().dialogue).toEqual([REFERENCE.id])
   })
 })
@@ -837,12 +848,12 @@ describe('before the layer list (D3)', () => {
   test('still loading: the hand-over waits, no refusal is claimed; then it is offered', async () => {
     const layers = heldLayers()
     const card = await proposedWith(layers.routes)
-    expect(within(card).getByRole('button', { name: 'In Editor übernehmen' })).toBeDisabled()
+    expect(within(card).getByRole('button', { name: 'Als Abfrage übernehmen' })).toBeDisabled()
     expect(card).not.toHaveTextContent('nicht im Editor darstellen')
     expect(card).not.toHaveTextContent('Layerliste')
     await layers.release()
     await waitFor(() =>
-      expect(within(card).getByRole('button', { name: 'In Editor übernehmen' })).toBeEnabled(),
+      expect(within(card).getByRole('button', { name: 'Als Abfrage übernehmen' })).toBeEnabled(),
     )
   })
 
@@ -851,7 +862,7 @@ describe('before the layer list (D3)', () => {
       'GET /api/layers': () => json({ code: 'internal', message: 'kaputt' }, 500),
     })
     expect(await within(card).findByText(/Die Layerliste fehlt/)).toBeInTheDocument()
-    expect(within(card).getByRole('button', { name: 'In Editor übernehmen' })).toBeDisabled()
+    expect(within(card).getByRole('button', { name: 'Als Abfrage übernehmen' })).toBeDisabled()
     expect(card).not.toHaveTextContent('nicht im Editor darstellen')
   })
 })

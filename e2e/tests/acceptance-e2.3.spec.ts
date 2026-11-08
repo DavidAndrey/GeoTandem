@@ -245,7 +245,7 @@ test.describe('E2.3 against the model stub', { tag: '@stub' }, () => {
     // the record fills with their defaults aside; what ran is compared strictly below).
     expect(given((await action(context, id)).query)).toEqual(reference)
 
-    const takeOver = card.getByRole('button', { name: 'In Editor übernehmen' })
+    const takeOver = card.getByRole('button', { name: 'Als Abfrage übernehmen' })
     await expect(takeOver).toBeEnabled()
     await takeOver.click()
     const editor = page.getByRole('region', { name: 'Abfrage-Editor' })
@@ -295,7 +295,7 @@ test.describe('E2.3 against the model stub', { tag: '@stub' }, () => {
         await expect(alert).toContainText(words)
         await expect(card.getByText(`code: ${code}`)).toBeAttached()
         // Viewable, never applicable.
-        await expect(card.getByRole('button', { name: 'In Editor übernehmen' })).toHaveCount(0)
+        await expect(card.getByRole('button', { name: 'Als Abfrage übernehmen' })).toHaveCount(0)
         const view = await action(context, actionId)
         expect([view.status, view.refusal?.code]).toEqual(['refused', code])
         return view.refusal!

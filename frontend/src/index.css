@@ -136,6 +136,14 @@
     font-size: 11px;
     color: var(--color-muted);
   }
+  /* The workplace's panel titles (Layer, Abfrage, Datendetails): larger and dark. */
+  .panel-title {
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-ink);
+  }
   .data-table {
     width: 100%;
     border-collapse: collapse;

@@ -752,8 +752,16 @@ msgstr ""
 msgid "<0>{file}</0> lässt sich nicht übernehmen. Es wurde <1>{nothing}</1> übernommen."
 msgstr ""
 
+#: src/model/panel/PromptPanel.tsx
+msgid "<0>Direktabfrage</0>: Das Modell schreibt die Abfrage in einem Schritt. Schnell, gut für einfache Fragen."
+msgstr ""
+
 #: src/admin/evaluation/RunCasePage.tsx
 msgid "<0>Keine Annahme genannt</0>, obwohl die Abfrage nicht der Referenz entspricht: still falsch."
+msgstr ""
+
+#: src/model/panel/PromptPanel.tsx
+msgid "<0>Werkzeugkette</0>: Das Modell geht in Schritten vor (Katalog lesen, Werte nachschlagen, Abfrage bauen) und zeigt den Plan. Langsamer, oft genauer bei mehreren Bedingungen."
 msgstr ""
 
 #: src/admin/evaluation/RunPage.tsx
@@ -1123,6 +1131,14 @@ msgstr ""
 msgid "Als Abfrage ansehen"
 msgstr ""
 
+#: src/model/panel/Answer.tsx
+msgid "Als Abfrage bearbeiten"
+msgstr ""
+
+#: src/model/panel/Answer.tsx
+msgid "Als Abfrage übernehmen"
+msgstr ""
+
 #: src/admin/evaluation/CaseDetailPage.tsx
 msgid "Als Beispiel verwenden"
 msgstr ""
@@ -1396,6 +1412,10 @@ msgstr ""
 msgid "Antwort"
 msgstr ""
 
+#: src/model/panel/Answer.tsx
+msgid "Antwort · {time}"
+msgstr ""
+
 #: src/admin/evaluation/RunCasePage.tsx
 msgid "Antwort {name}"
 msgstr ""
@@ -1509,6 +1529,10 @@ msgstr ""
 msgid "Attribut"
 msgstr ""
 
+#: src/editor/EditorPanel.tsx
+msgid "Attribut …"
+msgstr ""
+
 #: src/admin/ProfileCompleteness.tsx
 msgid "Attribute mit Beschriftung"
 msgstr ""
@@ -1519,19 +1543,6 @@ msgstr ""
 
 #: src/model/approval/governance.ts
 msgid "Attributfilter"
-msgstr ""
-
-#: src/table/TableDock.tsx
-#: src/workplace/Workplace.tsx
-msgid "Attributtabelle"
-msgstr ""
-
-#: src/workplace/Workplace.tsx
-msgid "Attributtabelle ein/aus"
-msgstr ""
-
-#: src/table/TableDock.tsx
-msgid "Attributtabelle öffnen"
 msgstr ""
 
 #: src/admin/evaluation/CaseDetailPage.tsx
@@ -1899,7 +1910,7 @@ msgid "Bezug"
 msgstr ""
 
 #: src/model/dialog/ReferenceMark.tsx
-msgid "Bezug: aktuelle Analyse"
+msgid "Bezug: aktuelle Abfrage"
 msgstr ""
 
 #: src/model/dialog/ReferenceMark.tsx
@@ -2230,6 +2241,19 @@ msgstr ""
 msgid "Daten neu"
 msgstr ""
 
+#: src/table/TableDock.tsx
+#: src/workplace/Workplace.tsx
+msgid "Datendetails"
+msgstr ""
+
+#: src/workplace/Workplace.tsx
+msgid "Datendetails ein/aus"
+msgstr ""
+
+#: src/table/TableDock.tsx
+msgid "Datendetails öffnen"
+msgstr ""
+
 #: src/i18n/errors.ts
 msgid "Datenfreigabe an eine externe Anbindung braucht eine ausdrückliche Bestätigung."
 msgstr ""
@@ -2514,6 +2538,10 @@ msgstr ""
 msgid "Die {limit} Anfragen pro Tag an diese Anbindung sind aufgebraucht. Die Grenze setzt ein Administrator."
 msgstr ""
 
+#: src/editor/EditorPanel.tsx
+msgid "Die Abfrage bezieht sich auf den Layer"
+msgstr ""
+
 #: src/admin/evaluation/RunCasePage.tsx
 msgid "Die Abfrage der Antwort liefert keine Treffer."
 msgstr ""
@@ -2578,12 +2606,12 @@ msgstr ""
 msgid "Die aktuelle Abfrage hat Änderungen, die in keiner gespeicherten Abfrage stehen. „{name}\" ersetzt sie."
 msgstr ""
 
-#: src/admin/evaluation/SaveCaseDialog.tsx
-msgid "Die aktuelle Analyse als Referenz eines eigenen Prüffalls speichern"
+#: src/model/panel/Problem.tsx
+msgid "Die aktuelle Abfrage lässt sich dem Modell so nicht mitgeben: {text} Fragen Sie ohne Bezug (× über dem Feld)."
 msgstr ""
 
-#: src/model/panel/Problem.tsx
-msgid "Die aktuelle Analyse lässt sich dem Modell so nicht mitgeben: {text} Fragen Sie ohne Bezug (× über dem Feld)."
+#: src/admin/evaluation/SaveCaseDialog.tsx
+msgid "Die aktuelle Analyse als Referenz eines eigenen Prüffalls speichern"
 msgstr ""
 
 #: src/admin/evaluation/words.ts
@@ -3037,6 +3065,7 @@ msgstr ""
 msgid "Distanz"
 msgstr ""
 
+#: src/editor/EditorPanel.tsx
 #: src/model/chain/PlanEditor.tsx
 msgid "Distanz (m)"
 msgstr ""
@@ -3114,6 +3143,10 @@ msgstr ""
 
 #: src/admin/LevelsPage.tsx
 msgid "Eigenschaft"
+msgstr ""
+
+#: src/workplace/ResultSelect.tsx
+msgid "Ein anderer Layer setzt die Attribut-Bedingungen zurück."
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -3389,6 +3422,7 @@ msgstr ""
 #: src/admin/ModelActionPage.tsx
 #: src/model/compare/CompareDialog.tsx
 #: src/workplace/LayerPanel.tsx
+#: src/workplace/QueryPanel.tsx
 msgid "Ergebnis"
 msgstr ""
 
@@ -3447,10 +3481,6 @@ msgstr ""
 
 #: src/session/SaveAsDialog.tsx
 msgid "Ergebnis-Stempel"
-msgstr ""
-
-#: src/workplace/ResultSelect.tsx
-msgid "Ergebnis:"
 msgstr ""
 
 #: src/model/chain/Chain.tsx
@@ -3517,7 +3547,7 @@ msgid "Erreichbar"
 msgstr ""
 
 #: src/workplace/AddLayers.tsx
-msgid "Erscheint in der Attributtabelle, nicht auf der Karte"
+msgid "Erscheint in den Datendetails, nicht auf der Karte"
 msgstr ""
 
 #: src/admin/evaluation/openInWorkplace.tsx
@@ -3695,12 +3725,10 @@ msgstr ""
 
 #: src/admin/LayerPage.tsx
 #: src/admin/ProfilePage.tsx
-#: src/editor/EditorPanel.tsx
 #: src/operations/OperationDialog.tsx
 msgid "Feld"
 msgstr ""
 
-#: src/editor/EditorPanel.tsx
 #: src/operations/OperationDialog.tsx
 msgid "Feld …"
 msgstr ""
@@ -3922,6 +3950,10 @@ msgstr ""
 #. Badge: group
 #: src/editor/CompactTree.tsx
 msgid "G"
+msgstr ""
+
+#: src/model/panel/Answer.tsx
+msgid "Ganze Abfrage ansehen"
 msgstr ""
 
 #: src/admin/format.ts
@@ -4328,10 +4360,6 @@ msgstr ""
 msgid "Im Datenkatalog öffnen"
 msgstr ""
 
-#: src/model/panel/Answer.tsx
-msgid "Im Editor öffnen"
-msgstr ""
-
 #: src/admin/evaluation/words.ts
 msgid "Import"
 msgstr ""
@@ -4368,10 +4396,6 @@ msgstr ""
 
 #: src/admin/evaluation/RunPage.tsx
 msgid "In diesem Teil hat kein Fall eine Antwort, die nicht richtig ist."
-msgstr ""
-
-#: src/model/panel/Answer.tsx
-msgid "In Editor übernehmen"
 msgstr ""
 
 #: src/admin/connectionParts.tsx
@@ -4952,6 +4976,7 @@ msgstr ""
 #: src/admin/VisibilityPage.tsx
 #: src/workplace/AddLayers.tsx
 #: src/workplace/LayerPanel.tsx
+#: src/workplace/ResultSelect.tsx
 msgid "Layer"
 msgstr ""
 
@@ -5233,6 +5258,10 @@ msgstr ""
 
 #: src/session/OpenNotice.tsx
 msgid "Mit aktuellen Daten übernehmen"
+msgstr ""
+
+#: src/editor/EditorPanel.tsx
+msgid "Mit dem ausgewählten Layer können Sie nun eine Abfrage mit UND- oder ODER-Verknüpfung machen, die Sie über Gruppen strukturieren können. Das Ergebnis der Abfrage wird in der Karte und in der Tabelle unter «Datendetails» vom ausgewählten Layer dargestellt."
 msgstr ""
 
 #: src/admin/evaluation/CaseDetailPage.tsx
@@ -5830,6 +5859,16 @@ msgstr ""
 msgid "ODER"
 msgstr ""
 
+#. Keyboard shortcut under Senden, macOS
+#: src/model/panel/PromptPanel.tsx
+msgid "oder ⌘+Enter"
+msgstr ""
+
+#. Keyboard shortcut under Senden
+#: src/model/panel/PromptPanel.tsx
+msgid "oder Strg+Enter"
+msgstr ""
+
 #: src/admin/ImportWizard.tsx
 #: src/model/log/words.ts
 #: src/session/SessionsDialog.tsx
@@ -5995,8 +6034,7 @@ msgid "Promptprofil: {written}"
 msgstr ""
 
 #: src/admin/evaluation/words.ts
-#: src/model/chain/Chain.tsx
-#: src/model/panel/Answer.tsx
+#: src/model/compare/Entry.tsx
 msgid "Protokoll"
 msgstr ""
 
@@ -6669,11 +6707,6 @@ msgstr ""
 msgid "Strecke"
 msgstr ""
 
-#. Keyboard shortcut: Ctrl+Enter
-#: src/model/panel/PromptPanel.tsx
-msgid "Strg+↵"
-msgstr ""
-
 #: src/admin/evaluation/NewRunPage.tsx
 #: src/admin/LevelsPage.tsx
 #: src/admin/ModelLogPage.tsx
@@ -6826,7 +6859,7 @@ msgid "Tabelle öffnen"
 msgstr ""
 
 #: src/workplace/LayerPanel.tsx
-msgid "Tabelle, nur in der Attributtabelle"
+msgid "Tabelle, nur in den Datendetails"
 msgstr ""
 
 #: src/table/TableDock.tsx
@@ -7478,6 +7511,10 @@ msgstr ""
 msgid "Was fehlt"
 msgstr ""
 
+#: src/model/panel/PromptPanel.tsx
+msgid "Was ist der Unterschied?"
+msgstr ""
+
 #: src/model/approval/Level.tsx
 #: src/workplace/ResultSelect.tsx
 msgid "Wechseln"
@@ -7558,6 +7595,10 @@ msgstr ""
 
 #: src/model/log/words.ts
 msgid "Wert passt nicht zum Feld"
+msgstr ""
+
+#: src/editor/EditorPanel.tsx
+msgid "Werte"
 msgstr ""
 
 #: src/admin/LayerPage.tsx
@@ -7760,10 +7801,6 @@ msgstr ""
 
 #: src/admin/ImportWizard.tsx
 msgid "Ziel-Layer und Schlüssel"
-msgstr ""
-
-#: src/workplace/ResultSelect.tsx
-msgid "Ziel-Layer wechseln setzt Attribut-Bedingungen zurück."
 msgstr ""
 
 #: src/table/TableDock.tsx

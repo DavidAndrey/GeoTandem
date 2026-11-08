@@ -67,8 +67,14 @@ test('an attribute and a spatial condition become one valid query (B2)', async (
   await userEvent.click(await screen.findByRole('button', { name: '+ Bedingung' }))
   const editor = await screen.findByRole('region', { name: 'Abfrage-Editor' })
 
+  // The layer the query is about, then what can be done with it.
+  expect(editor).toHaveTextContent('Die Abfrage bezieht sich auf den Layer')
+  expect(within(editor).getByText('Layer', { selector: 'label > span' })).toBeInTheDocument()
   const row = within(editor).getByRole('group', { name: 'Bedingung Attribut' })
-  await userEvent.selectOptions(within(row).getByLabelText('Feld'), 'Schulstufe')
+  // Every control of a row is named on screen, not only for screen readers.
+  for (const name of ['Attribut', 'Operator', 'Wert'])
+    expect(within(row).getByText(name, { selector: 'label > span' })).toBeVisible()
+  await userEvent.selectOptions(within(row).getByLabelText('Attribut'), 'Schulstufe')
   await userEvent.selectOptions(within(row).getByLabelText('Operator'), 'ist eins von')
   await userEvent.type(within(row).getByLabelText('Wert hinzufügen'), 'primar{Enter}')
   await waitFor(() =>
@@ -156,7 +162,7 @@ test('a date condition reads as a date and is sent as ISO text (plan E1.8, WP40)
   await userEvent.click(await screen.findByRole('button', { name: '+ Bedingung' }))
   const editor = await screen.findByRole('region', { name: 'Abfrage-Editor' })
   const row = within(editor).getByRole('group', { name: 'Bedingung Attribut' })
-  await userEvent.selectOptions(within(row).getByLabelText('Feld'), 'Gegründet')
+  await userEvent.selectOptions(within(row).getByLabelText('Attribut'), 'Gegründet')
   const operators = within(within(row).getByLabelText('Operator'))
     .getAllByRole('option')
     .map((o) => o.textContent)

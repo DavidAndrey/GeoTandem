@@ -13,6 +13,7 @@ import { DropdownMenu } from 'radix-ui'
 import { useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import type { ModelActionView } from '../../api/client'
+import { openMyActions } from '../log/dialog'
 import { usePanel } from '../panel/state'
 import { useModel, type ModelState } from '../store'
 import {
@@ -26,6 +27,11 @@ import {
   repeatRefusal,
   useComparison,
 } from './flow'
+
+/** A menu item and the menu of the answer's ⋯. */
+const ITEM =
+  'max-w-72 cursor-pointer px-3 py-1 text-sm outline-none aria-disabled:cursor-default aria-disabled:opacity-60 data-[highlighted]:bg-neutral-200'
+const CONTENT = 'card z-[1300] min-w-40 bg-neutral-100 py-1 shadow-[var(--shadow-md)]'
 
 /** What ``view``'s entry offers: its comparison (and why not yet), or a repeat (and why not). */
 function entryOf(state: ModelState, view: ModelActionView, sending: boolean) {
@@ -125,7 +131,7 @@ export function CompareMenu({ view }: { view: ModelActionView }) {
         <DropdownMenu.Portal>
           <DropdownMenu.Content
             align="end"
-            className="card z-[1300] min-w-40 bg-neutral-100 py-1 shadow-[var(--shadow-md)]"
+            className={CONTENT}
             onCloseAutoFocus={(event) => {
               // The repeat's card takes the focus once it is there (``repeatAndFocus``).
               if (!repeating.current) return
@@ -144,16 +150,45 @@ export function CompareMenu({ view }: { view: ModelActionView }) {
                 repeating.current = true
                 void repeatAndFocus(view, () => trigger.current?.focus())
               }}
-              className="max-w-72 cursor-pointer px-3 py-1 text-sm outline-none aria-disabled:cursor-default aria-disabled:opacity-60 data-[highlighted]:bg-neutral-200"
+              className={ITEM}
             >
               <span className="block">{label}</span>
               {why && <span className="text-muted block text-xs">{why}</span>}
             </DropdownMenu.Item>
+            <LogItem />
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu.Root>
       <RepeatFailure view={view} />
     </>
+  )
+}
+
+/** *Protokoll*: the account's own log, "Meine Modellaktionen" (M16.3), in every answer's ⋯. */
+function LogItem() {
+  return (
+    <DropdownMenu.Item className={ITEM} onSelect={openMyActions}>
+      <Trans>Protokoll</Trans>
+    </DropdownMenu.Item>
+  )
+}
+
+/** The ⋯ of an answer that offers no repeat: only *Protokoll*. */
+export function LogMenu() {
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger
+        className="btn border-transparent px-1"
+        aria-label={t`Weitere Aktionen`}
+      >
+        <MoreHorizontal size={16} aria-hidden />
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content align="end" className={CONTENT}>
+          <LogItem />
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
   )
 }
 

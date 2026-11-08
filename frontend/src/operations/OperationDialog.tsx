@@ -12,7 +12,7 @@ import { recipeQuery } from '../analysis/query'
 import { useAnalysis } from '../analysis/store'
 import { api, type LayerInfo } from '../api/client'
 import { useLayers } from '../api/queries'
-import { ErrorNotice, Loading } from '../components/ui'
+import { ErrorNotice, Labelled, Loading } from '../components/ui'
 import { catalogFields, fieldsOf, keyKind, type Field } from '../editor/fields'
 import { isIdentifier } from '../admin/wizard'
 import { ACCENT, layerColor } from '../map/style'
@@ -457,48 +457,56 @@ function AggregateForm({
       </p>
       <ul className="mb-2 flex flex-col gap-1">
         {metrics.map((metric, i) => (
-          <li key={i} className="flex items-center gap-1.5 text-sm">
-            <select
-              className="input"
-              aria-label={t`Funktion`}
-              value={metric.fn}
-              onChange={(e) => set(i, { fn: e.target.value as MetricDraft['fn'] })}
-            >
-              {Object.entries(FUNCTIONS).map(([fn, label]) => (
-                <option key={fn} value={fn}>
-                  {i18n._(label)}
-                </option>
-              ))}
-            </select>
-            {metric.fn !== 'count' && (
+          <li key={i} className="flex items-end gap-1.5 text-sm">
+            <Labelled label={t`Funktion`}>
               <select
                 className="input"
-                aria-label={t`Feld`}
-                value={metric.attr}
-                onChange={(e) =>
-                  set(i, {
-                    attr: e.target.value,
-                    as: `${metric.fn}_${e.target.value}`.slice(0, 63),
-                  })
-                }
+                aria-label={t`Funktion`}
+                value={metric.fn}
+                onChange={(e) => set(i, { fn: e.target.value as MetricDraft['fn'] })}
               >
-                <option value="">
-                  <Trans>Feld …</Trans>
-                </option>
-                {numeric.map((f) => (
-                  <option key={f.name} value={f.name}>
-                    {f.label}
+                {Object.entries(FUNCTIONS).map(([fn, label]) => (
+                  <option key={fn} value={fn}>
+                    {i18n._(label)}
                   </option>
                 ))}
               </select>
+            </Labelled>
+            {metric.fn !== 'count' && (
+              <Labelled label={t`Feld`}>
+                <select
+                  className="input"
+                  aria-label={t`Feld`}
+                  value={metric.attr}
+                  onChange={(e) =>
+                    set(i, {
+                      attr: e.target.value,
+                      as: `${metric.fn}_${e.target.value}`.slice(0, 63),
+                    })
+                  }
+                >
+                  <option value="">
+                    <Trans>Feld …</Trans>
+                  </option>
+                  {numeric.map((f) => (
+                    <option key={f.name} value={f.name}>
+                      {f.label}
+                    </option>
+                  ))}
+                </select>
+              </Labelled>
             )}
-            <Trans context="metric name">als</Trans>
-            <input
-              className="input w-32 font-mono"
-              aria-label={t`Name der Kennzahl`}
-              value={metric.as}
-              onChange={(e) => set(i, { as: e.target.value })}
-            />
+            <span className="pb-1.5">
+              <Trans context="metric name">als</Trans>
+            </span>
+            <Labelled label={t`Name der Kennzahl`}>
+              <input
+                className="input w-32 font-mono"
+                aria-label={t`Name der Kennzahl`}
+                value={metric.as}
+                onChange={(e) => set(i, { as: e.target.value })}
+              />
+            </Labelled>
             {metrics.length > 1 && (
               <button
                 type="button"

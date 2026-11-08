@@ -377,9 +377,9 @@ test.describe('E2.6 against the model stub', { tag: '@stub' }, () => {
     // M11.1: the next prompt follows the answer, with the analysis's hits.
     await expect(markOf(page)).toContainText('Bezug: letzte Antwort · 10 von 137')
 
-    // M15.1: "Im Editor öffnen" switches to Klassik and opens B2, every
+    // M15.1: "Als Abfrage bearbeiten" switches to Klassik and opens B2, every
     // condition the model set marked "Modell".
-    await first.card.getByRole('button', { name: 'Im Editor öffnen' }).click()
+    await first.card.getByRole('button', { name: 'Als Abfrage bearbeiten' }).click()
     await expect(page.getByRole('tab', { name: 'Klassik' })).toHaveAttribute('aria-selected', 'true')
     const editor = page.getByRole('region', { name: 'Abfrage-Editor' })
     const marks = editor.getByTitle(/^Vom Modell gesetzt/)
@@ -404,7 +404,7 @@ test.describe('E2.6 against the model stub', { tag: '@stub' }, () => {
 
     // M11.2: back in the panel, the reference is the analysis as changed by hand.
     await page.getByRole('tab', { name: 'Frage' }).click()
-    await expect(markOf(page)).toContainText('Bezug: aktuelle Analyse · 4 von 137')
+    await expect(markOf(page)).toContainText('Bezug: aktuelle Abfrage · 4 von 137')
     // The hand edit ends the undo of the model's change (WP70), and is reported.
     await expect(first.card).toContainText(
       'Seit der Modelländerung von Hand geändert. Bitte im Editor zurücksetzen.',

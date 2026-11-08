@@ -330,7 +330,7 @@ test.describe('E2.4 against the model stub', { tag: '@stub' }, () => {
     records.assistenz = id
     await expect(card.getByRole('status').first()).toContainText('von Hand übernehmen')
     await expect(card).toContainText('Stufe Assistenz: Das Modell darf hier nur vorschlagen')
-    await expect(card.getByRole('button', { name: 'In Editor übernehmen' })).toBeEnabled()
+    await expect(card.getByRole('button', { name: 'Als Abfrage übernehmen' })).toBeEnabled()
     await expect(card.getByRole('region', { name: 'Freigabe' })).toHaveCount(0)
     await expect(card.getByLabel('Trefferzahl der Vorschau')).toHaveCount(0)
     await expect(card.getByRole('button', { name: 'Annehmen' })).toHaveCount(0)
@@ -371,7 +371,7 @@ test.describe('E2.4 against the model stub', { tag: '@stub' }, () => {
       'Braucht Freigabe: Attributfilter, Raumfilter (Stufe Prüfen)',
     )
     await expect(approval.getByRole('button', { name: 'Annehmen' })).toBeFocused()
-    await expect(card.getByRole('button', { name: 'In Editor übernehmen' })).toHaveCount(0)
+    await expect(card.getByRole('button', { name: 'Als Abfrage übernehmen' })).toHaveCount(0)
 
     // "Die Regel greift auch an der Oberfläche vorbei": the proposal waits, so
     // the browser's own request to run it is refused and nothing changes.

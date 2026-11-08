@@ -622,8 +622,8 @@ describe('run (M9)', () => {
     await tick(5000)
     expect(polls(calls, answer.id)).toHaveLength(before)
     unchanged()
-    // M9.4: the account's log beside the adoption.
-    expect(within(end).getByRole('button', { name: 'Protokoll' })).toBeEnabled()
+    // M9.4: the account's log beside the adoption, in ⋯.
+    expect(within(end).getByRole('button', { name: 'Weitere Aktionen' })).toBeEnabled()
     // Step 2 is a buffer: the result to adopt is step 1 (the server's choice, ``query``).
     const first = formatted(CHAIN_HITS[0] ?? 0)
     await user.click(screen.getByRole('button', { name: `Zwischenstand übernehmen (${first})` }))

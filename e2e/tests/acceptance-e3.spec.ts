@@ -388,7 +388,7 @@ async function buildPrimarySchools(page: Page) {
   await page.getByRole('button', { name: '+ Bedingung' }).click()
   const editor = page.getByRole('region', { name: 'Abfrage-Editor' })
   const kind = editor.getByRole('group', { name: 'Bedingung Attribut' })
-  await kind.getByLabel('Feld').selectOption({ label: 'Höchste Schulstufe' })
+  await kind.getByLabel('Attribut').selectOption({ label: 'Höchste Schulstufe' })
   await kind.getByLabel('Operator').selectOption({ label: 'ist eins von' })
   await kind.getByLabel('Wert hinzufügen').fill('primar')
   await kind.getByLabel('Wert hinzufügen').press('Enter')

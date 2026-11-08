@@ -15,6 +15,7 @@ import { formatNumber } from '../../i18n/locale'
 import { rows } from '../../analysis/tree'
 import { hitsOf } from '../../i18n/phrases'
 import { useActiveModel } from '../panel/active'
+import { CompareMenu } from '../compare/Entry'
 import { useCatalog } from '../panel/catalog'
 import { CatalogNote } from '../panel/CatalogNote'
 import { proposalDraft } from '../panel/draft'
@@ -67,10 +68,12 @@ export function ChangeLines({ changes }: { changes: Change[] }) {
       </p>
     )
   return (
-    <ul aria-label={t`Änderungen`} className="flex flex-col gap-0.5 font-mono text-xs">
+    <ul aria-label={t`Änderungen`} className="flex flex-col gap-0.5 text-sm">
       {changes.map((change, i) => (
         <li key={i} className={change.sign === '−' ? 'text-muted' : ''}>
-          <span aria-hidden>{change.sign} </span>
+          <span aria-hidden className="inline-block w-3 font-mono">
+            {change.sign}
+          </span>{' '}
           <span className="sr-only">
             {change.sign === '+' ? t`neu:` : change.sign === '~' ? t`geändert:` : t`entfällt:`}{' '}
           </span>
@@ -110,7 +113,7 @@ function PreviewLine({ view, analysis }: { view: ModelActionView; analysis: Anal
         : formatNumber(counts.data.hits)
   const to = formatNumber(preview.data.count)
   return (
-    <p className="font-mono text-xs" aria-label={t`Trefferzahl der Vorschau`}>
+    <p className="text-muted text-xs" aria-label={t`Trefferzahl der Vorschau`}>
       {t`Treffer: ${from} → ${to} (Vorschau, gestrichelt auf der Karte)`}
     </p>
   )
@@ -252,6 +255,8 @@ export function Approval({ view }: { view: ModelActionView }) {
           >
             <Trans>Ablehnen</Trans>
           </button>
+          {/* The answer's ⋯ (Protokoll, repeat): one row of actions while waiting. */}
+          <CompareMenu view={view} />
           <span id={`esc-${view.id}`} className="text-muted ml-auto text-xs">
             <Trans>Esc = Ablehnen</Trans>
           </span>

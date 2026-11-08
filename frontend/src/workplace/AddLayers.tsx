@@ -77,7 +77,7 @@ export function AddLayers() {
                     {layer.kind === 'table' && (
                       <span
                         className="text-muted text-xs"
-                        title={t`Erscheint in der Attributtabelle, nicht auf der Karte`}
+                        title={t`Erscheint in den Datendetails, nicht auf der Karte`}
                       >
                         <Trans>Tabelle</Trans>
                       </span>

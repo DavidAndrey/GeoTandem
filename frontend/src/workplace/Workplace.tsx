@@ -234,8 +234,8 @@ function TableToggle() {
     <button
       type="button"
       className={toolClass}
-      title={t`Attributtabelle ein/aus`}
-      aria-label={t`Attributtabelle`}
+      title={t`Datendetails ein/aus`}
+      aria-label={t`Datendetails`}
       aria-pressed={open}
       disabled={!hasLayers}
       onClick={() => setOpen(!open)}

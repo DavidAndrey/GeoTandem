@@ -29,7 +29,7 @@ export function LayerPanel() {
   return (
     <section aria-labelledby="layers-title">
       <div className="mb-1 flex items-center">
-        <h2 id="layers-title" className="label-caps flex-1">
+        <h2 id="layers-title" className="panel-title flex-1">
           <Trans>Layer</Trans>
         </h2>
         <AddLayers />
@@ -138,7 +138,7 @@ function LayerRow({ layer, catalog }: { layer: DisplayLayer; catalog: LayerInfo[
       {open && kind === 'table' && (
         <div className="mb-1 ml-5 flex items-center gap-1 pb-1.5 pr-1 text-xs">
           <span className="text-muted flex-1">
-            <Trans>Tabelle, nur in der Attributtabelle</Trans>
+            <Trans>Tabelle, nur in den Datendetails</Trans>
           </span>
           <Menu label={t`Aktionen für ${title}`}>
             <MenuItem

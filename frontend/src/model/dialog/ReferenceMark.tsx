@@ -14,7 +14,7 @@ export function ReferenceMark({ view }: { view: ModelActionView }) {
   const counts = useCounts(analysis).data
   const setReference = useModel((s) => s.setReference)
   const kind = referenceKind(view, analysis)
-  const what = kind === 'last_answer' ? t`Bezug: letzte Antwort` : t`Bezug: aktuelle Analyse`
+  const what = kind === 'last_answer' ? t`Bezug: letzte Antwort` : t`Bezug: aktuelle Abfrage`
   const label = counts ? `${what} · ${hitsOf(counts.hits, counts.total)}` : what
   return (
     <p className="flex items-center gap-1">

@@ -8,7 +8,15 @@ import { useState } from 'react'
 import { useAnalysis } from '../analysis/store'
 import { api, type SavedQuerySummary } from '../api/client'
 import { useLayers } from '../api/queries'
-import { ConfirmDialog, ErrorNotice, Loading, Menu, MenuItem, Modal } from '../components/ui'
+import {
+  ConfirmDialog,
+  ErrorNotice,
+  Labelled,
+  Loading,
+  Menu,
+  MenuItem,
+  Modal,
+} from '../components/ui'
 import { formatWhen } from '../session/ui'
 import { conditionLabel } from './part'
 import { useChooseQuery } from './useChooseQuery'
@@ -79,7 +87,7 @@ function QueryList({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="flex flex-col gap-3 text-sm">
-      <div className="flex justify-end gap-2">
+      <div className="flex items-end justify-end gap-2">
         <input
           className="input"
           type="search"
@@ -88,21 +96,23 @@ function QueryList({ onClose }: { onClose: () => void }) {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <select
-          className="input"
-          aria-label={t`Ziel-Layer`}
-          value={layer}
-          onChange={(e) => setLayer(e.target.value)}
-        >
-          <option value="">
-            <Trans>Alle Ziel-Layer</Trans>
-          </option>
-          {layers.map((name) => (
-            <option key={name} value={name}>
-              {title(name)}
+        <Labelled label={t`Ziel-Layer`}>
+          <select
+            className="input"
+            aria-label={t`Ziel-Layer`}
+            value={layer}
+            onChange={(e) => setLayer(e.target.value)}
+          >
+            <option value="">
+              <Trans>Alle Ziel-Layer</Trans>
             </option>
-          ))}
-        </select>
+            {layers.map((name) => (
+              <option key={name} value={name}>
+                {title(name)}
+              </option>
+            ))}
+          </select>
+        </Labelled>
       </div>
       {list.isPending ? (
         <Loading />

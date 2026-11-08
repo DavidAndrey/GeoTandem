@@ -22,6 +22,9 @@ ergänzt v0 um die Bedingung `related`, v2 (E1.6) um **berechnete Spalten**
 angezeigte Layer, **Ergebnis-Layer**, **Bedingungen**, **Einschränkung**. Er
 wird ausschliesslich über Abfrageobjekte ausgeführt (`analysis/query.ts`); er
 ist *derselbe Zustand* für Modus A und Modus B, die Oberfläche ist sein Editor.
+Der Anwender liest dafür *Abfrage* („Bezug: aktuelle Abfrage“, *Als Abfrage
+bearbeiten*); den Ergebnis-Layer wählt er als *Layer*, die Tabelle darunter heisst
+*Datendetails*.
 
 **Ergebnis-Layer** — Der eine Layer je Sitzung, nach dem gefragt wird; andere
 Layer wirken nur als Bedingung (Entwurf B1). Treffer werden auf der Karte

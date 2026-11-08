@@ -56,15 +56,18 @@ export function TableDock() {
     return (
       <div className="flex justify-end border-t border-[var(--color-divider)] pt-1">
         <button type="button" className="btn text-xs" onClick={() => setOpen(true)}>
-          <ChevronUp size={13} aria-hidden /> <Trans>Attributtabelle öffnen</Trans>
+          <ChevronUp size={13} aria-hidden /> <Trans>Datendetails öffnen</Trans>
         </button>
       </div>
     )
 
   return (
-    <section aria-label={t`Attributtabelle`} className="flex min-h-0 flex-col" style={{ height }}>
+    <section aria-labelledby="table-title" className="flex min-h-0 flex-col" style={{ height }}>
       <Divider />
       <div className="flex min-h-0 flex-1 flex-col gap-2 pt-2">
+        <h2 id="table-title" className="panel-title">
+          <Trans>Datendetails</Trans>
+        </h2>
         <div role="tablist" aria-label={t`Tabellen`} className="flex flex-wrap gap-x-4 gap-y-1">
           {layers.map((layer) => {
             const selected = layer.id === active.id

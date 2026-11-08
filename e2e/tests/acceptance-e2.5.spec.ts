@@ -513,7 +513,7 @@ const chooseConnection = (page: Page, name: string) =>
 
 const hits = (page: Page) => page.getByLabel("Trefferzahl", { exact: true });
 const panelOf = (page: Page) =>
-  page.getByRole("region", { name: "Prompt", exact: true });
+  page.getByRole("region", { name: "Frage", exact: true });
 const stepsOf = (card: Locator) =>
   card.getByRole("listitem", { name: /^Schritt \d: / });
 const pending = (page: Page) =>
@@ -540,7 +540,7 @@ async function ask(
   // which the stub holds on the connection E25 Halt (its doc).
   const fresh = panel.getByRole("button", { name: "Ohne Bezug fragen" });
   if (await fresh.isVisible()) await fresh.click();
-  await panel.getByRole("textbox", { name: "Prompt" }).fill(text);
+  await panel.getByRole("textbox", { name: "Frage" }).fill(text);
   const posted = page.waitForResponse(
     (r) =>
       r.request().method() === "POST" && r.url().endsWith("/api/model/prompt"),
@@ -613,7 +613,7 @@ async function analysisQuery(page: Page): Promise<unknown> {
   );
   await page.getByRole("tab", { name: "Klassik" }).click();
   const { queries } = (await counted).postDataJSON() as { queries: unknown[] };
-  await page.getByRole("tab", { name: "Prompt" }).click();
+  await page.getByRole("tab", { name: "Frage" }).click();
   await expect(panelOf(page)).toBeVisible();
   return queries[0];
 }
@@ -721,7 +721,7 @@ test.describe("E2.5 against the model stub", { tag: "@stub" }, () => {
     await chooseLevel(page, "Prüfen");
     await chooseConnection(page, DIRECT);
     const { sent, failures } = watchQueries(page);
-    await page.getByRole("tab", { name: "Prompt" }).click();
+    await page.getByRole("tab", { name: "Frage" }).click();
 
     // Direct (E2.4): approval with its preview, Annehmen.
     const direct = await ask(page, PROMPT, "direct");
@@ -914,7 +914,7 @@ test.describe("E2.5 against the model stub", { tag: "@stub" }, () => {
     await expect(pending(page)).toContainText("Schritt 4 von 5 · 0");
     await expect(pending(page)).toContainText("nicht angewendet");
     await expect(
-      panelOf(page).getByRole("textbox", { name: "Prompt" }),
+      panelOf(page).getByRole("textbox", { name: "Frage" }),
     ).toHaveAttribute("readonly");
     await expect(hits(page)).toHaveText(before!);
     const running = await view(analyst, id);
@@ -1007,7 +1007,7 @@ test.describe("E2.5 against the model stub", { tag: "@stub" }, () => {
       "Die Kette bräuchte 9 Schritte, neu geplante eingeschlossen (höchstens 8).",
     );
     await expect(
-      card.getByRole("button", { name: "Prompt ändern" }),
+      card.getByRole("button", { name: "Frage ändern" }),
     ).toBeVisible();
     await expect(hits(page)).toHaveText(before!);
     const limited = await view(analyst, id);

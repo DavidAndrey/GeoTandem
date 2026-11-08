@@ -96,8 +96,8 @@ test('a table layer is read in the attribute table, never drawn', async ({ page 
   await expect(panel.getByRole('button', { name: /^Gemeindedaten/ })).toBeVisible()
   await expect(panel.getByRole('button', { name: 'Gemeinden ausblenden' })).toBeVisible()
   await expect(panel.getByRole('button', { name: 'Gemeindedaten ausblenden' })).toHaveCount(0)
-  await page.getByRole('button', { name: 'Attributtabelle', exact: true }).click()
-  const dock = page.getByRole('region', { name: 'Attributtabelle' })
+  await page.getByRole('button', { name: 'Datendetails', exact: true }).click()
+  const dock = page.getByRole('region', { name: 'Datendetails' })
   await dock.getByRole('tab', { name: 'Gemeindedaten' }).click()
   const table = dock.getByRole('table', {
     name: 'Attribute von Gemeindedaten',
@@ -149,7 +149,7 @@ test('a date column filters by date in the editor', async ({ page, request }) =>
   await page.getByRole('button', { name: '+ Bedingung' }).click()
   const editor = page.getByRole('region', { name: 'Abfrage-Editor' })
   const row = editor.getByRole('group', { name: 'Bedingung Attribut' })
-  await row.getByLabel('Feld').selectOption({ label: 'Kontrolle' })
+  await row.getByLabel('Attribut').selectOption({ label: 'Kontrolle' })
   await row.getByLabel('Operator').selectOption({ label: 'ab' })
   await row.getByLabel('Wert').fill('2024-01-01')
   await editor.getByRole('button', { name: 'Übernehmen' }).click()

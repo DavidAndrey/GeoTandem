@@ -4,7 +4,8 @@
 // line. Esc closes the panel and returns to the tab.
 import { Trans } from '@lingui/react/macro'
 import { t } from '@lingui/core/macro'
-import { Globe } from 'lucide-react'
+import { Globe, Info } from 'lucide-react'
+import { Popover } from 'radix-ui'
 import type { KeyboardEvent } from 'react'
 import { Link } from 'react-router'
 import { useShallow } from 'zustand/react/shallow'
@@ -242,22 +243,28 @@ function Composer() {
             </button>
           ))}
         </div>
+        <ApproachInfo />
         {!CHAIN_AVAILABLE && (
           <span id="chain-later" className="text-muted text-xs">
             <Trans>ab E2.5</Trans>
           </span>
         )}
-        <button
-          type="submit"
-          className="btn btn-primary ml-auto"
-          disabled={locked || !draft.trim()}
-          aria-keyshortcuts="Control+Enter Meta+Enter"
-        >
-          <Trans>Senden</Trans>{' '}
-          <kbd className="text-xs" aria-hidden>
-            {isMac() ? '⌘↵' : t({ message: 'Strg+↵', comment: 'Keyboard shortcut: Ctrl+Enter' })}
-          </kbd>
-        </button>
+        <div className="ml-auto flex flex-col items-end gap-0.5">
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={locked || !draft.trim()}
+            aria-keyshortcuts="Control+Enter Meta+Enter"
+            aria-describedby="send-shortcut"
+          >
+            <Trans>Senden</Trans>
+          </button>
+          <span id="send-shortcut" className="text-muted text-xs">
+            {isMac()
+              ? t({ message: 'oder ⌘+Enter', comment: 'Keyboard shortcut under Senden, macOS' })
+              : t({ message: 'oder Strg+Enter', comment: 'Keyboard shortcut under Senden' })}
+          </span>
+        </div>
       </div>
       <p className="text-muted min-w-0 text-xs break-words">
         {where && `${where} · `}
@@ -265,6 +272,42 @@ function Composer() {
         <Trans>Ihre Eingaben werden protokolliert</Trans>
       </p>
     </form>
+  )
+}
+
+/** ⓘ beside the approach: what Direktabfrage and Werkzeugkette do differently. */
+function ApproachInfo() {
+  return (
+    <Popover.Root>
+      <Popover.Trigger className="btn px-1.5" aria-label={t`Was ist der Unterschied?`}>
+        <Info size={14} aria-hidden />
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content
+          align="start"
+          sideOffset={4}
+          aria-labelledby="approach-info-title"
+          className="card z-[1300] flex w-80 flex-col gap-2 bg-neutral-100 p-3 text-sm shadow-[var(--shadow-md)]"
+        >
+          <h2 id="approach-info-title" className="font-semibold">
+            <Trans>Arbeitsweise</Trans>
+          </h2>
+          <p>
+            <Trans>
+              <strong>Direktabfrage</strong>: Das Modell schreibt die Abfrage in einem Schritt.
+              Schnell, gut für einfache Fragen.
+            </Trans>
+          </p>
+          <p>
+            <Trans>
+              <strong>Werkzeugkette</strong>: Das Modell geht in Schritten vor (Katalog lesen, Werte
+              nachschlagen, Abfrage bauen) und zeigt den Plan. Langsamer, oft genauer bei mehreren
+              Bedingungen.
+            </Trans>
+          </p>
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
   )
 }
 
