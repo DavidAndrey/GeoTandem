@@ -93,6 +93,7 @@
   "not_owner": "Only the owner changes a shared query.",
   "not_representable": "The query cannot be shown in the controls without loss (D3).",
   "nothing_to_compare": "A side of the comparison ended without a result (details.status).",
+  "nothing_to_propose": "The layer has no empty description or label to propose a text for.",
   "nothing_to_undo": "The action changed nothing that could be taken back.",
   "outside_crs": "The row's coordinates lie outside the coordinate system.",
   "password_change_required": "The start password must be changed first.",

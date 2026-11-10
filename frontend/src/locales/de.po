@@ -260,6 +260,10 @@ msgstr "{conditions} · Vorschau {count}"
 msgid "{conditions} Bed."
 msgstr "{conditions} Bed."
 
+#: src/admin/LayerPage.tsx
+msgid "{count, plural, one {# Feld mit Vorschlag} other {# Felder mit Vorschlag}}"
+msgstr "{count, plural, one {# Feld mit Vorschlag} other {# Felder mit Vorschlag}}"
+
 #: src/admin/connectionParts.tsx
 msgid "{count, plural, one {# Modell angeboten} other {# Modelle angeboten}}"
 msgstr "{count, plural, one {# Modell angeboten} other {# Modelle angeboten}}"
@@ -1095,6 +1099,10 @@ msgstr "Alle Anbindungen"
 #: src/admin/ProfileCompleteness.tsx
 msgid "Alle Attribute beschriftet, alle Codelisten bestätigt, alle Beschreibungen vorhanden."
 msgstr "Alle Attribute beschriftet, alle Codelisten bestätigt, alle Beschreibungen vorhanden."
+
+#: src/i18n/errors.ts
+msgid "Alle Beschreibungen und Beschriftungen sind ausgefüllt; es gibt nichts vorzuschlagen."
+msgstr "Alle Beschreibungen und Beschriftungen sind ausgefüllt; es gibt nichts vorzuschlagen."
 
 #: src/editor/EditorPanel.tsx
 msgid "alle folgenden"
@@ -2126,6 +2134,10 @@ msgstr "Das Modell hat die Anfrage abgelehnt."
 msgid "Das Modell hat nicht rechtzeitig geantwortet."
 msgstr "Das Modell hat nicht rechtzeitig geantwortet."
 
+#: src/admin/LayerPage.tsx
+msgid "Das Modell hat nichts vorgeschlagen."
+msgstr "Das Modell hat nichts vorgeschlagen."
+
 #: src/i18n/errors.ts
 msgid "Das Modell hat seine Antwort nicht beendet: Die Länge, die die Anbindung erlaubt, war aufgebraucht. Meist denkt das Modell zu lange, oder der Kontext ist zu klein."
 msgstr "Das Modell hat seine Antwort nicht beendet: Die Länge, die die Anbindung erlaubt, war aufgebraucht. Meist denkt das Modell zu lange, oder der Kontext ist zu klein."
@@ -2157,6 +2169,10 @@ msgstr "Das Modell nimmt gerade keine weiteren Anfragen an."
 #: src/i18n/errors.ts
 msgid "Das Modell ruft keine Werkzeuge auf; für Werkzeugketten ist es so nicht geeignet."
 msgstr "Das Modell ruft keine Werkzeuge auf; für Werkzeugketten ist es so nicht geeignet."
+
+#: src/admin/LayerPage.tsx
+msgid "Das Modell schreibt Vorschläge …"
+msgstr "Das Modell schreibt Vorschläge …"
 
 #: src/model/panel/PromptPanel.tsx
 msgid "Das Modell sieht Layer- und Feldnamen sowie die freigegebenen Wertelisten und Wertebereiche, keine einzelnen Objekte oder Geometrien."
@@ -3156,6 +3172,10 @@ msgstr "Ein Schritt brachte einen Fehler oder kein Ergebnis, und die Neuplanunge
 msgid "Ein Schritt hätte mehr als {max} Objekte erzeugt (höchstens {max})."
 msgstr "Ein Schritt hätte mehr als {max} Objekte erzeugt (höchstens {max})."
 
+#: src/admin/LayerPage.tsx
+msgid "ein Vorschlag für die Layer-Beschreibung (Reiter «Beschreibung»)"
+msgstr "ein Vorschlag für die Layer-Beschreibung (Reiter «Beschreibung»)"
+
 #: src/model/approval/Level.tsx
 msgid "Ein Vorschlag wartet noch auf Freigabe. Er bleibt an die Stufe {bound} gebunden, unter der er gestellt wurde, und wird nicht automatisch angewendet."
 msgstr "Ein Vorschlag wartet noch auf Freigabe. Er bleibt an die Stufe {bound} gebunden, unter der er gestellt wurde, und wird nicht automatisch angewendet."
@@ -3597,7 +3617,7 @@ msgstr "Extern: Anfragen gehen an {host}"
 msgid "Externe Anbindung"
 msgstr "Externe Anbindung"
 
-#: src/admin/ProbeTab.tsx
+#: src/admin/ConnectionChoice.tsx
 msgid "Externe Verbindung: Es geht nur der Steckbrief hinaus, keine Inhalte der Daten."
 msgstr "Externe Verbindung: Es geht nur der Steckbrief hinaus, keine Inhalte der Daten."
 
@@ -3878,6 +3898,10 @@ msgstr "Für dieses Konto kennt das Modell keinen Layer."
 #: src/admin/evaluation/NewRunPage.tsx
 msgid "Für einen Lauf braucht es eine Modellanbindung. <0>Modellanbindungen</0>"
 msgstr "Für einen Lauf braucht es eine Modellanbindung. <0>Modellanbindungen</0>"
+
+#: src/admin/LayerPage.tsx
+msgid "Für leere Bezeichnungen und Beschreibungen. Prüfen Sie jeden Vorschlag; erst «Speichern» übernimmt ihn."
+msgstr "Für leere Bezeichnungen und Beschreibungen. Prüfen Sie jeden Vorschlag; erst «Speichern» übernimmt ihn."
 
 #: src/admin/CatalogPage.tsx
 #: src/admin/ImportWizard.tsx
@@ -4532,7 +4556,7 @@ msgstr "Keine Modellanbindung eingerichtet"
 msgid "keine Modellanbindung für dieses Konto"
 msgstr "keine Modellanbindung für dieses Konto"
 
-#: src/admin/ProbeTab.tsx
+#: src/admin/ConnectionChoice.tsx
 msgid "Keine Modellverbindung ist eingeschaltet."
 msgstr "Keine Modellverbindung ist eingeschaltet."
 
@@ -7064,8 +7088,8 @@ msgstr "Veraltet: Die Layer {layers} sind gelöscht oder für Sie nicht mehr sic
 msgid "Verbinde …"
 msgstr "Verbinde …"
 
+#: src/admin/ConnectionChoice.tsx
 #: src/admin/ConnectionForm.tsx
-#: src/admin/ProbeTab.tsx
 msgid "Verbindung"
 msgstr "Verbindung"
 
@@ -7323,6 +7347,10 @@ msgstr "Vorschau lädt …"
 msgid "Vorschlag"
 msgstr "Vorschlag"
 
+#: src/admin/LayerPage.tsx
+msgid "Vorschlag des Modells, noch nicht gespeichert"
+msgstr "Vorschlag des Modells, noch nicht gespeichert"
+
 #: src/admin/format.ts
 msgid "Vorschlag für {field} bestätigen"
 msgstr "Vorschlag für {field} bestätigen"
@@ -7334,6 +7362,10 @@ msgstr "Vorschlag offen"
 #: src/model/log/words.ts
 msgid "Vorschläge"
 msgstr "Vorschläge"
+
+#: src/admin/LayerPage.tsx
+msgid "Vorschläge erzeugen"
+msgstr "Vorschläge erzeugen"
 
 #: src/admin/evaluation/runWords.ts
 msgid "w"

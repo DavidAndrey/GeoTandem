@@ -9,8 +9,8 @@ where they part. Nothing is graded and the answer is not kept.
 Metadata only, no content: allowed on an external connection without data
 release, as every query's profile is. Not a model action (Q5): its own entry
 (``MetadataProbe``) and a security event, and the connection's request limit
-counts it (P5). The call runs in the request, within the connection's timeout,
-and holds one of the instance's model-call slots.
+counts it (P5). ``MetadataCall`` is that call, shared with the proposals of
+missing metadata (``layer_proposals``, part D).
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ import logging
 import time
 from collections.abc import Callable
 from datetime import datetime, tzinfo
-from typing import Any
+from typing import Any, TypeVar
 
 from pydantic import BaseModel, Field
 from sqlalchemy import update
@@ -39,6 +39,8 @@ from geotandem.model.result import loose_json
 from geotandem.model.service import ModelCalls, day_start, within_limit
 
 log = logging.getLogger(__name__)
+
+T = TypeVar("T")
 
 MAX_TEXT = 400
 """A reading's text is cut here: it is shown, never stored, and a model that
@@ -152,9 +154,21 @@ def parsed_of(completion: Completion) -> Any:
         raise _unreadable(f"not JSON: {exc.msg} at char {exc.pos}") from None
 
 
-def _by_name(
-    profile: LayerProfile, items: list[Any]
-) -> tuple[dict[str, dict[str, Any]], list[str]]:
+def attribute_items(parsed: Any) -> list[Any] | None:
+    """The answer's per-attribute items, or None when it has none. An endpoint
+    that gets the schema only as text sometimes keys them by name instead of
+    listing them: ``{"gem_nr": {...}}`` is read as ``[{"name": "gem_nr", ...}]``."""
+    if not isinstance(parsed, dict):
+        return None
+    items = parsed.get("attributes")
+    if isinstance(items, list):
+        return items
+    if isinstance(items, dict) and all(isinstance(v, dict) for v in items.values()):
+        return [{**value, "name": key} for key, value in items.items()]
+    return None
+
+
+def by_name(profile: LayerProfile, items: list[Any]) -> tuple[dict[str, dict[str, Any]], list[str]]:
     """Each attribute's first reading by name; names the profile lacks apart.
     Readings without a name take the attribute at their place, but only when
     the answer has one reading per attribute: an unconstrained model sometimes
@@ -181,9 +195,10 @@ def readings(profile: LayerProfile, parsed: Any) -> tuple[str, list[AttributeRea
     """The model's answer laid over the profile: every profile attribute once,
     in the profile's order; names the profile lacks apart. ``ActionError``
     (``model_unreadable``) when it is no answer."""
-    if not isinstance(parsed, dict) or not isinstance(parsed.get("attributes"), list):
+    items = attribute_items(parsed)
+    if items is None:
         raise _unreadable("no list of attributes")
-    given, unknown = _by_name(profile, parsed["attributes"])
+    given, unknown = by_name(profile, items)
     out = []
     for attribute in profile.attributes:
         item = given.get(attribute.name)
@@ -207,8 +222,26 @@ def prompt(profile: LayerProfile) -> list[Message]:
     return [Message("system", SYSTEM), Message("user", body)]
 
 
-class Probe:
-    """Probe one layer for one account; the route's whole work."""
+def connection_of(connection: ConnectionInfo) -> ProbeConnection:
+    return ProbeConnection(
+        id=connection.id,
+        name=connection.name,
+        model=connection.model,
+        host=connection.host,
+        locality=connection.locality,
+    )
+
+
+class MetadataCall:
+    """One model call about a layer's metadata for one account: the probe (C) and
+    the proposals (D). Each is its own entry (``MetadataProbe`` with its
+    ``kind``) and security event, not a model action (Q5), and counts toward
+    the connection's request limit (P5). It runs in the request, within the
+    connection's timeout, and holds one of the instance's model-call slots."""
+
+    kind: str
+    event: str
+    schema: dict[str, Any]
 
     def __init__(
         self,
@@ -240,7 +273,7 @@ class Probe:
             raise ConnectionProblem(
                 409,
                 "connection_not_available",
-                "No enabled model connection to probe with.",
+                "No enabled model connection to ask.",
                 reason="none" if connection_id is None else "disabled",
             )
         return found
@@ -255,6 +288,7 @@ class Probe:
                 account=caller.username,
                 connection_id=connection.id,
                 layer=layer,
+                kind=self.kind,
                 called_at=self.clock(),
                 status="asked",
             )
@@ -266,22 +300,31 @@ class Probe:
         with Session(self.engine) as db, db.begin():
             db.execute(update(MetadataProbe).where(MetadataProbe.id == probe_id).values(**values))
 
-    def run(self, caller: Account, profile: LayerProfile, connection_id: int | None) -> ProbeResult:
+    def ask(
+        self,
+        caller: Account,
+        layer: str,
+        connection_id: int | None,
+        messages: list[Message],
+        read: Callable[[Any], T],
+    ) -> tuple[T, Completion, ConnectionInfo]:
+        """Send ``messages``, read the answer's JSON with ``read`` (which raises
+        ``model_unreadable`` as ``ActionError``) and keep the entry and event."""
         connection, endpoint = self._connection(caller, connection_id)
         self.calls.take()  # ModelCallsBusy: the instance's model calls are all in use
         try:
-            probe_id = self._record(caller, connection, profile.name)
+            probe_id = self._record(caller, connection, layer)
             client = self.client_factory(endpoint)
             try:
                 answer = client.complete(
-                    prompt(profile),
-                    schema=SCHEMA,
-                    schema_name="probe",
+                    messages,
+                    schema=self.schema,
+                    schema_name=self.kind,
                     deadline=self.monotonic() + endpoint.timeout_s,
                 )
             except LLMError as exc:
                 self._finish(probe_id, status="failed", error_code=exc.code)
-                self._event(caller, connection, profile.name, ok=False, code=exc.code)
+                self._event(caller, connection, layer, ok=False, code=exc.code)
                 # The seam's code and its cause, never a response body (C13).
                 raise ConnectionProblem(
                     502, exc.code, exc.message, connection=connection.name
@@ -302,41 +345,52 @@ class Probe:
                     "The model's answer was cut off at its length limit.",
                     http_status=502,
                 )
-            meaning, attributes, unknown = readings(profile, parsed_of(answer))
+            result = read(parsed_of(answer))
         except ActionError as exc:
             self._finish(probe_id, status="failed", error_code=exc.code, **tokens)
-            self._event(caller, connection, profile.name, ok=False, code=exc.code)
+            self._event(caller, connection, layer, ok=False, code=exc.code)
             raise
         self._finish(probe_id, status="ok", **tokens)
-        self._event(caller, connection, profile.name, ok=True, **tokens)
-        return ProbeResult(
-            layer=profile.name,
-            meaning=meaning,
-            attributes=attributes,
-            unknown=unknown,
-            connection=ProbeConnection(
-                id=connection.id,
-                name=connection.name,
-                model=connection.model,
-                host=connection.host,
-                locality=connection.locality,
-            ),
-            probed_at=self.clock(),
-            latency_ms=answer.latency_ms,
-            prompt_tokens=answer.prompt_tokens,
-            completion_tokens=answer.completion_tokens,
-        )
+        self._event(caller, connection, layer, ok=True, **tokens)
+        return result, answer, connection
 
-    @staticmethod
     def _event(
-        caller: Account, connection: ConnectionInfo, layer: str, *, ok: bool, **fields: Any
+        self, caller: Account, connection: ConnectionInfo, layer: str, *, ok: bool, **fields: Any
     ) -> None:
         audit.event(
-            "layer_probed",
+            self.event,
             username=caller.username,
             layer=layer,
             connection=connection.id,
             host=connection.host,
             ok=ok,
             **fields,
+        )
+
+
+class Probe(MetadataCall):
+    """Probe one layer for one account; the route's whole work."""
+
+    kind = "probe"
+    event = "layer_probed"
+    schema = SCHEMA
+
+    def run(self, caller: Account, profile: LayerProfile, connection_id: int | None) -> ProbeResult:
+        (meaning, attributes, unknown), answer, connection = self.ask(
+            caller,
+            profile.name,
+            connection_id,
+            prompt(profile),
+            lambda parsed: readings(profile, parsed),
+        )
+        return ProbeResult(
+            layer=profile.name,
+            meaning=meaning,
+            attributes=attributes,
+            unknown=unknown,
+            connection=connection_of(connection),
+            probed_at=self.clock(),
+            latency_ms=answer.latency_ms,
+            prompt_tokens=answer.prompt_tokens,
+            completion_tokens=answer.completion_tokens,
         )

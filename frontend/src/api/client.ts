@@ -43,6 +43,8 @@ export type ProfilePreview = Schemas['ProfilePreview']
 export type LLMChoice = Schemas['Choice']
 export type ProbeResult = Schemas['ProbeResult']
 export type AttributeReading = Schemas['AttributeReading']
+export type ProposalResult = Schemas['ProposalResult']
+export type AttributeProposal = Schemas['AttributeProposal']
 export type MapConfig = Schemas['MapConfig']
 export type QueryObject = Schemas['QueryObject-Input']
 export type SessionSummary = Schemas['SessionSummary']
@@ -366,6 +368,11 @@ export const api = {
     probe: (name: string, connectionId: number | null) =>
       request<ProbeResult>(
         `/api/admin/layers/${enc(name)}/probe`,
+        json('POST', { connection_id: connectionId }),
+      ),
+    propose: (name: string, connectionId: number | null) =>
+      request<ProposalResult>(
+        `/api/admin/layers/${enc(name)}/proposals`,
         json('POST', { connection_id: connectionId }),
       ),
 

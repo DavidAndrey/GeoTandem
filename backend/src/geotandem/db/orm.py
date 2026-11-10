@@ -467,6 +467,8 @@ class MetadataProbe(Base):
     account: Mapped[str] = mapped_column(String(63))
     connection_id: Mapped[int]
     layer: Mapped[str] = mapped_column(String(63))
+    kind: Mapped[str] = mapped_column(String(16), default="probe", server_default="probe")
+    """``probe`` (C) or ``proposal`` (D, proposed labels and descriptions)."""
     called_at: Mapped[datetime]
     """Naive UTC from the application's clock; recorded before the call, so a
     probe counts once it may reach the model."""

@@ -3,7 +3,7 @@
 > Status: decided 2026-11-07 (Q1–Q9, section 6). A done on branch
 > `attribute-metadata`: no effect of units, roles or real references
 > (testplan 8.6); E and the `identifier` role dropped (section 7). C built
-> (section 4 C). B, D open.
+> (section 4 C). D built, its measurement run open (section 4 D). B open.
 > Bezug: [memo.md](../memo.md) (Phase 4 result), [testplan-system-context.md 8.5](testplan-system-context.md),
 > [plan-e3.md](plan-e3.md) D11 / WP94, `backend/src/geotandem/catalog.py`,
 > `backend/src/geotandem/evaluation/profiles.py`, `schema/eval-cases/`.
@@ -124,6 +124,14 @@ Result in `testplan-system-context.md` as 8.6, decision in this plan.
 - Prompt rules from Phase 4: say what the value *means*; never describe joins or keys; no invented units; leave it empty if unsure.
 - Proposals are shown as drafts in the attribute form; nothing reaches the profile until the administrator saves it (the S2 pattern of proposed code lists).
 - **Measurement**: generate once for the sample data from `raw-codes` (bare import), confirm by hand without edits, run it as mode `generated` against `raw-codes` and `full`. Tells whether D is worth offering and with which generator.
+
+**Built** (2026-11-08):
+
+- `POST /api/admin/layers/{name}/proposals` (`connection_id` as for the probe), in [layer_proposals.py](../backend/src/geotandem/layer_proposals.py). Asks only for what the catalog leaves empty among what the model sees: the layer description, and labels and descriptions of attributes marked for the model. The model gets the profile plus a list of what is missing (`fehlt`); the answer is kept to that list (a text for a filled field or an unknown attribute is dropped). Labels cut at 200, descriptions at 400 characters. No units (A), no titles. `nothing_to_propose` (400) when nothing is empty.
+- The call is the probe's: C's `Probe` became `layer_probe.MetadataCall` (connection, limit, entry, event, errors), with `Probe` and `Proposals` on it. Entry in `metadata_probe` with the new column `kind` (`probe` | `proposal`, migration 0021); event `metadata_proposed`.
+- `LayerPage`, tab «Felder»: «Vorschläge erzeugen» with the connection select (shared with «Verständnis», [ConnectionChoice.tsx](../frontend/src/admin/ConnectionChoice.tsx)), shown only while something is empty. The proposals fill the empty inputs as drafts, marked «Vorschlag des Modells, noch nicht gespeichert»; a row with a proposed description opens. The layer description's proposal waits in the «Beschreibung» tab. Only «Speichern» takes a proposal; unsaved edits of a row are reset when proposals arrive.
+- Tolerant reading, from trying Haiku 5.5: besides fencing, it sometimes keys `attributes` by name instead of listing them (`layer_probe.attribute_items`, for probe and proposals). Its first set wrote «Straße»: the prompt now asks for Swiss spelling.
+- Measurement prepared: the proposals for the sample from `raw-codes`, generated once each with gemma4:12b and Haiku 5.5, in [evaluation/generated](../backend/src/geotandem/evaluation/generated/); modes `generated-gemma` and `generated-haiku` (`profiles.py`) save them over `raw-codes` unchanged. Completeness (D11; labelled of 27, described of 33): `full` 21/11, `raw-codes` 0/0, `generated-gemma` 11/33, `generated-haiku` 11/32. Only 11 labels count because a proposed label that repeats the column name («Name», «Typ») labels nothing. No proposal describes a join; both say what `gem_nr` is («Die Nummer der Gemeinde, in der sich die Schule befindet»). Guess beyond the profile: gemma4:12b «Einzugsgebiet» for the stops' `einwohner` and `arbeitsplaetze`; «Haupt- oder Nebengewässer» for `gewaesser.typ` is read from its codes (`haupt`, `neben`). **Open**: the hand confirmation of the two files, then the run (`generated-*` against `raw-codes` and `full`, as A3).
 
 ### E — Completeness, conditional
 

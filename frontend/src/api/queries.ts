@@ -220,6 +220,13 @@ export const useProbeLayer = (name: string) =>
     mutationFn: (connectionId: number | null) => api.admin.probe(name, connectionId),
   })
 
+/** Proposed texts for a layer's empty description, labels and descriptions
+ * (plan-attribute-metadata D). Drafts: nothing is saved, nothing is cached. */
+export const useProposeMetadata = (name: string) =>
+  useMutation({
+    mutationFn: (connectionId: number | null) => api.admin.propose(name, connectionId),
+  })
+
 /** What the account may choose for model support, and its choice (plan E2.1, C14). */
 export const useLLMOptions = () => useQuery({ queryKey: keys.llmOptions, queryFn: api.llm.options })
 

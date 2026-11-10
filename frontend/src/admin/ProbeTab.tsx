@@ -3,16 +3,16 @@
 // reads where they part; nothing is graded and nothing is kept.
 import { Trans } from '@lingui/react/macro'
 import { t } from '@lingui/core/macro'
-import { useState } from 'react'
 import type { AttributeInfo, AttributeReading, LayerInfo, ProbeResult } from '../api/client'
-import { useLLMOptions, useProbeLayer } from '../api/queries'
+import { useProbeLayer } from '../api/queries'
 import { ErrorNotice, Loading } from '../components/ui'
 import { formatCodes } from './codes'
+import { ConnectionSelect, ExternalNote, NoConnection } from './ConnectionChoice'
+import { useConnectionChoice } from './useConnectionChoice'
 
 export function ProbeTab({ layer }: { layer: LayerInfo }) {
-  const options = useLLMOptions()
+  const { options, connections, selected, setChosen, external } = useConnectionChoice()
   const probe = useProbeLayer(layer.name)
-  const [chosen, setChosen] = useState<number | null>(null)
 
   if (!layer.for_model) {
     return (
@@ -25,9 +25,6 @@ export function ProbeTab({ layer }: { layer: LayerInfo }) {
   }
   if (options.isPending) return <Loading />
   if (!options.data) return <ErrorNotice error={options.error} />
-  const connections = options.data.connections
-  const selected = chosen ?? options.data.active_connection_id
-  const external = connections.find((c) => c.id === selected)?.locality === 'external'
 
   return (
     <div className="flex max-w-6xl flex-col gap-4">
@@ -39,9 +36,7 @@ export function ProbeTab({ layer }: { layer: LayerInfo }) {
         </Trans>
       </p>
       {connections.length === 0 ? (
-        <p className="text-sm">
-          <Trans>Keine Modellverbindung ist eingeschaltet.</Trans>
-        </p>
+        <NoConnection />
       ) : (
         <form
           className="flex flex-wrap items-end gap-3"
@@ -50,22 +45,7 @@ export function ProbeTab({ layer }: { layer: LayerInfo }) {
             probe.mutate(selected)
           }}
         >
-          <label className="flex flex-col gap-1">
-            <span className="label-caps">
-              <Trans>Verbindung</Trans>
-            </span>
-            <select
-              className="input"
-              value={selected ?? ''}
-              onChange={(e) => setChosen(Number(e.target.value))}
-            >
-              {connections.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} · {c.model}
-                </option>
-              ))}
-            </select>
-          </label>
+          <ConnectionSelect connections={connections} selected={selected} onChange={setChosen} />
           <button type="submit" className="btn btn-primary" disabled={probe.isPending}>
             <Trans>Verständnis prüfen</Trans>
           </button>
@@ -74,13 +54,7 @@ export function ProbeTab({ layer }: { layer: LayerInfo }) {
               <Trans>Das Modell liest den Steckbrief …</Trans>
             </span>
           )}
-          {external && (
-            <span className="text-muted basis-full text-sm">
-              <Trans>
-                Externe Verbindung: Es geht nur der Steckbrief hinaus, keine Inhalte der Daten.
-              </Trans>
-            </span>
-          )}
+          {external && <ExternalNote />}
         </form>
       )}
       <ErrorNotice error={probe.error} />
@@ -148,7 +122,11 @@ function Readings({ layer, result }: { layer: LayerInfo; result: ProbeResult }) 
   )
 }
 
-function Footer({ result }: { result: ProbeResult }) {
+export function Footer({
+  result,
+}: {
+  result: Pick<ProbeResult, 'connection' | 'latency_ms' | 'prompt_tokens' | 'completion_tokens'>
+}) {
   const seconds = (result.latency_ms / 1000).toFixed(1)
   const sent = result.prompt_tokens
   const received = result.completion_tokens ?? 0

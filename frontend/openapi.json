@@ -1204,6 +1204,149 @@
         }
       }
     },
+    "/api/admin/layers/{name}/proposals": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Propose Metadata",
+        "description": "Proposed texts for the layer's empty description and its attributes'\nempty labels and descriptions (plan-attribute-metadata D). Drafts only:\nnothing is saved. Sends the profile only, as the probe does, and counts\ntoward the connection's request limit.",
+        "operationId": "propose_metadata_api_admin_layers__name__proposals_post",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProbeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposalResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
     "/api/admin/imports": {
       "post": {
         "tags": [
@@ -9777,6 +9920,30 @@
         ],
         "title": "AttributeProfile"
       },
+      "AttributeProposal": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "default": ""
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "AttributeProposal",
+        "description": "A proposal for one attribute; a field is empty where the catalog has a\nvalue or the model proposed nothing."
+      },
       "AttributeReading": {
         "properties": {
           "name": {
@@ -16697,6 +16864,69 @@
         ],
         "title": "PromptRequest",
         "description": "A prompt. No earlier turns: the server builds them from the parent chain (P6)."
+      },
+      "ProposalResult": {
+        "properties": {
+          "layer": {
+            "type": "string",
+            "title": "Layer"
+          },
+          "layer_description": {
+            "type": "string",
+            "title": "Layer Description"
+          },
+          "attributes": {
+            "items": {
+              "$ref": "#/components/schemas/AttributeProposal"
+            },
+            "type": "array",
+            "title": "Attributes"
+          },
+          "connection": {
+            "$ref": "#/components/schemas/ProbeConnection"
+          },
+          "proposed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Proposed At"
+          },
+          "latency_ms": {
+            "type": "integer",
+            "title": "Latency Ms"
+          },
+          "prompt_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt Tokens"
+          },
+          "completion_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completion Tokens"
+          }
+        },
+        "type": "object",
+        "required": [
+          "layer",
+          "layer_description",
+          "attributes",
+          "connection",
+          "proposed_at",
+          "latency_ms"
+        ],
+        "title": "ProposalResult"
       },
       "QueryAnswer": {
         "properties": {

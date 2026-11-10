@@ -9,6 +9,7 @@ not yet confirmed shows as the first gap although the profile never carries it.
 import json
 import shutil
 from pathlib import Path
+from typing import Any
 
 import httpx
 import pytest
@@ -18,7 +19,7 @@ from test_profile import SENTINELS, import_sentinels, sentinel_csv
 from geotandem.catalog import model_profile
 from geotandem.config import Settings
 from geotandem.db.bootstrap import bootstrap
-from geotandem.evaluation.profiles import KEYS, PROFILES, model_profile_for, strip
+from geotandem.evaluation.profiles import GENERATED, KEYS, PROFILES, model_profile_for, strip
 from geotandem.evaluation.schemas import LayerGaps, ProfileSummary
 from geotandem.evaluation.summary import profile_summary
 
@@ -94,6 +95,41 @@ TOTALS = {
 """``refs``: gemeindedaten.gem_nr said only its join, so it has no description left."""
 
 
+TITLED = {"full", "no-desc", "no-labels", "no-domains", "no-units", "refs", "refs-role"}
+"""The modes that keep the curated titles; ``raw`` sets title = name, and the
+generated modes build on it (D proposes no titles)."""
+
+
+def generated(mode: str) -> dict[str, Any]:
+    """The proposals a ``generated-*`` mode saves (``evaluation/generated``)."""
+    name = {"generated-gemma": "gemma4-12b", "generated-haiku": "haiku-5-5"}[mode]
+    found: dict[str, Any] = json.loads((GENERATED / f"{name}.json").read_text(encoding="utf-8"))
+    return found
+
+
+def generated_gaps(mode: str, layer: str) -> tuple[list[str], list[str]]:
+    """Unlabelled and undescribed of one layer after the proposals: a proposed
+    label that only repeats the column name («Name») labels nothing."""
+    proposed = {a["name"]: a for a in generated(mode)[layer]["attributes"]}
+    names = ATTRIBUTES[layer]
+    unlabelled = [
+        n for n in names if proposed.get(n, {}).get("label", "").lower() in ("", n.lower())
+    ]
+    undescribed = ([] if generated(mode)[layer]["layer_description"] else [""]) + [
+        n for n in names if not proposed.get(n, {}).get("description")
+    ]
+    return unlabelled, undescribed
+
+
+def totals(mode: str) -> tuple[int, int, int]:
+    if not mode.startswith("generated-"):
+        return TOTALS[mode]
+    gaps = [generated_gaps(mode, layer) for layer in ATTRIBUTES]
+    unlabelled = sum(len(u) for u, _ in gaps)
+    undescribed = sum(len(d) for _, d in gaps)
+    return 27 - unlabelled, 6, 33 - undescribed
+
+
 def expected_gaps(mode: str) -> list[LayerGaps]:
     no_desc = mode in ("no-desc", "raw", "raw-codes")
     no_labels = mode in ("no-labels", "raw", "raw-codes")
@@ -103,14 +139,18 @@ def expected_gaps(mode: str) -> list[LayerGaps]:
         described = [] if no_desc else DESCRIBED.get(layer, [])
         if mode in ("refs", "refs-role") and layer == "gemeindedaten":
             described = [n for n in described if n != "gem_nr"]
+        unlabelled = names if no_labels else UNLABELLED.get(layer, [])
+        undescribed = ([""] if no_desc else []) + [n for n in names if n not in described]
+        if mode.startswith("generated-"):
+            unlabelled, undescribed = generated_gaps(mode, layer)
         gap = LayerGaps(
             layer=layer,
-            title=layer if mode in ("raw", "raw-codes") else TITLES[layer],
+            title=TITLES[layer] if mode in TITLED else layer,
             attributes=len(names),
             text_attributes=len(CODED.get(layer, [])),
             unconfirmed_codes=CODED.get(layer, []) if no_codes else [],
-            unlabelled=names if no_labels else UNLABELLED.get(layer, []),
-            undescribed=([""] if no_desc else []) + [n for n in names if n not in described],
+            unlabelled=unlabelled,
+            undescribed=undescribed,
         )
         if gap.unconfirmed_codes or gap.unlabelled or gap.undescribed:
             gaps.append(gap)
@@ -130,7 +170,7 @@ def stripped(tmp_path: Path, sample_database: Path) -> Engine:
 def test_the_summary_of_each_mode_matches_the_count_by_hand(stripped: Engine, mode: str) -> None:
     strip(stripped, mode)
     profile = model_profile(stripped, list(TITLES))
-    labelled, coded, described = TOTALS[mode]
+    labelled, coded, described = totals(mode)
     assert profile_summary(profile, stripped) == ProfileSummary(
         profile_hash=profile.hash,
         layers=6,

@@ -17,7 +17,9 @@ the tests of the profile summary (WP94) take every mode from here:
     uv run python evals/run.py --model gemma4:12b --profile no-desc --label a1-gemma4_12b
 """
 
+import json
 from collections.abc import Callable, Collection
+from pathlib import Path
 
 from sqlalchemy import Engine, select, update
 from sqlalchemy.orm import Session
@@ -92,6 +94,41 @@ def _refs(db: Session) -> None:
         row.references = references
 
 
+GENERATED = Path(__file__).parent / "generated"
+"""Proposals of plan-attribute-metadata D, generated once from ``raw-codes`` by
+``layer_proposals`` and taken without edits: ``<generator>.json``, per layer
+``layer_description`` and the attributes' ``label`` and ``description``."""
+
+
+def _generated(generator: str) -> Callable[[Session], None]:
+    """``raw-codes`` with the proposals of ``generator`` saved, as an administrator
+    who takes every proposal unchanged leaves the catalog (D, measurement)."""
+
+    def apply(db: Session) -> None:
+        _raw_codes(db)
+        found = json.loads((GENERATED / f"{generator}.json").read_text(encoding="utf-8"))
+        for layer, proposed in found.items():
+            if proposed["layer_description"]:
+                db.execute(
+                    update(Layer)
+                    .where(Layer.name == layer)
+                    .values(description=proposed["layer_description"])
+                )
+            layer_id = select(Layer.id).where(Layer.name == layer).scalar_subquery()
+            for a in proposed["attributes"]:
+                values = {k: a[k] for k in ("label", "description") if a[k]}
+                if values:
+                    db.execute(
+                        update(LayerAttribute)
+                        .where(
+                            LayerAttribute.layer_id == layer_id, LayerAttribute.name == a["name"]
+                        )
+                        .values(**values)
+                    )
+
+    return apply
+
+
 ROLES: dict[str, set[tuple[str, str]]] = {"refs-role": set(KEYS)}
 """Per mode, the attributes the profile marks ``role: identifier``."""
 
@@ -106,6 +143,8 @@ PROFILES: dict[str, Callable[[Session], None] | None] = {
     "no-units": _no_units,
     "refs": _refs,
     "refs-role": _refs,
+    "generated-gemma": _generated("gemma4-12b"),
+    "generated-haiku": _generated("haiku-5-5"),
 }
 
 
