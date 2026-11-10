@@ -56,6 +56,19 @@ const field = (label: string, level: string) => t`${label} – ${level}`
 const moveLeft = (level: string) => t`„${level}" nach links`
 const moveRight = (level: string) => t`„${level}" nach rechts`
 const removeLevel = (level: string) => t`„${level}" entfernen`
+const atMost = () => t`Höchstens ${MAX_LEVELS} Stufen`
+
+/** Why a level cannot be removed, shown on its disabled button; null when it can. */
+function keepReason(
+  level: { id?: number | null; is_default: boolean },
+  count: number,
+  storedDefault: number | null | undefined,
+): string | null {
+  if (count === 1) return t`Die letzte Stufe bleibt.`
+  if (level.is_default || (level.id != null && level.id === storedDefault))
+    return t`Die voreingestellte Stufe lässt sich nicht entfernen. Zuerst eine andere voreinstellen.`
+  return null
+}
 
 export function LevelsPage() {
   const stored = useLevels()
@@ -91,6 +104,7 @@ export function LevelsPage() {
           type="button"
           className="btn ml-auto"
           disabled={!columns || columns.length >= MAX_LEVELS}
+          title={columns && columns.length >= MAX_LEVELS ? atMost() : undefined}
           onClick={() => columns && change([...columns, newLevel()])}
         >
           <Plus size={14} aria-hidden /> <Trans>Stufe</Trans>
@@ -146,11 +160,8 @@ export function LevelsPage() {
                         type="button"
                         className="btn ml-auto px-1"
                         aria-label={removeLevel(level.name)}
-                        disabled={
-                          columns.length === 1 ||
-                          level.is_default ||
-                          (level.id != null && level.id === storedDefault)
-                        }
+                        disabled={keepReason(level, columns.length, storedDefault) !== null}
+                        title={keepReason(level, columns.length, storedDefault) ?? undefined}
                         onClick={() => change(columns.filter((_, j) => j !== i))}
                       >
                         <Trash2 size={14} aria-hidden />

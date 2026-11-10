@@ -231,18 +231,22 @@ describe('plan (M8)', () => {
       expect(screen.getByRole('button', { name: 'Kette freigeben und starten' })).toHaveFocus(),
     )
     expect(within(card).getByRole('button', { name: 'Ablehnen' })).toHaveAccessibleDescription(
-      'Esc = Ablehnen',
+      'Esc, Esc = Ablehnen',
     )
     expect(hits(calls, 'approve')).toEqual([])
     expect(hits(calls, 'run')).toEqual([])
     unchanged()
   })
 
-  test('M8.1: Esc rejects the plan; the analysis stays as it is', async () => {
+  test('M8.1: Esc, Esc rejects the plan; the analysis stays as it is', async () => {
     const { user, calls, card } = await planned()
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Kette freigeben und starten' })).toHaveFocus(),
     )
+    // The first Esc only opens the reason step.
+    await user.keyboard('{Escape}')
+    expect(within(card).getByRole('group', { name: 'Grund (optional)' })).toBeInTheDocument()
+    expect(hits(calls, 'reject')).toEqual([])
     await user.keyboard('{Escape}')
     await waitFor(() => expect(card).toHaveTextContent('abgelehnt'))
     expect(hits(calls, 'reject').map((c) => c.body)).toEqual([{ reason: null }])
@@ -358,7 +362,7 @@ describe('plan (M8)', () => {
     await user.click(within(card).getByRole('button', { name: 'Anpassen …' }))
     const form = within(card).getByRole('form', { name: 'Plan anpassen' })
     expect(within(form).queryByRole('button', { name: /hinzufügen|neuer Schritt/i })).toBeNull()
-    expect(form).toHaveTextContent('Neue Schritte kommen nur über einen neuen Prompt.')
+    expect(form).toHaveTextContent('Neue Schritte kommen nur über eine neue Frage.')
 
     const distance = within(form).getByRole('textbox', { name: 'Distanz (m) in Schritt 2' })
     expect(distance).toHaveValue('500')
@@ -473,7 +477,7 @@ describe('run (M9)', () => {
     expect(stepItem(3)).toHaveAttribute('data-status', 'running')
     expect(stepItem(3)).toHaveTextContent('läuft …')
     // Input locked while the chain runs; the analysis untouched.
-    expect(screen.getByRole('textbox', { name: 'Prompt' })).toHaveAttribute('readonly')
+    expect(screen.getByRole('textbox', { name: 'Frage' })).toHaveAttribute('readonly')
     unchanged()
 
     // The steps' results, run as the user through Modus A (ids), dimmed, with the
@@ -622,8 +626,8 @@ describe('run (M9)', () => {
     await tick(5000)
     expect(polls(calls, answer.id)).toHaveLength(before)
     unchanged()
-    // M9.4: the account's log beside the adoption.
-    expect(within(end).getByRole('button', { name: 'Protokoll' })).toBeEnabled()
+    // M9.4: the account's log beside the adoption, in ⋯.
+    expect(within(end).getByRole('button', { name: 'Weitere Aktionen' })).toBeEnabled()
     // Step 2 is a buffer: the result to adopt is step 1 (the server's choice, ``query``).
     const first = formatted(CHAIN_HITS[0] ?? 0)
     await user.click(screen.getByRole('button', { name: `Zwischenstand übernehmen (${first})` }))
@@ -711,8 +715,8 @@ describe('run (M9)', () => {
       expect(
         within(end).getByRole('button', { name: `Zwischenstand übernehmen (${last})` }),
       ).toBeEnabled()
-      await user.click(within(end).getByRole('button', { name: 'Prompt ändern' }))
-      expect(screen.getByRole('textbox', { name: 'Prompt' })).toHaveValue(CASE.prompt)
+      await user.click(within(end).getByRole('button', { name: 'Frage ändern' }))
+      expect(screen.getByRole('textbox', { name: 'Frage' })).toHaveValue(CASE.prompt)
       expect(screen.getByRole('radio', { name: 'Werkzeugkette' })).toBeChecked()
     },
   )
@@ -1453,7 +1457,7 @@ describe('entry', () => {
     await isThinking()
     await tick()
     await user.click(await screen.findByRole('button', { name: 'Mit Werkzeugkette versuchen ›' }))
-    expect(screen.getByRole('textbox', { name: 'Prompt' })).toHaveValue(refused.prompt)
+    expect(screen.getByRole('textbox', { name: 'Frage' })).toHaveValue(refused.prompt)
     expect(chain).toBeChecked()
     await tick(3000)
     expect(hits(calls, 'prompt')).toHaveLength(1)

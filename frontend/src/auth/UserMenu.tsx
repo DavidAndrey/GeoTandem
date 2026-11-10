@@ -46,7 +46,7 @@ export function UserMenu({ account }: { account: Account }) {
         <DropdownMenu.Portal>
           <DropdownMenu.Content
             align="end"
-            className="card z-50 min-w-48 py-1 shadow-[var(--shadow-md)]"
+            className="card z-[1100] min-w-48 py-1 shadow-[var(--shadow-md)]"
           >
             <div className="border-divider border-b px-3 pb-1 text-sm">
               <div>{account.username}</div>
@@ -78,8 +78,8 @@ export function UserMenu({ account }: { account: Account }) {
       </DropdownMenu.Root>
       <Dialog.Root open={changing} onOpenChange={setChanging}>
         <Dialog.Portal>
-          <Dialog.Overlay className="bg-ink/30 fixed inset-0 z-40" />
-          <Dialog.Content className="card fixed top-1/4 left-1/2 z-50 w-96 max-w-[calc(100vw-2rem)] -translate-x-1/2 p-5 shadow-[var(--shadow-md)]">
+          <Dialog.Overlay className="bg-ink/30 fixed inset-0 z-[1250]" />
+          <Dialog.Content className="card fixed top-1/4 left-1/2 z-[1300] w-96 max-w-[calc(100vw-2rem)] -translate-x-1/2 p-5 shadow-[var(--shadow-md)]">
             <Dialog.Title className="mb-3 text-xl">
               <Trans>Passwort ändern</Trans>
             </Dialog.Title>

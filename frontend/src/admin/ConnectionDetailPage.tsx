@@ -39,7 +39,7 @@ function Status({ connection: c }: { connection: ConnectionInfo }) {
             <Trans>Für Anwender</Trans>
           </dt>
           <dd>
-            <span>{c.enabled ? t`freigegeben` : t`nicht freigegeben`}</span>
+            <span>{c.enabled ? t`verfügbar` : t`nicht verfügbar`}</span>
             {c.is_default && (
               <span className="chip ml-2">
                 <Trans>voreingestellt</Trans>

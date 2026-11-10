@@ -23,7 +23,7 @@ import { keepEscapeInField } from './escape'
 import { referenceFor } from './reference'
 import { caseErrorText, dataStateText, hitsText, idFrom, idProblem, layersOf } from './words'
 
-/** The entry under the query of the sidebar: only for an administrator, only with a result layer. */
+/** The entry at the end of the query section, set apart: only for an administrator, only with a result layer. */
 export function SaveAsCase() {
   const me = useMe().data
   const hasResult = useAnalysis((s) => s.result !== null)
@@ -31,11 +31,12 @@ export function SaveAsCase() {
   const entry = useRef<HTMLButtonElement>(null)
   if (me?.role !== 'admin' || !hasResult) return null
   return (
-    <div className="mt-1.5">
+    <div className="border-divider mt-3 border-t pt-2">
       <button
         ref={entry}
         type="button"
-        className="text-accent-700 text-xs"
+        data-entry="save-case"
+        className="text-muted hover:text-accent-700 text-xs"
         onClick={() => setOpen(true)}
       >
         <Trans>Als Prüffall speichern</Trans>

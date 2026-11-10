@@ -118,7 +118,7 @@ test("B signs in after A signed out: nothing of A's Modus B, A's parked run neve
   expect(useAnalysis.getState().origin.marks).toEqual({})
   expect(screen.queryByRole('complementary', { name: 'Modell hat angewendet' })).toBeNull()
   // The prompt panel shows B no answer.
-  await user.click(screen.getByRole('tab', { name: 'Prompt' }))
+  await user.click(screen.getByRole('tab', { name: 'Frage' }))
   await waitFor(() => expect(document.getElementById('prompt-panel')).not.toBeNull())
   expect(document.querySelectorAll('#prompt-panel article')).toHaveLength(0)
   // A's one run is all that ran.

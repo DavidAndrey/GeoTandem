@@ -54,7 +54,7 @@ test('buffer, join and aggregation become derived layers', async ({ page }) => {
   await page.getByLabel('Ergebnis-Layer').selectOption({ label: 'Gemeinden + Gemeindedaten' })
   await page.getByRole('button', { name: '+ Bedingung' }).click()
   const row = page.getByRole('region', { name: 'Abfrage-Editor' }).getByRole('group', { name: 'Bedingung Attribut' })
-  await row.getByLabel('Feld').selectOption({ label: 'Einwohner' })
+  await row.getByLabel('Attribut').selectOption({ label: 'Einwohner' })
   await row.getByLabel('Operator').selectOption({ label: '≥' })
   await row.getByLabel('Wert').fill('6000')
   await page.getByRole('button', { name: 'Übernehmen' }).click()

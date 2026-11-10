@@ -60,7 +60,7 @@ export function ProfilePage() {
       <p className="text-muted mb-3 max-w-3xl text-sm">
         <Trans>
           Der Layer-Steckbrief, den ein Modell für ein Konto erhält: nur Metadaten, nur Layer, die
-          das Konto sieht und die für das Modell freigegeben sind. Keine Objektzahlen, keine
+          das Konto sieht und die für das Modell sichtbar sind. Keine Objektzahlen, keine
           Ausdehnung, keine Werte aus den Daten ausser bestätigten Codelisten.
         </Trans>
       </p>
@@ -146,8 +146,8 @@ export function ProfilePage() {
               <Trans>
                 Der Steckbrief ist voraussichtlich grösser als die Kontextlänge von „{connection}“.
                 Er wird nicht gekürzt: Ab der Direktabfrage wird eine Modellaktion für dieses Konto
-                abgelehnt. Weniger Layer oder Felder für das Modell freigeben oder eine Anbindung
-                mit grösserem Kontext wählen.
+                abgelehnt. Weniger Layer oder Felder für das Modell sichtbar lassen oder eine
+                Anbindung mit grösserem Kontext wählen.
               </Trans>
             </p>
           )}

@@ -186,7 +186,7 @@ test.each([
       reading: 0,
       layer: 'schulen',
     }),
-    'Den Layer „schulen" gibt es nicht, er ist nicht sichtbar oder nicht für das Modell freigegeben.',
+    'Den Layer „schulen" gibt es nicht, oder er ist für Sie oder für das Modell nicht sichtbar.',
   ],
   [
     'an id in use',

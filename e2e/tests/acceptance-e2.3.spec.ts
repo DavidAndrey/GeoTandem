@@ -127,7 +127,7 @@ async function createInUi(page: Page, name: string, url: string) {
   await form.getByLabel('Name').fill(name)
   await form.getByLabel('Adresse').fill(url)
   await form.getByLabel('Modell').fill(MODEL)
-  await form.getByLabel('Für Anwender freigegeben').check()
+  await form.getByLabel('Für Anwender verfügbar').check()
   await form.getByRole('button', { name: 'Speichern' }).click()
   // Saved, the new connection is on its own page (plan-connection-detail, D4).
   await expect(page.getByText('Gespeichert', { exact: true })).toBeVisible()
@@ -138,16 +138,16 @@ async function createInUi(page: Page, name: string, url: string) {
 /** A user's workplace with the prompt panel open. */
 async function openPanel(page: Page) {
   await page.goto('/')
-  await page.getByRole('tab', { name: 'Prompt' }).click()
-  return page.getByRole('region', { name: 'Prompt', exact: true })
+  await page.getByRole('tab', { name: 'Frage' }).click()
+  return page.getByRole('region', { name: 'Frage', exact: true })
 }
 
 /** Sends ``text``; the answer card once the model has answered, and the record's id. */
 async function ask(page: Page, text: string) {
-  const panel = page.getByRole('region', { name: 'Prompt', exact: true })
+  const panel = page.getByRole('region', { name: 'Frage', exact: true })
   const items = panel.getByRole('list', { name: 'Verlauf' }).locator(':scope > li')
   const before = await items.count()
-  await panel.getByRole('textbox', { name: 'Prompt' }).fill(text)
+  await panel.getByRole('textbox', { name: 'Frage' }).fill(text)
   const posted = page.waitForResponse(
     (r) => r.request().method() === 'POST' && r.url().endsWith('/api/model/prompt'),
   )
@@ -228,7 +228,8 @@ test.describe('E2.3 against the model stub', { tag: '@stub' }, () => {
 
     const panel = await openPanel(page)
     // A local connection: no notice that the prompt leaves the house.
-    await expect(panel.getByText(new RegExp(`${LOCAL} · Stufe`))).toBeVisible()
+    // The header names the active connection (no status line under the field).
+    await expect(page.getByRole('button', { name: 'Modellunterstützung wählen' })).toContainText(LOCAL)
     await expect(panel.getByRole('complementary', { name: 'Externe Anbindung' })).toHaveCount(0)
 
     const expected = fixture('reference')
@@ -245,7 +246,7 @@ test.describe('E2.3 against the model stub', { tag: '@stub' }, () => {
     // the record fills with their defaults aside; what ran is compared strictly below).
     expect(given((await action(context, id)).query)).toEqual(reference)
 
-    const takeOver = card.getByRole('button', { name: 'In Editor übernehmen' })
+    const takeOver = card.getByRole('button', { name: 'Als Abfrage übernehmen' })
     await expect(takeOver).toBeEnabled()
     await takeOver.click()
     const editor = page.getByRole('region', { name: 'Abfrage-Editor' })
@@ -295,7 +296,7 @@ test.describe('E2.3 against the model stub', { tag: '@stub' }, () => {
         await expect(alert).toContainText(words)
         await expect(card.getByText(`code: ${code}`)).toBeAttached()
         // Viewable, never applicable.
-        await expect(card.getByRole('button', { name: 'In Editor übernehmen' })).toHaveCount(0)
+        await expect(card.getByRole('button', { name: 'Als Abfrage übernehmen' })).toHaveCount(0)
         const view = await action(context, actionId)
         expect([view.status, view.refusal?.code]).toEqual(['refused', code])
         return view.refusal!
@@ -358,25 +359,25 @@ test.describe('E2.3 against the model stub', { tag: '@stub' }, () => {
     await addSchools(page)
 
     const prompt = fixture('unreachable').prompt
-    await page.getByRole('tab', { name: 'Prompt' }).click()
+    await page.getByRole('tab', { name: 'Frage' }).click()
     const { card, id } = await ask(page, prompt)
     const alert = card.getByRole('alert')
     await expect(alert).toContainText('Modell nicht erreichbar')
     await expect(alert).toContainText(`Die Anbindung „${UNREACHABLE}“ antwortet nicht.`)
     await expect(alert).toContainText('Ihr Stand ist unverändert.')
-    const panel = page.getByRole('region', { name: 'Prompt', exact: true })
-    await expect(panel.getByRole('textbox', { name: 'Prompt' })).toHaveValue(prompt)
+    const panel = page.getByRole('region', { name: 'Frage', exact: true })
+    await expect(panel.getByRole('textbox', { name: 'Frage' })).toHaveValue(prompt)
     await expect(page.getByLabel('Trefferzahl', { exact: true })).toHaveText('137 von 137')
     expect((await action(context, id)).error?.code).toBe('llm_unreachable')
 
     // M14.1: another connection from the card, then the same prompt again.
     await card.getByRole('button', { name: 'Anbindung wechseln' }).click()
     await page.getByRole('menuitem', { name: SLOW }).click()
-    await expect(panel.getByText(new RegExp(`${SLOW} · Stufe`))).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Modellunterstützung wählen' })).toContainText(SLOW)
     const slow = await ask(page, prompt)
     await expect(slow.card.getByRole('alert')).toContainText('Zeitüberschreitung')
     await expect(slow.card.getByRole('alert')).toContainText('Ihr Stand ist unverändert.')
-    await expect(panel.getByRole('textbox', { name: 'Prompt' })).toHaveValue(prompt)
+    await expect(panel.getByRole('textbox', { name: 'Frage' })).toHaveValue(prompt)
     await expect(page.getByLabel('Trefferzahl', { exact: true })).toHaveText('137 von 137')
     expect((await action(context, slow.id)).error?.code).toBe('llm_timeout')
     await context.close()
@@ -398,9 +399,11 @@ test.describe('E2.3 against the model stub', { tag: '@stub' }, () => {
     const panel = await openPanel(userPage)
     const host = new URL(EXTERNAL!).hostname
     const notice = panel.getByRole('complementary', { name: 'Externe Anbindung' })
-    await expect(notice).toContainText('Der Prompt-Text verlässt das Haus')
+    await expect(notice).toContainText('Der Text der Frage verlässt das Haus')
     await expect(notice).toContainText(`Er geht an ${host}.`)
-    await expect(panel.getByText(`${EXTERN} · extern · ${host}`, { exact: false })).toBeVisible()
+    const header = panel.page().getByRole('button', { name: 'Modellunterstützung wählen' })
+    await expect(header).toContainText(EXTERN)
+    await expect(header).toContainText(`extern · ${host}`)
 
     // It answers like any other: a clarification (M12.2), the analysis untouched.
     const { card } = await ask(userPage, fixture('clarification').prompt)

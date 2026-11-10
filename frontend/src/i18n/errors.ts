@@ -246,9 +246,9 @@ const MESSAGES: Record<string, Words> = {
     const name = text(d.name)
     return t`Eine Anbindung „${name}" gibt es schon.`
   },
-  default_not_enabled: () => t`Die voreingestellte Anbindung muss für Anwender freigegeben sein.`,
+  default_not_enabled: () => t`Die voreingestellte Anbindung muss für Anwender verfügbar sein.`,
   default_connection_required: () =>
-    t`Solange andere Anbindungen freigegeben sind, braucht es eine voreingestellte. Bitte zuerst eine andere voreinstellen.`,
+    t`Solange andere Anbindungen verfügbar sind, braucht es eine voreingestellte. Bitte zuerst eine andere voreinstellen.`,
   data_release_unconfirmed: () =>
     t`Datenfreigabe an eine externe Anbindung braucht eine ausdrückliche Bestätigung.`,
   connection_not_available: (d) =>

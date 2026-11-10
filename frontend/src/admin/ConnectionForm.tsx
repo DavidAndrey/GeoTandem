@@ -424,7 +424,7 @@ export function ConnectionForm({
               checked={form.enabled}
               onChange={(e) => set({ enabled: e.target.checked })}
             />
-            <Trans>Für Anwender freigegeben</Trans>
+            <Trans>Für Anwender verfügbar</Trans>
           </label>
           <label className="flex items-center gap-1.5">
             <input

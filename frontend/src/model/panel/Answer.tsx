@@ -20,9 +20,8 @@ import { byHandOnly, classList, needsApproval } from '../approval/governance'
 import { ChainAnswer } from '../chain/Chain'
 import { CompareHost } from '../compare/CompareHost'
 import { CheckNote } from '../compare/Check'
-import { CompareMenu } from '../compare/Entry'
+import { CompareMenu, LogMenu } from '../compare/Entry'
 import { useStaleLayer } from '../dialog/reference'
-import { openMyActions } from '../log/dialog'
 import { approachText } from '../log/words'
 import { StatusLabel } from '../status'
 import { dialogueViews, OPEN, useModel } from '../store'
@@ -71,6 +70,7 @@ function DialogueList() {
             at={view.created_at}
             repeat={view.compare_of != null ? view.approach : null}
           />
+          <AnswerLine view={view} />
           {i === views.length - 1 ? <Answer view={view} /> : <Earlier view={view} />}
         </li>
       ))}
@@ -79,6 +79,7 @@ function DialogueList() {
       {failure && (
         <li className="flex flex-col gap-2">
           <PromptLine prompt={failure.prompt} at={null} />
+          <AnswerLine view={null} />
           <ProblemCard
             problem={requestProblem(failure.error)}
             onRetry={() => void send(failure.prompt, failure.approach, failure.parent)}
@@ -87,6 +88,19 @@ function DialogueList() {
       )}
     </ol>
   )
+}
+
+/**
+ * "Antwort · 12:22" over every answer, whatever its kind, as "Frage · 12:21"
+ * over its question: the time the model answered (asked + its latency).
+ */
+function AnswerLine({ view }: { view: ModelActionView | null }) {
+  const answered =
+    view && view.latency_ms != null && view.status !== 'thinking'
+      ? new Date(parseTimestamp(view.created_at).getTime() + view.latency_ms).toISOString()
+      : null
+  const time = clockTime(answered)
+  return <p className="label-caps">{time ? t`Antwort · ${time}` : t`Antwort`}</p>
 }
 
 /**
@@ -103,7 +117,7 @@ function PromptLine({
   repeat?: ModelActionView['approach'] | null
 }) {
   const time = clockTime(at)
-  const label = time ? t`Prompt · ${time}` : t`Prompt`
+  const label = time ? t`Frage · ${time}` : t`Frage`
   const again =
     repeat === 'chain'
       ? t`wiederholt mit Werkzeugkette`
@@ -298,7 +312,7 @@ function Refusal({ view }: { view: ModelActionView }) {
       )}
       <div className="flex flex-wrap gap-2">
         <button type="button" className="btn btn-primary" onClick={() => prefill(view.prompt)}>
-          <Trans>Prompt ändern</Trans>
+          <Trans>Frage ändern</Trans>
         </button>
         <button
           type="button"
@@ -338,11 +352,9 @@ function Stale({ view, layer }: { view: ModelActionView; layer: string }) {
           className="btn"
           onClick={() => void send(view.prompt, view.approach, null)}
         >
-          <Trans>Prompt erneut senden</Trans>
+          <Trans>Frage erneut senden</Trans>
         </button>
-        <button type="button" className="btn" onClick={openMyActions}>
-          <Trans>Protokoll</Trans>
-        </button>
+        <LogMenu />
       </div>
     </article>
   )
@@ -358,6 +370,7 @@ function Proposal({ view, answer }: { view: ModelActionView; answer: QueryAnswer
   const line = lineStyle(key)
   const applied = view.status === 'applied'
   const handOnly = byHandOnly(view)
+  const waiting = needsApproval(view)
   const failed = useHandover((s) => (s.failed?.action === view.id ? s.failed : null))
   const took = seconds(view.latency_ms)
   const approach = approachText(view.approach)
@@ -403,8 +416,20 @@ function Proposal({ view, answer }: { view: ModelActionView; answer: QueryAnswer
           <Trans>danach von Hand geändert</Trans>
         </p>
       )}
-      <QueryTree query={view.query ?? answer.query} line={line} />
-      {needsApproval(view) && <Approval view={view} />}
+      {/* Waiting (M5): the change list is the answer; the whole query folds away. */}
+      {waiting ? (
+        <details className="text-sm">
+          <summary className="text-muted cursor-pointer text-xs">
+            <Trans>Ganze Abfrage ansehen</Trans>
+          </summary>
+          <div className="mt-1">
+            <QueryTree query={view.query ?? answer.query} line={line} />
+          </div>
+        </details>
+      ) : (
+        <QueryTree query={view.query ?? answer.query} line={line} />
+      )}
+      {waiting && <Approval view={view} />}
       {view.status === 'approved' && <Approved view={view} />}
       {view.status === 'undone' && <Undone view={view} />}
       {view.status === 'rejected' && <Rejected view={view} />}
@@ -504,6 +529,8 @@ function Actions({ view }: { view: ModelActionView }) {
   const { catalog, known, failed } = useCatalog()
   const representable = proposalDraft(view.query, view.id, catalog) !== null
   const takeable = !reporting && canTakeOver(view, catalog)
+  // Waiting: the approval's row is the one row of actions, its ⋯ included (M5).
+  if (needsApproval(view)) return null
   return (
     <div className="flex flex-wrap items-center gap-2">
       {byHandOnly(view) && (
@@ -513,7 +540,7 @@ function Actions({ view }: { view: ModelActionView }) {
           disabled={!takeable || editing}
           onClick={() => takeOver(view, catalog)}
         >
-          <Trans>In Editor übernehmen</Trans>
+          <Trans>Als Abfrage übernehmen</Trans>
         </button>
       )}
       {view.status === 'applied' && (
@@ -526,13 +553,10 @@ function Actions({ view }: { view: ModelActionView }) {
             useAnalysis.getState().edit()
           }}
         >
-          <Trans>Im Editor öffnen</Trans>
+          <Trans>Als Abfrage bearbeiten</Trans>
         </button>
       )}
       <UndoAction view={view} />
-      <button type="button" className="btn" onClick={openMyActions}>
-        <Trans>Protokoll</Trans>
-      </button>
       {/* M10.1: ⋯ *Mit Werkzeugkette wiederholen*, and once compared *Vergleich ansehen*. */}
       <CompareMenu view={view} />
       {byHandOnly(view) && known && !representable && (
@@ -684,8 +708,8 @@ function CannotAnswer({
           </p>
           <p id={hint} className="text-muted text-xs">
             {offer === 'chain'
-              ? t`Stellt den Schalter auf Werkzeugkette und setzt denselben Prompt ins Feld. Gesendet wird erst mit Senden.`
-              : t`Stellt den Schalter auf Direktabfrage und setzt denselben Prompt ins Feld. Gesendet wird erst mit Senden.`}
+              ? t`Stellt den Schalter auf Werkzeugkette und setzt dieselbe Frage ins Feld. Gesendet wird erst mit Senden.`
+              : t`Stellt den Schalter auf Direktabfrage und setzt dieselbe Frage ins Feld. Gesendet wird erst mit Senden.`}
           </p>
         </>
       )}

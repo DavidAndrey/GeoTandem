@@ -244,8 +244,8 @@ function analysisIn(text: string): unknown {
 // --- the workplace --------------------------------------------------------------
 
 const hits = (page: Page) => page.getByLabel('Trefferzahl', { exact: true })
-const panelOf = (page: Page) => page.getByRole('region', { name: 'Prompt', exact: true })
-const fieldOf = (page: Page) => panelOf(page).getByRole('textbox', { name: 'Prompt' })
+const panelOf = (page: Page) => page.getByRole('region', { name: 'Frage', exact: true })
+const fieldOf = (page: Page) => panelOf(page).getByRole('textbox', { name: 'Frage' })
 const itemsOf = (page: Page) =>
   panelOf(page).getByRole('list', { name: 'Verlauf' }).locator(':scope > li')
 /** The reference mark above the field (M11.1, M11.2). */
@@ -267,7 +267,7 @@ async function workplace(
   await expect(page.getByRole('button', { name: 'Modellunterstützung wählen' })).toContainText(
     'Stufe: Prüfen',
   )
-  await page.getByRole('tab', { name: 'Prompt' }).click()
+  await page.getByRole('tab', { name: 'Frage' }).click()
   await expect(panelOf(page)).toBeVisible()
   return [context, page]
 }
@@ -377,9 +377,9 @@ test.describe('E2.6 against the model stub', { tag: '@stub' }, () => {
     // M11.1: the next prompt follows the answer, with the analysis's hits.
     await expect(markOf(page)).toContainText('Bezug: letzte Antwort · 10 von 137')
 
-    // M15.1: "Im Editor öffnen" switches to Klassik and opens B2, every
+    // M15.1: "Als Abfrage bearbeiten" switches to Klassik and opens B2, every
     // condition the model set marked "Modell".
-    await first.card.getByRole('button', { name: 'Im Editor öffnen' }).click()
+    await first.card.getByRole('button', { name: 'Als Abfrage bearbeiten' }).click()
     await expect(page.getByRole('tab', { name: 'Klassik' })).toHaveAttribute('aria-selected', 'true')
     const editor = page.getByRole('region', { name: 'Abfrage-Editor' })
     const marks = editor.getByTitle(/^Vom Modell gesetzt/)
@@ -403,8 +403,8 @@ test.describe('E2.6 against the model stub', { tag: '@stub' }, () => {
     await expect(edited.getByTitle(/^Vom Modell gesetzt/)).toHaveCount(0)
 
     // M11.2: back in the panel, the reference is the analysis as changed by hand.
-    await page.getByRole('tab', { name: 'Prompt' }).click()
-    await expect(markOf(page)).toContainText('Bezug: aktuelle Analyse · 4 von 137')
+    await page.getByRole('tab', { name: 'Frage' }).click()
+    await expect(markOf(page)).toContainText('Bezug: aktuelle Abfrage · 4 von 137')
     // The hand edit ends the undo of the model's change (WP70), and is reported.
     await expect(first.card).toContainText(
       'Seit der Modelländerung von Hand geändert. Bitte im Editor zurücksetzen.',
@@ -640,7 +640,7 @@ test.describe('E2.6 against the model stub', { tag: '@stub' }, () => {
       await expect(picker.getByRole('checkbox', { name: /^Schulen/ }).first()).toBeVisible()
       await expect(picker.getByRole('checkbox', { name: /^E26 Steuern/ })).toHaveCount(0)
       await page.keyboard.press('Escape')
-      await page.getByRole('tab', { name: 'Prompt' }).click()
+      await page.getByRole('tab', { name: 'Frage' }).click()
       const stale = itemsOf(page).first()
       await expect(stale).toContainText('veraltet')
       await expect(markOf(page)).toHaveCount(0)
@@ -662,7 +662,7 @@ test.describe('E2.6 against the model stub', { tag: '@stub' }, () => {
       await context.request.delete(`/api/sessions/${s.id}`)
     // Signed in, the workplace may have landed in a session: start empty.
     await page.goto('/')
-    await page.getByRole('tab', { name: 'Prompt' }).click()
+    await page.getByRole('tab', { name: 'Frage' }).click()
     let saved: string | undefined
     try {
       const first = await applyReference(context, page)
@@ -683,7 +683,7 @@ test.describe('E2.6 against the model stub', { tag: '@stub' }, () => {
 
       await page.reload()
       await expect(hits(page)).toHaveText('10 von 137')
-      await page.getByRole('tab', { name: 'Prompt' }).click()
+      await page.getByRole('tab', { name: 'Frage' }).click()
       await expect(panelOf(page)).toBeVisible()
       await expect(panelOf(page).getByRole('list', { name: 'Verlauf' })).toHaveCount(0)
       await expect(markOf(page)).toHaveCount(0)

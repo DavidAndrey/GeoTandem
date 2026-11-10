@@ -102,7 +102,7 @@ test('a new analysis is unsaved until saved under a name (design C1, C2)', async
   })
   renderAt('/', <App />)
   expect(await screen.findByRole('button', { name: 'Sitzungsmenü' })).toHaveTextContent(
-    'Neue Sitzung',
+    'Unbenannte Sitzung',
   )
   useAnalysis.getState().addLayer('schulen')
   await waitFor(() => expect(status()).toHaveTextContent('ungespeichert'))

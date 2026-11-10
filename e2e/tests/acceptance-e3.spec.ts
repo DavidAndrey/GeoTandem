@@ -347,7 +347,7 @@ const head = (page: Page, name: string, nth = 0) =>
 // --- the workplace ------------------------------------------------------------------
 
 const hits = (page: Page) => page.getByLabel('Trefferzahl', { exact: true })
-const panelOf = (page: Page) => page.getByRole('region', { name: 'Prompt', exact: true })
+const panelOf = (page: Page) => page.getByRole('region', { name: 'Frage', exact: true })
 
 /** The level whose classes all need approval: Prüfen, as shipped. */
 async function checkingLevel(request: APIRequestContext): Promise<number> {
@@ -388,7 +388,7 @@ async function buildPrimarySchools(page: Page) {
   await page.getByRole('button', { name: '+ Bedingung' }).click()
   const editor = page.getByRole('region', { name: 'Abfrage-Editor' })
   const kind = editor.getByRole('group', { name: 'Bedingung Attribut' })
-  await kind.getByLabel('Feld').selectOption({ label: 'Höchste Schulstufe' })
+  await kind.getByLabel('Attribut').selectOption({ label: 'Höchste Schulstufe' })
   await kind.getByLabel('Operator').selectOption({ label: 'ist eins von' })
   await kind.getByLabel('Wert hinzufügen').fill('primar')
   await kind.getByLabel('Wert hinzufügen').press('Enter')
@@ -453,7 +453,7 @@ test.describe('E3 against the model stub', { tag: '@stub' }, () => {
         const row = await createInUi(page, name, model)
         await expect(row.getByText('lokal', { exact: true })).toBeVisible()
         await expect(
-          row.getByRole('cell', { name: 'nicht freigegeben', exact: true }),
+          row.getByRole('cell', { name: 'nicht verfügbar', exact: true }),
         ).toBeVisible()
       }
 
@@ -507,11 +507,11 @@ test.describe('E3 against the model stub', { tag: '@stub' }, () => {
       // "zuletzt bewertet" (O7) names this run.
       await expect(page.getByRole('link', { name: `Lauf #${id}` })).toBeVisible()
       const form = page.getByRole('form', { name: 'Anbindung bearbeiten' })
-      await form.getByLabel('Für Anwender freigegeben').check()
+      await form.getByLabel('Für Anwender verfügbar').check()
       await form.getByLabel('Voreingestellt').check()
       await form.getByRole('button', { name: 'Speichern' }).click()
       await expect(form.getByText('Gespeichert', { exact: true })).toBeVisible()
-      await expect(page.getByText('freigegeben', { exact: true })).toBeVisible()
+      await expect(page.getByText('verfügbar', { exact: true })).toBeVisible()
       await expect(page.getByText('voreingestellt', { exact: true })).toBeVisible()
       const after = await connections(request)
       expect(after.find((c) => c.name === DEMO_A)).toMatchObject({
@@ -616,11 +616,11 @@ test.describe('E3 against the model stub', { tag: '@stub' }, () => {
       await dialog.getByRole('button', { name: 'Schliessen' }).click()
 
       // M16.2 → V2: an accepted direct query becomes a case without typing its query.
-      await work.getByRole('tab', { name: 'Prompt' }).click()
+      await work.getByRole('tab', { name: 'Frage' }).click()
       const panel = panelOf(work)
       const items = panel.getByRole('list', { name: 'Verlauf' }).locator(':scope > li')
       const before = await items.count()
-      await panel.getByRole('textbox', { name: 'Prompt' }).fill(LOGGED_PROMPT)
+      await panel.getByRole('textbox', { name: 'Frage' }).fill(LOGGED_PROMPT)
       const posted = work.waitForResponse(
         (r) => r.request().method() === 'POST' && r.url().endsWith('/api/model/prompt'),
       )

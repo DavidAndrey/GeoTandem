@@ -49,7 +49,7 @@ function what(problem: Problem): string {
   const text = errorText(problem.code, problem.details, problem.message)
   // A follow-up's analysis refused (WP81): it is the user's state, × asks without it.
   if (aboutAnalysis(problem))
-    return t`Die aktuelle Analyse lässt sich dem Modell so nicht mitgeben: ${text} Fragen Sie ohne Bezug (× über dem Feld).`
+    return t`Die aktuelle Abfrage lässt sich dem Modell so nicht mitgeben: ${text} Fragen Sie ohne Bezug (× über dem Feld).`
   return text
 }
 

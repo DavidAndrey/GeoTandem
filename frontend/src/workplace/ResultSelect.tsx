@@ -8,7 +8,7 @@ import { canBeResult } from '../analysis/query'
 import { currentAnalysis, useAnalysis } from '../analysis/store'
 import { rows } from '../analysis/tree'
 import { useLayers } from '../api/queries'
-import { ConfirmDialog } from '../components/ui'
+import { ConfirmDialog, Labelled } from '../components/ui'
 import { layerTitle } from './layerInfo'
 
 export function ResultSelect({ hint }: { hint?: boolean }) {
@@ -28,10 +28,9 @@ export function ResultSelect({ hint }: { hint?: boolean }) {
 
   return (
     <>
-      <label className="flex flex-wrap items-center gap-2 text-sm">
-        <Trans>Ergebnis:</Trans>
+      <Labelled label={t`Layer`} className="text-sm">
         <select
-          className="input flex-1"
+          className="input w-full"
           aria-label={t`Ergebnis-Layer`}
           value={analysis.result ?? ''}
           onChange={(e) =>
@@ -46,11 +45,11 @@ export function ResultSelect({ hint }: { hint?: boolean }) {
           ))}
         </select>
         {hint && (
-          <span className="text-muted w-full text-xs">
-            <Trans>Ziel-Layer wechseln setzt Attribut-Bedingungen zurück.</Trans>
+          <span className="text-muted text-xs">
+            <Trans>Ein anderer Layer setzt die Attribut-Bedingungen zurück.</Trans>
           </span>
         )}
-      </label>
+      </Labelled>
       {pending && (
         <ConfirmDialog
           open

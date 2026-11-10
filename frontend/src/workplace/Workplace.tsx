@@ -88,7 +88,7 @@ export function Workplace() {
               className={`tab text-sm ${available ? '' : 'text-muted'}`}
               disabled={!available}
             >
-              <Trans>Prompt</Trans>
+              <Trans>Frage</Trans>
             </Tabs.Trigger>
           </Tabs.List>
           <Tabs.Content value="klassik" className="flex flex-col gap-5 pt-3">
@@ -234,8 +234,8 @@ function TableToggle() {
     <button
       type="button"
       className={toolClass}
-      title={t`Attributtabelle ein/aus`}
-      aria-label={t`Attributtabelle`}
+      title={t`Datendetails ein/aus`}
+      aria-label={t`Datendetails`}
       aria-pressed={open}
       disabled={!hasLayers}
       onClick={() => setOpen(!open)}

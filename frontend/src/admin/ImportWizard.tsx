@@ -749,7 +749,7 @@ function CheckStep({
           checked={state.forModel}
           onChange={(e) => onChange({ forModel: e.target.checked })}
         />
-        <Trans>Für das Modell sichtbar (wirkt ab E2)</Trans>
+        <Trans>Für das Modell sichtbar</Trans>
       </label>
     </div>
   )

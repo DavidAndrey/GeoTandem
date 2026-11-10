@@ -14,7 +14,18 @@ export const MIN_PASSWORD_LENGTH = 12
 
 /** Under every new-password field: length over complexity (security review #12). */
 export const passwordHint = () =>
-  t`Mindestens ${MIN_PASSWORD_LENGTH} Zeichen, Sonderzeichen sind nicht nötig. Ein Satz aus mehreren Wörtern ist sicher und gut zu merken.`
+  t`Mindestens ${MIN_PASSWORD_LENGTH} Zeichen, Sonderzeichen sind nicht nötig. Benutzername, Anzeigename und «GeoTandem» dürfen nicht darin vorkommen. Ein Satz aus mehreren Wörtern ist sicher und gut zu merken.`
+
+/**
+ * Why a form's button is still off: the labels of its required fields that are
+ * empty ("Noch auszufüllen: Einrichtungscode"), or null when none is.
+ */
+export function stillEmpty(fields: [label: string, value: string][]): string | null {
+  const empty = fields.filter(([, value]) => value.trim() === '').map(([label]) => label)
+  if (empty.length === 0) return null
+  const list = empty.join(', ')
+  return t`Noch auszufüllen: ${list}`
+}
 
 /** Problems the form can tell before asking the server; the server checks again. */
 export function passwordProblems(current: string, next: string, repeat: string): string[] {

@@ -81,7 +81,7 @@ function costText(r: RunSummary, connections: ConnectionInfo[] | undefined): str
   return local ? t`lokal` : t`kein Preis`
 }
 
-function Empty() {
+function Empty({ connected }: { connected: boolean }) {
   return (
     <div className="card max-w-2xl border-dashed p-4">
       <h3 className="mb-1 text-base">
@@ -94,9 +94,20 @@ function Empty() {
           min lokal).
         </Trans>
       </p>
-      <Link to={`${NEW_RUN}?umfang=schnell`} className="btn btn-primary">
-        <Trans>Neuer Lauf</Trans>
-      </Link>
+      {connected ? (
+        <Link to={`${NEW_RUN}?umfang=schnell`} className="btn btn-primary">
+          <Trans>Neuer Lauf</Trans>
+        </Link>
+      ) : (
+        <>
+          <p className="text-muted mb-2 text-sm">
+            <Trans>Dafür braucht es zuerst eine Modellanbindung.</Trans>
+          </p>
+          <Link to="/admin/modelle/neu" className="btn btn-primary">
+            <Trans>Modellanbindung einrichten</Trans>
+          </Link>
+        </>
+      )}
     </div>
   )
 }
@@ -124,7 +135,9 @@ export function RunsPage() {
     <div className="max-w-6xl">
       {runs.isPending && <Loading />}
       <ErrorNotice error={runs.error} />
-      {runs.data && items.length === 0 && <Empty />}
+      {runs.data && connections && items.length === 0 && (
+        <Empty connected={connections.length > 0} />
+      )}
       {items.length > 0 && (
         <>
           <div className="mb-2 flex flex-wrap items-center gap-3 text-sm">

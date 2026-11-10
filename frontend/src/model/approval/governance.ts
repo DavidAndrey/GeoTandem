@@ -27,11 +27,11 @@ const CELL_LABELS: Record<CellMode, MessageDescriptor> = {
   auto: msg({ message: 'auto', context: 'level cell' }),
 }
 
-/** The short column of M7.2: A = auto, F = Freigabe, – = aus. */
-const CELL_SHORT: Record<CellMode, MessageDescriptor> = {
-  off: msg({ message: '–', comment: 'Short level cell: off' }),
-  approve: msg({ message: 'F', comment: 'Short level cell: Freigabe (approval)' }),
-  auto: msg({ message: 'A', comment: 'Short level cell: auto' }),
+/** A level whose classes all share one cell, in a few words (M7.2). */
+const CELL_ALL: Record<CellMode, MessageDescriptor> = {
+  off: msg`nur Vorschläge, Sie übernehmen von Hand`,
+  approve: msg`jede Änderung erst nach Ihrer Freigabe`,
+  auto: msg`wendet sofort an, Sie können zurücknehmen`,
 }
 
 /** The optional chip of a rejection (design M5.3), in the design's order. */
@@ -48,7 +48,19 @@ export const reasonText = (reason: RejectReason) => i18n._(REASONS[reason])
 
 export const classLabel = (k: OpClass) => i18n._(CLASS_LABELS[k])
 export const cellLabel = (cell: CellMode) => i18n._(CELL_LABELS[cell])
-export const cellShort = (cell: CellMode) => i18n._(CELL_SHORT[cell])
+/**
+ * What a level lets the model do, in words (M7.2): one phrase when every class
+ * shares a cell, else the classes grouped by cell ("auto: Katalog lesen ·
+ * Freigabe: Abgeleitete Layer").
+ */
+export function levelSummary(matrix: Matrix): string {
+  const cells: CellMode[] = ['auto', 'approve', 'off']
+  const groups = cells
+    .map((cell) => ({ cell, classes: OP_CLASSES.filter((k) => matrix[k] === cell) }))
+    .filter((g) => g.classes.length > 0)
+  if (groups.length === 1) return i18n._(CELL_ALL[groups[0].cell])
+  return groups.map((g) => `${cellLabel(g.cell)}: ${classList(g.classes)}`).join(' · ')
+}
 
 /** "1 Bedingung", "3 Bedingungen". */
 export function conditionCount(n: number) {

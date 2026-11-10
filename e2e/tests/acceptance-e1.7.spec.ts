@@ -49,7 +49,7 @@ test('Vorführung E1: answered by hand, saved, reproduced after a restart', asyn
     await page.getByRole('menuitem', { name: 'Puffer …' }).click()
     await page.getByRole('dialog').getByRole('button', { name: 'Puffer anlegen' }).click()
     // ... its hits read in the table, sorted by name (E1.6) ...
-    await page.getByRole('button', { name: 'Attributtabelle', exact: true }).click()
+    await page.getByRole('button', { name: 'Datendetails', exact: true }).click()
     const table = page.getByRole('table', { name: 'Attribute von Schulen' })
     await table.getByRole('columnheader', { name: /Schulname/ }).getByRole('button').click()
     await table.getByRole('columnheader', { name: /Schulname/ }).getByRole('button').click()
@@ -87,7 +87,7 @@ test('Vorführung E1: answered by hand, saved, reproduced after a restart', asyn
   // Layers, the derived buffer and the table come back as saved.
   const panel = again.getByRole('region', { name: 'Layer' })
   await expect(panel.getByRole('heading', { name: 'Abgeleitet · Sitzung' })).toBeVisible()
-  await again.getByRole('button', { name: 'Attributtabelle', exact: true }).click()
+  await again.getByRole('button', { name: 'Datendetails', exact: true }).click()
   const table = again.getByRole('table', { name: 'Attribute von Schulen' })
   await expect(table.locator('tbody tr[data-fid]')).toHaveCount(10)
   await expect(table.getByRole('columnheader', { name: /Schulname/ })).toHaveAttribute(

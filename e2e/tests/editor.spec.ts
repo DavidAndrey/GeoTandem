@@ -36,7 +36,7 @@ test('conditions built by hand count like the hand-written query', async ({ page
   await page.getByRole('button', { name: '+ Bedingung' }).click()
   const editor = page.getByRole('region', { name: 'Abfrage-Editor' })
   const row = editor.getByRole('group', { name: 'Bedingung Attribut' })
-  await row.getByLabel('Feld').selectOption({ label: 'Höchste Schulstufe' })
+  await row.getByLabel('Attribut').selectOption({ label: 'Höchste Schulstufe' })
   await row.getByLabel('Operator').selectOption({ label: 'ist eins von' })
   await row.getByLabel('Wert hinzufügen').fill('primar')
   await row.getByLabel('Wert hinzufügen').press('Enter')
@@ -48,7 +48,7 @@ test('conditions built by hand count like the hand-written query', async ({ page
   await spatial.getByLabel('Distanz in Metern').fill('500')
   await spatial.getByLabel('Bezugslayer').selectOption({ label: 'Strassen' })
   await spatial.getByRole('button', { name: '+ Filter' }).click()
-  await spatial.getByLabel('Feld').selectOption({ label: 'Strassenklasse' })
+  await spatial.getByLabel('Attribut').selectOption({ label: 'Strassenklasse' })
   await spatial.getByLabel('Wert').fill('kantonsstrasse_b')
   await editor.getByRole('button', { name: 'Übernehmen' }).click()
 

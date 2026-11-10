@@ -48,7 +48,7 @@ export function SessionMenu() {
     <div className="flex items-center gap-3">
       <DropdownMenu.Root>
         <DropdownMenu.Trigger className="btn btn-primary" aria-label={t`Sitzungsmenü`}>
-          {current?.name ?? t`Neue Sitzung`}
+          {current?.name ?? t`Unbenannte Sitzung`}
           <ChevronDown size={14} aria-hidden />
         </DropdownMenu.Trigger>
         <DropdownMenu.Portal>
@@ -97,7 +97,7 @@ export function SessionMenu() {
               </DropdownMenu.Item>
             ))}
             <DropdownMenu.Item className={item} onSelect={() => openDialog('list')}>
-              <Trans>Alle öffnen …</Trans> <Shortcut>C3</Shortcut>
+              <Trans>Alle öffnen …</Trans>
             </DropdownMenu.Item>
             <DropdownMenu.Separator className="my-1 h-px bg-[var(--color-divider)]" />
             <DropdownMenu.Item

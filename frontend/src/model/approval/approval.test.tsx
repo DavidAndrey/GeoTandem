@@ -191,7 +191,15 @@ describe('approval (M5)', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Annehmen' })).toHaveFocus())
     const reject = within(card).getByRole('button', { name: 'Ablehnen' })
     expect(reject).toHaveAttribute('aria-keyshortcuts', 'Escape')
-    expect(reject).toHaveAccessibleDescription('Esc = Ablehnen')
+    expect(reject).toHaveAccessibleDescription('Esc, Esc = Ablehnen')
+    // One row of actions while waiting: the answer's ⋯ sits in the approval, no second row.
+    expect(within(approval).getByRole('button', { name: 'Weitere Aktionen' })).toBeInTheDocument()
+    expect(within(card).getAllByRole('button', { name: 'Weitere Aktionen' })).toHaveLength(1)
+    // The change list is the answer; the whole query (tree, JSON) folds away.
+    const whole = within(card).getByText('Ganze Abfrage ansehen').closest('details')
+    expect(whole).not.toBeNull()
+    expect(whole).not.toHaveAttribute('open')
+    expect(whole).toHaveTextContent('Technisch (Abfrageobjekt JSON)')
     // The map says the dashed layer is a preview, nothing is applied yet.
     expect(screen.getByText('Vorschau gestrichelt · noch nicht angewendet')).toBeInTheDocument()
     expect(calls.filter((c) => c.key.endsWith('/preview'))).toHaveLength(1)
@@ -314,13 +322,67 @@ describe('approval (M5)', () => {
     expect(keys(calls)).toEqual([`POST /api/model/actions/${actionView('reference').id}/reject`])
   })
 
-  test('Esc rejects at once, without a reason, and leaves the panel open', async () => {
+  test('one Esc only opens the reason step; Esc there rejects; the panel stays open', async () => {
     const { user, calls, card } = await answered()
     await waitFor(() => expect(screen.getByRole('button', { name: 'Annehmen' })).toHaveFocus())
     await user.keyboard('{Escape}')
+    // Nothing decided yet: the reason step, its Ablehnen focused, Zurück leads back.
+    expect(within(card).getByRole('group', { name: 'Grund (optional)' })).toBeInTheDocument()
+    expect(within(card).getByRole('button', { name: 'Ablehnen' })).toHaveFocus()
+    expect(bodies(calls, 'reject')).toEqual([])
+    await user.click(within(card).getByRole('button', { name: 'Zurück' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Annehmen' })).toHaveFocus())
+    expect(bodies(calls, 'reject')).toEqual([])
+    // Esc, Esc rejects, without a reason.
+    await user.keyboard('{Escape}')
+    await user.keyboard('{Escape}')
     await waitFor(() => expect(bodies(calls, 'reject')).toEqual([{ reason: null }]))
-    expect(screen.getByRole('region', { name: 'Prompt' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Frage' })).toBeInTheDocument()
     await waitFor(() => expect(card).toHaveTextContent('Ohne Grund abgelehnt.'))
+  })
+
+  test('#4d: the preview draws what the conditions refer to, grey, and the caption names it', async () => {
+    const { calls } = await answered()
+    const caption = await screen.findByRole('note', { name: 'Vorschau' })
+    await waitFor(() => expect(within(caption).getAllByText(/^Bezug grau: /)).toHaveLength(2))
+    // In the editor's words, the filter on the related layer included.
+    expect(
+      within(caption).getByText(
+        'Bezug grau: ≤ 500 m zu Strassen (Strassenklasse = kantonsstrasse_b)',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      within(caption).getByText('Bezug grau: liegt in Gemeinden · Steuern (Steueranlage > 1.6)'),
+    ).toBeInTheDocument()
+    // The objects of each filtered relation, loaded for the map by the user's own session.
+    await waitFor(() => {
+      const loaded = calls
+        .filter((c) => c.key === 'POST /api/query')
+        .map((c) => c.body as { source: string; where?: unknown })
+      expect(loaded).toContainEqual(
+        expect.objectContaining({
+          source: 'strassen',
+          where: { op: 'compare', attr: 'klasse', cmp: 'eq', value: 'kantonsstrasse_b' },
+        }),
+      )
+      expect(loaded).toContainEqual(
+        expect.objectContaining({
+          source: 'gemeinden_steuern',
+          where: { op: 'compare', attr: 'steueranlage', cmp: 'gt', value: 1.6 },
+        }),
+      )
+    })
+  })
+
+  test('Esc that closes the ⋯ menu stays with the menu: no reason step, nothing rejected', async () => {
+    const { user, calls, card } = await answered()
+    const approval = within(card).getByRole('region', { name: 'Freigabe' })
+    await user.click(within(approval).getByRole('button', { name: 'Weitere Aktionen' }))
+    expect(await screen.findByRole('menuitem', { name: 'Protokoll' })).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
+    expect(within(card).queryByRole('group', { name: 'Grund (optional)' })).toBeNull()
+    expect(bodies(calls, 'reject')).toEqual([])
   })
 
   test('Anpassen … opens B2 with the draft; what it applies is reported as adjusted', async () => {
@@ -467,7 +529,7 @@ describe('approval (M5)', () => {
     await tick()
     expect(useApproval.getState().last?.touched).toBe(false)
     expect(calls.filter((c) => c.key.endsWith('/touched'))).toEqual([])
-    await user.click(screen.getByRole('tab', { name: 'Prompt' }))
+    await user.click(screen.getByRole('tab', { name: 'Frage' }))
     const again = await screen.findByRole('region', { name: 'Freigabe' })
     expect(within(again).queryByText(/Stand hat sich seit dem Vorschlag geändert/)).toBeNull()
 
@@ -744,7 +806,7 @@ describe('auto (M6)', () => {
 
   test('a level with off parts keeps the hand-over (M4): no approval, no preview, no run', async () => {
     const { card, calls } = await answered('Assistenz')
-    expect(within(card).getByRole('button', { name: 'In Editor übernehmen' })).toBeEnabled()
+    expect(within(card).getByRole('button', { name: 'Als Abfrage übernehmen' })).toBeEnabled()
     expect(within(card).queryByRole('region', { name: 'Freigabe' })).toBeNull()
     await tick(2000)
     expect(calls.filter((c) => /preview|approve|execute/.test(c.key))).toEqual([])
@@ -818,17 +880,17 @@ describe('level display (M7)', () => {
       .slice(1)
       .map((r) => r.textContent)
     expect(cells).toEqual([
-      'Katalog lesen catalogauto',
-      'Attributfilter queryauto',
-      'Raumfilter spatialauto',
-      'Abgeleitete Layer deriveFreigabe',
-      'Darstellung displayauto',
+      'Katalog lesenauto',
+      'Attributfilterauto',
+      'Raumfilterauto',
+      'Abgeleitete LayerFreigabe',
+      'Darstellungauto',
     ])
     expect(within(popover).queryByRole('button')).toBeNull()
     expect(within(popover).queryByRole('textbox')).toBeNull()
   })
 
-  test('M7.2: each level shows its short column; the matrix decides, never the name', async () => {
+  test('M7.2: each level says in words what the model may; the matrix decides, never the name', async () => {
     // Names are free admin text: "Automatisch" here is a level that may do nothing.
     const options: LLMOptions = {
       ...llmOptions(),
@@ -842,14 +904,14 @@ describe('level display (M7)', () => {
     renderAt('/', <ModelChoice />)
     await userEvent.click(await screen.findByRole('button', { name: 'Modellunterstützung wählen' }))
     const item = (name: RegExp) => screen.getByRole('menuitemradio', { name })
-    expect(item(/Automatisch/)).toHaveTextContent('– – – – –')
-    expect(item(/Prüfen/)).toHaveTextContent('F F F F F')
-    expect(item(/Teilautonom/)).toHaveTextContent('A A A F A')
-    // A screen reader hears the cells in words.
-    expect(item(/Teilautonom/)).toHaveAccessibleName(/Abgeleitete Layer: Freigabe/)
-    expect(
-      screen.getByText(/A = auto · F = Freigabe · – = aus; Spalten: catalog · query/),
-    ).toBeInTheDocument()
+    expect(item(/Automatisch/)).toHaveTextContent('nur Vorschläge, Sie übernehmen von Hand')
+    expect(item(/Prüfen/)).toHaveTextContent('jede Änderung erst nach Ihrer Freigabe')
+    expect(item(/Teilautonom/)).toHaveTextContent(
+      'auto: Katalog lesen, Attributfilter, Raumfilter, Darstellung · Freigabe: Abgeleitete Layer',
+    )
+    // No internal codes: neither the old letter column nor the class identifiers.
+    const menu = screen.getByRole('menu')
+    expect(menu).not.toHaveTextContent(/\bF F\b|catalog|spatial/)
   })
 
   test('M7.3: a change with an open approval asks in a focus-trapped dialog; the proposal stays bound', async () => {

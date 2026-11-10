@@ -72,17 +72,19 @@ function Shell() {
     <div className="flex h-screen flex-col">
       <header className="border-divider flex items-center gap-6 border-b px-4 py-2">
         <span className="font-heading text-xl font-semibold tracking-tight">GeoTandem</span>
-        {workplace && <SessionMenu />}
-        <nav className="flex gap-4" aria-label={t`Hauptnavigation`}>
-          <NavLink to="/" end className={link}>
-            <Trans>Karte</Trans>
-          </NavLink>
-          {me.data?.role === 'admin' && (
+        {/* Before the session, so its growing save state never moves it; only for an
+            administrator: with the map as the one place, a navigation has nothing to offer. */}
+        {me.data?.role === 'admin' && (
+          <nav className="flex gap-4" aria-label={t`Hauptnavigation`}>
+            <NavLink to="/" end className={link}>
+              <Trans>Karte</Trans>
+            </NavLink>
             <NavLink to="/admin" className={link}>
               <Trans>Administration</Trans>
             </NavLink>
-          )}
-        </nav>
+          </nav>
+        )}
+        {workplace && <SessionMenu />}
         <div className="ml-auto flex items-center gap-4">
           {workplace && <ModelChoice />}
           {me.data && <UserMenu account={me.data} />}

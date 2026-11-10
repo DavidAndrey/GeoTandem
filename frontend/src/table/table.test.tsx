@@ -82,7 +82,7 @@ const bodyRows = (table: HTMLElement) =>
 async function openTable() {
   backend()
   renderAt('/', <App />)
-  await userEvent.click(await screen.findByRole('button', { name: 'Attributtabelle' }))
+  await userEvent.click(await screen.findByRole('button', { name: 'Datendetails' }))
   return screen.findByRole('table', { name: 'Attribute von Schulen' })
 }
 

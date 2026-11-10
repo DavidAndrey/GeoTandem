@@ -34,7 +34,7 @@ const DESIGN: Record<StatusKey, [string, LineStyle]> = {
   rejected: ['abgelehnt', 'void'],
   superseded: ['übergangen', 'void'],
   undone: ['zurückgenommen', 'void'],
-  refused: ['abgewiesen', 'void'],
+  refused: ['abgewiesen', 'message'],
   stale: ['veraltet', 'void'],
   aborted: ['abgebrochen', 'void'],
   interrupted: ['unterbrochen', 'void'],

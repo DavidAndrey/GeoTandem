@@ -20,7 +20,7 @@ import { RejectStep, Rejected, Undone } from '../approval/Approval'
 import { adopt, escapeRejects, startRejecting, useApproval } from '../approval/flow'
 import { cellLabel, classList } from '../approval/governance'
 import { resumePolling } from '../panel/poll'
-import { openMyActions } from '../log/dialog'
+import { LogMenu } from '../compare/Entry'
 import { prefill, usePanel } from '../panel/state'
 import { clockTime, minutes, seconds } from '../panel/time'
 import { readQuery } from '../readable'
@@ -100,7 +100,7 @@ const ANNOUNCE_MS = 3000
 
 /**
  * The chain's answer card. ``actions``: the answer's actions once it is applied
- * (*Im Editor öffnen*, *Zurücknehmen*, *Protokoll*), from the dialogue.
+ * (*Als Abfrage bearbeiten*, *Zurücknehmen*, ⋯ *Protokoll*), from the dialogue.
  */
 export function ChainAnswer({ view, actions }: { view: ModelActionView; actions?: ReactNode }) {
   const phase = phaseOf(view)
@@ -508,7 +508,7 @@ function PlanActions({ view }: { view: ModelActionView }) {
     <section
       aria-label={t`Freigabe`}
       className="border-divider flex flex-col gap-2 border-t pt-2"
-      onKeyDown={escapeRejects(view, rejecting?.reason ?? null)}
+      onKeyDown={escapeRejects(view)}
     >
       <p className="text-muted text-xs">
         {whole
@@ -550,7 +550,7 @@ function PlanActions({ view }: { view: ModelActionView }) {
             <Trans>Ablehnen</Trans>
           </button>
           <span id={`esc-${view.id}`} className="text-muted ml-auto text-xs">
-            <Trans>Esc = Ablehnen</Trans>
+            <Trans>Esc, Esc = Ablehnen</Trans>
           </span>
         </div>
       )}
@@ -889,16 +889,14 @@ function StoppedActions({ view }: { view: ModelActionView }) {
             className="btn btn-primary"
             onClick={() => prefill(view.prompt, view.approach)}
           >
-            <Trans>Prompt ändern</Trans>
+            <Trans>Frage ändern</Trans>
           </button>
         )}
         {adoptButton}
-        {/* M9.4: the account's own log (M16.3). */}
-        <button type="button" className="btn" onClick={openMyActions}>
-          <Trans>Protokoll</Trans>
-        </button>
         {/* A stopped chain with a result is compared too (service.py ``COMPARABLE``). */}
         {last && compareEntry?.(view)}
+        {/* M9.4: the account's own log (M16.3), in ⋯. */}
+        <LogMenu />
       </div>
       <AdoptState view={view} />
       <p className="text-muted text-xs">

@@ -77,7 +77,7 @@ export function AddLayers() {
                     {layer.kind === 'table' && (
                       <span
                         className="text-muted text-xs"
-                        title={t`Erscheint in der Attributtabelle, nicht auf der Karte`}
+                        title={t`Erscheint in den Datendetails, nicht auf der Karte`}
                       >
                         <Trans>Tabelle</Trans>
                       </span>
@@ -88,7 +88,7 @@ export function AddLayers() {
             })}
             {catalog.data && shown.length === 0 && (
               <li className="text-muted py-2">
-                {catalog.data.length === 0 ? t`Keine Layer freigegeben.` : t`Kein Layer passt.`}
+                {catalog.data.length === 0 ? t`Keine Layer verfügbar.` : t`Kein Layer passt.`}
               </li>
             )}
           </ul>

@@ -92,7 +92,7 @@ describe('reference kind and stale layers', () => {
 describe('M11.1 the reference above the field', () => {
   test('the next prompt follows the latest answer, with the analysis as it is', async () => {
     const { user, calls, answer } = await answered()
-    const mark = await screen.findByText(/^Bezug: aktuelle Analyse · 137 von 137/)
+    const mark = await screen.findByText(/^Bezug: aktuelle Abfrage · 137 von 137/)
     expect(mark).toBeInTheDocument()
 
     await ask(user, 'Welche davon haben mehr als einen Standort?')
@@ -127,7 +127,7 @@ describe('M11.2 changed by hand since', () => {
     )
     const card = screen.getByRole('article', { name: 'Antwort' })
     expect(card).toHaveTextContent('danach von Hand geändert')
-    expect(await screen.findByText(/^Bezug: aktuelle Analyse/)).toBeInTheDocument()
+    expect(await screen.findByText(/^Bezug: aktuelle Abfrage/)).toBeInTheDocument()
   })
 })
 
@@ -144,7 +144,7 @@ describe('M11.3 a stale answer', () => {
     expect(within(card).queryByRole('button', { name: /Editor/ })).toBeNull()
     expect(screen.queryByText(/^Bezug:/)).toBeNull()
 
-    await user.click(within(card).getByRole('button', { name: 'Prompt erneut senden' }))
+    await user.click(within(card).getByRole('button', { name: 'Frage erneut senden' }))
     await waitFor(() => expect(posts(calls)).toHaveLength(2))
     expect(posts(calls)[1]).toEqual({ text: answer.prompt, approach: 'direct' })
   })
@@ -211,7 +211,7 @@ describe('a refused analysis and a stale reference (E2.6 gate review)', () => {
       { code: 'not_representable', message: 'no', details: { part: 'buffer', of: 'analysis' } },
       400,
     )
-    expect(alert).toHaveTextContent('Die aktuelle Analyse lässt sich dem Modell so nicht mitgeben')
+    expect(alert).toHaveTextContent('Die aktuelle Abfrage lässt sich dem Modell so nicht mitgeben')
     expect(alert).toHaveTextContent('Fragen Sie ohne Bezug (× über dem Feld).')
     expect(screen.queryByRole('button', { name: 'Erneut versuchen' })).toBeNull()
   })

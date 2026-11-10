@@ -41,7 +41,7 @@ export function ConnectionsPage() {
       <p className="text-muted mb-3 max-w-3xl text-sm">
         <Trans>
           Modelle hinter einer OpenAI-kompatiblen Schnittstelle (Ollama, vLLM, llama.cpp, Cloud).
-          Anwender wählen unter den freigegebenen; eine nicht freigegebene nutzt niemand, auch kein
+          Anwender wählen unter den verfügbaren; eine nicht verfügbare nutzt niemand, auch kein
           Administrator.
         </Trans>
       </p>
@@ -112,7 +112,7 @@ export function ConnectionsPage() {
                 <td>
                   <LocalityBadge locality={c.locality} host={c.host} />
                 </td>
-                <td>{c.enabled ? t`freigegeben` : t`nicht freigegeben`}</td>
+                <td>{c.enabled ? t`verfügbar` : t`nicht verfügbar`}</td>
                 <td>{c.may_receive_data ? t`erlaubt` : t`nur Metadaten`}</td>
                 <td>
                   <LastTest connection={c} />

@@ -42,16 +42,17 @@ export function QueryPanel() {
 
   return (
     <section aria-labelledby="query-title">
-      <div className="mb-1 flex items-center">
-        <h2 id="query-title" className="label-caps flex-1">
-          <Trans>Abfrage</Trans>
-        </h2>
-        {counts.data && (
-          <span className="text-sm" aria-label={t`Trefferzahl`}>
-            {hitsOf(counts.data.hits, counts.data.total)}
+      <h2 id="query-title" className="panel-title mb-1">
+        <Trans>Abfrage</Trans>
+      </h2>
+      {counts.data && (
+        <p className="mb-2 flex items-baseline gap-2 text-sm">
+          <span className="text-muted">
+            <Trans>Ergebnis</Trans>
           </span>
-        )}
-      </div>
+          <span aria-label={t`Trefferzahl`}>{hitsOf(counts.data.hits, counts.data.total)}</span>
+        </p>
+      )}
       <ResultSelect />
       {result && (
         <div className="card mt-2 p-2 text-sm" aria-label={t`Bedingungen (Übersicht)`}>
@@ -91,8 +92,6 @@ export function QueryPanel() {
           )}
         </div>
       )}
-      {/* Administrators only (design V3): the analysis as the reference of a new case. */}
-      {result && !draft && <SaveAsCase />}
       {result && (
         <div
           className="mt-2 flex flex-wrap items-center gap-1.5 text-xs"
@@ -138,6 +137,9 @@ export function QueryPanel() {
           )}
         </div>
       )}
+      {/* Administrators only (design V3): the analysis as the reference of a new case;
+          after the query and its restriction, not between them: it is no step of the analysis. */}
+      {result && !draft && <SaveAsCase />}
       <ErrorNotice error={counts.error} />
     </section>
   )

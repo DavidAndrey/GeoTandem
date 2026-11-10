@@ -56,15 +56,18 @@ export function TableDock() {
     return (
       <div className="flex justify-end border-t border-[var(--color-divider)] pt-1">
         <button type="button" className="btn text-xs" onClick={() => setOpen(true)}>
-          <ChevronUp size={13} aria-hidden /> <Trans>Attributtabelle öffnen</Trans>
+          <ChevronUp size={13} aria-hidden /> <Trans>Datendetails öffnen</Trans>
         </button>
       </div>
     )
 
   return (
-    <section aria-label={t`Attributtabelle`} className="flex min-h-0 flex-col" style={{ height }}>
+    <section aria-labelledby="table-title" className="flex min-h-0 flex-col" style={{ height }}>
       <Divider />
       <div className="flex min-h-0 flex-1 flex-col gap-2 pt-2">
+        <h2 id="table-title" className="panel-title">
+          <Trans>Datendetails</Trans>
+        </h2>
         <div role="tablist" aria-label={t`Tabellen`} className="flex flex-wrap gap-x-4 gap-y-1">
           {layers.map((layer) => {
             const selected = layer.id === active.id
@@ -606,18 +609,6 @@ function ColumnMenu({
 
 function Footer({ layer }: { layer: DisplayLayer }) {
   const count = useSelection((st) => (st.layer === layer.id ? st.fids.length : 0))
-  return (
-    <div className="flex items-center gap-2 text-sm">
-      <button
-        type="button"
-        className="btn text-sm"
-        disabled
-        title={t`Export der Ergebnisdaten folgt in E5 (F-8.6)`}
-      >
-        <Trans>Export · ab E5</Trans>
-      </button>
-      <span className="flex-1" />
-      {count > 0 && <span className="text-muted">{count} ausgewählt</span>}
-    </div>
-  )
+  if (count === 0) return null
+  return <p className="text-muted text-right text-sm">{count} ausgewählt</p>
 }

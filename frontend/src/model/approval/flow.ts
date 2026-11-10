@@ -378,15 +378,19 @@ export async function approve(view: ModelActionView): Promise<ModelActionView | 
 }
 
 /**
- * Esc on an approval (design "Barrierefreiheit": Esc = Ablehnen, M5.1, M8.1):
- * rejects with the reason chosen so far; the panel must not close on it.
+ * Esc on an approval (design "Barrierefreiheit", M5.1, M8.1): one Esc never
+ * decides. The first opens the reason step (as *Ablehnen* does), Esc there
+ * rejects with the reason chosen so far; *Zurück* leaves it. The panel must
+ * not close on either.
  */
-export const escapeRejects =
-  (view: ModelActionView, reason: RejectReason | null) => (event: KeyboardEvent) => {
-    if (event.key !== 'Escape' || event.defaultPrevented) return
-    event.preventDefault()
-    void reject(view, reason)
-  }
+export const escapeRejects = (view: ModelActionView) => (event: KeyboardEvent) => {
+  if (event.key !== 'Escape' || event.defaultPrevented) return
+  event.preventDefault()
+  const { rejecting, busy } = useApproval.getState()
+  if (busy) return
+  if (rejecting?.action === view.id) void reject(view, rejecting.reason)
+  else startRejecting(view.id)
+}
 
 /** *Ablehnen* (M5.3) with the optional reason chip; the analysis stays as it is. */
 export async function reject(view: ModelActionView, reason: RejectReason | null) {

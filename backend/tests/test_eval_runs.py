@@ -686,7 +686,15 @@ async def test_a_run_whose_every_reading_fails_ends_failed_without_cases(
 
     monkeypatch.setattr(run_module, "reading_ids", reading_ids)
     body = {**two, "cases": {"tags": ["text"]}, "scope": "quick"}
-    view = await run_to_end(client, app, body)
+    started = await client.post(RUNS, json=body)
+    assert started.status_code == 202, started.text
+    # With nothing to run, the run may already have ended when the answer is
+    # written: "running" or "failed", never anything else (not run_to_end).
+    assert started.json()["status"] in ("running", "failed")
+    await finished(app)
+    response = await client.get(f"{RUNS}/{started.json()['id']}")
+    assert response.status_code == 200, response.text
+    view = response.json()
     assert (view["status"], view["error"]) == ("failed", "no_cases")
     assert view["label"]["cases"] == 0 and model.calls == []
 

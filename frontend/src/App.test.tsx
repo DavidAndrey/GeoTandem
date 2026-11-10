@@ -27,7 +27,7 @@ test('the start page is the workplace, beginning without layers', async () => {
   expect(await screen.findByRole('region', { name: 'Karte' })).toBeInTheDocument()
   expect(screen.getByText(/Noch keine Layer/)).toBeInTheDocument()
   // No model connection (the options do not load): Klassik only (design M1.3).
-  expect(await screen.findByRole('tab', { name: 'Prompt' })).toBeDisabled()
+  expect(await screen.findByRole('tab', { name: 'Frage' })).toBeDisabled()
 })
 
 test('the system status lives in the administration', async () => {
@@ -109,6 +109,8 @@ test('without the token the setup cannot be sent', async () => {
   await userEvent.type(screen.getByLabelText('Passwort'), 'aare-bruecke-morgen-1')
   await userEvent.type(screen.getByLabelText('Passwort wiederholen'), 'aare-bruecke-morgen-1')
   expect(screen.getByRole('button', { name: 'Einrichten' })).toBeDisabled()
+  // The form says why.
+  expect(screen.getByText('Noch auszufüllen: Einrichtungscode')).toBeInTheDocument()
 })
 
 test('signing in with a start password leads to the mandatory password page', async () => {

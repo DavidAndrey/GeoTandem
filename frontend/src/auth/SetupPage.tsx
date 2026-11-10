@@ -10,7 +10,7 @@ import { api } from '../api/client'
 import { useResetSession, useSetupStatus } from '../api/queries'
 import { ErrorNotice, Loading } from '../components/ui'
 import { AccessCard, Field } from './AccessCard'
-import { passwordHint, passwordProblems } from './rules'
+import { passwordHint, passwordProblems, stillEmpty } from './rules'
 
 export function SetupPage() {
   const status = useSetupStatus()
@@ -50,8 +50,13 @@ export function SetupPage() {
   if (status.data && !status.data.needs_setup && !setup.isPending && !setup.isSuccess)
     return <Navigate to="/anmelden" replace />
   const problems = passwordProblems('', password, repeat)
-  const ready =
-    token.trim() !== '' && username.trim() !== '' && repeat !== '' && problems.length === 0
+  const empty = stillEmpty([
+    [t`Einrichtungscode`, token],
+    [t`Benutzername`, username],
+    [t`Passwort`, password],
+    [t`Passwort wiederholen`, repeat],
+  ])
+  const ready = empty === null && problems.length === 0
 
   return (
     <AccessCard title={t`Ersteinrichtung`}>
@@ -142,6 +147,7 @@ export function SetupPage() {
           </label>
         )}
         <ErrorNotice error={setup.error} />
+        {empty && <p className="text-muted mt-2 text-xs">{empty}</p>}
         <button
           type="submit"
           className="btn btn-primary mt-2 w-full justify-center"

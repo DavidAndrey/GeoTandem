@@ -22,6 +22,9 @@ ergänzt v0 um die Bedingung `related`, v2 (E1.6) um **berechnete Spalten**
 angezeigte Layer, **Ergebnis-Layer**, **Bedingungen**, **Einschränkung**. Er
 wird ausschliesslich über Abfrageobjekte ausgeführt (`analysis/query.ts`); er
 ist *derselbe Zustand* für Modus A und Modus B, die Oberfläche ist sein Editor.
+Der Anwender liest dafür *Abfrage* („Bezug: aktuelle Abfrage“, *Als Abfrage
+bearbeiten*); den Ergebnis-Layer wählt er als *Layer*, die Tabelle darunter heisst
+*Datendetails*.
 
 **Ergebnis-Layer** — Der eine Layer je Sitzung, nach dem gefragt wird; andere
 Layer wirken nur als Bedingung (Entwurf B1). Treffer werden auf der Karte
@@ -103,6 +106,11 @@ Bauabschnitt.
 **Arbeitsweise** — Im Modus B: **Direktabfrage** (ein Abfrageobjekt) oder
 **Werkzeugkette** (mehrere Werkzeugaufrufe).
 
+**Frage** (`prompt`) — Was der Anwender im Modus B in eigenen Worten eingibt.
+Im Arbeitsplatz heisst sie *Frage* (Reiter, Feld, Karte der Antwort); *Prompt*
+bleibt den Seiten der Administration (Modellprotokoll, Bewertung, System-Prompt,
+Promptprofil) und dem Code.
+
 **Stufe** (`Level`, Oberfläche: *Stufe der Modellunterstützung*) — Was das
 Modell im Modus B ohne Rückfrage tun darf (HITL, [vision.md 8.1](vision.md)).
 Der Administrator legt 1 bis 4 Stufen fest, jede mit Bezeichnung,
@@ -113,6 +121,12 @@ Beschreibung, System-Prompt und je Operationsklasse einer Festlegung: `off`
 wählbare Stufe ist voreingestellt; verschwindet die gewählte Stufe eines Kontos
 oder wird sie unwählbar, gilt die voreingestellte. Nicht „Modus": das Wort
 gehört Modus A / Modus B.
+
+**Freigabe** (`approve`) — Die Zustimmung des Anwenders zu einer Modellaktion,
+bevor sie die Analyse ändert (Festlegung `approve` einer Stufe). Im Text der
+Oberfläche nur in diesem Sinn: Was ein Administrator anderen zugänglich macht,
+ist bei Layern *sichtbar* (**Sichtbarkeit**), bei Anbindungen *für Anwender
+verfügbar* (`enabled`). Einzige Ausnahme ist der feste Begriff **Datenfreigabe**.
 
 **Operationsklasse** (`OpClass`) — Die Risikoklasse einer Operation, im Code
 festgelegt: `catalog` (Layer auflisten und beschreiben), `query` (Filter,
@@ -272,8 +286,8 @@ oder zurückgesetztes Konto trägt ein **Startpasswort**, das bei der ersten
 Anmeldung zu ändern ist.
 
 **Sichtbarkeit** (`layer_visibility`) — Welche Layer eine Rolle sieht (F-2.7).
-Administratoren sehen alle; für Anwender ist ein Layer erst nach **Freigabe**
-sichtbar. Durchgesetzt über die **Layer-Ansicht** (`LayerView`): die
+Administratoren sehen alle; für Anwender ist ein Layer erst sichtbar, wenn der
+Administrator ihn dort anhakt (neue Layer wahlweise sofort). Durchgesetzt über die **Layer-Ansicht** (`LayerView`): die
 Datenzugriffsschicht, beschränkt auf die sichtbaren Layer — ein verborgener
 Layer verhält sich wie ein nicht vorhandener.
 

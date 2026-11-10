@@ -65,7 +65,7 @@ test('layers come from the picker; the first becomes the result layer', async ()
   expect(useAnalysis.getState().result).toBe('schulen')
 
   // The table layer has its tab in the attribute table.
-  await userEvent.click(screen.getByRole('button', { name: 'Attributtabelle' }))
+  await userEvent.click(screen.getByRole('button', { name: 'Datendetails' }))
   expect(await screen.findByRole('tab', { name: 'Bevölkerung' })).toBeInTheDocument()
   expect(await screen.findByLabelText('Trefferzahl')).toHaveTextContent('120 von 120')
 

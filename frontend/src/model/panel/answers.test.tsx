@@ -109,7 +109,7 @@ describe('M12.2 clarification', () => {
   test('"anderes …" leaves the free answer to the field, which answers the question', async () => {
     const { user, calls, card, answer } = await answered('clarification')
     await user.click(within(card).getByRole('button', { name: 'anderes …' }))
-    const field = screen.getByRole('textbox', { name: 'Prompt' })
+    const field = screen.getByRole('textbox', { name: 'Frage' })
     expect(field).toHaveFocus()
     expect(field).toHaveAccessibleDescription('Ihre Eingabe beantwortet die Rückfrage.')
     expect(posts(calls)).toHaveLength(1)
@@ -130,11 +130,11 @@ describe('M13 approach and cannot-answer', () => {
     const offer = within(card).getByRole('button', { name: 'Mit Werkzeugkette versuchen' })
     expect(offer).toBeEnabled()
     expect(offer).toHaveAccessibleDescription(
-      'Stellt den Schalter auf Werkzeugkette und setzt denselben Prompt ins Feld. Gesendet wird erst mit Senden.',
+      'Stellt den Schalter auf Werkzeugkette und setzt dieselbe Frage ins Feld. Gesendet wird erst mit Senden.',
     )
     expect(within(card).queryByText('ab E2.5')).toBeNull()
     await user.click(offer)
-    expect(screen.getByRole('textbox', { name: 'Prompt' })).toHaveValue(answer.prompt)
+    expect(screen.getByRole('textbox', { name: 'Frage' })).toHaveValue(answer.prompt)
     expect(screen.getByRole('radio', { name: 'Werkzeugkette' })).toBeChecked()
     await tick(3000)
     expect(posts(calls)).toHaveLength(1)
@@ -152,7 +152,7 @@ describe('M13 approach and cannot-answer', () => {
     useModel.getState().setApproach('chain')
     await user.click(within(card).getByRole('button', { name: 'Als Direktabfrage versuchen' }))
 
-    const field = screen.getByRole('textbox', { name: 'Prompt' })
+    const field = screen.getByRole('textbox', { name: 'Frage' })
     expect(field).toHaveValue(offered.prompt)
     expect(field).toHaveFocus()
     expect(screen.getByRole('radio', { name: 'Direktabfrage' })).toBeChecked()

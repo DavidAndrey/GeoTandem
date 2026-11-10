@@ -44,7 +44,7 @@ export function MyActionsDialog() {
                 <Trans>Zeit</Trans>
               </th>
               <th>
-                <Trans>Prompt</Trans>
+                <Trans>Frage</Trans>
               </th>
               <th>
                 <Trans>Entscheidung</Trans>
@@ -79,7 +79,7 @@ export function MyActionsDialog() {
       )}
       <p className="mt-3 text-xs">
         <Trans>
-          Ihre Eingaben werden protokolliert. Administratoren sehen alle Einträge samt Prompt.
+          Ihre Eingaben werden protokolliert. Administratoren sehen alle Einträge samt Frage.
         </Trans>
       </p>
       <div className="mt-4 flex justify-end gap-2">

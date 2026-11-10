@@ -18,6 +18,24 @@ export function ErrorNotice({ error }: { error: unknown }) {
   )
 }
 
+/** A control with its name above it, small and grey (every dropdown has a visible label). */
+export function Labelled({
+  label,
+  className = '',
+  children,
+}: {
+  label: string
+  className?: string
+  children: ReactNode
+}) {
+  return (
+    <label className={`flex flex-col gap-0.5 ${className}`}>
+      <span className="text-muted text-xs">{label}</span>
+      {children}
+    </label>
+  )
+}
+
 export function Loading() {
   return (
     <p className="text-muted flex items-center gap-2 text-sm">

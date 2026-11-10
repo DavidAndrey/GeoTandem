@@ -22,7 +22,7 @@ test('the hits of the reference question can be read, not just counted', async (
   await panel.getByRole('button', { name: /^Schulen/, expanded: false }).click()
   await panel.getByRole('button', { name: 'Aktionen für Schulen' }).click()
   await page.getByRole('menuitem', { name: 'Tabelle öffnen' }).click()
-  const dock = page.getByRole('region', { name: 'Attributtabelle' })
+  const dock = page.getByRole('region', { name: 'Datendetails' })
   const table = dock.getByRole('table', { name: 'Attribute von Schulen' })
   const rows = table.locator('tbody tr[data-fid]')
 

@@ -567,7 +567,7 @@ function StatusNote({ view }: { view: CaseView }) {
     text = (
       <Trans>
         Die Referenz besteht die Prüfungen einer Modellabfrage nicht mehr, etwa weil ein Feld nicht
-        mehr für das Modell freigegeben ist. Der Fall läuft nicht mit, bis er bearbeitet ist.
+        mehr für das Modell sichtbar ist. Der Fall läuft nicht mit, bis er bearbeitet ist.
       </Trans>
     )
   else if (view.status === 'dataset_changed')

@@ -23,7 +23,7 @@ async function primarySchools(page: Page) {
   await page.getByRole('button', { name: '+ Bedingung' }).click()
   const editor = page.getByRole('region', { name: 'Abfrage-Editor' })
   const row = editor.getByRole('group', { name: 'Bedingung Attribut' })
-  await row.getByLabel('Feld').selectOption({ label: 'Höchste Schulstufe' })
+  await row.getByLabel('Attribut').selectOption({ label: 'Höchste Schulstufe' })
   await row.getByLabel('Operator').selectOption({ label: 'ist eins von' })
   await row.getByLabel('Wert hinzufügen').fill('primar')
   await row.getByLabel('Wert hinzufügen').press('Enter')

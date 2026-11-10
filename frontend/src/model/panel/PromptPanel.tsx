@@ -4,7 +4,8 @@
 // line. Esc closes the panel and returns to the tab.
 import { Trans } from '@lingui/react/macro'
 import { t } from '@lingui/core/macro'
-import { Globe } from 'lucide-react'
+import { Globe, Info } from 'lucide-react'
+import { Popover } from 'radix-ui'
 import type { KeyboardEvent } from 'react'
 import { Link } from 'react-router'
 import { useShallow } from 'zustand/react/shallow'
@@ -32,13 +33,13 @@ export function PromptPanel() {
   return (
     <section
       id="prompt-panel"
-      aria-label={t`Prompt`}
+      aria-label={t`Frage`}
       className="card flex min-h-0 min-w-0 flex-col overflow-hidden"
       onKeyDown={close}
     >
       <div className="border-divider flex items-center gap-2 border-b px-4 py-2">
         <h2 className="flex-1 text-xl">
-          <Trans>Prompt</Trans>
+          <Trans>Frage</Trans>
         </h2>
         <button
           type="button"
@@ -67,7 +68,7 @@ function ExternalNotice({ host }: { host: string }) {
       className="card border-ink flex flex-col gap-1 border p-3 text-sm"
     >
       <p className="flex items-center gap-1.5 font-semibold">
-        <Globe size={14} aria-hidden /> <Trans>Der Prompt-Text verlässt das Haus</Trans>
+        <Globe size={14} aria-hidden /> <Trans>Der Text der Frage verlässt das Haus</Trans>
       </p>
       <p>
         <Trans>
@@ -89,7 +90,7 @@ function ExternalNotice({ host }: { host: string }) {
 function DataRelease() {
   return (
     <Trans>
-      Das Modell sieht Layer- und Feldnamen sowie die freigegebenen Wertelisten und Wertebereiche,
+      Das Modell sieht Layer- und Feldnamen sowie die bestätigten Wertelisten und Wertebereiche,
       keine einzelnen Objekte oder Geometrien.
     </Trans>
   )
@@ -105,7 +106,7 @@ function Intro() {
     <div className="flex flex-col gap-3 text-sm">
       <p>
         <Trans>
-          Fragen Sie in eigenen Worten nach den sichtbaren Layern. Das Modell schlägt eine Abfrage
+          Fragen Sie in eigenen Worten nach den verfügbaren Layern. Das Modell schlägt eine Abfrage
           vor. Je nach Stufe geben Sie den Vorschlag frei, übernehmen ihn im Editor, oder das Modell
           wendet ihn an und Sie können ihn zurücknehmen.
         </Trans>{' '}
@@ -114,7 +115,7 @@ function Intro() {
       {examples.length > 0 ? (
         <section aria-labelledby="examples-title" className="flex flex-col items-start gap-1.5">
           <h3 id="examples-title" className="label-caps">
-            <Trans>Beispiele aus den sichtbaren Layern</Trans>
+            <Trans>Beispiele aus den Layern auf der Karte</Trans>
           </h3>
           {examples.map((example) => (
             <button
@@ -166,24 +167,15 @@ function Composer() {
   const question = useModel(openQuestion)
   const referenced = useModel((s) => (s.reference === null ? undefined : s.views[s.reference]))
   const stale = useStaleLayer(referenced) !== null
-  const { connection, level } = useActiveModel()
   const locked = running !== null || sending
   // While the latest answer asks back, the field gives the free answer (M12.2);
   // otherwise the prompt follows the reference, unless × took it away or its
   // layer is gone (P6, M11.1, M11.3).
   const reference = referenced && !stale ? referenced : undefined
   const submit = () => void send(draft, approach, question ?? reference?.id ?? null)
-  const levelName = level?.name ?? ''
-  const name = connection?.name ?? ''
-  const host = connection?.host ?? ''
-  const where = !connection
-    ? ''
-    : connection.locality === 'external'
-      ? t`${name} · extern · ${host}`
-      : name
   return (
     <form
-      aria-label={t`Prompt eingeben`}
+      aria-label={t`Frage eingeben`}
       className="border-divider flex flex-col gap-2 border-t px-4 py-3"
       onSubmit={(e) => {
         e.preventDefault()
@@ -202,12 +194,12 @@ function Composer() {
         className="input min-h-16 w-full resize-y"
         rows={3}
         maxLength={4000}
-        aria-label={t`Prompt`}
+        aria-label={t`Frage`}
         aria-keyshortcuts="Control+Enter Meta+Enter"
         placeholder={
           locked
             ? t`Eingabe gesperrt, solange das Modell arbeitet`
-            : t`Frage zu den sichtbaren Layern …`
+            : t`Frage zu den verfügbaren Layern …`
         }
         // Locked, the field is empty; the prompt comes back if nothing is answered (M14).
         // Read-only rather than disabled: the focus stays, so Esc still reaches the panel.
@@ -222,10 +214,8 @@ function Composer() {
         }}
       />
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <span id="approach-label" className="label-caps">
-          <Trans>Arbeitsweise</Trans>
-        </span>
-        <div className="flex" role="radiogroup" aria-labelledby="approach-label">
+        {/* Named for screen readers; the ⓘ beside it says what each choice does. */}
+        <div className="flex" role="radiogroup" aria-label={t`Arbeitsweise`}>
           {(['direct', 'chain'] as const).map((value) => (
             <button
               key={value}
@@ -242,29 +232,66 @@ function Composer() {
             </button>
           ))}
         </div>
+        <ApproachInfo />
         {!CHAIN_AVAILABLE && (
           <span id="chain-later" className="text-muted text-xs">
             <Trans>ab E2.5</Trans>
           </span>
         )}
-        <button
-          type="submit"
-          className="btn btn-primary ml-auto"
-          disabled={locked || !draft.trim()}
-          aria-keyshortcuts="Control+Enter Meta+Enter"
-        >
-          <Trans>Senden</Trans>{' '}
-          <kbd className="text-xs" aria-hidden>
-            {isMac() ? '⌘↵' : t({ message: 'Strg+↵', comment: 'Keyboard shortcut: Ctrl+Enter' })}
-          </kbd>
-        </button>
+        <div className="ml-auto flex flex-col items-end gap-0.5">
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={locked || !draft.trim()}
+            aria-keyshortcuts="Control+Enter Meta+Enter"
+            aria-describedby="send-shortcut"
+          >
+            <Trans>Senden</Trans>
+          </button>
+          <span id="send-shortcut" className="text-muted text-xs">
+            {isMac()
+              ? t({ message: 'oder ⌘+Enter', comment: 'Keyboard shortcut under Senden, macOS' })
+              : t({ message: 'oder Strg+Enter', comment: 'Keyboard shortcut under Senden' })}
+          </span>
+        </div>
       </div>
-      <p className="text-muted min-w-0 text-xs break-words">
-        {where && `${where} · `}
-        {levelName && `${t`Stufe ${levelName}`} · `}
-        <Trans>Ihre Eingaben werden protokolliert</Trans>
-      </p>
     </form>
+  )
+}
+
+/** ⓘ beside the approach: what Direktabfrage and Werkzeugkette do differently. */
+function ApproachInfo() {
+  return (
+    <Popover.Root>
+      <Popover.Trigger className="btn px-1.5" aria-label={t`Was ist der Unterschied?`}>
+        <Info size={14} aria-hidden />
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content
+          align="start"
+          sideOffset={4}
+          aria-labelledby="approach-info-title"
+          className="card z-[1300] flex w-80 flex-col gap-2 bg-neutral-100 p-3 text-sm shadow-[var(--shadow-md)]"
+        >
+          <h2 id="approach-info-title" className="font-semibold">
+            <Trans>Arbeitsweise</Trans>
+          </h2>
+          <p>
+            <Trans>
+              <strong>Direktabfrage</strong>: Das Modell schreibt die Abfrage in einem Schritt.
+              Schnell, gut für einfache Fragen.
+            </Trans>
+          </p>
+          <p>
+            <Trans>
+              <strong>Werkzeugkette</strong>: Das Modell geht in Schritten vor (Katalog lesen, Werte
+              nachschlagen, Abfrage bauen) und zeigt den Plan. Langsamer, oft genauer bei mehreren
+              Bedingungen.
+            </Trans>
+          </p>
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
   )
 }
 
@@ -273,7 +300,7 @@ export function PromptUnavailable() {
   const me = useMe()
   return (
     <p className="text-muted mt-auto pt-4 text-xs">
-      <Trans>Prompt nicht verfügbar: keine Modellanbindung aktiv. Klassik ist voll nutzbar.</Trans>
+      <Trans>Fragen nicht möglich: keine Modellanbindung aktiv. Klassik ist voll nutzbar.</Trans>
       {me.data?.role === 'admin' && (
         <>
           {' '}

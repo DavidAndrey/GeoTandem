@@ -728,8 +728,8 @@ function StatusHint({ view }: { view: CaseView }) {
       <p className="mb-2 max-w-3xl rounded-[var(--radius-md)] border border-neutral-400 p-2 text-sm">
         <Trans>
           Ungültig: Die Referenz besteht die Prüfungen einer Modellabfrage nicht mehr oder lässt
-          sich nicht mehr ausführen, etwa weil ein Feld nicht mehr für das Modell freigegeben ist.
-          Der Fall wird in keinem Lauf verwendet, bis er bearbeitet ist.
+          sich nicht mehr ausführen, etwa weil ein Feld nicht mehr für das Modell sichtbar ist. Der
+          Fall wird in keinem Lauf verwendet, bis er bearbeitet ist.
         </Trans>
       </p>
     )

@@ -12,8 +12,8 @@ test('table and map highlight each other', async ({ page }) => {
   await picker.getByRole('button', { name: 'Hinzufügen' }).click()
   await expect(page.getByLabel('Trefferzahl')).toHaveText('137 von 137')
 
-  await page.getByRole('button', { name: 'Attributtabelle', exact: true }).click()
-  const dock = page.getByRole('region', { name: 'Attributtabelle' })
+  await page.getByRole('button', { name: 'Datendetails', exact: true }).click()
+  const dock = page.getByRole('region', { name: 'Datendetails' })
   const schools = dock.getByRole('table', { name: 'Attribute von Schulen' })
   await expect(schools).toBeVisible()
 
