@@ -1,7 +1,7 @@
 """the kind of a metadata call: probe or proposal (plan-attribute-metadata D)
 
-Revision ID: 0021
-Revises: 0020
+Revision ID: 0022
+Revises: 0021
 Create Date: 2026-11-08 09:00:00.000000
 
 The proposals of missing labels and descriptions are the same kind of call as
@@ -14,8 +14,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0021"
-down_revision: str | None = "0020"
+revision: str = "0022"
+down_revision: str | None = "0021"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
