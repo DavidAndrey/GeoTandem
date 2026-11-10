@@ -297,6 +297,10 @@ const MESSAGES: Record<string, Words> = {
     const layer = text(d.layer)
     return layer ? t`Einen Layer „${layer}" gibt es schon.` : t`Diesen Layernamen gibt es schon.`
   },
+  layer_not_for_model: () =>
+    t`Dieser Layer ist für das Modell nicht sichtbar; es gibt keinen Steckbrief zu prüfen.`,
+  nothing_to_propose: () =>
+    t`Alle Beschreibungen und Beschriftungen sind ausgefüllt; es gibt nichts vorzuschlagen.`,
   unsupported_format: () =>
     t`Dieses Format wird nicht unterstützt. Möglich sind GeoJSON, Shapefile (als ZIP), GeoPackage, CSV und Excel.`,
   unreadable: () => t`Die Datei ist beschädigt oder hat ein anderes Format.`,

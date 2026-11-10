@@ -259,6 +259,10 @@ msgstr ""
 msgid "{count, plural, one {# eigener Prüffall läuft nicht mit, bis er bearbeitet ist.} other {# eigene Prüffälle laufen nicht mit, bis sie bearbeitet sind.}}"
 msgstr ""
 
+#: src/admin/LayerPage.tsx
+msgid "{count, plural, one {# Feld mit Vorschlag} other {# Felder mit Vorschlag}}"
+msgstr ""
+
 #: src/admin/connectionParts.tsx
 msgid "{count, plural, one {# Modell angeboten} other {# Modelle angeboten}}"
 msgstr ""
@@ -564,6 +568,14 @@ msgstr ""
 #: src/admin/ModelActionPage.tsx
 #: src/model/panel/time.ts
 msgid "{s} s"
+msgstr ""
+
+#: src/admin/ProbeTab.tsx
+msgid "{seconds} s"
+msgstr ""
+
+#: src/admin/ProbeTab.tsx
+msgid "{sent} + {received} Tokens"
 msgstr ""
 
 #: src/model/chain/Chain.tsx
@@ -1099,6 +1111,10 @@ msgstr ""
 
 #: src/admin/ProfileCompleteness.tsx
 msgid "Alle Attribute beschriftet, alle Codelisten bestätigt, alle Beschreibungen vorhanden."
+msgstr ""
+
+#: src/i18n/errors.ts
+msgid "Alle Beschreibungen und Beschriftungen sind ausgefüllt; es gibt nichts vorzuschlagen."
 msgstr ""
 
 #: src/editor/EditorPanel.tsx
@@ -1680,6 +1696,10 @@ msgstr ""
 msgid "Bearbeiten ›"
 msgstr ""
 
+#: src/admin/ProbeTab.tsx
+msgid "Bedeutung, gelesen"
+msgstr ""
+
 #: src/editor/EditorPanel.tsx
 msgid "Bedingung"
 msgstr ""
@@ -2147,6 +2167,10 @@ msgstr ""
 msgid "Das Modell antwortete auf die Neuplanung nicht mit einem Plan."
 msgstr ""
 
+#: src/admin/ProbeTab.tsx
+msgid "Das Modell bekommt nur den Steckbrief dieses Layers, so wie bei einer Abfrage, und sagt je Feld, was es darunter versteht. Lesen Sie, wo es von den hinterlegten Angaben abweicht. Nichts wird bewertet oder gespeichert; die Anfrage zählt zum Tageslimit der Verbindung."
+msgstr ""
+
 #: src/admin/evaluation/RunCasePage.tsx
 msgid "Das Modell bot eine andere Arbeitsweise an, wo der Fall keine erwartet."
 msgstr ""
@@ -2159,8 +2183,16 @@ msgstr ""
 msgid "Das Modell hat nicht rechtzeitig geantwortet."
 msgstr ""
 
+#: src/admin/LayerPage.tsx
+msgid "Das Modell hat nichts vorgeschlagen."
+msgstr ""
+
 #: src/i18n/errors.ts
 msgid "Das Modell hat seine Antwort nicht beendet: Die Länge, die die Anbindung erlaubt, war aufgebraucht. Meist denkt das Modell zu lange, oder der Kontext ist zu klein."
+msgstr ""
+
+#: src/admin/ProbeTab.tsx
+msgid "Das Modell hat zu diesem Feld nichts gesagt."
 msgstr ""
 
 #: src/i18n/errors.ts
@@ -2171,12 +2203,24 @@ msgstr ""
 msgid "Das Modell liefert keine Antwort im verlangten JSON-Schema; für Direktabfragen ist es so nicht geeignet."
 msgstr ""
 
+#: src/admin/ProbeTab.tsx
+msgid "Das Modell liest den Steckbrief …"
+msgstr ""
+
+#: src/admin/ProbeTab.tsx
+msgid "Das Modell nannte Felder, die der Steckbrief nicht hat:"
+msgstr ""
+
 #: src/i18n/errors.ts
 msgid "Das Modell nimmt gerade keine weiteren Anfragen an."
 msgstr ""
 
 #: src/i18n/errors.ts
 msgid "Das Modell ruft keine Werkzeuge auf; für Werkzeugketten ist es so nicht geeignet."
+msgstr ""
+
+#: src/admin/LayerPage.tsx
+msgid "Das Modell schreibt Vorschläge …"
 msgstr ""
 
 #: src/model/panel/PromptPanel.tsx
@@ -3032,6 +3076,11 @@ msgstr ""
 msgid "Dieser Layer hat kein passendes Feld."
 msgstr ""
 
+#: src/admin/ProbeTab.tsx
+#: src/i18n/errors.ts
+msgid "Dieser Layer ist für das Modell nicht sichtbar; es gibt keinen Steckbrief zu prüfen."
+msgstr ""
+
 #: src/admin/LayerPage.tsx
 msgid "Dieser Layer ist für das Modell nicht sichtbar."
 msgstr ""
@@ -3221,6 +3270,10 @@ msgstr ""
 msgid "Ein Schritt hätte mehr als {max} Objekte erzeugt (höchstens {max})."
 msgstr ""
 
+#: src/admin/LayerPage.tsx
+msgid "ein Vorschlag für die Layer-Beschreibung (Reiter «Beschreibung»)"
+msgstr ""
+
 #: src/model/approval/Level.tsx
 msgid "Ein Vorschlag wartet noch auf Freigabe. Er bleibt an die Stufe {bound} gebunden, unter der er gestellt wurde, und wird nicht automatisch angewendet."
 msgstr ""
@@ -3323,6 +3376,10 @@ msgstr ""
 
 #: src/admin/format.ts
 msgid "Einheit {field}"
+msgstr ""
+
+#: src/admin/ProbeTab.tsx
+msgid "Einheit, gelesen"
 msgstr ""
 
 #: src/table/TableDock.tsx
@@ -3655,6 +3712,10 @@ msgstr ""
 msgid "Externe Anbindung"
 msgstr ""
 
+#: src/admin/ConnectionChoice.tsx
+msgid "Externe Verbindung: Es geht nur der Steckbrief hinaus, keine Inhalte der Daten."
+msgstr ""
+
 #: src/admin/evaluation/runWords.ts
 msgid "f"
 msgstr ""
@@ -3736,6 +3797,7 @@ msgid "Feinabstimmung der Direktabfrage; die Werkzeugkette nutzt immer den Stand
 msgstr ""
 
 #: src/admin/LayerPage.tsx
+#: src/admin/ProbeTab.tsx
 #: src/admin/ProfilePage.tsx
 #: src/operations/OperationDialog.tsx
 msgid "Feld"
@@ -3951,6 +4013,10 @@ msgstr ""
 
 #: src/admin/evaluation/NewRunPage.tsx
 msgid "Für einen Lauf braucht es eine Modellanbindung."
+msgstr ""
+
+#: src/admin/LayerPage.tsx
+msgid "Für leere Bezeichnungen und Beschreibungen. Prüfen Sie jeden Vorschlag; erst «Speichern» übernimmt ihn."
 msgstr ""
 
 #: src/admin/CatalogPage.tsx
@@ -4279,6 +4345,10 @@ msgstr ""
 msgid "Hintergrundkarte ein/aus"
 msgstr ""
 
+#: src/admin/ProbeTab.tsx
+msgid "Hinterlegt"
+msgstr ""
+
 #: src/admin/promptProfile.ts
 msgid "Hinweis „erste Frage\" als eigene Systemnachricht (P9)"
 msgstr ""
@@ -4427,6 +4497,7 @@ msgid "ist leer"
 msgstr ""
 
 #: src/admin/CatalogPage.tsx
+#: src/admin/ProbeTab.tsx
 #: src/editor/describe.ts
 #: src/editor/EditorPanel.tsx
 #: src/session/SaveAsDialog.tsx
@@ -4617,6 +4688,10 @@ msgstr ""
 msgid "keine Modellanbindung für dieses Konto"
 msgstr ""
 
+#: src/admin/ConnectionChoice.tsx
+msgid "Keine Modellverbindung ist eingeschaltet."
+msgstr ""
+
 #: src/model/chain/Chain.tsx
 msgid "Keine Neuplanung möglich: {reason}"
 msgstr ""
@@ -4672,6 +4747,7 @@ msgstr ""
 #: src/admin/evaluation/CaseDetailPage.tsx
 #: src/admin/evaluation/CasesPage.tsx
 #: src/admin/evaluation/SaveCaseDialog.tsx
+#: src/admin/ProbeTab.tsx
 msgid "Kennung"
 msgstr ""
 
@@ -5059,6 +5135,14 @@ msgstr ""
 
 #: src/admin/ModelActionPage.tsx
 msgid "Layer-Steckbrief"
+msgstr ""
+
+#: src/admin/ProbeTab.tsx
+msgid "Layer, gelesen"
+msgstr ""
+
+#: src/admin/ProbeTab.tsx
+msgid "Layer, hinterlegt"
 msgstr ""
 
 #: src/admin/ProfileCompleteness.tsx
@@ -5464,6 +5548,7 @@ msgid "Neben dem Startbestand sind höchstens {max} eigene Prüffälle möglich;
 msgstr ""
 
 #: src/admin/CatalogPage.tsx
+#: src/admin/ProbeTab.tsx
 #: src/editor/describe.ts
 #: src/editor/EditorPanel.tsx
 msgid "nein"
@@ -7185,6 +7270,7 @@ msgstr ""
 msgid "Verbinde …"
 msgstr ""
 
+#: src/admin/ConnectionChoice.tsx
 #: src/admin/ConnectionForm.tsx
 msgid "Verbindung"
 msgstr ""
@@ -7299,6 +7385,14 @@ msgstr ""
 
 #: src/admin/evaluation/NewRunPage.tsx
 msgid "Verstanden, extern senden"
+msgstr ""
+
+#: src/admin/LayerPage.tsx
+msgid "Verständnis"
+msgstr ""
+
+#: src/admin/ProbeTab.tsx
+msgid "Verständnis prüfen"
 msgstr ""
 
 #: src/queries/SavedQueries.tsx
@@ -7449,6 +7543,10 @@ msgstr ""
 msgid "Vorschlag"
 msgstr ""
 
+#: src/admin/LayerPage.tsx
+msgid "Vorschlag des Modells, noch nicht gespeichert"
+msgstr ""
+
 #: src/admin/format.ts
 msgid "Vorschlag für {field} bestätigen"
 msgstr ""
@@ -7459,6 +7557,10 @@ msgstr ""
 
 #: src/model/log/words.ts
 msgid "Vorschläge"
+msgstr ""
+
+#: src/admin/LayerPage.tsx
+msgid "Vorschläge erzeugen"
 msgstr ""
 
 #: src/admin/evaluation/runWords.ts
@@ -7506,6 +7608,10 @@ msgstr ""
 #: src/admin/AdminLayout.tsx
 #: src/admin/ProfilePage.tsx
 msgid "Was das Modell sieht"
+msgstr ""
+
+#: src/admin/ProbeTab.tsx
+msgid "Was das Modell versteht"
 msgstr ""
 
 #: src/admin/ImportWizard.tsx
@@ -7604,6 +7710,10 @@ msgstr ""
 
 #: src/editor/EditorPanel.tsx
 msgid "Werte"
+msgstr ""
+
+#: src/admin/ProbeTab.tsx
+msgid "Werte, gelesen"
 msgstr ""
 
 #: src/admin/LayerPage.tsx

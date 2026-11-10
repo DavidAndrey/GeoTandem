@@ -811,6 +811,63 @@ Luna −5,5, beide Intervalle mit 0; lokal −7 bis −18.
 - «0 Treffer bei einem Wert ausserhalb jeder Codeliste» ist ein Kandidat für
   das Urteil «still falsch» der Bewertung und für einen Hinweis im Betrieb.
 
+### 8.6 Einheiten, Kennungen, echte Verweise (2026-11-07)
+
+Aus [plan-attribute-metadata.md](plan-attribute-metadata.md) A3. Drei neue
+Modi (`--profile`, [evaluation/profiles.py](../backend/src/geotandem/evaluation/profiles.py)):
+`no-units` (keine Einheiten), `refs` (die Verbundprosa «Schlüssel auf
+gemeinden.gem_nr» aus den `gem_nr`-Beschreibungen entfernt, dafür
+`references: gemeinden.gem_nr`), `refs-role` (`refs` plus `role: identifier`
+auf jedem `gem_nr`). Dazu ein eigener Fallsatz `metadata` / `metadata-heldout`
+(8 Fälle: Umrechnen von ha, m, m²; Schulen einer Gemeinde ohne Nummer;
+gegebene Gemeindenummer). Je zwei Blöcke, lokal Temperatur 0,3, Haiku 5.5 bei
+seiner Vorgabe; Prompt-Hash `55e708badb92` wie in Phase 4. Labels
+`m-<modus>-<fälle>-<modell>[-s6]`, 96 Läufe; Kosten Haiku geschätzt ≈ 4 USD.
+
+| Modus | gemma4:12b T /330 | K /380 | M /80 | qwen3:14b T | K | M | Haiku 5.5 T | K | M |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| `full` | 263 | 326 | 60 | 249 | 294 | 51 | 316 | 367 | 80 |
+| `no-units` | 268 | 321 | 61 | 251 | 278 | 55 | 320 | 375 | 80 |
+| `refs` | 271 | 327 | 59 | 248 | 289 | 50 | 315 | 375 | 80 |
+| `refs-role` | 268 | 329 | 61 | 241 | 290 | 50 | 315 | 373 | 80 |
+
+T Tuning-Satz, K Kontrollsatz, M Metadatenfälle (beide Teile).
+
+Gepaart gegen `full` (Δ Mittel in Prozentpunkten je Fall): kein Modus bei
+keinem Modell und keinem Satz belegt. Grösste Ausschläge: gemma4:12b `refs` T
++2,4 (+0,3 … +5,2), auf K +0,3 (−7,4 … +7,6), also nicht bestätigt; qwen3:14b
+`no-units` K −4,2 (−10,3 … 0,0), `refs-role` T −2,4 (−8,2 … +3,3); Haiku alle
+zwischen −0,3 und +2,1, Intervalle mit 0.
+
+**Befunde**
+
+1. **Die Einheit trägt nichts, wenn der Spaltenname sie nennt.** `no-units`
+   verschiebt nur Einzelfälle, die keine Einheit haben (`n02-kategorie-bereich`
+   bei gemma4:12b 10 ⇒ 2/10, `h23` bei qwen3:14b 10 ⇒ 1/10): Rauschen durch
+   eine Änderung am Steckbrief, nicht Einheitenwissen.
+2. **Das Umrechnen scheitert am Rechnen, nicht am Wissen.** Die Modelle nennen
+   km² richtig und rechnen falsch: gemma4:12b «3 000 000 m² entsprechen 3000
+   km²» (`md05` 0–1/10), qwen3:14b 500–1000 ha als 0,5–1 km² (`md06` 0/10, in
+   jedem Modus). Haiku rechnet alles richtig. Ein Einheitenfeld hilft hier
+   nicht.
+3. **Echte Verweise und die Rolle verhindern geratene Kennungen nicht.**
+   gemma4:12b schreibt unter `refs` und `refs-role` `gem_nr = 100` für Münsingen
+   («Die Gemeindenummer für Münsingen ist 100», `h16` 10 ⇒ 0/10), unter `full`
+   nimmt es den Namen. qwen3:14b rät für Worb `gem_nr = 363` (`md07` 0–1/10 in
+   jedem Modus, auch `full`). Der Verweis macht das Verbinden über die Nummer
+   eher sichtbarer; `identifier` hält nicht davon ab.
+4. **Der Phase-4-Fehler bei `log2` hat sich verschoben.** qwen3:14b liegt bei
+   `log2` und `in-gemeinde-bahn` in jedem Modus bei 0/10, aber nicht mehr wegen
+   `gem_nr`: `log2` lehnt ab («kein Layer für Schulen in Bern»),
+   `in-gemeinde-bahn` lässt den Filter auf Bahn weg. Die Verbundprosa ist
+   nicht mehr die Ursache.
+5. **Gegebene Nummern werden genutzt.** `md04`, `md08` («Gemeindenummer 616»,
+   «BFS-Nummer 351») 10/10 bei allen Modellen und Modi.
+
+**Was daraus folgt** (Entscheid in [plan-attribute-metadata.md](plan-attribute-metadata.md) 7):
+keine Einheiten in der Vollständigkeitsanzeige, keine Rolle `identifier`,
+keine echten Verweise in den Beispieldaten.
+
 ---
 
 ## 9 Reproduzieren

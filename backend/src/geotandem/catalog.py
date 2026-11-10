@@ -190,6 +190,10 @@ class AttributeProfile(BaseModel):
     range: list[float] | None = None
     codes: dict[str, str] | None = None
     references: str | None = None
+    role: Literal["identifier"] | None = None
+    """What kind of value the attribute holds beyond its type. Not stored yet: only
+    the ablation mode ``refs-role`` sets it (docs/plan-attribute-metadata.md, A2),
+    so the production profile and its hash leave it out."""
 
 
 class LayerProfile(BaseModel):
@@ -278,6 +282,11 @@ def model_profile(engine: Engine, visible: Collection[str]) -> ModelProfile:
                 target = tuple(a.references.split(".", 1))
                 if target not in present:
                     a.references = None
+    return seal(layers)
+
+
+def seal(layers: list[LayerProfile]) -> ModelProfile:
+    """The canonical form of ``layers`` with its hash and size (S4, S5)."""
     body = {
         "profile_version": PROFILE_VERSION,
         "layers": [p.model_dump(exclude_none=True) for p in layers],

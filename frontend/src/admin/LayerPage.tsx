@@ -1,17 +1,19 @@
-// Layer detail (design D3): description, fields and preview. The tabs
+// Layer detail (design D3): description, fields, preview and what a model
+// reads from the profile (plan-attribute-metadata C). The tabs
 // Verlauf, Darstellung and Verwendung follow with E1.5/E1.7 (plan WP15).
 import { objectCount } from '../i18n/phrases'
 import { i18n } from '@lingui/core'
-import { Trans } from '@lingui/react/macro'
+import { Plural, Trans } from '@lingui/react/macro'
 import { msg, t } from '@lingui/core/macro'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { Tabs } from 'radix-ui'
 import { useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
-import type { AttributeInfo, LayerInfo } from '../api/client'
+import type { AttributeInfo, AttributeProposal, LayerInfo, ProposalResult } from '../api/client'
 import {
   useLayer,
   useProfile,
+  useProposeMetadata,
   useSampleRows,
   useUpdateAttribute,
   useSetVisibility,
@@ -21,12 +23,16 @@ import {
 import { ErrorNotice, Loading } from '../components/ui'
 import { formatCodes, parseCodes } from './codes'
 import { DeleteLayerDialog } from './DeleteLayerDialog'
+import { ConnectionSelect, ExternalNote, NoConnection } from './ConnectionChoice'
+import { useConnectionChoice } from './useConnectionChoice'
+import { Footer, ProbeTab } from './ProbeTab'
 import { fieldLabels, formatDateTime, layerType, sourceLabel, typeLabel } from './format'
 
 const TABS = [
   { value: 'beschreibung', label: msg`Beschreibung` },
   { value: 'felder', label: msg`Felder` },
   { value: 'vorschau', label: msg`Vorschau` },
+  { value: 'verstaendnis', label: msg`Verständnis` },
 ]
 
 export function LayerPage() {
@@ -34,6 +40,8 @@ export function LayerPage() {
   const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
   const layer = useLayer(name)
+  // Kept here, not in the tab: a proposed layer description is shown on «Beschreibung».
+  const propose = useProposeMetadata(name)
   const [deleting, setDeleting] = useState(false)
   const tab = TABS.some((item) => item.value === params.get('reiter'))
     ? (params.get('reiter') as string)
@@ -42,6 +50,7 @@ export function LayerPage() {
   if (layer.isPending) return <Loading />
   if (!layer.data) return <ErrorNotice error={layer.error} />
   const info = layer.data
+  const proposals = propose.isPending ? undefined : propose.data
 
   return (
     <section aria-labelledby="layer-title">
@@ -77,13 +86,21 @@ export function LayerPage() {
           ))}
         </Tabs.List>
         <Tabs.Content value="beschreibung">
-          <DescriptionTab key={info.updated_at} layer={info} />
+          <DescriptionTab
+            key={`${info.updated_at}:${proposals?.proposed_at}`}
+            layer={info}
+            proposed={proposals?.layer_description ?? ''}
+          />
         </Tabs.Content>
         <Tabs.Content value="felder">
-          <FieldsTab layer={info} />
+          <ProposeBar layer={info} propose={propose} />
+          <FieldsTab layer={info} proposals={proposals} />
         </Tabs.Content>
         <Tabs.Content value="vorschau">
           <PreviewTab layer={info} />
+        </Tabs.Content>
+        <Tabs.Content value="verstaendnis">
+          <ProbeTab layer={info} />
         </Tabs.Content>
       </Tabs.Root>
       {deleting && (
@@ -97,10 +114,10 @@ export function LayerPage() {
   )
 }
 
-function DescriptionTab({ layer }: { layer: LayerInfo }) {
+function DescriptionTab({ layer, proposed }: { layer: LayerInfo; proposed: string }) {
   const update = useUpdateLayer(layer.name)
   const [title, setTitle] = useState(layer.title)
-  const [description, setDescription] = useState(layer.description)
+  const [description, setDescription] = useState(layer.description || proposed)
   const [forModel, setForModel] = useState(layer.for_model)
   const dirty =
     title !== layer.title || description !== layer.description || forModel !== layer.for_model
@@ -137,6 +154,7 @@ function DescriptionTab({ layer }: { layer: LayerInfo }) {
             onChange={(e) => setDescription(e.target.value)}
           />
         </label>
+        {proposed && !layer.description && description === proposed && <ProposedNote />}
         <label className="flex items-center gap-2">
           <input
             type="checkbox"
@@ -206,7 +224,91 @@ function UserVisibility({ layer }: { layer: string }) {
   )
 }
 
-function FieldsTab({ layer }: { layer: LayerInfo }) {
+/** What the catalog leaves empty of what the model sees (the server's `missing`). */
+function hasGaps(layer: LayerInfo) {
+  return (
+    !layer.description || layer.attributes.some((a) => a.for_model && (!a.label || !a.description))
+  )
+}
+
+/** «Vorschläge erzeugen» (plan-attribute-metadata D): drafts for empty texts,
+ * shown in the forms below and on «Beschreibung»; nothing is saved by it. */
+export function ProposeBar({
+  layer,
+  propose,
+}: {
+  layer: LayerInfo
+  propose: ReturnType<typeof useProposeMetadata>
+}) {
+  const { options, connections, selected, setChosen, external } = useConnectionChoice()
+  if (!layer.for_model || !hasGaps(layer)) return null
+  if (options.isPending) return null
+  if (!options.data) return <ErrorNotice error={options.error} />
+  const result = propose.isPending ? undefined : propose.data
+  const count = result ? result.attributes.length : 0
+  return (
+    <div className="mb-4 flex max-w-5xl flex-col gap-2">
+      {connections.length === 0 ? (
+        <NoConnection />
+      ) : (
+        <form
+          className="flex flex-wrap items-end gap-3"
+          onSubmit={(e) => {
+            e.preventDefault()
+            propose.mutate(selected)
+          }}
+        >
+          <ConnectionSelect connections={connections} selected={selected} onChange={setChosen} />
+          <button type="submit" className="btn" disabled={propose.isPending}>
+            <Trans>Vorschläge erzeugen</Trans>
+          </button>
+          <span className="text-muted text-sm">
+            <Trans>
+              Für leere Bezeichnungen und Beschreibungen. Prüfen Sie jeden Vorschlag; erst
+              «Speichern» übernimmt ihn.
+            </Trans>
+          </span>
+          {propose.isPending && (
+            <span className="text-muted text-sm" role="status">
+              <Trans>Das Modell schreibt Vorschläge …</Trans>
+            </span>
+          )}
+          {external && <ExternalNote />}
+        </form>
+      )}
+      <ErrorNotice error={propose.error} />
+      {result && (
+        <div className="text-sm" role="status">
+          {count === 0 && !result.layer_description ? (
+            <Trans>Das Modell hat nichts vorgeschlagen.</Trans>
+          ) : (
+            <span>
+              <Plural value={count} one="# Feld mit Vorschlag" other="# Felder mit Vorschlag" />
+            </span>
+          )}
+          {result.layer_description && (
+            <>
+              {' · '}
+              <Trans>ein Vorschlag für die Layer-Beschreibung (Reiter «Beschreibung»)</Trans>
+            </>
+          )}
+          <Footer result={result} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ProposedNote() {
+  return (
+    <span className="text-xs text-amber-700">
+      <Trans>Vorschlag des Modells, noch nicht gespeichert</Trans>
+    </span>
+  )
+}
+
+function FieldsTab({ layer, proposals }: { layer: LayerInfo; proposals?: ProposalResult }) {
+  const proposed = new Map(proposals?.attributes.map((p) => [p.name, p]))
   return (
     <table className="data-table max-w-5xl">
       <thead>
@@ -240,9 +342,10 @@ function FieldsTab({ layer }: { layer: LayerInfo }) {
       </thead>
       {layer.attributes.map((attribute) => (
         <AttributeRows
-          key={`${attribute.name}:${JSON.stringify(attribute)}`}
+          key={`${attribute.name}:${JSON.stringify(attribute)}:${proposals?.proposed_at}`}
           layer={layer.name}
           attribute={attribute}
+          proposal={proposed.get(attribute.name)}
         />
       ))}
     </table>
@@ -257,15 +360,26 @@ function KeyReference({ target }: { target: string }) {
   )
 }
 
-export function AttributeRows({ layer, attribute }: { layer: string; attribute: AttributeInfo }) {
+export function AttributeRows({
+  layer,
+  attribute,
+  proposal,
+}: {
+  layer: string
+  attribute: AttributeInfo
+  proposal?: AttributeProposal
+}) {
   const update = useUpdateAttribute(layer)
   const numeric = attribute.data_type === 'integer' || attribute.data_type === 'real'
   const domain = attribute.value_domain ?? {}
-  const [open, setOpen] = useState(false)
-  const [label, setLabel] = useState(attribute.label)
+  // A proposal fills only what the catalog leaves empty (the server keeps it so).
+  const proposedLabel = !attribute.label ? (proposal?.label ?? '') : ''
+  const proposedDescription = !attribute.description ? (proposal?.description ?? '') : ''
+  const [open, setOpen] = useState(proposedDescription !== '')
+  const [label, setLabel] = useState(attribute.label || proposedLabel)
   const [unit, setUnit] = useState(attribute.unit ?? '')
   const [forModel, setForModel] = useState(attribute.for_model)
-  const [description, setDescription] = useState(attribute.description)
+  const [description, setDescription] = useState(attribute.description || proposedDescription)
   const [min, setMin] = useState(domain.min !== undefined ? String(domain.min) : '')
   const [max, setMax] = useState(domain.max !== undefined ? String(domain.max) : '')
   const [codes, setCodes] = useState(formatCodes(domain.codes as Record<string, string>))
@@ -331,6 +445,7 @@ export function AttributeRows({ layer, attribute }: { layer: string; attribute: 
             maxLength={200}
             onChange={(e) => setLabel(e.target.value)}
           />
+          {proposedLabel && label === proposedLabel && <ProposedNote />}
         </td>
         <td>
           <input
@@ -365,17 +480,20 @@ export function AttributeRows({ layer, attribute }: { layer: string; attribute: 
           <td />
           <td colSpan={6}>
             <div className="grid grid-cols-2 gap-4 py-1">
-              <label className="flex flex-col gap-1">
-                <span className="label-caps">
-                  <Trans>Beschreibung</Trans>
-                </span>
-                <textarea
-                  className="input min-h-16"
-                  value={description}
-                  maxLength={5000}
-                  onChange={(e) => setDescription(e.target.value)}
-                />
-              </label>
+              <div className="flex flex-col gap-1">
+                <label className="flex flex-col gap-1">
+                  <span className="label-caps">
+                    <Trans>Beschreibung</Trans>
+                  </span>
+                  <textarea
+                    className="input min-h-16"
+                    value={description}
+                    maxLength={5000}
+                    onChange={(e) => setDescription(e.target.value)}
+                  />
+                </label>
+                {proposedDescription && description === proposedDescription && <ProposedNote />}
+              </div>
               {numeric && (
                 <fieldset className="flex flex-col gap-1">
                   <legend className="label-caps">

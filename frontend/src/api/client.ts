@@ -41,6 +41,10 @@ export type Effort = NonNullable<ConnectionWrite['reasoning_effort']>
 export type LLMOptions = Schemas['LLMOptions']
 export type ProfilePreview = Schemas['ProfilePreview']
 export type LLMChoice = Schemas['Choice']
+export type ProbeResult = Schemas['ProbeResult']
+export type AttributeReading = Schemas['AttributeReading']
+export type ProposalResult = Schemas['ProposalResult']
+export type AttributeProposal = Schemas['AttributeProposal']
 export type MapConfig = Schemas['MapConfig']
 export type QueryObject = Schemas['QueryObject-Input']
 export type SessionSummary = Schemas['SessionSummary']
@@ -368,6 +372,16 @@ export const api = {
       request<undefined>(`/api/admin/layers/${enc(name)}`, { method: 'DELETE' }),
     profile: (name: string) =>
       request<LayerProfile | null>(`/api/admin/layers/${enc(name)}/profile`),
+    probe: (name: string, connectionId: number | null) =>
+      request<ProbeResult>(
+        `/api/admin/layers/${enc(name)}/probe`,
+        json('POST', { connection_id: connectionId }),
+      ),
+    propose: (name: string, connectionId: number | null) =>
+      request<ProposalResult>(
+        `/api/admin/layers/${enc(name)}/proposals`,
+        json('POST', { connection_id: connectionId }),
+      ),
 
     upload: (file: File) => {
       const form = new FormData()

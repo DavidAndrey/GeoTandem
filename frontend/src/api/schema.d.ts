@@ -316,6 +316,52 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/admin/layers/{name}/probe': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Probe Layer
+     * @description What a model reads from the layer's profile (plan-attribute-metadata C):
+     *     per attribute its meaning, unit, values and whether it identifies. Sends
+     *     the profile only, never content; counts toward the connection's request
+     *     limit, and waits for the answer within the connection's timeout.
+     */
+    post: operations['probe_layer_api_admin_layers__name__probe_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/admin/layers/{name}/proposals': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Propose Metadata
+     * @description Proposed texts for the layer's empty description and its attributes'
+     *     empty labels and descriptions (plan-attribute-metadata D). Drafts only:
+     *     nothing is saved. Sends the profile only, as the probe does, and counts
+     *     toward the connection's request limit.
+     */
+    post: operations['propose_metadata_api_admin_layers__name__proposals_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/admin/imports': {
     parameters: {
       query?: never
@@ -2056,6 +2102,58 @@ export interface components {
       } | null
       /** References */
       references?: string | null
+      /** Role */
+      role?: 'identifier' | null
+    }
+    /**
+     * AttributeProposal
+     * @description A proposal for one attribute; a field is empty where the catalog has a
+     *     value or the model proposed nothing.
+     */
+    AttributeProposal: {
+      /** Name */
+      name: string
+      /**
+       * Label
+       * @default
+       */
+      label: string
+      /**
+       * Description
+       * @default
+       */
+      description: string
+    }
+    /**
+     * AttributeReading
+     * @description What the model read for one attribute of the profile; ``answered`` false
+     *     when its answer left the attribute out (the other fields then empty).
+     */
+    AttributeReading: {
+      /** Name */
+      name: string
+      /** Answered */
+      answered: boolean
+      /**
+       * Meaning
+       * @default
+       */
+      meaning: string
+      /**
+       * Unit
+       * @default
+       */
+      unit: string
+      /**
+       * Values
+       * @default
+       */
+      values: string
+      /**
+       * Identifier
+       * @default false
+       */
+      identifier: boolean
     }
     /** AttributeUpdate */
     AttributeUpdate: {
@@ -4747,6 +4845,53 @@ export interface components {
       /** Errors */
       errors: components['schemas']['Message'][]
     }
+    /** ProbeConnection */
+    ProbeConnection: {
+      /** Id */
+      id: number
+      /** Name */
+      name: string
+      /** Model */
+      model: string
+      /** Host */
+      host: string
+      /**
+       * Locality
+       * @enum {string}
+       */
+      locality: 'local' | 'external'
+    }
+    /** ProbeRequest */
+    ProbeRequest: {
+      /**
+       * Connection Id
+       * @description None: the connection the account's model actions use.
+       */
+      connection_id?: number | null
+    }
+    /** ProbeResult */
+    ProbeResult: {
+      /** Layer */
+      layer: string
+      /** Meaning */
+      meaning: string
+      /** Attributes */
+      attributes: components['schemas']['AttributeReading'][]
+      /** Unknown */
+      unknown: string[]
+      connection: components['schemas']['ProbeConnection']
+      /**
+       * Probed At
+       * Format: date-time
+       */
+      probed_at: string
+      /** Latency Ms */
+      latency_ms: number
+      /** Prompt Tokens */
+      prompt_tokens?: number | null
+      /** Completion Tokens */
+      completion_tokens?: number | null
+    }
     /**
      * ProfileBudget
      * @description The connection the account's model actions would use, and its declared
@@ -4848,6 +4993,27 @@ export interface components {
       /** Parent Action Id */
       parent_action_id?: number | null
       analysis?: components['schemas']['QueryObject-Input'] | null
+    }
+    /** ProposalResult */
+    ProposalResult: {
+      /** Layer */
+      layer: string
+      /** Layer Description */
+      layer_description: string
+      /** Attributes */
+      attributes: components['schemas']['AttributeProposal'][]
+      connection: components['schemas']['ProbeConnection']
+      /**
+       * Proposed At
+       * Format: date-time
+       */
+      proposed_at: string
+      /** Latency Ms */
+      latency_ms: number
+      /** Prompt Tokens */
+      prompt_tokens?: number | null
+      /** Completion Tokens */
+      completion_tokens?: number | null
     }
     /** QueryAnswer */
     QueryAnswer: {
@@ -7201,6 +7367,238 @@ export interface operations {
       }
       /** @description Unprocessable Content */
       422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  probe_layer_api_admin_layers__name__probe_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        name: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ProbeRequest']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ProbeResult']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Content Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Bad Gateway */
+      502: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Service Unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+    }
+  }
+  propose_metadata_api_admin_layers__name__proposals_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        name: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ProbeRequest']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ProposalResult']
+        }
+      }
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Content Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Bad Gateway */
+      502: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ErrorBody']
+        }
+      }
+      /** @description Service Unavailable */
+      503: {
         headers: {
           [name: string]: unknown
         }

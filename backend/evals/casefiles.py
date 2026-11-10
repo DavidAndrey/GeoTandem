@@ -13,12 +13,22 @@ as before. The cases are read by the application's own reader
 layers (``layer-cases.json``, docs/plan-improve-examples.md 6.3), read by
 ``evaluation.cases.layer_set``.
 
+``metadata`` and ``metadata-heldout`` are the two splits of the cases on units
+and keys (``metadata-cases.json``, docs/plan-attribute-metadata.md A1), read
+by ``evaluation.cases.metadata_set``.
+
 ``behaviour`` is the behaviour cases (``behaviour-cases.json``,
 docs/plan-improve-examples.md 6.7), confirm only, read by
 ``evaluation.cases.behaviour_set``.
 """
 
-from geotandem.evaluation.cases import behaviour_set, chain_set, layer_set, start_set
+from geotandem.evaluation.cases import (
+    behaviour_set,
+    chain_set,
+    layer_set,
+    metadata_set,
+    start_set,
+)
 from geotandem.evaluation.schemas import EvalCase, Split
 
 CASE_FILES: dict[str, Split] = {
@@ -28,19 +38,25 @@ CASE_FILES: dict[str, Split] = {
     "chain-heldout": "confirm",
     "layers": "tuning",
     "layers-heldout": "confirm",
+    "metadata": "tuning",
+    "metadata-heldout": "confirm",
     "behaviour": "confirm",
 }
 CHAIN_FILES = frozenset({"chain", "chain-heldout"})
 LAYER_FILES = frozenset({"layers", "layers-heldout"})
+METADATA_FILES = frozenset({"metadata", "metadata-heldout"})
 
 
 def load_cases(name: str) -> list[EvalCase]:
     """The cases of the harness file ``name`` (``cases``, ``heldout``, ``chain``,
-    ``chain-heldout``, ``layers``, ``layers-heldout`` or ``behaviour``)."""
+    ``chain-heldout``, ``layers``, ``layers-heldout``, ``metadata``,
+    ``metadata-heldout`` or ``behaviour``)."""
     if name in CHAIN_FILES:
         found = chain_set()
     elif name in LAYER_FILES:
         found = layer_set()
+    elif name in METADATA_FILES:
+        found = metadata_set()
     elif name == "behaviour":
         found = behaviour_set()
     else:

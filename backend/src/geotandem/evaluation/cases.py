@@ -126,6 +126,9 @@ part of it; the harness reads them (``chain_set``), the application not yet."""
 LAYER_FILE: Final = "layer-cases.json"
 """Cases across layers (docs/plan-improve-examples.md, 6.3): beside the start
 set and the chain's cases, read by the harness only (``layer_set``)."""
+METADATA_FILE: Final = "metadata-cases.json"
+"""Cases on units and keys (docs/plan-attribute-metadata.md, A1): beside the
+start set, read by the harness only (``metadata_set``)."""
 BEHAVIOUR_FILE: Final = "behaviour-cases.json"
 """Cases to ask back on or decline (docs/plan-improve-examples.md, 6.7):
 confirm only, read by the harness only (``behaviour_set``)."""
@@ -223,6 +226,13 @@ def chain_set(directory: Path = REPO_CASES) -> tuple[EvalCase, ...]:
 def layer_set(directory: Path = REPO_CASES) -> tuple[EvalCase, ...]:
     """The cases across layers of ``directory`` (``LAYER_FILE``), read once per process."""
     text = (directory / LAYER_FILE).read_text("utf-8")
+    return tuple(CaseFile.model_validate_json(text).cases)
+
+
+@cache
+def metadata_set(directory: Path = REPO_CASES) -> tuple[EvalCase, ...]:
+    """The cases on units and keys of ``directory`` (``METADATA_FILE``), read once per process."""
+    text = (directory / METADATA_FILE).read_text("utf-8")
     return tuple(CaseFile.model_validate_json(text).cases)
 
 

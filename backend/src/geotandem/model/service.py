@@ -126,7 +126,7 @@ from geotandem.catalog import LayerInfo, ModelProfile, list_layers, model_profil
 from geotandem.connections import ConnectionInfo, ConnectionProblem, Connections
 from geotandem.data import DataBackend, Limits, Op
 from geotandem.data.view import LayerView
-from geotandem.db.orm import ModelAction, ModelCall
+from geotandem.db.orm import MetadataProbe, ModelAction, ModelCall
 from geotandem.engine import (
     QueryError,
     ResultStamp,
@@ -237,6 +237,50 @@ def day_start(now: datetime, tz: tzinfo | None = None) -> datetime:
     # The offset at midnight, which differs from now's on a day the clocks change.
     aware = midnight.astimezone() if tz is None else midnight.replace(tzinfo=tz)
     return aware.astimezone(UTC).replace(tzinfo=None)
+
+
+def within_limit(db: Session, connection: ConnectionInfo, today: datetime) -> None:
+    """The connection's request limit (P5), when the administrator switched it
+    on: the model calls since ``today`` (``day_start``), counted over all
+    accounts, ``quota_exceeded`` at the limit. A prompt counts once it reached
+    the model call, or while it still may (thinking): one refused before any
+    record, or aborted before its call, does not; a chain's re-plan counts as a
+    call of its own on the day it happens (``ModelCall``, review #43); a
+    layer's comprehension probe once it was asked (``MetadataProbe``,
+    plan-attribute-metadata C)."""
+    if not connection.request_limit_enabled:
+        return
+    limit = connection.request_limit_per_day
+    if limit is None:  # the connection rules and the table's check keep it set
+        raise RuntimeError(f"connection {connection.id} has a request limit without number")
+    prompts = db.scalar(
+        select(func.count())
+        .select_from(ModelAction)
+        .where(
+            ModelAction.connection_id == connection.id,
+            ModelAction.created_at >= today,
+            ModelAction.called_at.is_not(None) | (ModelAction.status == "thinking"),
+        )
+    )
+    replans = db.scalar(
+        select(func.count())
+        .select_from(ModelCall)
+        .where(ModelCall.connection_id == connection.id, ModelCall.called_at >= today)
+    )
+    probes = db.scalar(
+        select(func.count())
+        .select_from(MetadataProbe)
+        .where(MetadataProbe.connection_id == connection.id, MetadataProbe.called_at >= today)
+    )
+    if (prompts or 0) + (replans or 0) + (probes or 0) >= limit:
+        raise ActionError(
+            "quota_exceeded",
+            f"The {limit} requests per day of the connection '{connection.name}' are "
+            "used up; an administrator sets the limit.",
+            http_status=429,
+            limit=limit,
+            connection=connection.name,
+        )
 
 
 def close_stale(
@@ -815,42 +859,7 @@ class PromptFlow:
         self._within_limit(db, connection=connection)
 
     def _within_limit(self, db: Session, *, connection: ConnectionInfo) -> None:
-        """The connection's request limit (P5), when the administrator switched
-        it on: the model calls of the current calendar day, counted from the
-        action table over all accounts, ``quota_exceeded`` at the limit. A
-        prompt counts once it reached the model call, or while it still may
-        (thinking): one refused before any record, or aborted before its call,
-        does not; a chain's re-plan counts as a call of its own on the day it
-        happens (``ModelCall``, review #43)."""
-        if not connection.request_limit_enabled:
-            return
-        limit = connection.request_limit_per_day
-        if limit is None:  # the connection rules and the table's check keep it set
-            raise RuntimeError(f"connection {connection.id} has a request limit without number")
-        today = day_start(self.clock(), self.tz)
-        prompts = db.scalar(
-            select(func.count())
-            .select_from(ModelAction)
-            .where(
-                ModelAction.connection_id == connection.id,
-                ModelAction.created_at >= today,
-                ModelAction.called_at.is_not(None) | (ModelAction.status == "thinking"),
-            )
-        )
-        replans = db.scalar(
-            select(func.count())
-            .select_from(ModelCall)
-            .where(ModelCall.connection_id == connection.id, ModelCall.called_at >= today)
-        )
-        if (prompts or 0) + (replans or 0) >= limit:
-            raise ActionError(
-                "quota_exceeded",
-                f"The {limit} requests per day of the connection '{connection.name}' are "
-                "used up; an administrator sets the limit.",
-                http_status=429,
-                limit=limit,
-                connection=connection.name,
-            )
+        within_limit(db, connection, day_start(self.clock(), self.tz))
 
     # --- the call (P7) -------------------------------------------------------------
 

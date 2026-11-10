@@ -1,0 +1,167 @@
+{
+  "gemeindedaten": {
+    "layer_description": "Dieser Layer enthält statistische Daten zu Gemeinden, insbesondere Informationen zur Einwohnerzahl und zu Steuerdaten.",
+    "attributes": [
+      {
+        "name": "gem_nr",
+        "label": "Gemeindenummer",
+        "description": "Die eindeutige Identifikationsnummer einer Gemeinde."
+      },
+      {
+        "name": "einwohner",
+        "label": "Einwohnerzahl",
+        "description": "Die Anzahl der in der Gemeinde wohnhaften Personen."
+      },
+      {
+        "name": "steueranlage",
+        "label": "Steueranlage",
+        "description": "Der Betrag der Steueranlage der Gemeinde."
+      },
+      {
+        "name": "steuerpflichtige",
+        "label": "Steuerpflichtige",
+        "description": "Die Anzahl der Personen, die in der Gemeinde steuerpflichtig sind."
+      },
+      {
+        "name": "steuerjahr",
+        "label": "Steuerjahr",
+        "description": "Das Jahr, für welches die Steuerdaten erfasst wurden."
+      }
+    ]
+  },
+  "gemeinden": {
+    "layer_description": "Ein Objekt in diesem Layer repräsentiert eine Gemeinde.",
+    "attributes": [
+      {
+        "name": "gem_nr",
+        "label": "Gemeindenummer",
+        "description": "Die Identifikationsnummer der Gemeinde."
+      },
+      {
+        "name": "name",
+        "label": "Gemeindename",
+        "description": "Der Name der Gemeinde."
+      },
+      {
+        "name": "flaeche_km2",
+        "label": "Fläche in km²",
+        "description": "Die Fläche der Gemeinde in Quadratkilometern."
+      }
+    ]
+  },
+  "gewaesser": {
+    "layer_description": "Dieser Layer enthält Informationen zu Gewässern wie Flüssen und Bächen.",
+    "attributes": [
+      {
+        "name": "name",
+        "label": "Name",
+        "description": "Der Name des Gewässers."
+      },
+      {
+        "name": "typ",
+        "label": "Typ",
+        "description": "Gibt an, ob es sich um ein Hauptgewässer oder ein Nebengewässer handelt."
+      },
+      {
+        "name": "laenge_km",
+        "label": "Länge in km",
+        "description": "Die Gesamtlänge des Gewässers in Kilometern."
+      }
+    ]
+  },
+  "haltestellen": {
+    "layer_description": "Ein Objekt in diesem Layer repräsentiert eine Haltestelle für verschiedene Verkehrsmittel.",
+    "attributes": [
+      {
+        "name": "name",
+        "label": "Name",
+        "description": "Der Name der Haltestelle."
+      },
+      {
+        "name": "verkehrsmittel",
+        "label": "Verkehrsmittel",
+        "description": "Die Art des Verkehrsmittels, das an dieser Haltestelle bedient wird."
+      },
+      {
+        "name": "kategorie",
+        "label": "Kategorie",
+        "description": "Die Klassifizierung der Haltestelle."
+      },
+      {
+        "name": "einwohner",
+        "label": "Einwohner",
+        "description": "Die Anzahl der Einwohner im Einzugsgebiet der Haltestelle."
+      },
+      {
+        "name": "arbeitsplaetze",
+        "label": "Arbeitsplätze",
+        "description": "Die Anzahl der Arbeitsplätze im Einzugsgebiet der Haltestelle."
+      }
+    ]
+  },
+  "schulen": {
+    "layer_description": "Dieser Layer enthält Informationen zu verschiedenen Schulhäusern und Bildungseinrichtungen.",
+    "attributes": [
+      {
+        "name": "name",
+        "label": "Name",
+        "description": "Der offizielle Name der Schule oder Bildungseinrichtung."
+      },
+      {
+        "name": "gem_nr",
+        "label": "Gemeinde-Nummer",
+        "description": "Die Identifikationsnummer der zugehörigen Gemeinde."
+      },
+      {
+        "name": "typ",
+        "label": "Schultyp",
+        "description": "Die Art der Schule, wie zum Beispiel Kindergarten, Primar- oder Sekundarstufe."
+      },
+      {
+        "name": "kindergarten",
+        "label": "Kindergarten",
+        "description": "Gibt an, ob die Einrichtung einen Kindergarten anbietet."
+      },
+      {
+        "name": "primarstufe",
+        "label": "Primarstufe",
+        "description": "Gibt an, ob die Einrichtung die Primarstufe anbietet."
+      },
+      {
+        "name": "sekundarstufe",
+        "label": "Sekundarstufe",
+        "description": "Gibt an, ob die Einrichtung die Sekundarstufe anbietet."
+      },
+      {
+        "name": "sprache",
+        "label": "Sprache",
+        "description": "Die primäre Unterrichtssprache der Schule."
+      },
+      {
+        "name": "standorte",
+        "label": "Standorte",
+        "description": "Die Anzahl der Standorte der Schule."
+      }
+    ]
+  },
+  "strassen": {
+    "layer_description": "Dieser Layer enthält die Strassen des Gebiets.",
+    "attributes": [
+      {
+        "name": "name",
+        "label": "Strassenname",
+        "description": "Der Name der Strasse."
+      },
+      {
+        "name": "nummer",
+        "label": "Nummer",
+        "description": "Die Nummer der Strasse oder des Gebäudes."
+      },
+      {
+        "name": "klasse",
+        "label": "Strassenklasse",
+        "description": "Die Kategorie der Strasse, zum Beispiel National- oder Kantonsstrasse."
+      }
+    ]
+  }
+}

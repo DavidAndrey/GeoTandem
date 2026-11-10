@@ -1061,6 +1061,292 @@
         }
       }
     },
+    "/api/admin/layers/{name}/probe": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Probe Layer",
+        "description": "What a model reads from the layer's profile (plan-attribute-metadata C):\nper attribute its meaning, unit, values and whether it identifies. Sends\nthe profile only, never content; counts toward the connection's request\nlimit, and waits for the answer within the connection's timeout.",
+        "operationId": "probe_layer_api_admin_layers__name__probe_post",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProbeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProbeResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/admin/layers/{name}/proposals": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Propose Metadata",
+        "description": "Proposed texts for the layer's empty description and its attributes'\nempty labels and descriptions (plan-attribute-metadata D). Drafts only:\nnothing is saved. Sends the profile only, as the probe does, and counts\ntoward the connection's request limit.",
+        "operationId": "propose_metadata_api_admin_layers__name__proposals_post",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProbeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposalResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
     "/api/admin/imports": {
       "post": {
         "tags": [
@@ -9757,6 +10043,18 @@
               }
             ],
             "title": "References"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "identifier"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
           }
         },
         "type": "object",
@@ -9766,6 +10064,69 @@
           "label"
         ],
         "title": "AttributeProfile"
+      },
+      "AttributeProposal": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "default": ""
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "AttributeProposal",
+        "description": "A proposal for one attribute; a field is empty where the catalog has a\nvalue or the model proposed nothing."
+      },
+      "AttributeReading": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "answered": {
+            "type": "boolean",
+            "title": "Answered"
+          },
+          "meaning": {
+            "type": "string",
+            "title": "Meaning",
+            "default": ""
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit",
+            "default": ""
+          },
+          "values": {
+            "type": "string",
+            "title": "Values",
+            "default": ""
+          },
+          "identifier": {
+            "type": "boolean",
+            "title": "Identifier",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "answered"
+        ],
+        "title": "AttributeReading",
+        "description": "What the model read for one attribute of the profile; ``answered`` false\nwhen its answer left the attribute out (the other fields then empty)."
       },
       "AttributeUpdate": {
         "properties": {
@@ -16354,6 +16715,132 @@
         ],
         "title": "Preview"
       },
+      "ProbeConnection": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "host": {
+            "type": "string",
+            "title": "Host"
+          },
+          "locality": {
+            "type": "string",
+            "enum": [
+              "local",
+              "external"
+            ],
+            "title": "Locality"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "model",
+          "host",
+          "locality"
+        ],
+        "title": "ProbeConnection"
+      },
+      "ProbeRequest": {
+        "properties": {
+          "connection_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection Id",
+            "description": "None: the connection the account's model actions use."
+          }
+        },
+        "type": "object",
+        "title": "ProbeRequest"
+      },
+      "ProbeResult": {
+        "properties": {
+          "layer": {
+            "type": "string",
+            "title": "Layer"
+          },
+          "meaning": {
+            "type": "string",
+            "title": "Meaning"
+          },
+          "attributes": {
+            "items": {
+              "$ref": "#/components/schemas/AttributeReading"
+            },
+            "type": "array",
+            "title": "Attributes"
+          },
+          "unknown": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Unknown"
+          },
+          "connection": {
+            "$ref": "#/components/schemas/ProbeConnection"
+          },
+          "probed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Probed At"
+          },
+          "latency_ms": {
+            "type": "integer",
+            "title": "Latency Ms"
+          },
+          "prompt_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt Tokens"
+          },
+          "completion_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completion Tokens"
+          }
+        },
+        "type": "object",
+        "required": [
+          "layer",
+          "meaning",
+          "attributes",
+          "unknown",
+          "connection",
+          "probed_at",
+          "latency_ms"
+        ],
+        "title": "ProbeResult"
+      },
       "ProfileBudget": {
         "properties": {
           "connection": {
@@ -16587,6 +17074,69 @@
         ],
         "title": "PromptRequest",
         "description": "A prompt. No earlier turns: the server builds them from the parent chain (P6)."
+      },
+      "ProposalResult": {
+        "properties": {
+          "layer": {
+            "type": "string",
+            "title": "Layer"
+          },
+          "layer_description": {
+            "type": "string",
+            "title": "Layer Description"
+          },
+          "attributes": {
+            "items": {
+              "$ref": "#/components/schemas/AttributeProposal"
+            },
+            "type": "array",
+            "title": "Attributes"
+          },
+          "connection": {
+            "$ref": "#/components/schemas/ProbeConnection"
+          },
+          "proposed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Proposed At"
+          },
+          "latency_ms": {
+            "type": "integer",
+            "title": "Latency Ms"
+          },
+          "prompt_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt Tokens"
+          },
+          "completion_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completion Tokens"
+          }
+        },
+        "type": "object",
+        "required": [
+          "layer",
+          "layer_description",
+          "attributes",
+          "connection",
+          "proposed_at",
+          "latency_ms"
+        ],
+        "title": "ProposalResult"
       },
       "QueryAnswer": {
         "properties": {

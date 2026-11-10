@@ -50,6 +50,8 @@ from geotandem.importing import log as import_log
 from geotandem.importing.log import ImportRunInfo, ImportRunSummary, ImportStatus
 from geotandem.importing.run import ImportDecisions, abort, preview_file, run_import
 from geotandem.importing.staging import TooManyPending, UnknownUpload, UploadTooLarge
+from geotandem.layer_probe import Probe, ProbeRequest, ProbeResult
+from geotandem.layer_proposals import ProposalResult, Proposals, missing
 from geotandem.levels import Level, UnknownLevel, load_levels, save_levels
 from geotandem.llm import Endpoint
 from geotandem.model.service import profile_for
@@ -263,6 +265,56 @@ def duplicate_layer(name: str, body: Duplicate, state: State, user: Actor) -> La
 def layer_profile(name: str, state: State) -> LayerProfile | None:
     """The layer profile as the model will see it (F-2.9); ``null`` if not for the model."""
     return profile(_layer(state, name))
+
+
+class NotForModel(Problem):
+    code = "layer_not_for_model"
+
+
+@router.post(
+    "/layers/{name}/probe",
+    responses={**ERRORS, 409: ERRORS[400], 429: ERRORS[400], 502: ERRORS[400], 503: ERRORS[400]},
+)
+def probe_layer(
+    name: str, body: ProbeRequest, state: State, account: Annotated[Account, Depends(require_admin)]
+) -> ProbeResult:
+    """What a model reads from the layer's profile (plan-attribute-metadata C):
+    per attribute its meaning, unit, values and whether it identifies. Sends
+    the profile only, never content; counts toward the connection's request
+    limit, and waits for the answer within the connection's timeout."""
+    layer_profile = profile(_layer(state, name))
+    if layer_profile is None:
+        raise NotForModel("The layer is not offered to the model.", layer=name)
+    probe = Probe(state.backend.engine, state.connections, state.client_factory, state.model_calls)
+    return probe.run(account, layer_profile, body.connection_id)
+
+
+class NothingToPropose(Problem):
+    code = "nothing_to_propose"
+
+
+@router.post(
+    "/layers/{name}/proposals",
+    responses={**ERRORS, 409: ERRORS[400], 429: ERRORS[400], 502: ERRORS[400], 503: ERRORS[400]},
+)
+def propose_metadata(
+    name: str, body: ProbeRequest, state: State, account: Annotated[Account, Depends(require_admin)]
+) -> ProposalResult:
+    """Proposed texts for the layer's empty description and its attributes'
+    empty labels and descriptions (plan-attribute-metadata D). Drafts only:
+    nothing is saved. Sends the profile only, as the probe does, and counts
+    toward the connection's request limit."""
+    info = _layer(state, name)
+    layer_profile = profile(info)
+    if layer_profile is None:
+        raise NotForModel("The layer is not offered to the model.", layer=name)
+    wanted = missing(info)
+    if wanted.empty:
+        raise NothingToPropose("The layer's metadata is complete.", layer=name)
+    proposer = Proposals(
+        state.backend.engine, state.connections, state.client_factory, state.model_calls
+    )
+    return proposer.run(account, layer_profile, wanted, body.connection_id)
 
 
 # --- import wizard (design D6) ------------------------------------------------

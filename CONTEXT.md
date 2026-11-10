@@ -165,6 +165,23 @@ Codeliste gilt als Metadatum. Beschränkt auf die Layer, die das Konto sieht und
 die für das Modell freigegeben sind; kanonisch geordnet, versioniert und per
 SHA-256 gehasht.
 
+**Verständnisprüfung** (plan-attribute-metadata C) — Der Reiter *Verständnis*
+auf der Layerseite: Ein Modell bekommt nur den Steckbrief eines Layers und
+sagt je Attribut Bedeutung, Einheit, erwartete Werte und ob es eine Kennung
+ist; daneben steht, was hinterlegt ist. Keine Bewertung, nichts gespeichert
+ausser einem eigenen Eintrag (wer, Anbindung, Layer, Tokens; `metadata_probe`)
+und dem Sicherheitsereignis `layer_probed`. Keine Modellaktion, zählt aber zum
+Tageslimit der Anbindung.
+
+**Metadaten-Vorschlag** (plan-attribute-metadata D) — «Vorschläge erzeugen» im
+Reiter *Felder*: Ein Modell schlägt aus dem Steckbrief Texte vor, wo die
+Layer-Beschreibung oder die Bezeichnung oder Beschreibung eines Attributs leer
+ist; nie Einheiten, Codes, Verknüpfungen. Die Vorschläge stehen als Entwurf im
+Formular (markiert «Vorschlag des Modells») und gelten erst, wenn die
+Administratorin speichert. Derselbe Aufruf wie die Verständnisprüfung: Eintrag
+in `metadata_probe` mit `kind` `proposal`, Ereignis `metadata_proposed`,
+Tageslimit.
+
 **Modellaktion** (`model_action`) — Eine Anfrage an das Modell mit allem, was
 daraus wurde: Prompt, Stufe und Anbindung *wie damals*, Steckbrief-Hash, die
 Antwort, das geprüfte Abfrageobjekt oder die Schritte einer Werkzeugkette, der

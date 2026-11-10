@@ -90,6 +90,15 @@ unchanged.
 | `no-domains` | code lists and ranges, as an unconfirmed proposal leaves them (S2); the code reading of E-2 goes with them |
 | `raw` | all three, the units, and layer titles (the layer name stands in): a plain import |
 | `raw-codes` | as `raw`, but the domains confirmed as the import proposes them: each code is its own label, ranges stay |
+| `no-units` | the units; the labels name none, so only a column name such as `flaeche_km2` still carries one |
+| `refs` | nothing: the joins of the three `gem_nr` move from their descriptions («Schlüssel auf gemeinden.gem_nr») to `references` |
+| `refs-role` | as `refs`, and each `gem_nr` is marked `role: identifier` (set on the built profile; no catalog column yet) |
+
+The last three are docs/plan-attribute-metadata.md, A2. Their cases are
+`--cases metadata` and `--cases metadata-heldout`
+(`schema/eval-cases/metadata-cases.json`, `md*`): questions in another unit
+than the attribute holds, schools of a municipality named by name, and a
+`gem_nr` given as a number.
 
 ## Fair comparisons (testplan-external-models, 9)
 

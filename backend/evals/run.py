@@ -40,14 +40,14 @@ from variants import (
     with_examples,
 )
 
-from geotandem.catalog import ModelProfile, model_profile
+from geotandem.catalog import ModelProfile
 from geotandem.config import Settings
 from geotandem.data import Limits
 from geotandem.engine import ids_query
 from geotandem.evaluation.cases import chain_set, layer_set, start_set
 from geotandem.evaluation.chain import drive, graded
 from geotandem.evaluation.grade import PASS, Graded, errored, grade, reading_ids
-from geotandem.evaluation.profiles import PROFILES
+from geotandem.evaluation.profiles import PROFILES, model_profile_for
 from geotandem.evaluation.sample import build_sample
 from geotandem.evaluation.schemas import EvalCase
 from geotandem.evaluation.signature import copies
@@ -365,7 +365,7 @@ def main() -> int:
 
     built = build_sample(Settings(), prefix="geotandem-eval-", profile=args.profile)
     engine, backend = built.engine, built.backend
-    profile = model_profile(engine, backend.layer_names())
+    profile = model_profile_for(engine, backend.layer_names(), args.profile)
     level = next(lv for lv in load_levels(engine) if lv.is_default)
     context = ToolContext(backend=backend, limits=LIMITS)
     pool = pool_of(every, profile)
