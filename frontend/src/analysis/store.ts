@@ -46,6 +46,7 @@ interface AnalysisStore extends Analysis {
   editNode: <N extends Node>(id: string, patch: Partial<N>) => void
   addNode: (groupId: string, node: Node) => void
   removeNode: (id: string) => void
+  duplicateNode: (id: string) => void
   apply: () => void
   discard: () => void
   setRestriction: (restriction: Restriction) => void
@@ -227,6 +228,7 @@ export const useAnalysis = create<AnalysisStore>()((set, get) => ({
     }),
   addNode: (groupId, node) => set((s) => ({ draft: T.append(s.draft ?? s.tree, groupId, node) })),
   removeNode: (id) => set((s) => ({ draft: T.remove(s.draft ?? s.tree, id) })),
+  duplicateNode: (id) => set((s) => ({ draft: T.duplicate(s.draft ?? s.tree, id) })),
   // A hand-edited row loses its mark for good once the draft is applied (P3).
   apply: () =>
     set((s) =>

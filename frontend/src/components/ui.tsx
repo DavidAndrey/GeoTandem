@@ -22,15 +22,17 @@ export function ErrorNotice({ error }: { error: unknown }) {
 export function Labelled({
   label,
   className = '',
+  labelClassName = 'text-muted text-xs',
   children,
 }: {
   label: string
   className?: string
+  labelClassName?: string
   children: ReactNode
 }) {
   return (
     <label className={`flex flex-col gap-0.5 ${className}`}>
-      <span className="text-muted text-xs">{label}</span>
+      <span className={labelClassName}>{label}</span>
       {children}
     </label>
   )

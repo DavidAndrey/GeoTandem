@@ -67,13 +67,14 @@ test('an attribute and a spatial condition become one valid query (B2)', async (
   await userEvent.click(await screen.findByRole('button', { name: '+ Bedingung' }))
   const editor = await screen.findByRole('region', { name: 'Abfrage-Editor' })
 
-  // The layer the query is about, then what can be done with it.
-  expect(editor).toHaveTextContent('Die Abfrage bezieht sich auf den Layer')
-  expect(within(editor).getByText('Layer', { selector: 'label > span' })).toBeInTheDocument()
+  // The lead sentence names the layer select; the explanation opens while nothing is there.
+  expect(within(editor).getByLabelText('Die Abfrage bezieht sich auf den Layer')).toHaveValue(
+    'schulen',
+  )
   const row = within(editor).getByRole('group', { name: 'Bedingung Attribut' })
-  // Every control of a row is named on screen, not only for screen readers.
+  // Variant C: a condition is a sentence of chips, each named by its tooltip.
   for (const name of ['Attribut', 'Operator', 'Wert'])
-    expect(within(row).getByText(name, { selector: 'label > span' })).toBeVisible()
+    expect(within(row).getByLabelText(name)).toHaveAttribute('title', name)
   await userEvent.selectOptions(within(row).getByLabelText('Attribut'), 'Schulstufe')
   await userEvent.selectOptions(within(row).getByLabelText('Operator'), 'ist eins von')
   await userEvent.type(within(row).getByLabelText('Wert hinzufügen'), 'primar{Enter}')
@@ -86,10 +87,11 @@ test('an attribute and a spatial condition become one valid query (B2)', async (
   )
   await userEvent.click(await screen.findByRole('menuitem', { name: 'Raum' }))
   const spatial = within(editor).getByRole('group', { name: 'Bedingung Raum' })
-  await userEvent.selectOptions(within(spatial).getByLabelText('Beziehung'), '≤ Distanz zu')
+  await userEvent.selectOptions(within(spatial).getByLabelText('Beziehung'), '≤ Distanz')
+  expect(spatial).toHaveTextContent('m zu')
   await userEvent.type(within(spatial).getByLabelText('Distanz in Metern'), '500')
   await userEvent.selectOptions(within(spatial).getByLabelText('Bezugslayer'), 'Strassen')
-  await userEvent.click(within(spatial).getByRole('button', { name: '+ Filter' }))
+  await userEvent.click(within(spatial).getByRole('button', { name: '+ Filter auf Strassen' }))
   await userEvent.type(within(spatial).getByLabelText('Wert'), 'haupt')
 
   await userEvent.click(within(editor).getByRole('button', { name: 'Übernehmen' }))
@@ -187,4 +189,57 @@ test('a date condition reads as a date and is sent as ISO text (plan E1.8, WP40)
   expect(screen.getByLabelText('Bedingungen (Übersicht)')).toHaveTextContent(
     'Gegründet zwischen 31.12.2020 – 01.01.2010',
   )
+})
+
+test('the explanation is open for an empty query and behind ⓘ otherwise (variant C)', async () => {
+  backend()
+  renderAt('/', <App />)
+  await userEvent.click(await screen.findByRole('button', { name: 'Bearbeiten ›' }))
+  const editor = await screen.findByRole('region', { name: 'Abfrage-Editor' })
+  const info = within(editor).getByRole('button', { name: 'Wie funktioniert die Abfrage?' })
+  expect(info).toHaveAttribute('aria-expanded', 'true')
+  expect(editor).toHaveTextContent('Jede Bedingung ist ein Satz.')
+  await userEvent.click(info)
+  expect(editor).not.toHaveTextContent('Jede Bedingung ist ein Satz.')
+})
+
+test("the logic reads as a sentence; a condition's ⋯ menu negates, copies and removes it", async () => {
+  backend()
+  useAnalysis.getState().edit()
+  useAnalysis.getState().addNode('root', {
+    id: 'a1',
+    kind: 'attribute',
+    not: false,
+    attr: 'typ',
+    operator: 'eq',
+    value: 'primar',
+    min: null,
+    max: null,
+    values: [],
+  })
+  useAnalysis.getState().apply()
+  renderAt('/', <App />)
+  await userEvent.click(await screen.findByRole('button', { name: 'Bearbeiten ›' }))
+  const editor = await screen.findByRole('region', { name: 'Abfrage-Editor' })
+  expect(editor).toHaveTextContent('Treffer erfüllen')
+  await userEvent.selectOptions(within(editor).getByLabelText('Verknüpfung'), 'mindestens eine')
+
+  const actions = () =>
+    within(editor).getAllByRole('button', { name: 'Aktionen für diese Bedingung' })
+  await userEvent.click(actions()[0] as HTMLElement)
+  await userEvent.click(await screen.findByRole('menuitem', { name: 'Mit NICHT umkehren' }))
+  expect(within(editor).getByRole('group', { name: 'Bedingung Attribut' })).toHaveTextContent(
+    'NICHT',
+  )
+  await userEvent.click(actions()[0] as HTMLElement)
+  await userEvent.click(await screen.findByRole('menuitem', { name: 'Duplizieren' }))
+  expect(within(editor).getAllByRole('group', { name: 'Bedingung Attribut' })).toHaveLength(2)
+  await userEvent.click(actions()[1] as HTMLElement)
+  await userEvent.click(await screen.findByRole('menuitem', { name: 'Entfernen' }))
+  await userEvent.click(within(editor).getByRole('button', { name: 'Übernehmen' }))
+
+  expect(resultQuery(currentAnalysis(useAnalysis.getState()))?.where).toEqual({
+    op: 'not',
+    arg: { op: 'compare', attr: 'typ', cmp: 'eq', value: 'primar' },
+  })
 })

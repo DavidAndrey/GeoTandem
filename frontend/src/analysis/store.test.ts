@@ -137,3 +137,19 @@ test('a snapshot comes back whole, origin marks included; load would clear them 
   store().load({ ...currentAnalysis(store()) })
   expect(store().origin.marks).toEqual({})
 })
+
+test('Duplizieren puts a copy right after the condition, with ids of its own', () => {
+  store().addLayer('schulen')
+  const spatial = { ...newSpatialRow('strassen'), filter: newAttributeRow('klasse') }
+  const last = newAttributeRow('typ')
+  store().edit()
+  store().addNode('root', spatial)
+  store().addNode('root', last)
+  store().duplicateNode(spatial.id)
+  const [first, copy, third] = currentAnalysis(store()).tree.children
+  expect(third?.id).toBe(last.id)
+  expect(copy).toMatchObject({ kind: 'spatial', layer: 'strassen' })
+  expect(copy?.id).not.toBe(first?.id)
+  if (copy?.kind !== 'spatial' || first?.kind !== 'spatial') throw new Error('spatial rows')
+  expect(copy.filter?.id).not.toBe(first.filter?.id)
+})

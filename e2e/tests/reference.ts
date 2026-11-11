@@ -80,7 +80,7 @@ export async function buildReferenceQuestion(page: Page) {
     return editor.getByRole('group', { name: 'Bedingung Raum' }).last()
   }
   const road = await addSpatial()
-  await road.getByLabel('Beziehung').selectOption({ label: '≤ Distanz zu' })
+  await road.getByLabel('Beziehung').selectOption({ label: '≤ Distanz' })
   await road.getByLabel('Distanz in Metern').fill('500')
   await road.getByLabel('Bezugslayer').selectOption({ label: 'Strassen' })
   await road.getByRole('button', { name: '+ Filter' }).click()

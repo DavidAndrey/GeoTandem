@@ -5,7 +5,7 @@ import { hitsOf } from '../i18n/phrases'
 import { i18n } from '@lingui/core'
 import { Trans } from '@lingui/react/macro'
 import { msg, t } from '@lingui/core/macro'
-import { Crosshair, Plus, X } from 'lucide-react'
+import { Crosshair, Info, MapPin, MoreHorizontal, Plus, Tag, X } from 'lucide-react'
 import { DropdownMenu } from 'radix-ui'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useShallow } from 'zustand/react/shallow'
@@ -23,7 +23,7 @@ import { currentAnalysis, useAnalysis } from '../analysis/store'
 import { newAttributeRow, newGroup, newReferenceRow, newSpatialRow } from '../analysis/tree'
 import type { LayerInfo } from '../api/client'
 import { useLayers } from '../api/queries'
-import { ErrorNotice, Labelled } from '../components/ui'
+import { ErrorNotice } from '../components/ui'
 import { useMapView } from '../map/view'
 import { HandoverNotice } from '../model/panel/HandoverNotice'
 import { isMarked } from '../model/origin'
@@ -51,6 +51,8 @@ export function EditorPanel() {
   const catalog = useLayers()
   const counts = useCounts(analysis)
   const fields = fieldsOf(resultLayer(analysis) ?? undefined, catalog.data)
+  // The explanation is open while there is nothing to edit yet, otherwise behind ⓘ.
+  const [info, setInfo] = useState(analysis.tree.children.length === 0)
   const close = (keep: boolean) => {
     setActiveRow(null)
     if (keep) apply()
@@ -76,7 +78,7 @@ export function EditorPanel() {
       tabIndex={-1}
       aria-label={t`Abfrage-Editor`}
       className="card flex min-h-0 flex-col overflow-hidden outline-none"
-      onKeyDown={(e) => e.key === 'Escape' && close(false)}
+      onKeyDown={(e) => e.key === 'Escape' && !e.defaultPrevented && close(false)}
     >
       <div className="border-divider flex items-center gap-2 border-b px-4 py-2">
         <h2 id="editor-title" className="flex-1 text-xl">
@@ -91,20 +93,35 @@ export function EditorPanel() {
           <X size={16} />
         </button>
       </div>
-      <div className="flex-1 overflow-auto px-4 py-3">
-        <p className="mb-1 text-sm">
-          <Trans>Die Abfrage bezieht sich auf den Layer</Trans>
-        </p>
-        <ResultSelect hint />
-        <p className="text-muted mt-2 text-sm">
-          <Trans>
-            Mit dem ausgewählten Layer können Sie nun eine Abfrage mit UND- oder ODER-Verknüpfung
-            machen, die Sie über Gruppen strukturieren können. Das Ergebnis der Abfrage wird in der
-            Karte und in der Tabelle unter «Datendetails» vom ausgewählten Layer dargestellt.
-          </Trans>
-        </p>
+      <div className="flex flex-1 flex-col gap-3 overflow-auto px-4 py-3">
+        <div className="relative">
+          <ResultSelect label={t`Die Abfrage bezieht sich auf den Layer`} />
+          <button
+            type="button"
+            className="text-muted hover:text-ink absolute top-0 right-0"
+            aria-label={t`Wie funktioniert die Abfrage?`}
+            aria-expanded={info}
+            aria-controls="editor-info"
+            onClick={() => setInfo(!info)}
+          >
+            <Info size={15} aria-hidden />
+          </button>
+        </div>
+        {info && (
+          <p
+            id="editor-info"
+            className="border-divider rounded-[var(--radius-lg)] border bg-white px-3 py-2 text-sm"
+          >
+            <Trans>
+              Jede Bedingung ist ein Satz. Die umrandeten Teile sind Auswahlfelder: anklicken und
+              ändern. Mehrere Bedingungen verknüpfen Sie mit «alle» (UND) oder «mindestens eine»
+              (ODER) und ordnen sie in Gruppen. Das Ergebnis erscheint in der Karte und in der
+              Tabelle unter «Datendetails». Ein anderer Layer setzt die Attribut-Bedingungen zurück.
+            </Trans>
+          </p>
+        )}
         {fields.length === 0 && analysis.result === null ? (
-          <p className="text-muted mt-3 text-sm">
+          <p className="text-muted text-sm">
             <Trans>Erst einen Ergebnis-Layer wählen.</Trans>
           </p>
         ) : (
@@ -137,53 +154,116 @@ interface Context {
   counts: Map<string, number> | undefined
 }
 
-function GroupEditor({ group, root, ...context }: { group: Group; root?: boolean } & Context) {
-  const { editNode, addNode, removeNode } = useAnalysis(
-    useShallow((s) => ({ editNode: s.editNode, addNode: s.addNode, removeNode: s.removeNode })),
+/** A sentence's plain words, between its controls. */
+function Word({ children }: { children: ReactNode }) {
+  return <span className="text-muted text-[13px]">{children}</span>
+}
+
+/** The editable part of a sentence: named by a tooltip and for screen readers (variant C). */
+const chip = (label: string) => ({ className: 'chip-control', 'aria-label': label, title: label })
+
+function NotMark() {
+  return (
+    <span className="bg-ink rounded-full px-2 text-[11px] tracking-wide text-white">
+      <Trans>NICHT</Trans>
+    </span>
   )
+}
+
+/** "Treffer erfüllen [alle ▾]": how the group's conditions combine. */
+function JoinSelect({ group }: { group: Group }) {
+  const editNode = useAnalysis((s) => s.editNode)
+  return (
+    <select
+      {...chip(t`Verknüpfung`)}
+      value={group.op}
+      onChange={(e) => editNode<Group>(group.id, { op: e.target.value as Group['op'] })}
+    >
+      <option value="and">{t`alle`}</option>
+      <option value="or">{t`mindestens eine`}</option>
+    </select>
+  )
+}
+
+const MENU_ITEM =
+  'cursor-pointer rounded-[var(--radius-md)] px-3 py-1.5 text-sm outline-none data-[highlighted]:bg-neutral-200'
+
+/** One place for a condition's or a group's actions: NICHT, Duplizieren, Entfernen. */
+function NodeMenu({ node, label }: { node: Node; label: string }) {
+  const { editNode, duplicateNode, removeNode } = useAnalysis(
+    useShallow((s) => ({
+      editNode: s.editNode,
+      duplicateNode: s.duplicateNode,
+      removeNode: s.removeNode,
+    })),
+  )
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger
+        className="text-muted hover:text-ink rounded-[var(--radius-md)] px-1 hover:bg-neutral-200"
+        aria-label={label}
+      >
+        <MoreHorizontal size={16} aria-hidden />
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
+          align="end"
+          className="card z-[1100] flex min-w-44 flex-col p-1 shadow-[var(--shadow-md)]"
+        >
+          <DropdownMenu.Item
+            className={MENU_ITEM}
+            onSelect={() => editNode(node.id, { not: !node.not })}
+          >
+            {node.not ? t`NICHT aufheben` : t`Mit NICHT umkehren`}
+          </DropdownMenu.Item>
+          <DropdownMenu.Item className={MENU_ITEM} onSelect={() => duplicateNode(node.id)}>
+            <Trans>Duplizieren</Trans>
+          </DropdownMenu.Item>
+          <DropdownMenu.Item
+            className={`${MENU_ITEM} text-danger`}
+            onSelect={() => removeNode(node.id)}
+          >
+            <Trans>Entfernen</Trans>
+          </DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+  )
+}
+
+function GroupEditor({ group, root, ...context }: { group: Group; root?: boolean } & Context) {
+  const addNode = useAnalysis((s) => s.addNode)
   const resultName = useAnalysis((s) => s.result)
   const otherLayers = (context.catalog ?? []).filter(
     (l) => l.kind === 'vector' && l.name !== resultName,
   )
+  const empty = group.children.length === 0
   return (
     <div
       role="group"
       aria-label={root ? t`Bedingungen` : t`Gruppe`}
-      className={root ? 'mt-3' : 'border-divider my-1 rounded-[var(--radius-md)] border p-2'}
+      className={root ? '' : 'border-accent-400 ml-1 border-l-2 py-1 pl-3'}
     >
-      <div className="mb-1.5 flex items-center gap-2 text-sm">
-        <div className="flex" role="radiogroup" aria-label={t`Verknüpfung`}>
-          {(['and', 'or'] as const).map((op) => (
-            <button
-              key={op}
-              type="button"
-              role="radio"
-              aria-checked={group.op === op}
-              className={`border px-2 text-xs first:rounded-l last:rounded-r ${group.op === op ? 'border-accent text-accent-700' : 'border-neutral-400'}`}
-              onClick={() => editNode<Group>(group.id, { op })}
-            >
-              {op === 'and' ? t`UND` : t`ODER`}
-            </button>
-          ))}
+      {root ? (
+        !empty && (
+          <p className="mb-2 flex flex-wrap items-center gap-1.5 text-sm">
+            <Trans>
+              Treffer erfüllen <JoinSelect group={group} /> dieser Bedingungen:
+            </Trans>
+          </p>
+        )
+      ) : (
+        <div className="mb-2 flex flex-wrap items-center gap-1.5 text-sm">
+          {group.not && <NotMark />}
+          <Trans>
+            Gruppe: Treffer erfüllen <JoinSelect group={group} />
+          </Trans>
+          <span className="ml-auto">
+            <NodeMenu node={group} label={t`Aktionen für diese Gruppe`} />
+          </span>
         </div>
-        <span className="text-muted text-xs">
-          {group.op === 'and' ? t`alle folgenden` : t`mindestens eine`}
-        </span>
-        {!root && (
-          <>
-            <NotToggle node={group} />
-            <button
-              type="button"
-              className="ml-auto"
-              aria-label={t`Gruppe entfernen`}
-              onClick={() => removeNode(group.id)}
-            >
-              <X size={13} />
-            </button>
-          </>
-        )}
-      </div>
-      <ul className="flex flex-col gap-1">
+      )}
+      <ul className="flex flex-col gap-2">
         {group.children.map((child) => (
           <li key={child.id}>
             {child.kind === 'group' ? (
@@ -194,7 +274,7 @@ function GroupEditor({ group, root, ...context }: { group: Group; root?: boolean
           </li>
         ))}
       </ul>
-      <div className="mt-1.5 flex gap-3 text-sm">
+      <div className={`flex gap-4 text-sm ${empty ? '' : 'mt-2'}`}>
         <DropdownMenu.Root>
           <DropdownMenu.Trigger className="text-accent-700 flex items-center gap-1">
             <Plus size={13} aria-hidden /> <Trans>Bedingung</Trans>
@@ -202,7 +282,7 @@ function GroupEditor({ group, root, ...context }: { group: Group; root?: boolean
           <DropdownMenu.Portal>
             <DropdownMenu.Content
               align="start"
-              className="card z-[1100] min-w-40 py-1 shadow-[var(--shadow-md)]"
+              className="card z-[1100] flex min-w-40 flex-col p-1 shadow-[var(--shadow-md)]"
             >
               {[
                 { label: t`Attribut`, node: () => newAttributeRow(context.fields[0]?.name ?? '') },
@@ -211,7 +291,7 @@ function GroupEditor({ group, root, ...context }: { group: Group; root?: boolean
               ].map((item) => (
                 <DropdownMenu.Item
                   key={item.label}
-                  className="cursor-pointer px-3 py-1 text-sm outline-none data-[highlighted]:bg-neutral-200"
+                  className={MENU_ITEM}
                   onSelect={() => addNode(group.id, item.node())}
                 >
                   {item.label}
@@ -232,61 +312,87 @@ function GroupEditor({ group, root, ...context }: { group: Group; root?: boolean
   )
 }
 
-function NotToggle({ node }: { node: Node }) {
-  const editNode = useAnalysis((s) => s.editNode)
-  return (
-    <label className="flex items-center gap-1 text-xs">
-      <input
-        type="checkbox"
-        checked={node.not}
-        onChange={(e) => editNode(node.id, { not: e.target.checked })}
-      />
-      <Trans>NICHT</Trans>
-    </label>
-  )
+const KINDS = {
+  attribute: { name: msg`Attribut`, Icon: Tag },
+  spatial: { name: msg`Raum`, Icon: MapPin },
+  reference: { name: msg`Bezug`, Icon: Crosshair },
 }
 
-const BADGES = { attribute: msg`Attribut`, spatial: msg`Raum`, reference: msg`Bezug` }
-
+/**
+ * One condition as one card: the sentence of chips, then a line with its kind,
+ * its origin, its hits alone and its actions (variant C of the editor review).
+ */
 function RowEditor({
   row,
   fields,
   catalog,
   counts,
 }: { row: AttributeRow | SpatialRow | ReferenceRow } & Context) {
-  const removeNode = useAnalysis((s) => s.removeNode)
+  const editNode = useAnalysis((s) => s.editNode)
   const marked = useAnalysis((s) => isMarked(s.origin, row))
   const { activeRow, setActiveRow } = useMapView(
     useShallow((s) => ({ activeRow: s.activeRow, setActiveRow: s.setActiveRow })),
   )
   const count = counts?.get(row.id)
-  const badge = i18n._(BADGES[row.kind])
+  const { name, Icon } = KINDS[row.kind]
+  const kind = i18n._(name)
+  const filterFields = row.kind === 'spatial' ? catalogFields(row.layer, catalog) : []
+  const change = (patch: Partial<SpatialRow>) => editNode<SpatialRow>(row.id, patch)
+  const reference = row.kind === 'spatial' ? layerName(row.layer, catalog) : ''
   return (
     <div
       role="group"
-      aria-label={t`Bedingung ${badge}`}
+      aria-label={t`Bedingung ${kind}`}
       data-row-id={row.id}
-      className={`flex flex-wrap items-end gap-1.5 rounded-[var(--radius-md)] border px-2 py-1 text-sm ${activeRow === row.id ? 'border-accent' : 'border-transparent'}`}
+      className={`focus-within:border-accent rounded-[var(--radius-lg)] border bg-white px-3 py-2 ${activeRow === row.id ? 'border-accent' : 'border-divider'}`}
       onFocus={() => setActiveRow(row.id)}
     >
-      <span className="text-muted rounded-full border border-dashed border-neutral-400 px-1.5 text-[11px]">
-        {badge}
-      </span>
-      {/* Set by the model and not changed by hand since (design M15.1, plan P3). */}
-      {marked && <OriginMark />}
-      <NotToggle node={row} />
-      {row.kind === 'attribute' && <AttributeEditor row={row} fields={fields} />}
-      {row.kind === 'spatial' && <SpatialEditor row={row} catalog={catalog} />}
-      {row.kind === 'reference' && <ReferenceEditor row={row} catalog={catalog} />}
-      <span className="text-muted ml-auto text-xs" aria-label={t`Treffer dieser Bedingung`}>
-        {count ?? '–'}
-      </span>
-      <button type="button" aria-label={t`Bedingung entfernen`} onClick={() => removeNode(row.id)}>
-        <X size={13} />
-      </button>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {row.not && <NotMark />}
+        {row.kind === 'attribute' && <AttributeEditor row={row} fields={fields} />}
+        {row.kind === 'spatial' && (
+          <SpatialEditor row={row} catalog={catalog} fields={filterFields} />
+        )}
+        {row.kind === 'reference' && <ReferenceEditor row={row} catalog={catalog} />}
+      </div>
+      <div className="mt-1.5 flex items-center gap-2 text-xs">
+        {/* The group's name says the kind already; the icon only shows it. */}
+        <span aria-hidden title={kind} className="text-neutral-800">
+          <Icon size={14} />
+        </span>
+        {/* Set by the model and not changed by hand since (design M15.1, plan P3). */}
+        {marked && <OriginMark />}
+        {row.kind === 'spatial' &&
+          (row.filter ? (
+            <button
+              type="button"
+              className="text-accent-700 hover:underline"
+              onClick={() => change({ filter: null })}
+            >
+              <Trans>Filter entfernen</Trans>
+            </button>
+          ) : (
+            row.layer && (
+              <button
+                type="button"
+                className="text-accent-700 hover:underline"
+                onClick={() => change({ filter: newAttributeRow(filterFields[0]?.name ?? '') })}
+              >
+                <Trans>+ Filter auf {reference}</Trans>
+              </button>
+            )
+          ))}
+        <span className="text-muted ml-auto tabular-nums" aria-label={t`Treffer dieser Bedingung`}>
+          {count === undefined ? '–' : t`${count} Treffer allein`}
+        </span>
+        <NodeMenu node={row} label={t`Aktionen für diese Bedingung`} />
+      </div>
     </div>
   )
 }
+
+const layerName = (name: string, catalog: LayerInfo[] | undefined) =>
+  catalog?.find((l) => l.name === name)?.title ?? name
 
 // --- attribute rows -------------------------------------------------------------
 
@@ -320,50 +426,44 @@ export function AttributeEditor({
   const bound = (text: string) => (text === '' ? null : dated ? text : Number(text))
   return (
     <>
-      <Labelled label={t`Attribut`}>
-        <select
-          className="input"
-          aria-label={t`Attribut`}
-          value={row.attr}
-          onChange={(e) => {
-            const next = fields.find((f) => f.name === e.target.value)
-            const ops = operatorsFor(next?.type)
-            change({
-              attr: e.target.value,
-              operator: ops.includes(row.operator) ? row.operator : 'eq',
-              value: null,
-              values: [],
-              min: null,
-              max: null,
-            })
-          }}
-        >
-          {!field && (
-            <option value="">
-              <Trans>Attribut …</Trans>
-            </option>
-          )}
-          {fields.map((f) => (
-            <option key={f.name} value={f.name}>
-              {f.label}
-            </option>
-          ))}
-        </select>
-      </Labelled>
-      <Labelled label={t`Operator`}>
-        <select
-          className="input"
-          aria-label={t`Operator`}
-          value={row.operator}
-          onChange={(e) => change({ operator: e.target.value as AttributeRow['operator'] })}
-        >
-          {operators.map((op) => (
-            <option key={op} value={op}>
-              {operatorLabel(op, field?.type)}
-            </option>
-          ))}
-        </select>
-      </Labelled>
+      <select
+        {...chip(t`Attribut`)}
+        value={row.attr}
+        onChange={(e) => {
+          const next = fields.find((f) => f.name === e.target.value)
+          const ops = operatorsFor(next?.type)
+          change({
+            attr: e.target.value,
+            operator: ops.includes(row.operator) ? row.operator : 'eq',
+            value: null,
+            values: [],
+            min: null,
+            max: null,
+          })
+        }}
+      >
+        {!field && (
+          <option value="">
+            <Trans>Attribut …</Trans>
+          </option>
+        )}
+        {fields.map((f) => (
+          <option key={f.name} value={f.name}>
+            {f.label}
+          </option>
+        ))}
+      </select>
+      <select
+        {...chip(t`Operator`)}
+        value={row.operator}
+        onChange={(e) => change({ operator: e.target.value as AttributeRow['operator'] })}
+      >
+        {operators.map((op) => (
+          <option key={op} value={op}>
+            {operatorLabel(op, field?.type)}
+          </option>
+        ))}
+      </select>
       {field?.codes && (
         <datalist id={listId}>
           {field.codes.map((c) => (
@@ -373,24 +473,23 @@ export function AttributeEditor({
       )}
       {row.operator === 'between' && (
         <>
-          <Labelled label={t`von`}>
-            <input
-              className={`input ${dated ? 'w-36' : 'w-20'}`}
-              type={dated ? 'date' : 'number'}
-              aria-label={t`von`}
-              value={row.min ?? ''}
-              onChange={(e) => change({ min: bound(e.target.value) })}
-            />
-          </Labelled>
-          <Labelled label={t({ message: 'bis', context: 'range' })}>
-            <input
-              className={`input ${dated ? 'w-36' : 'w-20'}`}
-              type={dated ? 'date' : 'number'}
-              aria-label={t({ message: 'bis', context: 'range' })}
-              value={row.max ?? ''}
-              onChange={(e) => change({ max: bound(e.target.value) })}
-            />
-          </Labelled>
+          <input
+            {...chip(t`von`)}
+            className={`chip-control ${dated ? 'min-w-36' : 'min-w-16'}`}
+            type={dated ? 'date' : 'number'}
+            value={row.min ?? ''}
+            onChange={(e) => change({ min: bound(e.target.value) })}
+          />
+          <Word>
+            <Trans context="range">und</Trans>
+          </Word>
+          <input
+            {...chip(t({ message: 'bis', context: 'range' }))}
+            className={`chip-control ${dated ? 'min-w-36' : 'min-w-16'}`}
+            type={dated ? 'date' : 'number'}
+            value={row.max ?? ''}
+            onChange={(e) => change({ max: bound(e.target.value) })}
+          />
         </>
       )}
       {row.operator === 'in' && (
@@ -398,35 +497,28 @@ export function AttributeEditor({
       )}
       {!['between', 'in', 'is_empty'].includes(row.operator) &&
         (field?.type === 'boolean' ? (
-          <Labelled label={t`Wert`}>
-            <select
-              className="input"
-              aria-label={t`Wert`}
-              value={row.value === null ? '' : String(row.value)}
-              onChange={(e) =>
-                change({ value: e.target.value === '' ? null : e.target.value === 'true' })
-              }
-            >
-              <option value="">…</option>
-              <option value="true">{t`ja`}</option>
-              <option value="false">{t`nein`}</option>
-            </select>
-          </Labelled>
+          <select
+            {...chip(t`Wert`)}
+            value={row.value === null ? '' : String(row.value)}
+            onChange={(e) =>
+              change({ value: e.target.value === '' ? null : e.target.value === 'true' })
+            }
+          >
+            <option value="">…</option>
+            <option value="true">{t`ja`}</option>
+            <option value="false">{t`nein`}</option>
+          </select>
         ) : (
-          <Labelled label={t`Wert`}>
-            <input
-              className={`input ${numeric ? 'w-24' : dated ? 'w-36' : 'w-32'}`}
-              type={numeric ? 'number' : dated ? 'date' : 'text'}
-              aria-label={t`Wert`}
-              list={field?.codes ? listId : undefined}
-              value={row.value === null ? '' : String(row.value)}
-              onChange={(e) => change({ value: parseValue(e.target.value, field) })}
-            />
-          </Labelled>
+          <input
+            {...chip(t`Wert`)}
+            className={`chip-control ${numeric ? 'min-w-16' : dated ? 'min-w-36' : 'min-w-24'}`}
+            type={numeric ? 'number' : dated ? 'date' : 'text'}
+            list={field?.codes ? listId : undefined}
+            value={row.value === null ? '' : String(row.value)}
+            onChange={(e) => change({ value: parseValue(e.target.value, field) })}
+          />
         ))}
-      {field?.unit && !['in', 'is_empty'].includes(row.operator) && (
-        <span className="text-muted text-xs">{field.unit}</span>
-      )}
+      {field?.unit && !['in', 'is_empty'].includes(row.operator) && <Word>{field.unit}</Word>}
     </>
   )
 }
@@ -449,9 +541,9 @@ function ValueList({
     setText('')
   }
   return (
-    <span className="flex flex-wrap items-end gap-1">
+    <>
       {row.values.map((v) => (
-        <span key={String(v)} className="chip chip-active text-xs">
+        <span key={String(v)} className="chip chip-active h-7 bg-white">
           {formatScalar(v)}
           <button
             type="button"
@@ -462,23 +554,22 @@ function ValueList({
           </button>
         </span>
       ))}
-      <Labelled label={t`Werte`}>
-        <input
-          className="input w-28"
-          aria-label={t`Wert hinzufügen`}
-          list={field?.codes ? listId : undefined}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault()
-              add()
-            }
-          }}
-          onBlur={() => text && add()}
-        />
-      </Labelled>
-    </span>
+      <input
+        {...chip(t`Wert hinzufügen`)}
+        className="chip-control min-w-24"
+        placeholder={t`Wert, Enter`}
+        list={field?.codes ? listId : undefined}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault()
+            add()
+          }
+        }}
+        onBlur={() => text && add()}
+      />
+    </>
   )
 }
 
@@ -498,25 +589,18 @@ function LayerSelect({
   const result = useAnalysis((s) => s.result)
   const layers = (catalog ?? []).filter((l) => l.kind === 'vector' && l.name !== result)
   return (
-    <Labelled label={label}>
-      <select
-        className="input"
-        aria-label={label}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        {!value && (
-          <option value="">
-            <Trans>Layer …</Trans>
-          </option>
-        )}
-        {layers.map((l) => (
-          <option key={l.name} value={l.name}>
-            {l.title}
-          </option>
-        ))}
-      </select>
-    </Labelled>
+    <select {...chip(label)} value={value} onChange={(e) => onChange(e.target.value)}>
+      {!value && (
+        <option value="">
+          <Trans>Layer …</Trans>
+        </option>
+      )}
+      {layers.map((l) => (
+        <option key={l.name} value={l.name}>
+          {l.title}
+        </option>
+      ))}
+    </select>
   )
 }
 
@@ -528,41 +612,55 @@ function DistanceInput({
   onChange: (m: number | null) => void
 }): ReactNode {
   return (
-    <Labelled label={t`Distanz (m)`}>
-      <input
-        className="input w-20"
-        type="number"
-        min={0}
-        aria-label={t`Distanz in Metern`}
-        value={value ?? ''}
-        onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
-      />
-    </Labelled>
+    <input
+      {...chip(t`Distanz in Metern`)}
+      className="chip-control min-w-16"
+      type="number"
+      min={0}
+      value={value ?? ''}
+      onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
+    />
   )
 }
 
-function SpatialEditor({ row, catalog }: { row: SpatialRow; catalog: LayerInfo[] | undefined }) {
+/**
+ * The relation as the sentence's verb: "≤ Distanz" asks for the metres and
+ * "zu" next, so "[≤ Distanz] [300] m zu [Haltestellen]" reads as one sentence.
+ */
+const relationLabel = (op: SpatialOperator) =>
+  op === 'near' ? t`≤ Distanz` : op === 'far' ? t`> Distanz` : spatialLabel(op)
+
+function SpatialEditor({
+  row,
+  catalog,
+  fields,
+}: {
+  row: SpatialRow
+  catalog: LayerInfo[] | undefined
+  fields: Field[]
+}) {
   const editNode = useAnalysis((s) => s.editNode)
   const change = (patch: Partial<SpatialRow>) => editNode<SpatialRow>(row.id, patch)
-  const filterFields = catalogFields(row.layer, catalog)
   return (
     <>
-      <Labelled label={t`Beziehung`}>
-        <select
-          className="input"
-          aria-label={t`Beziehung`}
-          value={row.operator}
-          onChange={(e) => change({ operator: e.target.value as SpatialOperator })}
-        >
-          {SPATIAL_OPERATOR_LIST.map((op) => (
-            <option key={op} value={op}>
-              {spatialLabel(op)}
-            </option>
-          ))}
-        </select>
-      </Labelled>
+      <select
+        {...chip(t`Beziehung`)}
+        value={row.operator}
+        onChange={(e) => change({ operator: e.target.value as SpatialOperator })}
+      >
+        {SPATIAL_OPERATOR_LIST.map((op) => (
+          <option key={op} value={op}>
+            {relationLabel(op)}
+          </option>
+        ))}
+      </select>
       {needsDistance(row.operator) && (
-        <DistanceInput value={row.distance_m} onChange={(distance_m) => change({ distance_m })} />
+        <>
+          <DistanceInput value={row.distance_m} onChange={(distance_m) => change({ distance_m })} />
+          <Word>
+            <Trans context="distance to a layer">m zu</Trans>
+          </Word>
+        </>
       )}
       <LayerSelect
         label={t`Bezugslayer`}
@@ -570,34 +668,17 @@ function SpatialEditor({ row, catalog }: { row: SpatialRow; catalog: LayerInfo[]
         catalog={catalog}
         onChange={(layer) => change({ layer, filter: null })}
       />
-      {row.filter ? (
-        <span className="flex w-full flex-wrap items-end gap-1.5 pl-6 text-xs">
-          <span className="text-muted">
-            <Trans>wo</Trans>
-          </span>
+      {row.filter && (
+        <>
+          <Word>
+            <Trans context="filter on the reference layer">mit</Trans>
+          </Word>
           <AttributeEditor
             row={row.filter}
-            fields={filterFields}
+            fields={fields}
             onChange={(patch) => change({ filter: { ...(row.filter as AttributeRow), ...patch } })}
           />
-          <button
-            type="button"
-            aria-label={t`Filter entfernen`}
-            onClick={() => change({ filter: null })}
-          >
-            <X size={12} />
-          </button>
-        </span>
-      ) : (
-        row.layer && (
-          <button
-            type="button"
-            className="text-accent-700 text-xs"
-            onClick={() => change({ filter: newAttributeRow(filterFields[0]?.name ?? '') })}
-          >
-            <Trans>+ Filter</Trans>
-          </button>
-        )
+        </>
       )}
     </>
   )
@@ -616,20 +697,14 @@ function ReferenceEditor({
   const picking = pick?.rowId === row.id
   return (
     <>
-      <span className="text-xs">≤</span>
+      <Word>≤</Word>
       <DistanceInput value={row.distance_m} onChange={(m) => change({ distance_m: m ?? 0 })} />
-      <span className="text-xs">
-        <Trans context="around a feature">um</Trans>
-      </span>
-      <LayerSelect
-        label={t`Layer des Bezugsobjekts`}
-        value={row.layer}
-        catalog={catalog}
-        onChange={(layer) => change({ layer, fid: null, label: '' })}
-      />
+      <Word>
+        <Trans context="around a feature">m um</Trans>
+      </Word>
       <button
         type="button"
-        className={`chip ${picking ? 'chip-active' : ''}`}
+        className={`chip-control inline-flex items-center gap-1 ${picking ? 'bg-accent-100' : ''}`}
         aria-pressed={picking}
         disabled={!row.layer}
         onClick={() => setPick(picking ? null : { layer: row.layer, rowId: row.id })}
@@ -641,6 +716,15 @@ function ReferenceEditor({
             : t`Objekt wählen`
           : row.label || objectLabel(row.fid)}
       </button>
+      <Word>
+        <Trans context="feature of a layer">aus</Trans>
+      </Word>
+      <LayerSelect
+        label={t`Layer des Bezugsobjekts`}
+        value={row.layer}
+        catalog={catalog}
+        onChange={(layer) => change({ layer, fid: null, label: '' })}
+      />
     </>
   )
 }

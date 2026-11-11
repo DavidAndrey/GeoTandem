@@ -78,6 +78,25 @@ export function append(tree: Group, groupId: string, node: Node): Group {
   )
 }
 
+/** A copy of ``node`` with fresh ids, its children and filter included. */
+function copy(node: Node): Node {
+  if (node.kind === 'group') return { ...node, id: newId('g'), children: node.children.map(copy) }
+  if (node.kind === 'spatial')
+    return { ...node, id: newId('s'), filter: node.filter && { ...node.filter, id: newId('a') } }
+  return { ...node, id: newId(node.kind === 'attribute' ? 'a' : 'r') }
+}
+
+/** Insert a copy of node ``id`` right after it; the root is not copied. */
+export function duplicate(tree: Group, id: string): Group {
+  const visit = (group: Group): Group => ({
+    ...group,
+    children: group.children.flatMap((child) =>
+      child.id === id ? [child, copy(child)] : [child.kind === 'group' ? visit(child) : child],
+    ),
+  })
+  return visit(tree)
+}
+
 export function rows(tree: Group): Row[] {
   return tree.children.flatMap((child) => (child.kind === 'group' ? rows(child) : [child]))
 }

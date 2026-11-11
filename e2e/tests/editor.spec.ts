@@ -44,7 +44,7 @@ test('conditions built by hand count like the hand-written query', async ({ page
   await editor.getByRole('button', { name: 'Bedingung', exact: true }).first().click()
   await page.getByRole('menuitem', { name: 'Raum' }).click()
   const spatial = editor.getByRole('group', { name: 'Bedingung Raum' })
-  await spatial.getByLabel('Beziehung').selectOption({ label: '≤ Distanz zu' })
+  await spatial.getByLabel('Beziehung').selectOption({ label: '≤ Distanz' })
   await spatial.getByLabel('Distanz in Metern').fill('500')
   await spatial.getByLabel('Bezugslayer').selectOption({ label: 'Strassen' })
   await spatial.getByRole('button', { name: '+ Filter' }).click()
@@ -91,6 +91,6 @@ test('a reference feature is picked on the map (F-4.3)', async ({ page }) => {
     .first()
     .click({ force: true })
   // Picked: neither the prompt nor the waiting state ("auf der Karte klicken …").
-  await expect(row.locator('button.chip')).not.toHaveText(/Objekt wählen|auf der Karte klicken/)
+  await expect(row.locator('button[aria-pressed]')).not.toHaveText(/Objekt wählen|auf der Karte klicken/)
   await expect(row.getByLabel('Treffer dieser Bedingung')).not.toHaveText('–')
 })

@@ -287,6 +287,10 @@ msgstr "{count} still falsch"
 msgid "{count} Treffer"
 msgstr "{count} Treffer"
 
+#: src/editor/EditorPanel.tsx
+msgid "{count} Treffer allein"
+msgstr "{count} Treffer allein"
+
 #: src/model/compare/CompareDialog.tsx
 msgid "{count}, Ergebnis als eine Abfrage"
 msgstr "{count}, Ergebnis als eine Abfrage"
@@ -741,8 +745,8 @@ msgid "+ Bedingung"
 msgstr "+ Bedingung"
 
 #: src/editor/EditorPanel.tsx
-msgid "+ Filter"
-msgstr "+ Filter"
+msgid "+ Filter auf {reference}"
+msgstr "+ Filter auf {reference}"
 
 #: src/operations/OperationDialog.tsx
 msgid "+ Kennzahl"
@@ -784,6 +788,10 @@ msgstr "= falsch ohne genannte Annahme"
 msgid "> {distance} zu {layer}"
 msgstr "> {distance} zu {layer}"
 
+#: src/editor/EditorPanel.tsx
+msgid "> Distanz"
+msgstr "> Distanz"
+
 #: src/editor/describe.ts
 msgid "> Distanz zu"
 msgstr "> Distanz zu"
@@ -803,6 +811,10 @@ msgstr "≤ {distance} um {feature} ({layer})"
 #: src/editor/describe.ts
 msgid "≤ {distance} zu {layer}"
 msgstr "≤ {distance} zu {layer}"
+
+#: src/editor/EditorPanel.tsx
+msgid "≤ Distanz"
+msgstr "≤ Distanz"
 
 #: src/editor/describe.ts
 msgid "≤ Distanz zu"
@@ -1064,6 +1076,14 @@ msgstr "Aktionen für {name}"
 msgid "Aktionen für {title}"
 msgstr "Aktionen für {title}"
 
+#: src/editor/EditorPanel.tsx
+msgid "Aktionen für diese Bedingung"
+msgstr "Aktionen für diese Bedingung"
+
+#: src/editor/EditorPanel.tsx
+msgid "Aktionen für diese Gruppe"
+msgstr "Aktionen für diese Gruppe"
+
 #: src/admin/UsersPage.tsx
 msgid "aktiv"
 msgstr "aktiv"
@@ -1094,6 +1114,7 @@ msgstr "Aktuelles Passwort"
 #: src/admin/evaluation/NewRunPage.tsx
 #: src/admin/ImportLogPage.tsx
 #: src/admin/ModelLogPage.tsx
+#: src/editor/EditorPanel.tsx
 msgid "alle"
 msgstr "alle"
 
@@ -1116,10 +1137,6 @@ msgstr "Alle Attribute beschriftet, alle Codelisten bestätigt, alle Beschreibun
 #: src/i18n/errors.ts
 msgid "Alle Beschreibungen und Beschriftungen sind ausgefüllt; es gibt nichts vorzuschlagen."
 msgstr "Alle Beschreibungen und Beschriftungen sind ausgefüllt; es gibt nichts vorzuschlagen."
-
-#: src/editor/EditorPanel.tsx
-msgid "alle folgenden"
-msgstr "alle folgenden"
 
 #: src/map/MapView.tsx
 msgid "Alle Layer"
@@ -1605,6 +1622,11 @@ msgstr "Aufklappen"
 msgid "aus"
 msgstr "aus"
 
+#: src/editor/EditorPanel.tsx
+msgctxt "feature of a layer"
+msgid "aus"
+msgstr "aus"
+
 #: src/model/approval/governance.ts
 msgctxt "level cell"
 msgid "aus"
@@ -1713,12 +1735,8 @@ msgid "Bedingung „{condition}\" entfernt: ihr Layer fehlt."
 msgstr "Bedingung „{condition}\" entfernt: ihr Layer fehlt."
 
 #: src/editor/EditorPanel.tsx
-msgid "Bedingung {badge}"
-msgstr "Bedingung {badge}"
-
-#: src/editor/EditorPanel.tsx
-msgid "Bedingung entfernen"
-msgstr "Bedingung entfernen"
+msgid "Bedingung {kind}"
+msgstr "Bedingung {kind}"
 
 #: src/editor/EditorPanel.tsx
 #: src/model/tree.tsx
@@ -3122,7 +3140,6 @@ msgstr "Direktabfrage"
 msgid "Distanz"
 msgstr "Distanz"
 
-#: src/editor/EditorPanel.tsx
 #: src/model/chain/PlanEditor.tsx
 msgid "Distanz (m)"
 msgstr "Distanz (m)"
@@ -3145,6 +3162,7 @@ msgstr "Drei Grossbuchstaben, z. B. CHF"
 
 #: src/admin/CatalogPage.tsx
 #: src/admin/DuplicateLayerDialog.tsx
+#: src/editor/EditorPanel.tsx
 #: src/queries/ManageQueriesDialog.tsx
 #: src/session/SessionsDialog.tsx
 msgid "Duplizieren"
@@ -3201,10 +3219,6 @@ msgstr "Eigenes Passwort ändern"
 #: src/admin/LevelsPage.tsx
 msgid "Eigenschaft"
 msgstr "Eigenschaft"
-
-#: src/workplace/ResultSelect.tsx
-msgid "Ein anderer Layer setzt die Attribut-Bedingungen zurück."
-msgstr "Ein anderer Layer setzt die Attribut-Bedingungen zurück."
 
 #: src/i18n/errors.ts
 msgid "Ein Benutzername hat 2 bis 63 Zeichen: Kleinbuchstaben, Ziffern, „.\", „_\" und „-\"."
@@ -3431,6 +3445,7 @@ msgid "entfällt:"
 msgstr "entfällt:"
 
 #: src/admin/evaluation/NewRunPage.tsx
+#: src/editor/EditorPanel.tsx
 #: src/workplace/LayerPanel.tsx
 msgid "Entfernen"
 msgstr "Entfernen"
@@ -4293,8 +4308,8 @@ msgid "Gruppe (UND, {count})"
 msgstr "Gruppe (UND, {count})"
 
 #: src/editor/EditorPanel.tsx
-msgid "Gruppe entfernen"
-msgstr "Gruppe entfernen"
+msgid "Gruppe: Treffer erfüllen <0/>"
+msgstr "Gruppe: Treffer erfüllen <0/>"
 
 #: src/admin/evaluation/RunPage.tsx
 msgid "gruppiert nach erstem Stichwort"
@@ -4543,6 +4558,10 @@ msgstr "jede Änderung erst nach Ihrer Freigabe"
 #: src/admin/ConnectionForm.tsx
 msgid "Jede Antwort der Direktabfrage wird zusätzlich mit der Werkzeugkette gefragt; findet sie andere Objekte, ist die Antwort als unsicher markiert. Etwa doppelte Modellzeit; zählt zum Anfragelimit."
 msgstr "Jede Antwort der Direktabfrage wird zusätzlich mit der Werkzeugkette gefragt; findet sie andere Objekte, ist die Antwort als unsicher markiert. Etwa doppelte Modellzeit; zählt zum Anfragelimit."
+
+#: src/editor/EditorPanel.tsx
+msgid "Jede Bedingung ist ein Satz. Die umrandeten Teile sind Auswahlfelder: anklicken und ändern. Mehrere Bedingungen verknüpfen Sie mit «alle» (UND) oder «mindestens eine» (ODER) und ordnen sie in Gruppen. Das Ergebnis erscheint in der Karte und in der Tabelle unter «Datendetails». Ein anderer Layer setzt die Attribut-Bedingungen zurück."
+msgstr "Jede Bedingung ist ein Satz. Die umrandeten Teile sind Auswahlfelder: anklicken und ändern. Mehrere Bedingungen verknüpfen Sie mit «alle» (UND) oder «mindestens eine» (ODER) und ordnen sie in Gruppen. Das Ergebnis erscheint in der Karte und in der Tabelle unter «Datendetails». Ein anderer Layer setzt die Attribut-Bedingungen zurück."
 
 #: src/operations/OperationDialog.tsx
 msgid "Join"
@@ -5249,6 +5268,16 @@ msgstr "Lücken in {title}"
 msgid "Lücken in {title} · in dieser Reihenfolge pflegen"
 msgstr "Lücken in {title} · in dieser Reihenfolge pflegen"
 
+#: src/editor/EditorPanel.tsx
+msgctxt "around a feature"
+msgid "m um"
+msgstr "m um"
+
+#: src/editor/EditorPanel.tsx
+msgctxt "distance to a layer"
+msgid "m zu"
+msgstr "m zu"
+
 #: src/admin/evaluation/RunsPage.tsx
 msgid "Markieren"
 msgstr "Markieren"
@@ -5348,13 +5377,14 @@ msgstr "Minimum"
 msgid "Minimum {field}"
 msgstr "Minimum {field}"
 
+#: src/editor/EditorPanel.tsx
+msgctxt "filter on the reference layer"
+msgid "mit"
+msgstr "mit"
+
 #: src/session/OpenNotice.tsx
 msgid "Mit aktuellen Daten übernehmen"
 msgstr "Mit aktuellen Daten übernehmen"
-
-#: src/editor/EditorPanel.tsx
-msgid "Mit dem ausgewählten Layer können Sie nun eine Abfrage mit UND- oder ODER-Verknüpfung machen, die Sie über Gruppen strukturieren können. Das Ergebnis der Abfrage wird in der Karte und in der Tabelle unter «Datendetails» vom ausgewählten Layer dargestellt."
-msgstr "Mit dem ausgewählten Layer können Sie nun eine Abfrage mit UND- oder ODER-Verknüpfung machen, die Sie über Gruppen strukturieren können. Das Ergebnis der Abfrage wird in der Karte und in der Tabelle unter «Datendetails» vom ausgewählten Layer dargestellt."
 
 #: src/admin/evaluation/CaseDetailPage.tsx
 msgid "Mit den Beispielen „Eigene“ kann das Modell diesen Fall als Beispiel erhalten: die Frage so, wie sie hier steht, auch bei externen Verbindungen. Die Referenz geht an externe Verbindungen nur, wenn sie nur Zahlen, Ja oder Nein und bestätigte Codes enthält."
@@ -5379,6 +5409,10 @@ msgstr "mit Freigabe"
 #: src/model/panel/PromptPanel.tsx
 msgid "Mit Layern auf der Karte erscheinen hier Beispiele."
 msgstr "Mit Layern auf der Karte erscheinen hier Beispiele."
+
+#: src/editor/EditorPanel.tsx
+msgid "Mit NICHT umkehren"
+msgstr "Mit NICHT umkehren"
 
 #: src/admin/format.ts
 msgid "mit Warnungen"
@@ -5654,6 +5688,10 @@ msgstr "nicht am"
 #: src/model/chain/ChainMap.tsx
 msgid "nicht angewendet"
 msgstr "nicht angewendet"
+
+#: src/editor/EditorPanel.tsx
+msgid "NICHT aufheben"
+msgstr "NICHT aufheben"
 
 #: src/model/chain/steps.ts
 msgid "nicht ausgeführt"
@@ -5945,7 +5983,6 @@ msgstr "Objekte"
 msgid "Objekte ohne Partner behalten"
 msgstr "Objekte ohne Partner behalten"
 
-#: src/editor/EditorPanel.tsx
 #: src/model/approval/changes.ts
 #: src/model/tree.tsx
 #: src/workplace/QueryPanel.tsx
@@ -7038,6 +7075,10 @@ msgid "Treffer dieser Bedingung"
 msgstr "Treffer dieser Bedingung"
 
 #: src/editor/EditorPanel.tsx
+msgid "Treffer erfüllen <0/> dieser Bedingungen:"
+msgstr "Treffer erfüllen <0/> dieser Bedingungen:"
+
+#: src/editor/EditorPanel.tsx
 msgid "Treffer im Entwurf"
 msgstr "Treffer im Entwurf"
 
@@ -7144,11 +7185,6 @@ msgstr "Überschreiben"
 msgid "übersprungen"
 msgstr "übersprungen"
 
-#: src/editor/EditorPanel.tsx
-msgctxt "around a feature"
-msgid "um"
-msgstr "um"
-
 #: src/queries/ManageQueriesDialog.tsx
 #: src/session/SessionsDialog.tsx
 msgid "Umbenennen"
@@ -7179,6 +7215,10 @@ msgid "Unbenannte Sitzung"
 msgstr "Unbenannte Sitzung"
 
 #: src/editor/EditorPanel.tsx
+msgctxt "range"
+msgid "und"
+msgstr "und"
+
 #: src/model/approval/changes.ts
 #: src/model/tree.tsx
 #: src/workplace/QueryPanel.tsx
@@ -7709,8 +7749,8 @@ msgid "Wert passt nicht zum Feld"
 msgstr "Wert passt nicht zum Feld"
 
 #: src/editor/EditorPanel.tsx
-msgid "Werte"
-msgstr "Werte"
+msgid "Wert, Enter"
+msgstr "Wert, Enter"
 
 #: src/admin/ProbeTab.tsx
 msgid "Werte, gelesen"
@@ -7744,6 +7784,10 @@ msgstr "Wie das Modell antwortet."
 #: src/operations/OperationDialog.tsx
 msgid "Wie der Layer auf der Karte erscheint (F-4.8)."
 msgstr "Wie der Layer auf der Karte erscheint (F-4.8)."
+
+#: src/editor/EditorPanel.tsx
+msgid "Wie funktioniert die Abfrage?"
+msgstr "Wie funktioniert die Abfrage?"
 
 #: src/admin/ImportWizard.tsx
 msgid "Wie ist der Raumbezug angegeben?"
@@ -7825,10 +7869,6 @@ msgstr "Wird verschlüsselt gespeichert und nie wieder angezeigt."
 #: src/model/approval/Approval.tsx
 msgid "Wird zurückgenommen, sobald der Editor geschlossen ist."
 msgstr "Wird zurückgenommen, sobald der Editor geschlossen ist."
-
-#: src/editor/EditorPanel.tsx
-msgid "wo"
-msgstr "wo"
 
 #: src/admin/ConnectionForm.tsx
 msgid "Wo das Modell läuft und wie man es erreicht."

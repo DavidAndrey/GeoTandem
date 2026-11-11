@@ -11,7 +11,10 @@ import { useLayers } from '../api/queries'
 import { ConfirmDialog, Labelled } from '../components/ui'
 import { layerTitle } from './layerInfo'
 
-export function ResultSelect({ hint }: { hint?: boolean }) {
+/** ``label``: the visible words over the select, "Layer" unless the place needs its own. */
+export function ResultSelect({ label }: { label?: string }) {
+  // Its own words are the place's lead sentence: they read as text, not as a small label.
+  const labelClassName = label ? 'text-sm' : undefined
   const analysis = useAnalysis(useShallow(currentAnalysis))
   const setResult = useAnalysis((s) => s.setResult)
   const catalog = useLayers()
@@ -28,7 +31,7 @@ export function ResultSelect({ hint }: { hint?: boolean }) {
 
   return (
     <>
-      <Labelled label={t`Layer`} className="text-sm">
+      <Labelled label={label ?? t`Layer`} className="text-sm" labelClassName={labelClassName}>
         <select
           className="input w-full"
           aria-label={t`Ergebnis-Layer`}
@@ -44,11 +47,6 @@ export function ResultSelect({ hint }: { hint?: boolean }) {
             </option>
           ))}
         </select>
-        {hint && (
-          <span className="text-muted text-xs">
-            <Trans>Ein anderer Layer setzt die Attribut-Bedingungen zurück.</Trans>
-          </span>
-        )}
       </Labelled>
       {pending && (
         <ConfirmDialog
