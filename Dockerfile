@@ -11,7 +11,7 @@ COPY frontend/ ./
 COPY schema /app/schema
 RUN npm run build
 
-FROM python:3.14-slim AS app
+FROM python:3.15-slim AS app
 RUN apt-get update \
     && apt-get install -y --no-install-recommends libsqlite3-mod-spatialite \
     && rm -rf /var/lib/apt/lists/*
