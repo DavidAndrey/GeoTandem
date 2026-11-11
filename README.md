@@ -370,7 +370,7 @@ Layer-Steckbrief des Kontos an das Modell (nur Metadaten, nie Zeileninhalte).
   Antwort ein Vorschlag zum Übernehmen von Hand. Die Regel greift auch an der
   Oberfläche vorbei: Ausgeführt wird immer nur die gespeicherte Abfrage.
 - **Hin und her.** Eine angewendete Antwort öffnet sich im Editor
-  (*Im Editor öffnen*), ihre Bedingungen tragen die Marke «Modell», bis man sie
+  (*Als Abfrage bearbeiten*), ihre Bedingungen tragen die Marke «Modell», bis man sie
   von Hand ändert. Die nächste Frage bezieht sich auf die letzte Antwort und
   den aktuellen Stand der Analyse (Marke über dem Feld; × fragt ohne Bezug);
   wurde der Stand von Hand geändert, erfährt das Modell das. «Nur in» und die

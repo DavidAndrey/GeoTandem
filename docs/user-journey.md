@@ -122,7 +122,7 @@ Editor, markiert mit «Modell».
 
 Sie öffnet den Editor und ändert 500 m auf 300 m; die Marke dieser Zeile fällt
 weg. Dann fragt sie weiter: «Welche davon haben mehr als einen Standort?» Über
-dem Feld steht *Bezug: aktuelle Analyse*: Das Modell erfährt, dass sie den
+dem Feld steht *Bezug: aktuelle Abfrage*: Das Modell erfährt, dass sie den
 Stand von Hand geändert hat, und ergänzt ihre Analyse statt seiner alten
 Antwort. Hätte sie lieber neu angefangen, hätte ein × die Frage ohne Bezug
 gestellt.

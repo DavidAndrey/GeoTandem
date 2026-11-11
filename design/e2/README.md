@@ -1,7 +1,7 @@
 # Handoff: GeoTandem · Etappe 2 (Modus B · LLM-Support)
 
 ## Überblick
-Bildschirmreferenz für Etappe E2 (E2.3–E2.6 aus `etappen.md`): Prompt-Reiter, Antwort der Direktabfrage, Abweisung, Stufe ohne Ausführungsrecht, Freigabe und Rücknahme, Stufenanzeige, Werkzeugkette mit Plan, Lauf und Vergleich, Dialogverlauf, Mehrdeutigkeit, unpassende Arbeitsweise, Fehlerfälle, der Übergang Modus B → A → B und das Protokoll der Modellaktionen. Grundlage ist das Briefing `BRIEF.md` (F-5.1, F-5.4–F-5.18, F-6.1–F-6.9, F-9.5).
+Bildschirmreferenz für Etappe E2 (E2.3–E2.6 aus `etappen.md`): Frage-Reiter, Antwort der Direktabfrage, Abweisung, Stufe ohne Ausführungsrecht, Freigabe und Rücknahme, Stufenanzeige, Werkzeugkette mit Plan, Lauf und Vergleich, Dialogverlauf, Mehrdeutigkeit, unpassende Arbeitsweise, Fehlerfälle, der Übergang Modus B → A → B und das Protokoll der Modellaktionen. Grundlage ist das Briefing `BRIEF.md` (F-5.1, F-5.4–F-5.18, F-6.1–F-6.9, F-9.5).
 
 Leitfrage: Ein Anwender ohne GIS-Vorkenntnisse sieht jederzeit, *was das Modell vorschlägt, was es angenommen hat, was schon passiert ist und wie er es zurücknimmt oder von Hand weiterbearbeitet*.
 
@@ -17,7 +17,7 @@ Die Dateien sind **Designreferenzen in HTML** (Wireframes), kein Produktionscode
 
 ## Navigation und Adressen
 **Kopfzeile Anwendung** (wie E1, ergänzt): Marke → B1 · Sitzung ▾ (C1) · „● ungespeichert“ · **Anbindung · Stufe ▾** (M7; externe Anbindung mit Host-Kennzeichen, ohne Anbindung „Keine Modellanbindung“) · Administration (nur Admin) · Benutzermenü mit neu **Meine Modellaktionen** (M16.3).
-**Seitenleiste:** Reiter Klassik | **Prompt**. Prompt öffnet ein Panel (460 px, wie B2) zwischen Seitenleiste und Karte; Seitenleiste, Karte und Tabelle bleiben sichtbar und gelten. „Im Editor öffnen“ / „Anpassen“ wechselt auf Klassik und öffnet B2 an der Stelle des Panels; der Dialogverlauf bleibt erhalten.
+**Seitenleiste:** Reiter Klassik | **Frage**. Frage öffnet ein Panel (460 px, wie B2) zwischen Seitenleiste und Karte; Seitenleiste, Karte und Tabelle bleiben sichtbar und gelten. „Als Abfrage bearbeiten“ / „Anpassen“ wechselt auf Klassik und öffnet B2 an der Stelle des Panels; der Dialogverlauf bleibt erhalten.
 **Administration:** neue Gruppe **Modell** in D1 (bisher ausgegraut): Modellanbindungen, Stufen, Was das Modell sieht (Bestand, hier nicht neu entworfen) · **Modellprotokoll** (M16, neu). Bewertung ab E3, MCP ab E4 bleiben ausgegraut.
 
 | Route | Bildschirm |
@@ -30,7 +30,7 @@ Alle übrigen M-Zustände ohne eigene Adresse (Panel, Popover, Dialog im Arbeits
 ## Bildschirme
 
 ### M · Prompt und Antwort (E2.3)
-- **M1 Prompt-Reiter**: M1.1 lokales Modell · M1.2 externe Anbindung (Hinweis „Der Prompt-Text verlässt das Haus“, Host im Kopf und im Hinweis; bei Datenfreigabe ein: „… sieht auch Werte aus den Treffern“) · M1.3 keine Anbindung (Reiter ausgegraut, Klassik voll nutzbar, Admin-Link). Eingabe mehrzeilig, Senden ⌘/Ctrl+Enter, Arbeitsweise *Direktabfrage | Werkzeugkette* je Anfrage (bis E2.5: Werkzeugkette deaktiviert mit „ab E2.5“), 2–3 Beispielprompts aus den sichtbaren Layern (Klick setzt Text, sendet nicht); keine Statuszeile unter dem Feld (Anbindung und Stufe stehen im Kopf, der Host im Hinweis M1.2, das Protokoll in *Meine Modellaktionen*); „Arbeitsweise“ nur als Name für Screenreader und Titel des ⓘ.
+- **M1 Frage-Reiter**: M1.1 lokales Modell · M1.2 externe Anbindung (Hinweis „Der Text der Frage verlässt das Haus“, Host im Kopf und im Hinweis; bei Datenfreigabe ein: „… sieht auch Werte aus den Treffern“) · M1.3 keine Anbindung (Reiter ausgegraut, Klassik voll nutzbar, Admin-Link). Eingabe mehrzeilig, Senden ⌘/Ctrl+Enter, Arbeitsweise *Direktabfrage | Werkzeugkette* je Anfrage (bis E2.5: Werkzeugkette deaktiviert mit „ab E2.5“), 2–3 Beispielprompts aus den sichtbaren Layern (Klick setzt Text, sendet nicht); keine Statuszeile unter dem Feld (Anbindung und Stufe stehen im Kopf, der Host im Hinweis M1.2, das Protokoll in *Meine Modellaktionen*); „Arbeitsweise“ nur als Name für Screenreader und Titel des ⓘ.
 - **M2 Antwort**: M2.1 Modell arbeitet (Eingabe gesperrt, Laufzeit bis 2:00, Abbrechen; kein Token-Streaming) · M2.2 angewendet (Seitenleiste zeigt die Abfrage mit Marke „Modell“ je Bedingung; 7 von 39; ● ungespeichert) · M2.3 zurückgenommen. Antwort = Erläuterung (1–3 Sätze) · Annahmen einzeln mit ≈ · lesbare Abfrage im Bedingungsbaum-Stil (JSON nur unter „Technisch“) · Status · Aktionen *Als Abfrage bearbeiten*, *Zurücknehmen*, ⋯ (*Protokoll*, Wiederholen). Über jeder Antwort „Antwort · Zeit“ wie „Frage · Zeit“ über der Frage.
 - **M3 Abweisung** (durch die Anwendung, nicht das Modell): M3.1 `layer_not_visible` (als m.keller) · M3.2 `limit_exceeded` · M3.3 `not_representable` (mit Angebot Werkzeugkette). Weitere Codes gleich dargestellt: `layer_unknown`, `schema_invalid`. Grund in Worten, Code nur unter „Details“; abgewiesene Abfrage einsehbar, nicht anwendbar. Aktionen *Prompt ändern* (Text zurück ins Feld), *Erneut versuchen*. Kein `class_not_allowed` (Q1).
 - **M4 Stufe ohne Ausführungsrecht** (Assistenz): M4.1 Vorschlag mit *In Editor übernehmen*, ohne Freigabe, Vorschau oder Rücknahme · M4.2 Entwurf in B2; erst „Übernehmen“ ändert die Analyse, als Handlung des Anwenders.

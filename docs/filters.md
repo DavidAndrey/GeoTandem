@@ -26,7 +26,7 @@ Ein Filter besteht aus drei Teilen des **Analysezustands**:
 
 | Teil | Im Arbeitsplatz | Im Abfrageobjekt |
 |---|---|---|
-| **Ergebnis-Layer** | «Ergebnis:» oben im Abfrage-Panel | `source` (bei abgeleiteten Layern dazu `buffer` oder `attribute_join`) |
+| **Ergebnis-Layer** | «Layer» im Abfrage-Panel, im Editor «Die Abfrage bezieht sich auf den Layer» | `source` (bei abgeleiteten Layern dazu `buffer` oder `attribute_join`) |
 | **Bedingungen** | UND/ODER-Baum im Abfrage-Editor | `where` |
 | **Einschränkung** | «Nur in: Ausschnitt / Fläche» | mit `and` an `where` angehängt (`bbox` oder `geometry`) |
 
@@ -82,11 +82,17 @@ vorher auf. Raum- und Bezugsobjekt-Bedingungen bleiben.
 
 Der Abfrage-Editor (B2) zeigt die Bedingungen als Baum:
 
-- Die **Wurzel** ist eine Gruppe mit **UND** oder **ODER**.
+- Jede Bedingung ist **ein Satz**, dessen umrandete Teile die Auswahlfelder
+  sind, z. B. «[≤ Distanz] [500] m zu [Strassen] mit [Strassenklasse] [=]
+  [kantonsstrasse_b]». Die Namen der Felder stehen im Tooltip.
+- Die **Wurzel** ist eine Gruppe mit **UND** oder **ODER**; der Editor liest
+  sie als «Treffer erfüllen **alle** / **mindestens eine** dieser
+  Bedingungen».
 - **Gruppen** lassen sich beliebig tief verschachteln. Eine neue Gruppe
   übernimmt den Gegenoperator ihrer Elterngruppe (UND enthält ODER und
   umgekehrt).
-- Jede Zeile und jede Gruppe hat ein **NICHT**.
+- Jede Zeile und jede Gruppe lässt sich mit **NICHT** umkehren (⋯-Menü der
+  Bedingung oder Gruppe, dort auch *Duplizieren* und *Entfernen*).
 - Es gibt drei Zeilentypen: **Attribut**, **Raum** und **Bezugsobjekt**.
 - **Unvollständige Zeilen** (ohne Wert, ohne Layer, ohne Distanz) werden
   ignoriert und nie halbfertig gesendet. Eine leere Gruppe zählt nicht.
@@ -187,9 +193,9 @@ den Chip).
 
 - **«7 von 39»** im Abfrage-Panel zählt die Treffer aller Bedingungen und der
   Einschränkung gegen alle Objekte des Ergebnis-Layers.
-- **Trefferzahl je Bedingung** (rechts neben jeder Zeile im Editor) zählt die
-  Zeile **allein** auf dem Ergebnis-Layer, ohne die anderen Bedingungen und
-  ohne die Einschränkung. Die Summe dieser Zahlen ergibt also nicht die
+- **Trefferzahl je Bedingung** («62 Treffer allein» unter jeder Bedingung
+  im Editor) zählt die Zeile **allein** auf dem Ergebnis-Layer, ohne die
+  anderen Bedingungen und ohne die Einschränkung. Die Summe dieser Zahlen ergibt also nicht die
   Gesamtzahl. Sie zeigen, welche Bedingung wie stark einschränkt.
 - Die **aktive Zeile** wird beim Bearbeiten auf der Karte gezeigt.
 - Zählen ist nicht durch die 10 000-Objekte-Grenze beschränkt (siehe [3.6](#36-grenzwerte)).
@@ -224,7 +230,7 @@ aus und prüft «**Treffer** von **Gesamt**». Wer ein Beispiel oder den
 Beispieldatensatz ändert, muss die Zahlen hier nachführen.
 
 Die Bildschirmfotos zeigen jedes Beispiel im Abfrage-Editor (Stand
-2026-10-04, ohne Grundkarte): links die Übersicht mit der Trefferzahl je
+2026-11-11, ohne Grundkarte): links die Übersicht mit der Trefferzahl je
 Bedingung, in der Mitte der Editor, rechts die Karte mit den Treffern in
 Orange. Neu erzeugt werden sie mit `make doc-screenshots`
 ([scripts/doc-screenshots.sh](../scripts/doc-screenshots.sh)), sobald sich der

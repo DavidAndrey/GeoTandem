@@ -1,7 +1,7 @@
 # Plan: attribute metadata — units, roles, references, and a model that reads them
 
-> Status: decided 2026-11-07 (Q1–Q9, section 6). A done on branch
-> `attribute-metadata`: no effect of units, roles or real references
+> Status: decided 2026-11-07 (Q1–Q9, section 6). A, C and D merged to
+> `main` (51258ca, 2026-11-10). A: no effect of units, roles or real references
 > (testplan 8.6); E and the `identifier` role dropped (section 7). C built
 > (section 4 C). D built, its measurement run open (section 4 D). B open.
 > Bezug: [memo.md](../memo.md) (Phase 4 result), [testplan-system-context.md 8.5](testplan-system-context.md),
