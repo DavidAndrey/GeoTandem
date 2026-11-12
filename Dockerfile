@@ -11,13 +11,13 @@ COPY frontend/ ./
 COPY schema /app/schema
 RUN npm run build
 
-FROM python:3.14-slim AS app
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends libsqlite3-mod-spatialite \
-    && rm -rf /var/lib/apt/lists/*
+# The environment is built in a stage of its own: uv, its cache and the
+# sources stay behind, only /opt/venv goes into the image.
+FROM python:3.14-slim AS backend
 COPY --from=ghcr.io/astral-sh/uv:0.12.10 /uv /usr/local/bin/uv
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
+    UV_NO_CACHE=1 \
     UV_PYTHON_DOWNLOADS=never \
     UV_PROJECT_ENVIRONMENT=/opt/venv
 WORKDIR /app
@@ -29,9 +29,16 @@ COPY backend/pyproject.toml backend/
 RUN uv sync --frozen --no-dev --package geotandem --no-install-workspace
 
 COPY packages packages
-COPY backend backend
-RUN uv sync --frozen --no-dev --package geotandem --no-editable \
-    && python -c "import sqlite3; c = sqlite3.connect(':memory:'); c.enable_load_extension(True); c.load_extension('mod_spatialite')"
+COPY backend/src backend/src
+RUN uv sync --frozen --no-dev --package geotandem --no-editable
+
+FROM python:3.14-slim AS app
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libsqlite3-mod-spatialite \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=backend /opt/venv /opt/venv
+RUN /opt/venv/bin/python -c "import sqlite3; c = sqlite3.connect(':memory:'); c.enable_load_extension(True); c.load_extension('mod_spatialite')"
+WORKDIR /app
 
 COPY --from=frontend /app/frontend/dist /app/frontend/dist
 # The start set of the evaluation (plan E3, D2): read-only, beside the package.

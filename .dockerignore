@@ -10,3 +10,5 @@ e2e
 data
 *.sqlite
 .env
+backend/evals
+backend/tests
