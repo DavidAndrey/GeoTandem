@@ -1,11 +1,11 @@
-// Message catalogs (plan E1.9, L1): German is the source and, for now, the only
-// language; "pseudo" shows untranslated text and tight layouts (L7).
+// Message catalogs (plan E1.9, L1): German is the source, French the first translation;
+// "pseudo" shows untranslated text and tight layouts (L7).
 import { formatter } from '@lingui/format-po'
 import { defineConfig } from '@lingui/conf'
 
 export default defineConfig({
   sourceLocale: 'de',
-  locales: ['de', 'pseudo'],
+  locales: ['de', 'fr', 'pseudo'],
   pseudoLocale: { locale: 'pseudo', prepend: '⟦', append: '⟧', extend: 0.3 },
   fallbackLocales: { default: 'de' },
   catalogs: [

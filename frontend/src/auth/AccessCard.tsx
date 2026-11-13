@@ -1,5 +1,6 @@
 // Frame of the pages before the application: setup, sign-in, mandatory password.
 import type { ReactNode } from 'react'
+import { LanguageSwitch } from '../components/LanguageSwitch'
 
 export function AccessCard({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -10,6 +11,9 @@ export function AccessCard({ title, children }: { title: string; children: React
           {title}
         </h1>
         {children}
+        <div className="mt-4 flex justify-end">
+          <LanguageSwitch />
+        </div>
       </section>
     </main>
   )
