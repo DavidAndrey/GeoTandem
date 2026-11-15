@@ -6689,6 +6689,7 @@ msgid "Sperren"
 msgstr "Sperren"
 
 #: src/admin/evaluation/words.ts
+#: src/components/LanguageSwitch.tsx
 msgid "Sprache"
 msgstr "Sprache"
 

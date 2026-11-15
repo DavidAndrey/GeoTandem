@@ -7,6 +7,7 @@ import { Dialog, DropdownMenu } from 'radix-ui'
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { api, type Account } from '../api/client'
+import { LanguageSwitch } from '../components/LanguageSwitch'
 import { useResetSession } from '../api/queries'
 import { openMyActions } from '../model/log/dialog'
 import { MyActionsDialog } from '../model/log/MyActionsDialog'
@@ -67,6 +68,9 @@ export function UserMenu({ account }: { account: Account }) {
             >
               <Trans>Passwort ändern</Trans>
             </DropdownMenu.Item>
+            <div className="border-divider border-t px-3 py-2">
+              <LanguageSwitch />
+            </div>
             <DropdownMenu.Item
               className="cursor-pointer px-3 py-1 text-sm outline-none data-[highlighted]:bg-neutral-200"
               onSelect={() => guarded('logout', () => logout.mutate())}
