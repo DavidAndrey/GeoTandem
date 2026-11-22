@@ -13,7 +13,7 @@ RUN npm run build
 
 # The environment is built in a stage of its own: uv, its cache and the
 # sources stay behind, only /opt/venv goes into the image.
-FROM python:3.14-slim AS backend
+FROM python:3.15-slim AS backend
 COPY --from=ghcr.io/astral-sh/uv:0.12.10 /uv /usr/local/bin/uv
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
@@ -32,7 +32,7 @@ COPY packages packages
 COPY backend/src backend/src
 RUN uv sync --frozen --no-dev --package geotandem --no-editable
 
-FROM python:3.14-slim AS app
+FROM python:3.15-slim AS app
 RUN apt-get update \
     && apt-get install -y --no-install-recommends libsqlite3-mod-spatialite \
     && rm -rf /var/lib/apt/lists/*
