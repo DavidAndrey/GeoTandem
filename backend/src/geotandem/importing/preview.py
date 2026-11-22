@@ -26,8 +26,15 @@ SAMPLE_VALUES = 5
 MAX_CODES = 20
 MIN_KEY_MATCH = 0.5
 
-_X = re.compile(r"^(x|lon|lng|long|longitude|laenge|e|east|easting|ost|rechtswert)(_.*)?$|.*_x$")
-_Y = re.compile(r"^(y|lat|latitude|breite|n|north|northing|nord|hochwert)(_.*)?$|.*_y$")
+# A coordinate word at the start ("e", "lon_wgs84") or as the last part ("location_chlv95_e").
+_X = re.compile(
+    r"^(x|lon|lng|long|longitude|laenge|e|east|easting|ost|rechtswert)(_.*)?$"
+    r"|.*_(x|e|east|easting|lon|lng)$"
+)
+_Y = re.compile(
+    r"^(y|lat|latitude|breite|n|north|northing|nord|hochwert)(_.*)?$"
+    r"|.*_(y|n|north|northing|lat)$"
+)
 
 
 class ColumnPreview(BaseModel):

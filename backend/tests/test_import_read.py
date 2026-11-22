@@ -172,6 +172,18 @@ def test_csv_semicolon_comma_cp1252(files: dict[str, Path]) -> None:
     assert p.sample_rows[0]["hoehe_ue_m"] == 450.5
 
 
+def test_csv_xy_columns_named_by_suffix(tmp_path: Path) -> None:
+    path = tmp_path / "unfaelle.csv"
+    path.write_text(
+        "AccidentUID\tLocation_CHLV95_E\tLocation_CHLV95_N\n"
+        "a1\t2667632\t1226133\na2\t2718078\t1273115\n",
+        "utf-8",
+    )
+    p = preview(path)
+    assert p.xy is not None
+    assert (p.xy.x, p.xy.y, p.xy.crs) == ("Location_CHLV95_E", "Location_CHLV95_N", LV95)
+
+
 def test_csv_options_override_detection(files: dict[str, Path]) -> None:
     p = preview(files["messstellen.csv"], ReadOptions(delimiter=",", encoding="cp1252"))
     assert len(p.columns) == 1 or any(w.code == "single_column" for w in p.warnings)
